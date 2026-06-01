@@ -5,6 +5,7 @@ import { DraggableAppointment } from "./draggable-appointment";
 import { DroppableSlot } from "./droppable-slot";
 import { useDragToCreate } from "./use-drag-to-create";
 import { useCurrentTime } from "@/hooks/use-current-time";
+import { cn } from "@/lib/utils";
 import type { AppointmentIndicator } from "./appointment-card";
 
 interface Appointment {
@@ -226,33 +227,9 @@ function EmployeeColumn({
 
   return (
     <div className="flex-1 min-w-[140px] border-r last:border-r-0">
-      {/* Header with avatar + name + working hours / day-off */}
-      <div className="sticky top-0 z-30 bg-background">
-        <div
-          className="flex h-[52px] items-start gap-2 border-b bg-muted/40 px-2 py-2 text-xs font-medium"
-        >
-          <Avatar className="mt-0.5 h-6 w-6">
-            <AvatarFallback className="bg-muted text-[10px] font-medium text-muted-foreground">
-              {employee.initials || "?"}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex min-w-0 flex-col leading-tight">
-            <span className="truncate" title={employee.name}>
-              {employee.name}
-            </span>
-            {schedule ? (
-              <span className="truncate text-[10px] font-normal text-muted-foreground">
-                {schedule.startTime} – {schedule.endTime}
-              </span>
-            ) : (
-              <span className="truncate text-[10px] font-normal text-muted-foreground">
-                {t("gabinet.calendar.dayOff", { defaultValue: "dzień wolny" })}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
+      {/* Employee header (avatar + name + working hours) lives in the sticky
+          row rendered by the parent CalendarDayByEmployeeView so it stays
+          visible when the grid is scrolled vertically (issue #1234). */}
       <div
         ref={dragHandler.containerRef}
         className="relative select-none"
@@ -454,61 +431,98 @@ export function CalendarDayByEmployeeView({
     );
   }
 
+  // Single sticky header row sits at the top of the scroll container
+  // instead of one sticky element per employee column. Per-flex-item
+  // sticky-top isn't reliable on iOS Safari when the column's height is
+  // driven by overflowing content — the column box ends up clipped to the
+  // viewport and the sticky child scrolls away with it (issue #1234).
   return (
-    <div className="flex h-full overflow-auto">
-      {/* Time labels */}
-      <div className="sticky left-0 z-40 w-14 shrink-0 border-r bg-background relative">
-        {/* Sticky spacer matching the employee column headers so the time
-            labels below scroll behind it instead of disappearing under the
-            sticky column headers — keeps row alignment when scrolling. */}
-        <div className="sticky top-0 z-30 h-[52px] border-b bg-background" />
-        {slots.map((s) => {
-          const showLabel = s.isHourMark || s.slotHeight >= 15;
-          return (
-            <div
-              key={s.time}
-              className="flex items-start justify-end pr-2"
-              style={{ height: `${s.slotHeight}px` }}
-            >
-              {showLabel && (
-                <span
-                  className={`${s.isHourMark ? "text-xs font-medium text-muted-foreground" : "text-[10px] text-muted-foreground/60"} leading-none`}
-                >
-                  {s.time}
+    <div className="flex h-full flex-col overflow-auto">
+      <div className="sticky top-0 z-30 flex min-w-fit bg-background">
+        {/* Corner cell — sticky-left so it stays at the time-labels position
+            during horizontal scroll. */}
+        <div className="sticky left-0 z-40 h-[52px] w-14 shrink-0 border-b border-r bg-background" />
+        {employees.map((emp) => (
+          <div
+            key={emp.userId}
+            className={cn(
+              "flex-1 min-w-[140px] border-r last:border-r-0 flex h-[52px] items-start gap-2 border-b bg-muted/40 px-2 py-2 text-xs font-medium",
+            )}
+          >
+            <Avatar className="mt-0.5 h-6 w-6">
+              <AvatarFallback className="bg-muted text-[10px] font-medium text-muted-foreground">
+                {emp.initials || "?"}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex min-w-0 flex-col leading-tight">
+              <span className="truncate" title={emp.name}>
+                {emp.name}
+              </span>
+              {emp.schedule ? (
+                <span className="truncate text-[10px] font-normal text-muted-foreground">
+                  {emp.schedule.startTime} – {emp.schedule.endTime}
+                </span>
+              ) : (
+                <span className="truncate text-[10px] font-normal text-muted-foreground">
+                  {t("gabinet.calendar.dayOff", { defaultValue: "dzień wolny" })}
                 </span>
               )}
             </div>
-          );
-        })}
-        {showCurrentTime && (
-          <div
-            className="pointer-events-none absolute right-1 z-30 rounded bg-red-500 px-1 py-0.5 text-[10px] font-semibold leading-none text-white shadow"
-            style={{
-              top: `${52 + currentTimeTop}px`,
-              transform: "translateY(-50%)",
-            }}
-          >
-            {currentTimeLabel}
           </div>
-        )}
+        ))}
       </div>
 
-      {/* Employee columns */}
-      {employees.map((emp) => (
-        <EmployeeColumn
-          key={emp.userId}
-          date={date}
-          employee={emp}
-          appointments={appointmentsByEmployee.get(emp.userId) ?? []}
-          slots={slots}
-          slotMinutes={slotMinutes}
-          isToday={isToday}
-          currentTimeTop={isToday ? currentTimeTop : null}
-          onSlotClick={onSlotClick}
-          onSlotDragSelect={onSlotDragSelect}
-          onAppointmentResize={onAppointmentResize}
-        />
-      ))}
+      <div className="flex min-w-fit">
+        {/* Time labels — sticky-left so they stay pinned during horizontal scroll. */}
+        <div className="sticky left-0 z-20 w-14 shrink-0 border-r bg-background relative">
+          {slots.map((s) => {
+            const showLabel = s.isHourMark || s.slotHeight >= 15;
+            return (
+              <div
+                key={s.time}
+                className="flex items-start justify-end pr-2"
+                style={{ height: `${s.slotHeight}px` }}
+              >
+                {showLabel && (
+                  <span
+                    className={`${s.isHourMark ? "text-xs font-medium text-muted-foreground" : "text-[10px] text-muted-foreground/60"} leading-none`}
+                  >
+                    {s.time}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+          {showCurrentTime && (
+            <div
+              className="pointer-events-none absolute right-1 z-30 rounded bg-red-500 px-1 py-0.5 text-[10px] font-semibold leading-none text-white shadow"
+              style={{
+                top: `${currentTimeTop}px`,
+                transform: "translateY(-50%)",
+              }}
+            >
+              {currentTimeLabel}
+            </div>
+          )}
+        </div>
+
+        {/* Employee columns (body only — headers are in the sticky row above) */}
+        {employees.map((emp) => (
+          <EmployeeColumn
+            key={emp.userId}
+            date={date}
+            employee={emp}
+            appointments={appointmentsByEmployee.get(emp.userId) ?? []}
+            slots={slots}
+            slotMinutes={slotMinutes}
+            isToday={isToday}
+            currentTimeTop={isToday ? currentTimeTop : null}
+            onSlotClick={onSlotClick}
+            onSlotDragSelect={onSlotDragSelect}
+            onAppointmentResize={onAppointmentResize}
+          />
+        ))}
+      </div>
     </div>
   );
 }

@@ -155,6 +155,61 @@ export const create = action({
   },
 });
 
+export const update = action({
+  args: {
+    organizationId: v.id("organizations"),
+    paymentId: v.string(),
+    amount: v.optional(v.number()),
+    paymentMethod: v.optional(paymentMethodValidator),
+    notes: v.optional(v.union(v.string(), v.null())),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+
+    const db = createSupabaseDb();
+    const payment = await db.get("payments", args.paymentId);
+    if (!payment || payment.organizationId !== String(args.organizationId)) {
+      throw new Error("Payment not found");
+    }
+
+    if (payment.status === "refunded" || payment.status === "cancelled") {
+      throw new Error(`Cannot edit a ${payment.status} payment`);
+    }
+
+    const updates: Record<string, unknown> = { updatedAt: Date.now() };
+    if (args.amount !== undefined) {
+      if (!Number.isFinite(args.amount) || args.amount <= 0) {
+        throw new Error("Amount must be a positive number");
+      }
+      updates.amount = args.amount;
+    }
+    if (args.paymentMethod !== undefined) {
+      updates.paymentMethod = args.paymentMethod;
+    }
+    if (args.notes !== undefined) {
+      updates.notes = args.notes;
+    }
+
+    await db.patch("payments", args.paymentId, updates);
+
+    try {
+      await ctx.runMutation(internal.payments._updatePaymentSideEffects, {
+        paymentId: args.paymentId,
+        organizationId: args.organizationId,
+        userId: authResult.userId,
+        changes: JSON.stringify(updates),
+      });
+    } catch {
+      // side effects are best-effort
+    }
+
+    return args.paymentId;
+  },
+});
+
 export const markPaid = action({
   args: {
     organizationId: v.id("organizations"),
@@ -365,6 +420,25 @@ export const _createPaymentSideEffects = internalMutation({
       entityType: "payment",
       entityId: args.paymentId as any,
       details: JSON.stringify({ amount: args.amount, currency: args.currency }),
+    });
+  },
+});
+
+export const _updatePaymentSideEffects = internalMutation({
+  args: {
+    paymentId: v.string(),
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    changes: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.userId,
+      action: "payment_updated",
+      entityType: "payment",
+      entityId: args.paymentId as any,
+      details: args.changes,
     });
   },
 });

@@ -97,9 +97,9 @@ export function AppSidebar() {
                 className="gap-2.5 !bg-transparent group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-1! [&>svg]:size-5"
                 asChild
               >
-                <Link to="/dashboard" onClick={closeMobile}>
+                <Link to={activeModule.workspace.href} onClick={closeMobile}>
                   <Logo className="[&_rect]:fill-card [&_rect:first-child]:fill-primary" />
-                  <span className="text-xl font-semibold">CRM</span>
+                  <span className="text-xl font-semibold">{t(activeModule.workspace.nameKey)}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

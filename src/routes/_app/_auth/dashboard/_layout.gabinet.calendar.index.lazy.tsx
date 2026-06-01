@@ -19,7 +19,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Gift, Plus, Search, Users, X } from "@/lib/ez-icons";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Plus, Search, Users, X } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,7 +30,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { PrintSchedule } from "@/components/gabinet/calendar/print-schedule";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   DndContext,
@@ -114,6 +114,7 @@ function GabinetCalendarPage() {
   const search = useSearch({ from: "/_app/_auth/dashboard/_layout/gabinet/calendar/" });
   const routeNavigate = useNavigate();
   const nudgeFilter = search.nudge;
+  const actionParam = search.action;
 
   // Indicate this page has wide content (hides Column 2 on 1024-1400px screens)
   useWideContent(true);
@@ -793,6 +794,20 @@ function GabinetCalendarPage() {
   useSidebarDispatch("openFilter", () => setFilterOpen(true));
   useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
 
+  // ?action=sell-package opens the sell package side panel after navigation
+  // from the gabinet quick-actions dropdown (issue #1236). Clear the param
+  // after consuming so a refresh doesn't reopen it.
+  useEffect(() => {
+    if (actionParam === "sell-package") {
+      setSellPackageOpen(true);
+      routeNavigate({
+        to: "/dashboard/gabinet/calendar",
+        search: { nudge: nudgeFilter, action: undefined },
+        replace: true,
+      });
+    }
+  }, [actionParam, nudgeFilter, routeNavigate]);
+
   // Click-to-create handler
   const handleSlotClick = useCallback(
     (dateOrTime: string, time?: string) => {
@@ -1223,21 +1238,6 @@ function GabinetCalendarPage() {
                 <Plus className="h-3.5 w-3.5 sm:mr-1" variant="stroke" />
                 <span className="hidden sm:inline">
                   {t("gabinet.appointments.createAppointment", "Nowa wizyta")}
-                </span>
-              </Button>
-
-              {/* Sell package button */}
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs"
-                data-testid="calendar-sell-package-button"
-                onClick={() => setSellPackageOpen(true)}
-                aria-label={t("gabinet.packages.purchaseButton")}
-              >
-                <Gift className="h-3.5 w-3.5 sm:mr-1" variant="stroke" />
-                <span className="hidden sm:inline">
-                  {t("gabinet.packages.purchaseButton")}
                 </span>
               </Button>
             </div>

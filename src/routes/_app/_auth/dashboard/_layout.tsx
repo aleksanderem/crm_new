@@ -68,8 +68,9 @@ import { SidebarActionsContext } from "@/components/layout/sidebar-context";
 import { MiniCalendarProvider } from "@/components/layout/mini-calendar-context";
 import { SidebarSlotProvider, useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { HeaderSlotProvider, HeaderBackButton } from "@/components/layout/header-slot-context";
-import { moduleRegistry } from "@/modules/registry";
+import { getVisibleModules, moduleRegistry } from "@/modules/registry";
 import { useMatchRoute } from "@tanstack/react-router";
+import { useOrganization } from "@/components/org-context";
 import { ContactForm } from "@/components/forms/contact-form";
 import { CompanyForm } from "@/components/forms/company-form";
 import { LeadForm } from "@/components/forms/lead-form";
@@ -112,15 +113,24 @@ function HeaderModuleSwitcher() {
   const matchRoute = useMatchRoute();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { organizationId } = useOrganization();
+
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (same pattern as app-sidebar)
+  const { data: activeProducts } = useQuery(
+    convexQuery(api.productSubscriptions.getActiveProducts, { organizationId }),
+  );
 
   if (shellSidebarMode !== "icon-only") return null;
+
+  const visibleModules = getVisibleModules(activeProducts);
+  const visibleWorkspaces = visibleModules.map((m) => m.workspace);
+  if (visibleWorkspaces.length === 0) return null;
 
   const matchedModule = routeAwareModules.find((m) =>
     matchRoute({ to: m.workspaceRoot, fuzzy: true }),
   );
-  const activeId = matchedModule?.id ?? "crm";
-  const allWorkspaces = moduleRegistry.map((m) => m.workspace);
-  const current = allWorkspaces.find((w) => w.id === activeId) ?? allWorkspaces[0];
+  const current =
+    visibleWorkspaces.find((w) => w.id === matchedModule?.id) ?? visibleWorkspaces[0];
 
   return (
     <DropdownMenu>
@@ -133,7 +143,7 @@ function HeaderModuleSwitcher() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-52">
-        {allWorkspaces.map((ws) => (
+        {visibleWorkspaces.map((ws) => (
           <DropdownMenuItem key={ws.id} onClick={() => navigate({ to: ws.href })}>
             <div className="flex items-center gap-2.5">
               <div className="flex size-7 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">

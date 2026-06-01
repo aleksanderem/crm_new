@@ -385,11 +385,13 @@ function GabinetCalendarPage() {
     return map;
   }, [employeeFilter, employeeSchedulesRaw, clinicWorkingHours]);
 
-  // Get working hours for day view (today's schedule)
+  // Get working hours for day view (today's schedule).
+  // dayOfWeek is stored as Sun=0..Sat=6 (matches Date.getDay()) — see
+  // convex/gabinet/_availability_supabase.ts and the timetable settings page.
+  // Issue #1205.
   const dayWorkingHours = useMemo(() => {
     if (viewMode !== "day") return null;
-    const dayOfWeek = new Date(currentDate).getDay();
-    const dow = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Monday = 0
+    const dow = new Date(currentDate).getDay();
     return employeeSchedules.get(`${dow}`) ?? null;
   }, [viewMode, currentDate, employeeSchedules]);
 
@@ -1037,8 +1039,8 @@ function GabinetCalendarPage() {
   // so the grid can paint closed-hours and leave overlays per column.
   const dayByEmployeeColumns: DayByEmployeeColumn[] = useMemo(() => {
     if (!isDayByEmployeeView) return [];
-    const dayOfWeek = new Date(currentDate).getDay();
-    const dow = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    // dayOfWeek is stored as Sun=0..Sat=6 (matches Date.getDay()). Issue #1205.
+    const dow = new Date(currentDate).getDay();
     const list = employees ?? [];
     return list.map((emp) => {
       const name = getEmployeeName(emp);

@@ -5,6 +5,7 @@ import { DraggableAppointment } from "./draggable-appointment";
 import { DroppableSlot } from "./droppable-slot";
 import { useDragToCreate } from "./use-drag-to-create";
 import { useCurrentTime } from "@/hooks/use-current-time";
+import { cn } from "@/lib/utils";
 import type { AppointmentIndicator } from "./appointment-card";
 
 interface Appointment {
@@ -142,9 +143,7 @@ function layoutDayAppointments(appts: Appointment[]): LayoutedAppointment[] {
 
 interface WeekDayColumnProps {
   date: string;
-  dayIndex: number;
   isToday: boolean;
-  isSelected: boolean;
   layouts: LayoutedAppointment[];
   schedule?: { startTime: string; endTime: string; breakStart?: string; breakEnd?: string };
   leave?: { startTime?: string; endTime?: string } | null;
@@ -152,16 +151,13 @@ interface WeekDayColumnProps {
   onSlotClick?: (date: string, time: string) => void;
   onSlotDragSelect?: (date: string, startTime: string, endTime: string) => void;
   onAppointmentResize?: (id: string, newEndTime: string) => void;
-  onDayHeaderClick?: (date: string) => void;
   slotMinutes: 5 | 10 | 15 | 30 | 60;
   slots: ReturnType<typeof buildSlots>;
 }
 
 function WeekDayColumn({
   date,
-  dayIndex,
   isToday,
-  isSelected,
   layouts,
   schedule,
   leave,
@@ -169,7 +165,6 @@ function WeekDayColumn({
   onSlotClick,
   onSlotDragSelect,
   onAppointmentResize,
-  onDayHeaderClick,
   slotMinutes,
   slots,
 }: WeekDayColumnProps) {
@@ -221,29 +216,9 @@ function WeekDayColumn({
 
   return (
     <div className="flex-1 min-w-[120px] border-r last:border-r-0">
-      {/* Day header — wrapped in opaque sticky shell so appointments scrolling
-          past don't bleed through the semi-transparent tint. */}
-      <div
-        className={`sticky top-0 z-30 bg-background ${onDayHeaderClick ? "cursor-pointer" : ""}`}
-        onClick={() => onDayHeaderClick?.(date)}
-      >
-        <div
-          className={`border-b px-2 py-1 text-center text-xs font-medium ${
-            isSelected ? "bg-primary/20 ring-1 ring-inset ring-primary/30" : isToday ? "bg-primary/10" : "bg-muted/50"
-          } ${onDayHeaderClick ? "hover:bg-primary/15" : ""}`}
-        >
-          <div>
-            {t(`gabinet.calendar.weekdaysShort.${DAY_LABEL_KEYS[dayIndex]}`, {
-              defaultValue: DAY_LABEL_DEFAULTS[DAY_LABEL_KEYS[dayIndex]],
-            })}
-          </div>
-          <div className={isToday ? "font-bold text-primary" : isSelected ? "font-semibold text-primary" : "text-muted-foreground"}>
-            {date.split("-")[2]}
-          </div>
-        </div>
-      </div>
-
-      {/* Hour slots */}
+      {/* Hour slots — day-of-week + date header lives in the sticky row
+          rendered by the parent CalendarWeekView so it stays visible when the
+          grid is scrolled vertically (issue #1234). */}
       <div
         ref={dragHandler.containerRef}
         className="relative select-none"
@@ -400,6 +375,7 @@ function WeekDayColumn({
 }
 
 export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotDragSelect, onAppointmentResize, onDayHeaderClick, selectedDate, employeeSchedules, leavesByDate, slotMinutes = 60 }: CalendarWeekViewProps) {
+  const { t } = useTranslation();
   const dates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const now = useCurrentTime();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -419,73 +395,114 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
     return map;
   }, [dates, appointments]);
 
+  // Single sticky header row (day-of-week + date) sits at the top of the
+  // scroll container instead of one sticky element per day column. Per-flex-
+  // item sticky-top isn't reliable on iOS Safari when the column's height is
+  // driven by overflowing content — the column box ends up clipped to the
+  // viewport and the sticky child scrolls away with it (issue #1234).
   return (
-    <div className="flex h-full overflow-auto">
-      {/* Time labels */}
-      <div className="sticky left-0 z-40 w-14 shrink-0 border-r bg-background relative">
-        {/* Sticky spacer matching the day-header height so the time labels
-            below scroll behind it instead of disappearing under the sticky
-            day headers — keeps row alignment when scrolling. */}
-        <div className="sticky top-0 z-30 h-8 border-b bg-background" />
-        {slots.map((s) => {
-          // For small slot heights, only render the hour label so text doesn't overlap.
-          const showLabel = s.isHourMark || s.slotHeight >= 15;
+    <div className="flex h-full flex-col overflow-auto">
+      <div className="sticky top-0 z-30 flex min-w-fit bg-background">
+        {/* Corner cell — sticky-left so it stays at the time-labels position
+            during horizontal scroll, and sticky-top via the parent row. */}
+        <div className="sticky left-0 z-40 h-8 w-14 shrink-0 border-b border-r bg-background" />
+        {dates.map((date, di) => {
+          const isToday = date === today;
+          const isSelected = date === selectedDate;
           return (
             <div
-              key={s.time}
-              className="flex items-start justify-end pr-2"
-              style={{ height: `${s.slotHeight}px` }}
-            >
-              {showLabel && (
-                <span
-                  className={`${s.isHourMark ? "text-xs font-medium text-muted-foreground" : "text-[10px] text-muted-foreground/60"} leading-none`}
-                >
-                  {s.time}
-                </span>
+              key={date}
+              className={cn(
+                "flex-1 min-w-[120px] border-r last:border-r-0 border-b px-2 py-1 text-center text-xs font-medium",
+                isSelected
+                  ? "bg-primary/20 ring-1 ring-inset ring-primary/30"
+                  : isToday
+                    ? "bg-primary/10"
+                    : "bg-muted/50",
+                onDayHeaderClick && "cursor-pointer hover:bg-primary/15",
               )}
+              onClick={() => onDayHeaderClick?.(date)}
+            >
+              <div>
+                {t(`gabinet.calendar.weekdaysShort.${DAY_LABEL_KEYS[di]}`, {
+                  defaultValue: DAY_LABEL_DEFAULTS[DAY_LABEL_KEYS[di]],
+                })}
+              </div>
+              <div
+                className={
+                  isToday
+                    ? "font-bold text-primary"
+                    : isSelected
+                      ? "font-semibold text-primary"
+                      : "text-muted-foreground"
+                }
+              >
+                {date.split("-")[2]}
+              </div>
             </div>
           );
         })}
-        {showCurrentTime && (
-          <div
-            className="pointer-events-none absolute right-1 z-30 rounded bg-red-500 px-1 py-0.5 text-[10px] font-semibold leading-none text-white shadow"
-            style={{ top: `${32 + currentTimeTop}px`, transform: "translateY(-50%)" }}
-          >
-            {currentTimeLabel}
-          </div>
-        )}
       </div>
 
-      {/* Day columns */}
-      {dates.map((date, di) => {
-        const layouts = layoutsByDate.get(date) ?? [];
-        const isToday = date === today;
-        const isSelected = date === selectedDate;
-        // dayOfWeek is stored as Sun=0..Sat=6 (matches Date.getDay()) — see
-        // convex/gabinet/_availability_supabase.ts. Issue #1205.
-        const dow = new Date(date + "T00:00:00").getDay();
-        const schedule = employeeSchedules?.get(`${dow}`);
+      <div className="flex min-w-fit">
+        {/* Time labels — sticky-left so they stay pinned during horizontal scroll. */}
+        <div className="sticky left-0 z-20 w-14 shrink-0 border-r bg-background relative">
+          {slots.map((s) => {
+            // For small slot heights, only render the hour label so text doesn't overlap.
+            const showLabel = s.isHourMark || s.slotHeight >= 15;
+            return (
+              <div
+                key={s.time}
+                className="flex items-start justify-end pr-2"
+                style={{ height: `${s.slotHeight}px` }}
+              >
+                {showLabel && (
+                  <span
+                    className={`${s.isHourMark ? "text-xs font-medium text-muted-foreground" : "text-[10px] text-muted-foreground/60"} leading-none`}
+                  >
+                    {s.time}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+          {showCurrentTime && (
+            <div
+              className="pointer-events-none absolute right-1 z-30 rounded bg-red-500 px-1 py-0.5 text-[10px] font-semibold leading-none text-white shadow"
+              style={{ top: `${currentTimeTop}px`, transform: "translateY(-50%)" }}
+            >
+              {currentTimeLabel}
+            </div>
+          )}
+        </div>
 
-        return (
-          <WeekDayColumn
-            key={date}
-            date={date}
-            dayIndex={di}
-            isToday={isToday}
-            isSelected={isSelected}
-            layouts={layouts}
-            schedule={schedule}
-            leave={leavesByDate?.get(date) ?? null}
-            currentTimeTop={isToday ? currentTimeTop : null}
-            onSlotClick={onSlotClick}
-            onSlotDragSelect={onSlotDragSelect}
-            onAppointmentResize={onAppointmentResize}
-            onDayHeaderClick={onDayHeaderClick}
-            slotMinutes={slotMinutes}
-            slots={slots}
-          />
-        );
-      })}
+        {/* Day columns (body only — headers are in the sticky row above) */}
+        {dates.map((date) => {
+          const layouts = layoutsByDate.get(date) ?? [];
+          const isToday = date === today;
+          // dayOfWeek is stored as Sun=0..Sat=6 (matches Date.getDay()) — see
+          // convex/gabinet/_availability_supabase.ts. Issue #1205.
+          const dow = new Date(date + "T00:00:00").getDay();
+          const schedule = employeeSchedules?.get(`${dow}`);
+
+          return (
+            <WeekDayColumn
+              key={date}
+              date={date}
+              isToday={isToday}
+              layouts={layouts}
+              schedule={schedule}
+              leave={leavesByDate?.get(date) ?? null}
+              currentTimeTop={isToday ? currentTimeTop : null}
+              onSlotClick={onSlotClick}
+              onSlotDragSelect={onSlotDragSelect}
+              onAppointmentResize={onAppointmentResize}
+              slotMinutes={slotMinutes}
+              slots={slots}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }

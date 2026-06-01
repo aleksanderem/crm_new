@@ -14,7 +14,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ChevronLeft, ChevronRight, Gift, Plus, Search, Users, X } from "@/lib/ez-icons";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Gift, Plus, Search, Users, X } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -134,6 +139,11 @@ function GabinetCalendarPage() {
 
   // Filter dialog
   const [filterOpen, setFilterOpen] = useState(false);
+
+  // Mobile-only collapsible employee picker (issue #1235). On phones the pill
+  // row stole an entire row of vertical space; the popover keeps the same
+  // single-select behaviour but collapses to one trigger button.
+  const [employeePickerOpen, setEmployeePickerOpen] = useState(false);
 
   // Tags manager slideout
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
@@ -1233,64 +1243,167 @@ function GabinetCalendarPage() {
             </div>
           </div>
 
-          {/* Row 2: employee pills — click one to filter calendar to that employee */}
-          {(employees ?? []).length > 0 && (
-            <div
-              className="-mx-4 flex flex-nowrap items-center gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
-              data-testid="calendar-employee-filter-bar"
-            >
-              <button
-                type="button"
-                onClick={() => setEmployeeFilter("all")}
-                aria-pressed={employeeFilter === "all"}
-                data-testid="calendar-employee-pill-all"
-                className={cn(
-                  "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors",
-                  employeeFilter === "all"
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-background text-foreground hover:bg-muted",
-                )}
-              >
-                <Users className="h-3.5 w-3.5" variant="stroke" />
-                {t("gabinet.calendar.allEmployees", "Wszyscy pracownicy")}
-              </button>
-              {(employees ?? []).map((emp) => {
-                const name = getEmployeeName(emp);
-                const initials = getEmployeeInitials(name);
-                const selected = employeeFilter === emp.userId;
-                return (
+          {/* Row 2: employee picker — single-select filter. On mobile we collapse
+              the pill row into a dropdown (issue #1235) because the row of
+              chips stole a full row of vertical space on phones. */}
+          {(employees ?? []).length > 0 && (() => {
+            const selectedEmployee =
+              employeeFilter === "all"
+                ? null
+                : (employees ?? []).find((e) => e.userId === employeeFilter);
+            const selectedName = selectedEmployee
+              ? getEmployeeName(selectedEmployee)
+              : t("gabinet.calendar.allEmployees", "Wszyscy pracownicy");
+            const selectedInitials = selectedEmployee
+              ? getEmployeeInitials(selectedName)
+              : null;
+            return (
+              <>
+                {/* Mobile: collapsible dropdown */}
+                <div className="sm:hidden">
+                  <Popover open={employeePickerOpen} onOpenChange={setEmployeePickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 w-full justify-between text-xs"
+                        data-testid="calendar-employee-picker-trigger"
+                        aria-label={t("gabinet.calendar.employee", "Pracownik")}
+                      >
+                        <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                          {selectedEmployee ? (
+                            <Avatar className="h-5 w-5">
+                              <AvatarFallback className="bg-muted text-[10px] font-medium text-muted-foreground">
+                                {selectedInitials || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                          ) : (
+                            <Users className="h-3.5 w-3.5 shrink-0" variant="stroke" />
+                          )}
+                          <span className="truncate">{selectedName}</span>
+                        </span>
+                        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" variant="stroke" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-[var(--radix-popover-trigger-width)] p-1"
+                      align="start"
+                    >
+                      <div className="max-h-[60vh] overflow-y-auto">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEmployeeFilter("all");
+                            setEmployeePickerOpen(false);
+                          }}
+                          data-testid="calendar-employee-option-all"
+                          className={cn(
+                            "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-left hover:bg-muted",
+                            employeeFilter === "all" && "bg-muted/70",
+                          )}
+                        >
+                          <Users className="h-3.5 w-3.5 shrink-0" variant="stroke" />
+                          <span className="flex-1 truncate">
+                            {t("gabinet.calendar.allEmployees", "Wszyscy pracownicy")}
+                          </span>
+                          {employeeFilter === "all" && (
+                            <Check className="h-3.5 w-3.5 shrink-0" variant="stroke" />
+                          )}
+                        </button>
+                        {(employees ?? []).map((emp) => {
+                          const name = getEmployeeName(emp);
+                          const initials = getEmployeeInitials(name);
+                          const selected = employeeFilter === emp.userId;
+                          return (
+                            <button
+                              key={emp._id}
+                              type="button"
+                              onClick={() => {
+                                setEmployeeFilter(emp.userId);
+                                setEmployeePickerOpen(false);
+                              }}
+                              data-testid={`calendar-employee-option-${emp.userId}`}
+                              className={cn(
+                                "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-left hover:bg-muted",
+                                selected && "bg-muted/70",
+                              )}
+                            >
+                              <Avatar className="h-5 w-5">
+                                <AvatarFallback className="bg-muted text-[10px] font-medium text-muted-foreground">
+                                  {initials || "?"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="flex-1 truncate">{name}</span>
+                              {selected && (
+                                <Check className="h-3.5 w-3.5 shrink-0" variant="stroke" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Desktop: pill row */}
+                <div
+                  className="-mx-4 hidden flex-nowrap items-center gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:flex sm:flex-wrap sm:overflow-visible sm:px-0"
+                  data-testid="calendar-employee-filter-bar"
+                >
                   <button
-                    key={emp._id}
                     type="button"
-                    onClick={() => setEmployeeFilter(emp.userId)}
-                    aria-pressed={selected}
-                    title={name}
-                    data-testid={`calendar-employee-pill-${emp.userId}`}
+                    onClick={() => setEmployeeFilter("all")}
+                    aria-pressed={employeeFilter === "all"}
+                    data-testid="calendar-employee-pill-all"
                     className={cn(
-                      "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border pl-1 pr-2.5 text-xs transition-colors",
-                      selected
+                      "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors",
+                      employeeFilter === "all"
                         ? "border-primary bg-primary text-primary-foreground"
                         : "border-border bg-background text-foreground hover:bg-muted",
                     )}
                   >
-                    <Avatar className="h-5 w-5">
-                      <AvatarFallback
+                    <Users className="h-3.5 w-3.5" variant="stroke" />
+                    {t("gabinet.calendar.allEmployees", "Wszyscy pracownicy")}
+                  </button>
+                  {(employees ?? []).map((emp) => {
+                    const name = getEmployeeName(emp);
+                    const initials = getEmployeeInitials(name);
+                    const selected = employeeFilter === emp.userId;
+                    return (
+                      <button
+                        key={emp._id}
+                        type="button"
+                        onClick={() => setEmployeeFilter(emp.userId)}
+                        aria-pressed={selected}
+                        title={name}
+                        data-testid={`calendar-employee-pill-${emp.userId}`}
                         className={cn(
-                          "text-[10px] font-medium",
+                          "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border pl-1 pr-2.5 text-xs transition-colors",
                           selected
-                            ? "bg-primary-foreground/20 text-primary-foreground"
-                            : "bg-muted text-muted-foreground",
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-background text-foreground hover:bg-muted",
                         )}
                       >
-                        {initials || "?"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="max-w-[10rem] truncate">{name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+                        <Avatar className="h-5 w-5">
+                          <AvatarFallback
+                            className={cn(
+                              "text-[10px] font-medium",
+                              selected
+                                ? "bg-primary-foreground/20 text-primary-foreground"
+                                : "bg-muted text-muted-foreground",
+                            )}
+                          >
+                            {initials || "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="max-w-[10rem] truncate">{name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            );
+          })()}
 
           {/* Filter dialog */}
           <Dialog open={filterOpen} onOpenChange={setFilterOpen}>

@@ -354,8 +354,8 @@ function InstallmentPayButton({
     setOpen(next);
   };
 
-  const parsedFirst = Number.parseFloat(firstAmount) || 0;
-  const parsedSecond = Number.parseFloat(secondAmount) || 0;
+  const parsedFirst = Number.parseFloat(firstAmount.replace(",", ".")) || 0;
+  const parsedSecond = Number.parseFloat(secondAmount.replace(",", ".")) || 0;
   const splitTotal = Math.round((parsedFirst + parsedSecond) * 100) / 100;
   const expectedTotal = Math.round(amount * 100) / 100;
   const splitMismatch = splitPayment && splitTotal !== expectedTotal;
@@ -494,13 +494,16 @@ function InstallmentPayButton({
                   </SelectContent>
                 </Select>
                 <Input
-                  type="number"
+                  type="text"
                   inputMode="decimal"
-                  min="0"
-                  step="0.01"
                   placeholder="0.00"
                   value={firstAmount}
-                  onChange={(e) => setFirstAmount(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                      setFirstAmount(v);
+                    }
+                  }}
                 />
               </div>
               <div className="space-y-1.5">
@@ -522,13 +525,16 @@ function InstallmentPayButton({
                   </SelectContent>
                 </Select>
                 <Input
-                  type="number"
+                  type="text"
                   inputMode="decimal"
-                  min="0"
-                  step="0.01"
                   placeholder="0.00"
                   value={secondAmount}
-                  onChange={(e) => setSecondAmount(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                      setSecondAmount(v);
+                    }
+                  }}
                 />
               </div>
             </div>

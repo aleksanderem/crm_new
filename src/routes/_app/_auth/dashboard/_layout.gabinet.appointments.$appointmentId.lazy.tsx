@@ -967,7 +967,8 @@ function AppointmentDetail() {
 
   // Payment handlers
   const handleCreatePayment = async () => {
-    if (!paymentAmount || isNaN(parseFloat(paymentAmount))) {
+    const normalizedAmount = paymentAmount.replace(",", ".");
+    if (!paymentAmount || isNaN(parseFloat(normalizedAmount))) {
       toast.error(t("gabinet.payments.amountRequired"));
       return;
     }
@@ -978,7 +979,7 @@ function AppointmentDetail() {
         organizationId,
         patientId: patient!._id,
         appointmentId: appointment._id,
-        amount: parseFloat(paymentAmount),
+        amount: parseFloat(normalizedAmount),
         currency: "PLN",
         paymentMethod: paymentMethod as "cash" | "card" | "transfer" | "other",
         notes: paymentNote || undefined,
@@ -2679,10 +2680,15 @@ function AppointmentDetail() {
             <div>
               <Label>{t("gabinet.payments.amount")}</Label>
               <Input
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                    setPaymentAmount(v);
+                  }
+                }}
                 placeholder={outstanding > 0 ? outstanding.toFixed(2) : "0.00"}
               />
               {outstanding > 0 && (

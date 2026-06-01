@@ -206,7 +206,7 @@ export function TreatmentForm({
       name,
       description: description || undefined,
       duration: parseInt(duration) || 30,
-      price: parseFloat(price) || 0,
+      price: parseFloat(price.replace(",", ".")) || 0,
       currency: currency || undefined,
       taxRate: numericTaxRate,
       taxExempt: isExempt ? true : false,
@@ -255,16 +255,17 @@ export function TreatmentForm({
             {t("gabinet.treatments.price")} <span className="text-destructive">*</span>
           </Label>
           <Input
-            type="number"
-            step="0.01"
-            min="0"
+            type="text"
             inputMode="decimal"
             value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                setPrice(v);
+              }
+            }}
             placeholder="0.00"
             required
-            className="[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
         </div>
         <div className="space-y-1.5">

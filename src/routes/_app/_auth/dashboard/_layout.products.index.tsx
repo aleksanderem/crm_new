@@ -228,6 +228,7 @@ function ProductsPage() {
         ? parseFloat(taxRate)
         : undefined
       : undefined;
+    const normalizedUnitPrice = unitPrice.replace(",", ".");
     try {
       if (editingProduct) {
         await updateProduct({
@@ -235,7 +236,7 @@ function ProductsPage() {
           productId: editingProduct._id,
           name: name.trim(),
           sku: sku.trim(),
-          unitPrice: parseFloat(unitPrice),
+          unitPrice: parseFloat(normalizedUnitPrice),
           taxRate: numericTaxRate,
           taxExempt: isExempt,
           description: description.trim() || undefined,
@@ -247,7 +248,7 @@ function ProductsPage() {
           organizationId,
           name: name.trim(),
           sku: sku.trim(),
-          unitPrice: parseFloat(unitPrice),
+          unitPrice: parseFloat(normalizedUnitPrice),
           taxRate: numericTaxRate,
           taxExempt: isExempt,
           isActive,
@@ -449,11 +450,15 @@ function ProductsPage() {
                 {t('products.unitPrice')} <span className="text-destructive">*</span>
               </Label>
               <Input
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 value={unitPrice}
-                onChange={(e) => setUnitPrice(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                    setUnitPrice(v);
+                  }
+                }}
                 placeholder="0.00"
               />
             </div>

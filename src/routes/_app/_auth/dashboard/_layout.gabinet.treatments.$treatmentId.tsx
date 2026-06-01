@@ -472,7 +472,7 @@ function TreatmentDetail() {
           variantId: editingVariant as Id<"gabinetTreatmentVariants">,
           name: variantForm.name,
           ...(variantForm.overridePrice
-            ? { price: parseFloat(variantForm.price) || 0 }
+            ? { price: parseFloat(variantForm.price.replace(",", ".")) || 0 }
             : { clearPrice: true }),
           ...(variantForm.overrideDuration
             ? { duration: parseInt(variantForm.duration) || 0 }
@@ -492,7 +492,7 @@ function TreatmentDetail() {
           treatmentId: treatmentId as Id<"gabinetTreatments">,
           name: variantForm.name,
           ...(variantForm.overridePrice
-            ? { price: parseFloat(variantForm.price) || 0 }
+            ? { price: parseFloat(variantForm.price.replace(",", ".")) || 0 }
             : {}),
           ...(variantForm.overrideDuration
             ? { duration: parseInt(variantForm.duration) || 0 }
@@ -1315,12 +1315,15 @@ function TreatmentDetail() {
               </div>
               {variantForm.overridePrice ? (
                 <Input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   value={variantForm.price}
-                  onChange={(e) =>
-                    setVariantForm((prev) => ({ ...prev, price: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                      setVariantForm((prev) => ({ ...prev, price: v }));
+                    }
+                  }}
                 />
               ) : (
                 <p className="text-sm text-muted-foreground/60 italic">

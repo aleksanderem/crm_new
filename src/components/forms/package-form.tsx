@@ -116,7 +116,7 @@ export function PackageForm({
     onSubmit({
       name,
       description: description || undefined,
-      totalPrice: parseFloat(totalPrice),
+      totalPrice: parseFloat(totalPrice.replace(",", ".")),
       validityDays: validityDays ? parseInt(validityDays) : undefined,
       discountPercent: discountPercent ? parseFloat(discountPercent) : undefined,
       loyaltyPointsAwarded: loyaltyPoints ? parseInt(loyaltyPoints) : undefined,
@@ -155,11 +155,15 @@ export function PackageForm({
             {t("gabinet.packages.totalPrice")} <span className="text-destructive">*</span>
           </Label>
           <Input
-            type="number"
-            step="0.01"
-            min="0"
+            type="text"
+            inputMode="decimal"
             value={totalPrice}
-            onChange={(e) => setTotalPrice(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                setTotalPrice(v);
+              }
+            }}
             placeholder="0.00"
             required
           />

@@ -141,13 +141,13 @@ export function AppFooter() {
           <NudgesBadge />
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 max-sm:min-w-0 max-sm:flex-1 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:-mx-4 max-sm:px-4 max-sm:scrollbar-none sm:flex-wrap">
           {actions.map((action) => (
             <Button
               key={action.labelKey}
               variant="outline"
               size="sm"
-              className="h-7 text-xs"
+              className="h-7 text-xs shrink-0"
               onClick={() => {
                 if (action.quickCreate) {
                   openQuickCreate(action.quickCreate);

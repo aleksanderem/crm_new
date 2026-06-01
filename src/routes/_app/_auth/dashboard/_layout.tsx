@@ -756,7 +756,9 @@ function DashboardLayout() {
                     renderForm={renderQuickCreateForm}
                   />
                   <NotificationBell />
-                  <ThemeSwitcher />
+                  <div className="hidden sm:block">
+                    <ThemeSwitcher />
+                  </div>
 
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>

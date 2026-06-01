@@ -8,6 +8,7 @@ import {
   Users,
   Package,
   FileText,
+  Gift,
   Settings,
   Stethoscope,
   Plus,
@@ -54,6 +55,18 @@ export function GabinetQuickActionsDropdown() {
         >
           <UserPlus className="text-foreground size-5" />
           {t("sidebar.gabinet.addPatient", "Dodaj klienta")}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="px-3 py-2.5 text-sm"
+          onSelect={() =>
+            navigate({
+              to: "/dashboard/gabinet/calendar",
+              search: { action: "sell-package" },
+            })
+          }
+        >
+          <Gift className="text-foreground size-5" />
+          {t("gabinet.packages.purchaseButton", "Dodaj sprzedaż")}
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />

@@ -610,6 +610,9 @@ export function AppointmentPreviewContent({
     parseFloat(settleSecondSplitAmount.replace(",", ".")) || 0;
   const splitTotal =
     Math.round((parsedFirstSplitAmount + parsedSecondSplitAmount) * 100) / 100;
+  const splitExpectedTotal = Math.round(outstanding * 100) / 100;
+  const splitMismatch =
+    settleSplitPayment && splitTotal !== splitExpectedTotal;
   const splitMissingAmount =
     settleSplitPayment &&
     parsedFirstSplitAmount <= 0 &&
@@ -627,6 +630,15 @@ export function AppointmentPreviewContent({
           t(
             "gabinet.packages.splitMissingAmount",
             "Podaj kwotę co najmniej jednej metody płatności",
+          ),
+        );
+        return;
+      }
+      if (splitMismatch) {
+        toast.error(
+          t(
+            "gabinet.packages.splitMismatchError",
+            "Suma rozdzielonych płatności musi być równa cenie",
           ),
         );
         return;
@@ -1465,21 +1477,31 @@ export function AppointmentPreviewContent({
               <div
                 className={cn(
                   "flex items-center justify-between text-xs",
-                  splitSameMethod ? "text-destructive" : "text-muted-foreground",
+                  splitMismatch || splitSameMethod
+                    ? "text-destructive"
+                    : "text-muted-foreground",
                 )}
               >
                 <span>
                   {t("gabinet.packages.splitSum", "Suma")}:{" "}
                   {formatCurrencyPLN(splitTotal)}
+                  {` / ${formatCurrencyPLN(splitExpectedTotal)}`}
                 </span>
-                {splitSameMethod && (
+                {splitSameMethod ? (
                   <span>
                     {t(
                       "gabinet.packages.splitSameMethod",
                       "Metody muszą się różnić",
                     )}
                   </span>
-                )}
+                ) : splitMismatch ? (
+                  <span>
+                    {t(
+                      "gabinet.packages.splitMismatch",
+                      "Musi się zgadzać z ceną",
+                    )}
+                  </span>
+                ) : null}
               </div>
             </div>
           )}
@@ -1540,7 +1562,7 @@ export function AppointmentPreviewContent({
               disabled={
                 settleSubmitting ||
                 (settleSplitPayment &&
-                  (splitMissingAmount || splitSameMethod))
+                  (splitMissingAmount || splitMismatch || splitSameMethod))
               }
             >
               {settleSubmitting

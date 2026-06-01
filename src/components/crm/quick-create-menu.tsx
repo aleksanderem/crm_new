@@ -242,6 +242,7 @@ export const QuickCreateMenu = forwardRef<QuickCreateMenuHandle, QuickCreateMenu
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<EntityGroup>("crm");
   const [selectedType, setSelectedType] = useState<FormEntityType | null>(null);
+  const [directMode, setDirectMode] = useState(false);
   const { can: canCreate, loading: permLoading } = usePermissions("create");
 
   useImperativeHandle(ref, () => ({
@@ -251,8 +252,10 @@ export const QuickCreateMenu = forwardRef<QuickCreateMenuHandle, QuickCreateMenu
         const item = entityItems.find((i) => i.type === type);
         if (item) setActiveTab(item.group);
         setSelectedType(type);
+        setDirectMode(true);
       } else {
         setSelectedType(null);
+        setDirectMode(false);
       }
     },
   }));
@@ -273,16 +276,24 @@ export const QuickCreateMenu = forwardRef<QuickCreateMenuHandle, QuickCreateMenu
   const handleFormSuccess = () => {
     setOpen(false);
     setSelectedType(null);
+    setDirectMode(false);
   };
 
   const handleCancel = () => {
-    setSelectedType(null);
+    if (directMode) {
+      setOpen(false);
+      setSelectedType(null);
+      setDirectMode(false);
+    } else {
+      setSelectedType(null);
+    }
   };
 
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
     if (!newOpen) {
       setSelectedType(null);
+      setDirectMode(false);
     }
   };
 
@@ -317,50 +328,52 @@ export const QuickCreateMenu = forwardRef<QuickCreateMenuHandle, QuickCreateMenu
 
         <div className="flex gap-6 max-md:flex-col">
           {/* Left: tabs + entity list */}
-          <div
-            className={cn(
-              "flex flex-col gap-3",
-              selectedType ? "md:min-w-52 md:border-r md:pr-6" : "w-full"
-            )}
-          >
-            <Tabs
-              value={activeTab}
-              onValueChange={(v) => {
-                setActiveTab(v as EntityGroup);
-                setSelectedType(null);
-              }}
+          {!directMode && (
+            <div
+              className={cn(
+                "flex flex-col gap-3",
+                selectedType ? "md:min-w-52 md:border-r md:pr-6" : "w-full"
+              )}
             >
-              <TabsList className="w-full">
-                <TabsTrigger value="crm" className="flex-1">
-                  CRM
-                </TabsTrigger>
-                <TabsTrigger value="gabinet" className="flex-1">
-                  {t("quickCreate.groupGabinet")}
-                </TabsTrigger>
-                <TabsTrigger value="system" className="flex-1">
-                  {t("quickCreate.groupSystem")}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+              <Tabs
+                value={activeTab}
+                onValueChange={(v) => {
+                  setActiveTab(v as EntityGroup);
+                  setSelectedType(null);
+                }}
+              >
+                <TabsList className="w-full">
+                  <TabsTrigger value="crm" className="flex-1">
+                    CRM
+                  </TabsTrigger>
+                  <TabsTrigger value="gabinet" className="flex-1">
+                    {t("quickCreate.groupGabinet")}
+                  </TabsTrigger>
+                  <TabsTrigger value="system" className="flex-1">
+                    {t("quickCreate.groupSystem")}
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
 
-            <nav className="flex flex-col gap-1">
-              {visibleItems.map((item) => {
-                const feature = entityFeatureMap[item.type];
-                const disabled = !permLoading && feature ? !canCreate(feature) : false;
-                return (
-                  <EntityButton
-                    key={item.type}
-                    item={item}
-                    selected={selectedType === item.type}
-                    disabled={disabled}
-                    disabledTooltip={t("permissions.cannotCreate")}
-                    onClick={() => handleEntityClick(item.type)}
-                    t={t}
-                  />
-                );
-              })}
-            </nav>
-          </div>
+              <nav className="flex flex-col gap-1">
+                {visibleItems.map((item) => {
+                  const feature = entityFeatureMap[item.type];
+                  const disabled = !permLoading && feature ? !canCreate(feature) : false;
+                  return (
+                    <EntityButton
+                      key={item.type}
+                      item={item}
+                      selected={selectedType === item.type}
+                      disabled={disabled}
+                      disabledTooltip={t("permissions.cannotCreate")}
+                      onClick={() => handleEntityClick(item.type)}
+                      t={t}
+                    />
+                  );
+                })}
+              </nav>
+            </div>
+          )}
 
           {/* Right: form area */}
           {selectedType && (

@@ -36,6 +36,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Calendar,
   Heart,
   Star,
@@ -45,6 +62,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   CreditCard,
+  Pencil,
 } from "@/lib/ez-icons";
 
 import { useTranslation } from "react-i18next";
@@ -71,11 +89,20 @@ function PatientDetail() {
   const updatePatient = useAction(api.gabinet.patients.update);
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action
   const removePatient = useAction(api.gabinet.patients.remove);
+  const updatePaymentAction = useAction(api.payments.update);
   const trackView = useAction(api.recentlyViewed.track);
   const queryClient = useQueryClient();
 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+  const [paymentEditAmount, setPaymentEditAmount] = useState("");
+  const [paymentEditMethod, setPaymentEditMethod] = useState<
+    "cash" | "card" | "transfer" | "other"
+  >("cash");
+  const [paymentEditNotes, setPaymentEditNotes] = useState("");
+  const [isPaymentEditSubmitting, setIsPaymentEditSubmitting] = useState(false);
 
   const { data: patient, isLoading } = useSupabaseGabinetPatient(
     organizationId,
@@ -340,6 +367,68 @@ function PatientDetail() {
       );
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const openEditPaymentDialog = (payment: {
+    _id: string;
+    amount: number;
+    paymentMethod: string;
+    notes?: string;
+  }) => {
+    setEditingPaymentId(payment._id);
+    setPaymentEditAmount(String(payment.amount));
+    const method = payment.paymentMethod as
+      | "cash"
+      | "card"
+      | "transfer"
+      | "other";
+    setPaymentEditMethod(
+      method === "cash" ||
+        method === "card" ||
+        method === "transfer" ||
+        method === "other"
+        ? method
+        : "cash",
+    );
+    setPaymentEditNotes(payment.notes ?? "");
+  };
+
+  const closeEditPaymentDialog = () => {
+    setEditingPaymentId(null);
+    setPaymentEditAmount("");
+    setPaymentEditNotes("");
+  };
+
+  const handleUpdatePayment = async () => {
+    if (!editingPaymentId) return;
+    const normalized = paymentEditAmount.replace(",", ".").trim();
+    const amount = parseFloat(normalized);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error(t("gabinet.payments.amountRequired"));
+      return;
+    }
+    setIsPaymentEditSubmitting(true);
+    try {
+      await updatePaymentAction({
+        organizationId,
+        paymentId: editingPaymentId,
+        amount,
+        paymentMethod: paymentEditMethod,
+        notes: paymentEditNotes.trim() ? paymentEditNotes.trim() : null,
+      });
+      toast.success(t("gabinet.payments.updated"));
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.payments.all });
+      closeEditPaymentDialog();
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "common.error",
+          defaultValue: "Wystąpił błąd.",
+        }),
+      );
+    } finally {
+      setIsPaymentEditSubmitting(false);
     }
   };
 
@@ -806,6 +895,9 @@ function PatientDetail() {
                           <th className="text-left p-3 text-sm font-medium">
                             {t("common.status")}
                           </th>
+                          <th className="text-right p-3 text-sm font-medium">
+                            {t("common.actions")}
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -868,6 +960,28 @@ function PatientDetail() {
                                   `gabinet.payments.status.${payment.status}`,
                                 )}
                               </Badge>
+                            </td>
+                            <td className="p-3 text-right">
+                              {(payment.status === "completed" ||
+                                payment.status === "pending") && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  aria-label={t("common.edit")}
+                                  title={t("gabinet.payments.editPayment")}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openEditPaymentDialog({
+                                      _id: payment._id,
+                                      amount: payment.amount,
+                                      paymentMethod: payment.paymentMethod,
+                                      notes: payment.notes,
+                                    });
+                                  }}
+                                >
+                                  <Pencil className="h-4 w-4" variant="stroke" />
+                                </Button>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -1117,6 +1231,90 @@ function PatientDetail() {
           />
         </SidePanel>
       )}
+
+      <Dialog
+        open={editingPaymentId !== null}
+        onOpenChange={(open) => {
+          if (!open) closeEditPaymentDialog();
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("gabinet.payments.editPayment")}</DialogTitle>
+            <DialogDescription>
+              {t("gabinet.payments.editPaymentDesc")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>{t("gabinet.payments.amount")}</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={paymentEditAmount}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                    setPaymentEditAmount(v);
+                  }
+                }}
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <Label>{t("gabinet.payments.method")}</Label>
+              <Select
+                value={paymentEditMethod}
+                onValueChange={(v) =>
+                  setPaymentEditMethod(
+                    v as "cash" | "card" | "transfer" | "other",
+                  )
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">
+                    {t("gabinet.payments.methods.cash")}
+                  </SelectItem>
+                  <SelectItem value="card">
+                    {t("gabinet.payments.methods.card")}
+                  </SelectItem>
+                  <SelectItem value="transfer">
+                    {t("gabinet.payments.methods.transfer")}
+                  </SelectItem>
+                  <SelectItem value="other">
+                    {t("gabinet.payments.methods.other")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>{t("common.notes")}</Label>
+              <Input
+                type="text"
+                value={paymentEditNotes}
+                onChange={(e) => setPaymentEditNotes(e.target.value)}
+                placeholder={t("gabinet.payments.notePlaceholder")}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeEditPaymentDialog}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              onClick={handleUpdatePayment}
+              disabled={isPaymentEditSubmitting}
+            >
+              {isPaymentEditSubmitting
+                ? t("common.processing")
+                : t("common.save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </>
   );

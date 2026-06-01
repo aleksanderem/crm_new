@@ -92,8 +92,8 @@ export function TreatmentPurchaseDrawer({
     ? Math.round((installmentAmount + installmentRemainder) * 100) / 100
     : 0;
 
-  const parsedFirstSplit = Number.parseFloat(firstSplitAmount) || 0;
-  const parsedSecondSplit = Number.parseFloat(secondSplitAmount) || 0;
+  const parsedFirstSplit = Number.parseFloat(firstSplitAmount.replace(",", ".")) || 0;
+  const parsedSecondSplit = Number.parseFloat(secondSplitAmount.replace(",", ".")) || 0;
   const splitTotal = Math.round((parsedFirstSplit + parsedSecondSplit) * 100) / 100;
   const splitExpectedTotal = selectedTreatment
     ? isInstallment
@@ -480,13 +480,16 @@ export function TreatmentPurchaseDrawer({
                     </SelectContent>
                   </Select>
                   <Input
-                    type="number"
+                    type="text"
                     inputMode="decimal"
-                    min="0"
-                    step="0.01"
                     placeholder="0.00"
                     value={firstSplitAmount}
-                    onChange={(e) => setFirstSplitAmount(e.target.value)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                        setFirstSplitAmount(v);
+                      }
+                    }}
                   />
                 </div>
                 <div className="rounded-md border p-2 space-y-2">
@@ -516,13 +519,16 @@ export function TreatmentPurchaseDrawer({
                     </SelectContent>
                   </Select>
                   <Input
-                    type="number"
+                    type="text"
                     inputMode="decimal"
-                    min="0"
-                    step="0.01"
                     placeholder="0.00"
                     value={secondSplitAmount}
-                    onChange={(e) => setSecondSplitAmount(e.target.value)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                        setSecondSplitAmount(v);
+                      }
+                    }}
                   />
                 </div>
               </div>

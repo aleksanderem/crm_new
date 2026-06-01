@@ -161,22 +161,30 @@ export function LeadProductsDialogBody({
           <label className="text-sm font-medium" htmlFor="lead-product-unit-price">{unitPriceLabel}</label>
           <Input
             id="lead-product-unit-price"
-            type="number"
-            min="0"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             value={unitPrice}
-            onChange={(event) => onUnitPriceChange(event.target.value)}
+            onChange={(event) => {
+              const v = event.target.value;
+              if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                onUnitPriceChange(v);
+              }
+            }}
           />
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium" htmlFor="lead-product-discount">{discountLabel}</label>
           <Input
             id="lead-product-discount"
-            type="number"
-            min="0"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             value={discount}
-            onChange={(event) => onDiscountChange(event.target.value)}
+            onChange={(event) => {
+              const v = event.target.value;
+              if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                onDiscountChange(v);
+              }
+            }}
           />
         </div>
       </div>

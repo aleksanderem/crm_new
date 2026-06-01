@@ -769,8 +769,8 @@ function LeadDetail() {
     if (!selectedProductId) return;
 
     const quantity = Number(productQuantity);
-    const unitPrice = Number(productUnitPrice);
-    const discount = productDiscount.trim() ? Number(productDiscount) : undefined;
+    const unitPrice = Number(productUnitPrice.replace(",", "."));
+    const discount = productDiscount.trim() ? Number(productDiscount.replace(",", ".")) : undefined;
 
     if (!Number.isFinite(quantity) || quantity <= 0) return;
     if (!Number.isFinite(unitPrice) || unitPrice < 0) return;

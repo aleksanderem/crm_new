@@ -1158,20 +1158,43 @@ function GabinetCalendarPage() {
 
               {/* Slot size switcher (only meaningful for day/week) */}
               {viewMode !== "month" && (
-                <div className="flex rounded-md border" aria-label={t("gabinet.calendar.slotSize", "Rozdzielczość")}>
-                  {SLOT_OPTIONS.map((opt) => (
-                    <Button
-                      key={opt}
-                      variant={slotMinutes === opt ? "default" : "ghost"}
-                      size="sm"
-                      className="h-7 rounded-none first:rounded-l-md last:rounded-r-md text-xs px-2"
-                      onClick={() => setSlotMinutes(opt)}
-                      title={t("gabinet.calendar.slotSize", "Rozdzielczość")}
+                <>
+                  <div
+                    className="hidden rounded-md border sm:flex"
+                    aria-label={t("gabinet.calendar.slotSize", "Rozdzielczość")}
+                  >
+                    {SLOT_OPTIONS.map((opt) => (
+                      <Button
+                        key={opt}
+                        variant={slotMinutes === opt ? "default" : "ghost"}
+                        size="sm"
+                        className="h-7 rounded-none first:rounded-l-md last:rounded-r-md text-xs px-2"
+                        onClick={() => setSlotMinutes(opt)}
+                        title={t("gabinet.calendar.slotSize", "Rozdzielczość")}
+                      >
+                        {opt} min
+                      </Button>
+                    ))}
+                  </div>
+                  <Select
+                    value={String(slotMinutes)}
+                    onValueChange={(v) => setSlotMinutes(Number(v) as SlotMinutes)}
+                  >
+                    <SelectTrigger
+                      className="h-7 w-[88px] text-xs sm:hidden"
+                      aria-label={t("gabinet.calendar.slotSize", "Rozdzielczość")}
                     >
-                      {opt} min
-                    </Button>
-                  ))}
-                </div>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SLOT_OPTIONS.map((opt) => (
+                        <SelectItem key={opt} value={String(opt)} className="text-xs">
+                          {opt} min
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
               )}
 
               {/* Create button */}
@@ -1187,8 +1210,10 @@ function GabinetCalendarPage() {
                   setCreateDialogOpen(true);
                 }}
               >
-                <Plus className="mr-1 h-3.5 w-3.5" variant="stroke" />
-                {t("gabinet.appointments.createAppointment", "Nowa wizyta")}
+                <Plus className="h-3.5 w-3.5 sm:mr-1" variant="stroke" />
+                <span className="hidden sm:inline">
+                  {t("gabinet.appointments.createAppointment", "Nowa wizyta")}
+                </span>
               </Button>
 
               {/* Sell package button */}
@@ -1198,9 +1223,12 @@ function GabinetCalendarPage() {
                 className="h-7 text-xs"
                 data-testid="calendar-sell-package-button"
                 onClick={() => setSellPackageOpen(true)}
+                aria-label={t("gabinet.packages.purchaseButton")}
               >
-                <Gift className="mr-1 h-3.5 w-3.5" variant="stroke" />
-                {t("gabinet.packages.purchaseButton")}
+                <Gift className="h-3.5 w-3.5 sm:mr-1" variant="stroke" />
+                <span className="hidden sm:inline">
+                  {t("gabinet.packages.purchaseButton")}
+                </span>
               </Button>
             </div>
           </div>
@@ -1208,7 +1236,7 @@ function GabinetCalendarPage() {
           {/* Row 2: employee pills — click one to filter calendar to that employee */}
           {(employees ?? []).length > 0 && (
             <div
-              className="flex flex-wrap items-center gap-1.5"
+              className="-mx-4 flex flex-nowrap items-center gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
               data-testid="calendar-employee-filter-bar"
             >
               <button
@@ -1217,7 +1245,7 @@ function GabinetCalendarPage() {
                 aria-pressed={employeeFilter === "all"}
                 data-testid="calendar-employee-pill-all"
                 className={cn(
-                  "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors",
+                  "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors",
                   employeeFilter === "all"
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-background text-foreground hover:bg-muted",
@@ -1239,7 +1267,7 @@ function GabinetCalendarPage() {
                     title={name}
                     data-testid={`calendar-employee-pill-${emp.userId}`}
                     className={cn(
-                      "inline-flex h-7 items-center gap-1.5 rounded-full border pl-1 pr-2.5 text-xs transition-colors",
+                      "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border pl-1 pr-2.5 text-xs transition-colors",
                       selected
                         ? "border-primary bg-primary text-primary-foreground"
                         : "border-border bg-background text-foreground hover:bg-muted",

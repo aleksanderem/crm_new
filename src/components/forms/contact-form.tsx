@@ -24,15 +24,15 @@ interface FieldDefinition {
 
 interface ContactFormData {
   firstName: string;
-  lastName?: string;
-  email?: string;
-  phone?: string;
-  title?: string;
+  lastName?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  title?: string | null;
   source?: string;
   tags?: string[];
   tagIds?: Id<"tagDefinitions">[];
-  categoryId?: Id<"categoryDefinitions">;
-  notes?: string;
+  categoryId?: Id<"categoryDefinitions"> | null;
+  notes?: string | null;
 }
 
 interface TagDef {
@@ -89,7 +89,7 @@ export function ContactForm({
   const [tagInput, setTagInput] = useState("");
   const [notes, setNotes] = useState(initialData?.notes ?? "");
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
-  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
+  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId ?? undefined);
   const [customFields, setCustomFields] = useState<Record<string, unknown>>(
     initialCustomFieldValues
   );
@@ -111,15 +111,15 @@ export function ContactForm({
     onSubmit(
       {
         firstName,
-        lastName: lastName || undefined,
-        email: email || undefined,
-        phone: phone || undefined,
-        title: title || undefined,
+        lastName: lastName || null,
+        email: email || null,
+        phone: phone || null,
+        title: title || null,
         source: source || undefined,
         tags: tags.length > 0 ? tags : undefined,
         tagIds: tagIds.length > 0 ? tagIds : undefined,
-        categoryId: categoryId || undefined,
-        notes: notes || undefined,
+        categoryId: categoryId || null,
+        notes: notes || null,
       },
       customFields
     );

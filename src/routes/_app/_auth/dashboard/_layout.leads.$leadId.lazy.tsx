@@ -687,7 +687,7 @@ function LeadDetail() {
   };
 
   const handleCreateContact = async (
-    formData: { firstName: string; lastName?: string; email?: string; phone?: string; title?: string },
+    formData: { firstName: string; lastName?: string | null; email?: string | null; phone?: string | null; title?: string | null },
     _customFields: Record<string, unknown>
   ) => {
     setIsSubmitting(true);

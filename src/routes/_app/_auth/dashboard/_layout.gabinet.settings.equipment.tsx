@@ -202,8 +202,8 @@ function EquipmentCard({
         organizationId,
         equipmentId: item._id,
         name: editName.trim(),
-        description: editDescription.trim() || undefined,
-        serialNumber: editSerial.trim() || undefined,
+        description: editDescription.trim() || null,
+        serialNumber: editSerial.trim() || null,
         status: editStatus,
       });
       toast.success(t("common.saved"));
@@ -533,10 +533,10 @@ function EquipmentSettingsPage() {
       await createEquipment({
         organizationId,
         name: newName.trim(),
-        description: newDescription.trim() || undefined,
-        serialNumber: newSerial.trim() || undefined,
+        description: newDescription.trim() || null,
+        serialNumber: newSerial.trim() || null,
         status: newStatus,
-        currentLocationId: newLocationId || undefined,
+        currentLocationId: newLocationId || null,
       });
       toast.success(t("gabinet.equipment.addEquipment"));
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEquipment.list(organizationId) });

@@ -80,10 +80,10 @@ export const createEquipment = action({
   args: {
     organizationId: v.id("organizations"),
     name: v.string(),
-    description: v.optional(v.string()),
-    serialNumber: v.optional(v.string()),
-    currentLocationId: v.optional(v.string()),
-    currentRoomId: v.optional(v.string()),
+    description: v.optional(v.union(v.string(), v.null())),
+    serialNumber: v.optional(v.union(v.string(), v.null())),
+    currentLocationId: v.optional(v.union(v.string(), v.null())),
+    currentRoomId: v.optional(v.union(v.string(), v.null())),
     status: v.optional(equipmentStatusValidator),
   },
   handler: async (ctx, args) => {
@@ -122,8 +122,8 @@ export const updateEquipment = action({
     organizationId: v.id("organizations"),
     equipmentId: v.string(),
     name: v.optional(v.string()),
-    description: v.optional(v.string()),
-    serialNumber: v.optional(v.string()),
+    description: v.optional(v.union(v.string(), v.null())),
+    serialNumber: v.optional(v.union(v.string(), v.null())),
     status: v.optional(equipmentStatusValidator),
   },
   handler: async (ctx, args) => {

@@ -427,7 +427,6 @@ export const submitEmployeeFormFields = action({
       if (recipientEmail) {
         await ctx.scheduler.runAfter(
           0,
-          // @ts-ignore — deep type instantiation under app tsconfig
           internal.documents.signing.sendSigningEmailInternal,
           {
             documentId: args.documentId as Id<"formDocuments">,

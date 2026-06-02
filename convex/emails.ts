@@ -223,6 +223,20 @@ export const send = action({
       to: args.to[0],
       subject: args.subject,
       html: args.bodyHtml ?? args.bodyText ?? "",
+      log: {
+        ctx,
+        organizationId: args.organizationId,
+        source: "manual_compose",
+        triggeredBy: authResult.userId as Id<"users">,
+        relatedEntityType: args.contactId
+          ? "contact"
+          : args.companyId
+            ? "company"
+            : args.leadId
+              ? "lead"
+              : undefined,
+        relatedEntityId: args.contactId ?? args.companyId ?? args.leadId,
+      },
     });
 
     // --- INSERT email directly to Supabase ---

@@ -181,6 +181,16 @@ export const sendSigningEmailInternal = internalAction({
       </div>
     `;
 
+    const logBase = {
+      organizationId: data.organizationId as Id<"organizations">,
+      source: "signing" as const,
+      recipientEmail: args.recipientEmail,
+      recipientName: args.recipientName,
+      subject,
+      relatedEntityType: "formDocument",
+      relatedEntityId: args.documentId,
+    };
+
     // --- Dev email interception ---
     if (DEV_INTERCEPT_EMAILS === "true") {
       const fromAddress = data.senderEmail
@@ -201,6 +211,12 @@ export const sendSigningEmailInternal = internalAction({
           appointmentDate: data.appointmentDate,
           needsFormFill: data.needsFormFill,
         }),
+      });
+      await ctx.runMutation(internal.emailSendLog.record, {
+        ...logBase,
+        provider: "dev_intercept",
+        status: "sent",
+        fromEmail: fromAddress,
       });
       console.log("[signing] DEV_INTERCEPT: Email stored to devEmails instead of sending →", args.recipientEmail);
       await markSent(db, args.documentId);
@@ -247,11 +263,24 @@ export const sendSigningEmailInternal = internalAction({
         if (!response.ok) {
           const errText = await response.text();
           console.error("[signing] Gmail send failed:", errText);
+          await ctx.runMutation(internal.emailSendLog.record, {
+            ...logBase,
+            provider: "gmail",
+            status: "failed",
+            fromEmail: fromAddress,
+            errorMessage: `Gmail send failed (${response.status}): ${errText.slice(0, 500)}`,
+          });
           throw new Error("Gmail send failed — falling back to Resend");
         }
 
         console.log("[signing] Signing email sent via Gmail to", args.recipientEmail);
 
+        await ctx.runMutation(internal.emailSendLog.record, {
+          ...logBase,
+          provider: "gmail",
+          status: "sent",
+          fromEmail: fromAddress,
+        });
         await markSent(db, args.documentId);
         return;
       }
@@ -259,6 +288,12 @@ export const sendSigningEmailInternal = internalAction({
       // Fallback: send via Resend
       if (!RESEND_API_KEY) {
         console.warn("[signing] No Gmail connection and RESEND_API_KEY not set — cannot send signing email");
+        await ctx.runMutation(internal.emailSendLog.record, {
+          ...logBase,
+          provider: "resend",
+          status: "skipped",
+          errorMessage: "No Gmail connection and RESEND_API_KEY not set",
+        });
         return;
       }
 
@@ -272,16 +307,34 @@ export const sendSigningEmailInternal = internalAction({
         ? `${args.recipientName} <${args.recipientEmail}>`
         : args.recipientEmail;
 
-      await resend.emails.send({
-        from: fromAddress,
-        to: toAddress,
-        subject,
-        html,
-      });
+      try {
+        await resend.emails.send({
+          from: fromAddress,
+          to: toAddress,
+          subject,
+          html,
+        });
 
-      console.log("[signing] Signing email sent via Resend to", args.recipientEmail);
+        console.log("[signing] Signing email sent via Resend to", args.recipientEmail);
 
-      await markSent(db, args.documentId);
+        await ctx.runMutation(internal.emailSendLog.record, {
+          ...logBase,
+          provider: "resend",
+          status: "sent",
+          fromEmail: fromAddress,
+        });
+        await markSent(db, args.documentId);
+      } catch (resendErr) {
+        await ctx.runMutation(internal.emailSendLog.record, {
+          ...logBase,
+          provider: "resend",
+          status: "failed",
+          fromEmail: fromAddress,
+          errorMessage:
+            resendErr instanceof Error ? resendErr.message : String(resendErr),
+        });
+        throw resendErr;
+      }
     } catch (err) {
       console.error(
         "[signing] Failed to send signing email:",

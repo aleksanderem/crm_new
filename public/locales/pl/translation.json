@@ -874,6 +874,51 @@
         "apiKey": "Klucz API",
         "domain": "Domena",
         "region": "Region"
+      },
+      "logs": {
+        "tab": "Logi",
+        "filters": "Filtry",
+        "status": "Status",
+        "source": "Źródło",
+        "provider": "Dostawca",
+        "recipient": "Odbiorca",
+        "startDate": "Od",
+        "endDate": "Do",
+        "allStatuses": "Wszystkie statusy",
+        "allSources": "Wszystkie źródła",
+        "allProviders": "Wszyscy dostawcy",
+        "loading": "Ładowanie...",
+        "empty": "Brak wpisów w dzienniku.",
+        "statusValue": {
+          "sent": "Wysłano",
+          "failed": "Błąd",
+          "skipped": "Pominięto"
+        },
+        "sourceValue": {
+          "signing": "Podpisywanie dokumentu",
+          "automation": "Automatyzacja",
+          "manual_compose": "Wysyłka ręczna",
+          "auto_generate": "Auto-generowane",
+          "event_trigger": "Wyzwalacz zdarzenia",
+          "system": "Systemowe"
+        },
+        "providerValue": {
+          "resend": "Resend",
+          "mailgun": "Mailgun",
+          "google": "Google",
+          "microsoft": "Microsoft",
+          "gmail": "Gmail",
+          "dev_intercept": "Dev intercept"
+        },
+        "col": {
+          "timestamp": "Czas",
+          "status": "Status",
+          "source": "Źródło",
+          "provider": "Dostawca",
+          "recipient": "Odbiorca",
+          "subject": "Temat",
+          "error": "Błąd"
+        }
       }
     },
     "emailBrand": {

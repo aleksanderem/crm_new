@@ -861,6 +861,51 @@
         "apiKey": "API key",
         "domain": "Domain",
         "region": "Region"
+      },
+      "logs": {
+        "tab": "Logs",
+        "filters": "Filters",
+        "status": "Status",
+        "source": "Source",
+        "provider": "Provider",
+        "recipient": "Recipient",
+        "startDate": "From",
+        "endDate": "To",
+        "allStatuses": "All statuses",
+        "allSources": "All sources",
+        "allProviders": "All providers",
+        "loading": "Loading...",
+        "empty": "No log entries.",
+        "statusValue": {
+          "sent": "Sent",
+          "failed": "Failed",
+          "skipped": "Skipped"
+        },
+        "sourceValue": {
+          "signing": "Document signing",
+          "automation": "Automation",
+          "manual_compose": "Manual compose",
+          "auto_generate": "Auto-generated",
+          "event_trigger": "Event trigger",
+          "system": "System"
+        },
+        "providerValue": {
+          "resend": "Resend",
+          "mailgun": "Mailgun",
+          "google": "Google",
+          "microsoft": "Microsoft",
+          "gmail": "Gmail",
+          "dev_intercept": "Dev intercept"
+        },
+        "col": {
+          "timestamp": "Timestamp",
+          "status": "Status",
+          "source": "Source",
+          "provider": "Provider",
+          "recipient": "Recipient",
+          "subject": "Subject",
+          "error": "Error"
+        }
       }
     },
     "emailBrand": {

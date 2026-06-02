@@ -16,6 +16,7 @@ import { Plus, Mail, Calendar } from "@/lib/ez-icons";
 import { EmailBrandEditor } from "@/components/settings/email-brand-editor";
 import { MailProviderCard } from "@/components/settings/mail-provider-card";
 import { MailProviderForm } from "@/components/settings/mail-provider-form";
+import { MailSendLogTab } from "@/components/settings/mail-send-log-tab";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/mail"
@@ -109,6 +110,7 @@ function MailSettings() {
           <TabsTrigger value="providers">{t("settings.mail.providers")}</TabsTrigger>
           <TabsTrigger value="brand">{t("settings.mail.brand")}</TabsTrigger>
           <TabsTrigger value="events">{t("settings.mail.events")}</TabsTrigger>
+          <TabsTrigger value="logs">{t("settings.mail.logs.tab", "Logi")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="providers" className="mt-6">
@@ -144,6 +146,10 @@ function MailSettings() {
 
         <TabsContent value="brand" className="mt-6">
           <EmailBrandEditor organizationId={organizationId} />
+        </TabsContent>
+
+        <TabsContent value="logs" className="mt-6">
+          <MailSendLogTab organizationId={organizationId} />
         </TabsContent>
 
         <TabsContent value="events" className="mt-6">

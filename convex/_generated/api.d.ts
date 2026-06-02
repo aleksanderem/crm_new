@@ -70,6 +70,7 @@ import type * as emailEventBindings from "../emailEventBindings.js";
 import type * as emailEventTrigger from "../emailEventTrigger.js";
 import type * as emailEvents from "../emailEvents.js";
 import type * as emailLayouts from "../emailLayouts.js";
+import type * as emailSendLog from "../emailSendLog.js";
 import type * as emailSending from "../emailSending.js";
 import type * as emailSequences from "../emailSequences.js";
 import type * as emailTemplateSeed from "../emailTemplateSeed.js";
@@ -252,6 +253,7 @@ declare const fullApi: ApiFromModules<{
   emailEventTrigger: typeof emailEventTrigger;
   emailEvents: typeof emailEvents;
   emailLayouts: typeof emailLayouts;
+  emailSendLog: typeof emailSendLog;
   emailSending: typeof emailSending;
   emailSequences: typeof emailSequences;
   emailTemplateSeed: typeof emailTemplateSeed;

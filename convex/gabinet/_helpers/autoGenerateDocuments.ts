@@ -164,6 +164,7 @@ export async function autoGenerateAppointmentDocuments(
       );
       if (patient?.email) {
         const patientName = `${patient.firstName}${patient.lastName ? " " + patient.lastName : ""}`;
+        // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
         await ctx.scheduler.runAfter(
           0,
           internal.documents.signing.sendSigningEmailInternal,
@@ -173,6 +174,23 @@ export async function autoGenerateAppointmentDocuments(
             recipientName: patientName,
           },
         );
+      } else {
+        // The signing action never runs (no recipient), so log the skip
+        // here via the scheduler so operators see the entry in
+        // /settings/mail → Logs. ctx.scheduler avoids the TS2589 depth
+        // blow-up that direct ctx.db.insert against the new table causes
+        // in this mutation.
+        await ctx.scheduler.runAfter(0, internal.emailSendLog.record, {
+          organizationId: args.organizationId,
+          source: "auto_generate",
+          status: "skipped",
+          errorMessage: "Patient has no email address on file",
+          recipientEmail: "",
+          subject: `Signing email for "${template.name}"`,
+          relatedEntityType: "formDocument",
+          relatedEntityId: docId as string,
+          triggeredBy: args.createdBy,
+        });
       }
     }
   }

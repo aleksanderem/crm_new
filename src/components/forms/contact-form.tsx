@@ -28,7 +28,7 @@ interface ContactFormData {
   email?: string | null;
   phone?: string | null;
   title?: string | null;
-  source?: string;
+  source?: string | null;
   tags?: string[];
   tagIds?: Id<"tagDefinitions">[];
   categoryId?: Id<"categoryDefinitions"> | null;
@@ -115,7 +115,7 @@ export function ContactForm({
         email: email || null,
         phone: phone || null,
         title: title || null,
-        source: source || undefined,
+        source: source || null,
         tags: tags.length > 0 ? tags : undefined,
         tagIds: tagIds.length > 0 ? tagIds : undefined,
         categoryId: categoryId || null,

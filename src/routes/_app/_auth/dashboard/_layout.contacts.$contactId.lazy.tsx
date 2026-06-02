@@ -266,7 +266,7 @@ function ContactDetail() {
       email?: string | null;
       phone?: string | null;
       title?: string | null;
-      source?: string;
+      source?: string | null;
       tags?: string[];
       tagIds?: Id<"tagDefinitions">[];
       categoryId?: Id<"categoryDefinitions"> | null;
@@ -284,6 +284,7 @@ function ContactDetail() {
         email: formData.email,
         phone: formData.phone,
         title: formData.title,
+        source: formData.source,
         notes: formData.notes,
         tags: formData.tags,
         tagIds: formData.tagIds,

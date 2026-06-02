@@ -104,6 +104,7 @@ export const create = action({
     title: v.optional(v.union(v.string(), v.null())),
     avatarUrl: v.optional(v.union(v.string(), v.null())),
     notes: v.optional(v.union(v.string(), v.null())),
+    source: v.optional(v.union(v.string(), v.null())),
     tags: v.optional(v.array(v.string())),
     customFields: v.optional(v.array(v.object({
       fieldDefinitionId: v.string(),
@@ -139,6 +140,7 @@ export const create = action({
       title: args.title ?? null,
       avatarUrl: args.avatarUrl ?? null,
       notes: args.notes ?? null,
+      source: args.source ?? null,
       tags: args.tags ?? null,
       tagIds: args.tagIds ?? null,
       categoryId: args.categoryId ?? null,
@@ -219,6 +221,7 @@ export const update = action({
     title: v.optional(v.union(v.string(), v.null())),
     avatarUrl: v.optional(v.union(v.string(), v.null())),
     notes: v.optional(v.union(v.string(), v.null())),
+    source: v.optional(v.union(v.string(), v.null())),
     tags: v.optional(v.array(v.string())),
     customFields: v.optional(v.array(v.object({
       fieldDefinitionId: v.string(),

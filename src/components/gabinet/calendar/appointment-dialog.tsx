@@ -843,17 +843,17 @@ export function AppointmentDialog({
         </DialogDescription>
 
         {/* Drag handle bar — lets the user move the dialog aside to peek at the
-            calendar underneath (issue #977). */}
+            calendar underneath (issue #977, made discoverable in #1281). */}
         <div
           onPointerDown={handleDragStart}
           className={cn(
-            "flex items-center justify-center gap-1.5 border-b bg-muted/40 px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground select-none touch-none",
+            "flex items-center justify-center gap-2 border-b bg-muted px-4 py-2 text-xs font-medium uppercase tracking-wide text-foreground/80 hover:bg-muted/80 select-none touch-none transition-colors",
             isDragging ? "cursor-grabbing" : "cursor-grab",
           )}
           title={t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}
           aria-label={t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}
         >
-          <GripHorizontal className="size-3 opacity-60" />
+          <GripHorizontal className="size-4" />
           <span>{t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}</span>
         </div>
 

@@ -1,8 +1,34 @@
-import { expect, test, describe } from "vitest";
+import { afterEach, beforeEach, expect, test, describe, vi } from "vitest";
 import { createHash } from "crypto";
 import { api } from "../../convex/_generated/api";
 import { createTestCtx, seedTestUser, seedGabinetPrereqs } from "../../convex/_test_helpers";
 import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
+
+// Make `AUTH_RESEND_KEY` truthy so `_sendOtpEmail` takes the real send path
+// (and exercises the emailSendLog instrumentation contract). The other env
+// values come through unchanged.
+vi.mock("@cvx/env", async () => {
+  const actual = await vi.importActual<typeof import("@cvx/env")>("@cvx/env");
+  return { ...actual, AUTH_RESEND_KEY: "test-resend-key" };
+});
+
+// Resend HTTP call inside `sendEmail()` — stub fetch globally so every OTP
+// send in this file completes quickly with a "sent" outcome.
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      new Response(JSON.stringify({ id: "resend-test-id" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    ) as unknown as typeof fetch,
+  );
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 /** SHA-256 helper matching what the production code uses. */
 function sha256Sync(input: string): string {
@@ -132,6 +158,36 @@ describe("sendPortalOtp", () => {
     );
 
     expect(result).toEqual({ success: true });
+  });
+
+  // Locks in the instrumentation contract added in #1267: every OTP send
+  // mirrors into `emailSendLog` with source="system" and the patient as the
+  // related entity, so it shows up under /dashboard/settings/mail → Logs.
+  test("writes an emailSendLog row when AUTH_RESEND_KEY is set", async () => {
+    const { t, organizationId, identity, patientId } = await setupPatient();
+
+    await t.withIdentity(identity).action(
+      api.gabinet.patientAuth.sendPortalOtp,
+      { email: "jan@example.com", organizationId },
+    );
+
+    const logs = await t.run(async (ctx) => {
+      return await ctx.db
+        .query("emailSendLog")
+        .filter((q) => q.eq(q.field("organizationId"), organizationId))
+        .collect();
+    });
+
+    expect(logs).toHaveLength(1);
+    const [row] = logs;
+    expect(row.status).toBe("sent");
+    expect(row.provider).toBe("resend");
+    expect(row.source).toBe("system");
+    expect(row.recipientEmail).toBe("jan@example.com");
+    expect(row.recipientName).toBe("Jan Kowalski");
+    expect(row.relatedEntityType).toBe("gabinetPatient");
+    expect(row.relatedEntityId).toBe(String(patientId));
+    expect(row.subject).toMatch(/kod weryfikacyjny/i);
   });
 });
 

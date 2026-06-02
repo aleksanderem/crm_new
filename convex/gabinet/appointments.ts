@@ -1284,20 +1284,20 @@ export const update = action({
     date: v.optional(v.string()),
     startTime: v.optional(v.string()),
     endTime: v.optional(v.string()),
-    notes: v.optional(v.string()),
-    internalNotes: v.optional(v.string()),
-    color: v.optional(v.string()),
+    notes: v.optional(v.union(v.string(), v.null())),
+    internalNotes: v.optional(v.union(v.string(), v.null())),
+    color: v.optional(v.union(v.string(), v.null())),
     employeeId: v.optional(v.string()),
     treatmentId: v.optional(v.string()),
     packageUsageId: v.optional(v.string()),
     status: v.optional(gabinetAppointmentStatusValidator),
-    cancellationReason: v.optional(v.string()),
+    cancellationReason: v.optional(v.union(v.string(), v.null())),
     bodyChartData: v.optional(v.string()),
-    treatmentParameterValues: v.optional(v.string()),
-    interviewNotes: v.optional(v.string()),
-    clinicalRemarks: v.optional(v.string()),
-    locationId: v.optional(v.string()),
-    roomId: v.optional(v.string()),
+    treatmentParameterValues: v.optional(v.union(v.string(), v.null())),
+    interviewNotes: v.optional(v.union(v.string(), v.null())),
+    clinicalRemarks: v.optional(v.union(v.string(), v.null())),
+    locationId: v.optional(v.union(v.string(), v.null())),
+    roomId: v.optional(v.union(v.string(), v.null())),
     photos: v.optional(
       v.array(
         v.object({
@@ -1345,6 +1345,10 @@ export const update = action({
     const newEmployee = args.employeeId ?? (appt.employeeId as string);
 
     if (args.date || args.startTime || args.endTime || args.employeeId) {
+      const effectiveRoomId =
+        args.roomId !== undefined
+          ? (args.roomId ?? undefined)
+          : (appt.roomId as string | undefined);
       const conflict = await checkConflictSupabase(db, {
         organizationId: String(args.organizationId),
         userId: newEmployee,
@@ -1352,7 +1356,7 @@ export const update = action({
         startTime: newStart,
         endTime: newEnd,
         excludeAppointmentId: args.appointmentId,
-        roomId: args.roomId ?? (appt.roomId as string | undefined),
+        roomId: effectiveRoomId,
       });
       if (conflict.hasConflict) {
         throw new Error(conflict.reason ?? "Time slot conflict");

@@ -52,15 +52,18 @@ export const createLocation = action({
   args: {
     organizationId: v.id("organizations"),
     name: v.string(),
-    address: v.optional(v.object({
-      street: v.optional(v.string()),
-      city: v.optional(v.string()),
-      postalCode: v.optional(v.string()),
-      country: v.optional(v.string()),
-    })),
-    phone: v.optional(v.string()),
-    email: v.optional(v.string()),
-    color: v.optional(v.string()),
+    address: v.optional(v.union(
+      v.object({
+        street: v.optional(v.union(v.string(), v.null())),
+        city: v.optional(v.union(v.string(), v.null())),
+        postalCode: v.optional(v.union(v.string(), v.null())),
+        country: v.optional(v.union(v.string(), v.null())),
+      }),
+      v.null(),
+    )),
+    phone: v.optional(v.union(v.string(), v.null())),
+    email: v.optional(v.union(v.string(), v.null())),
+    color: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runQuery(
@@ -98,15 +101,18 @@ export const updateLocation = action({
     organizationId: v.id("organizations"),
     locationId: v.string(),
     name: v.optional(v.string()),
-    address: v.optional(v.object({
-      street: v.optional(v.string()),
-      city: v.optional(v.string()),
-      postalCode: v.optional(v.string()),
-      country: v.optional(v.string()),
-    })),
-    phone: v.optional(v.string()),
-    email: v.optional(v.string()),
-    color: v.optional(v.string()),
+    address: v.optional(v.union(
+      v.object({
+        street: v.optional(v.union(v.string(), v.null())),
+        city: v.optional(v.union(v.string(), v.null())),
+        postalCode: v.optional(v.union(v.string(), v.null())),
+        country: v.optional(v.union(v.string(), v.null())),
+      }),
+      v.null(),
+    )),
+    phone: v.optional(v.union(v.string(), v.null())),
+    email: v.optional(v.union(v.string(), v.null())),
+    color: v.optional(v.union(v.string(), v.null())),
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {

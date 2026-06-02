@@ -252,12 +252,21 @@ function CompanyDetail() {
   const handleEditSubmit = async (
     formData: {
       name: string;
-      domain?: string;
-      industry?: string;
-      size?: string;
-      website?: string;
-      phone?: string;
-      notes?: string;
+      domain?: string | null;
+      industry?: string | null;
+      size?: string | null;
+      website?: string | null;
+      phone?: string | null;
+      address?: {
+        street?: string;
+        city?: string;
+        state?: string;
+        zip?: string;
+        country?: string;
+      } | null;
+      notes?: string | null;
+      tagIds?: Id<"tagDefinitions">[];
+      categoryId?: Id<"categoryDefinitions"> | null;
     },
     customFieldRecord: Record<string, unknown>
   ) => {
@@ -272,7 +281,10 @@ function CompanyDetail() {
         size: formData.size,
         website: formData.website,
         phone: formData.phone,
+        address: formData.address,
         notes: formData.notes,
+        tagIds: formData.tagIds,
+        categoryId: formData.categoryId,
       });
       // Save company custom field values
       if (companyCfDefs) {
@@ -1075,7 +1087,10 @@ function CompanyDetail() {
             size: company.size ?? undefined,
             website: company.website ?? undefined,
             phone: company.phone ?? undefined,
+            address: company.address ?? undefined,
             notes: company.notes ?? undefined,
+            tagIds: company.tagIds as Id<"tagDefinitions">[] | undefined,
+            categoryId: company.categoryId as Id<"categoryDefinitions"> | undefined,
           }}
           customFieldDefinitions={companyCfDefs}
           customFieldValues={companyCfValues}

@@ -715,7 +715,7 @@ function LeadDetail() {
   };
 
   const handleCreateCompany = async (
-    formData: { name: string; domain?: string; industry?: string; size?: string; website?: string; phone?: string; notes?: string },
+    formData: { name: string; domain?: string | null; industry?: string | null; size?: string | null; website?: string | null; phone?: string | null; notes?: string | null },
     _customFields: Record<string, unknown>
   ) => {
     setIsSubmitting(true);

@@ -579,6 +579,7 @@ function MissingDataFormStep({
                   ? varInfo.labelEn
                   : varInfo.label
                 : path;
+              const inputType = varInfo?.type === "date" ? "date" : "text";
               return (
                 <div key={path} className="space-y-1.5">
                   <Label htmlFor={`missing-${path}`} className="text-sm">
@@ -586,6 +587,7 @@ function MissingDataFormStep({
                   </Label>
                   <Input
                     id={`missing-${path}`}
+                    type={inputType}
                     value={values[path] ?? ""}
                     onChange={(e) =>
                       setValues((prev) => ({
@@ -593,7 +595,7 @@ function MissingDataFormStep({
                         [path]: e.target.value,
                       }))
                     }
-                    placeholder={label}
+                    placeholder={inputType === "date" ? undefined : label}
                   />
                 </div>
               );

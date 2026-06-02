@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
+import { formatBirthDate } from "@/lib/format-date";
 
 export const Route = createFileRoute("/_app/patient/_layout/profile")({
   component: PatientProfile,
@@ -79,7 +80,7 @@ function PatientProfile() {
         <p className="text-sm"><span className="text-muted-foreground">{t("patientPortal.profile.name")}:</span> {profile.firstName} {profile.lastName}</p>
         <p className="text-sm"><span className="text-muted-foreground">{t("common.email")}:</span> {profile.email}</p>
         {profile.dateOfBirth && (
-          <p className="text-sm"><span className="text-muted-foreground">{t("gabinet.patients.dateOfBirth")}:</span> {profile.dateOfBirth}</p>
+          <p className="text-sm"><span className="text-muted-foreground">{t("gabinet.patients.dateOfBirth")}:</span> {formatBirthDate(profile.dateOfBirth)}</p>
         )}
       </div>
 

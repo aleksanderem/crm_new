@@ -15,6 +15,8 @@ export interface VariableField {
   labelEn: string;
   /** Grouping category, e.g. "patient", "contact" */
   category: string;
+  /** Input type hint — drives the form control used when collecting missing data */
+  type?: "text" | "date";
 }
 
 // ---------------------------------------------------------------------------
@@ -52,7 +54,7 @@ export const VARIABLE_REGISTRY: Record<string, VariableField[]> = {
     { path: "patient.email", label: "Email pacjenta", labelEn: "Patient email", category: "patient" },
     { path: "patient.phone", label: "Telefon pacjenta", labelEn: "Patient phone", category: "patient" },
     { path: "patient.pesel", label: "PESEL pacjenta", labelEn: "Patient PESEL", category: "patient" },
-    { path: "patient.dateOfBirth", label: "Data urodzenia", labelEn: "Date of birth", category: "patient" },
+    { path: "patient.dateOfBirth", label: "Data urodzenia", labelEn: "Date of birth", category: "patient", type: "date" },
     { path: "patient.gender", label: "Płeć", labelEn: "Gender", category: "patient" },
     { path: "patient.bloodType", label: "Grupa krwi", labelEn: "Blood type", category: "patient" },
     { path: "patient.allergies", label: "Alergie", labelEn: "Allergies", category: "patient" },
@@ -85,7 +87,7 @@ export const VARIABLE_REGISTRY: Record<string, VariableField[]> = {
     { path: "treatment.aftercareInstructions", label: "Zalecenia pozabiegowe", labelEn: "Aftercare instructions", category: "treatment" },
   ],
   appointment: [
-    { path: "appointment.date", label: "Data wizyty", labelEn: "Appointment date", category: "appointment" },
+    { path: "appointment.date", label: "Data wizyty", labelEn: "Appointment date", category: "appointment", type: "date" },
     { path: "appointment.startTime", label: "Godzina rozpoczęcia", labelEn: "Start time", category: "appointment" },
     { path: "appointment.endTime", label: "Godzina zakończenia", labelEn: "End time", category: "appointment" },
     { path: "appointment.status", label: "Status wizyty", labelEn: "Appointment status", category: "appointment" },
@@ -97,7 +99,7 @@ export const VARIABLE_REGISTRY: Record<string, VariableField[]> = {
     { path: "lead.currency", label: "Waluta", labelEn: "Currency", category: "lead" },
     { path: "lead.status", label: "Status leada", labelEn: "Lead status", category: "lead" },
     { path: "lead.priority", label: "Priorytet", labelEn: "Priority", category: "lead" },
-    { path: "lead.expectedCloseDate", label: "Planowana data zamknięcia", labelEn: "Expected close date", category: "lead" },
+    { path: "lead.expectedCloseDate", label: "Planowana data zamknięcia", labelEn: "Expected close date", category: "lead", type: "date" },
     { path: "lead.source", label: "Źródło leada", labelEn: "Lead source", category: "lead" },
   ],
 };

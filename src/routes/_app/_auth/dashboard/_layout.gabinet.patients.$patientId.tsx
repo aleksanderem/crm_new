@@ -76,6 +76,7 @@ import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
 import { displayReferralSource } from "@/lib/options";
 import { formatPhoneNumber } from "@/lib/phone";
 import { formatCurrencyPLN } from "@/lib/format-currency";
+import { formatBirthDate } from "@/lib/format-date";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/patients/$patientId",
@@ -305,7 +306,7 @@ function PatientDetail() {
     const fields: DetailField[] = [];
     if (patient.email) fields.push({ label: t("common.email"), value: patient.email, fieldKey: "email" });
     if (patient.phone) fields.push({ label: t("common.phone"), value: formatPhoneNumber(patient.phone), fieldKey: "phone" });
-    if (patient.dateOfBirth) fields.push({ label: t("gabinet.patients.dateOfBirth"), value: patient.dateOfBirth, fieldKey: "dob" });
+    if (patient.dateOfBirth) fields.push({ label: t("gabinet.patients.dateOfBirth"), value: formatBirthDate(patient.dateOfBirth), fieldKey: "dob" });
     if (patient.gender) fields.push({ label: t("gabinet.patients.gender"), value: t(`gabinet.patients.genderOptions.${patient.gender}`), fieldKey: "gender" });
     if (patient.pesel) fields.push({ label: t("gabinet.patients.pesel"), value: patient.pesel, fieldKey: "pesel" });
     if (patient.bloodType) fields.push({ label: t("gabinet.patients.bloodType"), value: <Badge variant="outline" className="text-[10px]">{patient.bloodType}</Badge>, fieldKey: "bloodType" });

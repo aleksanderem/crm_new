@@ -20,6 +20,7 @@ import {
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { GENDERS, PATIENT_REFERRAL_SOURCES, patientReferralSourceOptions } from "@/lib/options";
+import { parseBirthDateToIso } from "@/lib/format-date";
 import type { Id } from "@cvx/_generated/dataModel";
 
 interface TagDef {
@@ -85,7 +86,9 @@ export function PatientForm({
   const [email, setEmail] = useState(initialData?.email ?? "");
   const [phone, setPhone] = useState(initialData?.phone ?? "");
   const [pesel, setPesel] = useState(initialData?.pesel ?? "");
-  const [dateOfBirth, setDateOfBirth] = useState(initialData?.dateOfBirth ?? "");
+  const [dateOfBirth, setDateOfBirth] = useState(
+    parseBirthDateToIso(initialData?.dateOfBirth),
+  );
   const [gender, setGender] = useState<string>(initialData?.gender ?? "");
   const [street, setStreet] = useState(initialData?.address?.street ?? "");
   const [city, setCity] = useState(initialData?.address?.city ?? "");

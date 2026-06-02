@@ -164,7 +164,6 @@ export async function autoGenerateAppointmentDocuments(
       );
       if (patient?.email) {
         const patientName = `${patient.firstName}${patient.lastName ? " " + patient.lastName : ""}`;
-        // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
         await ctx.scheduler.runAfter(
           0,
           internal.documents.signing.sendSigningEmailInternal,

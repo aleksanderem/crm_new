@@ -509,9 +509,9 @@ function ContactDetail() {
   const handleCreateLead = async (
     formData: {
       title: string;
-      value?: number;
+      value?: number | null;
       status: string;
-      notes?: string;
+      notes?: string | null;
     },
     _customFields: Record<string, unknown>
   ) => {

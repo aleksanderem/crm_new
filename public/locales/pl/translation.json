@@ -3283,7 +3283,12 @@
       "summary": "Podsumowanie",
       "totalPaid": "Zapłacono łącznie",
       "totalSpent": "Wydano łącznie",
-      "treatmentPrice": "Cena zabiegu"
+      "treatmentPrice": "Cena zabiegu",
+      "creditBalance": "Saldo nadpłat",
+      "useCredit": "Użyj salda nadpłat",
+      "creditAmountToApply": "Kwota z salda",
+      "creditExceedsBalance": "Kwota użytego salda nadpłat przekracza dostępne środki.",
+      "overpaymentNote": "Nadpłata {{amount}} zostanie dopisana do salda klienta i można ją wykorzystać przy kolejnych wizytach."
     },
     "schedules": {
       "break": "Przerwa",

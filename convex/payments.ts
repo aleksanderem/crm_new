@@ -111,6 +111,15 @@ export const create = action({
     paymentMethod: paymentMethodValidator,
     notes: v.optional(v.string()),
     status: v.optional(paymentStatusValidator),
+    // Patient-credit accounting (issue #1059).
+    // creditEarned: overpayment portion of `amount` to add to the patient's
+    // credit balance. Caller is expected to compute this against the visit
+    // price; the backend only sanity-checks that it doesn't exceed `amount`.
+    // creditApplied: pre-existing patient credit consumed to settle this
+    // visit. Reduces outstanding without contributing to `amount`. Must not
+    // exceed the patient's current available balance.
+    creditEarned: v.optional(v.number()),
+    creditApplied: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runQuery(
@@ -121,6 +130,42 @@ export const create = action({
     const db = createSupabaseDb();
     const now = Date.now();
     const status = args.status ?? "completed";
+
+    const creditEarned =
+      args.creditEarned !== undefined && args.creditEarned !== 0
+        ? args.creditEarned
+        : null;
+    const creditApplied =
+      args.creditApplied !== undefined && args.creditApplied !== 0
+        ? args.creditApplied
+        : null;
+
+    if (creditEarned !== null) {
+      if (!Number.isFinite(creditEarned) || creditEarned < 0) {
+        throw new Error("creditEarned must be a non-negative number");
+      }
+      if (creditEarned > args.amount + 0.005) {
+        throw new Error("creditEarned cannot exceed amount");
+      }
+    }
+    if (creditApplied !== null) {
+      if (!Number.isFinite(creditApplied) || creditApplied <= 0) {
+        throw new Error("creditApplied must be a positive number");
+      }
+      if (!args.patientId) {
+        throw new Error("creditApplied requires a patientId");
+      }
+      const balance = await computePatientCreditBalance(
+        db,
+        String(args.organizationId),
+        String(args.patientId),
+      );
+      if (creditApplied > balance + 0.005) {
+        throw new Error(
+          `creditApplied ${creditApplied} exceeds available balance ${balance}`,
+        );
+      }
+    }
 
     const paymentId = await db.insert("payments", {
       organizationId: String(args.organizationId),
@@ -133,6 +178,9 @@ export const create = action({
       status,
       paidAt: status === "completed" ? now : null,
       notes: args.notes ?? null,
+      creditEarned,
+      creditApplied,
+      kind: "payment",
       createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
@@ -146,6 +194,161 @@ export const create = action({
         userId: authResult.userId,
         amount: args.amount,
         currency: args.currency,
+      });
+    } catch {
+      // side effects are best-effort
+    }
+
+    return paymentId;
+  },
+});
+
+/**
+ * Available patient credit derived from the `payments` ledger:
+ *   sum over completed payments of (creditEarned − creditApplied).
+ * Refunded / pending / cancelled rows don't contribute, so reversing a
+ * payment with creditEarned > 0 naturally drains the balance.
+ */
+async function computePatientCreditBalance(
+  db: ReturnType<typeof createSupabaseDb>,
+  organizationId: string,
+  patientId: string,
+): Promise<number> {
+  const rows = await db
+    .query<{
+      creditEarned?: number | null;
+      creditApplied?: number | null;
+    }>("payments")
+    .eq("organizationId", organizationId)
+    .eq("patientId", patientId)
+    .eq("status", "completed")
+    .collect();
+  let balance = 0;
+  for (const r of rows) {
+    balance += (r.creditEarned ?? 0) - (r.creditApplied ?? 0);
+  }
+  return Math.round(balance * 100) / 100;
+}
+
+export const getPatientCredit = action({
+  args: {
+    organizationId: v.id("organizations"),
+    patientId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
+    const rows = await db
+      .query("payments")
+      .eq("organizationId", String(args.organizationId))
+      .eq("patientId", args.patientId)
+      .eq("status", "completed")
+      .order("createdAt", false)
+      .collect();
+
+    let balance = 0;
+    const history: Array<{
+      _id: string;
+      createdAt: number;
+      amount: number;
+      creditEarned: number;
+      creditApplied: number;
+      kind: string;
+      appointmentId: string | null;
+      paymentMethod: string;
+      notes: string | null;
+    }> = [];
+    for (const r of rows) {
+      const earned = (r.creditEarned as number | null | undefined) ?? 0;
+      const applied = (r.creditApplied as number | null | undefined) ?? 0;
+      balance += earned - applied;
+      if (earned !== 0 || applied !== 0) {
+        history.push({
+          _id: String(r._id),
+          createdAt: r.createdAt as number,
+          amount: r.amount as number,
+          creditEarned: earned,
+          creditApplied: applied,
+          kind: ((r.kind as string | null | undefined) ?? "payment") as string,
+          appointmentId: (r.appointmentId as string | null) ?? null,
+          paymentMethod: r.paymentMethod as string,
+          notes: (r.notes as string | null) ?? null,
+        });
+      }
+    }
+    return {
+      balance: Math.round(balance * 100) / 100,
+      history,
+    };
+  },
+});
+
+/**
+ * Refund part or all of a patient's credit balance back to them as cash/card.
+ * Inserts a `kind="credit_refund"` ledger row with `creditEarned = -amount`,
+ * draining the balance. Admin-only (issue #1059).
+ */
+export const refundCredit = action({
+  args: {
+    organizationId: v.id("organizations"),
+    patientId: v.string(),
+    amount: v.number(),
+    paymentMethod: paymentMethodValidator,
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
+      throw new Error("Only organization admins can refund patient credit");
+    }
+    if (!Number.isFinite(args.amount) || args.amount <= 0) {
+      throw new Error("Refund amount must be positive");
+    }
+
+    const db = createSupabaseDb();
+    const balance = await computePatientCreditBalance(
+      db,
+      String(args.organizationId),
+      String(args.patientId),
+    );
+    if (args.amount > balance + 0.005) {
+      throw new Error(
+        `Refund amount ${args.amount} exceeds available credit ${balance}`,
+      );
+    }
+
+    const now = Date.now();
+    const paymentId = await db.insert("payments", {
+      organizationId: String(args.organizationId),
+      patientId: args.patientId,
+      appointmentId: null,
+      packageUsageId: null,
+      amount: args.amount,
+      currency: "PLN",
+      paymentMethod: args.paymentMethod,
+      status: "completed",
+      paidAt: now,
+      notes: args.notes ?? null,
+      creditEarned: -args.amount,
+      creditApplied: null,
+      kind: "credit_refund",
+      createdBy: String(authResult.userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    try {
+      await ctx.runMutation(internal.payments._refundCreditSideEffects, {
+        paymentId,
+        organizationId: args.organizationId,
+        userId: authResult.userId,
+        amount: args.amount,
       });
     } catch {
       // side effects are best-effort
@@ -489,6 +692,25 @@ export const _refundSideEffects = internalMutation({
       entityType: "payment",
       entityId: args.paymentId as any,
       details: JSON.stringify({ amount: args.amount, reason: args.reason }),
+    });
+  },
+});
+
+export const _refundCreditSideEffects = internalMutation({
+  args: {
+    paymentId: v.string(),
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    amount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.userId,
+      action: "patient_credit_refunded",
+      entityType: "payment",
+      entityId: args.paymentId as any,
+      details: JSON.stringify({ amount: args.amount }),
     });
   },
 });

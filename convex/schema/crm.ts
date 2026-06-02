@@ -438,6 +438,20 @@ export function createCrmTables({
     ),
     paidAt: v.optional(v.number()),
     notes: v.optional(v.string()),
+    // Patient-credit accounting (issue #1059).
+    // creditEarned: portion of `amount` that became patient credit (overpayment
+    // on this row). May be negative on `kind="credit_refund"` rows to drain the
+    // balance when an admin refunds outstanding credit to the patient.
+    // creditApplied: amount of pre-existing patient credit consumed by this row
+    // to settle an appointment — it reduces the patient's available balance
+    // but doesn't add to the `amount` (which is the cash/card leg).
+    // kind: discriminates ordinary payments from credit-refund bookkeeping
+    // rows so the balance computation can treat the latter as pure deductions.
+    creditEarned: v.optional(v.number()),
+    creditApplied: v.optional(v.number()),
+    kind: v.optional(
+      v.union(v.literal("payment"), v.literal("credit_refund")),
+    ),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -445,6 +459,11 @@ export function createCrmTables({
     .index("by_org", ["organizationId"])
     .index("by_orgAndStatus", ["organizationId", "status"])
     .index("by_orgAndPatient", ["organizationId", "patientId"])
+    .index("by_orgAndPatientAndStatus", [
+      "organizationId",
+      "patientId",
+      "status",
+    ])
     .index("by_appointment", ["appointmentId"]),
 
   // --- Saved Views ---

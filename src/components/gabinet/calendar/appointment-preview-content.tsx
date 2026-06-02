@@ -275,6 +275,9 @@ export function AppointmentPreviewContent({
   >("card");
   const [settleFirstSplitAmount, setSettleFirstSplitAmount] = useState("");
   const [settleSecondSplitAmount, setSettleSecondSplitAmount] = useState("");
+  // Patient credit (overpayment carry-forward) — issue #1059.
+  const [settleUseCredit, setSettleUseCredit] = useState(false);
+  const [settleCreditAmount, setSettleCreditAmount] = useState("");
 
   const { tags: tagDefinitions } = useTagDefinitions(organizationId);
   const { dispatch } = useSidebarActions();
@@ -590,6 +593,8 @@ export function AppointmentPreviewContent({
     ? `${t("gabinet.payments.totalPaid")}: ${formatCurrencyPLN(completedPaid)} / ${formatCurrencyPLN(treatmentPrice)}`
     : null;
 
+  const patientCreditBalance = (detail.patientCreditBalance ?? 0) as number;
+
   const handleOpenSettleDialog = () => {
     if (saving || settleSubmitting) return;
     setSettleAmount(outstanding > 0 ? outstanding.toFixed(2) : "");
@@ -601,6 +606,10 @@ export function AppointmentPreviewContent({
     setSettleSecondSplitMethod("card");
     setSettleFirstSplitAmount("");
     setSettleSecondSplitAmount("");
+    setSettleUseCredit(false);
+    setSettleCreditAmount(
+      Math.min(patientCreditBalance, outstanding).toFixed(2),
+    );
     setSettleDialogOpen(true);
   };
 
@@ -619,6 +628,28 @@ export function AppointmentPreviewContent({
     parsedSecondSplitAmount <= 0;
   const splitSameMethod =
     settleSplitPayment && settleFirstSplitMethod === settleSecondSplitMethod;
+
+  // Credit applied + overpayment derivation. Only active on the non-split path:
+  // split payment + credit is out of scope for #1059.
+  const parsedSettleAmount =
+    parseFloat(settleAmount.replace(",", ".")) || 0;
+  const parsedCreditAmount =
+    parseFloat(settleCreditAmount.replace(",", ".")) || 0;
+  const creditMaxApplicable = !settleSplitPayment
+    ? Math.min(patientCreditBalance, outstanding)
+    : 0;
+  const creditApplied =
+    !settleSplitPayment && settleUseCredit && parsedCreditAmount > 0
+      ? Math.min(parsedCreditAmount, creditMaxApplicable)
+      : 0;
+  const creditApplyExceedsBalance =
+    !settleSplitPayment &&
+    settleUseCredit &&
+    parsedCreditAmount > patientCreditBalance + 0.005;
+  const overpaymentAmount =
+    !settleSplitPayment
+      ? Math.max(0, parsedSettleAmount + creditApplied - outstanding)
+      : 0;
 
   const handleConfirmSettle = async () => {
     if (settleSubmitting) return;
@@ -657,7 +688,16 @@ export function AppointmentPreviewContent({
         toast.error(t("gabinet.payments.amountRequired"));
         return;
       }
-      if (!hasAmount && !settleMarkCompleted) {
+      if (creditApplyExceedsBalance) {
+        toast.error(
+          t("gabinet.payments.creditExceedsBalance", {
+            defaultValue:
+              "Kwota użytego salda nadpłat przekracza dostępne środki.",
+          }),
+        );
+        return;
+      }
+      if (!hasAmount && creditApplied <= 0 && !settleMarkCompleted) {
         toast.error(
           t("gabinet.appointmentDetail.settleNothingToDo", {
             defaultValue: "Wpisz kwotę lub zaznacz zamknięcie wizyty.",
@@ -702,15 +742,22 @@ export function AppointmentPreviewContent({
             notes: combinedNote,
           });
         }
-      } else if (hasAmount && parsedAmount > 0 && patient?._id) {
+      } else if (
+        patient?._id &&
+        ((hasAmount && parsedAmount > 0) || creditApplied > 0)
+      ) {
         await createPaymentAction({
           organizationId,
           patientId: patient._id,
           appointmentId: appointment._id,
-          amount: parsedAmount,
+          amount: parsedAmount > 0 ? parsedAmount : 0,
           currency: "PLN",
           paymentMethod: settleMethod,
           notes: settleNotes.trim() || undefined,
+          ...(overpaymentAmount > 0
+            ? { creditEarned: overpaymentAmount }
+            : {}),
+          ...(creditApplied > 0 ? { creditApplied } : {}),
         });
       }
       if (settleMarkCompleted && canMarkCompleted) {
@@ -1308,6 +1355,18 @@ export function AppointmentPreviewContent({
                 {formatCurrencyPLN(outstanding)}
               </span>
             </div>
+            {patientCreditBalance > 0 && (
+              <div className="flex justify-between gap-3 border-t pt-1 text-emerald-700 dark:text-emerald-400">
+                <span>
+                  {t("gabinet.payments.creditBalance", {
+                    defaultValue: "Saldo nadpłat",
+                  })}
+                </span>
+                <span className="font-medium tabular-nums">
+                  {formatCurrencyPLN(patientCreditBalance)}
+                </span>
+              </div>
+            )}
           </div>
 
           {!settleSplitPayment && (
@@ -1365,6 +1424,93 @@ export function AppointmentPreviewContent({
                   </SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {!settleSplitPayment && patient?._id && patientCreditBalance > 0 && (
+            <div className="space-y-2 rounded-md border border-emerald-200 bg-emerald-50 p-2.5 dark:border-emerald-900 dark:bg-emerald-950/30">
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="settle-use-credit"
+                  checked={settleUseCredit}
+                  onCheckedChange={(v) => {
+                    const next = v === true;
+                    setSettleUseCredit(next);
+                    if (next) {
+                      const def = Math.min(
+                        patientCreditBalance,
+                        outstanding,
+                      );
+                      setSettleCreditAmount(
+                        def > 0 ? def.toFixed(2) : "",
+                      );
+                      const remaining = Math.max(0, outstanding - def);
+                      setSettleAmount(
+                        remaining > 0 ? remaining.toFixed(2) : "",
+                      );
+                    } else {
+                      setSettleCreditAmount("");
+                      setSettleAmount(
+                        outstanding > 0 ? outstanding.toFixed(2) : "",
+                      );
+                    }
+                  }}
+                />
+                <Label
+                  htmlFor="settle-use-credit"
+                  className="cursor-pointer text-sm font-normal leading-snug"
+                >
+                  {t("gabinet.payments.useCredit", {
+                    defaultValue: "Użyj salda nadpłat",
+                    amount: formatCurrencyPLN(patientCreditBalance),
+                  })}{" "}
+                  <span className="text-muted-foreground">
+                    ({formatCurrencyPLN(patientCreditBalance)})
+                  </span>
+                </Label>
+              </div>
+              {settleUseCredit && (
+                <div className="space-y-1">
+                  <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    {t("gabinet.payments.creditAmountToApply", {
+                      defaultValue: "Kwota z salda",
+                    })}
+                  </Label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={settleCreditAmount}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                        setSettleCreditAmount(v);
+                      }
+                    }}
+                    placeholder={Math.min(
+                      patientCreditBalance,
+                      outstanding,
+                    ).toFixed(2)}
+                  />
+                  {creditApplyExceedsBalance && (
+                    <p className="text-[11px] text-destructive">
+                      {t("gabinet.payments.creditExceedsBalance", {
+                        defaultValue:
+                          "Kwota użytego salda nadpłat przekracza dostępne środki.",
+                      })}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!settleSplitPayment && overpaymentAmount > 0 && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+              {t("gabinet.payments.overpaymentNote", {
+                defaultValue:
+                  "Nadpłata {{amount}} zostanie dopisana do salda klienta i można ją wykorzystać przy kolejnych wizytach.",
+                amount: formatCurrencyPLN(overpaymentAmount),
+              })}
             </div>
           )}
 

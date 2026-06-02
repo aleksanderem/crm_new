@@ -148,14 +148,14 @@ function LocationCard({
         organizationId,
         locationId,
         name: editName.trim(),
-        phone: editPhone?.trim() || undefined,
-        email: editEmail?.trim() || undefined,
-        color: editColor?.trim() || undefined,
+        phone: editPhone?.trim() || null,
+        email: editEmail?.trim() || null,
+        color: editColor?.trim() || null,
         address: {
-          street: editStreet?.trim() || undefined,
-          city: editCity?.trim() || undefined,
-          postalCode: editPostal?.trim() || undefined,
-          country: editCountry?.trim() || undefined,
+          street: editStreet?.trim() || null,
+          city: editCity?.trim() || null,
+          postalCode: editPostal?.trim() || null,
+          country: editCountry?.trim() || null,
         },
       });
       toast.success(t("common.saved"));
@@ -527,9 +527,9 @@ function LocationsSettingsPage() {
       await createLocation({
         organizationId,
         name: newName.trim(),
-        phone: newPhone.trim() || undefined,
-        email: newEmail.trim() || undefined,
-        address: newCity.trim() ? { city: newCity.trim() } : undefined,
+        phone: newPhone.trim() || null,
+        email: newEmail.trim() || null,
+        address: newCity.trim() ? { city: newCity.trim() } : null,
       });
       toast.success(t("gabinet.locations.addLocation"));
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLocations.list(organizationId) });

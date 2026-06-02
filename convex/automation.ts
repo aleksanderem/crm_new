@@ -432,6 +432,20 @@ export const _sendAutomationEmail = internalAction({
       .collect();
     const defaultAccount = emailAccounts.find((account) => account.isDefault);
     if (!defaultAccount) {
+      await ctx.runMutation(internal.emailSendLog.record, {
+        organizationId: args.organizationId,
+        source: "automation",
+        provider: "resend",
+        status: "skipped",
+        errorMessage: "No default email account configured",
+        recipientEmail: args.recipient,
+        recipientName: args.recipientName,
+        subject: args.subject,
+        relatedEntityType: args.appointmentId ? "gabinetAppointment" : undefined,
+        relatedEntityId: args.appointmentId,
+        idempotencyKey: args.idempotencyKey,
+        triggeredBy: args.sentBy,
+      });
       await ctx.runMutation(internal.automation._recordAutomationEmailResult, {
         organizationId: args.organizationId,
         stepId: args.stepId,
@@ -452,6 +466,19 @@ export const _sendAutomationEmail = internalAction({
     }
 
     const from = AUTH_EMAIL ?? "Convex SaaS <onboarding@resend.dev>";
+    const logBase = {
+      organizationId: args.organizationId,
+      source: "automation" as const,
+      provider: "resend" as const,
+      recipientEmail: args.recipient,
+      recipientName: args.recipientName,
+      fromEmail: from,
+      subject: args.subject,
+      relatedEntityType: args.appointmentId ? "gabinetAppointment" : undefined,
+      relatedEntityId: args.appointmentId,
+      idempotencyKey: args.idempotencyKey,
+      triggeredBy: args.sentBy,
+    };
     try {
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -470,6 +497,10 @@ export const _sendAutomationEmail = internalAction({
       if (!response.ok) {
         throw new Error(`Failed to send automation email (${response.status})`);
       }
+      await ctx.runMutation(internal.emailSendLog.record, {
+        ...logBase,
+        status: "sent",
+      });
       await ctx.runMutation(internal.automation._recordAutomationEmailResult, {
         organizationId: args.organizationId,
         stepId: args.stepId,
@@ -486,11 +517,17 @@ export const _sendAutomationEmail = internalAction({
         idempotencyKey: args.idempotencyKey,
       });
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      await ctx.runMutation(internal.emailSendLog.record, {
+        ...logBase,
+        status: "failed",
+        errorMessage,
+      });
       await ctx.runMutation(internal.automation._recordAutomationEmailResult, {
         organizationId: args.organizationId,
         stepId: args.stepId,
         success: false,
-        errorMessage: error instanceof Error ? error.message : String(error),
+        errorMessage,
         fromEmail: defaultAccount.fromEmail,
         recipient: args.recipient,
         recipientName: args.recipientName,

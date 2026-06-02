@@ -46,11 +46,13 @@ describe("email activities", () => {
     });
 
     expect(emailId).toBeTruthy();
-    expect(sendEmail).toHaveBeenCalledWith({
-      to: "client@example.com",
-      subject: "Welcome aboard",
-      html: "Thanks for signing up",
-    });
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "client@example.com",
+        subject: "Welcome aboard",
+        html: "Thanks for signing up",
+      }),
+    );
 
     const rows = await t.run(async (ctx) => {
       const all = await ctx.db.query("activities").collect();

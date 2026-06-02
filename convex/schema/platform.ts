@@ -278,6 +278,60 @@ export function createPlatformTables({
     .index("by_organizationId_ts", ["organizationId", "ts"])
     .index("by_scope_ts", ["scope", "ts"]),
 
+  // Per-organization log of every outgoing email attempt across all send
+  // paths (signing, automation, manual compose, auto-generated documents,
+  // platform-level mails routed through the org context). Captures the
+  // minimum surface needed to debug deliverability: source code path that
+  // triggered the send, template (when applicable), provider used, final
+  // status, error message on failure, recipient and timestamp.
+  //
+  // This is intentionally separate from `emailEventLog` (which tracks the
+  // email-event-bus / template binding pipeline) so non-templated sends
+  // (signing emails, ad-hoc compose, OTP, system invitations) are visible
+  // in one place. See `/dashboard/settings/mail` → "Logs" tab.
+  emailSendLog: defineTable({
+    organizationId: v.id("organizations"),
+    source: v.union(
+      v.literal("signing"),
+      v.literal("automation"),
+      v.literal("manual_compose"),
+      v.literal("auto_generate"),
+      v.literal("event_trigger"),
+      v.literal("system"),
+    ),
+    templateId: v.optional(v.string()),
+    provider: v.optional(
+      v.union(
+        v.literal("resend"),
+        v.literal("mailgun"),
+        v.literal("google"),
+        v.literal("microsoft"),
+        v.literal("gmail"),
+        v.literal("dev_intercept"),
+      ),
+    ),
+    status: v.union(
+      v.literal("sent"),
+      v.literal("failed"),
+      v.literal("skipped"),
+    ),
+    errorMessage: v.optional(v.string()),
+    recipientEmail: v.string(),
+    recipientName: v.optional(v.string()),
+    fromEmail: v.optional(v.string()),
+    subject: v.optional(v.string()),
+    relatedEntityType: v.optional(v.string()),
+    relatedEntityId: v.optional(v.string()),
+    idempotencyKey: v.optional(v.string()),
+    triggeredBy: v.optional(v.id("users")),
+    sentAt: v.number(),
+  })
+    .index("by_org_sentAt", ["organizationId", "sentAt"])
+    .index("by_org_status", ["organizationId", "status", "sentAt"])
+    .index("by_org_source", ["organizationId", "source", "sentAt"])
+    .index("by_org_provider", ["organizationId", "provider", "sentAt"])
+    .index("by_org_recipient", ["organizationId", "recipientEmail", "sentAt"]),
+
   // Singleton-style table: holds global platform configuration that is NOT
   // scoped to any organization. There should be at most ONE row here; the
   // queries/mutations in convex/platformSettings.ts enforce that invariant.

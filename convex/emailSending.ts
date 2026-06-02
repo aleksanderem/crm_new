@@ -231,13 +231,25 @@ export const sendTemplateEmail = internalAction({
     }
 
     const resend = new Resend(RESEND_API_KEY);
+    const fromAddress = RESEND_FROM ?? "noreply@example.com";
     const toAddress = args.recipientName
       ? `${args.recipientName} <${args.recipientEmail}>`
       : args.recipientEmail;
 
+    const sendLogBase = {
+      organizationId: args.organizationId,
+      source: "event_trigger" as const,
+      provider: "resend" as const,
+      templateId: String(args.templateId),
+      recipientEmail: args.recipientEmail,
+      recipientName: args.recipientName,
+      fromEmail: fromAddress,
+      subject,
+    };
+
     try {
       await resend.emails.send({
-        from: RESEND_FROM ?? "noreply@example.com",
+        from: fromAddress,
         to: toAddress,
         subject,
         html,
@@ -251,7 +263,12 @@ export const sendTemplateEmail = internalAction({
         renderedSubject: subject,
         renderedBody: html,
       });
+      await ctx.runMutation(internal.emailSendLog.record, {
+        ...sendLogBase,
+        status: "sent",
+      });
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown send error";
       await ctx.runMutation(internal.emailEvents.updateLogStatus, {
         logId: args.logId,
         status: "failed",
@@ -259,7 +276,12 @@ export const sendTemplateEmail = internalAction({
         templateId: args.templateId,
         renderedSubject: subject,
         renderedBody: html,
-        errorMessage: err instanceof Error ? err.message : "Unknown send error",
+        errorMessage,
+      });
+      await ctx.runMutation(internal.emailSendLog.record, {
+        ...sendLogBase,
+        status: "failed",
+        errorMessage,
       });
     }
   },

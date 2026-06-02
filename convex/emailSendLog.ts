@@ -1,5 +1,6 @@
 import { query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import { requireOrgAdmin } from "./_helpers/auth";
 
 const sourceValidator = v.union(
@@ -25,6 +26,12 @@ const statusValidator = v.union(
   v.literal("failed"),
   v.literal("skipped"),
 );
+
+// Hard cap on rows returned by `exportRows` to keep a single query under
+// Convex's per-query document/byte limits. ~5k rows of log metadata fits
+// comfortably under the 16 MiB return budget while still covering most
+// real-world export needs for a single org.
+const EXPORT_ROW_CAP = 5000;
 
 export const record = internalMutation({
   args: {
@@ -56,7 +63,7 @@ export const record = internalMutation({
 export const list = query({
   args: {
     organizationId: v.id("organizations"),
-    limit: v.optional(v.number()),
+    paginationOpts: paginationOptsValidator,
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
     status: v.optional(statusValidator),
@@ -66,30 +73,99 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     await requireOrgAdmin(ctx, args.organizationId);
-    const limit = Math.min(args.limit ?? 100, 500);
 
-    const entries = await ctx.db
+    const result = await ctx.db
       .query("emailSendLog")
       .withIndex("by_org_sentAt", (q) =>
         q.eq("organizationId", args.organizationId),
       )
       .order("desc")
-      .collect();
+      .filter((q) => {
+        const exprs = [];
+        if (args.status) exprs.push(q.eq(q.field("status"), args.status));
+        if (args.source) exprs.push(q.eq(q.field("source"), args.source));
+        if (args.provider) exprs.push(q.eq(q.field("provider"), args.provider));
+        if (args.startDate !== undefined) {
+          exprs.push(q.gte(q.field("sentAt"), args.startDate));
+        }
+        if (args.endDate !== undefined) {
+          exprs.push(q.lte(q.field("sentAt"), args.endDate));
+        }
+        if (exprs.length === 0) {
+          // Tautology — the index already restricts to this org. Returned only
+          // because `.filter` requires an expression.
+          return q.eq(q.field("organizationId"), args.organizationId);
+        }
+        if (exprs.length === 1) return exprs[0];
+        return q.and(...exprs);
+      })
+      .paginate(args.paginationOpts);
 
     const recipientNeedle = args.recipient?.trim().toLowerCase();
+    if (recipientNeedle) {
+      return {
+        ...result,
+        page: result.page.filter((e) =>
+          e.recipientEmail.toLowerCase().includes(recipientNeedle),
+        ),
+      };
+    }
+    return result;
+  },
+});
 
-    const filtered = entries.filter((e) => {
-      if (args.status && e.status !== args.status) return false;
-      if (args.source && e.source !== args.source) return false;
-      if (args.provider && e.provider !== args.provider) return false;
-      if (args.startDate !== undefined && e.sentAt < args.startDate) return false;
-      if (args.endDate !== undefined && e.sentAt > args.endDate) return false;
-      if (recipientNeedle && !e.recipientEmail.toLowerCase().includes(recipientNeedle)) {
-        return false;
-      }
-      return true;
-    });
+// Returns up to `EXPORT_ROW_CAP` matching rows in a single response for CSV
+// download. Filters mirror `list`. Callers should display a warning when the
+// returned array length equals the cap (export was truncated).
+export const exportRows = query({
+  args: {
+    organizationId: v.id("organizations"),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+    status: v.optional(statusValidator),
+    source: v.optional(sourceValidator),
+    provider: v.optional(providerValidator),
+    recipient: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireOrgAdmin(ctx, args.organizationId);
 
-    return filtered.slice(0, limit);
+    const rows = await ctx.db
+      .query("emailSendLog")
+      .withIndex("by_org_sentAt", (q) =>
+        q.eq("organizationId", args.organizationId),
+      )
+      .order("desc")
+      .filter((q) => {
+        const exprs = [];
+        if (args.status) exprs.push(q.eq(q.field("status"), args.status));
+        if (args.source) exprs.push(q.eq(q.field("source"), args.source));
+        if (args.provider) exprs.push(q.eq(q.field("provider"), args.provider));
+        if (args.startDate !== undefined) {
+          exprs.push(q.gte(q.field("sentAt"), args.startDate));
+        }
+        if (args.endDate !== undefined) {
+          exprs.push(q.lte(q.field("sentAt"), args.endDate));
+        }
+        if (exprs.length === 0) {
+          return q.eq(q.field("organizationId"), args.organizationId);
+        }
+        if (exprs.length === 1) return exprs[0];
+        return q.and(...exprs);
+      })
+      .take(EXPORT_ROW_CAP);
+
+    const recipientNeedle = args.recipient?.trim().toLowerCase();
+    const filtered = recipientNeedle
+      ? rows.filter((e) =>
+          e.recipientEmail.toLowerCase().includes(recipientNeedle),
+        )
+      : rows;
+
+    return {
+      rows: filtered,
+      truncated: rows.length === EXPORT_ROW_CAP,
+      cap: EXPORT_ROW_CAP,
+    };
   },
 });

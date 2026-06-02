@@ -1828,7 +1828,51 @@ function AppointmentDetail() {
                       </tr>
                     </thead>
                     <tbody>
-                      {payments.map((payment: Record<string, unknown>) => (
+                      {payments.map((payment: Record<string, unknown>) => {
+                        const creditEarned =
+                          (payment.creditEarned as number | null | undefined) ?? 0;
+                        const creditApplied =
+                          (payment.creditApplied as number | null | undefined) ?? 0;
+                        const isCreditRefund =
+                          (payment.kind as string | null | undefined) === "credit_refund";
+                        const currency = (payment.currency as string) ?? "PLN";
+                        const creditBadges: Array<{
+                          key: string;
+                          label: string;
+                          className: string;
+                        }> = [];
+                        if (isCreditRefund) {
+                          creditBadges.push({
+                            key: "refund",
+                            label: t("gabinet.payments.credit.refund"),
+                            className:
+                              "border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300",
+                          });
+                        } else {
+                          if (creditEarned > 0) {
+                            creditBadges.push({
+                              key: "earned",
+                              label: `${t("gabinet.payments.credit.earned")}: +${formatCurrencyPLN(
+                                creditEarned,
+                                currency,
+                              )}`,
+                              className:
+                                "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300",
+                            });
+                          }
+                          if (creditApplied > 0) {
+                            creditBadges.push({
+                              key: "applied",
+                              label: `${t("gabinet.payments.credit.applied")}: −${formatCurrencyPLN(
+                                creditApplied,
+                                currency,
+                              )}`,
+                              className:
+                                "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300",
+                            });
+                          }
+                        }
+                        return (
                         <tr
                           key={payment._id as string}
                           className="border-b last:border-0 hover:bg-muted/30"
@@ -1837,9 +1881,22 @@ function AppointmentDetail() {
                             <p className="font-medium">
                               {formatCurrencyPLN(
                                 payment.amount as number,
-                                (payment.currency as string) ?? "PLN",
+                                currency,
                               )}
                             </p>
+                            {creditBadges.length > 0 && (
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {creditBadges.map((badge) => (
+                                  <Badge
+                                    key={badge.key}
+                                    variant="outline"
+                                    className={`text-[10px] font-normal ${badge.className}`}
+                                  >
+                                    {badge.label}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
                           </td>
                           <td className="p-3">
                             <Badge variant="outline">
@@ -1890,7 +1947,8 @@ function AppointmentDetail() {
                             )}
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

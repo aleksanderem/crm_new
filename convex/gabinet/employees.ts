@@ -501,15 +501,18 @@ export const update = action({
     notes: v.optional(v.union(v.string(), v.null())),
     // Detailed employee data
     phone: v.optional(v.union(v.string(), v.null())),
-    email: v.optional(v.string()),
+    email: v.optional(v.union(v.string(), v.null())),
     dateOfBirth: v.optional(v.union(v.string(), v.null())),
     pesel: v.optional(v.union(v.string(), v.null())),
     address: v.optional(
-      v.object({
-        street: v.optional(v.string()),
-        city: v.optional(v.string()),
-        postalCode: v.optional(v.string()),
-      }),
+      v.union(
+        v.object({
+          street: v.optional(v.string()),
+          city: v.optional(v.string()),
+          postalCode: v.optional(v.string()),
+        }),
+        v.null(),
+      ),
     ),
     employmentType: v.optional(
       v.union(
@@ -517,9 +520,10 @@ export const update = action({
         v.literal("umowa_zlecenie"),
         v.literal("b2b"),
         v.literal("staz"),
+        v.null(),
       ),
     ),
-    endDate: v.optional(v.string()),
+    endDate: v.optional(v.union(v.string(), v.null())),
     position: v.optional(v.union(v.string(), v.null())),
     department: v.optional(v.union(v.string(), v.null())),
     skills: v.optional(v.array(v.string())),

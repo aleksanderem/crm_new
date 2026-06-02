@@ -24,6 +24,7 @@ import {
 } from "@/components/gabinet/flexible-schedule-editor";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatPhoneNumber } from "@/lib/phone";
+import { formatBirthDate, parseBirthDateToIso } from "@/lib/format-date";
 import {
   EntityDetailLayout,
   type DetailField,
@@ -1645,7 +1646,7 @@ function DetailedDataTab({
     lastName: employee.lastName ?? "",
     phone: employee.phone ?? "",
     email: employee.email ?? "",
-    dateOfBirth: employee.dateOfBirth ?? "",
+    dateOfBirth: parseBirthDateToIso(employee.dateOfBirth),
     pesel: employee.pesel ?? "",
     addressStreet: employee.address?.street ?? "",
     addressCity: employee.address?.city ?? "",
@@ -1690,7 +1691,7 @@ function DetailedDataTab({
       lastName: employee.lastName ?? "",
       phone: employee.phone ?? "",
       email: employee.email ?? "",
-      dateOfBirth: employee.dateOfBirth ?? "",
+      dateOfBirth: parseBirthDateToIso(employee.dateOfBirth),
       pesel: employee.pesel ?? "",
       addressStreet: employee.address?.street ?? "",
       addressCity: employee.address?.city ?? "",
@@ -1723,7 +1724,7 @@ function DetailedDataTab({
       lastName: employee.lastName ?? "",
       phone: employee.phone ?? "",
       email: employee.email ?? "",
-      dateOfBirth: employee.dateOfBirth ?? "",
+      dateOfBirth: parseBirthDateToIso(employee.dateOfBirth),
       pesel: employee.pesel ?? "",
       addressStreet: employee.address?.street ?? "",
       addressCity: employee.address?.city ?? "",
@@ -1987,13 +1988,7 @@ function DetailedDataTab({
               )}
               {readOnlyField(
                 t("gabinet.employees.detailedData.dateOfBirth"),
-                employee.dateOfBirth
-                  ? new Date(employee.dateOfBirth + "T00:00:00").toLocaleDateString(i18nLanguage, {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })
-                  : undefined,
+                employee.dateOfBirth ? formatBirthDate(employee.dateOfBirth) : undefined,
               )}
               {readOnlyField(t("gabinet.employees.detailedData.pesel"), employee.pesel)}
               {(employee.address?.street || employee.address?.city) &&

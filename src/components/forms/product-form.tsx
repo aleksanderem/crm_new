@@ -28,7 +28,7 @@ const TAX_RATE_OPTIONS = [
 ];
 
 function initialTaxRateFormValue(
-  taxRate: number | undefined,
+  taxRate: number | undefined | null,
   taxExempt: boolean | undefined,
 ): string {
   if (taxExempt) return "zw";
@@ -51,14 +51,14 @@ interface CategoryDef {
 
 export interface ProductFormData {
   name: string;
-  description?: string;
+  description?: string | null;
   sku: string;
   unitPrice: number;
-  taxRate?: number;
+  taxRate?: number | null;
   taxExempt?: boolean;
   isActive: boolean;
   tagIds?: Id<"tagDefinitions">[];
-  categoryId?: Id<"categoryDefinitions">;
+  categoryId?: Id<"categoryDefinitions"> | null;
 }
 
 interface ProductFormProps {
@@ -90,7 +90,7 @@ export function ProductForm({
   );
   const [isActive, setIsActive] = useState(initialData?.isActive ?? true);
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
-  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
+  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId ?? undefined);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,18 +98,18 @@ export function ProductForm({
     const numericTaxRate = !isExempt
       ? Number.isFinite(parseFloat(taxRate))
         ? parseFloat(taxRate)
-        : undefined
-      : undefined;
+        : null
+      : null;
     onSubmit({
       name,
-      description: description || undefined,
+      description: description || null,
       sku,
       unitPrice,
       taxRate: numericTaxRate,
       taxExempt: isExempt,
       isActive,
       tagIds: tagIds.length > 0 ? tagIds : undefined,
-      categoryId: categoryId || undefined,
+      categoryId: categoryId || null,
     });
   };
 

@@ -189,10 +189,26 @@ async function addCommonScope(
   if (org) {
     scope.organization = flattenEntity(org);
   }
+  const now = new Date();
+  const isoDate = now.toISOString().split("T")[0];
+  const datePl = now.toLocaleDateString("pl-PL", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const timeStr = now.toLocaleTimeString("pl-PL", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   scope.system = {
-    today: new Date().toISOString().split("T")[0],
-    now: new Date().toISOString(),
-    year: new Date().getFullYear(),
+    date: isoDate,
+    date_pl: datePl,
+    time: timeStr,
+    year: now.getFullYear(),
+    // Aliases retained for back-compat with templates authored before the
+    // catalog/emitter naming was reconciled (#1320).
+    today: isoDate,
+    now: now.toISOString(),
   };
 }
 

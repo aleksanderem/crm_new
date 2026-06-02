@@ -22,11 +22,11 @@ import { formatCurrencyPLN } from "@/lib/format-currency";
 
 export interface PackageFormData {
   name: string;
-  description?: string;
+  description?: string | null;
   totalPrice: number;
-  validityDays?: number;
-  discountPercent?: number;
-  loyaltyPointsAwarded?: number;
+  validityDays?: number | null;
+  discountPercent?: number | null;
+  loyaltyPointsAwarded?: number | null;
   treatments: Array<{ treatmentId: string; quantity: number }>;
 }
 
@@ -115,11 +115,11 @@ export function PackageForm({
 
     onSubmit({
       name,
-      description: description || undefined,
+      description: description || null,
       totalPrice: parseFloat(totalPrice.replace(",", ".")),
-      validityDays: validityDays ? parseInt(validityDays) : undefined,
-      discountPercent: discountPercent ? parseFloat(discountPercent) : undefined,
-      loyaltyPointsAwarded: loyaltyPoints ? parseInt(loyaltyPoints) : undefined,
+      validityDays: validityDays ? parseInt(validityDays) : null,
+      discountPercent: discountPercent ? parseFloat(discountPercent) : null,
+      loyaltyPointsAwarded: loyaltyPoints ? parseInt(loyaltyPoints) : null,
       treatments: selectedTreatments.map((t) => ({
         treatmentId: t.treatmentId,
         quantity: t.quantity,

@@ -179,6 +179,25 @@ export function groupVariablesByCategory(
   return groups;
 }
 
+// Paths declared with type: "date" in VARIABLE_REGISTRY. Some entities (e.g.
+// lead.expectedCloseDate) store these as millisecond timestamps; we normalize
+// them to YYYY-MM-DD during flattening so downstream formatters that expect
+// date strings (formatBirthDate) work uniformly.
+const DATE_PATHS = new Set<string>(
+  Object.values(VARIABLE_REGISTRY)
+    .flat()
+    .filter((f) => f.type === "date")
+    .map((f) => f.path),
+);
+
+function coerceDateValue(value: unknown): string {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const d = new Date(value);
+    if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  }
+  return String(value);
+}
+
 /**
  * Flatten nested scope data (from resolveScope) to dot-notation keys
  * for direct use as template inputs. Field names in the template ARE the
@@ -195,7 +214,8 @@ export function flattenScopeData(
     if (typeof fields !== "object" || fields === null) continue;
     for (const [key, value] of Object.entries(fields)) {
       if (value !== null && value !== undefined) {
-        flat[`${entityType}.${key}`] = String(value);
+        const path = `${entityType}.${key}`;
+        flat[path] = DATE_PATHS.has(path) ? coerceDateValue(value) : String(value);
       }
     }
   }

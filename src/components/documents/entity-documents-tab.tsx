@@ -46,6 +46,7 @@ import { DocumentStatusBadge } from "./document-status-badge";
 import { GenerateDocumentDialog } from "./generate-document-dialog";
 import { DocumentViewer } from "./document-viewer";
 import { renderDocument } from "./document-renderer";
+import { flattenScopeData } from "@/lib/document-variables";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -250,17 +251,9 @@ export function EntityDocumentsTab({
       : {};
 
     // Flatten scope data to dot-notation (patient.firstName, treatment.name, etc.)
-    const scopeFlat: Record<string, string> = {};
-    if (scopeData) {
-      for (const [entityType, fields] of Object.entries(scopeData)) {
-        if (typeof fields !== "object" || fields === null) continue;
-        for (const [key, value] of Object.entries(fields as Record<string, unknown>)) {
-          if (value !== null && value !== undefined) {
-            scopeFlat[`${entityType}.${key}`] = String(value);
-          }
-        }
-      }
-    }
+    const scopeFlat: Record<string, string> = scopeData
+      ? flattenScopeData(scopeData as Record<string, Record<string, unknown>>)
+      : {};
 
     // Fallback mappings: if contact.* missing, use patient.* and vice versa
     if (scopeFlat["patient.firstName"] && !scopeFlat["contact.firstName"]) {

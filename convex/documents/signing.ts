@@ -223,32 +223,35 @@ export const sendSigningEmailInternal = internalAction({
       return;
     }
 
-    try {
-      // Try sending via Gmail OAuth (tenant's configured connection)
-      const googleToken = await getValidAccessToken(
-        ctx,
-        data.organizationId as Id<"organizations">,
-      );
+    // Try sending via Gmail OAuth (tenant's configured connection)
+    const googleToken = await getValidAccessToken(
+      ctx,
+      data.organizationId as Id<"organizations">,
+    );
 
-      if (googleToken && data.senderEmail) {
-        const fromAddress = data.senderName
-          ? `${data.senderName} <${data.senderEmail}>`
-          : data.senderEmail;
+    let gmailError: string | null = null;
 
-        // Build RFC 2822 MIME message
-        let rawMessage = `From: ${fromAddress}\r\n`;
-        rawMessage += `To: ${args.recipientEmail}\r\n`;
-        rawMessage += `Subject: ${subject}\r\n`;
-        rawMessage += `Content-Type: text/html; charset=utf-8\r\n`;
-        rawMessage += `\r\n`;
-        rawMessage += html;
+    if (googleToken && data.senderEmail) {
+      const fromAddress = data.senderName
+        ? `${data.senderName} <${data.senderEmail}>`
+        : data.senderEmail;
 
-        const encoded = btoa(unescape(encodeURIComponent(rawMessage)))
-          .replace(/\+/g, "-")
-          .replace(/\//g, "_")
-          .replace(/=+$/, "");
+      // Build RFC 2822 MIME message
+      let rawMessage = `From: ${fromAddress}\r\n`;
+      rawMessage += `To: ${args.recipientEmail}\r\n`;
+      rawMessage += `Subject: ${subject}\r\n`;
+      rawMessage += `Content-Type: text/html; charset=utf-8\r\n`;
+      rawMessage += `\r\n`;
+      rawMessage += html;
 
-        const response = await fetch(
+      const encoded = btoa(unescape(encodeURIComponent(rawMessage)))
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+
+      let response: Response | null = null;
+      try {
+        response = await fetch(
           "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
           {
             method: "POST",
@@ -259,22 +262,21 @@ export const sendSigningEmailInternal = internalAction({
             body: JSON.stringify({ raw: encoded }),
           },
         );
+      } catch (fetchErr) {
+        gmailError =
+          fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
+        console.error("[signing] Gmail fetch threw:", gmailError);
+        await ctx.runMutation(internal.emailSendLog.record, {
+          ...logBase,
+          provider: "gmail",
+          status: "failed",
+          fromEmail: fromAddress,
+          errorMessage: `Gmail send failed: ${gmailError.slice(0, 500)}`,
+        });
+      }
 
-        if (!response.ok) {
-          const errText = await response.text();
-          console.error("[signing] Gmail send failed:", errText);
-          await ctx.runMutation(internal.emailSendLog.record, {
-            ...logBase,
-            provider: "gmail",
-            status: "failed",
-            fromEmail: fromAddress,
-            errorMessage: `Gmail send failed (${response.status}): ${errText.slice(0, 500)}`,
-          });
-          throw new Error("Gmail send failed — falling back to Resend");
-        }
-
+      if (response?.ok) {
         console.log("[signing] Signing email sent via Gmail to", args.recipientEmail);
-
         await ctx.runMutation(internal.emailSendLog.record, {
           ...logBase,
           provider: "gmail",
@@ -285,61 +287,75 @@ export const sendSigningEmailInternal = internalAction({
         return;
       }
 
-      // Fallback: send via Resend
-      if (!RESEND_API_KEY) {
-        console.warn("[signing] No Gmail connection and RESEND_API_KEY not set — cannot send signing email");
+      if (response) {
+        const errText = await response.text();
+        gmailError = `Gmail send failed (${response.status}): ${errText.slice(0, 500)}`;
+        console.error("[signing] Gmail send failed:", errText);
         await ctx.runMutation(internal.emailSendLog.record, {
           ...logBase,
-          provider: "resend",
-          status: "skipped",
-          errorMessage: "No Gmail connection and RESEND_API_KEY not set",
+          provider: "gmail",
+          status: "failed",
+          fromEmail: fromAddress,
+          errorMessage: gmailError,
         });
-        return;
       }
+      // fall through to Resend fallback below
+    }
 
-      const resend = new Resend(RESEND_API_KEY);
-      const fromAddress = data.senderEmail && data.senderName
+    // Resend fallback — used both when no Gmail is configured and when
+    // Gmail attempted but failed.
+    if (!RESEND_API_KEY) {
+      const reason = gmailError
+        ? `Gmail send failed and RESEND_API_KEY not set: ${gmailError}`
+        : "No Gmail connection and RESEND_API_KEY not set";
+      console.warn("[signing]", reason);
+      await ctx.runMutation(internal.emailSendLog.record, {
+        ...logBase,
+        provider: "resend",
+        status: "skipped",
+        errorMessage: reason,
+      });
+      throw new Error("Nie udało się wysłać e-maila: brak skonfigurowanego dostawcy poczty");
+    }
+
+    const resend = new Resend(RESEND_API_KEY);
+    const fromAddress =
+      data.senderEmail && data.senderName
         ? `${data.senderName} <${data.senderEmail}>`
         : data.senderEmail
           ? data.senderEmail
           : (RESEND_FROM ?? "noreply@example.com");
-      const toAddress = args.recipientName
-        ? `${args.recipientName} <${args.recipientEmail}>`
-        : args.recipientEmail;
+    const toAddress = args.recipientName
+      ? `${args.recipientName} <${args.recipientEmail}>`
+      : args.recipientEmail;
 
-      try {
-        await resend.emails.send({
-          from: fromAddress,
-          to: toAddress,
-          subject,
-          html,
-        });
+    try {
+      await resend.emails.send({
+        from: fromAddress,
+        to: toAddress,
+        subject,
+        html,
+      });
 
-        console.log("[signing] Signing email sent via Resend to", args.recipientEmail);
-
-        await ctx.runMutation(internal.emailSendLog.record, {
-          ...logBase,
-          provider: "resend",
-          status: "sent",
-          fromEmail: fromAddress,
-        });
-        await markSent(db, args.documentId);
-      } catch (resendErr) {
-        await ctx.runMutation(internal.emailSendLog.record, {
-          ...logBase,
-          provider: "resend",
-          status: "failed",
-          fromEmail: fromAddress,
-          errorMessage:
-            resendErr instanceof Error ? resendErr.message : String(resendErr),
-        });
-        throw resendErr;
-      }
-    } catch (err) {
-      console.error(
-        "[signing] Failed to send signing email:",
-        err instanceof Error ? err.message : err,
-      );
+      console.log("[signing] Signing email sent via Resend to", args.recipientEmail);
+      await ctx.runMutation(internal.emailSendLog.record, {
+        ...logBase,
+        provider: "resend",
+        status: "sent",
+        fromEmail: fromAddress,
+      });
+      await markSent(db, args.documentId);
+    } catch (resendErr) {
+      const msg = resendErr instanceof Error ? resendErr.message : String(resendErr);
+      await ctx.runMutation(internal.emailSendLog.record, {
+        ...logBase,
+        provider: "resend",
+        status: "failed",
+        fromEmail: fromAddress,
+        errorMessage: msg,
+      });
+      console.error("[signing] Failed to send signing email via Resend:", msg);
+      throw new Error(`Nie udało się wysłać e-maila: ${msg}`);
     }
   },
 });

@@ -552,15 +552,13 @@ export const resendSigningEmail = action({
       throw new Error("Nie znaleziono adresu e-mail pacjenta");
     }
 
-    await ctx.scheduler.runAfter(
-      0,
-      internal.documents.signing.sendSigningEmailInternal,
-      {
-        documentId: args.documentId as Id<"formDocuments">,
-        recipientEmail,
-        recipientName,
-      },
-    );
+    // Call the send action directly (not via scheduler) so failures
+    // propagate back to the UI instead of being silently swallowed.
+    await ctx.runAction(internal.documents.signing.sendSigningEmailInternal, {
+      documentId: args.documentId as Id<"formDocuments">,
+      recipientEmail,
+      recipientName,
+    });
 
     return { sent: true };
   },

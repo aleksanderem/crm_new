@@ -54,14 +54,14 @@ interface CategoryDef {
 interface LeadFormProps {
   initialData?: {
     title: string;
-    value?: number;
+    value?: number | null;
     status: LeadStatus;
-    priority?: LeadPriority;
-    source?: string;
-    pipelineStageId?: Id<"pipelineStages">;
-    notes?: string;
+    priority?: LeadPriority | null;
+    source?: string | null;
+    pipelineStageId?: Id<"pipelineStages"> | null;
+    notes?: string | null;
     tagIds?: Id<"tagDefinitions">[];
-    categoryId?: Id<"categoryDefinitions">;
+    categoryId?: Id<"categoryDefinitions"> | null;
   };
   pipelines?: Pipeline[];
   stages?: PipelineStage[];
@@ -72,14 +72,14 @@ interface LeadFormProps {
   onSubmit: (
     data: {
       title: string;
-      value?: number;
+      value?: number | null;
       status: LeadStatus;
-      priority?: LeadPriority;
-      source?: string;
-      pipelineStageId?: Id<"pipelineStages">;
-      notes?: string;
+      priority?: LeadPriority | null;
+      source?: string | null;
+      pipelineStageId?: Id<"pipelineStages"> | null;
+      notes?: string | null;
       tagIds?: Id<"tagDefinitions">[];
-      categoryId?: Id<"categoryDefinitions">;
+      categoryId?: Id<"categoryDefinitions"> | null;
     },
     customFields: Record<string, unknown>
   ) => void;
@@ -132,7 +132,7 @@ export function LeadForm({
   );
   const [notes, setNotes] = useState(initialData?.notes ?? "");
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
-  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
+  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId ?? undefined);
   const [customFields, setCustomFields] = useState<Record<string, unknown>>(
     initialCustomFieldValues
   );
@@ -146,14 +146,14 @@ export function LeadForm({
     onSubmit(
       {
         title,
-        value: value ? Number(value) : undefined,
+        value: value ? Number(value) : null,
         status,
-        priority: priority || undefined,
-        source: source || undefined,
-        pipelineStageId: (stageId as Id<"pipelineStages">) || undefined,
-        notes: notes || undefined,
+        priority: priority || null,
+        source: source || null,
+        pipelineStageId: (stageId as Id<"pipelineStages">) || null,
+        notes: notes || null,
         tagIds: tagIds.length > 0 ? tagIds : undefined,
-        categoryId: categoryId || undefined,
+        categoryId: categoryId || null,
       },
       customFields
     );

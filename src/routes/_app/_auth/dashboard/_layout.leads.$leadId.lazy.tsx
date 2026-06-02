@@ -472,12 +472,14 @@ function LeadDetail() {
   const handleEditSubmit = async (
     formData: {
       title: string;
-      value?: number;
+      value?: number | null;
       status: string;
-      priority?: string;
-      source?: string;
-      pipelineStageId?: string;
-      notes?: string;
+      priority?: string | null;
+      source?: string | null;
+      pipelineStageId?: string | null;
+      notes?: string | null;
+      tagIds?: Id<"tagDefinitions">[];
+      categoryId?: Id<"categoryDefinitions"> | null;
     },
     customFieldRecord: Record<string, unknown>
   ) => {
@@ -492,6 +494,8 @@ function LeadDetail() {
         priority: formData.priority as any,
         source: formData.source,
         notes: formData.notes,
+        tagIds: formData.tagIds,
+        categoryId: formData.categoryId,
       });
       if (formData.pipelineStageId) {
         await moveToStage({
@@ -1465,6 +1469,8 @@ function LeadDetail() {
               source: lead.source ?? undefined,
               pipelineStageId: lead.pipelineStageId as Id<"pipelineStages"> | undefined,
               notes: lead.notes ?? undefined,
+              tagIds: lead.tagIds as Id<"tagDefinitions">[] | undefined,
+              categoryId: lead.categoryId as Id<"categoryDefinitions"> | undefined,
             }}
             pipelines={pipelines as any}
             stages={allStages as any}

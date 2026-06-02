@@ -288,7 +288,7 @@ function ContactsIndex() {
         email?: string | null;
         phone?: string | null;
         title?: string | null;
-        source?: string;
+        source?: string | null;
         tags?: string[];
         notes?: string | null;
       },
@@ -303,6 +303,7 @@ function ContactsIndex() {
           email: formData.email,
           phone: formData.phone,
           title: formData.title,
+          source: formData.source,
           notes: formData.notes,
           tags: formData.tags,
         });

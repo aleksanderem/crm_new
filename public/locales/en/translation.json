@@ -2202,6 +2202,7 @@
         "appointments": "Appointments",
         "documents": "Documents",
         "loyalty": "Loyalty",
+        "credit": "Credit",
         "activity": "Activity"
       },
       "byDay": "Clients by Day",
@@ -3259,7 +3260,27 @@
       "useCredit": "Use credit balance",
       "creditAmountToApply": "Amount from credit",
       "creditExceedsBalance": "Credit amount exceeds available balance.",
-      "overpaymentNote": "Overpayment of {{amount}} will be added to the patient's credit balance and can be used on future visits."
+      "overpaymentNote": "Overpayment of {{amount}} will be added to the patient's credit balance and can be used on future visits.",
+      "credit": {
+        "title": "Credit balance",
+        "description": "Overpayments are added to the patient's credit and can be applied to future visits.",
+        "available": "Available credit",
+        "noCredit": "This patient has no credit history yet.",
+        "history": "Credit history",
+        "earned": "Overpayment added",
+        "applied": "Credit applied to visit",
+        "refund": "Cash refund",
+        "refundCredit": "Refund credit",
+        "refundDialogTitle": "Refund patient credit",
+        "refundDialogDesc": "Pay back part or all of the available credit balance to the patient.",
+        "refundAmount": "Refund amount",
+        "refundMethod": "Refund method",
+        "refundNotes": "Notes (optional)",
+        "refundConfirm": "Confirm refund",
+        "refundSuccess": "Credit refunded",
+        "refundExceeds": "Refund amount exceeds available credit.",
+        "adminOnly": "Only organization owners and admins can refund credit."
+      }
     },
     "schedules": {
       "break": "Break",

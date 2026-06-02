@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
@@ -63,6 +64,8 @@ import {
   ArrowDownRight,
   CreditCard,
   Pencil,
+  WalletIcon,
+  RefreshCw,
 } from "@/lib/ez-icons";
 
 import { useTranslation } from "react-i18next";
@@ -90,6 +93,8 @@ function PatientDetail() {
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action
   const removePatient = useAction(api.gabinet.patients.remove);
   const updatePaymentAction = useAction(api.payments.update);
+  const getPatientCreditAction = useAction(api.payments.getPatientCredit);
+  const refundCreditAction = useAction(api.payments.refundCredit);
   const trackView = useAction(api.recentlyViewed.track);
   const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
   const queryClient = useQueryClient();
@@ -104,6 +109,14 @@ function PatientDetail() {
   >("cash");
   const [paymentEditNotes, setPaymentEditNotes] = useState("");
   const [isPaymentEditSubmitting, setIsPaymentEditSubmitting] = useState(false);
+
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundMethod, setRefundMethod] = useState<
+    "cash" | "card" | "transfer" | "other"
+  >("cash");
+  const [refundNotes, setRefundNotes] = useState("");
+  const [isRefundSubmitting, setIsRefundSubmitting] = useState(false);
 
   const { data: patient, isLoading } = useSupabaseGabinetPatient(
     organizationId,
@@ -176,6 +189,31 @@ function PatientDetail() {
       }),
     enabled: !!organizationId && !!patientId,
   });
+
+  const creditQueryKey = [
+    "payments.getPatientCredit",
+    organizationId,
+    patientId,
+  ] as const;
+  const { data: patientCredit, refetch: refetchPatientCredit } = useQuery({
+    queryKey: creditQueryKey,
+    queryFn: () =>
+      getPatientCreditAction({
+        organizationId,
+        patientId,
+      }),
+    enabled: !!organizationId && !!patientId,
+  });
+
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen
+  const { data: myOrgs } = useQuery(
+    convexQuery(api.organizations.getMyOrganizations, {}),
+  );
+  const currentOrgRole = (myOrgs ?? []).find(
+    (o: { _id: string; role: string } | null) => o?._id === organizationId,
+  )?.role as "owner" | "admin" | "member" | "viewer" | undefined;
+  const canRefundCredit =
+    currentOrgRole === "owner" || currentOrgRole === "admin";
 
   const getPaymentForLabel = (payment: {
     appointmentId?: string;
@@ -446,6 +484,51 @@ function PatientDetail() {
       );
     } finally {
       setIsPaymentEditSubmitting(false);
+    }
+  };
+
+  const openRefundDialog = () => {
+    const balance = patientCredit?.balance ?? 0;
+    setRefundAmount(balance > 0 ? balance.toFixed(2) : "");
+    setRefundMethod("cash");
+    setRefundNotes("");
+    setRefundDialogOpen(true);
+  };
+
+  const handleRefundCredit = async () => {
+    const normalized = refundAmount.replace(",", ".").trim();
+    const amount = parseFloat(normalized);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error(t("gabinet.payments.amountRequired"));
+      return;
+    }
+    const balance = patientCredit?.balance ?? 0;
+    if (amount > balance + 0.005) {
+      toast.error(t("gabinet.payments.credit.refundExceeds"));
+      return;
+    }
+    setIsRefundSubmitting(true);
+    try {
+      await refundCreditAction({
+        organizationId,
+        patientId,
+        amount,
+        paymentMethod: refundMethod,
+        notes: refundNotes.trim() ? refundNotes.trim() : undefined,
+      });
+      toast.success(t("gabinet.payments.credit.refundSuccess"));
+      await refetchPatientCredit();
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.payments.all });
+      setRefundDialogOpen(false);
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "common.error",
+          defaultValue: "Wystąpił błąd.",
+        }),
+      );
+    } finally {
+      setIsRefundSubmitting(false);
     }
   };
 
@@ -1182,6 +1265,148 @@ function PatientDetail() {
       ),
     },
     {
+      label: t("gabinet.patients.tabs.credit"),
+      count: patientCredit?.history.length ?? 0,
+      content: (() => {
+        const balance = patientCredit?.balance ?? 0;
+        const history = patientCredit?.history ?? [];
+        return (
+          <div className="space-y-6">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                      <WalletIcon className="h-5 w-5" variant="stroke" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        {t("gabinet.payments.credit.available")}
+                      </p>
+                      <p className="text-2xl font-bold tabular-nums">
+                        {formatCurrencyPLN(balance)}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground max-w-md">
+                        {t("gabinet.payments.credit.description")}
+                      </p>
+                    </div>
+                  </div>
+                  {canRefundCredit && balance > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={openRefundDialog}
+                      className="sm:self-start"
+                    >
+                      <RefreshCw className="mr-1 h-4 w-4" variant="stroke" />
+                      {t("gabinet.payments.credit.refundCredit")}
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6 space-y-4">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <WalletIcon
+                    className="h-4 w-4 text-muted-foreground"
+                    variant="stroke"
+                  />
+                  {t("gabinet.payments.credit.history")}
+                </h3>
+                {history.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <WalletIcon className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      {t("gabinet.payments.credit.noCredit")}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border rounded-lg">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          <th className="text-left p-3 text-sm font-medium">
+                            {t("common.date")}
+                          </th>
+                          <th className="text-left p-3 text-sm font-medium">
+                            {t("gabinet.payments.for")}
+                          </th>
+                          <th className="text-right p-3 text-sm font-medium">
+                            {t("gabinet.payments.amount")}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {history.map((entry) => {
+                          const isRefund = entry.kind === "credit_refund";
+                          const isEarned = entry.creditEarned > 0;
+                          const isApplied = entry.creditApplied > 0;
+                          let label: string;
+                          let delta: number;
+                          let deltaClass: string;
+                          if (isRefund) {
+                            label = t("gabinet.payments.credit.refund");
+                            // Refund row stores creditEarned = -amount; show as
+                            // negative delta to balance.
+                            delta = entry.creditEarned;
+                            deltaClass = "text-red-600";
+                          } else if (isEarned) {
+                            label = t("gabinet.payments.credit.earned");
+                            delta = entry.creditEarned;
+                            deltaClass = "text-emerald-600";
+                          } else if (isApplied) {
+                            label = t("gabinet.payments.credit.applied");
+                            delta = -entry.creditApplied;
+                            deltaClass = "text-red-600";
+                          } else {
+                            label = entry.notes ?? "—";
+                            delta = 0;
+                            deltaClass = "text-muted-foreground";
+                          }
+                          return (
+                            <tr
+                              key={entry._id}
+                              className={`border-b last:border-0 hover:bg-muted/30 ${
+                                entry.appointmentId ? "cursor-pointer" : ""
+                              }`}
+                              onClick={() => {
+                                if (entry.appointmentId) {
+                                  navigate({
+                                    to: "/dashboard/gabinet/appointments/$appointmentId",
+                                    params: {
+                                      appointmentId: entry.appointmentId,
+                                    },
+                                  });
+                                }
+                              }}
+                            >
+                              <td className="p-3 text-sm text-muted-foreground">
+                                {new Date(entry.createdAt).toLocaleDateString(
+                                  "pl-PL",
+                                )}
+                              </td>
+                              <td className="p-3 text-sm">{label}</td>
+                              <td
+                                className={`p-3 text-right font-semibold tabular-nums ${deltaClass}`}
+                              >
+                                {delta > 0 ? "+" : delta < 0 ? "−" : ""}
+                                {formatCurrencyPLN(Math.abs(delta))}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })(),
+    },
+    {
       label: t("gabinet.patients.tabs.activity"),
       content: (
         <ActivityFeed
@@ -1329,6 +1554,103 @@ function PatientDetail() {
               {isPaymentEditSubmitting
                 ? t("common.processing")
                 : t("common.save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={refundDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) setRefundDialogOpen(false);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {t("gabinet.payments.credit.refundDialogTitle")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("gabinet.payments.credit.refundDialogDesc")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="rounded-md border bg-muted/30 p-2.5">
+              <p className="text-xs text-muted-foreground">
+                {t("gabinet.payments.credit.available")}
+              </p>
+              <p className="text-base font-semibold tabular-nums">
+                {formatCurrencyPLN(patientCredit?.balance ?? 0)}
+              </p>
+            </div>
+            <div>
+              <Label>{t("gabinet.payments.credit.refundAmount")}</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={refundAmount}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                    setRefundAmount(v);
+                  }
+                }}
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <Label>{t("gabinet.payments.credit.refundMethod")}</Label>
+              <Select
+                value={refundMethod}
+                onValueChange={(v) =>
+                  setRefundMethod(
+                    v as "cash" | "card" | "transfer" | "other",
+                  )
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">
+                    {t("gabinet.payments.methods.cash")}
+                  </SelectItem>
+                  <SelectItem value="card">
+                    {t("gabinet.payments.methods.card")}
+                  </SelectItem>
+                  <SelectItem value="transfer">
+                    {t("gabinet.payments.methods.transfer")}
+                  </SelectItem>
+                  <SelectItem value="other">
+                    {t("gabinet.payments.methods.other")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>{t("gabinet.payments.credit.refundNotes")}</Label>
+              <Input
+                type="text"
+                value={refundNotes}
+                onChange={(e) => setRefundNotes(e.target.value)}
+                placeholder={t("gabinet.payments.notePlaceholder")}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRefundDialogOpen(false)}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              onClick={handleRefundCredit}
+              disabled={isRefundSubmitting}
+            >
+              {isRefundSubmitting
+                ? t("common.processing")
+                : t("gabinet.payments.credit.refundConfirm")}
             </Button>
           </DialogFooter>
         </DialogContent>

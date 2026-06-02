@@ -85,10 +85,27 @@ function CompanyDetail() {
   const removeScheduledActivity = useAction(api.scheduledActivities.remove);
   const setCustomFields = useAction(api.customFields.setValues);
   const trackView = useAction(api.recentlyViewed.track);
+  const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
 
   const { data: currentUser } = useQuery(
     convexQuery(api.app.getCurrentUser, {})
   );
+
+  const { data: companyDocuments } = useQuery({
+    queryKey: [
+      "documents.documents.listByEntity",
+      organizationId,
+      "company",
+      companyId,
+    ],
+    queryFn: () =>
+      listDocumentsByEntity({
+        organizationId,
+        entityType: "company",
+        entityId: companyId,
+      }),
+    enabled: !!organizationId && !!companyId,
+  });
 
   const { data: activityTypeDefs } = useSupabaseActivityTypesList(organizationId);
 
@@ -920,6 +937,7 @@ function CompanyDetail() {
           },
           {
             label: t('detail.tabs.documents'),
+            count: companyDocuments?.length ?? 0,
             content: (
               <EntityDocumentsTab
                 entityType="company"

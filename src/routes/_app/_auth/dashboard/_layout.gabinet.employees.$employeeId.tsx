@@ -113,6 +113,7 @@ function EmployeeDetail() {
   const saveSchedulePeriod = useAction(api.gabinet.scheduling.saveSchedulePeriod);
   const removeSchedulePeriod = useAction(api.gabinet.scheduling.removeSchedulePeriod);
   const trackView = useAction(api.recentlyViewed.track);
+  const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
 
   // Supabase cache invalidation helpers
   const invalidateEmployeeCache = () => {
@@ -205,6 +206,22 @@ function EmployeeDetail() {
         employeeId: (employee?.userId ?? "") as string,
       }),
     enabled: !!employee?.userId,
+  });
+
+  const { data: employeeDocuments } = useQuery({
+    queryKey: [
+      "documents.documents.listByEntity",
+      organizationId,
+      "employee",
+      employeeId,
+    ],
+    queryFn: () =>
+      listDocumentsByEntity({
+        organizationId,
+        entityType: "employee",
+        entityId: employeeId,
+      }),
+    enabled: !!organizationId && !!employeeId,
   });
 
   // Employee schedule (per-employee working hours)
@@ -675,6 +692,7 @@ function EmployeeDetail() {
     },
     {
       label: t("gabinet.employees.tabs.documents", "Dokumenty"),
+      count: employeeDocuments?.length ?? 0,
       content: (
         <EntityDocumentsTab
           entityType="employee"

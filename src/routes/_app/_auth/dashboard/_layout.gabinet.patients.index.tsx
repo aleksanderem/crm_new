@@ -31,6 +31,7 @@ import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 import { formatPhoneNumber } from "@/lib/phone";
+import { formatBirthDate } from "@/lib/format-date";
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { Label } from "@/components/ui/label";
@@ -307,7 +308,7 @@ function PatientsIndex() {
         id: "dateOfBirth",
         label: t("gabinet.patients.dateOfBirth"),
         sortable: true,
-        render: (item) => item.dateOfBirth ?? "—",
+        render: (item) => (item.dateOfBirth ? formatBirthDate(item.dateOfBirth) : "—"),
         getSortValue: (item) => item.dateOfBirth ?? "",
       },
       {

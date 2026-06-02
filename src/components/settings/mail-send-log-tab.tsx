@@ -70,8 +70,6 @@ export function MailSendLogTab({ organizationId }: MailSendLogTabProps) {
   const [endDate, setEndDate] = useState("");
 
   const { data: entries } = useQuery(
-    // @ts-ignore TS2589: deep instantiation in Convex codegen — same pattern
-    // as other settings routes that already work around this.
     convexQuery(api.emailSendLog.list, {
       organizationId,
       limit: 200,

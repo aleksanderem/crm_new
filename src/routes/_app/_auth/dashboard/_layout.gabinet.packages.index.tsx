@@ -260,24 +260,24 @@ function PackagesIndex() {
           organizationId,
           packageId: editingId,
           name,
-          description: description || undefined,
+          description: description || null,
           treatments: treatmentsList,
           totalPrice: parseFloat(totalPrice),
-          validityDays: validityDays ? parseInt(validityDays) : undefined,
-          discountPercent: discountPercent ? parseFloat(discountPercent) : undefined,
-          loyaltyPointsAwarded: loyaltyPoints ? parseInt(loyaltyPoints) : undefined,
+          validityDays: validityDays ? parseInt(validityDays) : null,
+          discountPercent: discountPercent ? parseFloat(discountPercent) : null,
+          loyaltyPointsAwarded: loyaltyPoints ? parseInt(loyaltyPoints) : null,
         });
         toast.success(t("common.saved"));
       } else {
         await createPkg({
           organizationId,
           name,
-          description: description || undefined,
+          description: description || null,
           treatments: treatmentsList,
           totalPrice: parseFloat(totalPrice),
-          validityDays: validityDays ? parseInt(validityDays) : undefined,
-          discountPercent: discountPercent ? parseFloat(discountPercent) : undefined,
-          loyaltyPointsAwarded: loyaltyPoints ? parseInt(loyaltyPoints) : undefined,
+          validityDays: validityDays ? parseInt(validityDays) : null,
+          discountPercent: discountPercent ? parseFloat(discountPercent) : null,
+          loyaltyPointsAwarded: loyaltyPoints ? parseInt(loyaltyPoints) : null,
         });
         toast.success(t("gabinet.packages.created"));
       }

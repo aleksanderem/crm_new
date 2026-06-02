@@ -114,16 +114,16 @@ export const create = action({
   args: {
     organizationId: v.id("organizations"),
     name: v.string(),
-    description: v.optional(v.string()),
+    description: v.optional(v.union(v.string(), v.null())),
     treatments: v.array(v.object({
       treatmentId: v.string(),
       quantity: v.number(),
     })),
     totalPrice: v.number(),
-    currency: v.optional(v.string()),
-    discountPercent: v.optional(v.number()),
-    validityDays: v.optional(v.number()),
-    loyaltyPointsAwarded: v.optional(v.number()),
+    currency: v.optional(v.union(v.string(), v.null())),
+    discountPercent: v.optional(v.union(v.number(), v.null())),
+    validityDays: v.optional(v.union(v.number(), v.null())),
+    loyaltyPointsAwarded: v.optional(v.union(v.number(), v.null())),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runQuery(
@@ -194,16 +194,16 @@ export const update = action({
     organizationId: v.id("organizations"),
     packageId: v.string(),
     name: v.optional(v.string()),
-    description: v.optional(v.string()),
+    description: v.optional(v.union(v.string(), v.null())),
     treatments: v.optional(v.array(v.object({
       treatmentId: v.string(),
       quantity: v.number(),
     }))),
     totalPrice: v.optional(v.number()),
-    currency: v.optional(v.string()),
-    discountPercent: v.optional(v.number()),
-    validityDays: v.optional(v.number()),
-    loyaltyPointsAwarded: v.optional(v.number()),
+    currency: v.optional(v.union(v.string(), v.null())),
+    discountPercent: v.optional(v.union(v.number(), v.null())),
+    validityDays: v.optional(v.union(v.number(), v.null())),
+    loyaltyPointsAwarded: v.optional(v.union(v.number(), v.null())),
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {

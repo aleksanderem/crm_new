@@ -177,7 +177,9 @@ export const sendReminder = internalMutation({
       });
     }
 
-    // Send appointment.reminder email if patient has email
+    // Send appointment reminder email if patient has email.
+    // Pick the event type that matches the configured lead time so it
+    // resolves against the seeded gabinet.appointment.reminder_* bindings.
     if (patient?.email) {
       // appointment.employeeId references users(id), not gabinetEmployees(id),
       // so query the gabinet profile by userId and fall back to the linked user.
@@ -197,13 +199,28 @@ export const sendReminder = internalMutation({
         (employeeFullName.length > 0 ? employeeFullName : undefined) ??
         (employeeUser?.email as string | undefined) ??
         "Specjalista";
+
+      const appointmentMs = new Date(
+        `${appointment.date}T${appointment.startTime}:00`,
+      ).getTime();
+      const reminderHoursAhead = Math.round(
+        (appointmentMs - (reminder.scheduledFor as number)) / (60 * 60 * 1000),
+      );
+      const reminderEventType =
+        reminderHoursAhead === 24
+          ? "gabinet.appointment.reminder_24h"
+          : reminderHoursAhead === 1
+            ? "gabinet.appointment.reminder_1h"
+            : "gabinet.appointment.reminder_custom";
+
       await ctx.runMutation(internal.emailEventTrigger.triggerEmailEvent, {
         organizationId: reminder.organizationId as Id<"organizations">,
-        eventType: "appointment.reminder",
+        eventType: reminderEventType,
         recipientEmail: patient.email as string,
         recipientName: patientName,
         payload: JSON.stringify({
           patientName,
+          patientEmail: patient.email as string,
           appointmentDate: appointment.date,
           appointmentTime: appointment.startTime,
           treatmentName,

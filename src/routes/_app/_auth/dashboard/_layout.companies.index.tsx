@@ -300,19 +300,19 @@ function CompaniesIndex() {
     async (
       formData: {
         name: string;
-        domain?: string;
-        industry?: string;
-        size?: string;
-        website?: string;
-        phone?: string;
+        domain?: string | null;
+        industry?: string | null;
+        size?: string | null;
+        website?: string | null;
+        phone?: string | null;
         address?: {
           street?: string;
           city?: string;
           state?: string;
           zip?: string;
           country?: string;
-        };
-        notes?: string;
+        } | null;
+        notes?: string | null;
       },
       customFieldRecord: Record<string, unknown>
     ) => {

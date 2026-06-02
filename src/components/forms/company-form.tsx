@@ -66,21 +66,21 @@ interface CompanyFormProps {
   onSubmit: (
     data: {
       name: string;
-      domain?: string;
-      industry?: string;
-      size?: string;
-      website?: string;
-      phone?: string;
+      domain?: string | null;
+      industry?: string | null;
+      size?: string | null;
+      website?: string | null;
+      phone?: string | null;
       address?: {
         street?: string;
         city?: string;
         state?: string;
         zip?: string;
         country?: string;
-      };
-      notes?: string;
+      } | null;
+      notes?: string | null;
       tagIds?: Id<"tagDefinitions">[];
-      categoryId?: Id<"categoryDefinitions">;
+      categoryId?: Id<"categoryDefinitions"> | null;
     },
     customFields: Record<string, unknown>
   ) => void;
@@ -127,11 +127,11 @@ export function CompanyForm({
     onSubmit(
       {
         name,
-        domain: domain || undefined,
-        industry: industry || undefined,
-        size: size || undefined,
-        website: website || undefined,
-        phone: phone || undefined,
+        domain: domain || null,
+        industry: industry || null,
+        size: size || null,
+        website: website || null,
+        phone: phone || null,
         address: hasAddress
           ? {
               street: street || undefined,
@@ -140,10 +140,10 @@ export function CompanyForm({
               zip: zip || undefined,
               country: country || undefined,
             }
-          : undefined,
-        notes: notes || undefined,
+          : null,
+        notes: notes || null,
         tagIds: tagIds.length > 0 ? tagIds : undefined,
-        categoryId: categoryId || undefined,
+        categoryId: categoryId || null,
       },
       customFields
     );

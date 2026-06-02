@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
@@ -91,6 +91,7 @@ function PatientDetail() {
   const removePatient = useAction(api.gabinet.patients.remove);
   const updatePaymentAction = useAction(api.payments.update);
   const trackView = useAction(api.recentlyViewed.track);
+  const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
   const queryClient = useQueryClient();
 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
@@ -159,6 +160,22 @@ function PatientDetail() {
   const { data: treatmentPackages } = useSupabaseGabinetTreatmentPackagesList(
     organizationId,
   );
+
+  const { data: patientDocuments } = useQuery({
+    queryKey: [
+      "documents.documents.listByEntity",
+      organizationId,
+      "patient",
+      patientId,
+    ],
+    queryFn: () =>
+      listDocumentsByEntity({
+        organizationId,
+        entityType: "patient",
+        entityId: patientId,
+      }),
+    enabled: !!organizationId && !!patientId,
+  });
 
   const getPaymentForLabel = (payment: {
     appointmentId?: string;
@@ -997,6 +1014,7 @@ function PatientDetail() {
     },
     {
       label: t("gabinet.patients.tabs.documents"),
+      count: patientDocuments?.length ?? 0,
       content: (
         <EntityDocumentsTab
           entityType="patient"

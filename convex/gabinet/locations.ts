@@ -211,8 +211,8 @@ export const createRoom = action({
     organizationId: v.id("organizations"),
     locationId: v.string(),
     name: v.string(),
-    description: v.optional(v.string()),
-    floor: v.optional(v.string()),
+    description: v.optional(v.union(v.string(), v.null())),
+    floor: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     await ctx.runQuery(
@@ -252,8 +252,8 @@ export const updateRoom = action({
     organizationId: v.id("organizations"),
     roomId: v.string(),
     name: v.optional(v.string()),
-    description: v.optional(v.string()),
-    floor: v.optional(v.string()),
+    description: v.optional(v.union(v.string(), v.null())),
+    floor: v.optional(v.union(v.string(), v.null())),
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {

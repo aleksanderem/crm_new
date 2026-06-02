@@ -196,7 +196,7 @@ function LocationCard({
         organizationId,
         locationId,
         name: newRoomName.trim(),
-        floor: newRoomFloor.trim() || undefined,
+        floor: newRoomFloor.trim() || null,
       });
       toast.success(t("common.saved"));
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetRooms.list(organizationId) });

@@ -5,6 +5,7 @@ import { internalAction } from "../_generated/server";
 import { createMailgunAdapter } from "./adapters/mailgun";
 import { createGoogleAdapter } from "./adapters/google";
 import { createMicrosoftAdapter } from "./adapters/microsoft";
+import { createResendAdapter } from "./adapters/resend";
 import type { ConnectionTestResult } from "./adapter";
 
 export const runProviderTest = internalAction({
@@ -71,10 +72,15 @@ export const runProviderTest = internalAction({
           ? await adapter.testConnection()
           : { success: true, accountEmail: args.fromEmail };
       }
-      // Resend has no testConnection — check that API key is present
-      return args.apiConfig?.apiKey
-        ? { success: true, accountEmail: args.fromEmail }
-        : { success: false, error: "Missing API key" };
+      // Resend: probe API to verify key validity
+      const resend = createResendAdapter(
+        args.apiConfig?.apiKey ?? "",
+        args.fromEmail,
+        args.fromName,
+      );
+      return resend.testConnection
+        ? await resend.testConnection()
+        : { success: false, error: "testConnection not available" };
     } catch (err) {
       return { success: false, error: String(err) };
     }

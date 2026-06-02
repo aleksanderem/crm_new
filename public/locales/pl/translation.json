@@ -864,6 +864,8 @@
       "connectGoogle": "Połącz z Google",
       "connectMicrosoft": "Połącz z Microsoft",
       "testConnection": "Testuj połączenie",
+      "testSuccess": "Połączenie działa poprawnie",
+      "testFailed": "Test połączenia nie powiódł się",
       "form": {
         "name": "Nazwa dostawcy",
         "fromName": "Nazwa nadawcy",

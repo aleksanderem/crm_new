@@ -851,6 +851,8 @@
       "connectGoogle": "Connect with Google",
       "connectMicrosoft": "Connect with Microsoft",
       "testConnection": "Test connection",
+      "testSuccess": "Connection works",
+      "testFailed": "Connection test failed",
       "form": {
         "name": "Provider name",
         "fromName": "Sender name",

@@ -1288,28 +1288,31 @@ export const update = action({
     internalNotes: v.optional(v.union(v.string(), v.null())),
     color: v.optional(v.union(v.string(), v.null())),
     employeeId: v.optional(v.string()),
-    treatmentId: v.optional(v.string()),
-    packageUsageId: v.optional(v.string()),
+    treatmentId: v.optional(v.union(v.string(), v.null())),
+    packageUsageId: v.optional(v.union(v.string(), v.null())),
     status: v.optional(gabinetAppointmentStatusValidator),
     cancellationReason: v.optional(v.union(v.string(), v.null())),
-    bodyChartData: v.optional(v.string()),
+    bodyChartData: v.optional(v.union(v.string(), v.null())),
     treatmentParameterValues: v.optional(v.union(v.string(), v.null())),
     interviewNotes: v.optional(v.union(v.string(), v.null())),
     clinicalRemarks: v.optional(v.union(v.string(), v.null())),
     locationId: v.optional(v.union(v.string(), v.null())),
     roomId: v.optional(v.union(v.string(), v.null())),
     photos: v.optional(
-      v.array(
-        v.object({
-          storageId: v.string(),
-          type: v.union(v.literal("before"), v.literal("after")),
-          caption: v.optional(v.string()),
-          uploadedAt: v.number(),
-        }),
+      v.union(
+        v.array(
+          v.object({
+            storageId: v.string(),
+            type: v.union(v.literal("before"), v.literal("after")),
+            caption: v.optional(v.string()),
+            uploadedAt: v.number(),
+          }),
+        ),
+        v.null(),
       ),
     ),
-    tagIds: v.optional(v.array(v.string())),
-    categoryId: v.optional(v.string()),
+    tagIds: v.optional(v.union(v.array(v.string()), v.null())),
+    categoryId: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     // --- Auth + permissions (via internal queries) ---

@@ -20,6 +20,12 @@ interface CalendarMonthViewProps {
   leaveDates?: Set<string>;
   /** Dates with at least one non-cancelled appointment whose prepayment is required but unpaid. */
   paymentDueDates?: Set<string>;
+  /**
+   * Dates carrying at least one patient's next unpaid visit whose available
+   * credit balance > 0 — drives a small "Saldo" dot so users can spot
+   * carry-forward credit at a glance (issue #1286).
+   */
+  creditDates?: Set<string>;
 }
 
 function getMonthGrid(year: number, month: number): (string | null)[][] {
@@ -59,7 +65,7 @@ const DAY_LABEL_DEFAULTS: Record<(typeof DAY_LABEL_KEYS)[number], string> = {
   sun: "Nd",
 };
 
-export function CalendarMonthView({ year, month, appointments, onDayClick, selectedDate, leaveDates, paymentDueDates }: CalendarMonthViewProps) {
+export function CalendarMonthView({ year, month, appointments, onDayClick, selectedDate, leaveDates, paymentDueDates, creditDates }: CalendarMonthViewProps) {
   const { t } = useTranslation();
   const grid = useMemo(() => getMonthGrid(year, month), [year, month]);
   const now = new Date();
@@ -99,6 +105,7 @@ export function CalendarMonthView({ year, month, appointments, onDayClick, selec
           const isToday = date === today;
           const isLeave = leaveDates?.has(date) ?? false;
           const hasPaymentDue = paymentDueDates?.has(date) ?? false;
+          const hasCredit = creditDates?.has(date) ?? false;
 
           return (
             <div
@@ -124,7 +131,7 @@ export function CalendarMonthView({ year, month, appointments, onDayClick, selec
                   </span>
                 </div>
               )}
-              {(count > 0 || hasPaymentDue) && (
+              {(count > 0 || hasPaymentDue || hasCredit) && (
                 <div className="mt-0.5 flex flex-wrap items-center gap-1">
                   {count > 0 && (
                     <span className="inline-flex items-center rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
@@ -142,6 +149,19 @@ export function CalendarMonthView({ year, month, appointments, onDayClick, selec
                       className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-amber-500 px-0.5 text-[10px] font-bold leading-none text-white"
                     >
                       $
+                    </span>
+                  )}
+                  {hasCredit && (
+                    <span
+                      title={t("gabinet.calendar.indicators.credit", {
+                        defaultValue: "Pacjent ma saldo do wykorzystania",
+                      })}
+                      aria-label={t("gabinet.calendar.indicators.credit", {
+                        defaultValue: "Pacjent ma saldo do wykorzystania",
+                      })}
+                      className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-indigo-500 px-0.5 text-[10px] font-bold leading-none text-white"
+                    >
+                      +
                     </span>
                   )}
                 </div>

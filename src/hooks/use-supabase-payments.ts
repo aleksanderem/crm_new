@@ -11,6 +11,73 @@ import {
 } from "@/lib/supabase/mappers/payments";
 
 // ---------------------------------------------------------------------------
+// Patient Credit Balances (bulk)
+// ---------------------------------------------------------------------------
+
+/**
+ * For a given set of patient IDs, returns each patient's available credit
+ * balance derived from the payments ledger (issue #1059):
+ *   balance = SUM(coalesce(credit_earned, 0) - coalesce(credit_applied, 0))
+ * over completed payments. Returned map only contains patients with a strictly
+ * positive balance — patients with zero or negative balance are omitted so the
+ * caller can `has()` to drive an indicator.
+ *
+ * Powers the calendar's "Saldo +X" tile indicator (issue #1286).
+ */
+export function useSupabaseGabinetPatientCreditBalances(
+  organizationId: string,
+  patientIds: string[],
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  const stableIds = [...patientIds].sort();
+
+  return useQuery<Map<string, number>, Error>({
+    queryKey: [
+      ...supabaseKeys.payments.list(organizationId),
+      "creditBalancesByPatient",
+      stableIds.join(","),
+    ],
+    queryFn: async (): Promise<Map<string, number>> => {
+      const result = new Map<string, number>();
+      if (!client) throw new Error("Supabase client not ready");
+      if (stableIds.length === 0) return result;
+
+      const { data, error } = await client
+        .from("payments")
+        .select("patient_id, credit_earned, credit_applied")
+        .eq("organization_id", organizationId)
+        .eq("status", "completed")
+        .in("patient_id", stableIds);
+
+      if (error) throw error;
+
+      const sums = new Map<string, number>();
+      for (const row of (data ?? []) as {
+        patient_id: string | null;
+        credit_earned: number | null;
+        credit_applied: number | null;
+      }[]) {
+        if (!row.patient_id) continue;
+        const delta =
+          (Number(row.credit_earned) || 0) -
+          (Number(row.credit_applied) || 0);
+        sums.set(row.patient_id, (sums.get(row.patient_id) ?? 0) + delta);
+      }
+      for (const [pid, bal] of sums) {
+        const rounded = Math.round(bal * 100) / 100;
+        if (rounded > 0) result.set(pid, rounded);
+      }
+      return result;
+    },
+    enabled:
+      enabled && isReady && !!organizationId && stableIds.length > 0,
+  } satisfies UseQueryOptions<Map<string, number>, Error>);
+}
+
+// ---------------------------------------------------------------------------
 // Payments by Patient
 // ---------------------------------------------------------------------------
 

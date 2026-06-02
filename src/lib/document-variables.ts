@@ -26,8 +26,10 @@ export interface VariableField {
 export const VARIABLE_REGISTRY: Record<string, VariableField[]> = {
   common: [
     { path: "organization.name", label: "Nazwa organizacji", labelEn: "Organization name", category: "organization" },
-    { path: "system.today", label: "Dzisiejsza data", labelEn: "Today's date", category: "system" },
+    { path: "system.date", label: "Dzisiejsza data", labelEn: "Today's date", category: "system" },
     { path: "system.date_pl", label: "Data (format PL)", labelEn: "Date (PL format)", category: "system" },
+    { path: "system.time", label: "Aktualny czas", labelEn: "Current time", category: "system" },
+    { path: "system.year", label: "Rok", labelEn: "Year", category: "system" },
   ],
   contact: [
     { path: "contact.firstName", label: "Imię kontaktu", labelEn: "Contact first name", category: "contact" },

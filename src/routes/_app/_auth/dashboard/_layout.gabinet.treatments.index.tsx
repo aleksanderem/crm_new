@@ -375,7 +375,7 @@ function TreatmentsIndex() {
             treatmentId: editingTreatment._id as Id<"gabinetTreatments">,
             ...formData,
             tagIds,
-            categoryId,
+            categoryId: categoryId ?? null,
           });
         } else {
           await createTreatment({

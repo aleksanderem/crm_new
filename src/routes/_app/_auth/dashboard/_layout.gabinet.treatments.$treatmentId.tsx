@@ -399,7 +399,7 @@ function TreatmentDetail() {
         organizationId,
         treatmentId: treatmentId as Id<"gabinetTreatments">,
         ...formData,
-        categoryId: editCategoryId,
+        categoryId: editCategoryId ?? null,
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.detail(organizationId, treatmentId) });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(organizationId) });

@@ -34,7 +34,7 @@ import type { Id } from "@cvx/_generated/dataModel";
 
 export interface TreatmentFormData {
   name: string;
-  description?: string;
+  description?: string | null;
   duration: number;
   price: number;
   currency?: string;
@@ -42,11 +42,11 @@ export interface TreatmentFormData {
   taxExempt?: boolean;
   requiredEquipment?: string[];
   requiredEquipmentIds?: Id<"gabinetEquipment">[];
-  contraindications?: string;
-  preparationInstructions?: string;
-  aftercareInstructions?: string;
+  contraindications?: string | null;
+  preparationInstructions?: string | null;
+  aftercareInstructions?: string | null;
   requiresApproval?: boolean;
-  color?: string;
+  color?: string | null;
   treatmentCount?: number;
 }
 
@@ -204,18 +204,18 @@ export function TreatmentForm({
 
     onSubmit({
       name,
-      description: description || undefined,
+      description: description || null,
       duration: parseInt(duration) || 30,
       price: parseFloat(price.replace(",", ".")) || 0,
       currency: currency || undefined,
       taxRate: numericTaxRate,
       taxExempt: isExempt ? true : false,
       requiredEquipmentIds: selectedEquipmentIds.length > 0 ? selectedEquipmentIds : undefined,
-      contraindications: contraindications || undefined,
-      preparationInstructions: preparationInstructions || undefined,
-      aftercareInstructions: aftercareInstructions || undefined,
+      contraindications: contraindications || null,
+      preparationInstructions: preparationInstructions || null,
+      aftercareInstructions: aftercareInstructions || null,
       requiresApproval: requiresApproval || undefined,
-      color: color || undefined,
+      color: color || null,
       treatmentCount:
         isPackage && parseInt(treatmentCount) > 1
           ? parseInt(treatmentCount)

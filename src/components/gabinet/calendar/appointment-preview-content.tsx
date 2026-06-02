@@ -519,7 +519,7 @@ export function AppointmentPreviewContent({
           args.startTime = startTime;
         if (endTime !== appointment.endTime.slice(0, 5)) args.endTime = endTime;
         if (internalNotes !== (appointment.internalNotes ?? ""))
-          args.internalNotes = internalNotes;
+          args.internalNotes = internalNotes || null;
         if (treatmentId && treatmentId !== initialTreatmentId)
           args.treatmentId = treatmentId;
         if (tagsDirty) args.tagIds = tagIds.map((id) => String(id));

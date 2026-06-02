@@ -180,7 +180,7 @@ export function DocumentationTab({
       await updateAppointment({
         organizationId,
         appointmentId,
-        interviewNotes: interview || undefined,
+        interviewNotes: interview || null,
       });
       toast.success(t("common.saved"));
       await onChanged?.();
@@ -208,7 +208,7 @@ export function DocumentationTab({
       await updateAppointment({
         organizationId,
         appointmentId,
-        clinicalRemarks: remarks || undefined,
+        clinicalRemarks: remarks || null,
       });
       toast.success(t("common.saved"));
       await onChanged?.();

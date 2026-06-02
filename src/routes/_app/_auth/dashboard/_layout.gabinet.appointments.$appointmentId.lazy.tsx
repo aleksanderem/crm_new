@@ -912,7 +912,7 @@ function AppointmentDetail() {
       await updateAppointment({
         organizationId,
         appointmentId: appointment._id,
-        internalNotes: internalNotes.trim() || undefined,
+        internalNotes: internalNotes.trim() || null,
       });
       toast.success(t("common.saved"));
       refetch();
@@ -947,10 +947,10 @@ function AppointmentDetail() {
       if (editStartTime && editStartTime !== currentStart) args.startTime = editStartTime;
       if (editEndTime && editEndTime !== currentEnd) args.endTime = editEndTime;
       if (editLocationId !== currentLocation) {
-        args.locationId = editLocationId || undefined;
+        args.locationId = editLocationId || null;
       }
       if (editRoomId !== currentRoom) {
-        args.roomId = editRoomId || undefined;
+        args.roomId = editRoomId || null;
       }
 
       await updateAppointment(args);

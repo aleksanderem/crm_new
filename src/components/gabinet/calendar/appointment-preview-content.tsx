@@ -613,48 +613,63 @@ export function AppointmentPreviewContent({
     setSettleDialogOpen(true);
   };
 
+  // Credit applied + overpayment derivation. Credit can stack with split
+  // payment (issue #1288): credit reduces outstanding first, the two split
+  // amounts cover the remainder.
+  const parsedSettleAmount =
+    parseFloat(settleAmount.replace(",", ".")) || 0;
+  const parsedCreditAmount =
+    parseFloat(settleCreditAmount.replace(",", ".")) || 0;
+  const creditMaxApplicable = Math.min(patientCreditBalance, outstanding);
+  const creditApplied =
+    settleUseCredit && parsedCreditAmount > 0
+      ? Math.min(parsedCreditAmount, creditMaxApplicable)
+      : 0;
+  const creditApplyExceedsBalance =
+    settleUseCredit && parsedCreditAmount > patientCreditBalance + 0.005;
+
   const parsedFirstSplitAmount =
     parseFloat(settleFirstSplitAmount.replace(",", ".")) || 0;
   const parsedSecondSplitAmount =
     parseFloat(settleSecondSplitAmount.replace(",", ".")) || 0;
   const splitTotal =
     Math.round((parsedFirstSplitAmount + parsedSecondSplitAmount) * 100) / 100;
-  const splitExpectedTotal = Math.round(outstanding * 100) / 100;
+  // Credit reduces what the two methods need to cover.
+  const splitExpectedTotal =
+    Math.round(Math.max(0, outstanding - creditApplied) * 100) / 100;
   const splitMismatch =
     settleSplitPayment && splitTotal !== splitExpectedTotal;
+  // When credit covers the entire visit, no split amounts are required —
+  // the visit will be settled by a credit-only payment row.
   const splitMissingAmount =
     settleSplitPayment &&
+    splitExpectedTotal > 0 &&
     parsedFirstSplitAmount <= 0 &&
     parsedSecondSplitAmount <= 0;
+  // Methods only need to differ when both split rows are actually used.
   const splitSameMethod =
-    settleSplitPayment && settleFirstSplitMethod === settleSecondSplitMethod;
+    settleSplitPayment &&
+    parsedFirstSplitAmount > 0 &&
+    parsedSecondSplitAmount > 0 &&
+    settleFirstSplitMethod === settleSecondSplitMethod;
 
-  // Credit applied + overpayment derivation. Only active on the non-split path:
-  // split payment + credit is out of scope for #1059.
-  const parsedSettleAmount =
-    parseFloat(settleAmount.replace(",", ".")) || 0;
-  const parsedCreditAmount =
-    parseFloat(settleCreditAmount.replace(",", ".")) || 0;
-  const creditMaxApplicable = !settleSplitPayment
-    ? Math.min(patientCreditBalance, outstanding)
+  const overpaymentAmount = !settleSplitPayment
+    ? Math.max(0, parsedSettleAmount + creditApplied - outstanding)
     : 0;
-  const creditApplied =
-    !settleSplitPayment && settleUseCredit && parsedCreditAmount > 0
-      ? Math.min(parsedCreditAmount, creditMaxApplicable)
-      : 0;
-  const creditApplyExceedsBalance =
-    !settleSplitPayment &&
-    settleUseCredit &&
-    parsedCreditAmount > patientCreditBalance + 0.005;
-  const overpaymentAmount =
-    !settleSplitPayment
-      ? Math.max(0, parsedSettleAmount + creditApplied - outstanding)
-      : 0;
 
   const handleConfirmSettle = async () => {
     if (settleSubmitting) return;
     const parsedAmount = parseFloat(settleAmount.replace(",", "."));
     const hasAmount = settleAmount.trim().length > 0 && !isNaN(parsedAmount);
+    if (creditApplyExceedsBalance) {
+      toast.error(
+        t("gabinet.payments.creditExceedsBalance", {
+          defaultValue:
+            "Kwota użytego salda nadpłat przekracza dostępne środki.",
+        }),
+      );
+      return;
+    }
     if (settleSplitPayment) {
       if (splitMissingAmount) {
         toast.error(
@@ -688,15 +703,6 @@ export function AppointmentPreviewContent({
         toast.error(t("gabinet.payments.amountRequired"));
         return;
       }
-      if (creditApplyExceedsBalance) {
-        toast.error(
-          t("gabinet.payments.creditExceedsBalance", {
-            defaultValue:
-              "Kwota użytego salda nadpłat przekracza dostępne środki.",
-          }),
-        );
-        return;
-      }
       if (!hasAmount && creditApplied <= 0 && !settleMarkCompleted) {
         toast.error(
           t("gabinet.appointmentDetail.settleNothingToDo", {
@@ -726,21 +732,41 @@ export function AppointmentPreviewContent({
             method: settleSecondSplitMethod,
             amount: parsedSecondSplitAmount,
           });
-        for (const part of parts) {
-          const baseNote = settleNotes.trim();
-          const splitNote = `split: ${part.method}`;
-          const combinedNote = baseNote
-            ? `${baseNote} (${splitNote})`
-            : splitNote;
+        if (parts.length === 0 && creditApplied > 0) {
+          // Credit covers the whole visit: record a credit-only ledger row
+          // so the visit is settled without a cash/card payment.
           await createPaymentAction({
             organizationId,
             patientId: patient._id,
             appointmentId: appointment._id,
-            amount: part.amount,
+            amount: 0,
             currency: "PLN",
-            paymentMethod: part.method,
-            notes: combinedNote,
+            paymentMethod: settleFirstSplitMethod,
+            notes: settleNotes.trim() || undefined,
+            creditApplied,
           });
+        } else {
+          for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            const baseNote = settleNotes.trim();
+            const splitNote = `split: ${part.method}`;
+            const combinedNote = baseNote
+              ? `${baseNote} (${splitNote})`
+              : splitNote;
+            await createPaymentAction({
+              organizationId,
+              patientId: patient._id,
+              appointmentId: appointment._id,
+              amount: part.amount,
+              currency: "PLN",
+              paymentMethod: part.method,
+              notes: combinedNote,
+              // Attach credit to the first positive split row only — the
+              // backend ledger entry on that row drains the patient's
+              // balance for the whole settle action.
+              ...(i === 0 && creditApplied > 0 ? { creditApplied } : {}),
+            });
+          }
         }
       } else if (
         patient?._id &&
@@ -1427,7 +1453,7 @@ export function AppointmentPreviewContent({
             </div>
           )}
 
-          {!settleSplitPayment && patient?._id && patientCreditBalance > 0 && (
+          {patient?._id && patientCreditBalance > 0 && (
             <div className="space-y-2 rounded-md border border-emerald-200 bg-emerald-50 p-2.5 dark:border-emerald-900 dark:bg-emerald-950/30">
               <div className="flex items-start gap-2">
                 <Checkbox
@@ -1444,15 +1470,19 @@ export function AppointmentPreviewContent({
                       setSettleCreditAmount(
                         def > 0 ? def.toFixed(2) : "",
                       );
-                      const remaining = Math.max(0, outstanding - def);
-                      setSettleAmount(
-                        remaining > 0 ? remaining.toFixed(2) : "",
-                      );
+                      if (!settleSplitPayment) {
+                        const remaining = Math.max(0, outstanding - def);
+                        setSettleAmount(
+                          remaining > 0 ? remaining.toFixed(2) : "",
+                        );
+                      }
                     } else {
                       setSettleCreditAmount("");
-                      setSettleAmount(
-                        outstanding > 0 ? outstanding.toFixed(2) : "",
-                      );
+                      if (!settleSplitPayment) {
+                        setSettleAmount(
+                          outstanding > 0 ? outstanding.toFixed(2) : "",
+                        );
+                      }
                     }
                   }}
                 />
@@ -1707,6 +1737,7 @@ export function AppointmentPreviewContent({
               onClick={handleConfirmSettle}
               disabled={
                 settleSubmitting ||
+                creditApplyExceedsBalance ||
                 (settleSplitPayment &&
                   (splitMissingAmount || splitMismatch || splitSameMethod))
               }

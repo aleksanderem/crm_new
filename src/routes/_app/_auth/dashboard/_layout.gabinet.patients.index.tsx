@@ -365,16 +365,16 @@ function PatientsIndex() {
       lastName: string;
       email: string;
       phone?: string;
-      pesel?: string;
-      dateOfBirth?: string;
+      pesel?: string | null;
+      dateOfBirth?: string | null;
       gender?: "male" | "female" | "other";
-      address?: { street?: string; city?: string; postalCode?: string };
-      medicalNotes?: string;
-      allergies?: string;
-      bloodType?: string;
-      emergencyContactName?: string;
-      emergencyContactPhone?: string;
-      referralSource?: string;
+      address?: { street?: string; city?: string; postalCode?: string } | null;
+      medicalNotes?: string | null;
+      allergies?: string | null;
+      bloodType?: string | null;
+      emergencyContactName?: string | null;
+      emergencyContactPhone?: string | null;
+      referralSource?: string | null;
     }) => {
       setIsCreating(true);
       try {

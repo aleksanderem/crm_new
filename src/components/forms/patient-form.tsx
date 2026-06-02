@@ -40,20 +40,20 @@ interface PatientFormData {
   lastName: string;
   email: string;
   phone?: string;
-  pesel?: string;
-  dateOfBirth?: string;
+  pesel?: string | null;
+  dateOfBirth?: string | null;
   gender?: "male" | "female" | "other";
   address?: {
     street?: string;
     city?: string;
     postalCode?: string;
-  };
-  medicalNotes?: string;
-  allergies?: string;
-  bloodType?: string;
-  emergencyContactName?: string;
-  emergencyContactPhone?: string;
-  referralSource?: string;
+  } | null;
+  medicalNotes?: string | null;
+  allergies?: string | null;
+  bloodType?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  referralSource?: string | null;
   tagIds?: Id<"tagDefinitions">[];
   categoryId?: Id<"categoryDefinitions">;
 }
@@ -160,24 +160,24 @@ export function PatientForm({
     e.preventDefault();
     const address = street || city || postalCode
       ? { street: street || undefined, city: city || undefined, postalCode: postalCode || undefined }
-      : undefined;
+      : null;
 
-    const referralSource = referralSourceKey || undefined;
+    const referralSource = referralSourceKey || null;
 
     onSubmit({
       firstName,
       lastName,
       email,
       phone: phone || undefined,
-      pesel: pesel || undefined,
-      dateOfBirth: dateOfBirth || undefined,
+      pesel: pesel || null,
+      dateOfBirth: dateOfBirth || null,
       gender: (gender as "male" | "female" | "other") || undefined,
       address,
-      medicalNotes: medicalNotes || undefined,
-      allergies: allergies || undefined,
-      bloodType: bloodType || undefined,
-      emergencyContactName: emergencyContactName || undefined,
-      emergencyContactPhone: emergencyContactPhone || undefined,
+      medicalNotes: medicalNotes || null,
+      allergies: allergies || null,
+      bloodType: bloodType || null,
+      emergencyContactName: emergencyContactName || null,
+      emergencyContactPhone: emergencyContactPhone || null,
       referralSource,
       tagIds: tagIds.length > 0 ? tagIds : undefined,
       categoryId: categoryId || undefined,

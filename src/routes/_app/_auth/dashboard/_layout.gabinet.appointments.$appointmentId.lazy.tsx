@@ -1115,7 +1115,7 @@ function AppointmentDetail() {
         organizationId,
         appointmentId: appointment._id,
         bodyChartData:
-          bodyChartData.length > 0 ? JSON.stringify(bodyChartData) : undefined,
+          bodyChartData.length > 0 ? JSON.stringify(bodyChartData) : null,
       });
       toast.success(t("common.saved"));
       refetch();

@@ -166,6 +166,7 @@ function TreatmentDetail() {
   const getDetailedStatsAction = useAction(api.gabinet.treatments.getTreatmentDetailedStats);
   const listTreatmentAppointmentsAction = useAction(api.gabinet.treatments.listTreatmentAppointments);
   const getTreatmentEmployeesAction = useAction(api.gabinet.treatments.getTreatmentEmployees);
+  const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
 
   const { data: detailedStats } = useQuery({
     queryKey: ["gabinet.treatments.getTreatmentDetailedStats", organizationId, treatmentId],
@@ -203,6 +204,22 @@ function TreatmentDetail() {
       getTreatmentEmployeesAction({
         organizationId,
         treatmentId: treatmentId as string,
+      }),
+    enabled: !!organizationId && !!treatmentId,
+  });
+
+  const { data: treatmentDocuments } = useQuery({
+    queryKey: [
+      "documents.documents.listByEntity",
+      organizationId,
+      "treatment",
+      treatmentId,
+    ],
+    queryFn: () =>
+      listDocumentsByEntity({
+        organizationId,
+        entityType: "treatment",
+        entityId: treatmentId,
       }),
     enabled: !!organizationId && !!treatmentId,
   });
@@ -795,6 +812,7 @@ function TreatmentDetail() {
       },
       {
         label: t("gabinet.treatmentDetail.tabs.documents"),
+        count: treatmentDocuments?.length ?? 0,
         content: (
           <div className="space-y-6">
             <TreatmentRequiredDocuments

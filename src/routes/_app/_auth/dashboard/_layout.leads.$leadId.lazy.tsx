@@ -250,6 +250,23 @@ function LeadDetail() {
   const removeScheduledActivity = useAction(api.scheduledActivities.remove);
   const addProductToDeal = useAction(api.products.addToDeal);
   const removeProductFromDeal = useAction(api.products.removeFromDeal);
+  const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
+
+  const { data: leadDocuments } = useQuery({
+    queryKey: [
+      "documents.documents.listByEntity",
+      organizationId,
+      "lead",
+      leadId,
+    ],
+    queryFn: () =>
+      listDocumentsByEntity({
+        organizationId,
+        entityType: "lead",
+        entityId: leadId,
+      }),
+    enabled: !!organizationId && !!leadId,
+  });
 
   const { data: currentUser } = useQuery(
     convexQuery(api.app.getCurrentUser, {})
@@ -1297,6 +1314,7 @@ function LeadDetail() {
     },
     {
       label: t('detail.tabs.documents'),
+      count: leadDocuments?.length ?? 0,
       content: (
         <EntityDocumentsTab
           entityType="lead"

@@ -84,6 +84,7 @@ function ContactDetail() {
   const removeScheduledActivity = useAction(api.scheduledActivities.remove);
   const setCustomFields = useAction(api.customFields.setValues);
   const trackView = useAction(api.recentlyViewed.track);
+  const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
 
   const { data: currentUser } = useQuery(
     convexQuery(api.app.getCurrentUser, {})
@@ -187,6 +188,22 @@ function ContactDetail() {
     "contact",
     contactId,
   );
+
+  const { data: contactDocuments } = useQuery({
+    queryKey: [
+      "documents.documents.listByEntity",
+      organizationId,
+      "contact",
+      contactId,
+    ],
+    queryFn: () =>
+      listDocumentsByEntity({
+        organizationId,
+        entityType: "contact",
+        entityId: contactId,
+      }),
+    enabled: !!organizationId && !!contactId,
+  });
 
   const relationshipsQueryKey = [...supabaseKeys.objectRelationships.list(organizationId), "contact", contactId] as const;
   const relationshipsQuery = useSupabaseRelationshipsByEntity(
@@ -853,6 +870,7 @@ function ContactDetail() {
     },
     {
       label: t('detail.tabs.documents'),
+      count: contactDocuments?.length ?? 0,
       content: (
         <EntityDocumentsTab
           entityType="contact"

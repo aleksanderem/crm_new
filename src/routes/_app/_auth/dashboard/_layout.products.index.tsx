@@ -226,8 +226,8 @@ function ProductsPage() {
     const numericTaxRate = !isExempt
       ? Number.isFinite(parseFloat(taxRate))
         ? parseFloat(taxRate)
-        : undefined
-      : undefined;
+        : null
+      : null;
     const normalizedUnitPrice = unitPrice.replace(",", ".");
     try {
       if (editingProduct) {
@@ -239,9 +239,9 @@ function ProductsPage() {
           unitPrice: parseFloat(normalizedUnitPrice),
           taxRate: numericTaxRate,
           taxExempt: isExempt,
-          description: description.trim() || undefined,
+          description: description.trim() || null,
           tagIds,
-          categoryId,
+          categoryId: categoryId ?? null,
         });
       } else {
         await createProduct({
@@ -252,9 +252,9 @@ function ProductsPage() {
           taxRate: numericTaxRate,
           taxExempt: isExempt,
           isActive,
-          description: description.trim() || undefined,
+          description: description.trim() || null,
           tagIds,
-          categoryId,
+          categoryId: categoryId ?? null,
         });
       }
       setPanelOpen(false);

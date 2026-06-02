@@ -2228,6 +2228,7 @@
         "appointments": "Wizyty",
         "documents": "Dokumenty",
         "loyalty": "Lojalność",
+        "credit": "Saldo",
         "activity": "Aktywność"
       },
       "byDay": "Klienci wg dnia",
@@ -3288,7 +3289,27 @@
       "useCredit": "Użyj salda nadpłat",
       "creditAmountToApply": "Kwota z salda",
       "creditExceedsBalance": "Kwota użytego salda nadpłat przekracza dostępne środki.",
-      "overpaymentNote": "Nadpłata {{amount}} zostanie dopisana do salda klienta i można ją wykorzystać przy kolejnych wizytach."
+      "overpaymentNote": "Nadpłata {{amount}} zostanie dopisana do salda klienta i można ją wykorzystać przy kolejnych wizytach.",
+      "credit": {
+        "title": "Saldo nadpłat",
+        "description": "Nadpłaty są dopisywane do salda klienta i mogą zostać wykorzystane przy kolejnych wizytach.",
+        "available": "Dostępne saldo",
+        "noCredit": "Ten klient nie ma jeszcze historii nadpłat.",
+        "history": "Historia salda",
+        "earned": "Dopisano nadpłatę",
+        "applied": "Użyto salda przy wizycie",
+        "refund": "Zwrot gotówki",
+        "refundCredit": "Zwrot salda",
+        "refundDialogTitle": "Zwrot salda nadpłat klientowi",
+        "refundDialogDesc": "Wypłać klientowi część lub całość dostępnego salda nadpłat.",
+        "refundAmount": "Kwota zwrotu",
+        "refundMethod": "Forma zwrotu",
+        "refundNotes": "Notatka (opcjonalnie)",
+        "refundConfirm": "Potwierdź zwrot",
+        "refundSuccess": "Saldo zwrócone",
+        "refundExceeds": "Kwota zwrotu przekracza dostępne saldo.",
+        "adminOnly": "Tylko właściciele i administratorzy organizacji mogą zwracać saldo nadpłat."
+      }
     },
     "schedules": {
       "break": "Przerwa",

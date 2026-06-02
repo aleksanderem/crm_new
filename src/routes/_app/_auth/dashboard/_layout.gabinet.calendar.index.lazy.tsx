@@ -69,6 +69,7 @@ import { useSupabaseGabinetEmployeeSchedulesList } from "@/hooks/use-supabase-ga
 import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
 import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
 import { useSupabaseScheduledActivitiesByDateRange } from "@/hooks/use-supabase-scheduled-activities";
+import { useSupabaseGabinetPatientCreditBalances } from "@/hooks/use-supabase-payments";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
@@ -182,7 +183,8 @@ function GabinetCalendarPage() {
         | "count"
         | "paid"
         | "partial"
-        | "unpaid";
+        | "unpaid"
+        | "credit";
       label: string;
       title?: string;
     }>;
@@ -543,6 +545,69 @@ function GabinetCalendarPage() {
       indicatorLookupIds.appointmentIds,
     );
 
+  // Patient credit balances (only patients with balance > 0). Used to render
+  // the "Saldo +X" tile + month-day indicator on each patient's next unpaid
+  // visit (issue #1286). Carry-forward credit comes from #1059.
+  const { data: patientCreditBalances } =
+    useSupabaseGabinetPatientCreditBalances(
+      organizationId,
+      indicatorLookupIds.patientIds,
+    );
+
+  // For each patient with credit > 0, identify the appointment ID of their
+  // earliest non-cancelled, not-fully-paid visit in the visible range — that
+  // tile gets the "Saldo +X" badge. Only one appointment per patient is
+  // marked so the indicator unambiguously points at the next visit credit
+  // can be applied to (issue #1286).
+  const creditByAppointmentId = useMemo(() => {
+    const result = new Map<string, number>();
+    if (!rawAppointments || !patientCreditBalances || patientCreditBalances.size === 0) {
+      return result;
+    }
+    // Group candidate appointments per patient, sorted by (date, startTime).
+    const earliest = new Map<
+      string,
+      { id: string; date: string; startTime: string }
+    >();
+    for (const a of rawAppointments) {
+      if (a.status === "cancelled" || a.status === "no_show") continue;
+      const balance = patientCreditBalances.get(a.patientId);
+      if (!balance || balance <= 0) continue;
+      const treatment = treatmentMap.get(a.treatmentId as string);
+      const price = treatment?.price ?? 0;
+      if (price <= 0) continue;
+      const paid = appointmentPaymentTotals?.get(a._id) ?? 0;
+      if (paid >= price) continue; // already settled
+      const current = earliest.get(a.patientId);
+      if (
+        !current ||
+        a.date < current.date ||
+        (a.date === current.date && a.startTime < current.startTime)
+      ) {
+        earliest.set(a.patientId, {
+          id: a._id,
+          date: a.date,
+          startTime: a.startTime,
+        });
+      }
+    }
+    for (const [pid, info] of earliest) {
+      result.set(info.id, patientCreditBalances.get(pid) ?? 0);
+    }
+    return result;
+  }, [rawAppointments, patientCreditBalances, treatmentMap, appointmentPaymentTotals]);
+
+  // Dates carrying at least one credit-flagged appointment — feeds the month
+  // view's day-level "Saldo" dot (issue #1286).
+  const creditDates = useMemo(() => {
+    const set = new Set<string>();
+    if (!rawAppointments || creditByAppointmentId.size === 0) return set;
+    for (const a of rawAppointments) {
+      if (creditByAppointmentId.has(a._id)) set.add(a.date);
+    }
+    return set;
+  }, [rawAppointments, creditByAppointmentId]);
+
   // Transform and filter appointments for view components
   const viewAppointments = useMemo(() => {
     type Indicator = {
@@ -552,7 +617,8 @@ function GabinetCalendarPage() {
         | "count"
         | "paid"
         | "partial"
-        | "unpaid";
+        | "unpaid"
+        | "credit";
       label: string;
       title?: string;
     };
@@ -654,6 +720,25 @@ function GabinetCalendarPage() {
           }
         }
 
+        // Patient credit indicator — flags the patient's next unpaid visit
+        // when they have an available credit balance from carry-forward
+        // overpayments (issue #1286, ledger from #1059). Shown alongside the
+        // unpaid/partial badge so staff know credit is sitting ready to be
+        // applied at settle time.
+        const creditBalance = creditByAppointmentId.get(a._id);
+        if (creditBalance && creditBalance > 0) {
+          // Round to whole units for the compact pill so the badge stays
+          // legible at the small tile size. Tooltip shows the precise amount.
+          indicators.push({
+            kind: "credit",
+            label: `+${Math.round(creditBalance)}`,
+            title: t("gabinet.calendar.indicators.credit", {
+              defaultValue: "Saldo {{amount}} do wykorzystania",
+              amount: creditBalance.toFixed(2),
+            }),
+          });
+        }
+
         // Paid / partial / unpaid indicator — surfaces the visit's payment
         // settlement state directly on the tile so staff can spot unpaid
         // completed visits without opening each one (issue #1040). Mirrors
@@ -746,7 +831,7 @@ function GabinetCalendarPage() {
     }
 
     return items;
-  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, tagMap, employeeColorMap, firstAppointmentIds, packagePositions, recurringPositions, appointmentPaymentTotals, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
+  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, tagMap, employeeColorMap, firstAppointmentIds, packagePositions, recurringPositions, appointmentPaymentTotals, creditByAppointmentId, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
 
   // Build print-friendly appointment data for the current day
   const printDate = formatDateStr(currentDate);
@@ -1617,6 +1702,7 @@ function GabinetCalendarPage() {
               selectedDate={formatDateStr(currentDate)}
               leaveDates={leaveDates}
               paymentDueDates={paymentDueDates}
+              creditDates={creditDates}
             />
           )}
         </div>

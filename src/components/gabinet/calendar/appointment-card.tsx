@@ -14,7 +14,8 @@ export type AppointmentIndicatorKind =
   | "count"
   | "paid"
   | "partial"
-  | "unpaid";
+  | "unpaid"
+  | "credit";
 
 export interface AppointmentIndicator {
   kind: AppointmentIndicatorKind;
@@ -41,6 +42,7 @@ const INDICATOR_CLASS: Record<AppointmentIndicatorKind, string> = {
   paid: "bg-emerald-600 text-white",
   partial: "bg-amber-500 text-white",
   unpaid: "bg-red-500 text-white",
+  credit: "bg-indigo-500 text-white",
 };
 
 export function AppointmentCard({

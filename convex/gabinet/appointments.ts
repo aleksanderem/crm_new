@@ -1391,9 +1391,17 @@ export const update = action({
       if (status === "cancelled") {
         patch.cancelledAt = now;
         patch.cancelledBy = String(authResult.userId);
-        if (cancellationReason) {
-          patch.cancellationReason = cancellationReason;
-        }
+      }
+    }
+
+    // Allow editing or clearing cancellationReason independently of the
+    // status change — required so users can update/clear the reason on an
+    // already-cancelled appointment (status is then undefined in args).
+    if (cancellationReason !== undefined) {
+      const willBeCancelled =
+        status === "cancelled" || (!status && appt.status === "cancelled");
+      if (willBeCancelled) {
+        patch.cancellationReason = cancellationReason;
       }
     }
 

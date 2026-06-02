@@ -251,4 +251,70 @@ describe("appointment state machine", () => {
     )) as Record<string, any> | null;
     expect(activity?.isCompleted).toBe(true);
   });
+
+  test("cancellationReason can be edited on an already-cancelled appointment", async () => {
+    const t = createManagedTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
+
+    const apptId = await createAppointment(t, identity, {
+      organizationId, patientId, treatmentId, employeeId: userId,
+    });
+
+    await t.withIdentity(identity).action(api.gabinet.appointments.update, {
+      organizationId,
+      appointmentId: apptId,
+      status: "cancelled",
+      cancellationReason: "initial reason",
+    });
+    expect((await getAppointment(apptId))?.cancellationReason).toBe("initial reason");
+
+    await t.withIdentity(identity).action(api.gabinet.appointments.update, {
+      organizationId,
+      appointmentId: apptId,
+      cancellationReason: "corrected reason",
+    });
+    expect((await getAppointment(apptId))?.cancellationReason).toBe("corrected reason");
+  });
+
+  test("cancellationReason can be cleared with null on a cancelled appointment", async () => {
+    const t = createManagedTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
+
+    const apptId = await createAppointment(t, identity, {
+      organizationId, patientId, treatmentId, employeeId: userId,
+    });
+
+    await t.withIdentity(identity).action(api.gabinet.appointments.update, {
+      organizationId,
+      appointmentId: apptId,
+      status: "cancelled",
+      cancellationReason: "initial reason",
+    });
+
+    await t.withIdentity(identity).action(api.gabinet.appointments.update, {
+      organizationId,
+      appointmentId: apptId,
+      cancellationReason: null,
+    });
+    expect((await getAppointment(apptId))?.cancellationReason).toBeNull();
+  });
+
+  test("cancellationReason on a non-cancelled appointment is ignored", async () => {
+    const t = createManagedTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
+
+    const apptId = await createAppointment(t, identity, {
+      organizationId, patientId, treatmentId, employeeId: userId,
+    });
+
+    await t.withIdentity(identity).action(api.gabinet.appointments.update, {
+      organizationId,
+      appointmentId: apptId,
+      cancellationReason: "should not stick",
+    });
+    expect((await getAppointment(apptId))?.cancellationReason).toBeUndefined();
+  });
 });

@@ -17,6 +17,18 @@ import {
   VariableMentionAt,
   VariableMentionCurly,
 } from "@/components/gabinet/variable-mention";
+import { VARIABLE_REGISTRY } from "@/lib/document-variables";
+import { formatBirthDate } from "@/lib/format-date";
+
+// Variable paths whose values are stored as YYYY-MM-DD and should render as
+// DD.MM.YYYY in generated documents. Derived from VARIABLE_REGISTRY so the
+// set stays in sync as new date-typed variables are added.
+const DATE_VARIABLE_PATHS = new Set<string>(
+  Object.values(VARIABLE_REGISTRY)
+    .flat()
+    .filter((f) => f.type === "date")
+    .map((f) => f.path),
+);
 
 // ---------------------------------------------------------------------------
 // Types
@@ -129,7 +141,9 @@ export function renderDocument(
   doc.querySelectorAll("[data-variable]").forEach((el) => {
     const path = el.getAttribute("data-variable");
     if (path && scopeData[path] !== undefined && scopeData[path].trim() !== "") {
-      el.replaceWith(document.createTextNode(scopeData[path]));
+      const raw = scopeData[path];
+      const value = DATE_VARIABLE_PATHS.has(path) ? formatBirthDate(raw) : raw;
+      el.replaceWith(document.createTextNode(value));
     } else if (path) {
       if (highlightMissing) {
         const span = doc.createElement("span");

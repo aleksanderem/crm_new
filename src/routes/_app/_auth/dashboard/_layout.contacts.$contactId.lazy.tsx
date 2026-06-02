@@ -262,13 +262,15 @@ function ContactDetail() {
   const handleEditSubmit = async (
     formData: {
       firstName: string;
-      lastName?: string;
-      email?: string;
-      phone?: string;
-      title?: string;
+      lastName?: string | null;
+      email?: string | null;
+      phone?: string | null;
+      title?: string | null;
       source?: string;
       tags?: string[];
-      notes?: string;
+      tagIds?: Id<"tagDefinitions">[];
+      categoryId?: Id<"categoryDefinitions"> | null;
+      notes?: string | null;
     },
     customFieldRecord: Record<string, unknown>
   ) => {
@@ -282,7 +284,10 @@ function ContactDetail() {
         email: formData.email,
         phone: formData.phone,
         title: formData.title,
+        notes: formData.notes,
         tags: formData.tags,
+        tagIds: formData.tagIds,
+        categoryId: formData.categoryId,
       });
       // Invalidate Supabase caches after update
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.contacts.detail(organizationId, contactId) });
@@ -1067,6 +1072,9 @@ function ContactDetail() {
             title: contact?.title ?? undefined,
             source: contactAny?.source,
             tags: contactAny?.tags,
+            tagIds: contact?.tagIds as Id<"tagDefinitions">[] | undefined,
+            categoryId: contact?.categoryId as Id<"categoryDefinitions"> | undefined,
+            notes: contact?.notes ?? undefined,
           }}
           customFieldDefinitions={contactCfDefs}
           customFieldValues={contactCfValues}

@@ -432,10 +432,10 @@ function CompanyDetail() {
   const handleCreateContact = async (
     formData: {
       firstName: string;
-      lastName?: string;
-      email?: string;
-      phone?: string;
-      title?: string;
+      lastName?: string | null;
+      email?: string | null;
+      phone?: string | null;
+      title?: string | null;
     },
     _customFields: Record<string, unknown>
   ) => {

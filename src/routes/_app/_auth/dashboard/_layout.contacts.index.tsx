@@ -284,13 +284,13 @@ function ContactsIndex() {
     async (
       formData: {
         firstName: string;
-        lastName?: string;
-        email?: string;
-        phone?: string;
-        title?: string;
+        lastName?: string | null;
+        email?: string | null;
+        phone?: string | null;
+        title?: string | null;
         source?: string;
         tags?: string[];
-        notes?: string;
+        notes?: string | null;
       },
       customFieldRecord: Record<string, unknown>
     ) => {

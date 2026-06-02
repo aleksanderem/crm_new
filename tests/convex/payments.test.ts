@@ -260,6 +260,226 @@ describe("payments", () => {
     expect(new Set(allIds).size).toBe(5);
   });
 
+  // Patient credit / overpayment carry-forward (#1059) -----------------------
+  //
+  // The payments backend treats `patientId` as an opaque string for credit
+  // computations — it just keys the ledger and never reads from
+  // `gabinetPatients`. So we don't need to seed a real patient row; a
+  // stable string suffices to scope these tests.
+  const TEST_PATIENT_ID = "test-patient-credit-1";
+
+  test("getPatientCredit returns zero for a patient with no payments", async () => {
+    const t = createTestCtx();
+    const { organizationId, identity } = await seedTestUser(t);
+    const patientId = TEST_PATIENT_ID;
+
+    const result = await t
+      .withIdentity(identity)
+      .action(api.payments.getPatientCredit, {
+        organizationId,
+        patientId: String(patientId),
+      });
+
+    expect(result.balance).toBe(0);
+    expect(result.history).toHaveLength(0);
+  });
+
+  test("overpayment writes credit and increases patient balance", async () => {
+    const t = createTestCtx();
+    const { organizationId, identity } = await seedTestUser(t);
+    const patientId = TEST_PATIENT_ID;
+
+    await t.withIdentity(identity).action(api.payments.create, {
+      organizationId,
+      patientId: String(patientId),
+      amount: 600,
+      currency: "PLN",
+      paymentMethod: "cash",
+      creditEarned: 500,
+    });
+
+    const credit = await t
+      .withIdentity(identity)
+      .action(api.payments.getPatientCredit, {
+        organizationId,
+        patientId: String(patientId),
+      });
+    expect(credit.balance).toBe(500);
+    expect(credit.history).toHaveLength(1);
+    expect(credit.history[0].creditEarned).toBe(500);
+  });
+
+  test("applying credit reduces patient balance", async () => {
+    const t = createTestCtx();
+    const { organizationId, identity } = await seedTestUser(t);
+    const patientId = TEST_PATIENT_ID;
+
+    // Seed 500 credit
+    await t.withIdentity(identity).action(api.payments.create, {
+      organizationId,
+      patientId: String(patientId),
+      amount: 600,
+      currency: "PLN",
+      paymentMethod: "cash",
+      creditEarned: 500,
+    });
+
+    // Apply 200 credit on a next visit (cash leg = 0)
+    await t.withIdentity(identity).action(api.payments.create, {
+      organizationId,
+      patientId: String(patientId),
+      amount: 0,
+      currency: "PLN",
+      paymentMethod: "cash",
+      creditApplied: 200,
+    });
+
+    const credit = await t
+      .withIdentity(identity)
+      .action(api.payments.getPatientCredit, {
+        organizationId,
+        patientId: String(patientId),
+      });
+    expect(credit.balance).toBe(300);
+  });
+
+  test("creditApplied exceeding balance is rejected", async () => {
+    const t = createTestCtx();
+    const { organizationId, identity } = await seedTestUser(t);
+    const patientId = TEST_PATIENT_ID;
+
+    // Seed 100 credit
+    await t.withIdentity(identity).action(api.payments.create, {
+      organizationId,
+      patientId: String(patientId),
+      amount: 200,
+      currency: "PLN",
+      paymentMethod: "cash",
+      creditEarned: 100,
+    });
+
+    await expect(
+      t.withIdentity(identity).action(api.payments.create, {
+        organizationId,
+        patientId: String(patientId),
+        amount: 0,
+        currency: "PLN",
+        paymentMethod: "cash",
+        creditApplied: 200,
+      }),
+    ).rejects.toThrow(/exceeds available balance/);
+  });
+
+  test("refundCredit drains the credit balance", async () => {
+    const t = createTestCtx();
+    const { organizationId, identity } = await seedTestUser(t);
+    const patientId = TEST_PATIENT_ID;
+
+    await t.withIdentity(identity).action(api.payments.create, {
+      organizationId,
+      patientId: String(patientId),
+      amount: 500,
+      currency: "PLN",
+      paymentMethod: "cash",
+      creditEarned: 500,
+    });
+
+    await t.withIdentity(identity).action(api.payments.refundCredit, {
+      organizationId,
+      patientId: String(patientId),
+      amount: 300,
+      paymentMethod: "cash",
+    });
+
+    const credit = await t
+      .withIdentity(identity)
+      .action(api.payments.getPatientCredit, {
+        organizationId,
+        patientId: String(patientId),
+      });
+    expect(credit.balance).toBe(200);
+  });
+
+  test("refundCredit beyond balance is rejected", async () => {
+    const t = createTestCtx();
+    const { organizationId, identity } = await seedTestUser(t);
+    const patientId = TEST_PATIENT_ID;
+
+    await t.withIdentity(identity).action(api.payments.create, {
+      organizationId,
+      patientId: String(patientId),
+      amount: 100,
+      currency: "PLN",
+      paymentMethod: "cash",
+      creditEarned: 100,
+    });
+
+    await expect(
+      t.withIdentity(identity).action(api.payments.refundCredit, {
+        organizationId,
+        patientId: String(patientId),
+        amount: 500,
+        paymentMethod: "cash",
+      }),
+    ).rejects.toThrow(/exceeds available credit/);
+  });
+
+  test("refundCredit is admin-only", async () => {
+    const t = createTestCtx();
+    const { organizationId, identity } = await seedTestUser(t, {
+      role: "member",
+    });
+    const patientId = TEST_PATIENT_ID;
+
+    await expect(
+      t.withIdentity(identity).action(api.payments.refundCredit, {
+        organizationId,
+        patientId: String(patientId),
+        amount: 50,
+        paymentMethod: "cash",
+      }),
+    ).rejects.toThrow(/admins can refund/);
+  });
+
+  test("refunding a payment with creditEarned releases that credit", async () => {
+    const t = createTestCtx();
+    const { organizationId, identity } = await seedTestUser(t);
+    const patientId = TEST_PATIENT_ID;
+
+    const paymentId = await t
+      .withIdentity(identity)
+      .action(api.payments.create, {
+        organizationId,
+        patientId: String(patientId),
+        amount: 600,
+        currency: "PLN",
+        paymentMethod: "cash",
+        creditEarned: 500,
+      });
+
+    let credit = await t
+      .withIdentity(identity)
+      .action(api.payments.getPatientCredit, {
+        organizationId,
+        patientId: String(patientId),
+      });
+    expect(credit.balance).toBe(500);
+
+    await t.withIdentity(identity).action(api.payments.refund, {
+      organizationId,
+      paymentId,
+      reason: "Patient cancelled",
+    });
+
+    credit = await t
+      .withIdentity(identity)
+      .action(api.payments.getPatientCredit, {
+        organizationId,
+        patientId: String(patientId),
+      });
+    expect(credit.balance).toBe(0);
+  });
+
   test("markPaid can change payment method", async () => {
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);

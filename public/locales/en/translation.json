@@ -3254,7 +3254,12 @@
       "summary": "Summary",
       "totalPaid": "Total paid",
       "totalSpent": "Total spent",
-      "treatmentPrice": "Treatment price"
+      "treatmentPrice": "Treatment price",
+      "creditBalance": "Credit balance",
+      "useCredit": "Use credit balance",
+      "creditAmountToApply": "Amount from credit",
+      "creditExceedsBalance": "Credit amount exceeds available balance.",
+      "overpaymentNote": "Overpayment of {{amount}} will be added to the patient's credit balance and can be used on future visits."
     },
     "schedules": {
       "break": "Break",

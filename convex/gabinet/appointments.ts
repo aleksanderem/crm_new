@@ -2360,6 +2360,9 @@ export interface AppointmentFullDetail {
   loyaltyTransactions: GabinetLoyaltyTransactionRow[];
   allPatientPayments: PaymentRow[];
   workflowHistory: AppointmentWorkflowHistoryRow[];
+  // Available patient credit (overpayment carry-forward) derived from the
+  // `payments` ledger. See issue #1059.
+  patientCreditBalance: number;
 }
 
 export const getFullDetail = action({
@@ -2413,6 +2416,7 @@ export const getFullDetail = action({
       loyaltyBalanceRow,
       loyaltyTransactionsRaw,
       allPatientPaymentsRaw,
+      patientCreditRowsRaw,
       workflowHistoryRaw,
     ] = await Promise.all([
       db.get("gabinetPatients", patientId),
@@ -2462,6 +2466,13 @@ export const getFullDetail = action({
         .eq("patientId", patientId)
         .order("createdAt", false)
         .take(50)
+        .collect(),
+      // Separate scan for credit balance — avoids the 50-row cap on
+      // `allPatientPaymentsRaw` so old credit ledger rows still count.
+      db.query("payments")
+        .eq("organizationId", orgIdStr)
+        .eq("patientId", patientId)
+        .eq("status", "completed")
         .collect(),
       db.query("appointmentWorkflowHistory")
         .eq("appointmentId", args.appointmentId)
@@ -2610,9 +2621,29 @@ export const getFullDetail = action({
       loyaltyTransactions,
       allPatientPayments,
       workflowHistory,
+      patientCreditBalance: computePatientCreditFromRows(
+        patientCreditRowsRaw as unknown as PaymentRow[],
+      ),
     };
   },
 });
+
+/**
+ * Patient credit balance derived from the patient's payments ledger:
+ *   sum over completed rows of (creditEarned − creditApplied).
+ * Caller is expected to pass already-filtered rows (status="completed").
+ */
+function computePatientCreditFromRows(rows: PaymentRow[]): number {
+  let balance = 0;
+  for (const r of rows) {
+    const earned = (r as PaymentRow & { creditEarned?: number | null })
+      .creditEarned;
+    const applied = (r as PaymentRow & { creditApplied?: number | null })
+      .creditApplied;
+    balance += (earned ?? 0) - (applied ?? 0);
+  }
+  return Math.round(balance * 100) / 100;
+}
 
 export type AppointmentWarningCode =
   | "past"

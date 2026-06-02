@@ -1,7 +1,7 @@
 "use node";
 
 import { Resend } from "resend";
-import type { MailAdapter, SendOptions, SendResult } from "../adapter";
+import type { MailAdapter, SendOptions, SendResult, ConnectionTestResult } from "../adapter";
 
 export function createResendAdapter(apiKey: string, fromEmail: string, fromName: string): MailAdapter {
   const resend = new Resend(apiKey);
@@ -25,6 +25,27 @@ export function createResendAdapter(apiKey: string, fromEmail: string, fromName:
         }
 
         return { success: true, messageId: result.data?.id };
+      } catch (err) {
+        return { success: false, error: String(err) };
+      }
+    },
+
+    async testConnection(): Promise<ConnectionTestResult> {
+      if (!apiKey) {
+        return { success: false, error: "Missing API key" };
+      }
+      try {
+        const response = await fetch("https://api.resend.com/domains", {
+          headers: { Authorization: `Bearer ${apiKey}` },
+        });
+        if (!response.ok) {
+          const text = await response.text().catch(() => "");
+          if (response.status === 401 || response.status === 403) {
+            return { success: false, error: "Invalid API key" };
+          }
+          return { success: false, error: text || `HTTP ${response.status}` };
+        }
+        return { success: true, accountEmail: fromEmail };
       } catch (err) {
         return { success: false, error: String(err) };
       }

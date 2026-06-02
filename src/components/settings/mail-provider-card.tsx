@@ -1,5 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useAction } from "convex/react";
+import { api } from "@cvx/_generated/api";
+import { Id } from "@cvx/_generated/dataModel";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +17,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Pencil, Trash2, Star } from "@/lib/ez-icons";
+import { Pencil, Trash2, Star, Activity, Loader2 } from "@/lib/ez-icons";
+import { useOrganization } from "@/components/org-context";
+import { formatActionError } from "@/lib/format-action-error";
 
 type ProviderType = "google" | "microsoft" | "mailgun" | "resend";
 type ProviderStatus = "active" | "inactive" | "error" | "pending_auth";
@@ -61,7 +67,48 @@ export function MailProviderCard({
   onRemove,
 }: MailProviderCardProps) {
   const { t } = useTranslation();
+  const { organizationId } = useOrganization();
+  const testConnection = useAction(api.mailProviders.testConnection);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  const handleTest = async () => {
+    setTesting(true);
+    try {
+      const result = await testConnection({
+        organizationId,
+        providerId: provider._id as Id<"mailProviders">,
+      });
+      if (result.success) {
+        toast.success(
+          t("settings.mail.testSuccess", {
+            defaultValue: "Połączenie działa poprawnie",
+          }),
+          {
+            description: result.accountEmail,
+          },
+        );
+      } else {
+        toast.error(
+          t("settings.mail.testFailed", {
+            defaultValue: "Test połączenia nie powiódł się",
+          }),
+          {
+            description: result.error,
+          },
+        );
+      }
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "settings.mail.testFailed",
+          defaultValue: "Test połączenia nie powiódł się",
+        }),
+      );
+    } finally {
+      setTesting(false);
+    }
+  };
 
   return (
     <>
@@ -116,6 +163,20 @@ export function MailProviderCard({
           </div>
 
           <div className="flex items-center gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              title={t("settings.mail.testConnection")}
+              onClick={handleTest}
+              disabled={testing}
+            >
+              {testing ? (
+                <Loader2 className="h-4 w-4 animate-spin" variant="stroke" />
+              ) : (
+                <Activity className="h-4 w-4" variant="stroke" />
+              )}
+            </Button>
             {!provider.isDefault && (
               <Button
                 variant="ghost"

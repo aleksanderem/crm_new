@@ -1777,21 +1777,22 @@ function DetailedDataTab({
         updatePayload.role = formData.role as GabinetEmployeeRole;
         updatePayload.notes = formData.notes || null;
       } else if (section === "qualifications") {
-        updatePayload.skills = formData.skills
+        const skillsList = formData.skills
           ? formData.skills.split(",").map((s: string) => s.trim()).filter(Boolean)
-          : undefined;
+          : [];
+        updatePayload.skills = skillsList.length > 0 ? skillsList : null;
         updatePayload.yearsOfExperience = formData.yearsOfExperience
           ? Number(formData.yearsOfExperience)
-          : undefined;
+          : null;
         updatePayload.certifications =
-          certifications.length > 0 ? certifications : undefined;
+          certifications.length > 0 ? certifications : null;
       } else if (section === "compensation") {
         updatePayload.baseSalary = formData.baseSalary
           ? Number(formData.baseSalary)
-          : undefined;
+          : null;
         updatePayload.commissionPercent = formData.commissionPercent
           ? Number(formData.commissionPercent)
-          : undefined;
+          : null;
         updatePayload.bankAccount = formData.bankAccount || null;
       }
 

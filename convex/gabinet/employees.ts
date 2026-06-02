@@ -526,19 +526,22 @@ export const update = action({
     endDate: v.optional(v.union(v.string(), v.null())),
     position: v.optional(v.union(v.string(), v.null())),
     department: v.optional(v.union(v.string(), v.null())),
-    skills: v.optional(v.array(v.string())),
-    yearsOfExperience: v.optional(v.number()),
+    skills: v.optional(v.union(v.array(v.string()), v.null())),
+    yearsOfExperience: v.optional(v.union(v.number(), v.null())),
     certifications: v.optional(
-      v.array(
-        v.object({
-          name: v.string(),
-          dateObtained: v.optional(v.string()),
-          expiryDate: v.optional(v.string()),
-        }),
+      v.union(
+        v.array(
+          v.object({
+            name: v.string(),
+            dateObtained: v.optional(v.string()),
+            expiryDate: v.optional(v.string()),
+          }),
+        ),
+        v.null(),
       ),
     ),
-    baseSalary: v.optional(v.number()),
-    commissionPercent: v.optional(v.number()),
+    baseSalary: v.optional(v.union(v.number(), v.null())),
+    commissionPercent: v.optional(v.union(v.number(), v.null())),
     bankAccount: v.optional(v.union(v.string(), v.null())),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),

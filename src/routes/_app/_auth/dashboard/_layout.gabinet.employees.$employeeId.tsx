@@ -1757,7 +1757,7 @@ function DetailedDataTab({
         updatePayload.firstName = formData.firstName || undefined;
         updatePayload.lastName = formData.lastName || undefined;
         updatePayload.phone = formData.phone || null;
-        updatePayload.email = formData.email || undefined;
+        updatePayload.email = formData.email || null;
         updatePayload.dateOfBirth = formData.dateOfBirth || null;
         updatePayload.pesel = formData.pesel || null;
         updatePayload.address =
@@ -1767,11 +1767,11 @@ function DetailedDataTab({
                 city: formData.addressCity || undefined,
                 postalCode: formData.addressPostalCode || undefined,
               }
-            : undefined;
+            : null;
       } else if (section === "employment") {
-        updatePayload.employmentType = (formData.employmentType || undefined) as EmploymentType | undefined;
+        updatePayload.employmentType = (formData.employmentType || null) as EmploymentType | null;
         updatePayload.hireDate = formData.hireDate || null;
-        updatePayload.endDate = formData.endDate || undefined;
+        updatePayload.endDate = formData.endDate || null;
         updatePayload.position = formData.position || null;
         updatePayload.department = formData.department || null;
         updatePayload.role = formData.role as GabinetEmployeeRole;

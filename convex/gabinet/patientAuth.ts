@@ -1,4 +1,4 @@
-import { query, action, internalMutation } from "../_generated/server";
+import { query, action, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { validatePortalSessionSupabase } from "../_helpers/portalSession";
@@ -107,14 +107,16 @@ export const sendPortalOtp = action({
       });
     }
 
-    // Send OTP via email — delegate to internalMutation for @cvx/email
+    // Send OTP via email — delegate to internalAction for @cvx/email
     try {
-      await ctx.runMutation(
+      await ctx.runAction(
         internal.gabinet.patientAuth._sendOtpEmail,
         {
           email: args.email,
           organizationId: args.organizationId,
           otp,
+          patientId,
+          patientName: `${patient.firstName} ${patient.lastName}`,
         },
       );
     } catch (e) {
@@ -126,21 +128,28 @@ export const sendPortalOtp = action({
 });
 
 /**
- * Internal: send the OTP email via @cvx/email (requires mutation context for Convex email).
+ * Internal: send the OTP email via @cvx/email. Implemented as an action
+ * because sendEmail() performs an outbound `fetch` (Resend HTTP API) which
+ * is only allowed in Convex actions, and so that we can pass the action
+ * ctx as `log.ctx` to mirror the send into emailSendLog.
  */
-export const _sendOtpEmail = internalMutation({
+export const _sendOtpEmail = internalAction({
   args: {
     email: v.string(),
     organizationId: v.id("organizations"),
     otp: v.string(),
+    patientId: v.string(),
+    patientName: v.string(),
   },
   handler: async (ctx, args) => {
     if (AUTH_RESEND_KEY) {
-      const org = await ctx.db.get(args.organizationId);
-      const orgName = org?.name ?? "Portal Klienta";
+      const db = createSupabaseDb();
+      const org = await db.get("organizations", String(args.organizationId));
+      const orgName = (org?.name as string | undefined) ?? "Portal Klienta";
+      const subject = `Twój kod weryfikacyjny - ${orgName}`;
       await sendEmail({
         to: args.email,
-        subject: `Twój kod weryfikacyjny - ${orgName}`,
+        subject,
         html: `
           <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
             <h2 style="margin: 0 0 16px; color: #1a1a1a;">Kod weryfikacyjny</h2>
@@ -156,6 +165,14 @@ export const _sendOtpEmail = internalMutation({
           </div>
         `,
         text: `Twój kod weryfikacyjny: ${args.otp}\n\nKod jest ważny przez 10 minut.`,
+        log: {
+          ctx,
+          organizationId: args.organizationId,
+          source: "system",
+          recipientName: args.patientName,
+          relatedEntityType: "gabinetPatient",
+          relatedEntityId: args.patientId,
+        },
       });
     } else {
       console.warn("[Patient Portal OTP] Resend not configured, logging OTP to console");

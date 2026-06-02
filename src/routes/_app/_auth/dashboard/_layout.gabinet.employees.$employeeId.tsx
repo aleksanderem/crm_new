@@ -1342,11 +1342,11 @@ function EditEmployeeDrawer({
         firstName: firstName || undefined,
         lastName: lastName || undefined,
         role,
-        specialization: specialization || undefined,
-        licenseNumber: licenseNumber || undefined,
-        hireDate: hireDate || undefined,
-        color: color || undefined,
-        notes: notes || undefined,
+        specialization: specialization || null,
+        licenseNumber: licenseNumber || null,
+        hireDate: hireDate || null,
+        color: color || null,
+        notes: notes || null,
       });
       toast.success(t("common.saved"));
       onOpenChange(false);
@@ -1756,10 +1756,10 @@ function DetailedDataTab({
       if (section === "personal") {
         updatePayload.firstName = formData.firstName || undefined;
         updatePayload.lastName = formData.lastName || undefined;
-        updatePayload.phone = formData.phone || undefined;
+        updatePayload.phone = formData.phone || null;
         updatePayload.email = formData.email || undefined;
-        updatePayload.dateOfBirth = formData.dateOfBirth || undefined;
-        updatePayload.pesel = formData.pesel || undefined;
+        updatePayload.dateOfBirth = formData.dateOfBirth || null;
+        updatePayload.pesel = formData.pesel || null;
         updatePayload.address =
           formData.addressStreet || formData.addressCity || formData.addressPostalCode
             ? {
@@ -1770,12 +1770,12 @@ function DetailedDataTab({
             : undefined;
       } else if (section === "employment") {
         updatePayload.employmentType = (formData.employmentType || undefined) as EmploymentType | undefined;
-        updatePayload.hireDate = formData.hireDate || undefined;
+        updatePayload.hireDate = formData.hireDate || null;
         updatePayload.endDate = formData.endDate || undefined;
-        updatePayload.position = formData.position || undefined;
-        updatePayload.department = formData.department || undefined;
+        updatePayload.position = formData.position || null;
+        updatePayload.department = formData.department || null;
         updatePayload.role = formData.role as GabinetEmployeeRole;
-        updatePayload.notes = formData.notes || undefined;
+        updatePayload.notes = formData.notes || null;
       } else if (section === "qualifications") {
         updatePayload.skills = formData.skills
           ? formData.skills.split(",").map((s: string) => s.trim()).filter(Boolean)
@@ -1792,7 +1792,7 @@ function DetailedDataTab({
         updatePayload.commissionPercent = formData.commissionPercent
           ? Number(formData.commissionPercent)
           : undefined;
-        updatePayload.bankAccount = formData.bankAccount || undefined;
+        updatePayload.bankAccount = formData.bankAccount || null;
       }
 
       await onUpdate(updatePayload);

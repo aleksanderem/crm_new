@@ -2796,7 +2796,7 @@
     "appointmentDetail": {
       "title": "Appointment Details",
       "time": "Time",
-      "changeStatus": "Change status",
+      "changeStatus": "Change appointment status",
       "statusChanged": "Appointment status changed",
       "addPhone": "Add phone number",
       "phoneAdded": "Phone number added",

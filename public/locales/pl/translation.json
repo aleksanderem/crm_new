@@ -3035,6 +3035,7 @@
       "total": "Łącznie",
       "remainingCount": "{{remaining}} pozostało",
       "usedCount": "{{used}} / {{total}} wykorzystano",
+      "usedAndScheduled": "{{used}}/{{total}} wykorzystano, {{scheduled}} zaplanowano",
       "completionPercent": "{{percent}}% ukończono",
       "overallProgress": "Postęp ogólny",
       "perTreatmentProgress": "Postęp wg zabiegów",

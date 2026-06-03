@@ -51,6 +51,12 @@ All entity detail pages (contact, company, lead) follow the same structure: left
 
 - Documents: CRM entities (contact, company, lead) register as data sources. Documents tab on entity detail uses documentInstances filtered by resolvedSources.
 - Activities: CRM actions logged to activities table with entity type/id.
-- Search: contacts, companies, leads, documents, products all indexed in global search.
+- Search: contacts, companies, leads, documents, products all indexed in global search (reads hit Supabase via the `use-supabase-*` hook family).
 - Custom fields: contacts, companies, leads, products support custom field definitions.
 - Notifications: document workflow events generate notifications.
+
+## Data layer (Supabase-primary as of 2026-04)
+
+CRM follows the platform read/write split: the browser reads from self-hosted Supabase Postgres via `supabase-js` and the `src/hooks/use-supabase-*.ts` family (e.g. `use-supabase-activities.ts`, `use-supabase-calls.ts`); writes go through Convex mutations in `convex/contacts.ts`, `convex/leads.ts`, etc., which persist to Supabase via `convex/_helpers/supabaseDb.ts → createSupabaseDb()`.
+
+`convex/schema.ts` remains the structural source of truth, but production query indexes live in `supabase/migrations/` — add any new index there too, not just to the Convex schema. The Convex→Supabase table-name mapping is `TABLE_MAP` in `convex/_helpers/supabaseDb.ts`. If a `convex/*` file or comment in this module still calls Convex "the database" without mentioning Supabase, treat it as pre-2026-04 and trust the code. See the "Migration note" in `CLAUDE.md`.

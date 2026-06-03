@@ -210,13 +210,18 @@ function PatientsIndex() {
     }
     const q = searchValue.trim().toLowerCase();
     if (q) {
-      data = data.filter(
-        (p) =>
-          p.firstName.toLowerCase().includes(q) ||
-          p.lastName.toLowerCase().includes(q) ||
+      data = data.filter((p) => {
+        const first = p.firstName.toLowerCase();
+        const last = p.lastName.toLowerCase();
+        const fullName = `${first} ${last}`;
+        const reverseName = `${last} ${first}`;
+        return (
+          fullName.includes(q) ||
+          reverseName.includes(q) ||
           (p.email && p.email.toLowerCase().includes(q)) ||
-          (p.phone && p.phone.toLowerCase().includes(q)),
-      );
+          (p.phone && p.phone.toLowerCase().includes(q))
+        );
+      });
     }
     return data;
   }, [patients, activeViewId, applyFilters, activeFilters, searchValue, nudgeFilter, recentVisitPatientIds]);

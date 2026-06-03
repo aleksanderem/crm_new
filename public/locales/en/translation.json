@@ -3000,6 +3000,8 @@
       "packageUsage": "Package usage",
       "treatmentsUsed": "Treatments used",
       "usedInThisAppointment": "Used in this appointment",
+      "partOfPackage": "Part of: {{name}}",
+      "partOfPackageGeneric": "Part of a package",
       "descriptionField": "Description",
       "used": "Used",
       "of": "of",

@@ -1190,9 +1190,27 @@ function AppointmentDetail() {
 
   // Header title and subtitle
   const headerTitle = `${treatment?.name ?? t("gabinet.appointments.appointment")} - ${patient?.firstName ?? ""} ${patient?.lastName ?? ""}`.trim();
+  const linkedPackageUsage = appointment.packageUsageId
+    ? patientPackageUsage.find((p) => String(p._id) === String(appointment.packageUsageId)) ?? null
+    : null;
   const headerSubtitle = (
-    <span>
-      {formatDate(appointment.date)} &bull; {formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-1 whitespace-normal">
+      <span>
+        {formatDate(appointment.date)} &bull; {formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}
+      </span>
+      {appointment.packageUsageId && (
+        <Badge
+          variant="outline"
+          className="gap-1 border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"
+        >
+          <Package className="h-3 w-3" variant="stroke" />
+          <span className="truncate max-w-[180px]">
+            {linkedPackageUsage?.packageName
+              ? t("gabinet.packages.partOfPackage", { name: linkedPackageUsage.packageName })
+              : t("gabinet.packages.partOfPackageGeneric")}
+          </span>
+        </Badge>
+      )}
     </span>
   );
 
@@ -1973,8 +1991,13 @@ function AppointmentDetail() {
                   {t("gabinet.packages.packageUsage")}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="px-6 py-4">
-                <p className="text-muted-foreground">
+              <CardContent className="px-6 py-4 space-y-1">
+                {linkedPackageUsage?.packageName && (
+                  <p className="text-sm font-medium">
+                    {linkedPackageUsage.packageName}
+                  </p>
+                )}
+                <p className="text-sm text-muted-foreground">
                   {t("gabinet.packages.usedInThisAppointment")}
                 </p>
               </CardContent>

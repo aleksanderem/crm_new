@@ -3029,6 +3029,8 @@
       "packageUsage": "Wykorzystanie pakietów",
       "treatmentsUsed": "Wykorzystane zabiegi",
       "usedInThisAppointment": "Użyty w tej wizycie",
+      "partOfPackage": "Część pakietu: {{name}}",
+      "partOfPackageGeneric": "Część pakietu",
       "descriptionField": "Opis",
       "used": "Wykorzystano",
       "of": "z",

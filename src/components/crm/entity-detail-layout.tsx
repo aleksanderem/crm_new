@@ -325,7 +325,7 @@ export function EntityDetailLayout({
   });
 
   const tabsContent = (
-    <Tabs defaultValue={activeTab ? undefined : defaultTabValue} value={activeTab} onValueChange={onTabChange} className="flex flex-1 flex-col min-h-0">
+    <Tabs defaultValue={activeTab ? undefined : defaultTabValue} value={activeTab} onValueChange={onTabChange} className="flex flex-col md:flex-1 md:min-h-0">
       <div className="shrink-0 border-b px-4 pt-2">
         {beforeTabs}
         <TabsList className="h-9 bg-transparent p-0">
@@ -349,7 +349,7 @@ export function EntityDetailLayout({
         )}
       </div>
 
-      <ScrollShadow className="flex-1 min-h-0 overflow-y-auto">
+      <ScrollShadow className="md:flex-1 md:min-h-0 md:overflow-y-auto">
         {tabs.map((tab) => (
           <TabsContent
             key={tab.label}
@@ -387,9 +387,9 @@ export function EntityDetailLayout({
 
   // default variant: sidebar + content area
   return (
-    <div className="flex h-full flex-col md:flex-row -mx-4 sm:-mx-6 -mt-2 -mb-6">
+    <div className="flex flex-col md:h-full md:flex-row -mx-4 sm:-mx-6 -mt-2 -mb-6">
       {/* Left sidebar */}
-      <ScrollShadow className="shrink-0 border-b md:border-b-0 overflow-y-auto max-md:!w-full bg-[#F9F9F9] dark:bg-muted/30 md:border-r md:border-[#E4E9EC] dark:md:border-border" style={{ width: sidebarWidth }}>
+      <ScrollShadow className="shrink-0 border-b md:border-b-0 md:overflow-y-auto max-md:!w-full bg-[#F9F9F9] dark:bg-muted/30 md:border-r md:border-[#E4E9EC] dark:md:border-border" style={{ width: sidebarWidth }}>
         <div className="p-6 space-y-4">
           {/* Entity header */}
           <EntityDetailHeader {...headerProps} />
@@ -512,7 +512,7 @@ export function EntityDetailLayout({
       </div>
 
       {/* Right content area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-col md:flex-1 md:overflow-hidden">
         {tabsContent}
       </div>
     </div>

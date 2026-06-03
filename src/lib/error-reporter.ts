@@ -99,6 +99,36 @@ export async function reportError(
   }
 }
 
+// Detect "stale chunk" errors that happen after a deploy regenerates hashed
+// asset filenames: the user's cached index.html references a lazy chunk that
+// no longer exists, so the dynamic import 404s. Issue #1368.
+export function isChunkLoadError(err: unknown): boolean {
+  const msg =
+    err instanceof Error ? err.message : typeof err === "string" ? err : "";
+  return (
+    /Failed to fetch dynamically imported module/i.test(msg) ||
+    /error loading dynamically imported module/i.test(msg) ||
+    /Importing a module script failed/i.test(msg)
+  );
+}
+
+// Reload once per tab when a stale chunk is detected, so the browser fetches
+// the new index.html (and the chunk hashes it references). sessionStorage
+// guards against an infinite reload loop if the failure persists.
+const CHUNK_RELOAD_KEY = "chunk-reload-attempted-v1";
+export function maybeReloadForStaleChunk(err: unknown): boolean {
+  if (typeof window === "undefined") return false;
+  if (!isChunkLoadError(err)) return false;
+  try {
+    if (sessionStorage.getItem(CHUNK_RELOAD_KEY)) return false;
+    sessionStorage.setItem(CHUNK_RELOAD_KEY, String(Date.now()));
+  } catch {
+    // sessionStorage may be unavailable (private mode, etc.) — proceed anyway.
+  }
+  window.location.reload();
+  return true;
+}
+
 let installed = false;
 export function installGlobalErrorHandlers(): void {
   if (installed) return;
@@ -108,6 +138,7 @@ export function installGlobalErrorHandlers(): void {
   // Uncaught synchronous errors
   window.addEventListener("error", (event) => {
     const err = event.error ?? new Error(event.message || "window.onerror");
+    if (maybeReloadForStaleChunk(err)) return;
     reportError(err, {
       scope: "window.onerror",
       fnName: event.filename
@@ -119,6 +150,7 @@ export function installGlobalErrorHandlers(): void {
   // Unhandled promise rejections (most async failures land here)
   window.addEventListener("unhandledrejection", (event) => {
     const reason = event.reason;
+    if (maybeReloadForStaleChunk(reason)) return;
     reportError(reason, { scope: "unhandledrejection" });
   });
 }

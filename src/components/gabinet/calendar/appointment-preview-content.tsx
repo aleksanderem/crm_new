@@ -1251,6 +1251,17 @@ export function AppointmentPreviewContent({
           </Link>
         </Button>
         <Button
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs"
+          onClick={handleSave}
+          disabled={!dirty || saving || settleSubmitting}
+        >
+          {saving
+            ? t("common.saving")
+            : t("gabinet.appointmentDetail.saveChanges", "Zapisz zmiany")}
+        </Button>
+        <Button
           size="sm"
           className="h-8 text-xs"
           onClick={handleOpenSettleDialog}

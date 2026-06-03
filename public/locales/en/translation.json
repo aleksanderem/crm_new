@@ -2802,6 +2802,7 @@
       "phoneAdded": "Phone number added",
       "edit": "Edit",
       "close": "Close",
+      "saveChanges": "Save changes",
       "closeAndSettle": "Settle visit",
       "settleDesc": "Record payment and optionally close the appointment as completed.",
       "settleMarkCompleted": "Mark appointment as completed",

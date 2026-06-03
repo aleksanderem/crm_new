@@ -2831,6 +2831,7 @@
       "phoneAdded": "Numer telefonu dodany",
       "edit": "Edytuj",
       "close": "Zamknij",
+      "saveChanges": "Zapisz zmiany",
       "closeAndSettle": "Rozlicz wizytę",
       "settleDesc": "Zarejestruj płatność i opcjonalnie zamknij wizytę jako zakończoną.",
       "settleMarkCompleted": "Oznacz wizytę jako zakończoną",

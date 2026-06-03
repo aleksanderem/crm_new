@@ -3,6 +3,25 @@
   to = "/index.html"
   status = 200
 
+# Entry HTML must not be long-cached: it references hashed chunk filenames
+# that change every deploy. A stale cached index.html points to chunks that
+# no longer exist, producing the lazy-import failure class fixed in #1368.
+# Hashed assets under /assets/* keep their long immutable cache below.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
 [context.production]
   # Apply pending Supabase migrations before the frontend goes live so the
   # newly-deployed UI never hits a DB that's missing columns it expects.

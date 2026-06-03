@@ -17,7 +17,6 @@ export const list = query({
   args: {
     organizationId: v.id("organizations"),
     paginationOpts: paginationOptsValidator,
-    search: v.optional(v.string()),
     status: v.optional(leadStatusValidator),
   },
   handler: async (ctx, args) => {
@@ -33,27 +32,6 @@ export const list = query({
     const isOwn = perm.scope === "own";
     const ownFilter = (r: any) =>
       r.createdBy === user._id || r.assignedTo === user._id;
-
-    if (args.search) {
-      const results = await ctx.db
-        .query("leads")
-        .withSearchIndex("search_leads", (q) => {
-          let sq = q
-            .search("title", args.search!)
-            .eq("organizationId", args.organizationId);
-          if (args.status) sq = sq.eq("status", args.status);
-          return sq;
-        })
-        .take(50);
-      if (isOwn) {
-        return {
-          page: results.filter(ownFilter),
-          isDone: true,
-          continueCursor: "",
-        };
-      }
-      return { page: results, isDone: true, continueCursor: "" };
-    }
 
     if (args.status) {
       const result = await ctx.db

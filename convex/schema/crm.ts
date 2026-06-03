@@ -75,11 +75,7 @@ export function createCrmTables({
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"])
-    .index("by_orgAndEmail", ["organizationId", "email"])
-    .searchIndex("search_contacts", {
-      searchField: "firstName",
-      filterFields: ["organizationId"],
-    }),
+    .index("by_orgAndEmail", ["organizationId", "email"]),
 
   companies: defineTable({
     organizationId: v.id("organizations"),
@@ -107,11 +103,7 @@ export function createCrmTables({
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"])
-    .index("by_orgAndDomain", ["organizationId", "domain"])
-    .searchIndex("search_companies", {
-      searchField: "name",
-      filterFields: ["organizationId"],
-    }),
+    .index("by_orgAndDomain", ["organizationId", "domain"]),
 
   leads: defineTable({
     organizationId: v.id("organizations"),
@@ -141,11 +133,7 @@ export function createCrmTables({
     .index("by_orgAndStatus", ["organizationId", "status"])
     .index("by_pipelineStage", ["pipelineStageId", "stageOrder"])
     .index("by_assignedTo", ["assignedTo"])
-    .index("by_companyId", ["companyId"])
-    .searchIndex("search_leads", {
-      searchField: "title",
-      filterFields: ["organizationId", "status"],
-    }),
+    .index("by_companyId", ["companyId"]),
 
   documents: defineTable({
     organizationId: v.id("organizations"),
@@ -169,11 +157,7 @@ export function createCrmTables({
   })
     .index("by_org", ["organizationId"])
     .index("by_orgAndCategory", ["organizationId", "category"])
-    .index("by_orgAndStatus", ["organizationId", "status"])
-    .searchIndex("search_documents", {
-      searchField: "name",
-      filterFields: ["organizationId"],
-    }),
+    .index("by_orgAndStatus", ["organizationId", "status"]),
 
   pipelines: defineTable({
     organizationId: v.id("organizations"),
@@ -326,11 +310,7 @@ export function createCrmTables({
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"])
-    .index("by_orgAndSku", ["organizationId", "sku"])
-    .searchIndex("search_products", {
-      searchField: "name",
-      filterFields: ["organizationId"],
-    }),
+    .index("by_orgAndSku", ["organizationId", "sku"]),
 
   dealProducts: defineTable({
     organizationId: v.id("organizations"),
@@ -708,11 +688,7 @@ export function createCrmTables({
     .index("by_patient", ["patientId", "sentAt"])
     .index("by_appointment", ["appointmentId", "sentAt"])
     .index("by_employee", ["employeeId", "sentAt"])
-    .index("by_org_provider", ["organizationId", "mailProviderId", "sentAt"])
-    .searchIndex("search_emails", {
-      searchField: "subject",
-      filterFields: ["organizationId", "direction"],
-    }),
+    .index("by_org_provider", ["organizationId", "mailProviderId", "sentAt"]),
 
   emailAccounts: defineTable({
     organizationId: v.id("organizations"),

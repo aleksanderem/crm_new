@@ -396,26 +396,7 @@ export const runAllTests = mutation({
       assert(wonLeads.length === 1, "Should have 1 won lead");
       results.push({ test: "Dashboard aggregation queries", passed: true });
 
-      // ── 15. Search indexes ──
-      const searchResults = await ctx.db
-        .query("contacts")
-        .withSearchIndex("search_contacts", (q) =>
-          q.search("firstName", TEST_PREFIX).eq("organizationId", orgId)
-        )
-        .take(10);
-      assert(searchResults.length === 1, `Search should find 1 contact, got ${searchResults.length}`);
-      results.push({ test: "Search index (contacts)", passed: true });
-
-      const companySearch = await ctx.db
-        .query("companies")
-        .withSearchIndex("search_companies", (q) =>
-          q.search("name", TEST_PREFIX).eq("organizationId", orgId)
-        )
-        .take(10);
-      assert(companySearch.length === 1, `Company search should find 1, got ${companySearch.length}`);
-      results.push({ test: "Search index (companies)", passed: true });
-
-      // ── 16. Cascade delete test ──
+      // ── 15. Cascade delete test ──
       // Delete contact → should be able to clean up custom values and relationships
       const cvBeforeDelete = await ctx.db
         .query("customFieldValues")
@@ -448,7 +429,7 @@ export const runAllTests = mutation({
       assert(cvAfterDelete.length === 0, "Custom values should be cascade deleted");
       results.push({ test: "Cascade delete (contact + custom values + relationships)", passed: true });
 
-      // ── 17. Multi-tenancy isolation ──
+      // ── 16. Multi-tenancy isolation ──
       const otherUserId = await ctx.db.insert("users", {
         name: `${TEST_PREFIX}other_user`,
         email: `${TEST_PREFIX}other@test.com`,

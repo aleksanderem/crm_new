@@ -77,11 +77,7 @@ export function createGabinetTables({
     .index("by_org", ["organizationId"])
     .index("by_orgAndEmail", ["organizationId", "email"])
     .index("by_orgAndPesel", ["organizationId", "pesel"])
-    .index("by_orgAndContact", ["organizationId", "contactId"])
-    .searchIndex("search_patients", {
-      searchField: "firstName",
-      filterFields: ["organizationId"],
-    }),
+    .index("by_orgAndContact", ["organizationId", "contactId"]),
 
   gabinetTreatments: defineTable({
     organizationId: v.id("organizations"),
@@ -146,11 +142,7 @@ export function createGabinetTables({
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"])
-    .index("by_orgAndActive", ["organizationId", "isActive"])
-    .searchIndex("search_treatments", {
-      searchField: "name",
-      filterFields: ["organizationId"],
-    }),
+    .index("by_orgAndActive", ["organizationId", "isActive"]),
 
   gabinetTreatmentVariants: defineTable({
     organizationId: v.id("organizations"),
@@ -711,11 +703,7 @@ export function createGabinetTables({
     .index("by_org", ["organizationId"])
     .index("by_orgAndStatus", ["organizationId", "status"])
     .index("by_orgAndModule", ["organizationId", "module"])
-    .index("by_template", ["templateId"])
-    .searchIndex("search_documents", {
-      searchField: "title",
-      filterFields: ["organizationId", "status", "module"],
-    }),
+    .index("by_template", ["templateId"]),
 
   // --- Document Signing ---
 
@@ -885,11 +873,7 @@ export function createGabinetTables({
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
   })
-    .index("by_org", ["organizationId"])
-    .searchIndex("search_name", {
-      searchField: "name",
-      filterFields: ["organizationId"],
-    }),
+    .index("by_org", ["organizationId"]),
 
   gabinetRooms: defineTable({
     organizationId: v.id("organizations"),
@@ -922,11 +906,7 @@ export function createGabinetTables({
   })
     .index("by_org", ["organizationId"])
     .index("by_location", ["organizationId", "currentLocationId"])
-    .index("by_room", ["organizationId", "currentRoomId"])
-    .searchIndex("search_name", {
-      searchField: "name",
-      filterFields: ["organizationId"],
-    }),
+    .index("by_room", ["organizationId", "currentRoomId"]),
 
   gabinetEquipmentTransfers: defineTable({
     organizationId: v.id("organizations"),

@@ -157,7 +157,6 @@ import type * as schema_crm from "../schema/crm.js";
 import type * as schema_documents from "../schema/documents.js";
 import type * as schema_gabinet from "../schema/gabinet.js";
 import type * as schema_platform from "../schema/platform.js";
-import type * as search from "../search.js";
 import type * as seedDefaults from "../seedDefaults.js";
 import type * as seedEmailEvents from "../seedEmailEvents.js";
 import type * as seedTemplates from "../seedTemplates.js";
@@ -340,7 +339,6 @@ declare const fullApi: ApiFromModules<{
   "schema/documents": typeof schema_documents;
   "schema/gabinet": typeof schema_gabinet;
   "schema/platform": typeof schema_platform;
-  search: typeof search;
   seedDefaults: typeof seedDefaults;
   seedEmailEvents: typeof seedEmailEvents;
   seedTemplates: typeof seedTemplates;

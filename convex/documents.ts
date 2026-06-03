@@ -15,7 +15,6 @@ export const list = query({
   args: {
     organizationId: v.id("organizations"),
     paginationOpts: paginationOptsValidator,
-    search: v.optional(v.string()),
     category: v.optional(documentCategoryValidator),
   },
   handler: async (ctx, args) => {
@@ -25,19 +24,6 @@ export const list = query({
 
     const isOwn = perm.scope === "own";
     const ownFilter = (r: any) => r.createdBy === user._id;
-
-    if (args.search) {
-      const results = await ctx.db
-        .query("documents")
-        .withSearchIndex("search_documents", (q) =>
-          q.search("name", args.search!).eq("organizationId", args.organizationId)
-        )
-        .take(50);
-      if (isOwn) {
-        return { page: results.filter(ownFilter), isDone: true, continueCursor: "" };
-      }
-      return { page: results, isDone: true, continueCursor: "" };
-    }
 
     if (args.category) {
       const result = await ctx.db

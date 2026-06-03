@@ -52,6 +52,12 @@ Book (select patient + treatment + employee + date/time from available slots) ->
 - Patients link to CRM contacts via contactId field.
 - Documents: gabinet entities register as data sources (patient, employee, appointment). Templates filtered by module="gabinet".
 - Activities: appointment actions logged to activities table.
-- Search: patients and treatments indexed in global search.
+- Search: patients and treatments indexed in global search (reads hit Supabase via the `use-supabase-*` hook family).
 - Scheduling: appointments create scheduledActivities for unified calendar.
 - Notifications: appointment status changes generate notifications.
+
+## Data layer (Supabase-primary as of 2026-04)
+
+Gabinet follows the platform read/write split: the browser reads from self-hosted Supabase Postgres via `supabase-js` and the `src/hooks/use-supabase-*.ts` family; writes go through Convex mutations in `convex/gabinet/*.ts` (appointments, patients, employees, schedules, etc.), which persist to Supabase via `convex/_helpers/supabaseDb.ts → createSupabaseDb()`. The patient portal (`src/routes/_app/patient/`) shares the same Supabase JWT bridge — `convex/supabase/jwt.ts → mintSupabaseToken` — under its own auth flow.
+
+`convex/schema.ts` remains the structural source of truth for `gabinet*` tables, but production query indexes live in `supabase/migrations/` — add any new index for a gabinet query there too, not just to the Convex schema. The Convex (camelCase) ↔ Supabase (snake_case) table-name mapping is `TABLE_MAP` in `convex/_helpers/supabaseDb.ts`. If a `convex/gabinet/*` file or comment still calls Convex "the database" without mentioning Supabase, treat it as pre-2026-04 and trust the code. See the "Migration note" in `CLAUDE.md`.

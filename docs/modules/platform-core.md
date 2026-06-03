@@ -29,6 +29,16 @@ Every mutation must call verifyOrgAccess(ctx, orgId) first. Permission-sensitive
 
 New horizontal features go in convex/ root (not in convex/crm/ or convex/gabinet/). UI components shared across modules go in src/components/ (not in crm/ or gabinet/ subdirs).
 
+## Data layer (Supabase-primary as of 2026-04)
+
+Self-hosted Supabase Postgres (`SUPABASE_URL`) is the primary data store. Convex hosts auth (`@convex-dev/auth`), mutations/actions, the JWT bridge that mints Supabase tokens (`convex/supabase/jwt.ts → mintSupabaseToken`), file storage, and scheduled jobs.
+
+- Read path: the browser holds a Supabase JWT (see `src/components/supabase-provider.tsx`, `src/hooks/use-supabase-token.ts`) and queries Supabase directly via `supabase-js` (the `src/hooks/use-supabase-*.ts` family). RLS scopes rows to the user's org.
+- Write path: React calls Convex mutations, which write to Supabase via `convex/_helpers/supabaseDb.ts → createSupabaseDb()` using the service-role client (`convex/supabase/client.ts`).
+- `convex/schema.ts` is the structural source of truth. Postgres tables live in `supabase/migrations/`. Convex (camelCase) ↔ Supabase (snake_case) table-name mapping is `TABLE_MAP` in `convex/_helpers/supabaseDb.ts`.
+- New indexes needed for a query must exist in `supabase/migrations/` — Convex schema indexes are now legacy/test-suite only.
+- Older docs and in-code comments may still describe Convex as "the database" without Supabase; treat those as stale. See the "Migration note" in `CLAUDE.md` and the superseded plan in `docs/plans/2026-02-17-modular-platform-implementation-plan.md`.
+
 ## Document system architecture
 
 Two document types coexist in documentInstances table: type="template" (created from documentTemplates with field values and rendered HTML) and type="file" (uploaded files with storage reference). Both share the same status workflow: draft -> pending_review -> approved -> pending_signature -> signed -> archived.

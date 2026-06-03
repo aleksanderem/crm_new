@@ -504,7 +504,11 @@ The architecture is designed so that new vertical modules can be added without t
 
 Frontend: React 19, TanStack Router (file-based routing), TanStack React Query, TanStack React Table, TanStack React Form + Zod, shadcn/ui (Radix primitives + Tailwind CSS v4), Recharts, i18next (PL/EN), next-themes (dark mode), @dnd-kit (drag-and-drop), Vite.
 
-Backend: Convex (BaaS — real-time database, serverless functions, file storage, scheduled jobs). Auth via `@convex-dev/auth`. Payments via Stripe. Email via Resend + Gmail OAuth. Tests via `convex-test` + Vitest.
+Backend: hybrid Convex + Supabase. **Supabase (self-hosted Postgres at `SUPABASE_URL`) is the primary data store as of 2026-04 — see migration note below.** Convex hosts auth (`@convex-dev/auth`), mutations / actions (serverless functions), the JWT bridge that mints Supabase tokens (`convex/supabase/jwt.ts → mintSupabaseToken`), file storage, and scheduled jobs. Payments via Stripe. Email via Resend + Gmail OAuth. Tests via `convex-test` + Vitest, with an in-memory Supabase stub (`tests/convex/_supabase_inmemory.ts`).
+
+Read path: the browser holds a Supabase JWT (minted via Convex, see `src/components/supabase-provider.tsx` + `src/hooks/use-supabase-token.ts`) and queries the self-hosted Supabase instance directly via `supabase-js` (see the `src/hooks/use-supabase-*.ts` family — e.g. `use-supabase-activities.ts`, `use-supabase-calls.ts`). RLS scopes rows to the user's org. Write path: React calls Convex mutations, which write to Supabase via `convex/_helpers/supabaseDb.ts → createSupabaseDb()` using the service-role client (`convex/supabase/client.ts`). The pre-migration `writeXToSupabase` internal actions remain only for backfill (`convex/supabase/backfill.ts`).
+
+**Migration note — inconsistency vs. older docs.** Before 2026-04 the data layer was Convex-only (browser ↔ Convex over WebSocket, no Supabase). Older docs and many in-code comments still describe that shape. The historical implementation plan is preserved in `docs/plans/2026-02-17-modular-platform-implementation-plan.md` with a "HISTORICAL / SUPERSEDED" banner at the top that summarizes what changed (issues #161, #191, #218; commits `ad7b5c5`, `fa93074`, `a29c5ff`, `7fb2d4a`). The Convex schema in `convex/schema.ts` is still the structural source of truth; the equivalent Postgres schema lives in `supabase/migrations/`, with the Convex→Supabase table-name mapping in `convex/_helpers/supabaseDb.ts` (`TABLE_MAP`). If a section of this file or a `convex/*` comment talks about Convex as "the database" without mentioning Supabase, treat it as stale and trust the code.
 
 Styling: Tailwind CSS v4 with `@theme` inline config (no tailwind.config.ts), shadcn/ui components in `src/components/ui/`, CSS variables for theming in `src/index.css`.
 
@@ -544,9 +548,9 @@ A clinic/salon management system integrated into the same app:
 - Reminders — appointment reminders system
 - Payments — linked to appointments and packages, multiple payment methods
 
-## Database Schema (Convex)
+## Database Schema (Convex schema definition, Supabase storage)
 
-~40 tables. Key tables organized by domain:
+`convex/schema.ts` is the structural source of truth (~40 tables); rows live in self-hosted Supabase Postgres as of 2026-04 (see Tech Stack note). Convex table names are camelCase; Supabase table names are snake_case — `convex/_helpers/supabaseDb.ts` (`TABLE_MAP`) is the canonical mapping. Key tables organized by domain:
 
 Auth & billing: `users`, `plans`, `subscriptions`, `platformProducts`, `productSubscriptions`
 
@@ -558,7 +562,7 @@ CRM features: `activities`, `scheduledActivities`, `calls`, `emails`, `emailAcco
 
 Gabinet: `gabinetPatients`, `gabinetTreatments`, `gabinetAppointments`, `gabinetEmployees`, `gabinetWorkingHours`, `gabinetEmployeeSchedules`, `gabinetLeaves`, `gabinetOvertime`, `gabinetLeaveTypes`, `gabinetLeaveBalances`, `gabinetTreatmentPackages`, `gabinetPackageUsage`, `gabinetLoyaltyPoints`, `gabinetLoyaltyTransactions`, `gabinetDocumentTemplates`, `gabinetDocuments`, `gabinetPortalSessions`
 
-All tables use Convex indexes for efficient queries. Search indexes on contacts, companies, leads, documents, emails, products, patients, and treatments.
+The Convex schema declares indexes for legacy / test-suite use, but production read traffic hits Postgres indexes in Supabase — verify any new index needed for a query exists in `supabase/migrations/` as well, not just `convex/schema.ts`. Global search reads from Supabase (`src/hooks/use-supabase-*` family); the Convex search indexes are vestigial.
 
 ## Component Organization
 
@@ -587,7 +591,7 @@ When Ralph completes Gate 1, verify ALL of these before marking DONE:
 ### 1. Functional E2E
 - [ ] Changed routes load without errors
 - [ ] Forms submit correctly
-- [ ] Data persists to Convex
+- [ ] Data persists end-to-end: Convex mutation → Supabase row (check via `use-supabase-*` hook or `supabase/migrations` table)
 - [ ] Related features still work (blast radius)
 
 ### 2. Pattern Compliance

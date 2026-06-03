@@ -170,7 +170,7 @@ export function DraggableAppointment({
     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
       <PopoverAnchor asChild>{card}</PopoverAnchor>
       <PopoverContent
-        className="w-[553px] p-4"
+        className="w-[553px] max-w-[calc(100vw-24px)] max-h-[calc(100dvh-24px)] overflow-y-auto p-4"
         align="start"
         side="right"
         sideOffset={8}

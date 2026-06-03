@@ -141,7 +141,7 @@ export const create = action({
       updatedAt: now,
     });
 
-    // --- Delegate Convex-only side effects ---
+    // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.companies._createSideEffects, {
         companyId,
@@ -257,7 +257,7 @@ export const update = action({
     const { organizationId, companyId, customFields, ...updates } = args;
     await db.patch("companies", companyId, { ...updates, updatedAt: Date.now() });
 
-    // --- Delegate Convex-only side effects ---
+    // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.companies._updateSideEffects, {
         companyId,
@@ -365,7 +365,7 @@ export const remove = action({
     // --- DELETE from Supabase ---
     await db.delete("companies", args.companyId);
 
-    // --- Delegate Convex-only side effects ---
+    // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.companies._removeSideEffects, {
         companyId: args.companyId,

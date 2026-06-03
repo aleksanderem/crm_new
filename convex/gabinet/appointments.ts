@@ -810,7 +810,7 @@ export const _checkDocumentGateQuery = internalQuery({
 });
 
 /**
- * Internal mutation that handles all Convex-only side effects after the
+ * Internal mutation that handles post-write side effects after the
  * appointment has been written to Supabase by the create action.
  */
 export const _createSideEffects = internalMutation({
@@ -1239,7 +1239,7 @@ export const create = action({
       console.warn("[create] scheduled_activity_id patch failed (non-fatal):", e);
     }
 
-    // --- Delegate Convex-only side effects (automation event, docs, reminders) ---
+    // --- Delegate post-write side effects (automation event, docs, reminders) ---
     try {
       await ctx.runMutation(
         internal.gabinet.appointments._createSideEffects,

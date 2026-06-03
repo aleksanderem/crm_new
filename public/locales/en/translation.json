@@ -3006,6 +3006,7 @@
       "total": "Total",
       "remainingCount": "{{remaining}} remaining",
       "usedCount": "{{used}} / {{total}} used",
+      "usedAndScheduled": "{{used}}/{{total}} used, {{scheduled}} scheduled",
       "completionPercent": "{{percent}}% completed",
       "overallProgress": "Overall progress",
       "perTreatmentProgress": "Per-treatment progress",

@@ -30,6 +30,18 @@ import { Package, Plus, Loader2 } from "@/lib/ez-icons";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { PackagePurchaseDrawer } from "./package-purchase-drawer";
 import { PlateText } from "@/components/plate-text";
+import { useSupabaseGabinetAppointmentsByPatient } from "@/hooks/use-supabase-gabinet-appointments";
+
+// Appointment statuses that still consume a package slot — they haven't been
+// deducted from `usedCount` yet (deduction happens on transition to "completed")
+// but they aren't terminal failures (cancelled/no_show) either, so front-desk
+// needs to see them when planning capacity.
+const PENDING_USAGE_STATUSES = new Set([
+  "pending_confirmation",
+  "scheduled",
+  "confirmed",
+  "in_progress",
+]);
 
 type PaymentMethod = "cash" | "card" | "transfer" | "other";
 
@@ -75,6 +87,11 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
     enabled: !!organizationId,
   });
 
+  const { data: patientAppointments } = useSupabaseGabinetAppointmentsByPatient(
+    String(organizationId),
+    patientId,
+  );
+
   const treatmentMap = new Map(
     (treatments ?? []).map((tr) => [tr._id, tr.name])
   );
@@ -82,6 +99,21 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
   const packageMap = new Map(
     (allPackages ?? []).map((p) => [p._id, p])
   );
+
+  // Map usageId -> treatmentId -> count of appointments still pending usage.
+  const scheduledByUsage = new Map<string, Map<string, number>>();
+  for (const appt of patientAppointments ?? []) {
+    if (!appt.packageUsageId || !appt.treatmentId) continue;
+    if (!PENDING_USAGE_STATUSES.has(appt.status)) continue;
+    const usageKey = String(appt.packageUsageId);
+    const treatmentKey = String(appt.treatmentId);
+    let perTreatment = scheduledByUsage.get(usageKey);
+    if (!perTreatment) {
+      perTreatment = new Map<string, number>();
+      scheduledByUsage.set(usageKey, perTreatment);
+    }
+    perTreatment.set(treatmentKey, (perTreatment.get(treatmentKey) ?? 0) + 1);
+  }
 
   // Multi-session purchases ("pakiety"): anything bundling multiple sessions —
   // either several different treatments, or a multi-session sale of one treatment.
@@ -154,11 +186,25 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
 
                     {usage.treatmentsUsed.map((tu) => {
                       const pct = tu.totalCount > 0 ? (tu.usedCount / tu.totalCount) * 100 : 0;
+                      const scheduledCount =
+                        scheduledByUsage.get(String(usage._id))?.get(String(tu.treatmentId)) ?? 0;
                       return (
                         <div key={String(tu.treatmentId)} className="space-y-1">
                           <div className="flex items-center justify-between text-xs text-muted-foreground">
                             <span>{treatmentMap.get(tu.treatmentId) ?? t("common.unknown")}</span>
-                            <span>{tu.usedCount}/{tu.totalCount}</span>
+                            <span>
+                              {scheduledCount > 0
+                                ? t(
+                                    "gabinet.packages.usedAndScheduled",
+                                    "{{used}}/{{total}} used, {{scheduled}} scheduled",
+                                    {
+                                      used: tu.usedCount,
+                                      total: tu.totalCount,
+                                      scheduled: scheduledCount,
+                                    },
+                                  )
+                                : `${tu.usedCount}/${tu.totalCount}`}
+                            </span>
                           </div>
                           <Progress value={pct} className="h-1.5" />
                         </div>
@@ -204,6 +250,9 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
             : null
         }
         treatmentMap={treatmentMap}
+        scheduledByTreatment={
+          detailUsageId ? scheduledByUsage.get(detailUsageId) ?? null : null
+        }
       />
     </>
   );
@@ -609,6 +658,7 @@ interface PackageDetailDialogProps {
     currency?: string;
   } | null;
   treatmentMap: Map<Id<"gabinetTreatments">, string>;
+  scheduledByTreatment: Map<string, number> | null;
 }
 
 function PackageDetailDialog({
@@ -618,6 +668,7 @@ function PackageDetailDialog({
   usage,
   pkg,
   treatmentMap,
+  scheduledByTreatment,
 }: PackageDetailDialogProps) {
   const { t } = useTranslation();
 
@@ -723,12 +774,24 @@ function PackageDetailDialog({
               <div className="space-y-2">
                 {usage.treatmentsUsed.map((tu) => {
                   const pct = tu.totalCount > 0 ? (tu.usedCount / tu.totalCount) * 100 : 0;
+                  const scheduledCount =
+                    scheduledByTreatment?.get(String(tu.treatmentId)) ?? 0;
                   return (
                     <div key={String(tu.treatmentId)} className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
                         <span>{treatmentMap.get(tu.treatmentId) ?? t("common.unknown")}</span>
                         <span className="text-muted-foreground">
-                          {tu.usedCount}/{tu.totalCount}
+                          {scheduledCount > 0
+                            ? t(
+                                "gabinet.packages.usedAndScheduled",
+                                "{{used}}/{{total}} used, {{scheduled}} scheduled",
+                                {
+                                  used: tu.usedCount,
+                                  total: tu.totalCount,
+                                  scheduled: scheduledCount,
+                                },
+                              )
+                            : `${tu.usedCount}/${tu.totalCount}`}
                         </span>
                       </div>
                       <Progress value={pct} className="h-1.5" />

@@ -378,13 +378,18 @@ export function AppointmentDialog({
     const all = patients?.page ?? [];
     if (!patientSearch.trim()) return all;
     const q = patientSearch.toLowerCase();
-    return all.filter(
-      (p) =>
-        (p.firstName ?? "").toLowerCase().includes(q) ||
-        (p.lastName ?? "").toLowerCase().includes(q) ||
+    return all.filter((p) => {
+      const first = (p.firstName ?? "").toLowerCase();
+      const last = (p.lastName ?? "").toLowerCase();
+      const fullName = `${first} ${last}`;
+      const reverseName = `${last} ${first}`;
+      return (
+        fullName.includes(q) ||
+        reverseName.includes(q) ||
         (p.email ?? "").toLowerCase().includes(q) ||
-        (p.phone ?? "").toLowerCase().includes(q),
-    );
+        (p.phone ?? "").toLowerCase().includes(q)
+      );
+    });
   }, [patients, patientSearch]);
 
   // Filter treatments by search

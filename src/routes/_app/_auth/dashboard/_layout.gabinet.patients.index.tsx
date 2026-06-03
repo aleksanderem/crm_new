@@ -32,9 +32,6 @@ import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-s
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 import { formatPhoneNumber } from "@/lib/phone";
 import { formatBirthDate } from "@/lib/format-date";
-import { TagsPicker } from "@/components/categories-tags/tags-picker";
-import { CategoryPicker } from "@/components/categories-tags/category-picker";
-import { Label } from "@/components/ui/label";
 import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import { displayReferralSource } from "@/lib/options";
 
@@ -75,8 +72,6 @@ function PatientsIndex() {
   const { categories } = useCategoryDefinitions(organizationId, "gabinetPatient");
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
-  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
-  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor | undefined>({
     column: "firstName",
     direction: "ascending",
@@ -381,18 +376,16 @@ function PatientsIndex() {
       emergencyContactName?: string | null;
       emergencyContactPhone?: string | null;
       referralSource?: string | null;
+      tagIds?: Id<"tagDefinitions">[];
+      categoryId?: Id<"categoryDefinitions">;
     }) => {
       setIsCreating(true);
       try {
         await createPatient({
           organizationId,
           ...formData,
-          tagIds,
-          categoryId,
         });
         setPanelOpen(false);
-        setTagIds([]);
-        setCategoryId(undefined);
       } catch (e) {
         toast.error(
           formatActionError(e, t, {
@@ -404,7 +397,7 @@ function PatientsIndex() {
         setIsCreating(false);
       }
     },
-    [createPatient, organizationId, tagIds, categoryId, t],
+    [createPatient, organizationId, t],
   );
 
   const handleBulkAction = useCallback(
@@ -549,13 +542,7 @@ function PatientsIndex() {
 
       <SidePanel
         open={panelOpen}
-        onOpenChange={(open) => {
-          setPanelOpen(open);
-          if (!open) {
-            setTagIds([]);
-            setCategoryId(undefined);
-          }
-        }}
+        onOpenChange={setPanelOpen}
         title={t("gabinet.patients.createPatient")}
         description={t("gabinet.patients.createDescription")}
       >
@@ -564,23 +551,9 @@ function PatientsIndex() {
           onCancel={() => setPanelOpen(false)}
           isSubmitting={isCreating}
           organizationId={organizationId}
+          tagDefinitions={tags}
+          categoryDefinitions={categories}
         />
-        {tags.length > 0 && (
-          <div className="space-y-1.5">
-            <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
-            <TagsPicker tags={tags} selectedIds={tagIds} onChange={setTagIds} />
-          </div>
-        )}
-        <div className="space-y-1.5">
-          <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
-          <CategoryPicker
-            categories={categories}
-            selectedId={categoryId}
-            onChange={setCategoryId}
-            organizationId={organizationId}
-            entityType="gabinetPatient"
-          />
-        </div>
       </SidePanel>
 
       <TagsManagerSlideout

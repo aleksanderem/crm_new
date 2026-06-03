@@ -152,7 +152,7 @@ export const create = action({
       updatedAt: now,
     });
 
-    // --- Delegate Convex-only side effects ---
+    // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.gabinet.treatments._createSideEffects, {
         treatmentId,
@@ -253,7 +253,7 @@ export const update = action({
     }
     await db.patch("gabinetTreatments", treatmentId, patchPayload);
 
-    // --- Delegate Convex-only side effects ---
+    // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.gabinet.treatments._updateSideEffects, {
         treatmentId,
@@ -328,7 +328,7 @@ export const remove = action({
       updatedAt: Date.now(),
     });
 
-    // --- Delegate Convex-only side effects ---
+    // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.gabinet.treatments._removeSideEffects, {
         treatmentId: args.treatmentId,
@@ -915,7 +915,7 @@ export const setRequiredFormTemplates = action({
       updatedAt: Date.now(),
     });
 
-    // --- Delegate Convex-only side effects ---
+    // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.gabinet.treatments._updateSideEffects, {
         treatmentId: args.treatmentId,
@@ -981,7 +981,7 @@ export const saveTreatmentParameters = action({
         updatedAt: Date.now(),
       });
 
-      // --- Delegate Convex-only side effects ---
+      // --- Delegate post-write side effects ---
       try {
         await ctx.runMutation(internal.gabinet.treatments._updateSideEffects, {
           treatmentId: args.treatmentId,
@@ -1209,7 +1209,7 @@ export const createVariant = action({
       sortOrder: args.sortOrder ?? null,
     });
 
-    // --- Delegate Convex-only side effects ---
+    // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.gabinet.treatments._createSideEffects, {
         treatmentId: args.treatmentId,
@@ -1291,7 +1291,7 @@ export const updateVariant = action({
     // --- PATCH to Supabase ---
     await db.patch("gabinetTreatmentVariants", args.variantId, updates);
 
-    // --- Delegate Convex-only side effects ---
+    // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.gabinet.treatments._updateSideEffects, {
         treatmentId: variant.treatmentId as string,
@@ -1337,7 +1337,7 @@ export const deleteVariant = action({
     // --- DELETE from Supabase ---
     await db.delete("gabinetTreatmentVariants", args.variantId);
 
-    // --- Delegate Convex-only side effects ---
+    // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.gabinet.treatments._updateSideEffects, {
         treatmentId: variant.treatmentId as string,

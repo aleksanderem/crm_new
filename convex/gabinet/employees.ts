@@ -230,7 +230,7 @@ export const create = action({
       updatedAt: now,
     });
 
-    // --- Delegate Convex-only side effects ---
+    // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.gabinet.employees._createSideEffects, {
         employeeId,
@@ -596,7 +596,7 @@ export const update = action({
     const { organizationId, employeeId, ...updates } = args;
     await db.patch("gabinetEmployees", employeeId, { ...updates, updatedAt: Date.now() });
 
-    // --- Delegate Convex-only side effects ---
+    // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.gabinet.employees._updateSideEffects, {
         employeeId,
@@ -690,7 +690,7 @@ export const remove = action({
       updatedAt: Date.now(),
     });
 
-    // --- Delegate Convex-only side effects ---
+    // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.gabinet.employees._removeSideEffects, {
         employeeId: args.employeeId,
@@ -805,7 +805,7 @@ export const setQualifiedTreatments = action({
       updatedAt: Date.now(),
     });
 
-    // --- Delegate Convex-only side effects ---
+    // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.gabinet.employees._setQualifiedSideEffects, {
         employeeId: args.employeeId,

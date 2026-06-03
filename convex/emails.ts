@@ -241,7 +241,7 @@ export const send = action({
       updatedAt: now,
     });
 
-    // --- Delegate Convex-only side effects ---
+    // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.emails._sendSideEffects, {
         emailId,

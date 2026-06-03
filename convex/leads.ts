@@ -186,7 +186,7 @@ export const create = action({
       updatedAt: now,
     });
 
-    // --- Delegate Convex-only side effects ---
+    // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.leads._createSideEffects, {
         leadId,
@@ -337,7 +337,7 @@ export const update = action({
     // --- PATCH to Supabase ---
     await db.patch("leads", leadId, supabaseUpdates);
 
-    // --- Delegate Convex-only side effects ---
+    // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.leads._updateSideEffects, {
         leadId,
@@ -558,7 +558,7 @@ export const remove = action({
     // --- DELETE from Supabase ---
     await db.delete("leads", args.leadId);
 
-    // --- Delegate Convex-only side effects ---
+    // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.leads._removeSideEffects, {
         leadId: args.leadId,

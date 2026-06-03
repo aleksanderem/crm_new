@@ -67,7 +67,8 @@ frontend hook).
 ## Stale comments
 
 In-file comments written before the migration may still describe Convex as
-"the database", talk about `ctx.db` as the canonical write path, or refer
-to "Convex-only side effects" when the side effects in fact dual-write
-through `publishActivityEnvelope` and friends. Trust the code, not the
-comment — and if you touch the file, fix the comment.
+"the database" or talk about `ctx.db` as the canonical write path. The
+historical "Convex-only side effects" phrase was renamed to "post-write
+side effects" (issue #1394) because those mutations also dual-write
+activities to Supabase through `publishActivityEnvelope`. Trust the code,
+not the comment — and if you touch the file, fix the comment.

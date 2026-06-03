@@ -1,80 +1,110 @@
-import { query, action, internalMutation } from "./_generated/server";
+import { action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
-import { verifyOrgAccess } from "./_helpers/auth";
-import { checkPermission } from "./_helpers/permissions";
 import { logActivity } from "./_helpers/activities";
 
-// Writes are Supabase-primary (see actions below, which use createSupabaseDb).
-// The queries in this file still read from Convex `ctx.db` — they have not
-// been migrated yet, so server-side callers can see slightly stale rows.
-// The frontend reads pipelines via supabase-js (see use-supabase-pipelines).
+// Reads and writes are Supabase-primary via createSupabaseDb(). The frontend
+// reads pipelines directly via supabase-js (see use-supabase-pipelines); the
+// actions below exist for server-side callers and parity with the public API.
 
-// ── Queries (Convex ctx.db — legacy read path, not yet migrated) ────────────
+// ── Reads (Supabase-primary) ────────────────────────────────────────────────
 
-export const list = query({
+export const list = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "pipelines", "view");
+  handler: async (ctx, args): Promise<Record<string, unknown>[]> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "pipelines", action: "view" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
-    const results = await ctx.db
-      .query("pipelines")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+
+    const db = createSupabaseDb();
+    const results = await db
+      .query<{ createdBy?: string }>("pipelines")
+      .eq("organizationId", String(args.organizationId))
       .collect();
     if (perm.scope === "own") {
-      return results.filter((r) => r.createdBy === user._id);
+      return results.filter((r) => r.createdBy === String(authResult.userId));
     }
     return results;
   },
 });
 
-export const getById = query({
+export const getById = action({
   args: {
     organizationId: v.id("organizations"),
-    pipelineId: v.id("pipelines"),
+    pipelineId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "pipelines", "view");
+  handler: async (ctx, args): Promise<Record<string, unknown>> => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "pipelines", action: "view" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
-    const pipeline = await ctx.db.get(args.pipelineId);
-    if (!pipeline || pipeline.organizationId !== args.organizationId) {
+
+    const db = createSupabaseDb();
+    const pipeline = await db.get<{ organizationId: string; createdBy?: string }>(
+      "pipelines",
+      args.pipelineId,
+    );
+    if (!pipeline || pipeline.organizationId !== String(args.organizationId)) {
       throw new Error("Pipeline not found");
     }
-    if (perm.scope === "own" && pipeline.createdBy !== user._id) {
+    if (perm.scope === "own" && pipeline.createdBy !== String(authResult.userId)) {
       throw new Error("Permission denied");
     }
     return pipeline;
   },
 });
 
-export const getStages = query({
+export const getStages = action({
   args: {
     organizationId: v.id("organizations"),
-    pipelineId: v.id("pipelines"),
+    pipelineId: v.string(),
   },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "pipelines", "view");
+  handler: async (ctx, args): Promise<Record<string, unknown>[]> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "pipelines", action: "view" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
-    return await ctx.db
+
+    const db = createSupabaseDb();
+    return await db
       .query("pipelineStages")
-      .withIndex("by_pipeline", (q) => q.eq("pipelineId", args.pipelineId))
+      .eq("pipelineId", args.pipelineId)
       .collect();
   },
 });
 
-export const getAllStages = query({
+export const getAllStages = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "pipelines", "view");
+  handler: async (ctx, args): Promise<Record<string, unknown>[]> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "pipelines", action: "view" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
-    return await ctx.db
+
+    const db = createSupabaseDb();
+    return await db
       .query("pipelineStages")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", String(args.organizationId))
       .collect();
   },
 });

@@ -2825,7 +2825,7 @@
     "appointmentDetail": {
       "title": "Szczegóły wizyty",
       "time": "Godzina",
-      "changeStatus": "Zmień status",
+      "changeStatus": "Zmień status wizyty",
       "statusChanged": "Status wizyty zmieniony",
       "addPhone": "Dodaj nr telefonu",
       "phoneAdded": "Numer telefonu dodany",

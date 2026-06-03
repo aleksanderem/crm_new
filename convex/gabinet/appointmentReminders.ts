@@ -7,6 +7,12 @@ import { checkPermission } from "../_helpers/permissions";
 import { createNotificationDirect } from "../notifications";
 import { Id } from "../_generated/dataModel";
 
+// Supabase is primary for appointmentReminders. Inserts, updates and
+// cross-process cancels in this file all go through `createSupabaseDb()`.
+// The `cancelRemindersInternal` internalMutation and the `listByAppointment`
+// query below still hit Convex `ctx.db` and are legacy — Supabase holds
+// the live rows.
+
 const DEFAULT_REMINDER_HOURS = 24;
 
 /**
@@ -405,7 +411,9 @@ export const cancelRemindersInternal = internalMutation({
     appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
-    // appointmentReminders is a Convex-only table; read + patch via ctx.db.
+    // Legacy: this path reads + patches the Convex copy of appointmentReminders
+    // via ctx.db. Supabase is the live source — see the file header — so this
+    // branch will miss rows inserted post-migration (tracked separately).
     const reminders = await ctx.db
       .query("appointmentReminders")
       .withIndex("by_appointment", (q) => q.eq("appointmentId", args.appointmentId))

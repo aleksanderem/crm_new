@@ -6,13 +6,16 @@ import { createNotificationDirect } from "./notifications";
 import { v } from "convex/values";
 import { activityTypeValidator } from "@cvx/schema";
 
-// ── Queries removed (Supabase-primary migration) ────────────────────────────
-// All public query endpoints (list, getById, listByEntity, listOverdue,
-// listDueToday, listForCalendar, listForCalendarWithVisibility, listDueThisWeek)
-// were deleted; frontends read scheduledActivities from Supabase via
-// use-supabase-scheduled-activities.ts hooks.
+// Supabase is primary for scheduledActivities. Writes go through
+// createSupabaseDb() in the actions below; the frontend reads via
+// use-supabase-scheduled-activities.ts.
+//
+// All public Convex query endpoints (list, getById, listByEntity,
+// listOverdue, listDueToday, listForCalendar,
+// listForCalendarWithVisibility, listDueThisWeek) were deleted as part of
+// the migration.
 
-// ── Internal mutation for Convex-only side effects ──────────────────────────
+// ── Internal mutation for activity log + notification side effects ──────────
 
 export const _createSideEffects = internalMutation({
   args: {

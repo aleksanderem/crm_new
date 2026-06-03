@@ -16,37 +16,12 @@ export const listInbox = query({
   args: {
     organizationId: v.id("organizations"),
     paginationOpts: paginationOptsValidator,
-    search: v.optional(v.string()),
     direction: v.optional(emailDirectionValidator),
     isRead: v.optional(v.boolean()),
     mailProviderId: v.optional(v.id("mailProviders")),
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
-
-    if (args.search) {
-      const searchQuery = ctx.db
-        .query("emails")
-        .withSearchIndex("search_emails", (q) => {
-          let sq = q
-            .search("subject", args.search!)
-            .eq("organizationId", args.organizationId);
-          if (args.direction) {
-            sq = sq.eq("direction", args.direction);
-          }
-          return sq;
-        });
-
-      const results = await searchQuery.take(50);
-
-      const filtered = results.filter((e) => {
-        if (args.isRead !== undefined && e.isRead !== args.isRead) return false;
-        if (args.mailProviderId && e.mailProviderId !== args.mailProviderId) return false;
-        return true;
-      });
-
-      return { page: filtered, isDone: true, continueCursor: "" };
-    }
 
     const baseQuery = args.mailProviderId
       ? ctx.db

@@ -71,11 +71,7 @@ export const documentTables = {
   })
     .index("by_org", ["organizationId"])
     .index("by_scope", ["scope"])
-    .index("by_orgAndCategory", ["organizationId", "category"])
-    .searchIndex("search_components", {
-      searchField: "name",
-      filterFields: ["organizationId", "scope"],
-    }),
+    .index("by_orgAndCategory", ["organizationId", "category"]),
 
   formTemplates: defineTable({
     organizationId: v.id("organizations"),
@@ -117,11 +113,7 @@ export const documentTables = {
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"])
-    .index("by_orgAndCategory", ["organizationId", "category"])
-    .searchIndex("search_templates", {
-      searchField: "name",
-      filterFields: ["organizationId"],
-    }),
+    .index("by_orgAndCategory", ["organizationId", "category"]),
 
   formDocuments: defineTable({
     organizationId: v.id("organizations"),

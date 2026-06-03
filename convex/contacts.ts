@@ -14,25 +14,11 @@ export const list = query({
   args: {
     organizationId: v.id("organizations"),
     paginationOpts: paginationOptsValidator,
-    search: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     const perm = await checkPermission(ctx, args.organizationId, "contacts", "view");
     if (!perm.allowed) throw new Error("Permission denied");
-
-    if (args.search) {
-      const results = await ctx.db
-        .query("contacts")
-        .withSearchIndex("search_contacts", (q) =>
-          q.search("firstName", args.search!).eq("organizationId", args.organizationId)
-        )
-        .take(50);
-      if (perm.scope === "own") {
-        return { page: results.filter((r) => r.createdBy === user._id), isDone: true, continueCursor: "" };
-      }
-      return { page: results, isDone: true, continueCursor: "" };
-    }
 
     const result = await ctx.db
       .query("contacts")

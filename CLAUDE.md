@@ -562,7 +562,7 @@ CRM features: `activities`, `scheduledActivities`, `calls`, `emails`, `emailAcco
 
 Gabinet: `gabinetPatients`, `gabinetTreatments`, `gabinetAppointments`, `gabinetEmployees`, `gabinetWorkingHours`, `gabinetEmployeeSchedules`, `gabinetLeaves`, `gabinetOvertime`, `gabinetLeaveTypes`, `gabinetLeaveBalances`, `gabinetTreatmentPackages`, `gabinetPackageUsage`, `gabinetLoyaltyPoints`, `gabinetLoyaltyTransactions`, `gabinetDocumentTemplates`, `gabinetDocuments`, `gabinetPortalSessions`
 
-The Convex schema declares indexes for legacy / test-suite use, but production read traffic hits Postgres indexes in Supabase — verify any new index needed for a query exists in `supabase/migrations/` as well, not just `convex/schema.ts`. Global search reads from Supabase (`src/hooks/use-supabase-*` family); the Convex search indexes are vestigial.
+The Convex schema declares indexes for legacy / test-suite use, but production read traffic hits Postgres indexes in Supabase — verify any new index needed for a query exists in `supabase/migrations/` as well, not just `convex/schema.ts`. Global search reads from Supabase (`src/hooks/use-supabase-*` family); the Convex `searchIndex` declarations were removed in #1386 (Postgres GIN indexes on `tsvector` columns in `supabase/migrations/00001_initial_schema.sql` are the equivalent and are what production reads hit).
 
 ## Component Organization
 

@@ -70,6 +70,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
+import { PackageUsageSelector } from "@/components/gabinet/package-usage-selector";
 import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
 import { formatPhoneNumber } from "@/lib/phone";
 
@@ -262,6 +263,7 @@ export function AppointmentDialog({
   const [searchingSlot, setSearchingSlot] = useState(false);
   const [locationId, setLocationId] = useState("");
   const [roomId, setRoomId] = useState("");
+  const [packageUsageId, setPackageUsageId] = useState<string | null>(null);
 
   // Combobox open states
   const [treatmentOpen, setTreatmentOpen] = useState(false);
@@ -508,6 +510,7 @@ export function AppointmentDialog({
       setTreatmentId(tid);
       setTreatmentOpen(false);
       setTreatmentSearch("");
+      setPackageUsageId(null);
       // Reset employee if no longer qualified
       if (employeeId && employees) {
         const emp = employees.find((e) => e.userId === employeeId);
@@ -758,6 +761,7 @@ export function AppointmentDialog({
         recurringOverrides: hasCustomizations ? recurringOverridesPayload : undefined,
         locationId: locationId ? (locationId as Id<"gabinetLocations">) : undefined,
         roomId: roomId ? (roomId as Id<"gabinetRooms">) : undefined,
+        packageUsageId: packageUsageId ?? undefined,
       });
       // Refresh the calendar immediately — Convex actions don't invalidate
       // the Supabase React Query cache automatically.
@@ -795,6 +799,7 @@ export function AppointmentDialog({
     selectedTreatment,
     locationId,
     roomId,
+    packageUsageId,
     onOpenChange,
     queryClient,
     t,
@@ -845,6 +850,7 @@ export function AppointmentDialog({
       setTreatmentSearch("");
       setLocationId("");
       setRoomId("");
+      setPackageUsageId(null);
       setAddPatientOpen(false);
       setPendingPatientLabel(null);
       setPastConfirmOpen(false);
@@ -990,6 +996,7 @@ export function AppointmentDialog({
                                 value={p._id}
                                 onSelect={() => {
                                   setPatientId(p._id);
+                                  setPackageUsageId(null);
                                   setPatientOpen(false);
                                   setPatientSearch("");
                                 }}
@@ -1129,6 +1136,21 @@ export function AppointmentDialog({
                       )}
                     </div>
                   </div>
+                )}
+
+                {/* Eligible patient packages — the backend auto-resolves only
+                    when treatmentCount > 1, so this manual picker is the only
+                    way to cover appointments via manually-defined multi-
+                    treatment packages or treatments with treatmentCount=1
+                    that belong to a separate package. Issue #1378. */}
+                {patientId && treatmentId && (
+                  <PackageUsageSelector
+                    patientId={patientId}
+                    treatmentId={treatmentId}
+                    organizationId={organizationId}
+                    selectedUsageId={packageUsageId}
+                    onSelect={setPackageUsageId}
+                  />
                 )}
 
                 <Separator />

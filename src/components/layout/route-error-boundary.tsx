@@ -2,7 +2,10 @@ import { useEffect } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
-import { reportError } from "@/lib/error-reporter";
+import {
+  maybeReloadForStaleChunk,
+  reportError,
+} from "@/lib/error-reporter";
 
 export function RouteErrorBoundary({
   error,
@@ -17,6 +20,9 @@ export function RouteErrorBoundary({
   // boundary. reportError de-duplicates the same key within a 5s window so a
   // re-rendering boundary won't spam the table.
   useEffect(() => {
+    // Stale chunk after a deploy → reload once instead of showing the
+    // generic error UI. Issue #1368.
+    if (maybeReloadForStaleChunk(error)) return;
     reportError(error, {
       scope: "route-error-boundary",
       fnName:

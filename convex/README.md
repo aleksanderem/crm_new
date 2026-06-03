@@ -1,90 +1,73 @@
-# Welcome to your Convex functions directory!
+# Convex backend
 
-Write your Convex functions here.
-See https://docs.convex.dev/functions for more.
+This directory holds Convex functions, but **Convex is no longer the primary
+database for this project** as of 2026-04. Read this section before trusting
+any in-file comment that talks about "the database" or "ctx.db".
 
-A query function that takes two arguments looks like:
+## Data layer (Supabase-primary)
 
-```ts
-// functions.js
-import { query } from "./_generated/server";
-import { v } from "convex/values";
+- The browser holds a Supabase JWT minted via Convex
+  (`convex/supabase/jwt.ts → mintSupabaseToken`) and queries the self-hosted
+  Supabase instance directly via `supabase-js` — see the
+  `src/hooks/use-supabase-*.ts` family.
+- Write path: React calls Convex mutations / actions, and the handler writes
+  to Supabase through `convex/_helpers/supabaseDb.ts → createSupabaseDb()`
+  using the service-role client (`convex/supabase/client.ts`).
+- The Convex schema (`convex/schema.ts`) is still the structural source of
+  truth (camelCase). The equivalent Postgres schema lives in
+  `supabase/migrations/` (snake_case). The Convex→Supabase table-name
+  mapping is in `convex/_helpers/supabaseDb.ts` (`TABLE_MAP`).
+- Indexes that production queries rely on must exist in
+  `supabase/migrations/`, not just `convex/schema.ts`.
+- The pre-migration `writeXToSupabase` internal actions in
+  `convex/supabase/backfill.ts` remain only for backfill.
 
-export const myQueryFunction = query({
-  // Validators for arguments.
-  args: {
-    first: v.number(),
-    second: v.string(),
-  },
+## What still lives in Convex (`ctx.db`)
 
-  // Function implementation.
-  handler: async (ctx, args) => {
-    // Read the database as many times as you need here.
-    // See https://docs.convex.dev/database/reading-data.
-    const documents = await ctx.db.query("tablename").collect();
+A few tables intentionally stay Convex-owned and are not migrated:
 
-    // Arguments passed from the client are properties of the args object.
-    console.log(args.first, args.second);
+- `users`, `organizations`, `teamMemberships` — auth tables (Convex Auth is
+  the source of truth; Supabase gets a copy for analytics).
+- `oauthConnections` — sensitive refresh/access tokens; see the header in
+  `convex/oauthConnections.ts`.
+- `_scheduled_functions` and other Convex-managed system tables.
+- Some legacy read paths (e.g. `convex/pipelines.ts` queries) that have not
+  yet been migrated — writes already go to Supabase via the action handlers.
 
-    // Write arbitrary JavaScript here: filter, aggregate, build derived data,
-    // remove non-public properties, or create new objects.
-    return documents;
-  },
-});
+If you see a `ctx.db.insert/patch/get(...)` call on a non-auth table, check
+`TABLE_MAP` and confirm whether it should also be written through
+`createSupabaseDb()`. Many such call sites are legacy and will read stale
+data because the production frontend reads from Supabase.
+
+## File header conventions
+
+Migrated modules carry a one-line header near the imports:
+
+```
+// Dual-write refs removed — Supabase is now primary for <thing> writes
 ```
 
-Using this query function in a React component looks like:
+When the situation is more nuanced (read still hits Convex, table is
+intentionally Convex-owned, etc.), files use a multi-line header — see
+`convex/emailAccounts.ts` and `convex/oauthConnections.ts` for the canonical
+shape (state the source of truth, explain why, point at the relevant
+frontend hook).
 
-```ts
-const data = useQuery(api.functions.myQueryFunction, {
-  first: 10,
-  second: "hello",
-});
-```
+## Cross-references
 
-A mutation function looks like:
+- `CLAUDE.md` — project-wide architecture overview, including the migration
+  note that supersedes older docs.
+- `docs/modules/platform-core.md`, `docs/modules/crm.md`,
+  `docs/modules/gabinet.md` — per-module data layer notes.
+- `docs/plans/2026-02-17-modular-platform-implementation-plan.md` —
+  historical implementation plan (marked SUPERSEDED).
+- `TESTING.md` — Convex tests run via `npm run test:unit`; the in-memory
+  Supabase stub is at `tests/convex/_supabase_inmemory.ts`.
 
-```ts
-// functions.js
-import { mutation } from "./_generated/server";
-import { v } from "convex/values";
+## Stale comments
 
-export const myMutationFunction = mutation({
-  // Validators for arguments.
-  args: {
-    first: v.string(),
-    second: v.string(),
-  },
-
-  // Function implementation.
-  handler: async (ctx, args) => {
-    // Insert or modify documents in the database here.
-    // Mutations can also read from the database like queries.
-    // See https://docs.convex.dev/database/writing-data.
-    const message = { body: args.first, author: args.second };
-    const id = await ctx.db.insert("messages", message);
-
-    // Optionally, return a value from your mutation.
-    return await ctx.db.get(id);
-  },
-});
-```
-
-Using this mutation function in a React component looks like:
-
-```ts
-const mutation = useMutation(api.functions.myMutationFunction);
-function handleButtonPress() {
-  // fire and forget, the most common way to use mutations
-  mutation({ first: "Hello!", second: "me" });
-  // OR
-  // use the result once the mutation has completed
-  mutation({ first: "Hello!", second: "me" }).then((result) =>
-    console.log(result),
-  );
-}
-```
-
-Use the Convex CLI to push your functions to a deployment. See everything
-the Convex CLI can do by running `npx convex -h` in your project root
-directory. To learn more, launch the docs with `npx convex docs`.
+In-file comments written before the migration may still describe Convex as
+"the database", talk about `ctx.db` as the canonical write path, or refer
+to "Convex-only side effects" when the side effects in fact dual-write
+through `publishActivityEnvelope` and friends. Trust the code, not the
+comment — and if you touch the file, fix the comment.

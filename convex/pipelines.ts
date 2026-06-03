@@ -6,7 +6,12 @@ import { verifyOrgAccess } from "./_helpers/auth";
 import { checkPermission } from "./_helpers/permissions";
 import { logActivity } from "./_helpers/activities";
 
-// ── Queries (unchanged — still read from Convex) ────────────────────────────
+// Writes are Supabase-primary (see actions below, which use createSupabaseDb).
+// The queries in this file still read from Convex `ctx.db` — they have not
+// been migrated yet, so server-side callers can see slightly stale rows.
+// The frontend reads pipelines via supabase-js (see use-supabase-pipelines).
+
+// ── Queries (Convex ctx.db — legacy read path, not yet migrated) ────────────
 
 export const list = query({
   args: { organizationId: v.id("organizations") },
@@ -74,7 +79,7 @@ export const getAllStages = query({
   },
 });
 
-// ── Internal mutation for Convex-only side effects ──────────────────────────
+// ── Internal mutation for ctx.db-side effects (activity log, lead patches) ──
 
 export const _sideEffects = internalMutation({
   args: {

@@ -510,13 +510,34 @@ export function AppointmentDialog({
   );
 
   const handleEmployeeSelect = useCallback((eid: string) => {
-    setEmployeeId(eid);
-    setSelectedSlot(null);
+    setEmployeeId((prev) => {
+      // Clear the slot only when switching FROM an existing employee — slots
+      // are employee-specific so a previous pick may not be available for the
+      // new one. When the dialog was opened with a slot pre-filled from a
+      // calendar click (issue #1364), the initial employee pick must NOT
+      // wipe that slot, otherwise the clicked time disappears.
+      if (prev && prev !== eid) {
+        setSelectedSlot(null);
+      }
+      return eid;
+    });
   }, []);
 
   const handleDateSelect = useCallback((date: Date | undefined) => {
-    setSelectedDate(date);
-    setSelectedSlot(null);
+    setSelectedDate((prev) => {
+      const prevStr = prev
+        ? `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}-${String(prev.getDate()).padStart(2, "0")}`
+        : "";
+      const nextStr = date
+        ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+        : "";
+      // Same rationale as handleEmployeeSelect — preserve a calendar-click
+      // pre-fill when the user re-picks the same date in the mini-calendar.
+      if (prevStr !== nextStr) {
+        setSelectedSlot(null);
+      }
+      return date;
+    });
   }, []);
 
   const handleLocationSelect = useCallback((id: string) => {

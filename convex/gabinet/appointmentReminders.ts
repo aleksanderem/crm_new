@@ -1,17 +1,12 @@
-import { query, action, internalMutation } from "../_generated/server";
+import { action, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
-import { verifyOrgAccess } from "../_helpers/auth";
-import { checkPermission } from "../_helpers/permissions";
 import { createNotificationDirect } from "../notifications";
 import { Id } from "../_generated/dataModel";
 
-// Supabase is primary for appointmentReminders. Inserts, updates and
-// cross-process cancels in this file all go through `createSupabaseDb()`.
-// The `cancelRemindersInternal` internalMutation and the `listByAppointment`
-// query below still hit Convex `ctx.db` and are legacy — Supabase holds
-// the live rows.
+// Supabase is primary for appointmentReminders. Reads, inserts, updates
+// and cross-process cancels in this file all go through `createSupabaseDb()`.
 
 const DEFAULT_REMINDER_HOURS = 24;
 
@@ -411,12 +406,10 @@ export const cancelRemindersInternal = internalMutation({
     appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
-    // Legacy: this path reads + patches the Convex copy of appointmentReminders
-    // via ctx.db. Supabase is the live source — see the file header — so this
-    // branch will miss rows inserted post-migration (tracked separately).
-    const reminders = await ctx.db
+    const db = createSupabaseDb();
+    const reminders = await db
       .query("appointmentReminders")
-      .withIndex("by_appointment", (q) => q.eq("appointmentId", args.appointmentId))
+      .eq("appointmentId", args.appointmentId)
       .collect();
 
     for (const reminder of reminders) {
@@ -430,35 +423,10 @@ export const cancelRemindersInternal = internalMutation({
             // Already fired or cancelled
           }
         }
-        await ctx.db.patch(reminder._id, { status: "cancelled" });
+        await db.patch("appointmentReminders", String(reminder._id), {
+          status: "cancelled",
+        });
       }
     }
-  },
-});
-
-/**
- * List reminders for an appointment (for UI display).
- */
-export const listByAppointment = query({
-  args: {
-    organizationId: v.id("organizations"),
-    appointmentId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "gabinet_appointments",
-      "view"
-    );
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    return await ctx.db
-      .query("appointmentReminders")
-      .withIndex("by_appointment", (q) =>
-        q.eq("appointmentId", args.appointmentId)
-      )
-      .collect();
   },
 });

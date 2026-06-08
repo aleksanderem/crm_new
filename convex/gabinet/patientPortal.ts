@@ -365,6 +365,18 @@ export const bookFromPortal = action({
       await validatePortalSessionSupabase(db, args.tokenHash);
     const organizationId = orgIdStr as Id<"organizations">;
 
+    // Past-time guard (issue #1415). The portal slot picker already hides
+    // past slots client-side, but a crafted request could send any
+    // preferredDate/preferredTime. Parse the same way the appointment row is
+    // later persisted and reject if the start is already in the past — there
+    // is no walk-in concept for self-service portal bookings.
+    const apptMs = new Date(
+      `${args.preferredDate}T${args.preferredTime}:00`,
+    ).getTime();
+    if (Number.isFinite(apptMs) && apptMs <= Date.now()) {
+      throw new Error("Appointment start time is in the past");
+    }
+
     // Read treatment from Supabase
     const treatment = await db.get("gabinetTreatments", args.treatmentId);
     if (

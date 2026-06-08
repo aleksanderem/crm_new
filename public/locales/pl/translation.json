@@ -3532,7 +3532,8 @@
       "pendingNote": "Rezerwacja wymaga potwierdzenia przez recepcję. Otrzymasz powiadomienie po zatwierdzeniu.",
       "submit": "Zarezerwuj wizytę",
       "submitting": "Rezerwacja...",
-      "success": "Twoja rezerwacja została wysłana do potwierdzenia"
+      "success": "Twoja rezerwacja została wysłana do potwierdzenia",
+      "bookingFailed": "Nie udało się zarezerwować wizyty."
     }
   },
   "invite": {

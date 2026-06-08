@@ -3503,7 +3503,8 @@
       "pendingNote": "Your booking requires confirmation from the clinic. You will be notified once approved.",
       "submit": "Book Appointment",
       "submitting": "Booking...",
-      "success": "Your booking has been sent for confirmation"
+      "success": "Your booking has been sent for confirmation",
+      "bookingFailed": "Could not book your appointment."
     }
   },
   "invite": {

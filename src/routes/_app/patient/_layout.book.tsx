@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
 import { PlateText } from "@/components/plate-text";
+import { formatAppointmentError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute("/_app/patient/_layout/book")({
   component: PatientBooking,
@@ -209,8 +210,12 @@ function PatientBooking() {
       toast.success(t("patientPortal.booking.success"));
       navigate({ to: "/patient/appointments" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Booking failed";
-      toast.error(message);
+      toast.error(
+        formatAppointmentError(err, t, {
+          key: "patientPortal.booking.bookingFailed",
+          defaultValue: "Nie udało się zarezerwować wizyty.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }

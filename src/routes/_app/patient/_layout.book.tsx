@@ -85,6 +85,11 @@ function PatientBooking() {
     selectedDate &&
     selectedTreatment
   );
+  // Client "now" — used to hide past slots when the selected date is today.
+  // Issue #1402.
+  const now = new Date();
+  const nowDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const getPublicSlots = useAction(api.gabinet.patientPortal.getPublicAvailableSlots);
   const { data: slots } = useQuery({
     queryKey: [
@@ -93,6 +98,8 @@ function PatientBooking() {
       selectedEmployee?.userId,
       dateStr,
       selectedTreatment?.duration,
+      nowDate,
+      nowTime.slice(0, 2),
     ],
     queryFn: () =>
       getPublicSlots({
@@ -100,6 +107,8 @@ function PatientBooking() {
         employeeId: (selectedEmployee?.userId as string) ?? "",
         date: dateStr || "1970-01-01",
         duration: selectedTreatment?.duration ?? 0,
+        nowDate,
+        nowTime,
       }),
     enabled: slotsEnabled,
   });

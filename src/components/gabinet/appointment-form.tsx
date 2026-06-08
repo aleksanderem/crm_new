@@ -299,6 +299,13 @@ export function AppointmentForm({
     }
   }, [qualifiedEmployees, employeeId]);
 
+  // "Now" in the user's local timezone — used to exclude past slots when the
+  // selected date is today. Backend doesn't know the clinic timezone, so the
+  // client is the source of truth. Issue #1402.
+  const now = new Date();
+  const nowDate = format(now, "yyyy-MM-dd");
+  const nowTime = format(now, "HH:mm");
+
   // Available slots — backend is now an action reading from Supabase
   const getAvailableSlots = useAction(api.gabinet.appointments.getAvailableSlotsQuery);
   const { data: availableSlots, isLoading: slotsLoading } = useQuery({
@@ -308,6 +315,10 @@ export function AppointmentForm({
       employeeId,
       dateStr,
       selectedTreatment?.duration ?? 30,
+      // Bucket by the hour so the query is cached but still refreshes as the
+      // clock advances past past-slot boundaries.
+      nowDate,
+      nowTime.slice(0, 2),
     ],
     queryFn: () =>
       getAvailableSlots({
@@ -315,6 +326,8 @@ export function AppointmentForm({
         userId: employeeId as string,
         date: dateStr,
         duration: selectedTreatment?.duration ?? 30,
+        nowDate,
+        nowTime,
       }),
     enabled: !!employeeId && !!dateStr && !!selectedTreatment && !!organizationId,
   });
@@ -325,14 +338,14 @@ export function AppointmentForm({
     if (!employeeId || !selectedTreatment || !organizationId) return;
     setSearchingSlot(true);
     try {
-      const fromDate = date
-        ? format(date, "yyyy-MM-dd")
-        : new Date().toISOString().split("T")[0];
+      const fromDate = date ? format(date, "yyyy-MM-dd") : nowDate;
       const result = await findNextSlotAction({
         organizationId,
         employeeId: employeeId as string,
         durationMinutes: selectedTreatment.duration,
         fromDate,
+        nowDate,
+        nowTime,
       });
       if (result) {
         setDate(new Date(result.date + "T00:00:00"));

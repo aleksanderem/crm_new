@@ -783,6 +783,7 @@ export function AppointmentDialog({
         locationId: locationId ? (locationId as Id<"gabinetLocations">) : undefined,
         roomId: roomId ? (roomId as Id<"gabinetRooms">) : undefined,
         packageUsageId: packageUsageId ?? undefined,
+        allowPast: recordWalkIn || undefined,
       });
       // Refresh the calendar immediately — Convex actions don't invalidate
       // the Supabase React Query cache automatically.

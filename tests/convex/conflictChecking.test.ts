@@ -36,6 +36,7 @@ describe("conflict checking", () => {
       date: "2026-03-20",
       startTime: "09:00",
       endTime: "09:30",
+      allowPast: true,
     });
 
     // Try to create overlapping appointment for same employee
@@ -48,6 +49,7 @@ describe("conflict checking", () => {
         date: "2026-03-20",
         startTime: "09:15",
         endTime: "09:45",
+        allowPast: true,
       }),
     ).rejects.toThrow();
   });
@@ -66,6 +68,7 @@ describe("conflict checking", () => {
       date: "2026-03-20",
       startTime: "09:00",
       endTime: "09:30",
+      allowPast: true,
     });
 
     // 09:30-10:00 — immediately after, should be fine
@@ -79,6 +82,7 @@ describe("conflict checking", () => {
         date: "2026-03-20",
         startTime: "09:30",
         endTime: "10:00",
+        allowPast: true,
       },
     );
 
@@ -127,6 +131,7 @@ describe("conflict checking", () => {
       date: "2026-03-20",
       startTime: "09:00",
       endTime: "09:30",
+      allowPast: true,
     });
 
     // Employee 2: same time, should be allowed
@@ -140,6 +145,7 @@ describe("conflict checking", () => {
         date: "2026-03-20",
         startTime: "09:00",
         endTime: "09:30",
+        allowPast: true,
       },
     );
 
@@ -160,6 +166,7 @@ describe("conflict checking", () => {
       date: "2026-03-20",
       startTime: "09:00",
       endTime: "09:30",
+      allowPast: true,
     });
 
     // Day 2 — same time, different date
@@ -173,6 +180,7 @@ describe("conflict checking", () => {
         date: "2026-03-21",
         startTime: "09:00",
         endTime: "09:30",
+        allowPast: true,
       },
     );
 
@@ -195,6 +203,7 @@ describe("conflict checking", () => {
         date: "2026-03-20",
         startTime: "09:00",
         endTime: "09:30",
+        allowPast: true,
       },
     );
 
@@ -214,9 +223,69 @@ describe("conflict checking", () => {
         date: "2026-03-20",
         startTime: "09:00",
         endTime: "09:30",
+        allowPast: true,
       },
     );
 
     expect(newApptId).toBeTruthy();
+  });
+
+  // ---------------------------------------------------------------------------
+  // Past-time guard (issue #1414)
+  // ---------------------------------------------------------------------------
+
+  test("rejects appointment whose start time is in the past", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
+
+    // Pick a date 1 day in the past relative to the test runner's clock so
+    // the comparison is robust against timezone drift between the runtime's
+    // local interpretation of `date+startTime` and `Date.now()`.
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const yyyy = yesterday.getUTCFullYear();
+    const mm = String(yesterday.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(yesterday.getUTCDate()).padStart(2, "0");
+    const pastDate = `${yyyy}-${mm}-${dd}`;
+
+    await expect(
+      t.withIdentity(identity).action(api.gabinet.appointments.create, {
+        organizationId,
+        patientId,
+        treatmentId,
+        employeeId: userId,
+        date: pastDate,
+        startTime: "09:00",
+        endTime: "09:30",
+      }),
+    ).rejects.toThrow(/past/i);
+  });
+
+  test("allowPast bypasses the past-time guard (walk-in flow)", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
+
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const yyyy = yesterday.getUTCFullYear();
+    const mm = String(yesterday.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(yesterday.getUTCDate()).padStart(2, "0");
+    const pastDate = `${yyyy}-${mm}-${dd}`;
+
+    const apptId = await t.withIdentity(identity).action(
+      api.gabinet.appointments.create,
+      {
+        organizationId,
+        patientId,
+        treatmentId,
+        employeeId: userId,
+        date: pastDate,
+        startTime: "09:00",
+        endTime: "09:30",
+        allowPast: true,
+      },
+    );
+
+    expect(apptId).toBeTruthy();
   });
 });

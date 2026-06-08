@@ -2811,6 +2811,7 @@
         "outsideEmployeeHours": "Termin poza godzinami pracy pracownika.",
         "clinicClosed": "Gabinet jest zamknięty w tym dniu.",
         "outsideClinicHours": "Termin poza godzinami pracy gabinetu.",
+        "startInPast": "Nie można utworzyć wizyty z czasem w przeszłości. Odśwież listę dostępnych godzin lub włącz tryb „Zapisz wizytę z przeszłości”.",
         "notFound": "Nie znaleziono wizyty. Odśwież kalendarz i spróbuj ponownie.",
         "permissionDenied": "Brak uprawnień do edycji tej wizyty.",
         "invalidStatusTransition": "Nie można zmienić statusu wizyty z bieżącej wartości.",

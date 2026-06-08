@@ -2782,6 +2782,7 @@
         "outsideEmployeeHours": "Outside employee working hours.",
         "clinicClosed": "Clinic is closed on this day.",
         "outsideClinicHours": "Outside clinic working hours.",
+        "startInPast": "This appointment's start time has already passed. Refresh the available slots or enable \"Record past appointment\" mode.",
         "notFound": "Appointment not found. Refresh the calendar and try again.",
         "permissionDenied": "You do not have permission to edit this appointment.",
         "invalidStatusTransition": "Cannot change the appointment status from its current value.",

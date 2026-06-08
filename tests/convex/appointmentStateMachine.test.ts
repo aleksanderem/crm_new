@@ -52,6 +52,9 @@ async function createAppointment(
     date: args.date ?? "2026-03-16",
     startTime: args.startTime ?? "09:00",
     endTime: args.endTime ?? "09:30",
+    // Test fixtures use fixed dates that may already be in the past relative
+    // to the test runner's clock — bypass the past-time guard (#1414).
+    allowPast: true,
   });
 }
 

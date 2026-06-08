@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAction, useConvex } from "convex/react";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
@@ -65,7 +65,7 @@ import {
   MapPin,
   Building2,
 } from "@/lib/ez-icons";
-import { AlertTriangle, CalendarSearch, GripHorizontal, X } from "lucide-react";
+import { AlertTriangle, CalendarSearch, GripHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { SidePanel } from "@/components/crm/side-panel";
@@ -188,7 +188,6 @@ export function AppointmentDialog({
   const createAppointment = useAction(api.gabinet.appointments.create);
   const createPatient = useAction(api.gabinet.patients.create);
   const findNextSlotAction = useAction(api.gabinet.scheduling.findNextAvailableSlot);
-  const convex = useConvex();
   const queryClient = useQueryClient();
 
   // -------------------------------------------------------------------------
@@ -278,8 +277,10 @@ export function AppointmentDialog({
     null,
   );
 
-  // Past-slot confirmation popup
-  const [pastConfirmOpen, setPastConfirmOpen] = useState(false);
+  // Walk-in (record past appointment) toggle. Off by default so past slots
+  // are filtered out of the slot list — the user must opt in deliberately
+  // before they can pick a time in the past. Issue #1406.
+  const [recordWalkIn, setRecordWalkIn] = useState(false);
 
   // Drag-to-reposition state — users want to peek at the calendar underneath
   // without closing the dialog (issue #977). Offset resets when the dialog
@@ -421,6 +422,13 @@ export function AppointmentDialog({
     ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`
     : "";
 
+  // "Now" in the user's local timezone — used to exclude past slots when the
+  // selected date is today. Backend doesn't know the clinic timezone, so the
+  // client is the source of truth. Issue #1402 / #1406.
+  const now = new Date();
+  const nowDate = format(now, "yyyy-MM-dd");
+  const nowTime = format(now, "HH:mm");
+
   // Available slots — action reading from Supabase
   const getAvailableSlots = useAction(api.gabinet.appointments.getAvailableSlotsQuery);
   const { data: availableSlots, isLoading: slotsLoading } = useQuery({
@@ -430,6 +438,11 @@ export function AppointmentDialog({
       employeeId,
       dateStr,
       selectedTreatment?.duration ?? 30,
+      // Bucket by the hour so the query is cached but still refreshes as the
+      // clock advances past past-slot boundaries. Walk-in mode disables the
+      // filter so it must also key the cache.
+      recordWalkIn ? "walkin" : nowDate,
+      recordWalkIn ? "walkin" : nowTime.slice(0, 2),
     ],
     queryFn: () =>
       getAvailableSlots({
@@ -437,6 +450,8 @@ export function AppointmentDialog({
         userId: employeeId as string,
         date: dateStr,
         duration: selectedTreatment?.duration ?? 30,
+        nowDate: recordWalkIn ? undefined : nowDate,
+        nowTime: recordWalkIn ? undefined : nowTime,
       }),
     enabled: !!employeeId && !!dateStr && !!selectedTreatment,
   });
@@ -584,6 +599,8 @@ export function AppointmentDialog({
         durationMinutes: selectedTreatment.duration,
         fromDate:
           dateStr || (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`; })(),
+        nowDate: recordWalkIn ? undefined : nowDate,
+        nowTime: recordWalkIn ? undefined : nowTime,
       });
       if (result) {
         const d = new Date(result.date + "T00:00:00");
@@ -603,7 +620,17 @@ export function AppointmentDialog({
     } finally {
       setSearchingSlot(false);
     }
-  }, [employeeId, selectedTreatment, organizationId, dateStr, convex, t]);
+  }, [
+    employeeId,
+    selectedTreatment,
+    organizationId,
+    dateStr,
+    findNextSlotAction,
+    nowDate,
+    nowTime,
+    recordWalkIn,
+    t,
+  ]);
 
   // -------------------------------------------------------------------------
   // Create new patient inline
@@ -678,12 +705,6 @@ export function AppointmentDialog({
         selectedTreatment?.duration ?? 30,
       )
     : "";
-
-  const isPastSlot = useMemo(() => {
-    if (!dateStr || !selectedSlot?.start) return false;
-    const slotStart = new Date(`${dateStr}T${selectedSlot.start}:00`);
-    return slotStart.getTime() < Date.now();
-  }, [dateStr, selectedSlot]);
 
   // Recurring occurrences (date + effective start time). The first entry is
   // the base appointment (tied to calendar selection, read-only). The rest
@@ -807,12 +828,8 @@ export function AppointmentDialog({
 
   const handleSubmit = useCallback(() => {
     if (!canSubmit || !selectedSlot) return;
-    if (isPastSlot) {
-      setPastConfirmOpen(true);
-      return;
-    }
     void performCreate();
-  }, [canSubmit, selectedSlot, isPastSlot, performCreate]);
+  }, [canSubmit, selectedSlot, performCreate]);
 
   // Sync date/time from props when dialog opens, reset everything when it closes.
   // Without the open-branch, clicking a calendar slot would not pre-fill the
@@ -853,7 +870,7 @@ export function AppointmentDialog({
       setPackageUsageId(null);
       setAddPatientOpen(false);
       setPendingPatientLabel(null);
-      setPastConfirmOpen(false);
+      setRecordWalkIn(false);
     }
   }, [open, defaultDate, defaultTime, defaultEndTime, defaultEmployeeId]);
 
@@ -906,23 +923,6 @@ export function AppointmentDialog({
 
         {/* 3-panel layout: stacks vertically on mobile */}
         <div className="relative flex flex-col md:flex-row md:h-[600px]">
-          {/* Past-slot warning overlay (positioned near bottom so it doesn't cover the calendar grid) */}
-          {isPastSlot && selectedSlot && (
-            <div
-              role="alert"
-              className="pointer-events-none absolute left-1/2 bottom-4 z-20 w-[min(90%,22rem)] -translate-x-1/2"
-            >
-              <div className="pointer-events-auto space-y-1 rounded-md border border-red-600 bg-red-600 px-3 py-2.5 text-xs text-white shadow-lg dark:border-red-700 dark:bg-red-700">
-                <div className="flex items-center gap-1.5 font-semibold">
-                  <AlertTriangle className="size-4 shrink-0" />
-                  {t("gabinet.appointments.warnings.title")}
-                </div>
-                <ul className="ml-5 list-disc space-y-0.5">
-                  <li>{t("gabinet.appointments.warnings.past")}</li>
-                </ul>
-              </div>
-            </div>
-          )}
           {/* ============================================================= */}
           {/* LEFT PANEL — Patient, Treatment, Employee info                */}
           {/* ============================================================= */}
@@ -1261,6 +1261,24 @@ export function AppointmentDialog({
                   </>
                 )}
 
+                {/* Walk-in toggle — explicit opt-in to expose past time slots
+                    so the user can record an appointment they already saw.
+                    Default-off keeps past slots filtered server-side. #1406. */}
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="record-walk-in"
+                    checked={recordWalkIn}
+                    onCheckedChange={(c) => setRecordWalkIn(c as boolean)}
+                    className="mt-0.5"
+                  />
+                  <Label
+                    htmlFor="record-walk-in"
+                    className="text-sm leading-tight mb-0"
+                  >
+                    {t("gabinet.appointments.recordWalkIn")}
+                  </Label>
+                </div>
+
                 {/* Find nearest slot */}
                 <Button
                   type="button"
@@ -1482,7 +1500,12 @@ export function AppointmentDialog({
                   selected={selectedDate}
                   onSelect={handleDateSelect}
                   locale={dateFnsLocale}
-                  disabled={(_date) => !calendarEnabled}
+                  disabled={(date) => {
+                    if (!calendarEnabled) return true;
+                    if (recordWalkIn) return false;
+                    const d = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+                    return d < nowDate;
+                  }}
                   className="w-full rounded-md"
                   classNames={{
                     root: "w-full",
@@ -1725,59 +1748,6 @@ export function AppointmentDialog({
         organizationId={organizationId}
       />
     </SidePanel>
-
-    <Dialog open={pastConfirmOpen} onOpenChange={setPastConfirmOpen}>
-      <DialogContent
-        className="max-w-xs p-0 gap-0 overflow-hidden border-0 rounded-lg shadow-2xl [&>button]:hidden"
-        data-testid="appointment-past-confirm"
-      >
-        <DialogTitle className="sr-only">
-          {t("gabinet.appointments.warnings.title")}
-        </DialogTitle>
-        <DialogDescription className="sr-only">
-          {t("gabinet.appointments.warnings.pastConfirm.message")}
-        </DialogDescription>
-        <div className="flex items-center justify-between bg-slate-800 px-4 py-2.5 text-white">
-          <span className="text-sm font-semibold">
-            {t("gabinet.appointments.warnings.title")}
-          </span>
-          <button
-            type="button"
-            onClick={() => setPastConfirmOpen(false)}
-            className="rounded p-0.5 text-white/80 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-            aria-label={t("common.close")}
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-        <div className="bg-white px-5 py-5 dark:bg-zinc-900">
-          <p className="text-center text-sm text-slate-800 dark:text-zinc-100">
-            {t("gabinet.appointments.warnings.pastConfirm.message")}
-          </p>
-          <div className="mt-5 flex justify-center gap-3">
-            <button
-              type="button"
-              onClick={() => setPastConfirmOpen(false)}
-              className="min-w-16 rounded-md bg-rose-400 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-rose-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60"
-              data-testid="appointment-past-confirm-no"
-            >
-              {t("common.no").toUpperCase()}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setPastConfirmOpen(false);
-                void performCreate();
-              }}
-              className="min-w-16 rounded-md bg-emerald-400 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
-              data-testid="appointment-past-confirm-yes"
-            >
-              {t("common.yes").toUpperCase()}
-            </button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
     </>
   );
 }

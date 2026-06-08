@@ -2709,6 +2709,7 @@
       "findSlotSuccess": "Found slot: {{date}} at {{time}}",
       "findSlotEmpty": "No available slot found within the next 30 days",
       "findSlotError": "Error while searching for a slot",
+      "recordWalkIn": "Record past appointment (walk-in)",
       "statuses": {
         "pending_confirmation": "Pending Confirmation",
         "scheduled": "Scheduled",
@@ -2761,15 +2762,11 @@
       "equipmentWarning": "Required equipment not at this location",
       "warnings": {
         "title": "Warning",
-        "past": "Appointment has passed",
         "qualification": "Employee is not qualified for this treatment",
         "leave": "Employee is on leave at this time",
         "leavePartial": "Employee is on leave on this day between {{start}}–{{end}}.",
         "outsideHours": "Outside clinic working hours",
-        "conflict": "Conflicts with another appointment",
-        "pastConfirm": {
-          "message": "The selected time has already passed. Do you want to add the appointment?"
-        }
+        "conflict": "Conflicts with another appointment"
       },
       "rescheduled": "Appointment rescheduled",
       "rescheduleFailed": "Could not reschedule the appointment.",

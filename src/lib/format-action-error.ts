@@ -90,6 +90,11 @@ const APPOINTMENT_ERROR_MAP: Array<{
     fallback: "Termin koliduje z innym wydarzeniem w kalendarzu.",
   },
   {
+    test: (m) => /appointment start time is in the past/i.test(m),
+    key: "gabinet.appointments.errors.startInPast",
+    fallback: "Nie można utworzyć wizyty z czasem w przeszłości.",
+  },
+  {
     test: (m) => /appointment not found/i.test(m),
     key: "gabinet.appointments.errors.notFound",
     fallback: "Nie znaleziono wizyty. Odśwież kalendarz i spróbuj ponownie.",

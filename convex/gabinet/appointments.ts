@@ -1015,6 +1015,11 @@ export const create = action({
     roomId: v.optional(v.string()),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.string()),
+    // When true, allow booking a slot whose start time is already in the past
+    // (walk-in / retroactive recording). Defaults to false so a stale dialog
+    // or crafted API call cannot silently create a past appointment. Issue
+    // #1414.
+    allowPast: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     // --- Auth + permissions (via internal queries) ---
@@ -1032,6 +1037,18 @@ export const create = action({
 
     const now = Date.now();
     const db = createSupabaseDb();
+
+    // --- Past-time guard (issue #1414) ---
+    // Reject appointments whose start is already in the past unless the
+    // caller explicitly opts in via `allowPast` (walk-in flow). The same
+    // ISO-string parsing as `dueDateMs` below is used so the comparison is
+    // consistent with how the slot is later persisted.
+    if (!args.allowPast) {
+      const apptMs = new Date(`${args.date}T${args.startTime}:00`).getTime();
+      if (Number.isFinite(apptMs) && apptMs <= now) {
+        throw new Error("Appointment start time is in the past");
+      }
+    }
 
     // --- Org settings (reminder default) ---
     const orgSettings = await ctx.runQuery(

@@ -632,6 +632,11 @@ export const findNextAvailableSlot = action({
     durationMinutes: v.number(),
     fromDate: v.optional(v.string()), // YYYY-MM-DD, defaults to today
     maxDaysToSearch: v.optional(v.number()), // defaults to 30
+    // Client local "now" — when present, slots on `nowDate` that are at or
+    // before `nowTime` are excluded so the search never returns a past slot.
+    // Issue #1402.
+    nowDate: v.optional(v.string()),
+    nowTime: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
@@ -642,10 +647,12 @@ export const findNextAvailableSlot = action({
 
     const maxDays = args.maxDaysToSearch ?? 30;
 
-    // Start from fromDate or today
+    // Start from fromDate, then nowDate, then server today (last resort).
     const startDate = args.fromDate
       ? new Date(args.fromDate + "T00:00:00")
-      : new Date();
+      : args.nowDate
+        ? new Date(args.nowDate + "T00:00:00")
+        : new Date();
     // Normalize to YYYY-MM-DD
     const toDateStr = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -661,6 +668,8 @@ export const findNextAvailableSlot = action({
         date: dateStr,
         duration: args.durationMinutes,
         locationId: undefined,
+        nowDate: args.nowDate,
+        nowTime: args.nowTime,
       });
 
       if (slots.length > 0) {

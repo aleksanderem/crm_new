@@ -328,6 +328,8 @@ export const getPublicAvailableSlots = action({
     employeeId: v.string(),
     date: v.string(),
     duration: v.number(),
+    nowDate: v.optional(v.string()),
+    nowTime: v.optional(v.string()),
   },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
@@ -342,6 +344,8 @@ export const getPublicAvailableSlots = action({
       date: args.date,
       duration: args.duration,
       locationId: undefined,
+      nowDate: args.nowDate,
+      nowTime: args.nowTime,
     });
   },
 });

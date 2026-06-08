@@ -651,6 +651,8 @@ export const getAvailableSlotsQuery = action({
     date: v.string(),
     duration: v.number(),
     locationId: v.optional(v.string()),
+    nowDate: v.optional(v.string()),
+    nowTime: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
@@ -670,6 +672,8 @@ export const getAvailableSlotsQuery = action({
       date: args.date,
       duration: args.duration,
       locationId: args.locationId,
+      nowDate: args.nowDate,
+      nowTime: args.nowTime,
     });
   },
 });

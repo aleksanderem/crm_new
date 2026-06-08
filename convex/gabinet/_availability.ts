@@ -124,6 +124,11 @@ export async function getAvailableSlots(
     date: string; // YYYY-MM-DD
     duration: number; // minutes
     locationId?: Id<"gabinetLocations">;
+    // When set, slots starting at or before `nowTime` on `nowDate` are
+    // filtered out. Server doesn't know the clinic timezone so the caller
+    // (frontend) is the source of truth for "now". Issue #1402.
+    nowDate?: string;
+    nowTime?: string;
   }
 ): Promise<TimeSlot[]> {
   const dayOfWeek = new Date(args.date + "T00:00:00").getDay();
@@ -270,6 +275,11 @@ export async function getAvailableSlots(
   while (slotStart + args.duration <= dayEnd) {
     slots.push({ start: minutesToTime(slotStart), end: minutesToTime(slotStart + args.duration) });
     slotStart += 15;
+  }
+
+  if (args.nowDate && args.nowTime && args.nowDate === args.date) {
+    const nowMinutes = timeToMinutes(args.nowTime);
+    return slots.filter((s) => timeToMinutes(s.start) > nowMinutes);
   }
 
   return slots;

@@ -793,6 +793,8 @@ export const _getAvailableSlotsQuery = internalQuery({
     date: v.string(),
     duration: v.number(),
     locationId: v.optional(v.string()),
+    nowDate: v.optional(v.string()),
+    nowTime: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return await getAvailableSlots(ctx, {

@@ -618,7 +618,9 @@ export function FlexibleScheduleEditor({
                 <span>{t("gabinet.appointments.location")}</span>
               </div>
 
-              {periodHours.map((h) => {
+              {DISPLAY_ORDER.map((dayOfWeek) => {
+                const h = periodHours.find((p) => p.dayOfWeek === dayOfWeek);
+                if (!h) return null;
                 const hasBreak = Boolean(h.breakStart || h.breakEnd);
                 return (
                   <div

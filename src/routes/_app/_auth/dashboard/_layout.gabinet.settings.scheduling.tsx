@@ -22,6 +22,7 @@ export const Route = createFileRoute(
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DAY_NAMES_PL = ["Niedziela", "Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota"];
+const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 interface DayHours {
   dayOfWeek: number;
@@ -156,7 +157,9 @@ function SchedulingSettings() {
           <span>{t("gabinet.schedules.break")}</span>
         </div>
 
-        {hours.map((h) => {
+        {DISPLAY_ORDER.map((dayOfWeek) => {
+          const h = hours.find((x) => x.dayOfWeek === dayOfWeek);
+          if (!h) return null;
           const hasTimeError = h.isOpen && h.endTime <= h.startTime;
           const hasBreakError = h.isOpen && h.breakStart && h.breakEnd && h.breakEnd <= h.breakStart;
           const hasBreak = Boolean(h.breakStart || h.breakEnd);

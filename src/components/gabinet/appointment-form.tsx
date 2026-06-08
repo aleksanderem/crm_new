@@ -309,13 +309,19 @@ export function AppointmentForm({
       dateStr,
       selectedTreatment?.duration ?? 30,
     ],
-    queryFn: () =>
-      getAvailableSlots({
+    queryFn: () => {
+      const n = new Date();
+      const nowDate = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
+      const nowMinutes = n.getHours() * 60 + n.getMinutes();
+      return getAvailableSlots({
         organizationId: organizationId!,
         userId: employeeId as string,
         date: dateStr,
         duration: selectedTreatment?.duration ?? 30,
-      }),
+        nowDate,
+        nowMinutes,
+      });
+    },
     enabled: !!employeeId && !!dateStr && !!selectedTreatment && !!organizationId,
   });
 
@@ -325,14 +331,16 @@ export function AppointmentForm({
     if (!employeeId || !selectedTreatment || !organizationId) return;
     setSearchingSlot(true);
     try {
-      const fromDate = date
-        ? format(date, "yyyy-MM-dd")
-        : new Date().toISOString().split("T")[0];
+      const n = new Date();
+      const todayStr = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
+      const fromDate = date ? format(date, "yyyy-MM-dd") : todayStr;
       const result = await findNextSlotAction({
         organizationId,
         employeeId: employeeId as string,
         durationMinutes: selectedTreatment.duration,
         fromDate,
+        nowDate: todayStr,
+        nowMinutes: n.getHours() * 60 + n.getMinutes(),
       });
       if (result) {
         setDate(new Date(result.date + "T00:00:00"));

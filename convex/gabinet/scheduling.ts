@@ -632,6 +632,8 @@ export const findNextAvailableSlot = action({
     durationMinutes: v.number(),
     fromDate: v.optional(v.string()), // YYYY-MM-DD, defaults to today
     maxDaysToSearch: v.optional(v.number()), // defaults to 30
+    nowDate: v.optional(v.string()),
+    nowMinutes: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
@@ -661,6 +663,8 @@ export const findNextAvailableSlot = action({
         date: dateStr,
         duration: args.durationMinutes,
         locationId: undefined,
+        nowDate: args.nowDate,
+        nowMinutes: args.nowMinutes,
       });
 
       if (slots.length > 0) {

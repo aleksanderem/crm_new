@@ -94,13 +94,19 @@ function PatientBooking() {
       dateStr,
       selectedTreatment?.duration,
     ],
-    queryFn: () =>
-      getPublicSlots({
+    queryFn: () => {
+      const n = new Date();
+      const nowDate = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
+      const nowMinutes = n.getHours() * 60 + n.getMinutes();
+      return getPublicSlots({
         tokenHash,
         employeeId: (selectedEmployee?.userId as string) ?? "",
         date: dateStr || "1970-01-01",
         duration: selectedTreatment?.duration ?? 0,
-      }),
+        nowDate,
+        nowMinutes,
+      });
+    },
     enabled: slotsEnabled,
   });
 

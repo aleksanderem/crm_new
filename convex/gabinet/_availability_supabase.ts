@@ -109,6 +109,11 @@ export async function getAvailableSlotsSupabase(
     date: string;
     duration: number;
     locationId?: string;
+    // Caller's current local wall-clock; when args.date matches nowDate the
+    // slot generation skips past times. The client knows its timezone, so we
+    // accept the values pre-computed rather than guessing on the server.
+    nowDate?: string;
+    nowMinutes?: number;
   },
 ): Promise<TimeSlot[]> {
   const dayOfWeek = new Date(args.date + "T00:00:00").getDay();
@@ -233,7 +238,11 @@ export async function getAvailableSlotsSupabase(
   const dayEnd = timeToMinutes(endTime);
   const slots: TimeSlot[] = [];
 
-  let cursor = dayStart;
+  const earliest =
+    args.nowDate === args.date && typeof args.nowMinutes === "number"
+      ? Math.max(dayStart, args.nowMinutes)
+      : dayStart;
+  let cursor = earliest;
   for (const b of blocked) {
     if (cursor + args.duration <= b.start) {
       let slotStart = cursor;

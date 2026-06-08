@@ -98,6 +98,20 @@ function getMondayOfDate(d: Date): Date {
   return result;
 }
 
+function toLocalIsoDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function getCurrentWeekRange(): { from: string; to: string } {
+  const monday = getMondayOfDate(new Date());
+  const sunday = new Date(monday);
+  sunday.setDate(sunday.getDate() + 6);
+  return { from: toLocalIsoDate(monday), to: toLocalIsoDate(sunday) };
+}
+
 interface PeriodWeek {
   monday: Date;
   sunday: Date;
@@ -272,8 +286,9 @@ export function FlexibleScheduleEditor({
   const openNewPeriod = () => {
     setAddingNew(true);
     setEditingPeriodKey(null);
-    setPeriodFrom("");
-    setPeriodTo("");
+    const { from, to } = getCurrentWeekRange();
+    setPeriodFrom(from);
+    setPeriodTo(to);
     setPeriodHours(buildDefaultSchedule(clinicHours));
   };
 

@@ -2738,6 +2738,7 @@
       "findSlotSuccess": "Znaleziono termin: {{date}} o {{time}}",
       "findSlotEmpty": "Nie znaleziono wolnego terminu w ciągu 30 dni",
       "findSlotError": "Błąd podczas szukania terminu",
+      "recordWalkIn": "Zapisz wizytę z przeszłości",
       "statuses": {
         "pending_confirmation": "Oczekuje na potwierdzenie",
         "scheduled": "Zaplanowana",
@@ -2790,15 +2791,11 @@
       "equipmentWarning": "Brak wymaganego sprzętu w tej lokalizacji",
       "warnings": {
         "title": "Ostrzeżenie",
-        "past": "Termin minął",
         "qualification": "Pracownik nie ma kwalifikacji do tego zabiegu",
         "leave": "Pracownik jest na urlopie w tym terminie",
         "leavePartial": "Pracownik jest na urlopie w tym dniu w godzinach {{start}}–{{end}}.",
         "outsideHours": "Termin poza godzinami pracy gabinetu",
-        "conflict": "Kolizja terminów z inną wizytą",
-        "pastConfirm": {
-          "message": "Wybrany termin już minął. Czy chcesz dodać wizytę?"
-        }
+        "conflict": "Kolizja terminów z inną wizytą"
       },
       "rescheduled": "Wizyta przeniesiona",
       "rescheduleFailed": "Nie udało się przenieść wizyty.",

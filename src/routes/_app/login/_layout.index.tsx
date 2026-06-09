@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Route as OnboardingUsernameRoute } from "@/routes/_app/_auth/onboarding/_layout.username";
 import { Route as DashboardRoute } from "@/routes/_app/_auth/dashboard/_layout.index";
 import { useQuery } from "@tanstack/react-query";
@@ -38,6 +39,7 @@ type LoginStep =
   | { resetPassword: string };
 
 function Login() {
+  const { t } = useTranslation();
   const { inviteToken, email: inviteEmail } = Route.useSearch();
   const isInviteFlow = Boolean(inviteToken);
 
@@ -85,12 +87,11 @@ function Login() {
   const inviteBanner = isInviteFlow && inviteData ? (
     <div className="mb-4 rounded-md border border-primary/20 bg-primary/5 p-3 text-sm">
       <div className="font-medium">
-        {inviteData.inviterName ?? "Ktoś"} zaprasza Cię do{" "}
-        <strong>{inviteData.orgName ?? "zespołu"}</strong>
+        {inviteData.inviterName ?? t("login.invite.inviterFallback")} {t("login.invite.invitedBy")}{" "}
+        <strong>{inviteData.orgName ?? t("login.invite.orgFallback")}</strong>
       </div>
       <div className="mt-1 text-xs text-muted-foreground">
-        Wpisz kod, który wyślemy na {inviteData.invitation.email}. Jeśli nie
-        masz jeszcze konta, utworzymy je automatycznie.
+        {t("login.invite.codeInstruction", { email: inviteData.invitation.email })}
       </div>
     </div>
   ) : null;
@@ -154,28 +155,29 @@ function ChooseMethodForm({
   onOtp: () => void;
   onPassword: () => void;
 }) {
+  const { t } = useTranslation();
   const { signIn } = useAuthActions();
   return (
     <>
       <LogoHeader />
 
       <div>
-        <h2 className="mb-1.5 text-2xl font-semibold">Witaj!</h2>
-        <p className="text-muted-foreground">Wybierz metodę logowania:</p>
+        <h2 className="mb-1.5 text-2xl font-semibold">{t("login.chooseMethod.heading")}</h2>
+        <p className="text-muted-foreground">{t("login.chooseMethod.subheading")}</p>
       </div>
 
       <div className="flex flex-wrap gap-4 sm:gap-6">
         <Button variant="outline" className="grow" onClick={onPassword}>
-          Email i hasło
+          {t("login.chooseMethod.passwordBtn")}
         </Button>
         <Button variant="outline" className="grow" onClick={onOtp}>
-          Kod jednorazowy
+          {t("login.chooseMethod.otpBtn")}
         </Button>
       </div>
 
       <div className="flex items-center gap-4">
         <Separator className="flex-1" />
-        <p className="text-muted-foreground text-sm">Lub kontynuuj z</p>
+        <p className="text-muted-foreground text-sm">{t("login.chooseMethod.orContinue")}</p>
         <Separator className="flex-1" />
       </div>
 
@@ -194,9 +196,9 @@ function ChooseMethodForm({
       </Button>
 
       <p className="text-muted-foreground text-center text-sm">
-        Kontynuując, akceptujesz{" "}
-        <a className="text-foreground hover:underline" href="#">Regulamin</a> i{" "}
-        <a className="text-foreground hover:underline" href="#">Politykę prywatności.</a>
+        {t("login.chooseMethod.legalLead")}{" "}
+        <a className="text-foreground hover:underline" href="#">{t("login.chooseMethod.legalTerms")}</a>{" "}{t("login.chooseMethod.legalAnd")}{" "}
+        <a className="text-foreground hover:underline" href="#">{t("login.chooseMethod.legalPrivacy")}</a>
       </p>
     </>
   );
@@ -204,6 +206,7 @@ function ChooseMethodForm({
 
 /* ─── Step 2: Password (sign in / sign up) ─── */
 function PasswordForm({ onBack, onForgotPassword }: { onBack: () => void; onForgotPassword: () => void }) {
+  const { t } = useTranslation();
   const { signIn } = useAuthActions();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
@@ -225,8 +228,8 @@ function PasswordForm({ onBack, onForgotPassword }: { onBack: () => void; onForg
       } catch {
         setError(
           mode === "signIn"
-            ? "Nieprawidłowy email lub hasło"
-            : "Nie udało się utworzyć konta. Spróbuj ponownie."
+            ? t("login.password.errInvalid")
+            : t("login.password.errSignUp")
         );
       } finally {
         setIsSubmitting(false);
@@ -242,10 +245,10 @@ function PasswordForm({ onBack, onForgotPassword }: { onBack: () => void; onForg
 
       <div>
         <h2 className="mb-1.5 text-2xl font-semibold">
-          {isSignUp ? "Utwórz konto" : "Zaloguj się"}
+          {isSignUp ? t("login.password.signUpHeading") : t("login.password.signInHeading")}
         </h2>
         <p className="text-muted-foreground">
-          {isSignUp ? "Wypełnij dane, aby rozpocząć" : "Wprowadź email i hasło"}
+          {isSignUp ? t("login.password.signUpSubheading") : t("login.password.signInSubheading")}
         </p>
       </div>
 
@@ -262,12 +265,12 @@ function PasswordForm({ onBack, onForgotPassword }: { onBack: () => void; onForg
                 d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
               />
             </svg>
-            Zarejestruj się z Github
+            {t("login.password.githubSignUp")}
           </Button>
 
           <div className="flex items-center gap-4">
             <Separator className="flex-1" />
-            <p className="text-muted-foreground text-sm">lub</p>
+            <p className="text-muted-foreground text-sm">{t("login.common.lab.or")}</p>
             <Separator className="flex-1" />
           </div>
         </>
@@ -283,14 +286,14 @@ function PasswordForm({ onBack, onForgotPassword }: { onBack: () => void; onForg
       >
         <form.Field
           name="email"
-          validators={{ onSubmit: z.string().max(256).email("Adres email jest nieprawidłowy.") }}
+          validators={{ onSubmit: z.string().max(256).email(t("login.validation.emailInvalid")) }}
           children={(field) => (
             <div className="space-y-1">
-              <Label htmlFor="userEmail">Email</Label>
+              <Label htmlFor="userEmail">{t("login.fields.email")}</Label>
               <Input
                 id="userEmail"
                 type="email"
-                placeholder="Wprowadź adres email"
+                placeholder={t("login.fields.emailPlaceholder")}
                 autoComplete="email"
                 value={field.state.value}
                 onBlur={field.handleBlur}
@@ -306,10 +309,10 @@ function PasswordForm({ onBack, onForgotPassword }: { onBack: () => void; onForg
 
         <form.Field
           name="password"
-          validators={{ onSubmit: z.string().min(8, "Hasło musi mieć minimum 8 znaków.") }}
+          validators={{ onSubmit: z.string().min(8, t("login.validation.passwordMin")) }}
           children={(field) => (
             <div className="space-y-1">
-              <Label htmlFor="password">Hasło</Label>
+              <Label htmlFor="password">{t("login.fields.password")}</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -345,7 +348,7 @@ function PasswordForm({ onBack, onForgotPassword }: { onBack: () => void; onForg
               onClick={onForgotPassword}
               className="text-sm hover:underline"
             >
-              Nie pamiętasz hasła?
+              {t("login.password.forgotLink")}
             </button>
           </div>
         )}
@@ -353,23 +356,23 @@ function PasswordForm({ onBack, onForgotPassword }: { onBack: () => void; onForg
         {error && <span className="block text-sm text-destructive">{error}</span>}
 
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? <Loader2 className="animate-spin" /> : isSignUp ? "Utwórz konto" : "Zaloguj się"}
+          {isSubmitting ? <Loader2 className="animate-spin" /> : isSignUp ? t("login.password.signUpHeading") : t("login.password.signInHeading")}
         </Button>
       </form>
 
       <p className="text-muted-foreground text-center">
-        {isSignUp ? "Masz konto? " : "Nie masz konta? "}
+        {isSignUp ? t("login.password.hasAccount") : t("login.password.noAccount")}
         <button
           type="button"
           onClick={() => { setMode(isSignUp ? "signIn" : "signUp"); setError(null); }}
           className="text-foreground hover:underline"
         >
-          {isSignUp ? "Zaloguj się" : "Zarejestruj się"}
+          {isSignUp ? t("login.password.toggleToSignIn") : t("login.password.toggleToSignUp")}
         </button>
       </p>
 
       <button type="button" onClick={onBack} className="text-muted-foreground text-center text-sm hover:text-foreground">
-        Wróć do wyboru metody
+        {t("login.password.backToMethod")}
       </button>
     </>
   );
@@ -401,7 +404,7 @@ function OtpEmailForm({
         await signIn("resend-otp", value);
         onSubmit(value.email);
       } catch {
-        setError("Nie udało się wysłać kodu. Sprawdź adres email i spróbuj ponownie.");
+        setError(t("login.otp.errSendFailed"));
       } finally {
         setIsSubmitting(false);
       }
@@ -413,8 +416,8 @@ function OtpEmailForm({
       <LogoHeader />
 
       <div>
-        <h2 className="mb-1.5 text-2xl font-semibold">Kod jednorazowy</h2>
-        <p className="text-muted-foreground">Wyślemy kod weryfikacyjny na Twój email</p>
+        <h2 className="mb-1.5 text-2xl font-semibold">{t("login.otp.heading")}</h2>
+        <p className="text-muted-foreground">{t("login.otp.subheading")}</p>
       </div>
 
       <form
@@ -427,14 +430,14 @@ function OtpEmailForm({
       >
         <form.Field
           name="email"
-          validators={{ onSubmit: z.string().max(256).email("Adres email jest nieprawidłowy.") }}
+          validators={{ onSubmit: z.string().max(256).email(t("login.validation.emailInvalid")) }}
           children={(field) => (
             <div className="space-y-1">
-              <Label htmlFor="otpEmail">Email</Label>
+              <Label htmlFor="otpEmail">{t("login.fields.email")}</Label>
               <Input
                 id="otpEmail"
                 type="email"
-                placeholder="Wprowadź adres email"
+                placeholder={t("login.fields.emailPlaceholder")}
                 value={field.state.value}
                 onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(e.target.value)}
@@ -452,13 +455,13 @@ function OtpEmailForm({
         {error && <span className="block text-sm text-destructive">{error}</span>}
 
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? <Loader2 className="animate-spin" /> : "Wyślij kod"}
+          {isSubmitting ? <Loader2 className="animate-spin" /> : t("login.otp.sendCode")}
         </Button>
       </form>
 
       {onBack && (
         <Button variant="ghost" className="w-full" onClick={onBack}>
-          Wróć do wyboru metody
+          {t("login.password.backToMethod")}
         </Button>
       )}
     </>
@@ -481,7 +484,7 @@ function OtpVerifyForm({ email, onBack }: { email: string; onBack: () => void })
       try {
         await signIn("resend-otp", { email, code: value.code.trim() });
       } catch {
-        setError("Nieprawidłowy lub wygasły kod. Spróbuj ponownie lub wyślij nowy kod.");
+        setError(t("login.otp.errVerify"));
       } finally {
         setIsSubmitting(false);
       }
@@ -493,11 +496,11 @@ function OtpVerifyForm({ email, onBack }: { email: string; onBack: () => void })
       <LogoHeader />
 
       <div>
-        <h2 className="mb-1.5 text-2xl font-semibold">Sprawdź skrzynkę!</h2>
+        <h2 className="mb-1.5 text-2xl font-semibold">{t("login.otp.checkInbox")}</h2>
         <p className="text-muted-foreground">
-          Wysłaliśmy kod weryfikacyjny na{" "}
+          {t("login.otp.sentMessage")}{" "}
           <span className="text-foreground font-semibold">{email}</span>.
-          Wprowadź go poniżej.
+          {t("login.otp.enterBelow")}
         </p>
       </div>
 
@@ -512,14 +515,14 @@ function OtpVerifyForm({ email, onBack }: { email: string; onBack: () => void })
         <form.Field
           name="code"
           validators={{
-            onSubmit: z.string().transform((s) => s.trim()).pipe(z.string().min(8, "Kod musi mieć minimum 8 znaków.")),
+            onSubmit: z.string().transform((s) => s.trim()).pipe(z.string().min(8, t("login.validation.codeMin"))),
           }}
           children={(field) => (
             <div className="space-y-1">
-              <Label htmlFor="otpCode">Kod weryfikacyjny</Label>
+              <Label htmlFor="otpCode">{t("login.fields.code")}</Label>
               <Input
                 id="otpCode"
-                placeholder="Wprowadź kod z emaila"
+                placeholder={t("login.fields.codePlaceholder")}
                 value={field.state.value}
                 onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(e.target.value)}
@@ -544,7 +547,7 @@ function OtpVerifyForm({ email, onBack }: { email: string; onBack: () => void })
       </form>
 
       <p className="text-muted-foreground text-center text-sm">
-        Nie dostałeś kodu?{" "}
+        {t("login.otp.didntGetCode")}{" "}
         <button
           type="button"
           className="text-foreground hover:underline"
@@ -555,20 +558,18 @@ function OtpVerifyForm({ email, onBack }: { email: string; onBack: () => void })
               await signIn("resend-otp", { email });
               setResent(true);
             } catch {
-              setError("Nie udało się wysłać nowego kodu. Spróbuj ponownie.");
+              setError(t("login.otp.errResend"));
             }
           }}
         >
-          Wyślij ponownie
+          {t("login.otp.resend")}
         </button>
       </p>
       {resent && (
-        <p className="text-center text-sm text-green-600">Nowy kod został wysłany.</p>
+        <p className="text-center text-sm text-green-600">{t("login.otp.codeResent")}</p>
       )}
 
-      <Button variant="ghost" className="w-full" onClick={onBack}>
-        Wróć
-      </Button>
+      <Button variant="ghost" className="w-full" onClick={onBack}>{t("login.otp.back")}</Button>
     </>
   );
 }
@@ -595,7 +596,7 @@ function ForgotPasswordForm({
         await signIn("password", { email: value.email, flow: "reset" });
         onSubmit(value.email);
       } catch {
-        setError("Nie udało się wysłać linku. Sprawdź adres email.");
+        setError(t("login.forgot.errSendLink"));
       } finally {
         setIsSubmitting(false);
       }
@@ -607,8 +608,8 @@ function ForgotPasswordForm({
       <LogoHeader />
 
       <div>
-        <h2 className="mb-1.5 text-2xl font-semibold">Nie pamiętasz hasła?</h2>
-        <p className="text-muted-foreground">Wyślemy Ci instrukcje resetowania hasła.</p>
+        <h2 className="mb-1.5 text-2xl font-semibold">{t("login.forgot.heading")}</h2>
+        <p className="text-muted-foreground">{t("login.forgot.subheading")}</p>
       </div>
 
       <form
@@ -621,14 +622,14 @@ function ForgotPasswordForm({
       >
         <form.Field
           name="email"
-          validators={{ onSubmit: z.string().max(256).email("Adres email jest nieprawidłowy.") }}
+          validators={{ onSubmit: z.string().max(256).email(t("login.validation.emailInvalid")) }}
           children={(field) => (
             <div className="space-y-1">
-              <Label htmlFor="resetEmail">Email</Label>
+              <Label htmlFor="resetEmail">{t("login.fields.email")}</Label>
               <Input
                 id="resetEmail"
                 type="email"
-                placeholder="Wprowadź adres email"
+                placeholder={t("login.fields.emailPlaceholder")}
                 value={field.state.value}
                 onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(e.target.value)}
@@ -644,12 +645,12 @@ function ForgotPasswordForm({
         {error && <span className="block text-sm text-destructive">{error}</span>}
 
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? <Loader2 className="animate-spin" /> : "Wyślij link resetujący"}
+          {isSubmitting ? <Loader2 className="animate-spin" /> : t("login.forgot.sendLink")}
         </Button>
       </form>
 
       <Button variant="ghost" className="w-full" onClick={onBack}>
-        Wróć do logowania
+        {t("login.forgot.backToLogin")}
       </Button>
     </>
   );
@@ -676,7 +677,7 @@ function ResetPasswordForm({
     defaultValues: { code: "", newPassword: "", confirmPassword: "" },
     onSubmit: async ({ value }) => {
       if (value.newPassword !== value.confirmPassword) {
-        setError("Hasła nie są identyczne.");
+        setError(t("login.reset.errPasswordMismatch"));
         return;
       }
       setIsSubmitting(true);
@@ -690,7 +691,7 @@ function ResetPasswordForm({
         });
         onSuccess();
       } catch {
-        setError("Nieprawidłowy kod lub nie udało się zmienić hasła. Spróbuj ponownie.");
+        setError(t("login.reset.errResetFailed"));
       } finally {
         setIsSubmitting(false);
       }
@@ -702,11 +703,11 @@ function ResetPasswordForm({
       <LogoHeader />
 
       <div>
-        <h2 className="mb-1.5 text-2xl font-semibold">Ustaw nowe hasło</h2>
+        <h2 className="mb-1.5 text-2xl font-semibold">{t("login.reset.heading")}</h2>
         <p className="text-muted-foreground">
-          Wprowadź kod z emaila wysłanego na{" "}
+          {t("login.reset.instruction")}{" "}
           <span className="text-foreground font-semibold">{email}</span>{" "}
-          oraz nowe hasło (min. 8 znaków).
+          {t("login.reset.passwordHint")}
         </p>
       </div>
 
@@ -723,10 +724,10 @@ function ResetPasswordForm({
           validators={{ onSubmit: z.string().min(1, "Kod jest wymagany.") }}
           children={(field) => (
             <div className="space-y-1">
-              <Label htmlFor="resetCode">Kod z emaila</Label>
+              <Label htmlFor="resetCode">{t("login.fields.resetCode")}</Label>
               <Input
                 id="resetCode"
-                placeholder="Wprowadź kod"
+                placeholder={t("login.fields.resetCodePlaceholder")}
                 value={field.state.value}
                 onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(e.target.value)}
@@ -741,10 +742,10 @@ function ResetPasswordForm({
 
         <form.Field
           name="newPassword"
-          validators={{ onSubmit: z.string().min(8, "Hasło musi mieć minimum 8 znaków.") }}
+          validators={{ onSubmit: z.string().min(8, t("login.validation.passwordMin")) }}
           children={(field) => (
             <div className="space-y-1">
-              <Label htmlFor="newPassword">Nowe hasło</Label>
+              <Label htmlFor="newPassword">{t("login.fields.newPassword")}</Label>
               <div className="relative">
                 <Input
                   id="newPassword"
@@ -775,10 +776,10 @@ function ResetPasswordForm({
 
         <form.Field
           name="confirmPassword"
-          validators={{ onSubmit: z.string().min(8, "Hasło musi mieć minimum 8 znaków.") }}
+          validators={{ onSubmit: z.string().min(8, t("login.validation.passwordMin")) }}
           children={(field) => (
             <div className="space-y-1">
-              <Label htmlFor="confirmPassword">Potwierdź hasło</Label>
+              <Label htmlFor="confirmPassword">{t("login.fields.confirmPassword")}</Label>
               <div className="relative">
                 <Input
                   id="confirmPassword"
@@ -810,13 +811,11 @@ function ResetPasswordForm({
         {error && <span className="block text-sm text-destructive">{error}</span>}
 
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? <Loader2 className="animate-spin" /> : "Ustaw nowe hasło"}
+          {isSubmitting ? <Loader2 className="animate-spin" /> : t("login.reset.submitBtn")}
         </Button>
       </form>
 
-      <Button variant="ghost" className="w-full" onClick={onBack}>
-        Wróć
-      </Button>
+      <Button variant="ghost" className="w-full" onClick={onBack}>{t("login.otp.back")}</Button>
     </>
   );
 }

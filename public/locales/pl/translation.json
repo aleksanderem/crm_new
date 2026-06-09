@@ -3997,5 +3997,91 @@
         "roleUpdateFailed": "Nie udało się zmienić roli użytkownika."
       }
     }
+  },
+  "login": {
+    "chooseMethod": {
+      "heading": "Witaj!",
+      "subheading": "Wybierz metodę logowania:",
+      "passwordBtn": "Email i hasło",
+      "otpBtn": "Kod jednorazowy",
+      "orContinue": "Lub kontynuuj z",
+      "legalLead": "Kontynuując, akceptujesz",
+      "legalTerms": "Regulamin",
+      "legalAnd": "i",
+      "legalPrivacy": "Politykę prywatności."
+    },
+    "fields": {
+      "email": "Email",
+      "emailPlaceholder": "Wprowadź adres email",
+      "password": "Hasło",
+      "passwordPlaceholder": "••••••••••••",
+      "code": "Kod weryfikacyjny",
+      "codePlaceholder": "Wprowadź kod z emaila",
+      "newPassword": "Nowe hasło",
+      "confirmPassword": "Potwierdź hasło",
+      "resetCode": "Kod z emaila",
+      "resetCodePlaceholder": "Wprowadź kod"
+    },
+    "otp": {
+      "heading": "Kod jednorazowy",
+      "subheading": "Wyślemy kod weryfikacyjny na Twój email",
+      "checkInbox": "Sprawdź skrzynkę!",
+      "codeResent": "Nowy kod został wysłany.",
+      "sendCode": "Wyślij kod",
+      "sentMessage": "Wysłaliśmy kod weryfikacyjny na",
+      "enterBelow": "Wprowadź go poniżej.",
+      "didntGetCode": "Nie dostałeś kodu?",
+      "resend": "Wyślij ponownie",
+      "back": "Wróć",
+      "errSendFailed": "Nie udało się wysłać kodu. Sprawdź adres email i spróbuj ponownie.",
+      "errVerify": "Nieprawidłowy lub wygasły kod. Spróbuj ponownie lub wyślij nowy kod.",
+      "errResend": "Nie udało się wysłać nowego kodu. Spróbuj ponownie."
+    },
+    "forgot": {
+      "heading": "Nie pamiętasz hasła?",
+      "subheading": "Wyślemy Ci instrukcje resetowania hasła.",
+      "sendLink": "Wyślij link resetujący",
+      "backToLogin": "Wróć do logowania",
+      "errSendLink": "Nie udało się wysłać linku. Sprawdź adres email."
+    },
+    "reset": {
+      "heading": "Ustaw nowe hasło",
+      "instruction": "Wprowadź kod z emaila wysłanego na",
+      "passwordHint": "oraz nowe hasło (min. 8 znaków).",
+      "submitBtn": "Ustaw nowe hasło",
+      "errPasswordMismatch": "Hasła nie są identyczne.",
+      "errResetFailed": "Nieprawidłowy kod lub nie udało się zmienić hasła. Spróbuj ponownie."
+    },
+    "common": {
+      "lab": {
+        "or": "lub"
+      }
+    },
+    "invite": {
+      "inviterFallback": "Ktoś",
+      "orgFallback": "zespołu",
+      "invitedBy": "zaprasza Cię do",
+      "codeInstruction": "Wpisz kod, który wyślemy na {{email}}. Jeśli nie masz jeszcze konta, utworzymy je automatycznie."
+    },
+    "password": {
+      "signInHeading": "Zaloguj się",
+      "signUpHeading": "Utwórz konto",
+      "signInSubheading": "Wprowadź email i hasło",
+      "signUpSubheading": "Wypełnij dane, aby rozpocząć",
+      "githubSignUp": "Zarejestruj się z Github",
+      "forgotLink": "Nie pamiętasz hasła?",
+      "toggleToSignUp": "Zarejestruj się",
+      "toggleToSignIn": "Zaloguj się",
+      "backToMethod": "Wróć do wyboru metody",
+      "errInvalid": "Nieprawidłowy email lub hasło",
+      "errSignUp": "Nie udało się utworzyć konta. Spróbuj ponownie.",
+      "hasAccount": "Masz konto? ",
+      "noAccount": "Nie masz konta? "
+    },
+    "validation": {
+      "emailInvalid": "Adres email jest nieprawidłowy.",
+      "passwordMin": "Hasło musi mieć minimum 8 znaków.",
+      "codeMin": "Kod musi mieć minimum 8 znaków."
+    }
   }
 }

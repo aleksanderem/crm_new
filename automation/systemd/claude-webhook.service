@@ -1,0 +1,22 @@
+[Unit]
+Description=Claude Code GitHub Webhook Listener
+After=network.target
+
+[Service]
+Type=simple
+User=claude-bot
+Group=claude-bot
+WorkingDirectory=/home/claude-bot/worker
+EnvironmentFile=/home/claude-bot/worker/.env
+ExecStart=/usr/bin/node /home/claude-bot/worker/webhook.mjs
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/home/claude-bot/logs/webhook.stdout.log
+StandardError=append:/home/claude-bot/logs/webhook.stderr.log
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/home/claude-bot
+
+[Install]
+WantedBy=multi-user.target

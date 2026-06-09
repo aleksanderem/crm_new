@@ -1,0 +1,13 @@
+{
+  "max_turns": 100,
+  "per_attempt_timeout": 1200,
+  "max_attempts": 2,
+  "auto_tune": {
+    "consecutive_fails_to_bump": 3,
+    "max_turns_step": 50,
+    "max_turns_cap": 300,
+    "per_attempt_timeout_step": 600,
+    "per_attempt_timeout_cap": 3000
+  },
+  "history": []
+}

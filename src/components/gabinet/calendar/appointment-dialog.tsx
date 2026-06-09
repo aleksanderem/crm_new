@@ -1,4 +1,11 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
@@ -284,12 +291,33 @@ export function AppointmentDialog({
 
   // Drag-to-reposition state — users want to peek at the calendar underneath
   // without closing the dialog (issue #977). Offset resets when the dialog
-  // closes so the next open starts centered.
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  // closes so the next open starts centered. The live offset lives in a ref
+  // and is written straight to `transform` via rAF; using React state would
+  // re-render the whole form on every pointermove and make the drag stutter
+  // (issue #1424).
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+  const dialogContentRef = useRef<HTMLDivElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  const applyDragTransform = useCallback(() => {
+    const el = dialogContentRef.current;
+    if (!el) return;
+    const { x, y } = dragOffsetRef.current;
+    el.style.transform =
+      x === 0 && y === 0
+        ? ""
+        : `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+  }, []);
+
+  // Reapply on every render so an unrelated re-render mid-drag doesn't snap
+  // the dialog back to its class-defined centered transform.
+  useLayoutEffect(() => {
+    applyDragTransform();
+  });
+
   useEffect(() => {
     if (!open) {
-      setDragOffset({ x: 0, y: 0 });
+      dragOffsetRef.current = { x: 0, y: 0 };
       setIsDragging(false);
     }
   }, [open]);
@@ -300,17 +328,29 @@ export function AppointmentDialog({
       e.preventDefault();
       const startX = e.clientX;
       const startY = e.clientY;
-      const startOffset = dragOffset;
+      const startOffset = { ...dragOffsetRef.current };
       setIsDragging(true);
 
+      let rafId: number | null = null;
+      const flush = () => {
+        rafId = null;
+        applyDragTransform();
+      };
+
       const handleMove = (ev: PointerEvent) => {
-        setDragOffset({
+        dragOffsetRef.current = {
           x: startOffset.x + (ev.clientX - startX),
           y: startOffset.y + (ev.clientY - startY),
-        });
+        };
+        if (rafId === null) rafId = requestAnimationFrame(flush);
       };
 
       const handleUp = () => {
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+        applyDragTransform();
         window.removeEventListener("pointermove", handleMove);
         window.removeEventListener("pointerup", handleUp);
         setIsDragging(false);
@@ -319,7 +359,7 @@ export function AppointmentDialog({
       window.addEventListener("pointermove", handleMove);
       window.addEventListener("pointerup", handleUp);
     },
-    [dragOffset],
+    [applyDragTransform],
   );
 
   // Auto-scroll the currently-selected slot button into view so the user
@@ -890,15 +930,9 @@ export function AppointmentDialog({
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        ref={dialogContentRef}
         className="max-w-5xl p-0 gap-0 overflow-hidden max-h-[90vh] md:max-h-[640px]"
         overlayClassName="bg-black/40"
-        style={
-          dragOffset.x !== 0 || dragOffset.y !== 0
-            ? {
-                transform: `translate(calc(-50% + ${dragOffset.x}px), calc(-50% + ${dragOffset.y}px))`,
-              }
-            : undefined
-        }
       >
         <DialogTitle className="sr-only">
           {t("gabinet.appointments.createAppointment")}

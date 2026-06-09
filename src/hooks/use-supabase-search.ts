@@ -40,18 +40,33 @@ export async function supabaseGlobalSearch(
   orgId: string,
   query: string,
 ): Promise<SearchGroup[]> {
-  if (!query.trim()) return [];
+  const trimmed = query.trim();
+  if (!trimmed) return [];
 
-  const pattern = `%${query}%`;
+  const pattern = `%${trimmed}%`;
+  const tokens = trimmed.split(/\s+/);
+
+  // Each whitespace-separated token must match first_name or last_name.
+  // Chained .or() filters are AND-combined by PostgREST, so "John Smith"
+  // becomes
+  //   (first_name ILIKE %John% OR last_name ILIKE %John%)
+  //   AND
+  //   (first_name ILIKE %Smith% OR last_name ILIKE %Smith%)
+  // which matches a row whose names are stored in separate columns.
+  let contactsQuery = supabase
+    .from("contacts")
+    .select("*")
+    .eq("organization_id", orgId);
+  for (const token of tokens) {
+    const tokenPattern = `%${token}%`;
+    contactsQuery = contactsQuery.or(
+      `first_name.ilike.${tokenPattern},last_name.ilike.${tokenPattern}`,
+    );
+  }
 
   const [contactsRes, companiesRes, leadsRes, documentsRes, productsRes] =
     await Promise.all([
-      supabase
-        .from("contacts")
-        .select("*")
-        .eq("organization_id", orgId)
-        .or(`first_name.ilike.${pattern},last_name.ilike.${pattern}`)
-        .limit(5),
+      contactsQuery.limit(5),
 
       supabase
         .from("companies")

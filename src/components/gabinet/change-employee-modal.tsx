@@ -191,7 +191,7 @@ export function ChangeEmployeeModal({
   // Check if the current slot specifically is available for the selected employee
   const isSlotAvailable = useMemo(() => {
     if (!selectedId || !availabilityCheck) return false;
-    return availabilityCheck.some(
+    return availabilityCheck.slots.some(
       (slot: { start: string; end: string }) =>
         slot.start === startTime && slot.end === endTime,
     );

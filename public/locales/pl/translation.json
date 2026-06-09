@@ -2720,6 +2720,12 @@
       "pickDate": "Wybierz datę",
       "loadingSlots": "Sprawdzanie dostępności...",
       "noSlots": "Brak wolnych terminów w tym dniu",
+      "noSlotsReason": {
+        "employee_not_working": "Pracownik nie pracuje w tym dniu. Zmień datę lub wybierz innego pracownika.",
+        "clinic_closed": "Gabinet jest zamknięty w tym dniu. Wybierz inny dzień.",
+        "on_leave": "Pracownik jest na urlopie w tym dniu. Wybierz inną datę lub innego pracownika.",
+        "fully_booked": "Cały dzień jest zarezerwowany. Wybierz inny dzień lub innego pracownika."
+      },
       "selectedTime": "Wybrany termin",
       "create": "Utwórz wizytę",
       "frequencies": {
@@ -2782,6 +2788,12 @@
         "selectTreatmentAndEmployee": "Wybierz zabieg i pracownika, aby zobaczyć dostępne terminy",
         "selectDateForSlots": "Wybierz datę w kalendarzu, aby zobaczyć wolne godziny",
         "noSlotsForDay": "Brak dostępnych terminów w tym dniu",
+        "noSlotsReason": {
+          "employee_not_working": "Pracownik nie pracuje w tym dniu. Zmień datę lub wybierz innego pracownika.",
+          "clinic_closed": "Gabinet jest zamknięty w tym dniu. Wybierz inny dzień.",
+          "on_leave": "Pracownik jest na urlopie w tym dniu. Wybierz inną datę lub innego pracownika.",
+          "fully_booked": "Cały dzień jest zarezerwowany dla tego pracownika. Wybierz inny dzień lub innego pracownika."
+        },
         "confirmBooking": "Umów wizytę",
         "time": "Godzina"
       },
@@ -3530,6 +3542,12 @@
       "loading": "Ładowanie...",
       "noTreatments": "Brak dostępnych zabiegów",
       "noSlots": "Brak dostępnych terminów w tym dniu",
+      "noSlotsReason": {
+        "employee_not_working": "Specjalista nie pracuje w tym dniu. Wybierz inną datę.",
+        "clinic_closed": "Gabinet jest zamknięty w tym dniu. Wybierz inny dzień.",
+        "on_leave": "Specjalista jest na urlopie w tym dniu. Wybierz inną datę.",
+        "fully_booked": "Wszystkie terminy w tym dniu są zajęte. Wybierz inny dzień."
+      },
       "pendingNote": "Rezerwacja wymaga potwierdzenia przez recepcję. Otrzymasz powiadomienie po zatwierdzeniu.",
       "submit": "Zarezerwuj wizytę",
       "submitting": "Rezerwacja...",

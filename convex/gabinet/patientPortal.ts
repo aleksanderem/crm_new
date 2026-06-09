@@ -413,7 +413,7 @@ export const bookFromPortal = action({
 
       let foundEmployee: string | null = null;
       for (const emp of qualifiedEmployees) {
-        const slots = await getAvailableSlotsSupabase(db, {
+        const { slots } = await getAvailableSlotsSupabase(db, {
           organizationId: String(organizationId),
           userId: String(emp.userId),
           date: args.preferredDate,

@@ -4,7 +4,7 @@ import { DraggableAppointment } from "./draggable-appointment";
 import { DroppableSlot } from "./droppable-slot";
 import { useDragToCreate } from "./use-drag-to-create";
 import { useCurrentTime } from "@/hooks/use-current-time";
-import type { AppointmentIndicator } from "./appointment-card";
+import type { AppointmentIndicator } from "./appointment-indicators";
 
 interface Appointment {
   _id: string;

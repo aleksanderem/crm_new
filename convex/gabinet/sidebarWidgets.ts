@@ -258,9 +258,36 @@ export const getTodaySchedule = action({
       db.query("gabinetLeaves").eq("organizationId", orgId).eq("status", "approved").collect(),
     ]);
 
-    const todaySchedules = (schedules as any[]).filter(
-      (s) => s.dayOfWeek === dayOfWeek && s.isWorking,
-    );
+    // For each employee, pick the most specific schedule entry whose effective
+    // period covers today (mirrors resolveScheduleForDate in
+    // _availability_supabase.ts). Without this, an employee with a default
+    // (isWorking=true) entry and a current-period override (isWorking=false)
+    // would still appear here as "working today" while the slot picker
+    // correctly treats them as off.
+    const schedulesByUser = new Map<string, any[]>();
+    for (const s of schedules as any[]) {
+      if (s.dayOfWeek !== dayOfWeek) continue;
+      if (s.effectiveFrom && todayStr < String(s.effectiveFrom)) continue;
+      if (s.effectiveTo && todayStr > String(s.effectiveTo)) continue;
+      const key = String(s.userId);
+      const list = schedulesByUser.get(key) ?? [];
+      list.push(s);
+      schedulesByUser.set(key, list);
+    }
+
+    const todaySchedules: any[] = [];
+    for (const list of schedulesByUser.values()) {
+      list.sort((a, b) => {
+        const af = (a.effectiveFrom as string | null | undefined) ?? "";
+        const bf = (b.effectiveFrom as string | null | undefined) ?? "";
+        if (af && bf) return bf.localeCompare(af);
+        if (af) return -1;
+        if (bf) return 1;
+        return 0;
+      });
+      const effective = list[0];
+      if (effective?.isWorking) todaySchedules.push(effective);
+    }
 
     const onLeaveUserIds = new Set(
       (approvedLeaves as any[])

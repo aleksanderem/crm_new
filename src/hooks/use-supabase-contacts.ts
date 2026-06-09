@@ -50,13 +50,22 @@ export function useSupabaseContactsList(
 
       const trimmedSearch = search?.trim();
       if (trimmedSearch) {
-        query = query.or(
-          [
-            `first_name.ilike.%${trimmedSearch}%`,
-            `last_name.ilike.%${trimmedSearch}%`,
-            `email.ilike.%${trimmedSearch}%`,
-          ].join(","),
-        );
+        // Each whitespace-separated token must match first_name, last_name,
+        // or email. Chained .or() filters are AND-combined by PostgREST, so
+        // "John Smith" becomes
+        //   (first_name ILIKE %John% OR last_name ILIKE %John% OR email ILIKE %John%)
+        //   AND
+        //   (first_name ILIKE %Smith% OR last_name ILIKE %Smith% OR email ILIKE %Smith%)
+        for (const token of trimmedSearch.split(/\s+/)) {
+          const pattern = `%${token}%`;
+          query = query.or(
+            [
+              `first_name.ilike.${pattern}`,
+              `last_name.ilike.${pattern}`,
+              `email.ilike.${pattern}`,
+            ].join(","),
+          );
+        }
       }
 
       const { data, error } = await query

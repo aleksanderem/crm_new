@@ -76,7 +76,10 @@
       "invalidArguments": "Invalid data. Please check the form and try again.",
       "schemaCache": "Database schema is missing a column — a migration likely wasn't applied. Run `npm run migrations:apply` and refresh.",
       "storage": "Storage error. Please try again."
-    }
+    },
+    "previous": "Previous",
+    "next": "Next",
+    "select": "Select"
   },
   "nav": {
     "deals": "Deals",

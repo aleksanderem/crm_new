@@ -114,7 +114,7 @@ function FormFieldConfig({
           <SelectContent>
             <SelectItem value="text">Text</SelectItem>
             <SelectItem value="textarea">Textarea</SelectItem>
-            <SelectItem value="select">Select</SelectItem>
+            <SelectItem value="select">{t("common.select")}</SelectItem>
             <SelectItem value="date">Date</SelectItem>
             <SelectItem value="checkbox">Checkbox</SelectItem>
           </SelectContent>
@@ -166,7 +166,7 @@ function FormFieldConfig({
       </div>
 
       <div className="flex items-center justify-between">
-        <Label className="text-xs">Required</Label>
+        <Label className="text-xs">{t("common.required")}</Label>
         <Switch
           checked={attrs.required}
           onCheckedChange={(v) => onChange({ required: v })}

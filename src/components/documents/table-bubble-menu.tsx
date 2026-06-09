@@ -2,6 +2,7 @@ import { BubbleMenu } from "@tiptap/react/menus";
 import { useEditorState } from "@tiptap/react";
 import type { Editor } from "@tiptap/react";
 import { useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
   Rows3,
@@ -27,14 +28,14 @@ import { cn } from "@/lib/utils";
 import type { TableBorderStyle } from "@/components/documents/table-cell-bg";
 
 const CELL_BG_COLORS = [
-  { color: null, label: "Brak tła" },
-  { color: "#fef3c7", label: "Żółty" },
-  { color: "#dbeafe", label: "Niebieski" },
-  { color: "#dcfce7", label: "Zielony" },
-  { color: "#fce7f3", label: "Różowy" },
-  { color: "#f3e8ff", label: "Fioletowy" },
-  { color: "#fee2e2", label: "Czerwony" },
-  { color: "#f1f5f9", label: "Szary" },
+  { color: null, labelKey: "documentsEditor.table.colorBg.none" },
+  { color: "#fef3c7", labelKey: "documentsEditor.table.colorBg.yellow" },
+  { color: "#dbeafe", labelKey: "documentsEditor.table.colorBg.blue" },
+  { color: "#dcfce7", labelKey: "documentsEditor.table.colorBg.green" },
+  { color: "#fce7f3", labelKey: "documentsEditor.table.colorBg.pink" },
+  { color: "#f3e8ff", labelKey: "documentsEditor.table.colorBg.purple" },
+  { color: "#fee2e2", labelKey: "documentsEditor.table.colorBg.red" },
+  { color: "#f1f5f9", labelKey: "documentsEditor.table.colorBg.gray" },
 ] as const;
 
 function ColorSwatch({
@@ -96,6 +97,7 @@ interface TableBubbleMenuProps {
 }
 
 export function TableBubbleMenu({ editor }: TableBubbleMenuProps) {
+  const { t } = useTranslation();
   const btn =
     "h-7 w-7 p-0 text-muted-foreground hover:text-foreground";
   const btnDanger = cn(btn, "text-destructive hover:text-destructive");
@@ -153,18 +155,18 @@ export function TableBubbleMenu({ editor }: TableBubbleMenuProps) {
         <div className="flex items-center gap-0.5">
           <Button type="button" variant="ghost" className={btn}
             onClick={() => editor.chain().focus().addRowBefore().run()}
-            title="Wiersz powyżej">
+            title={t("documentsEditor.table.rowAbove")}>
             <ArrowUp className="h-3.5 w-3.5" />
           </Button>
           <Button type="button" variant="ghost" className={btn}
             onClick={() => editor.chain().focus().addRowAfter().run()}
-            title="Wiersz poniżej">
+            title={t("documentsEditor.table.rowBelow")}>
             <ArrowDown className="h-3.5 w-3.5" />
           </Button>
           <Button type="button" variant="ghost" className={btnDanger}
             disabled={!state.deleteRow}
             onClick={() => editor.chain().focus().deleteRow().run()}
-            title="Usuń wiersz">
+            title={t("documentsEditor.table.deleteRow")}>
             <Rows3 className="h-3.5 w-3.5" />
           </Button>
 
@@ -183,7 +185,7 @@ export function TableBubbleMenu({ editor }: TableBubbleMenuProps) {
           <Button type="button" variant="ghost" className={btnDanger}
             disabled={!state.deleteColumn}
             onClick={() => editor.chain().focus().deleteColumn().run()}
-            title="Usuń kolumnę">
+            title={t("documentsEditor.table.deleteColumn")}>
             <Columns3 className="h-3.5 w-3.5" />
           </Button>
 
@@ -192,13 +194,13 @@ export function TableBubbleMenu({ editor }: TableBubbleMenuProps) {
           <Button type="button" variant="ghost" className={btn}
             disabled={!state.mergeCells}
             onClick={() => editor.chain().focus().mergeCells().run()}
-            title="Scal komórki">
+            title={t("documentsEditor.table.mergeCells")}>
             <TableCellsMerge className="h-3.5 w-3.5" />
           </Button>
           <Button type="button" variant="ghost" className={btn}
             disabled={!state.splitCell}
             onClick={() => editor.chain().focus().splitCell().run()}
-            title="Rozdziel komórkę">
+            title={t("documentsEditor.table.splitCell")}>
             <TableCellsSplit className="h-3.5 w-3.5" />
           </Button>
 
@@ -206,7 +208,7 @@ export function TableBubbleMenu({ editor }: TableBubbleMenuProps) {
 
           <Button type="button" variant="ghost" className={btnDanger}
             onClick={() => editor.chain().focus().deleteTable().run()}
-            title="Usuń tabelę">
+            title={t("documentsEditor.table.deleteTable")}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -214,18 +216,18 @@ export function TableBubbleMenu({ editor }: TableBubbleMenuProps) {
         {/* Row 2: Cell background */}
         <div className="flex items-center gap-0.5">
           <PaintBucket className="ml-0.5 mr-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          {CELL_BG_COLORS.map(({ color, label }) => (
+          {CELL_BG_COLORS.map(({ color, labelKey }) => (
             <ColorSwatch
-              key={label}
+              key={labelKey}
               color={color}
-              label={label}
+              label={t(labelKey)}
               onClick={() => setCellBg(color)}
               icon={color === null ? "ban" : undefined}
             />
           ))}
           <CustomColorPicker
             onColorChange={(c) => setCellBg(c)}
-            title="Własny kolor tła"
+            title={t("documentsEditor.table.customBgColor")}
           />
         </div>
 
@@ -233,18 +235,18 @@ export function TableBubbleMenu({ editor }: TableBubbleMenuProps) {
         {state.isInHeader && (
           <div className="flex items-center gap-0.5">
             <PanelTop className="ml-0.5 mr-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-            {CELL_BG_COLORS.map(({ color, label }) => (
+            {CELL_BG_COLORS.map(({ color, labelKey }) => (
               <ColorSwatch
-                key={label}
+                key={labelKey}
                 color={color}
-                label={`Nagłówek: ${label}`}
+                label={`${t("documentsEditor.table.headerLabel")} ${t(labelKey)}`}
                 onClick={() => setHeaderBg(color)}
                 icon={color === null ? "ban" : undefined}
               />
             ))}
             <CustomColorPicker
               onColorChange={(c) => setHeaderBg(c)}
-              title="Własny kolor nagłówka"
+              title={t("documentsEditor.table.customHeaderColor")}
             />
           </div>
         )}
@@ -262,7 +264,7 @@ export function TableBubbleMenu({ editor }: TableBubbleMenuProps) {
           <Button type="button" variant="ghost"
             className={cn("h-6 w-6 p-0 text-muted-foreground hover:text-foreground", state.borderStyle === "outer" && "bg-accent")}
             onClick={() => setBorderStyle("outer")}
-            title="Obramowanie zewnętrzne">
+            title={t("documentsEditor.table.outerBorder")}>
             <Square className="h-3.5 w-3.5" />
           </Button>
           <Button type="button" variant="ghost"
@@ -282,13 +284,13 @@ export function TableBubbleMenu({ editor }: TableBubbleMenuProps) {
 
           <ColorSwatch
             color={null}
-            label="Domyślny kolor krawędzi"
+            label={t("documentsEditor.table.defaultBorderColor")}
             onClick={() => setBorderColor(null)}
             icon="ban"
           />
           <CustomColorPicker
             onColorChange={(c) => setBorderColor(c)}
-            title="Własny kolor krawędzi"
+            title={t("documentsEditor.table.customBorderColor")}
           />
         </div>
       </div>

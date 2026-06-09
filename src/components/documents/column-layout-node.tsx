@@ -7,6 +7,7 @@ import {
 } from "@tiptap/react";
 import { cn } from "@/lib/utils";
 import { GripVertical, Copy, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 // ---------------------------------------------------------------------------
 // Column node — editable cell inside a column layout
@@ -44,6 +45,7 @@ function ColumnLayoutNodeView({
   editor,
   deleteNode,
 }: ReactNodeViewProps) {
+  const { t } = useTranslation();
   const columns = (node.attrs.columns ?? 2) as number;
 
   const handleDuplicate = () => {
@@ -82,7 +84,7 @@ function ColumnLayoutNodeView({
           contentEditable={false}
           draggable
           data-drag-handle=""
-          title="Przeciągnij"
+          title={t("documentsEditor.column.drag")}
         >
           <GripVertical className="h-3.5 w-3.5" />
         </button>
@@ -95,7 +97,7 @@ function ColumnLayoutNodeView({
           className="flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-600"
           contentEditable={false}
           onClick={handleDuplicate}
-          title="Duplikuj sekcję"
+          title={t("documentsEditor.column.duplicateSection")}
         >
           <Copy className="h-3.5 w-3.5" />
         </button>
@@ -104,7 +106,7 @@ function ColumnLayoutNodeView({
           className="flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:bg-red-50 hover:text-red-500"
           contentEditable={false}
           onClick={deleteNode}
-          title="Usuń sekcję"
+          title={t("documentsEditor.column.deleteSection")}
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>

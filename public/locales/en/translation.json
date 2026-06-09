@@ -4050,5 +4050,61 @@
       "passwordMin": "Password must be at least 8 characters.",
       "codeMin": "Code must be at least 8 characters."
     }
+  },
+  "documentsEditor": {
+    "table": {
+      "rowAbove": "Row above",
+      "rowBelow": "Row below",
+      "deleteRow": "Delete row",
+      "deleteColumn": "Delete column",
+      "mergeCells": "Merge cells",
+      "splitCell": "Split cell",
+      "deleteTable": "Delete table",
+      "customBgColor": "Custom background color",
+      "customHeaderColor": "Custom header color",
+      "outerBorder": "Outer border",
+      "defaultBorderColor": "Default border color",
+      "customBorderColor": "Custom border color",
+      "colorBg": {
+        "none": "No background",
+        "yellow": "Yellow",
+        "green": "Green",
+        "blue": "Blue",
+        "pink": "Pink",
+        "gray": "Gray",
+        "purple": "Purple",
+        "red": "Red"
+      },
+      "headerLabel": "Header:"
+    },
+    "toolbar": {
+      "insertImage": "Insert image",
+      "forcePageBreak": "Force page break",
+      "insertSection1": "Insert 1-column section",
+      "insertLayout2": "Insert 2-column layout",
+      "insertLayout3": "Insert 3-column layout",
+      "insertLayout4": "Insert 4-column layout"
+    },
+    "htmlBlock": {
+      "linkEntityField": "Link to entity field",
+      "fieldIdPlaceholder": "field_id (auto if empty)",
+      "hintPlaceholder": "Hint...",
+      "htmlPlaceholder": "<div style=\"...\">\n  Your HTML here\n</div>",
+      "code": "Code",
+      "preview": "Preview"
+    },
+    "component": {
+      "refreshToLatest": "Refresh to latest version",
+      "detach": "Detach — insert content as plain text",
+      "loading": "Loading...",
+      "refresh": "Refresh",
+      "detachBtn": "Detach",
+      "loadingComponent": "Loading component..."
+    },
+    "column": {
+      "drag": "Drag",
+      "duplicateSection": "Duplicate section",
+      "deleteSection": "Delete section"
+    }
   }
 }

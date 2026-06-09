@@ -476,12 +476,28 @@ function AppointmentDetail() {
     enabled: !!organizationId && !!editLocationId,
   }) as { data: { rooms?: Array<{ _id: string; name: string; isActive: boolean }> } | undefined };
 
-  const { data: smsEvents = [] } = useQuery(
-    convexQuery(api.gabinet.appointmentSms.listByAppointment, {
+  const listSmsEventsAction = useAction(api.gabinet.appointmentSms.listByAppointment);
+  const { data: smsEvents = [] } = useQuery({
+    queryKey: [
+      "gabinet.appointmentSms.listByAppointment",
       organizationId,
-      appointmentId: appointmentId as Id<"gabinetAppointments">,
-    }),
-  );
+      appointmentId,
+    ],
+    queryFn: () =>
+      listSmsEventsAction({
+        organizationId,
+        appointmentId: appointmentId as Id<"gabinetAppointments">,
+      }),
+    enabled: !!organizationId && !!appointmentId,
+  }) as { data: Array<{
+    _id: string;
+    direction: "inbound" | "outbound";
+    eventType: string;
+    rawBody?: string;
+    processingStatus?: string;
+    parsedIntent?: string;
+    createdAt: number;
+  }> | undefined };
 
   const { data: activities } = useSupabaseActivitiesByEntity(
     organizationId,

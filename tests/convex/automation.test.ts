@@ -510,12 +510,14 @@ describe("automation lifecycle", () => {
           runId: run._id,
         })
       : [];
-    const smsEvents = await t.run(async (ctx) =>
-      ctx.db
-        .query("appointmentSmsEvents")
-        .withIndex("by_appointment", (q) => q.eq("appointmentId", appointmentId))
-        .collect(),
-    );
+    const smsEvents = (await createSupabaseDb()
+      .query("appointmentSmsEvents")
+      .eq("appointmentId", appointmentId)
+      .collect()) as Array<{
+        direction?: string;
+        eventType?: string;
+        rawBody?: string;
+      }>;
 
     expect(run?.status).toBe("processed");
     expect(steps).toHaveLength(1);

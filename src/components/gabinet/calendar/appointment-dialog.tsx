@@ -292,9 +292,15 @@ export function AppointmentDialog({
   // Drag-to-reposition state — users want to peek at the calendar underneath
   // without closing the dialog (issue #977). Offset resets when the dialog
   // closes so the next open starts centered. The live offset lives in a ref
-  // and is written straight to `transform` via rAF; using React state would
-  // re-render the whole form on every pointermove and make the drag stutter
-  // (issue #1424).
+  // and is written straight to the `translate` CSS property via rAF; using
+  // React state would re-render the whole form on every pointermove and make
+  // the drag stutter (issue #1424). We must write to `translate`, not
+  // `transform`: Tailwind v4 compiles `translate-x-[-50%] translate-y-[-50%]`
+  // (the dialog's centering classes) to the modern `translate:` CSS property,
+  // which is a separate property from `transform:` and composes additively
+  // with it. Writing to `style.transform` left the class translate intact, so
+  // the dialog jumped by its own width/height instead of following the cursor
+  // (issue #1428).
   const dragOffsetRef = useRef({ x: 0, y: 0 });
   const dialogContentRef = useRef<HTMLDivElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -328,14 +334,16 @@ export function AppointmentDialog({
     const el = dialogContentRef.current;
     if (!el) return;
     const { x, y } = dragOffsetRef.current;
-    el.style.transform =
+    // Write to the CSS `translate:` property so the inline value overrides
+    // the class-defined `translate: -50% -50%` centering. See ref comment.
+    el.style.translate =
       x === 0 && y === 0
         ? ""
-        : `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+        : `calc(-50% + ${x}px) calc(-50% + ${y}px)`;
   }, []);
 
   // Reapply on every render so an unrelated re-render mid-drag doesn't snap
-  // the dialog back to its class-defined centered transform.
+  // the dialog back to its class-defined centered translate.
   useLayoutEffect(() => {
     applyDragTransform();
   });

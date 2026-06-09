@@ -3964,5 +3964,91 @@
         "roleUpdateFailed": "Could not update the user's role."
       }
     }
+  },
+  "login": {
+    "chooseMethod": {
+      "heading": "Welcome!",
+      "subheading": "Choose a sign-in method:",
+      "passwordBtn": "Email and password",
+      "otpBtn": "One-time code",
+      "orContinue": "Or continue with",
+      "legalLead": "By continuing, you accept",
+      "legalTerms": "Terms of Service",
+      "legalAnd": "and",
+      "legalPrivacy": "Privacy Policy."
+    },
+    "fields": {
+      "email": "Email",
+      "emailPlaceholder": "Enter your email address",
+      "password": "Password",
+      "passwordPlaceholder": "••••••••••••",
+      "code": "Verification code",
+      "codePlaceholder": "Enter the code from your email",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password",
+      "resetCode": "Code from email",
+      "resetCodePlaceholder": "Enter the code"
+    },
+    "otp": {
+      "heading": "One-time code",
+      "subheading": "We'll send a verification code to your email",
+      "checkInbox": "Check your inbox!",
+      "codeResent": "A new code has been sent.",
+      "sendCode": "Send code",
+      "sentMessage": "We sent a verification code to",
+      "enterBelow": "Enter it below.",
+      "didntGetCode": "Didn't get the code?",
+      "resend": "Resend",
+      "back": "Back",
+      "errSendFailed": "Could not send the code. Check the email address and try again.",
+      "errVerify": "Invalid or expired code. Try again or send a new one.",
+      "errResend": "Could not send a new code. Please try again."
+    },
+    "forgot": {
+      "heading": "Forgot your password?",
+      "subheading": "We'll send you instructions to reset your password.",
+      "sendLink": "Send reset link",
+      "backToLogin": "Back to sign in",
+      "errSendLink": "Could not send the reset link. Check the email address."
+    },
+    "reset": {
+      "heading": "Set a new password",
+      "instruction": "Enter the code from the email we sent to",
+      "passwordHint": "and a new password (min. 8 characters).",
+      "submitBtn": "Set new password",
+      "errPasswordMismatch": "Passwords do not match.",
+      "errResetFailed": "Invalid code or password reset failed. Please try again."
+    },
+    "common": {
+      "lab": {
+        "or": "or"
+      }
+    },
+    "invite": {
+      "inviterFallback": "Someone",
+      "orgFallback": "the team",
+      "invitedBy": "is inviting you to",
+      "codeInstruction": "Enter the code we'll send to {{email}}. If you don't have an account yet, we'll create one automatically."
+    },
+    "password": {
+      "signInHeading": "Sign in",
+      "signUpHeading": "Create account",
+      "signInSubheading": "Enter your email and password",
+      "signUpSubheading": "Fill in your details to get started",
+      "githubSignUp": "Sign up with GitHub",
+      "forgotLink": "Forgot your password?",
+      "toggleToSignUp": "Sign up",
+      "toggleToSignIn": "Sign in",
+      "backToMethod": "Back to method selection",
+      "errInvalid": "Invalid email or password",
+      "errSignUp": "Could not create account. Please try again.",
+      "hasAccount": "Already have an account? ",
+      "noAccount": "Don't have an account? "
+    },
+    "validation": {
+      "emailInvalid": "Invalid email address.",
+      "passwordMin": "Password must be at least 8 characters.",
+      "codeMin": "Code must be at least 8 characters."
+    }
   }
 }

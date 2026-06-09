@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Node, mergeAttributes } from "@tiptap/core";
 import {
   ReactNodeViewRenderer,
@@ -72,6 +73,7 @@ function HtmlBlockNodeView({
   updateAttributes,
   selected,
 }: ReactNodeViewProps) {
+  const { t } = useTranslation();
   const [preview, setPreview] = useState(false);
   const [varsOpen, setVarsOpen] = useState(false);
   const cmRef = useRef<ReactCodeMirrorRef>(null);
@@ -227,7 +229,7 @@ function HtmlBlockNodeView({
                               variant="outline"
                               size="sm"
                               className="h-8 w-8 shrink-0 p-0"
-                              title="Powiąż z polem encji"
+                              title={t("documentsEditor.htmlBlock.linkEntityField")}
                             >
                               <Database className="h-3.5 w-3.5" />
                             </Button>
@@ -280,7 +282,7 @@ function HtmlBlockNodeView({
                         value={fieldId}
                         onChange={(e) => setFieldId(e.target.value)}
                         className="h-8 font-mono text-xs"
-                        placeholder="field_id (auto jeśli puste)"
+                        placeholder={t("documentsEditor.htmlBlock.fieldIdPlaceholder")}
                       />
                     </div>
                     <div className="space-y-1">
@@ -318,7 +320,7 @@ function HtmlBlockNodeView({
                         value={fieldPlaceholder}
                         onChange={(e) => setFieldPlaceholder(e.target.value)}
                         className="h-8 text-sm"
-                        placeholder="Podpowiedź..."
+                        placeholder={t("documentsEditor.htmlBlock.hintPlaceholder")}
                       />
                     </div>
                     <div className="flex items-center justify-between">
@@ -353,7 +355,7 @@ function HtmlBlockNodeView({
               ) : (
                 <Eye className="mr-1 h-3 w-3" />
               )}
-              {preview ? "Kod" : "Podgląd"}
+              {preview ? t("documentsEditor.htmlBlock.code") : t("documentsEditor.htmlBlock.preview")}
             </Button>
           </div>
         </div>
@@ -379,7 +381,7 @@ function HtmlBlockNodeView({
             theme="light"
             minHeight="132px"
             maxHeight="400px"
-            placeholder={"<div style=\"...\">\n  Twój HTML tutaj\n</div>"}
+            placeholder={t("documentsEditor.htmlBlock.htmlPlaceholder")}
             basicSetup={{
               lineNumbers: true,
               foldGutter: false,

@@ -4083,5 +4083,61 @@
       "passwordMin": "Hasło musi mieć minimum 8 znaków.",
       "codeMin": "Kod musi mieć minimum 8 znaków."
     }
+  },
+  "documentsEditor": {
+    "table": {
+      "rowAbove": "Wiersz powyżej",
+      "rowBelow": "Wiersz poniżej",
+      "deleteRow": "Usuń wiersz",
+      "deleteColumn": "Usuń kolumnę",
+      "mergeCells": "Scal komórki",
+      "splitCell": "Rozdziel komórkę",
+      "deleteTable": "Usuń tabelę",
+      "customBgColor": "Własny kolor tła",
+      "customHeaderColor": "Własny kolor nagłówka",
+      "outerBorder": "Obramowanie zewnętrzne",
+      "defaultBorderColor": "Domyślny kolor krawędzi",
+      "customBorderColor": "Własny kolor krawędzi",
+      "colorBg": {
+        "none": "Brak tła",
+        "yellow": "Żółty",
+        "green": "Zielony",
+        "blue": "Niebieski",
+        "pink": "Różowy",
+        "gray": "Szary",
+        "purple": "Fioletowy",
+        "red": "Czerwony"
+      },
+      "headerLabel": "Nagłówek:"
+    },
+    "toolbar": {
+      "insertImage": "Wstaw grafikę",
+      "forcePageBreak": "Wymuszony podział strony",
+      "insertSection1": "Wstaw sekcję 1-kolumnową",
+      "insertLayout2": "Wstaw układ 2-kolumnowy",
+      "insertLayout3": "Wstaw układ 3-kolumnowy",
+      "insertLayout4": "Wstaw układ 4-kolumnowy"
+    },
+    "htmlBlock": {
+      "linkEntityField": "Powiąż z polem encji",
+      "fieldIdPlaceholder": "field_id (auto jeśli puste)",
+      "hintPlaceholder": "Podpowiedź...",
+      "htmlPlaceholder": "<div style=\"...\">\n  Twój HTML tutaj\n</div>",
+      "code": "Kod",
+      "preview": "Podgląd"
+    },
+    "component": {
+      "refreshToLatest": "Odśwież do najnowszej wersji",
+      "detach": "Odłącz — wstaw treść jako zwykły tekst",
+      "loading": "Ładowanie...",
+      "refresh": "Odśwież",
+      "detachBtn": "Odłącz",
+      "loadingComponent": "Ładowanie komponentu..."
+    },
+    "column": {
+      "drag": "Przeciągnij",
+      "duplicateSection": "Duplikuj sekcję",
+      "deleteSection": "Usuń sekcję"
+    }
   }
 }

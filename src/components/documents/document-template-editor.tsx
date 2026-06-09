@@ -62,6 +62,7 @@ import {
   Columns4,
   RectangleVertical,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -92,6 +93,7 @@ export const DocumentTemplateEditor = forwardRef<
   DocumentTemplateEditorHandle,
   DocumentTemplateEditorProps
 >(function DocumentTemplateEditor({ value, onChange, entityTypes, className }, ref) {
+  const { t } = useTranslation();
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
@@ -356,7 +358,7 @@ export const DocumentTemplateEditor = forwardRef<
             };
             input.click();
           }}
-          title="Wstaw grafikę"
+          title={t("documentsEditor.toolbar.insertImage")}
         >
           <ImageIcon className="mr-1 h-4 w-4" />
           Grafika
@@ -366,7 +368,7 @@ export const DocumentTemplateEditor = forwardRef<
           variant="ghost"
           className="h-8 px-2 text-xs text-muted-foreground"
           onClick={() => editor.chain().focus().setPageBreak().run()}
-          title="Wymuszony podział strony"
+          title={t("documentsEditor.toolbar.forcePageBreak")}
         >
           <ScissorsLineDashed className="mr-1 h-4 w-4" />
           Strona
@@ -396,7 +398,7 @@ export const DocumentTemplateEditor = forwardRef<
           variant="ghost"
           className="h-8 px-2 text-xs text-muted-foreground"
           onClick={() => editor.chain().focus().insertColumnLayout(1).run()}
-          title="Wstaw sekcję 1-kolumnową"
+          title={t("documentsEditor.toolbar.insertSection1")}
         >
           <RectangleVertical className="mr-1 h-4 w-4" />
           1 kol.
@@ -406,7 +408,7 @@ export const DocumentTemplateEditor = forwardRef<
           variant="ghost"
           className="h-8 px-2 text-xs text-muted-foreground"
           onClick={() => editor.chain().focus().insertColumnLayout(2).run()}
-          title="Wstaw układ 2-kolumnowy"
+          title={t("documentsEditor.toolbar.insertLayout2")}
         >
           <Columns2 className="mr-1 h-4 w-4" />
           2 kol.
@@ -416,7 +418,7 @@ export const DocumentTemplateEditor = forwardRef<
           variant="ghost"
           className="h-8 px-2 text-xs text-muted-foreground"
           onClick={() => editor.chain().focus().insertColumnLayout(3).run()}
-          title="Wstaw układ 3-kolumnowy"
+          title={t("documentsEditor.toolbar.insertLayout3")}
         >
           <Columns3 className="mr-1 h-4 w-4" />
           3 kol.
@@ -426,7 +428,7 @@ export const DocumentTemplateEditor = forwardRef<
           variant="ghost"
           className="h-8 px-2 text-xs text-muted-foreground"
           onClick={() => editor.chain().focus().insertColumnLayout(4).run()}
-          title="Wstaw układ 4-kolumnowy"
+          title={t("documentsEditor.toolbar.insertLayout4")}
         >
           <Columns4 className="mr-1 h-4 w-4" />
           4 kol.

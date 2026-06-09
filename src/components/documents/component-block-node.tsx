@@ -11,6 +11,7 @@ import { useOrganization } from "@/components/org-context";
 import { cn } from "@/lib/utils";
 import { Puzzle, Unlink, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -35,6 +36,7 @@ function ComponentBlockNodeView({
   selected,
   editor,
 }: ReactNodeViewProps) {
+  const { t } = useTranslation();
   const attrs = node.attrs as ComponentBlockAttrs;
   const { organizationId } = useOrganization();
 
@@ -70,7 +72,7 @@ function ComponentBlockNodeView({
           />
         ) : (
           <div className="py-2 text-center text-xs text-gray-400">
-            Ładowanie...
+            {t("documentsEditor.component.loading")}
           </div>
         )}
       </NodeViewWrapper>
@@ -142,10 +144,10 @@ function ComponentBlockNodeView({
                 size="sm"
                 className="h-6 px-2 text-xs text-amber-600 hover:text-amber-700"
                 onClick={handleRefresh}
-                title="Odśwież do najnowszej wersji"
+                title={t("documentsEditor.component.refreshToLatest")}
               >
                 <RefreshCw className="mr-1 h-3 w-3" />
-                Odśwież
+                {t("documentsEditor.component.refresh")}
               </Button>
             )}
             {isLinked && (
@@ -155,10 +157,10 @@ function ComponentBlockNodeView({
                 size="sm"
                 className="h-6 px-2 text-xs text-indigo-600"
                 onClick={handleDetach}
-                title="Odłącz — wstaw treść jako zwykły tekst"
+                title={t("documentsEditor.component.detach")}
               >
                 <Unlink className="mr-1 h-3 w-3" />
-                Odłącz
+                {t("documentsEditor.component.detachBtn")}
               </Button>
             )}
           </div>
@@ -177,7 +179,7 @@ function ComponentBlockNodeView({
             />
           ) : (
             <div className="py-4 text-center text-sm text-gray-400">
-              Ładowanie komponentu...
+              {t("documentsEditor.component.loadingComponent")}
             </div>
           )}
         </div>
@@ -195,7 +197,7 @@ function renderContentJsonToHtml(contentJson: string): string {
     const doc = JSON.parse(contentJson);
     return renderNodes(doc.content || []);
   } catch {
-    return "<p>Błąd renderowania</p>";
+    return "<p>Render error</p>";
   }
 }
 

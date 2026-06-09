@@ -2852,11 +2852,6 @@
       "settleMarkCompleted": "Oznacz wizytę jako zakończoną",
       "settleNothingToDo": "Wpisz kwotę lub zaznacz zamknięcie wizyty.",
       "settleSuccess": "Wizyta rozliczona",
-      "paymentBadge": {
-        "paid": "Zapłacona",
-        "partial": "Częściowo opłacona",
-        "unpaid": "Niezapłacona"
-      },
       "history": {
         "unifiedDescription": "Ujednolicona historia operacyjna tej wizyty, w tym wiadomości i zdarzenia workflow.",
         "metadata": {

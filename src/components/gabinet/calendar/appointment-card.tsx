@@ -2,25 +2,17 @@ import {
   appointmentEmployeeStyle,
   appointmentStatusBadgeClass,
 } from "@/lib/gabinet-appointment-status";
+import {
+  AppointmentIndicatorBadge,
+  type AppointmentIndicator,
+  type AppointmentIndicatorKind,
+} from "./appointment-indicators";
+
+export type { AppointmentIndicator, AppointmentIndicatorKind };
 
 export interface AppointmentTag {
   name: string;
   color: string;
-}
-
-export type AppointmentIndicatorKind =
-  | "firstVisit"
-  | "payment"
-  | "count"
-  | "paid"
-  | "partial"
-  | "unpaid"
-  | "credit";
-
-export interface AppointmentIndicator {
-  kind: AppointmentIndicatorKind;
-  label: string;
-  title?: string;
 }
 
 interface AppointmentCardProps {
@@ -34,16 +26,6 @@ interface AppointmentCardProps {
   indicators?: AppointmentIndicator[];
   onClick?: () => void;
 }
-
-const INDICATOR_CLASS: Record<AppointmentIndicatorKind, string> = {
-  firstVisit: "bg-emerald-500 text-white",
-  payment: "bg-amber-500 text-white",
-  count: "bg-sky-500 text-white",
-  paid: "bg-emerald-600 text-white",
-  partial: "bg-amber-500 text-white",
-  unpaid: "bg-red-500 text-white",
-  credit: "bg-indigo-500 text-white",
-};
 
 export function AppointmentCard({
   startTime,
@@ -99,13 +81,10 @@ export function AppointmentCard({
               />
             ))}
             {indicators?.map((ind, i) => (
-              <span
+              <AppointmentIndicatorBadge
                 key={`ind-${ind.kind}-${i}`}
-                title={ind.title ?? ind.label}
-                className={`inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-sm px-0.5 text-[9px] font-bold leading-none ring-1 ring-white/60 ${INDICATOR_CLASS[ind.kind]}`}
-              >
-                {ind.label}
-              </span>
+                indicator={ind}
+              />
             ))}
           </div>
         )}

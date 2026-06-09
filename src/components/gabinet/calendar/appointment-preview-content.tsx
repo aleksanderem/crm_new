@@ -85,6 +85,15 @@ import {
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useSidebarActions } from "@/components/layout/sidebar-context";
+import {
+  useSupabaseGabinetFirstAppointmentIdsByPatient,
+  useSupabaseGabinetAppointmentPackagePositions,
+  useSupabaseGabinetAppointmentRecurringPositions,
+} from "@/hooks/use-supabase-gabinet-appointments";
+import {
+  AppointmentIndicatorBadge,
+  type AppointmentIndicator,
+} from "./appointment-indicators";
 
 // All statuses can transition to any other status. Lets staff correct mistakes
 // after a visit was already marked completed/cancelled/no_show (issue #1027).
@@ -293,6 +302,35 @@ export function AppointmentPreviewContent({
   const { dispatch } = useSidebarActions();
 
   const docCounts = useAppointmentDocumentCounts(appointmentId, organizationId);
+
+  // Indicator lookups — mirror the per-card badges the calendar route renders
+  // (issue #730). Hooks must run before the early return so React keeps a
+  // stable hook order; each hook disables itself when its input array is empty.
+  const indicatorPatientIds = detail?.appointment.patientId
+    ? [String(detail.appointment.patientId)]
+    : [];
+  const indicatorPackageUsageIds = detail?.appointment.packageUsageId
+    ? [String(detail.appointment.packageUsageId)]
+    : [];
+  const indicatorRecurringGroupIds = detail?.appointment.recurringGroupId
+    ? [String(detail.appointment.recurringGroupId)]
+    : [];
+
+  const { data: firstAppointmentIds } =
+    useSupabaseGabinetFirstAppointmentIdsByPatient(
+      organizationId,
+      indicatorPatientIds,
+    );
+  const { data: packagePositions } =
+    useSupabaseGabinetAppointmentPackagePositions(
+      organizationId,
+      indicatorPackageUsageIds,
+    );
+  const { data: recurringPositions } =
+    useSupabaseGabinetAppointmentRecurringPositions(
+      organizationId,
+      indicatorRecurringGroupIds,
+    );
 
   // Only seed local form state from `detail` once per appointment. Refetches
   // triggered by status changes must not clobber the user's other unsaved edits
@@ -604,6 +642,113 @@ export function AppointmentPreviewContent({
     : null;
 
   const patientCreditBalance = (detail.patientCreditBalance ?? 0) as number;
+
+  // Compact indicator pills mirroring the calendar card surface (issue #730).
+  // Same rules as `_layout.gabinet.calendar.index.lazy.tsx` so the popover
+  // stays in lockstep — see that file for full context on each indicator.
+  const previewIndicators: AppointmentIndicator[] = (() => {
+    const out: AppointmentIndicator[] = [];
+    const status = appointment.status;
+
+    if (
+      status !== "cancelled" &&
+      status !== "no_show" &&
+      firstAppointmentIds?.has(String(appointment._id))
+    ) {
+      out.push({
+        kind: "firstVisit",
+        label: "1",
+        title: t(
+          "gabinet.calendar.indicators.firstVisit",
+          "Pierwsza wizyta",
+        ),
+      });
+    }
+
+    if (appointment.prepaymentRequired && appointment.prepaymentStatus !== "paid") {
+      out.push({
+        kind: "payment",
+        label: "$",
+        title: t("gabinet.calendar.indicators.paymentDue", "Do zapłacenia"),
+      });
+    }
+
+    const pkgPos = appointment.packageUsageId
+      ? packagePositions?.get(String(appointment._id))
+      : undefined;
+    if (pkgPos) {
+      out.push({
+        kind: "count",
+        label: `${pkgPos.position}/${pkgPos.total}`,
+        title: t(
+          "gabinet.calendar.indicators.packageVisit",
+          "Wizyta pakietowa",
+        ),
+      });
+    } else if (appointment.isRecurring && appointment.recurringRule) {
+      const rule = appointment.recurringRule as { count?: number };
+      if (typeof rule.count === "number" && rule.count > 0) {
+        const dynamicPos = appointment.recurringGroupId
+          ? recurringPositions?.get(String(appointment._id))
+          : undefined;
+        const pos = dynamicPos ?? (appointment.recurringIndex ?? 0) + 1;
+        out.push({
+          kind: "count",
+          label: `${pos}/${rule.count}`,
+          title: t(
+            "gabinet.calendar.indicators.recurringVisit",
+            "Wizyta cykliczna",
+          ),
+        });
+      }
+    }
+
+    if (patientCreditBalance > 0 && status !== "cancelled" && status !== "no_show") {
+      // The calendar surfaces this on the patient's NEXT unpaid visit only,
+      // so the indicator unambiguously points to where the credit will be
+      // applied (issue #1286). The popover always shows the credit when
+      // there's outstanding balance on this visit and the patient has credit
+      // available — staff opened this specific visit, so highlight the
+      // applicability inline.
+      if (treatmentPrice > 0 && completedPaid < treatmentPrice) {
+        out.push({
+          kind: "credit",
+          label: `+${Math.round(patientCreditBalance)}`,
+          title: t("gabinet.calendar.indicators.credit", {
+            defaultValue: "Saldo {{amount}} do wykorzystania",
+            amount: patientCreditBalance.toFixed(2),
+          }),
+        });
+      }
+    }
+
+    if (status !== "cancelled" && treatmentPrice > 0) {
+      if (completedPaid >= treatmentPrice) {
+        out.push({
+          kind: "paid",
+          label: "✓",
+          title: t("gabinet.calendar.indicators.paid", "Wizyta opłacona"),
+        });
+      } else if (completedPaid > 0) {
+        out.push({
+          kind: "partial",
+          label: "½",
+          title: t(
+            "gabinet.calendar.indicators.partial",
+            "Częściowo opłacona",
+          ),
+        });
+      } else {
+        out.push({
+          kind: "unpaid",
+          label: "!",
+          title: t("gabinet.calendar.indicators.unpaid", "Wizyta nieopłacona"),
+        });
+      }
+    }
+
+    return out;
+  })();
 
   const handleOpenSettleDialog = () => {
     if (saving || settleSubmitting) return;
@@ -937,6 +1082,17 @@ export function AppointmentPreviewContent({
             </Popover>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+            {previewIndicators.length > 0 && (
+              <div className="flex items-center gap-0.5">
+                {previewIndicators.map((ind, i) => (
+                  <AppointmentIndicatorBadge
+                    key={`preview-ind-${ind.kind}-${i}`}
+                    indicator={ind}
+                    ringClass="ring-black/10 dark:ring-white/20"
+                  />
+                ))}
+              </div>
+            )}
             {paymentBadge && (
               <Badge
                 variant="outline"

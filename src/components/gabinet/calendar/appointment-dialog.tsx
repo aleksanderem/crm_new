@@ -299,6 +299,31 @@ export function AppointmentDialog({
   const dialogContentRef = useRef<HTMLDivElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  // Clamp the drag offset so the dialog header (drag handle + close button)
+  // can never be dragged fully off-screen. Without this, a small drag can
+  // park the dialog where the user can no longer grab or close it
+  // (issue #1426). Constants are in viewport pixels.
+  const DRAG_HEADER_VISIBLE = 60; // keep top header reachable vertically
+  const DRAG_CORNER_VISIBLE = 80; // keep close-button corner reachable horizontally
+  const clampDragOffset = useCallback((x: number, y: number) => {
+    const el = dialogContentRef.current;
+    if (!el || typeof window === "undefined") return { x, y };
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let minY = h / 2 - vh / 2;
+    let maxY = vh / 2 + h / 2 - DRAG_HEADER_VISIBLE;
+    if (minY > maxY) minY = maxY = h / 2 - vh / 2;
+    let minX = DRAG_CORNER_VISIBLE - vw / 2 - w / 2;
+    let maxX = vw / 2 + w / 2 - DRAG_CORNER_VISIBLE;
+    if (minX > maxX) minX = maxX = 0;
+    return {
+      x: Math.max(minX, Math.min(maxX, x)),
+      y: Math.max(minY, Math.min(maxY, y)),
+    };
+  }, []);
+
   const applyDragTransform = useCallback(() => {
     const el = dialogContentRef.current;
     if (!el) return;
@@ -338,10 +363,10 @@ export function AppointmentDialog({
       };
 
       const handleMove = (ev: PointerEvent) => {
-        dragOffsetRef.current = {
-          x: startOffset.x + (ev.clientX - startX),
-          y: startOffset.y + (ev.clientY - startY),
-        };
+        dragOffsetRef.current = clampDragOffset(
+          startOffset.x + (ev.clientX - startX),
+          startOffset.y + (ev.clientY - startY),
+        );
         if (rafId === null) rafId = requestAnimationFrame(flush);
       };
 
@@ -359,7 +384,7 @@ export function AppointmentDialog({
       window.addEventListener("pointermove", handleMove);
       window.addEventListener("pointerup", handleUp);
     },
-    [applyDragTransform],
+    [applyDragTransform, clampDragOffset],
   );
 
   // Auto-scroll the currently-selected slot button into view so the user

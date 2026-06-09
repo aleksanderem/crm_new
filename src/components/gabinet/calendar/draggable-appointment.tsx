@@ -8,8 +8,8 @@ import {
 import {
   AppointmentCard,
   type AppointmentTag,
-  type AppointmentIndicator,
 } from "./appointment-card";
+import type { AppointmentIndicator } from "./appointment-indicators";
 import { AppointmentPreviewContent } from "./appointment-preview-content";
 
 interface Appointment {

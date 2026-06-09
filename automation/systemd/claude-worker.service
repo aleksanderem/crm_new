@@ -1,0 +1,21 @@
+[Unit]
+Description=Claude Code Worker Daemon
+After=network.target claude-webhook.service
+
+[Service]
+Type=simple
+User=claude-bot
+Group=claude-bot
+WorkingDirectory=/home/claude-bot/worker
+EnvironmentFile=/home/claude-bot/worker/.env
+Environment=HOME=/home/claude-bot
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/node /home/claude-bot/worker/worker.mjs
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/home/claude-bot/logs/worker.stdout.log
+StandardError=append:/home/claude-bot/logs/worker.stderr.log
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

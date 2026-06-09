@@ -2768,6 +2768,7 @@
           "on_leave": "This employee is on leave on this day. Pick another date or employee.",
           "fully_booked": "All slots for this employee are taken on this day. Pick another day or employee."
         },
+        "slotsLoadError": "Couldn't load available slots. Try again or refresh the page.",
         "confirmBooking": "Book appointment",
         "time": "Time"
       },

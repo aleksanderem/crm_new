@@ -504,7 +504,12 @@ export function AppointmentDialog({
 
   // Available slots — action reading from Supabase
   const getAvailableSlots = useAction(api.gabinet.appointments.getAvailableSlotsQuery);
-  const { data: slotsResult, isLoading: slotsLoading } = useQuery({
+  const {
+    data: slotsResult,
+    isLoading: slotsLoading,
+    isError: slotsErrored,
+    error: slotsError,
+  } = useQuery({
     queryKey: [
       "gabinet.availableSlots",
       organizationId,
@@ -527,6 +532,7 @@ export function AppointmentDialog({
         nowTime: recordWalkIn ? undefined : nowTime,
       }),
     enabled: !!employeeId && !!dateStr && !!selectedTreatment,
+    retry: false,
   });
   const availableSlots = slotsResult?.slots;
   const noSlotsReason = slotsResult?.reason;
@@ -1675,6 +1681,26 @@ export function AppointmentDialog({
                           className="h-9 w-full rounded-md"
                         />
                       ))
+                    ) : slotsErrored && !slotsResult ? (
+                      // Surface backend errors instead of collapsing them into
+                      // the generic "no slots" empty state — otherwise a
+                      // crashed action looks identical to an unconfigured
+                      // schedule and the user has no way to tell them apart.
+                      // Issue #1429.
+                      <div
+                        role="alert"
+                        className="py-8 text-center space-y-1.5 px-3"
+                      >
+                        <p className="text-sm font-medium text-destructive">
+                          {t(
+                            "gabinet.appointments.calendarDialog.slotsLoadError",
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground break-words">
+                          {extractActionErrorMessage(slotsError) ||
+                            String((slotsError as Error)?.message ?? "")}
+                        </p>
+                      </div>
                     ) : availableSlots && availableSlots.length > 0 ? (
                       availableSlots.map((slot) => (
                         <button

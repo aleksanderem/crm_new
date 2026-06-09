@@ -2794,6 +2794,7 @@
           "on_leave": "Pracownik jest na urlopie w tym dniu. Wybierz inną datę lub innego pracownika.",
           "fully_booked": "Cały dzień jest zarezerwowany dla tego pracownika. Wybierz inny dzień lub innego pracownika."
         },
+        "slotsLoadError": "Nie udało się pobrać dostępnych terminów. Spróbuj ponownie lub odśwież stronę.",
         "confirmBooking": "Umów wizytę",
         "time": "Godzina"
       },

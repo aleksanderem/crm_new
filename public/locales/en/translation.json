@@ -2691,6 +2691,12 @@
       "pickDate": "Pick a date",
       "loadingSlots": "Checking availability...",
       "noSlots": "No available slots on this day",
+      "noSlotsReason": {
+        "employee_not_working": "This employee is not working on this day. Pick another date or employee.",
+        "clinic_closed": "The clinic is closed on this day. Pick another date.",
+        "on_leave": "This employee is on leave on this day. Pick another date or employee.",
+        "fully_booked": "This day is fully booked. Pick another day or employee."
+      },
       "selectedTime": "Selected time",
       "create": "Create appointment",
       "frequencies": {
@@ -2753,6 +2759,12 @@
         "selectTreatmentAndEmployee": "Select a treatment and employee to see available slots",
         "selectDateForSlots": "Pick a date on the calendar to see available time slots",
         "noSlotsForDay": "No available slots on this day",
+        "noSlotsReason": {
+          "employee_not_working": "This employee is not working on this day. Pick another date or employee.",
+          "clinic_closed": "The clinic is closed on this day. Pick another date.",
+          "on_leave": "This employee is on leave on this day. Pick another date or employee.",
+          "fully_booked": "All slots for this employee are taken on this day. Pick another day or employee."
+        },
         "confirmBooking": "Book appointment",
         "time": "Time"
       },
@@ -3501,6 +3513,12 @@
       "loading": "Loading...",
       "noTreatments": "No treatments available",
       "noSlots": "No available slots on this date",
+      "noSlotsReason": {
+        "employee_not_working": "The specialist is not working on this day. Pick another date.",
+        "clinic_closed": "The clinic is closed on this day. Pick another date.",
+        "on_leave": "The specialist is on leave on this day. Pick another date.",
+        "fully_booked": "All slots on this day are taken. Pick another day."
+      },
       "pendingNote": "Your booking requires confirmation from the clinic. You will be notified once approved.",
       "submit": "Book Appointment",
       "submitting": "Booking...",

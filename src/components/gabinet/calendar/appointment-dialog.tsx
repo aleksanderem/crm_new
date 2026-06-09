@@ -504,7 +504,7 @@ export function AppointmentDialog({
 
   // Available slots — action reading from Supabase
   const getAvailableSlots = useAction(api.gabinet.appointments.getAvailableSlotsQuery);
-  const { data: availableSlots, isLoading: slotsLoading } = useQuery({
+  const { data: slotsResult, isLoading: slotsLoading } = useQuery({
     queryKey: [
       "gabinet.availableSlots",
       organizationId,
@@ -528,6 +528,8 @@ export function AppointmentDialog({
       }),
     enabled: !!employeeId && !!dateStr && !!selectedTreatment,
   });
+  const availableSlots = slotsResult?.slots;
+  const noSlotsReason = slotsResult?.reason;
 
   // Rooms query — enabled only when a location is selected
   const getLocationAction = useAction(api.gabinet.locations.getLocation);
@@ -1712,7 +1714,9 @@ export function AppointmentDialog({
                       <div className="py-8 text-center">
                         <p className="text-sm text-muted-foreground">
                           {t(
-                            "gabinet.appointments.calendarDialog.noSlotsForDay",
+                            noSlotsReason
+                              ? `gabinet.appointments.calendarDialog.noSlotsReason.${noSlotsReason}`
+                              : "gabinet.appointments.calendarDialog.noSlotsForDay",
                           )}
                         </p>
                       </div>

@@ -92,7 +92,7 @@ function PatientBooking() {
   const nowDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const getPublicSlots = useAction(api.gabinet.patientPortal.getPublicAvailableSlots);
-  const { data: slots } = useQuery({
+  const { data: slotsResult } = useQuery({
     queryKey: [
       "gabinet.publicAvailableSlots",
       tokenHash,
@@ -113,6 +113,8 @@ function PatientBooking() {
       }),
     enabled: slotsEnabled,
   });
+  const slots = slotsResult?.slots;
+  const noSlotsReason = slotsResult?.reason;
 
   const stepIndex = STEPS.indexOf(step);
 
@@ -416,7 +418,11 @@ function PatientBooking() {
             </div>
           ) : slots.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
-              {t("patientPortal.booking.noSlots")}
+              {t(
+                noSlotsReason
+                  ? `patientPortal.booking.noSlotsReason.${noSlotsReason}`
+                  : "patientPortal.booking.noSlots",
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">

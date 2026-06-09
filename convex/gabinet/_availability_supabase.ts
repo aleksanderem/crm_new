@@ -27,6 +27,22 @@ export interface TimeSlot {
   end: string;
 }
 
+/**
+ * Why no slots were returned. The dialog renders a specific message per
+ * reason instead of a generic "no slots" so users know what to fix.
+ * Issue #1434.
+ */
+export type NoSlotsReason =
+  | "employee_not_working"
+  | "clinic_closed"
+  | "on_leave"
+  | "fully_booked";
+
+export interface AvailableSlotsResult {
+  slots: TimeSlot[];
+  reason?: NoSlotsReason;
+}
+
 async function resolveScheduleForDate(
   db: SupabaseDb,
   organizationId: string,
@@ -115,7 +131,7 @@ export async function getAvailableSlotsSupabase(
     nowDate?: string;
     nowTime?: string;
   },
-): Promise<TimeSlot[]> {
+): Promise<AvailableSlotsResult> {
   const dayOfWeek = new Date(args.date + "T00:00:00").getDay();
 
   const empSchedule = await resolveScheduleForDate(
@@ -132,7 +148,9 @@ export async function getAvailableSlotsSupabase(
   let breakEnd: string | undefined;
 
   if (empSchedule) {
-    if (!empSchedule.isWorking) return [];
+    if (!empSchedule.isWorking) {
+      return { slots: [], reason: "employee_not_working" };
+    }
     startTime = empSchedule.startTime;
     endTime = empSchedule.endTime;
     breakStart = empSchedule.breakStart;
@@ -158,7 +176,9 @@ export async function getAvailableSlotsSupabase(
         .collect();
       clinicHours = rows[0];
     }
-    if (!clinicHours || !clinicHours.isOpen) return [];
+    if (!clinicHours || !clinicHours.isOpen) {
+      return { slots: [], reason: "clinic_closed" };
+    }
     startTime = clinicHours.startTime;
     endTime = clinicHours.endTime;
     breakStart = clinicHours.breakStart;
@@ -178,7 +198,9 @@ export async function getAvailableSlotsSupabase(
       l.endDate >= args.date,
   );
 
-  if (activeLeaves.some((l) => !l.startTime)) return [];
+  if (activeLeaves.some((l) => !l.startTime)) {
+    return { slots: [], reason: "on_leave" };
+  }
 
   const appointments = await db
     .query("gabinetAppointments")
@@ -262,12 +284,16 @@ export async function getAvailableSlotsSupabase(
     slotStart += 15;
   }
 
+  let finalSlots = slots;
   if (args.nowDate && args.nowTime && args.nowDate === args.date) {
     const nowMinutes = timeToMinutes(args.nowTime);
-    return slots.filter((s) => timeToMinutes(s.start) > nowMinutes);
+    finalSlots = slots.filter((s) => timeToMinutes(s.start) > nowMinutes);
   }
 
-  return slots;
+  if (finalSlots.length === 0) {
+    return { slots: finalSlots, reason: "fully_booked" };
+  }
+  return { slots: finalSlots };
 }
 
 export async function checkConflictSupabase(

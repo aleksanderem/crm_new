@@ -662,7 +662,7 @@ export const findNextAvailableSlot = action({
       checkDate.setDate(startDate.getDate() + dayOffset);
       const dateStr = toDateStr(checkDate);
 
-      const slots = await getAvailableSlotsSupabase(db, {
+      const { slots } = await getAvailableSlotsSupabase(db, {
         organizationId: String(args.organizationId),
         userId: args.employeeId,
         date: dateStr,

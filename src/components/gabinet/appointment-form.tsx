@@ -308,7 +308,7 @@ export function AppointmentForm({
 
   // Available slots — backend is now an action reading from Supabase
   const getAvailableSlots = useAction(api.gabinet.appointments.getAvailableSlotsQuery);
-  const { data: availableSlots, isLoading: slotsLoading } = useQuery({
+  const { data: slotsResult, isLoading: slotsLoading } = useQuery({
     queryKey: [
       "gabinet.availableSlots",
       organizationId,
@@ -331,6 +331,8 @@ export function AppointmentForm({
       }),
     enabled: !!employeeId && !!dateStr && !!selectedTreatment && !!organizationId,
   });
+  const availableSlots = slotsResult?.slots;
+  const noSlotsReason = slotsResult?.reason;
 
   const locale = i18n.resolvedLanguage === "pl" ? pl : undefined;
 
@@ -845,7 +847,11 @@ export function AppointmentForm({
             </div>
           ) : (
             <p className="text-muted-foreground py-3 text-center text-sm">
-              {t("gabinet.appointments.noSlots")}
+              {t(
+                noSlotsReason
+                  ? `gabinet.appointments.noSlotsReason.${noSlotsReason}`
+                  : "gabinet.appointments.noSlots",
+              )}
             </p>
           )}
           {selectedSlot && (

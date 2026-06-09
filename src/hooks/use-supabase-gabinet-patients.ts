@@ -42,8 +42,18 @@ export function useSupabaseGabinetPatientsList(
         .eq("organization_id", organizationId);
 
       if (search?.trim()) {
-        const term = `%${search.trim()}%`;
-        query = query.or(`first_name.ilike.${term},last_name.ilike.${term}`);
+        // Each whitespace-separated token must match either first_name or
+        // last_name. Chained .or() filters are AND-combined by PostgREST,
+        // so "John Smith" becomes
+        //   (first_name ILIKE %John% OR last_name ILIKE %John%)
+        //   AND
+        //   (first_name ILIKE %Smith% OR last_name ILIKE %Smith%)
+        for (const token of search.trim().split(/\s+/)) {
+          const pattern = `%${token}%`;
+          query = query.or(
+            `first_name.ilike.${pattern},last_name.ilike.${pattern}`,
+          );
+        }
       }
 
       const { data, error } = await query

@@ -1,4 +1,6 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import { test, expect } from "@playwright/test";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../convex/_generated/api";
@@ -17,17 +19,26 @@ import {
 test.describe("Gabinet — Appointments", () => {
   test.setTimeout(120_000);
 
-  const convexUrl = readFileSync(
-    "/Users/alfred/projects/crm_new/.env.local",
-    "utf-8",
-  )
-    .split("\n")
-    .find((line) => line.startsWith("VITE_CONVEX_URL="))
-    ?.split("=")[1]
-    ?.trim();
+  // Resolve VITE_CONVEX_URL from env first (CI sets it), then fall back to
+  // .env.local relative to the repo root (developer machines). Hardcoded
+  // absolute paths break on every machine that isn't the one they were
+  // written on, so don't reintroduce one.
+  const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+  const envLocalPath = resolve(repoRoot, ".env.local");
+  const convexUrl =
+    process.env.VITE_CONVEX_URL?.trim() ||
+    (existsSync(envLocalPath)
+      ? readFileSync(envLocalPath, "utf-8")
+          .split("\n")
+          .find((line) => line.startsWith("VITE_CONVEX_URL="))
+          ?.split("=")[1]
+          ?.trim()
+      : undefined);
 
   if (!convexUrl) {
-    throw new Error("Missing VITE_CONVEX_URL in .env.local");
+    throw new Error(
+      "Missing VITE_CONVEX_URL — set the env var or add it to .env.local",
+    );
   }
 
   const convexStorageNamespace = convexUrl.replace(/[^a-zA-Z0-9]/g, "");

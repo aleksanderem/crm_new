@@ -198,8 +198,7 @@ async function seedOutboundConfirmationEvent(
 ) {
   const createdAt = Date.now() - 1_000;
 
-  return await t.run(async (ctx) => {
-    return await ctx.db.insert("appointmentSmsEvents", {
+  return await createSupabaseDb().insert("appointmentSmsEvents", {
       organizationId: args.organizationId,
       appointmentId: args.appointmentId,
       patientId: args.patientId,
@@ -219,7 +218,6 @@ async function seedOutboundConfirmationEvent(
       createdAt,
       updatedAt: createdAt,
     });
-  });
 }
 
 describe("appointment SMS flow", () => {
@@ -257,9 +255,7 @@ describe("appointment SMS flow", () => {
       },
     );
 
-    const event = await t.run(async (ctx) =>
-      eventId ? ctx.db.get(eventId) : null,
-    );
+    const event = await (eventId ? createSupabaseDb().get("appointmentSmsEvents", eventId) : null);
 
     expect(eventId).toBeTruthy();
     expect(event?.appointmentId).toBe(appointmentId);
@@ -368,12 +364,10 @@ describe("appointment SMS flow", () => {
     );
 
     const appointment = await getAppointment(appointmentId);
-    const smsEvents = await t.run(async (ctx) =>
-      ctx.db
-        .query("appointmentSmsEvents")
-        .withIndex("by_appointment", (q) => q.eq("appointmentId", appointmentId))
-        .collect(),
-    );
+    const smsEvents = await createSupabaseDb()
+      .query("appointmentSmsEvents")
+      .eq("appointmentId", appointmentId)
+      .collect();
     const inboundEvent = smsEvents.find((event) => event.direction === "inbound");
 
     expect(firstResult.duplicate).toBe(false);
@@ -469,9 +463,7 @@ describe("appointment SMS flow", () => {
     );
 
     const appointment = await getAppointment(appointmentId);
-    const inboundEvent = await t.run(async (ctx) =>
-      result.eventId ? ctx.db.get(result.eventId) : null,
-    );
+    const inboundEvent = await (result.eventId ? createSupabaseDb().get("appointmentSmsEvents", result.eventId) : null);
     const auditEntries = await t.run(async (ctx) => ctx.db.query("auditLog").collect());
     const notifications = await t.run(async (ctx) =>
       ctx.db.query("notifications").collect(),
@@ -549,9 +541,7 @@ describe("appointment SMS flow", () => {
     );
 
     const appointment = await getAppointment(appointmentId);
-    const inboundEvent = await t.run(async (ctx) =>
-      result.eventId ? ctx.db.get(result.eventId) : null,
-    );
+    const inboundEvent = await (result.eventId ? createSupabaseDb().get("appointmentSmsEvents", result.eventId) : null);
 
     expect(result.processingStatus).toBe("ignored");
     expect(result.reason).toBe("Cannot transition from completed to confirmed");

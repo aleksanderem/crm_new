@@ -1,9 +1,7 @@
 import { internal } from "../_generated/api";
 import { Doc, Id } from "../_generated/dataModel";
-import { query, internalMutation, internalQuery, MutationCtx } from "../_generated/server";
-import { verifyOrgAccess } from "../_helpers/auth";
+import { action, internalMutation, MutationCtx } from "../_generated/server";
 import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
-import { checkPermission } from "../_helpers/permissions";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 
@@ -140,25 +138,27 @@ async function logSmsSharedActivities(
   });
 }
 
-export const listByAppointment = query({
+export const listByAppointment = action({
   args: {
     organizationId: v.id("organizations"),
     appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "gabinet_appointments",
-      "view",
-    );
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_appointments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    return await ctx.db
+    const db = createSupabaseDb();
+    return await db
       .query("appointmentSmsEvents")
-      .withIndex("by_appointment", (q) => q.eq("appointmentId", args.appointmentId))
-      .order("desc")
+      .eq("appointmentId", args.appointmentId)
+      .order("createdAt", false)
       .collect();
   },
 });
@@ -195,15 +195,15 @@ export const queueAutomationSms = internalMutation({
     const now = Date.now();
     const correlationKey = `automation:${args.eventType}:${appointmentId}`;
 
-    const existingEvent = await ctx.db
+    const existingEvent = await db
       .query("appointmentSmsEvents")
-      .withIndex("by_idempotencyKey", (q) => q.eq("idempotencyKey", args.idempotencyKey))
-      .unique();
+      .eq("idempotencyKey", args.idempotencyKey)
+      .first();
     if (existingEvent) {
       return existingEvent._id;
     }
 
-    const eventId = await ctx.db.insert("appointmentSmsEvents", {
+    const eventId = await db.insert("appointmentSmsEvents", {
       organizationId: args.organizationId,
       appointmentId,
       patientId,
@@ -304,10 +304,10 @@ export const queueConfirmationRequest = internalMutation({
       ? `outbound:${args.reminderId}`
       : `${correlationKey}:${now}`;
 
-    const existingEvent = await ctx.db
+    const existingEvent = await db
       .query("appointmentSmsEvents")
-      .withIndex("by_idempotencyKey", (q) => q.eq("idempotencyKey", idempotencyKey))
-      .unique();
+      .eq("idempotencyKey", idempotencyKey)
+      .first();
     if (existingEvent) {
       return existingEvent._id;
     }
@@ -317,7 +317,7 @@ export const queueConfirmationRequest = internalMutation({
       reminderId: args.reminderId ?? null,
     };
 
-    const eventId = await ctx.db.insert("appointmentSmsEvents", {
+    const eventId = await db.insert("appointmentSmsEvents", {
       organizationId: args.organizationId,
       appointmentId,
       patientId,
@@ -364,12 +364,13 @@ export const queueConfirmationRequest = internalMutation({
 
 export const markEventProcessed = internalMutation({
   args: {
-    eventId: v.id("appointmentSmsEvents"),
+    eventId: v.string(),
     providerMessageId: v.optional(v.string()),
     metadata: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.eventId, {
+    const db = createSupabaseDb();
+    await db.patch("appointmentSmsEvents", args.eventId, {
       providerMessageId: args.providerMessageId,
       metadata: args.metadata,
       processingStatus: "processed",
@@ -381,12 +382,13 @@ export const markEventProcessed = internalMutation({
 
 export const markEventFailed = internalMutation({
   args: {
-    eventId: v.id("appointmentSmsEvents"),
+    eventId: v.string(),
     error: v.string(),
     metadata: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.eventId, {
+    const db = createSupabaseDb();
+    await db.patch("appointmentSmsEvents", args.eventId, {
       processingStatus: "failed",
       processingError: args.error,
       metadata: args.metadata,
@@ -412,20 +414,21 @@ export const processIncomingMessage = internalMutation({
     args,
   ): Promise<{
     duplicate: boolean;
-    eventId?: Id<"appointmentSmsEvents">;
+    eventId?: string;
     processingStatus: "pending" | "processed" | "ignored" | "failed";
     reason?: string;
     appointmentId?: Id<"gabinetAppointments">;
   }> => {
-    const duplicate = await ctx.db
+    const db = createSupabaseDb();
+    const duplicate = await db
       .query("appointmentSmsEvents")
-      .withIndex("by_idempotencyKey", (q) => q.eq("idempotencyKey", args.idempotencyKey))
-      .unique();
+      .eq("idempotencyKey", args.idempotencyKey)
+      .first() as Doc<"appointmentSmsEvents"> | null;
 
     if (duplicate) {
       return {
         duplicate: true,
-        eventId: duplicate._id,
+        eventId: String(duplicate._id),
         processingStatus: duplicate.processingStatus,
       };
     }
@@ -451,13 +454,12 @@ export const processIncomingMessage = internalMutation({
     const parsedIntent = parseAppointmentSmsIntent(args.body);
     const now = Date.now();
 
-    const outboundEvents = await ctx.db
+    const outboundEvents = (await db
       .query("appointmentSmsEvents")
-      .withIndex("by_orgAndPhone", (q) =>
-        q.eq("organizationId", config.organizationId).eq("normalizedPhone", normalizedPhone),
-      )
-      .order("desc")
-      .collect();
+      .eq("organizationId", String(config.organizationId))
+      .eq("normalizedPhone", normalizedPhone)
+      .order("createdAt", false)
+      .collect()) as Array<Doc<"appointmentSmsEvents">>;
 
     const matchingOutbound = outboundEvents.find(
       (event) =>
@@ -466,7 +468,7 @@ export const processIncomingMessage = internalMutation({
         !!event.appointmentId,
     );
 
-    const eventId: Id<"appointmentSmsEvents"> = await ctx.db.insert("appointmentSmsEvents", {
+    const eventId: string = await db.insert("appointmentSmsEvents", {
       organizationId: config.organizationId,
       appointmentId: matchingOutbound?.appointmentId,
       patientId: matchingOutbound?.patientId,
@@ -495,9 +497,8 @@ export const processIncomingMessage = internalMutation({
       | Id<"gabinetPatients">
       | undefined;
 
-    const supabaseDb = createSupabaseDb();
     const matchingAppointment = matchingAppointmentId
-      ? await supabaseDb.get<{
+      ? await db.get<{
           organizationId?: string;
           employeeId?: string;
         }>("gabinetAppointments", String(matchingAppointmentId))
@@ -566,7 +567,7 @@ export const processIncomingMessage = internalMutation({
     });
 
     if (parsedIntent === "unknown") {
-      await ctx.db.patch(eventId, {
+      await db.patch("appointmentSmsEvents", eventId, {
         processingStatus: "ignored",
         processingError: "Reply body did not match TAK/NIE contract",
         processedAt: Date.now(),
@@ -576,7 +577,7 @@ export const processIncomingMessage = internalMutation({
     }
 
     if (!matchingOutbound?.appointmentId) {
-      await ctx.db.patch(eventId, {
+      await db.patch("appointmentSmsEvents", eventId, {
         processingStatus: "ignored",
         processingError: "No outbound appointment confirmation event found for this phone",
         processedAt: Date.now(),
@@ -592,10 +593,10 @@ export const processIncomingMessage = internalMutation({
       organizationId: config.organizationId,
       appointmentId: String(matchingOutbound.appointmentId),
       intent: parsedIntent,
-      smsEventId: String(eventId),
+      smsEventId: eventId,
     });
 
-    await ctx.db.patch(eventId, {
+    await db.patch("appointmentSmsEvents", eventId, {
       processingStatus: transitionResult.processingStatus,
       processingError: transitionResult.reason,
       processedAt: Date.now(),
@@ -612,15 +613,3 @@ export const processIncomingMessage = internalMutation({
   },
 });
 
-export const getLatestByAppointmentInternal = internalQuery({
-  args: {
-    appointmentId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("appointmentSmsEvents")
-      .withIndex("by_appointment", (q) => q.eq("appointmentId", args.appointmentId))
-      .order("desc")
-      .collect();
-  },
-});

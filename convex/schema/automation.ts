@@ -85,7 +85,9 @@ export function createAutomationTables({
     metadataSnapshot: v.optional(v.string()),
     errorMessage: v.optional(v.string()),
     emailEventLogId: v.optional(v.id("emailEventLog")),
-    appointmentSmsEventId: v.optional(v.id("appointmentSmsEvents")),
+    // FK to Supabase `appointment_sms_events.id` (string) after the #1400
+    // migration. Was `v.id("appointmentSmsEvents")`.
+    appointmentSmsEventId: v.optional(v.string()),
     processedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),

@@ -303,7 +303,7 @@ export const sendAppointmentSms = internalAction({
     organizationId: v.id("organizations"),
     phone: v.string(),
     message: v.string(),
-    eventId: v.optional(v.id("appointmentSmsEvents")),
+    eventId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const config = await ctx.runQuery(internal.sms.getConfigInternal, {

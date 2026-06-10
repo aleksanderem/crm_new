@@ -565,6 +565,8 @@ export function AppointmentForm({
                 placeholder={t("gabinet.appointments.searchPatient")}
                 value={patientSearch}
                 onValueChange={setPatientSearch}
+                onClose={() => setPatientOpen(false)}
+                closeLabel={t("common.close")}
               />
               <CommandList className="flex-1 min-h-0">
                 {filteredPatients.length === 0 &&
@@ -687,6 +689,8 @@ export function AppointmentForm({
             <Command>
               <CommandInput
                 placeholder={t("gabinet.appointments.searchTreatment")}
+                onClose={() => setTreatmentOpen(false)}
+                closeLabel={t("common.close")}
               />
               <CommandList className="flex-1 min-h-0">
                 <CommandEmpty>{t("common.noResults")}</CommandEmpty>

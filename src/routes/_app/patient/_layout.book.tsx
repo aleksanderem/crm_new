@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
 import { PlateText } from "@/components/plate-text";
 import { formatAppointmentError } from "@/lib/format-action-error";
+import { SlotPicker } from "@/components/gabinet/appointment-shared/slot-picker";
 
 export const Route = createFileRoute("/_app/patient/_layout/book")({
   component: PatientBooking,
@@ -425,22 +426,12 @@ function PatientBooking() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-              {slots.map((slot) => (
-                <button
-                  key={slot.start}
-                  type="button"
-                  onClick={() => handleSelectTime(slot.start)}
-                  className={`rounded-lg border px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-primary hover:text-primary-foreground active:bg-primary/90 ${
-                    selectedTime === slot.start
-                      ? "bg-primary text-primary-foreground"
-                      : ""
-                  }`}
-                >
-                  {slot.start}
-                </button>
-              ))}
-            </div>
+            <SlotPicker
+              slots={slots}
+              selectedStart={selectedTime}
+              onSelect={(slot) => handleSelectTime(slot.start)}
+              layout="grid"
+            />
           )}
         </div>
       )}

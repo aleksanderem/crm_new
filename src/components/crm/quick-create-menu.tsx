@@ -170,12 +170,16 @@ const entityItems: {
     group: "gabinet",
   },
   {
+    // "Appointment" routes to the calendar so the global "+" opens the same
+    // AppointmentDialog as every other "add appointment" entry point
+    // (issues #1469, #1502, #1506). The simpler AppointmentForm sheet was
+    // missing recurring/walk-in/package features available in the dialog.
     type: "appointment",
     i18nKey: "quickCreate.items.appointment",
     descriptionKey: "quickCreate.itemDesc.appointment",
     icon: CalendarClockIcon,
     avatarColor: "bg-teal-600/10 text-teal-600 dark:bg-teal-400/10 dark:text-teal-400",
-    hasForm: true,
+    hasForm: false,
     group: "gabinet",
   },
   {

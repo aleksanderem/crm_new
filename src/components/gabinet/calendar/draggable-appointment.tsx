@@ -1,10 +1,11 @@
 import { useDraggable } from "@dnd-kit/core";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Popover,
   PopoverAnchor,
   PopoverContent,
 } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import {
   AppointmentCard,
   type AppointmentTag,
@@ -73,6 +74,116 @@ export function DraggableAppointment({
   // Suppress popover open when the click follows a drag — useDraggable triggers
   // onClick after a successful drop, which would otherwise pop the preview.
   const isPopoverDisabled = status === "blocked";
+
+  // Drag-to-reposition state for the preview popover (issue #1476). Same
+  // pattern as the AppointmentDialog drag added in #1459, adapted for the
+  // popover positioning model: the wrapper (`data-radix-popper-content-wrapper`)
+  // owns the anchor position via its own inline `transform: translate3d(…)`, so
+  // we write the drag offset to the popover content element's `translate:`
+  // CSS property. The two properties are independent and compose additively,
+  // so the popup follows the cursor without disturbing Radix's collision /
+  // flipping logic.
+  const previewContentRef = useRef<HTMLDivElement | null>(null);
+  const previewDragOffsetRef = useRef({ x: 0, y: 0 });
+  const [isPreviewDragging, setIsPreviewDragging] = useState(false);
+
+  const applyPreviewDragTransform = useCallback(() => {
+    const el = previewContentRef.current;
+    if (!el) return;
+    const { x, y } = previewDragOffsetRef.current;
+    el.style.translate = x === 0 && y === 0 ? "" : `${x}px ${y}px`;
+  }, []);
+
+  // Clamp the offset so the popover header (close button + status badge) can
+  // never be dragged fully off-screen. Without this, a small drag can park the
+  // popup where the user can no longer grab or close it — same protection the
+  // dialog grew in #1426.
+  const clampPreviewDragOffset = useCallback((x: number, y: number) => {
+    const el = previewContentRef.current;
+    if (!el || typeof window === "undefined") return { x, y };
+    const rect = el.getBoundingClientRect();
+    const baseLeft = rect.left - previewDragOffsetRef.current.x;
+    const baseTop = rect.top - previewDragOffsetRef.current.y;
+    const w = rect.width;
+    const h = rect.height;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const HEADER_VISIBLE = 60;
+    const CORNER_VISIBLE = 80;
+    const minX = CORNER_VISIBLE - baseLeft - w;
+    const maxX = vw - CORNER_VISIBLE - baseLeft;
+    const minY = HEADER_VISIBLE - baseTop - h;
+    const maxY = vh - HEADER_VISIBLE - baseTop;
+    return {
+      x: Math.max(minX, Math.min(maxX, x)),
+      y: Math.max(minY, Math.min(maxY, y)),
+    };
+  }, []);
+
+  // Reapply on every render so an unrelated re-render mid-drag doesn't snap
+  // the popover back to its base position.
+  useLayoutEffect(() => {
+    applyPreviewDragTransform();
+  });
+
+  useEffect(() => {
+    if (!popoverOpen) {
+      previewDragOffsetRef.current = { x: 0, y: 0 };
+      setIsPreviewDragging(false);
+    }
+  }, [popoverOpen]);
+
+  const handlePreviewDragStart = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0) return;
+      // Skip touch input to mirror the dialog's choice (#1459): on mobile the
+      // popover is near full-width and capturing touch pointerdown here would
+      // block native vertical scrolling of the popover body.
+      if (e.pointerType === "touch") return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target?.closest(
+          'button, a, input, textarea, select, [role="button"], [role="combobox"], [role="menuitem"], [role="option"], [role="switch"], [role="checkbox"], [role="radio"], [role="tab"], [contenteditable="true"], [data-radix-popper-content-wrapper]',
+        )
+      ) {
+        return;
+      }
+      e.preventDefault();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startOffset = { ...previewDragOffsetRef.current };
+      setIsPreviewDragging(true);
+
+      let rafId: number | null = null;
+      const flush = () => {
+        rafId = null;
+        applyPreviewDragTransform();
+      };
+
+      const handleMove = (ev: PointerEvent) => {
+        previewDragOffsetRef.current = clampPreviewDragOffset(
+          startOffset.x + (ev.clientX - startX),
+          startOffset.y + (ev.clientY - startY),
+        );
+        if (rafId === null) rafId = requestAnimationFrame(flush);
+      };
+
+      const handleUp = () => {
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+        applyPreviewDragTransform();
+        window.removeEventListener("pointermove", handleMove);
+        window.removeEventListener("pointerup", handleUp);
+        setIsPreviewDragging(false);
+      };
+
+      window.addEventListener("pointermove", handleMove);
+      window.addEventListener("pointerup", handleUp);
+    },
+    [applyPreviewDragTransform, clampPreviewDragOffset],
+  );
 
   const startMinutes = timeToMinutes(startTime);
   const originalEndMinutes = timeToMinutes(endTime);
@@ -170,7 +281,11 @@ export function DraggableAppointment({
     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
       <PopoverAnchor asChild>{card}</PopoverAnchor>
       <PopoverContent
-        className="w-[553px] max-w-[calc(100vw-24px)] max-h-[calc(100dvh-24px)] overflow-y-auto p-4"
+        ref={previewContentRef}
+        className={cn(
+          "w-[553px] max-w-[calc(100vw-24px)] max-h-[calc(100dvh-24px)] overflow-y-auto p-4",
+          isPreviewDragging && "cursor-grabbing select-none",
+        )}
         align="start"
         side="right"
         sideOffset={8}
@@ -180,6 +295,10 @@ export function DraggableAppointment({
         // activates a screenshot tool like Snipping Tool); otherwise the
         // preview disappears before it can be captured.
         onFocusOutside={(e) => e.preventDefault()}
+        // Drag-from-anywhere (issue #1476): clicking on the popup body (away
+        // from any interactive control) initiates a reposition drag so the
+        // user can peek at the appointment underneath.
+        onPointerDown={handlePreviewDragStart}
         // Popover content is portaled in the DOM but still part of the React
         // tree, so React synthetic events bubble through to the calendar grid's
         // onMouseDown handler and trigger a "create appointment" slot click.

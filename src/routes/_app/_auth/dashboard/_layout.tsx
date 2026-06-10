@@ -77,7 +77,6 @@ import { CompanyForm } from "@/components/forms/company-form";
 import { LeadForm } from "@/components/forms/lead-form";
 import { PatientForm } from "@/components/forms/patient-form";
 import { TreatmentForm } from "@/components/gabinet/treatment-form";
-import { AppointmentForm } from "@/components/gabinet/appointment-form";
 import { PackageForm } from "@/components/forms/package-form";
 import { EmployeeForm } from "@/components/forms/employee-form";
 import { ActivityForm } from "@/components/crm/activity-form";
@@ -223,7 +222,6 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
   const createLead = useAction(api.leads.create);
   const createPatient = useAction(api.gabinet.patients.create);
   const createTreatment = useAction(api.gabinet.treatments.create);
-  const createAppointment = useAction(api.gabinet.appointments.create);
   const createPackage = useAction(api.gabinet.packages.create);
   const createEmployee = useAction(api.gabinet.employees.create);
   const createActivity = useAction(api.scheduledActivities.create);
@@ -252,14 +250,6 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
     enabled: !!firstOrg,
   }) as { data: any[] | undefined };
   const listCategoryDefinitionsAction = useAction(api.categoryDefinitions.list);
-  const { data: appointmentCategories } = useQuery({
-    queryKey: ["categoryDefinitions.list", firstOrg?._id ?? null, "gabinetAppointment"],
-    queryFn: () => listCategoryDefinitionsAction({
-      organizationId: firstOrg?._id as Id<"organizations">,
-      entityType: "gabinetAppointment" as const,
-    }),
-    enabled: !!firstOrg,
-  }) as { data: any[] | undefined };
   const { data: contactCategories } = useQuery({
     queryKey: ["categoryDefinitions.list", firstOrg?._id ?? null, "contact"],
     queryFn: () => listCategoryDefinitionsAction({
@@ -393,6 +383,16 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
         call: "/dashboard/calls",
         document: "/dashboard/documents",
       };
+      // "Appointment" navigates to the calendar with ?action=create-appointment
+      // so the global "+" opens the same AppointmentDialog as every other
+      // entry point (issue #1469; mirrors #1506).
+      if (entityType === "appointment") {
+        navigate({
+          to: "/dashboard/gabinet/calendar",
+          search: { action: "create-appointment" },
+        });
+        return;
+      }
       const route = routes[entityType];
       if (route) navigate({ to: route });
     },
@@ -499,26 +499,6 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
               organizationId={orgId}
               tagDefinitions={orgTags}
               categoryDefinitions={patientCategories}
-            />
-          );
-        case "appointment":
-          return (
-            <AppointmentForm
-              onSubmit={async (data) => {
-                setIsCreating(true);
-                try {
-                  await createAppointment({ organizationId: orgId, ...data });
-                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetAppointments.all });
-                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.all });
-                  opts.onSuccess();
-                } finally {
-                  setIsCreating(false);
-                }
-              }}
-              onCancel={opts.onCancel}
-              isSubmitting={isCreating}
-              tagDefinitions={orgTags}
-              categoryDefinitions={appointmentCategories}
             />
           );
         case "treatment":
@@ -690,7 +670,7 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
           return null;
       }
     },
-    [firstOrg, isCreating, createContact, createCompany, createLead, createPatient, createAppointment, createTreatment, createPackage, createEmployee, createActivity, createLeave, createInvitation, createProduct, createCall, user, queryClient]
+    [firstOrg, isCreating, createContact, createCompany, createLead, createPatient, createTreatment, createPackage, createEmployee, createActivity, createLeave, createInvitation, createProduct, createCall, user, queryClient]
   );
 
   const pathname = useRouterState({ select: (s) => s.location.pathname });

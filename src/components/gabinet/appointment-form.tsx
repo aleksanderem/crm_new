@@ -258,7 +258,8 @@ export function AppointmentForm({
   const selectedPatient = patients.find((p) => p._id === patientId);
   const dateStr = date ? format(date, "yyyy-MM-dd") : "";
 
-  // Equipment warning — advisory only, which required equipment is missing at the selected location
+  // Equipment check — block submit when the selected location is missing
+  // required equipment for the chosen treatment (issue #1504).
   const missingEquipmentIds = useMemo(() => {
     if (!locationId || !selectedTreatment?.requiredEquipmentIds?.length) return [];
     const atLocationIds = new Set(equipmentAtLocation?.map((e) => e._id) ?? []);
@@ -266,6 +267,7 @@ export function AppointmentForm({
       (id) => !atLocationIds.has(id),
     );
   }, [locationId, selectedTreatment, equipmentAtLocation]);
+  const equipmentBlocking = missingEquipmentIds.length > 0;
 
   // Approved leaves for selected employee — used to surface a warning when
   // the chosen date overlaps with an approved leave. The available-slots
@@ -930,9 +932,12 @@ export function AppointmentForm({
         </div>
       )}
 
-      {/* Equipment warnings — advisory only */}
-      {missingEquipmentIds.length > 0 && (
-        <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+      {/* Equipment error — blocks submission (issue #1504) */}
+      {equipmentBlocking && (
+        <div
+          role="alert"
+          className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
           <AlertTriangle className="size-4 shrink-0" />
           {t("gabinet.appointments.equipmentWarning")}
         </div>
@@ -1006,6 +1011,7 @@ export function AppointmentForm({
             !employeeId ||
             !date ||
             !selectedSlot ||
+            equipmentBlocking ||
             isSubmitting
           }
         >

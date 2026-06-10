@@ -422,7 +422,11 @@ export function TreatmentForm({
                 </div>
               ) : (
                 <Command>
-                  <CommandInput placeholder={t("gabinet.treatments.searchEquipment", "Search equipment...")} />
+                  <CommandInput
+                    placeholder={t("gabinet.treatments.searchEquipment", "Search equipment...")}
+                    onClose={() => setEquipmentOpen(false)}
+                    closeLabel={t("common.close")}
+                  />
                   <CommandList className="flex-1 min-h-0">
                     <CommandEmpty>{t("common.noResults", "No results found.")}</CommandEmpty>
                     <CommandGroup>

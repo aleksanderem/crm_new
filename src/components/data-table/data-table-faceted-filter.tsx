@@ -1,3 +1,4 @@
+import * as React from "react";
 import { Column } from "@tanstack/react-table";
 import { Check, PlusCircle } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
@@ -32,9 +33,10 @@ export function DataTableFacetedFilter<TData, TValue>({
 }: DataTableFacetedFilterProps<TData, TValue>) {
   const facets = column?.getFacetedUniqueValues();
   const selectedValues = new Set(column?.getFilterValue() as string[]);
+  const [open, setOpen] = React.useState(false);
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="h-9 border-dashed">
           <PlusCircle className="mr-2 h-4 w-4" />
@@ -82,7 +84,11 @@ export function DataTableFacetedFilter<TData, TValue>({
         }}
       >
         <Command>
-          <CommandInput placeholder={title} />
+          <CommandInput
+            placeholder={title}
+            onClose={() => setOpen(false)}
+            closeLabel="Close"
+          />
           <CommandList className="flex-1 min-h-0">
             <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup>

@@ -2251,6 +2251,22 @@
       "errors": {
         "createFailed": "Nie udało się dodać klienta.",
         "saveFailed": "Nie udało się zapisać zmian klienta."
+      },
+      "merge": {
+        "action": "Scal z...",
+        "title": "Scal klientów",
+        "description": "Wybierz klienta, do którego mają zostać przeniesione dane. Klient źródłowy zostanie dezaktywowany.",
+        "sourceLabel": "Źródło (zostanie dezaktywowane)",
+        "searchPlaceholder": "Szukaj klienta po imieniu, e-mailu lub telefonie...",
+        "matchEmail": "Ten sam e-mail",
+        "matchPhone": "Ten sam telefon",
+        "matchSearch": "Wyszukiwanie",
+        "noDuplicates": "Brak duplikatów po e-mailu lub telefonie. Skorzystaj z wyszukiwarki powyżej, aby wybrać innego klienta.",
+        "noContactInfo": "Klient nie ma e-maila ani telefonu, więc automatyczne dopasowanie nie jest możliwe. Wyszukaj klienta ręcznie.",
+        "warning": "Wszystkie wizyty, dokumenty, płatności, punkty lojalnościowe i notatki zostaną przeniesione. Operacja jest nieodwracalna.",
+        "confirm": "Scal",
+        "success": "Scalono klienta. Przeniesiono {{count}} powiązanych rekordów.",
+        "error": "Nie udało się scalić klientów."
       }
     },
     "treatments": {

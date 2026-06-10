@@ -529,6 +529,283 @@ export const _removeSideEffects = internalMutation({
   },
 });
 
+export const merge = action({
+  args: {
+    organizationId: v.id("organizations"),
+    targetPatientId: v.string(),
+    sourcePatientId: v.string(),
+  },
+  handler: async (ctx, args): Promise<{
+    movedAppointments: number;
+    movedDocuments: number;
+    movedPackageUsage: number;
+    movedLoyaltyTransactions: number;
+    movedPayments: number;
+    movedNotes: number;
+    movedActivities: number;
+    movedRelationships: number;
+    movedPortalSessions: number;
+    movedSmsEvents: number;
+    movedReferrals: number;
+    movedBookedBy: number;
+    consolidatedLoyaltyBalance: number;
+  }> => {
+    if (args.targetPatientId === args.sourcePatientId) {
+      throw new Error("Cannot merge a patient with itself");
+    }
+
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_patients",
+        action: "delete",
+      },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+
+    const [target, source] = await Promise.all([
+      db.get("gabinetPatients", args.targetPatientId),
+      db.get("gabinetPatients", args.sourcePatientId),
+    ]);
+    if (!target || String(target.organizationId) !== orgIdStr) {
+      throw new Error("Target patient not found");
+    }
+    if (!source || String(source.organizationId) !== orgIdStr) {
+      throw new Error("Source patient not found");
+    }
+    if (perm.scope === "own") {
+      const userIdStr = String(authResult.userId);
+      if (String(target.createdBy) !== userIdStr || String(source.createdBy) !== userIdStr) {
+        throw new Error("Permission denied: you can only merge your own records");
+      }
+    }
+
+    const client = db.raw();
+
+    async function reassignByColumn(
+      table: string,
+      column: string,
+    ): Promise<number> {
+      const { data, error } = await client
+        .from(table)
+        .update({ [column]: args.targetPatientId })
+        .eq("organization_id", orgIdStr)
+        .eq(column, args.sourcePatientId)
+        .select("id");
+      if (error) {
+        throw new Error(`merge: failed updating ${table}.${column}: ${error.message}`);
+      }
+      return data?.length ?? 0;
+    }
+
+    // Bulk reassign foreign keys pointing at the source patient over to the target.
+    const movedAppointments = await reassignByColumn("gabinet_appointments", "patient_id");
+    const movedBookedBy = await reassignByColumn("gabinet_appointments", "booked_by_patient_id");
+    const movedDocuments = await reassignByColumn("gabinet_documents", "patient_id");
+    const movedPackageUsage = await reassignByColumn("gabinet_package_usage", "patient_id");
+    const movedLoyaltyTransactions = await reassignByColumn(
+      "gabinet_loyalty_transactions",
+      "patient_id",
+    );
+    const movedPayments = await reassignByColumn("payments", "patient_id");
+    const movedPortalSessions = await reassignByColumn(
+      "gabinet_portal_sessions",
+      "patient_id",
+    );
+    const movedSmsEvents = await reassignByColumn(
+      "appointment_sms_events",
+      "patient_id",
+    );
+    const movedReferrals = await reassignByColumn(
+      "gabinet_patients",
+      "referred_by_patient_id",
+    );
+
+    // Polymorphic reassignment: activities/notes/object_relationships scope by
+    // entity_type so we filter on both the type discriminator and the patient id.
+    async function reassignPolymorphic(
+      table: string,
+      typeColumn: string,
+      idColumn: string,
+      entityType: string,
+    ): Promise<number> {
+      const { data, error } = await client
+        .from(table)
+        .update({ [idColumn]: args.targetPatientId })
+        .eq("organization_id", orgIdStr)
+        .eq(typeColumn, entityType)
+        .eq(idColumn, args.sourcePatientId)
+        .select("id");
+      if (error) {
+        throw new Error(
+          `merge: failed updating ${table}.${idColumn} (type=${entityType}): ${error.message}`,
+        );
+      }
+      return data?.length ?? 0;
+    }
+
+    const movedNotes = await reassignPolymorphic(
+      "notes",
+      "entity_type",
+      "entity_id",
+      "gabinetPatient",
+    );
+    const movedActivities = await reassignPolymorphic(
+      "activities",
+      "entity_type",
+      "entity_id",
+      "gabinetPatient",
+    );
+    const movedRelationshipsSource = await reassignPolymorphic(
+      "object_relationships",
+      "source_type",
+      "source_id",
+      "gabinetPatient",
+    );
+    const movedRelationshipsTarget = await reassignPolymorphic(
+      "object_relationships",
+      "target_type",
+      "target_id",
+      "gabinetPatient",
+    );
+    const movedRelationships = movedRelationshipsSource + movedRelationshipsTarget;
+
+    // Loyalty points have a unique (organization_id, patient_id) constraint, so
+    // we can't reassign a source row onto an existing target row. Read both,
+    // sum the balances onto the target (or just rename the source row if the
+    // target has none), then delete the source row.
+    const [targetLoyalty, sourceLoyalty] = await Promise.all([
+      db
+        .query("gabinetLoyaltyPoints")
+        .eq("organizationId", orgIdStr)
+        .eq("patientId", args.targetPatientId)
+        .first(),
+      db
+        .query("gabinetLoyaltyPoints")
+        .eq("organizationId", orgIdStr)
+        .eq("patientId", args.sourcePatientId)
+        .first(),
+    ]);
+
+    let consolidatedLoyaltyBalance = 0;
+    if (sourceLoyalty) {
+      const sBalance = Number(sourceLoyalty.balance ?? 0);
+      const sEarned = Number(sourceLoyalty.lifetimeEarned ?? 0);
+      const sSpent = Number(sourceLoyalty.lifetimeSpent ?? 0);
+      if (targetLoyalty) {
+        const newBalance = Number(targetLoyalty.balance ?? 0) + sBalance;
+        await db.patch("gabinetLoyaltyPoints", String(targetLoyalty._id), {
+          balance: newBalance,
+          lifetimeEarned: Number(targetLoyalty.lifetimeEarned ?? 0) + sEarned,
+          lifetimeSpent: Number(targetLoyalty.lifetimeSpent ?? 0) + sSpent,
+          updatedAt: Date.now(),
+        });
+        await db.delete("gabinetLoyaltyPoints", String(sourceLoyalty._id));
+        consolidatedLoyaltyBalance = newBalance;
+      } else {
+        await db.patch("gabinetLoyaltyPoints", String(sourceLoyalty._id), {
+          patientId: args.targetPatientId,
+          updatedAt: Date.now(),
+        });
+        consolidatedLoyaltyBalance = sBalance;
+      }
+    } else if (targetLoyalty) {
+      consolidatedLoyaltyBalance = Number(targetLoyalty.balance ?? 0);
+    }
+
+    // Soft-delete the source patient and annotate why it was deactivated.
+    const now = Date.now();
+    const sourceNotesPrefix = `[Merged into patient ${args.targetPatientId} at ${new Date(now).toISOString()}]`;
+    const existingNotes = (source.medicalNotes as string | null | undefined) ?? "";
+    await db.patch("gabinetPatients", args.sourcePatientId, {
+      isActive: false,
+      medicalNotes: existingNotes ? `${sourceNotesPrefix}\n${existingNotes}` : sourceNotesPrefix,
+      updatedAt: now,
+    });
+
+    try {
+      await ctx.runMutation(internal.gabinet.patients._mergeSideEffects, {
+        organizationId: args.organizationId,
+        targetPatientId: args.targetPatientId,
+        sourcePatientId: args.sourcePatientId,
+        targetName: `${target.firstName ?? ""} ${target.lastName ?? ""}`.trim(),
+        sourceName: `${source.firstName ?? ""} ${source.lastName ?? ""}`.trim(),
+        performedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error(
+        "[patients.merge] Side effects FAILED for target/source",
+        args.targetPatientId,
+        args.sourcePatientId,
+        ":",
+        e,
+      );
+    }
+
+    return {
+      movedAppointments,
+      movedDocuments,
+      movedPackageUsage,
+      movedLoyaltyTransactions,
+      movedPayments,
+      movedNotes,
+      movedActivities,
+      movedRelationships,
+      movedPortalSessions,
+      movedSmsEvents,
+      movedReferrals,
+      movedBookedBy,
+      consolidatedLoyaltyBalance,
+    };
+  },
+});
+
+export const _mergeSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    targetPatientId: v.string(),
+    sourcePatientId: v.string(),
+    targetName: v.string(),
+    sourceName: v.string(),
+    performedBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const performedByUserId = args.performedBy as Id<"users">;
+
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetPatient",
+      entityId: args.targetPatientId as Id<"gabinetPatients">,
+      action: "updated",
+      description: `Scalono klienta "${args.sourceName}" do "${args.targetName}"`,
+      metadata: {
+        merge: { sourcePatientId: args.sourcePatientId },
+      },
+      performedBy: performedByUserId,
+    });
+
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetPatient",
+      entityId: args.sourcePatientId as Id<"gabinetPatients">,
+      action: "deleted",
+      description: `Klient scalony do "${args.targetName}"`,
+      metadata: {
+        merge: { targetPatientId: args.targetPatientId },
+      },
+      performedBy: performedByUserId,
+    });
+  },
+});
+
 export const getByContact = action({
   args: {
     organizationId: v.id("organizations"),

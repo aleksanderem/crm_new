@@ -75,7 +75,6 @@ import { Route as AppAuthDashboardLayoutSettingsBillingRouteImport } from './rou
 import { Route as AppAuthDashboardLayoutSettingsAutomationsRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.automations'
 import { Route as AppAuthDashboardLayoutSettingsAuditLogRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.audit-log'
 import { Route as AppAuthDashboardLayoutSettingsActivityTypesRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.activity-types'
-import { Route as AppAuthDashboardLayoutLeadsNewRouteImport } from './routes/_app/_auth/dashboard/_layout.leads.new'
 import { Route as AppAuthDashboardLayoutLeadsLeadIdRouteImport } from './routes/_app/_auth/dashboard/_layout.leads.$leadId'
 import { Route as AppAuthDashboardLayoutGabinetReportsRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.reports'
 import { Route as AppAuthDashboardLayoutGabinetDocumentsRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.documents'
@@ -84,7 +83,6 @@ import { Route as AppAuthDashboardLayoutEmailTemplatesTemplateIdRouteImport } fr
 import { Route as AppAuthDashboardLayoutDocumentEditorNewRouteImport } from './routes/_app/_auth/dashboard/_layout.document-editor.new'
 import { Route as AppAuthDashboardLayoutDocumentEditorIdRouteImport } from './routes/_app/_auth/dashboard/_layout.document-editor.$id'
 import { Route as AppAuthDashboardLayoutContactsContactIdRouteImport } from './routes/_app/_auth/dashboard/_layout.contacts.$contactId'
-import { Route as AppAuthDashboardLayoutCompaniesNewRouteImport } from './routes/_app/_auth/dashboard/_layout.companies.new'
 import { Route as AppAuthDashboardLayoutCompaniesCompanyIdRouteImport } from './routes/_app/_auth/dashboard/_layout.companies.$companyId'
 import { Route as AppAuthDashboardLayoutSettingsFormTemplatesIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.form-templates.index'
 import { Route as AppAuthDashboardLayoutSettingsDocumentComponentsIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.document-components.index'
@@ -488,12 +486,6 @@ const AppAuthDashboardLayoutSettingsActivityTypesRoute =
     path: '/activity-types',
     getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
   } as any)
-const AppAuthDashboardLayoutLeadsNewRoute =
-  AppAuthDashboardLayoutLeadsNewRouteImport.update({
-    id: '/leads/new',
-    path: '/leads/new',
-    getParentRoute: () => AppAuthDashboardLayoutRoute,
-  } as any)
 const AppAuthDashboardLayoutLeadsLeadIdRoute =
   AppAuthDashboardLayoutLeadsLeadIdRouteImport.update({
     id: '/leads/$leadId',
@@ -554,12 +546,6 @@ const AppAuthDashboardLayoutContactsContactIdRoute =
       (d) => d.Route,
     ),
   )
-const AppAuthDashboardLayoutCompaniesNewRoute =
-  AppAuthDashboardLayoutCompaniesNewRouteImport.update({
-    id: '/companies/new',
-    path: '/companies/new',
-    getParentRoute: () => AppAuthDashboardLayoutRoute,
-  } as any)
 const AppAuthDashboardLayoutCompaniesCompanyIdRoute =
   AppAuthDashboardLayoutCompaniesCompanyIdRouteImport.update({
     id: '/companies/$companyId',
@@ -776,7 +762,6 @@ export interface FileRoutesByFullPath {
   '/onboarding/username': typeof AppAuthOnboardingLayoutUsernameRoute
   '/dashboard/': typeof AppAuthDashboardLayoutIndexRoute
   '/dashboard/companies/$companyId': typeof AppAuthDashboardLayoutCompaniesCompanyIdRoute
-  '/dashboard/companies/new': typeof AppAuthDashboardLayoutCompaniesNewRoute
   '/dashboard/contacts/$contactId': typeof AppAuthDashboardLayoutContactsContactIdRoute
   '/dashboard/document-editor/$id': typeof AppAuthDashboardLayoutDocumentEditorIdRoute
   '/dashboard/document-editor/new': typeof AppAuthDashboardLayoutDocumentEditorNewRoute
@@ -785,7 +770,6 @@ export interface FileRoutesByFullPath {
   '/dashboard/gabinet/documents': typeof AppAuthDashboardLayoutGabinetDocumentsRouteWithChildren
   '/dashboard/gabinet/reports': typeof AppAuthDashboardLayoutGabinetReportsRoute
   '/dashboard/leads/$leadId': typeof AppAuthDashboardLayoutLeadsLeadIdRoute
-  '/dashboard/leads/new': typeof AppAuthDashboardLayoutLeadsNewRoute
   '/dashboard/settings/activity-types': typeof AppAuthDashboardLayoutSettingsActivityTypesRoute
   '/dashboard/settings/audit-log': typeof AppAuthDashboardLayoutSettingsAuditLogRoute
   '/dashboard/settings/automations': typeof AppAuthDashboardLayoutSettingsAutomationsRouteWithChildren
@@ -876,7 +860,6 @@ export interface FileRoutesByTo {
   '/onboarding/username': typeof AppAuthOnboardingLayoutUsernameRoute
   '/dashboard': typeof AppAuthDashboardLayoutIndexRoute
   '/dashboard/companies/$companyId': typeof AppAuthDashboardLayoutCompaniesCompanyIdRoute
-  '/dashboard/companies/new': typeof AppAuthDashboardLayoutCompaniesNewRoute
   '/dashboard/contacts/$contactId': typeof AppAuthDashboardLayoutContactsContactIdRoute
   '/dashboard/document-editor/$id': typeof AppAuthDashboardLayoutDocumentEditorIdRoute
   '/dashboard/document-editor/new': typeof AppAuthDashboardLayoutDocumentEditorNewRoute
@@ -884,7 +867,6 @@ export interface FileRoutesByTo {
   '/dashboard/email-templates/new': typeof AppAuthDashboardLayoutEmailTemplatesNewRoute
   '/dashboard/gabinet/reports': typeof AppAuthDashboardLayoutGabinetReportsRoute
   '/dashboard/leads/$leadId': typeof AppAuthDashboardLayoutLeadsLeadIdRoute
-  '/dashboard/leads/new': typeof AppAuthDashboardLayoutLeadsNewRoute
   '/dashboard/settings/activity-types': typeof AppAuthDashboardLayoutSettingsActivityTypesRoute
   '/dashboard/settings/audit-log': typeof AppAuthDashboardLayoutSettingsAuditLogRoute
   '/dashboard/settings/billing': typeof AppAuthDashboardLayoutSettingsBillingRoute
@@ -980,7 +962,6 @@ export interface FileRoutesById {
   '/_app/_auth/onboarding/_layout/username': typeof AppAuthOnboardingLayoutUsernameRoute
   '/_app/_auth/dashboard/_layout/': typeof AppAuthDashboardLayoutIndexRoute
   '/_app/_auth/dashboard/_layout/companies/$companyId': typeof AppAuthDashboardLayoutCompaniesCompanyIdRoute
-  '/_app/_auth/dashboard/_layout/companies/new': typeof AppAuthDashboardLayoutCompaniesNewRoute
   '/_app/_auth/dashboard/_layout/contacts/$contactId': typeof AppAuthDashboardLayoutContactsContactIdRoute
   '/_app/_auth/dashboard/_layout/document-editor/$id': typeof AppAuthDashboardLayoutDocumentEditorIdRoute
   '/_app/_auth/dashboard/_layout/document-editor/new': typeof AppAuthDashboardLayoutDocumentEditorNewRoute
@@ -989,7 +970,6 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/gabinet/documents': typeof AppAuthDashboardLayoutGabinetDocumentsRouteWithChildren
   '/_app/_auth/dashboard/_layout/gabinet/reports': typeof AppAuthDashboardLayoutGabinetReportsRoute
   '/_app/_auth/dashboard/_layout/leads/$leadId': typeof AppAuthDashboardLayoutLeadsLeadIdRoute
-  '/_app/_auth/dashboard/_layout/leads/new': typeof AppAuthDashboardLayoutLeadsNewRoute
   '/_app/_auth/dashboard/_layout/settings/activity-types': typeof AppAuthDashboardLayoutSettingsActivityTypesRoute
   '/_app/_auth/dashboard/_layout/settings/audit-log': typeof AppAuthDashboardLayoutSettingsAuditLogRoute
   '/_app/_auth/dashboard/_layout/settings/automations': typeof AppAuthDashboardLayoutSettingsAutomationsRouteWithChildren
@@ -1087,7 +1067,6 @@ export interface FileRouteTypes {
     | '/onboarding/username'
     | '/dashboard/'
     | '/dashboard/companies/$companyId'
-    | '/dashboard/companies/new'
     | '/dashboard/contacts/$contactId'
     | '/dashboard/document-editor/$id'
     | '/dashboard/document-editor/new'
@@ -1096,7 +1075,6 @@ export interface FileRouteTypes {
     | '/dashboard/gabinet/documents'
     | '/dashboard/gabinet/reports'
     | '/dashboard/leads/$leadId'
-    | '/dashboard/leads/new'
     | '/dashboard/settings/activity-types'
     | '/dashboard/settings/audit-log'
     | '/dashboard/settings/automations'
@@ -1187,7 +1165,6 @@ export interface FileRouteTypes {
     | '/onboarding/username'
     | '/dashboard'
     | '/dashboard/companies/$companyId'
-    | '/dashboard/companies/new'
     | '/dashboard/contacts/$contactId'
     | '/dashboard/document-editor/$id'
     | '/dashboard/document-editor/new'
@@ -1195,7 +1172,6 @@ export interface FileRouteTypes {
     | '/dashboard/email-templates/new'
     | '/dashboard/gabinet/reports'
     | '/dashboard/leads/$leadId'
-    | '/dashboard/leads/new'
     | '/dashboard/settings/activity-types'
     | '/dashboard/settings/audit-log'
     | '/dashboard/settings/billing'
@@ -1290,7 +1266,6 @@ export interface FileRouteTypes {
     | '/_app/_auth/onboarding/_layout/username'
     | '/_app/_auth/dashboard/_layout/'
     | '/_app/_auth/dashboard/_layout/companies/$companyId'
-    | '/_app/_auth/dashboard/_layout/companies/new'
     | '/_app/_auth/dashboard/_layout/contacts/$contactId'
     | '/_app/_auth/dashboard/_layout/document-editor/$id'
     | '/_app/_auth/dashboard/_layout/document-editor/new'
@@ -1299,7 +1274,6 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/gabinet/documents'
     | '/_app/_auth/dashboard/_layout/gabinet/reports'
     | '/_app/_auth/dashboard/_layout/leads/$leadId'
-    | '/_app/_auth/dashboard/_layout/leads/new'
     | '/_app/_auth/dashboard/_layout/settings/activity-types'
     | '/_app/_auth/dashboard/_layout/settings/audit-log'
     | '/_app/_auth/dashboard/_layout/settings/automations'
@@ -1835,13 +1809,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsActivityTypesRouteImport
       parentRoute: typeof AppAuthDashboardLayoutSettingsRoute
     }
-    '/_app/_auth/dashboard/_layout/leads/new': {
-      id: '/_app/_auth/dashboard/_layout/leads/new'
-      path: '/leads/new'
-      fullPath: '/dashboard/leads/new'
-      preLoaderRoute: typeof AppAuthDashboardLayoutLeadsNewRouteImport
-      parentRoute: typeof AppAuthDashboardLayoutRoute
-    }
     '/_app/_auth/dashboard/_layout/leads/$leadId': {
       id: '/_app/_auth/dashboard/_layout/leads/$leadId'
       path: '/leads/$leadId'
@@ -1896,13 +1863,6 @@ declare module '@tanstack/react-router' {
       path: '/contacts/$contactId'
       fullPath: '/dashboard/contacts/$contactId'
       preLoaderRoute: typeof AppAuthDashboardLayoutContactsContactIdRouteImport
-      parentRoute: typeof AppAuthDashboardLayoutRoute
-    }
-    '/_app/_auth/dashboard/_layout/companies/new': {
-      id: '/_app/_auth/dashboard/_layout/companies/new'
-      path: '/companies/new'
-      fullPath: '/dashboard/companies/new'
-      preLoaderRoute: typeof AppAuthDashboardLayoutCompaniesNewRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
     '/_app/_auth/dashboard/_layout/companies/$companyId': {
@@ -2310,14 +2270,12 @@ interface AppAuthDashboardLayoutRouteChildren {
   AppAuthDashboardLayoutSetupRoute: typeof AppAuthDashboardLayoutSetupRoute
   AppAuthDashboardLayoutIndexRoute: typeof AppAuthDashboardLayoutIndexRoute
   AppAuthDashboardLayoutCompaniesCompanyIdRoute: typeof AppAuthDashboardLayoutCompaniesCompanyIdRoute
-  AppAuthDashboardLayoutCompaniesNewRoute: typeof AppAuthDashboardLayoutCompaniesNewRoute
   AppAuthDashboardLayoutContactsContactIdRoute: typeof AppAuthDashboardLayoutContactsContactIdRoute
   AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute: typeof AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute
   AppAuthDashboardLayoutEmailTemplatesNewRoute: typeof AppAuthDashboardLayoutEmailTemplatesNewRoute
   AppAuthDashboardLayoutGabinetDocumentsRoute: typeof AppAuthDashboardLayoutGabinetDocumentsRouteWithChildren
   AppAuthDashboardLayoutGabinetReportsRoute: typeof AppAuthDashboardLayoutGabinetReportsRoute
   AppAuthDashboardLayoutLeadsLeadIdRoute: typeof AppAuthDashboardLayoutLeadsLeadIdRoute
-  AppAuthDashboardLayoutLeadsNewRoute: typeof AppAuthDashboardLayoutLeadsNewRoute
   AppAuthDashboardLayoutActivitiesIndexRoute: typeof AppAuthDashboardLayoutActivitiesIndexRoute
   AppAuthDashboardLayoutCallsIndexRoute: typeof AppAuthDashboardLayoutCallsIndexRoute
   AppAuthDashboardLayoutCompaniesIndexRoute: typeof AppAuthDashboardLayoutCompaniesIndexRoute
@@ -2364,8 +2322,6 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
     AppAuthDashboardLayoutIndexRoute: AppAuthDashboardLayoutIndexRoute,
     AppAuthDashboardLayoutCompaniesCompanyIdRoute:
       AppAuthDashboardLayoutCompaniesCompanyIdRoute,
-    AppAuthDashboardLayoutCompaniesNewRoute:
-      AppAuthDashboardLayoutCompaniesNewRoute,
     AppAuthDashboardLayoutContactsContactIdRoute:
       AppAuthDashboardLayoutContactsContactIdRoute,
     AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute:
@@ -2378,7 +2334,6 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
       AppAuthDashboardLayoutGabinetReportsRoute,
     AppAuthDashboardLayoutLeadsLeadIdRoute:
       AppAuthDashboardLayoutLeadsLeadIdRoute,
-    AppAuthDashboardLayoutLeadsNewRoute: AppAuthDashboardLayoutLeadsNewRoute,
     AppAuthDashboardLayoutActivitiesIndexRoute:
       AppAuthDashboardLayoutActivitiesIndexRoute,
     AppAuthDashboardLayoutCallsIndexRoute:

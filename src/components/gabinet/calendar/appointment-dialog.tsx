@@ -79,6 +79,7 @@ import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
 import { PackageUsageSelector } from "@/components/gabinet/package-usage-selector";
 import {
+  ConflictWarning,
   EquipmentWarning,
   LeaveWarning,
 } from "@/components/gabinet/appointment-shared/warnings";
@@ -88,6 +89,7 @@ import {
 } from "@/components/gabinet/appointment-shared/use-appointment-warnings";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
+import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
 import { formatPhoneNumber } from "@/lib/phone";
 
 // ---------------------------------------------------------------------------
@@ -798,6 +800,35 @@ export function AppointmentDialog({
       )
     : "";
 
+  // Existing appointments for the chosen employee + day, used to detect when
+  // the user picks a slot that overlaps with another booking. The dialog
+  // surfaces a warning and lets the user save anyway (`allowConflict` flag on
+  // submit) — issue #1526.
+  const { data: employeeDayAppointments } =
+    useSupabaseGabinetAppointmentsByDateRange(
+      String(organizationId),
+      dateStr,
+      dateStr,
+      {
+        employeeId: employeeId || undefined,
+        enabled: !!organizationId && !!employeeId && !!dateStr,
+      },
+    );
+
+  const conflictingAppointment = useMemo(() => {
+    if (!selectedSlot?.start || !endTime || !employeeDayAppointments) return null;
+    const reqStart = selectedSlot.start;
+    const reqEnd = endTime;
+    return (
+      employeeDayAppointments.find((appt) => {
+        if (appt.status === "cancelled" || appt.status === "no_show") return false;
+        return appt.startTime < reqEnd && appt.endTime > reqStart;
+      }) ?? null
+    );
+  }, [selectedSlot, endTime, employeeDayAppointments]);
+
+  const hasBookingConflict = !!conflictingAppointment;
+
   // Recurring occurrences (date + effective start time). The first entry is
   // the base appointment (tied to calendar selection, read-only). The rest
   // are generated from the cycle, with optional per-index date/time overrides
@@ -877,6 +908,7 @@ export function AppointmentDialog({
         roomId: roomId ? (roomId as Id<"gabinetRooms">) : undefined,
         packageUsageId: packageUsageId ?? undefined,
         allowPast: recordWalkIn || undefined,
+        allowConflict: hasBookingConflict || undefined,
       });
       // Refresh the calendar immediately — Convex actions don't invalidate
       // the Supabase React Query cache automatically.
@@ -915,6 +947,8 @@ export function AppointmentDialog({
     locationId,
     roomId,
     packageUsageId,
+    recordWalkIn,
+    hasBookingConflict,
     onOpenChange,
     queryClient,
     t,
@@ -1679,6 +1713,13 @@ export function AppointmentDialog({
                 {employeeLeaveOnSelectedDate && (
                   <LeaveWarning
                     leave={employeeLeaveOnSelectedDate}
+                    size="compact"
+                    className="mx-3 mb-2"
+                  />
+                )}
+
+                {hasBookingConflict && (
+                  <ConflictWarning
                     size="compact"
                     className="mx-3 mb-2"
                   />

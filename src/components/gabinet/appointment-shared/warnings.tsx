@@ -76,3 +76,42 @@ export function EquipmentWarning({
     </div>
   );
 }
+
+interface ConflictWarningProps {
+  className?: string;
+  size?: "sm" | "compact";
+}
+
+// Surfaced in the appointment dialog when the selected slot overlaps with an
+// existing appointment for the same employee. Lets staff opt in to
+// double-booking with eyes open (issue #1526) — submission still works because
+// the backend skips the soft conflict check when the dialog forwards
+// `allowConflict: true`.
+export function ConflictWarning({
+  className,
+  size = "sm",
+}: ConflictWarningProps) {
+  const { t } = useTranslation();
+  return (
+    <div
+      role="alert"
+      className={cn(
+        "flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200",
+        size === "sm" ? "px-3 py-2 text-sm" : "px-2.5 py-2 text-xs",
+        className,
+      )}
+    >
+      <AlertTriangle
+        className={cn(
+          "mt-0.5 shrink-0",
+          size === "sm" ? "size-4" : "size-3.5",
+        )}
+      />
+      <span>
+        {t("gabinet.appointments.warnings.conflict", {
+          defaultValue: "Kolizja terminów z inną wizytą",
+        })}
+      </span>
+    </div>
+  );
+}

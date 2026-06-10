@@ -358,6 +358,11 @@ export function AppointmentDialog({
   const handleDragStart = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.button !== 0) return;
+      // Skip touch input: on mobile the dialog is full-width so dragging it
+      // around is not useful, and capturing touch pointerdown here would
+      // block native vertical scrolling of the now-scrollable DialogContent
+      // (issue #1462).
+      if (e.pointerType === "touch") return;
       // Drag-from-anywhere (issue #1459): users found the small top bar too
       // hard to hit, so the whole dialog now initiates a drag. Bail out when
       // the pointerdown landed on (or inside) an interactive control so
@@ -986,7 +991,13 @@ export function AppointmentDialog({
         ref={dialogContentRef}
         onPointerDown={handleDragStart}
         className={cn(
-          "max-w-5xl p-0 gap-0 overflow-hidden max-h-[90vh] md:max-h-[640px]",
+          // On mobile the 3 panels stack vertically and easily exceed 90vh
+          // (patient/treatment/employee selectors + calendar + slot list).
+          // Without `overflow-y-auto` here the bottom panel — including the
+          // hour/slot picker — gets clipped with no way to scroll to it
+          // (issue #1462). Desktop keeps `overflow-hidden` so each panel
+          // owns its own scroll container at md:h-[600px].
+          "max-w-5xl p-0 gap-0 overflow-y-auto md:overflow-hidden max-h-[90vh] md:max-h-[640px]",
           isDragging && "cursor-grabbing select-none",
         )}
         overlayClassName="bg-black/40"

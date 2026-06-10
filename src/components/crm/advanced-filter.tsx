@@ -107,7 +107,11 @@ function QuickFilterChip({
         }}
       >
         <Command>
-          <CommandInput placeholder={`Filter ${filter.label}...`} />
+          <CommandInput
+            placeholder={`Filter ${filter.label}...`}
+            onClose={() => setOpen(false)}
+            closeLabel="Close"
+          />
           <CommandList className="flex-1 min-h-0">
             <CommandEmpty>No options found.</CommandEmpty>
             <CommandGroup>

@@ -1352,6 +1352,8 @@ function AppointmentDetail() {
                         placeholder={t("gabinet.appointments.searchTreatment")}
                         value={treatmentSearch}
                         onValueChange={setTreatmentSearch}
+                        onClose={() => setTreatmentPickerOpen(false)}
+                        closeLabel={t("common.close")}
                       />
                       <CommandList className="flex-1 min-h-0">
                         <CommandEmpty>{t("common.noResults")}</CommandEmpty>

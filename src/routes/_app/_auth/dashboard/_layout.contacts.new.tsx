@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { PageHeader } from "@/components/layout/page-header";
 import { ContactForm } from "@/components/forms/contact-form";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,6 +34,11 @@ function NewContact() {
     organizationId,
     "contact",
   );
+  const { tags: orgTags } = useTagDefinitions(organizationId);
+  const { categories: contactCategories } = useCategoryDefinitions(
+    organizationId,
+    "contact",
+  );
 
   return (
     <div>
@@ -44,6 +51,10 @@ function NewContact() {
             }
             isSubmitting={isSubmitting}
             onCancel={() => navigate({ to: "/dashboard/contacts" })}
+            showSourceAndTags
+            tagDefinitions={orgTags}
+            categoryDefinitions={contactCategories}
+            organizationId={organizationId}
             onSubmit={async (data, customFieldRecord) => {
               setIsSubmitting(true);
               try {

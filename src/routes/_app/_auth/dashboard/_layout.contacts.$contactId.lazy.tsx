@@ -17,6 +17,8 @@ import { useSupabaseScheduledActivitiesByEntity } from "@/hooks/use-supabase-sch
 import { useSupabaseLeadsList } from "@/hooks/use-supabase-leads";
 import { useSupabaseCompaniesList } from "@/hooks/use-supabase-companies";
 import { useSupabaseCustomFieldDefinitions, useSupabaseCustomFieldValues } from "@/hooks/use-supabase-custom-fields";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatPhoneNumber } from "@/lib/phone";
 import { SidePanel } from "@/components/crm/side-panel";
@@ -104,6 +106,14 @@ function ContactDetail() {
     definitions: contactCfDefs,
     saveValues: _saveContactCfValues,
   } = useCustomFieldForm({ organizationId, entityType: "contact" });
+
+  // Tag and category definitions for the edit drawer ContactForm
+  // (kept in sync with the contacts list create-form props).
+  const { tags: orgTags } = useTagDefinitions(organizationId);
+  const { categories: contactCategories } = useCategoryDefinitions(
+    organizationId,
+    "contact",
+  );
 
   const { data: contactCfValuesRaw } = useSupabaseCustomFieldValues(
     organizationId,
@@ -1083,6 +1093,9 @@ function ContactDetail() {
           onCancel={() => setEditDrawerOpen(false)}
           isSubmitting={isSubmitting}
           showSourceAndTags
+          tagDefinitions={orgTags}
+          categoryDefinitions={contactCategories}
+          organizationId={organizationId}
           extraFields={
             <>
               <RelationshipField

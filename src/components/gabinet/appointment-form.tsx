@@ -51,6 +51,8 @@ import { toast } from "sonner";
 import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
 import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 
 function getEmployeeName(emp: {
   firstName?: string;
@@ -184,6 +186,14 @@ export function AppointmentForm({
 
   const createPatient = useAction(api.gabinet.patients.create);
   const findNextSlotAction = useAction(api.gabinet.scheduling.findNextAvailableSlot);
+
+  // Patient tag/category defs for the inline create-patient drawer
+  // (kept in sync with the patients list create-form props).
+  const { tags: orgTags } = useTagDefinitions(organizationId!);
+  const { categories: patientCategories } = useCategoryDefinitions(
+    organizationId!,
+    "gabinetPatient",
+  );
 
   // Locations query
   const listLocationsAction = useAction(api.gabinet.locations.listLocations);
@@ -1015,6 +1025,8 @@ export function AppointmentForm({
         onCancel={() => setAddPatientOpen(false)}
         isSubmitting={isCreatingPatient}
         organizationId={organizationId}
+        tagDefinitions={orgTags}
+        categoryDefinitions={patientCategories}
       />
     </SidePanel>
     </>

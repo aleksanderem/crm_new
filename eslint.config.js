@@ -3,6 +3,7 @@ import eslintConfigPrettier from "eslint-config-prettier";
 import eslint from "@eslint/js";
 import tseslint from "typescript-eslint";
 import globals from "globals";
+import noProviderAndConsumerHook from "./eslint-rules/no-provider-and-consumer-hook.js";
 
 // Sanitize globals keys (some versions have trailing whitespace)
 const browserGlobals = Object.fromEntries(
@@ -31,6 +32,11 @@ export default tseslint.config(
     },
     plugins: {
       "react-refresh": reactRefresh,
+      local: {
+        rules: {
+          "no-provider-and-consumer-hook": noProviderAndConsumerHook,
+        },
+      },
     },
     rules: {
       "react-refresh/only-export-components": [
@@ -42,6 +48,7 @@ export default tseslint.config(
       "@typescript-eslint/consistent-type-definitions": "off",
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/ban-ts-comment": "off",
+      "local/no-provider-and-consumer-hook": "error",
     },
   },
   // Convex backend files need Node.js globals

@@ -10,6 +10,7 @@ const paymentMethodValidator = v.union(
   v.literal("cash"),
   v.literal("card"),
   v.literal("transfer"),
+  v.literal("package"),
   v.literal("other"),
 );
 

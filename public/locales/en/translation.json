@@ -3264,6 +3264,7 @@
         "card": "Card",
         "cash": "Cash",
         "other": "Other",
+        "package": "Series/Package",
         "transfer": "Transfer"
       },
       "noPayments": "No payments",

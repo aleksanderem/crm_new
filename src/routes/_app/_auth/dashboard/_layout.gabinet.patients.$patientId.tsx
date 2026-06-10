@@ -117,7 +117,7 @@ function PatientDetail() {
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [paymentEditAmount, setPaymentEditAmount] = useState("");
   const [paymentEditMethod, setPaymentEditMethod] = useState<
-    "cash" | "card" | "transfer" | "other"
+    "cash" | "card" | "transfer" | "package" | "other"
   >("cash");
   const [paymentEditNotes, setPaymentEditNotes] = useState("");
   const [isPaymentEditSubmitting, setIsPaymentEditSubmitting] = useState(false);
@@ -451,11 +451,13 @@ function PatientDetail() {
       | "cash"
       | "card"
       | "transfer"
+      | "package"
       | "other";
     setPaymentEditMethod(
       method === "cash" ||
         method === "card" ||
         method === "transfer" ||
+        method === "package" ||
         method === "other"
         ? method
         : "cash",
@@ -1528,7 +1530,7 @@ function PatientDetail() {
                 value={paymentEditMethod}
                 onValueChange={(v) =>
                   setPaymentEditMethod(
-                    v as "cash" | "card" | "transfer" | "other",
+                    v as "cash" | "card" | "transfer" | "package" | "other",
                   )
                 }
               >
@@ -1544,6 +1546,9 @@ function PatientDetail() {
                   </SelectItem>
                   <SelectItem value="transfer">
                     {t("gabinet.payments.methods.transfer")}
+                  </SelectItem>
+                  <SelectItem value="package">
+                    {t("gabinet.payments.methods.package")}
                   </SelectItem>
                   <SelectItem value="other">
                     {t("gabinet.payments.methods.other")}

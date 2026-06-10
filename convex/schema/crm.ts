@@ -408,6 +408,7 @@ export function createCrmTables({
       v.literal("cash"),
       v.literal("card"),
       v.literal("transfer"),
+      v.literal("package"),
       v.literal("other"),
     ),
     status: v.union(

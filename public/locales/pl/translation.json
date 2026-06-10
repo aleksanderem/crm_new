@@ -3293,6 +3293,7 @@
         "card": "Karta",
         "cash": "Gotówka",
         "other": "Inna",
+        "package": "Seria/Karnet",
         "transfer": "Przelew"
       },
       "noPayments": "Brak płatności",

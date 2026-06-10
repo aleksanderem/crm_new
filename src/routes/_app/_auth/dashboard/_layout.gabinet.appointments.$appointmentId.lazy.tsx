@@ -1005,7 +1005,7 @@ function AppointmentDetail() {
         appointmentId: appointment._id,
         amount: parseFloat(normalizedAmount),
         currency: "PLN",
-        paymentMethod: paymentMethod as "cash" | "card" | "transfer" | "other",
+        paymentMethod: paymentMethod as "cash" | "card" | "transfer" | "package" | "other",
         notes: paymentNote || undefined,
       });
 
@@ -2823,6 +2823,9 @@ function AppointmentDetail() {
                   </SelectItem>
                   <SelectItem value="transfer">
                     {t("gabinet.payments.methods.transfer")}
+                  </SelectItem>
+                  <SelectItem value="package">
+                    {t("gabinet.payments.methods.package")}
                   </SelectItem>
                   <SelectItem value="other">
                     {t("gabinet.payments.methods.other")}

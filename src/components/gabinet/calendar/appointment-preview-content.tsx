@@ -1016,14 +1016,20 @@ export function AppointmentPreviewContent({
                   <ChevronsUpDown className="size-3.5 shrink-0 opacity-60" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-72 p-0" align="start">
+              <PopoverContent
+                className="w-72 p-0"
+                align="start"
+                style={{
+                  maxHeight: "var(--radix-popover-content-available-height)",
+                }}
+              >
                 <Command shouldFilter={false}>
                   <CommandInput
                     placeholder={t("gabinet.appointments.searchTreatment")}
                     value={treatmentSearch}
                     onValueChange={setTreatmentSearch}
                   />
-                  <CommandList>
+                  <CommandList className="flex-1 min-h-0">
                     <CommandEmpty>{t("common.noResults")}</CommandEmpty>
                     <CommandGroup>
                       {filteredTreatments.map((tr) => (

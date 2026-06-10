@@ -114,11 +114,96 @@ export function createInMemorySupabaseDb() {
     },
 
     raw() {
-      throw new Error(
-        "supabaseDb(inmemory).raw(): raw client access is not available under vitest",
-      );
+      return createInMemoryRawClient();
     },
   };
+}
+
+// Snake → camel conversion used to bridge the raw client (which uses
+// PostgREST-style snake_case identifiers) to the in-memory store (which
+// keeps tables/rows in Convex camelCase). The merge action is the only
+// caller of `db.raw()` so we only need this one direction.
+function snakeToCamel(s: string): string {
+  return s.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+}
+
+/**
+ * Minimal raw-client stand-in for the merge action's bulk-update pattern:
+ *   client.from(snakeTable).update({col: val}).eq(...).eq(...).select("id")
+ *
+ * Returns `{ data, error }` where `data` is the list of updated row ids
+ * (so `data.length` reports the count, matching PostgREST semantics).
+ */
+function createInMemoryRawClient() {
+  return {
+    from(table: string) {
+      return new InMemoryRawQuery(snakeToCamel(table));
+    },
+  };
+}
+
+class InMemoryRawQuery {
+  private table: string;
+  private mode: "select" | "update" | "delete" | "insert" = "select";
+  private updatePayload: Record<string, unknown> | null = null;
+  private filters: Array<(row: Row) => boolean> = [];
+
+  constructor(table: string) {
+    this.table = table;
+  }
+
+  update(values: Record<string, unknown>) {
+    this.mode = "update";
+    const camelValues: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(values)) {
+      camelValues[snakeToCamel(k)] = v;
+    }
+    this.updatePayload = camelValues;
+    return this;
+  }
+
+  delete() {
+    this.mode = "delete";
+    return this;
+  }
+
+  eq(field: string, value: unknown) {
+    const camelField = snakeToCamel(field);
+    this.filters.push((r) => r[camelField] === value);
+    return this;
+  }
+
+  in(field: string, values: unknown[]) {
+    const camelField = snakeToCamel(field);
+    const set = new Set(values);
+    this.filters.push((r) => set.has(r[camelField]));
+    return this;
+  }
+
+  async select(_cols?: string) {
+    const t = getTable(this.table);
+    const matched: Row[] = [];
+    for (const row of t.values()) {
+      if (this.filters.every((f) => f(row))) {
+        matched.push(row);
+      }
+    }
+    if (this.mode === "update" && this.updatePayload) {
+      for (const row of matched) {
+        const id = String(row.id);
+        const next: Row = { ...row, ...this.updatePayload, id };
+        t.set(id, next);
+      }
+    } else if (this.mode === "delete") {
+      for (const row of matched) {
+        t.delete(String(row.id));
+      }
+    }
+    return {
+      data: matched.map((r) => ({ id: String(r.id) })),
+      error: null as null | { message: string },
+    };
+  }
 }
 
 class InMemoryQueryBuilder<T = Record<string, unknown>> {

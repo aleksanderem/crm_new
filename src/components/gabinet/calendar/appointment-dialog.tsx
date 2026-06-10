@@ -86,6 +86,7 @@ import {
   useEmployeeLeaveOnDate,
   useMissingEquipment,
 } from "@/components/gabinet/appointment-shared/use-appointment-warnings";
+import { TreatmentPicker } from "@/components/gabinet/appointment-shared/treatment-picker";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { formatPhoneNumber } from "@/lib/phone";
@@ -516,14 +517,6 @@ export function AppointmentDialog({
       );
     });
   }, [patients, patientSearch]);
-
-  // Filter treatments by search
-  const filteredTreatments = useMemo(() => {
-    const all = treatments ?? [];
-    if (!treatmentSearch.trim()) return all;
-    const q = treatmentSearch.toLowerCase();
-    return all.filter((tr) => (tr.name ?? "").toLowerCase().includes(q));
-  }, [treatments, treatmentSearch]);
 
   const dateStr = selectedDate
     ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`
@@ -1139,83 +1132,22 @@ export function AppointmentDialog({
                   <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                     {t("gabinet.appointments.treatment")}
                   </Label>
-                  <Popover
+                  <TreatmentPicker
+                    treatments={treatments}
+                    value={treatmentId}
+                    onSelect={handleTreatmentSelect}
                     open={treatmentOpen}
-                    onOpenChange={(o) => {
-                      setTreatmentOpen(o);
-                      if (!o) setTreatmentSearch("");
-                    }}
-                  >
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={treatmentOpen}
-                        className="w-full justify-between h-11 font-normal"
-                        data-testid="appointment-treatment-trigger"
-                      >
-                        <span className="truncate">
-                          {selectedTreatment
-                            ? selectedTreatment.name
-                            : t("gabinet.appointments.selectTreatment")}
-                        </span>
-                        <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="p-0"
-                      align="start"
-                      style={{
-                        width: "var(--radix-popover-trigger-width)",
-                        maxHeight:
-                          "var(--radix-popover-content-available-height)",
-                      }}
-                    >
-                      <Command shouldFilter={false}>
-                        <CommandInput
-                          placeholder={t(
-                            "gabinet.appointments.searchTreatment",
-                          )}
-                          value={treatmentSearch}
-                          onValueChange={setTreatmentSearch}
-                          onClose={() => setTreatmentOpen(false)}
-                          closeLabel={t("common.close")}
-                        />
-                        <CommandList className="flex-1 min-h-0">
-                          <CommandEmpty>
-                            {t("common.noResults")}
-                          </CommandEmpty>
-                          <CommandGroup>
-                            {filteredTreatments.map((tr) => (
-                              <CommandItem
-                                key={tr._id}
-                                value={tr._id}
-                                onSelect={() =>
-                                  handleTreatmentSelect(tr._id)
-                                }
-                                className={cn(
-                                  "px-3",
-                                  treatmentId === tr._id &&
-                                    "bg-accent font-medium text-accent-foreground",
-                                )}
-                              >
-                                <div className="flex flex-col">
-                                  <span className="text-sm">
-                                    {tr.name}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {tr.duration} min
-                                    {tr.price != null &&
-                                      ` \u00b7 ${formatPrice(tr.price)}`}
-                                  </span>
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                    onOpenChange={setTreatmentOpen}
+                    search={treatmentSearch}
+                    onSearchChange={setTreatmentSearch}
+                    formatPrice={(price) => formatPrice(price)}
+                    placeholder={t("gabinet.appointments.selectTreatment")}
+                    searchPlaceholder={t("gabinet.appointments.searchTreatment")}
+                    emptyText={t("common.noResults")}
+                    closeLabel={t("common.close")}
+                    triggerClassName="h-11"
+                    triggerTestId="appointment-treatment-trigger"
+                  />
                 </div>
 
                 {/* Treatment info card */}

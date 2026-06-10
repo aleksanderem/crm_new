@@ -2154,7 +2154,13 @@
       "confirmDelete": "Are you sure you want to deactivate this client?",
       "nudgeFilter": {
         "missingContact": "Showing clients with no phone or email.",
-        "noRecentVisit": "Showing clients with no visit in the last 90 days."
+        "noRecentVisit": "Showing clients with no visit in the last 90 days.",
+        "duplicates": "Showing clients with duplicate email or phone. Use the \"Merge with…\" action to combine them."
+      },
+      "duplicatesBanner": {
+        "count_one": "{{count}} client has a duplicate email or phone.",
+        "count_other": "{{count}} clients have a duplicate email or phone.",
+        "action": "Review duplicates"
       },
       "views": {
         "all": "All Clients",

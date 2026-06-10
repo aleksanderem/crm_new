@@ -2180,7 +2180,15 @@
       "confirmDelete": "Czy na pewno chcesz dezaktywować tego klienta?",
       "nudgeFilter": {
         "missingContact": "Pokazywani są klienci bez telefonu i e-maila.",
-        "noRecentVisit": "Pokazywani są klienci bez wizyty w ostatnich 90 dniach."
+        "noRecentVisit": "Pokazywani są klienci bez wizyty w ostatnich 90 dniach.",
+        "duplicates": "Pokazywani są klienci z duplikatem e-maila lub telefonu. Użyj akcji „Scal z…”, aby je połączyć."
+      },
+      "duplicatesBanner": {
+        "count_one": "{{count}} klient ma duplikat e-maila lub telefonu.",
+        "count_few": "{{count}} klientów ma duplikat e-maila lub telefonu.",
+        "count_many": "{{count}} klientów ma duplikat e-maila lub telefonu.",
+        "count_other": "{{count}} klientów ma duplikat e-maila lub telefonu.",
+        "action": "Przejrzyj duplikaty"
       },
       "views": {
         "all": "Wszyscy klienci",

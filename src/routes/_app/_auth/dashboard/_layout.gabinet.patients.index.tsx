@@ -18,7 +18,7 @@ import { MergePatientsDialog } from "@/components/gabinet/merge-patients-dialog"
 import { Button } from "@/components/ui/button";
 import { AvatarLabelGroup } from "@untitled/base/avatar/avatar-label-group";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Download, X, Users } from "@/lib/ez-icons";
+import { Plus, Trash2, Download, X, Users, AlertCircle } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { Id } from "@cvx/_generated/dataModel";
@@ -38,7 +38,7 @@ import { formatBirthDate } from "@/lib/format-date";
 import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import { displayReferralSource } from "@/lib/options";
 
-type PatientNudgeFilter = "missing-contact" | "no-recent-visit";
+type PatientNudgeFilter = "missing-contact" | "no-recent-visit" | "duplicates";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/patients/",
@@ -46,12 +46,22 @@ export const Route = createFileRoute(
   component: PatientsIndex,
   validateSearch: (search: Record<string, unknown>): { nudge?: PatientNudgeFilter } => {
     const nudge =
-      search.nudge === "missing-contact" || search.nudge === "no-recent-visit"
+      search.nudge === "missing-contact" ||
+      search.nudge === "no-recent-visit" ||
+      search.nudge === "duplicates"
         ? (search.nudge as PatientNudgeFilter)
         : undefined;
     return { nudge };
   },
 });
+
+function normalizeEmailKey(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function normalizePhoneKey(value: string | null | undefined): string {
+  return (value ?? "").replace(/\D/g, "");
+}
 
 type Patient = MappedGabinetPatient;
 
@@ -189,6 +199,34 @@ function PatientsIndex() {
     defaultColumnVisibility: {},
   });
 
+  const duplicatePatientIds = useMemo(() => {
+    const emailToIds = new Map<string, string[]>();
+    const phoneToIds = new Map<string, string[]>();
+    for (const p of patients) {
+      if (!p.isActive) continue;
+      const emailKey = normalizeEmailKey(p.email);
+      if (emailKey) {
+        const ids = emailToIds.get(emailKey) ?? [];
+        ids.push(p._id);
+        emailToIds.set(emailKey, ids);
+      }
+      const phoneKey = normalizePhoneKey(p.phone);
+      if (phoneKey) {
+        const ids = phoneToIds.get(phoneKey) ?? [];
+        ids.push(p._id);
+        phoneToIds.set(phoneKey, ids);
+      }
+    }
+    const ids = new Set<string>();
+    for (const group of emailToIds.values()) {
+      if (group.length > 1) group.forEach((id) => ids.add(id));
+    }
+    for (const group of phoneToIds.values()) {
+      if (group.length > 1) group.forEach((id) => ids.add(id));
+    }
+    return ids;
+  }, [patients]);
+
   const filteredPatients = useMemo(() => {
     let data: Patient[];
     switch (activeViewId) {
@@ -207,6 +245,8 @@ function PatientsIndex() {
       data = data.filter((p) => !p.phone && !p.email);
     } else if (nudgeFilter === "no-recent-visit" && recentVisitPatientIds) {
       data = data.filter((p) => !recentVisitPatientIds.has(p._id));
+    } else if (nudgeFilter === "duplicates") {
+      data = data.filter((p) => duplicatePatientIds.has(p._id));
     }
     const q = searchValue.trim().toLowerCase();
     if (q) {
@@ -220,7 +260,7 @@ function PatientsIndex() {
       });
     }
     return data;
-  }, [patients, activeViewId, applyFilters, activeFilters, searchValue, nudgeFilter, recentVisitPatientIds]);
+  }, [patients, activeViewId, applyFilters, activeFilters, searchValue, nudgeFilter, recentVisitPatientIds, duplicatePatientIds]);
 
   const patientsByDay = useMemo<MiniChartData[]>(() => {
     const dayMap = new Map<string, number>();
@@ -450,6 +490,35 @@ function PatientsIndex() {
         }
       />
 
+      {duplicatePatientIds.size > 0 && nudgeFilter !== "duplicates" && (
+        <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          <span className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" variant="stroke" />
+            {t("gabinet.patients.duplicatesBanner.count", {
+              defaultValue:
+                "{{count}} klientów ma duplikat e-maila lub telefonu.",
+              count: duplicatePatientIds.size,
+            })}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 gap-1 text-xs"
+            onClick={() =>
+              navigate({
+                to: "/dashboard/gabinet/patients",
+                search: { nudge: "duplicates" },
+              })
+            }
+          >
+            <Users className="h-3.5 w-3.5" variant="stroke" />
+            {t("gabinet.patients.duplicatesBanner.action", {
+              defaultValue: "Przejrzyj duplikaty",
+            })}
+          </Button>
+        </div>
+      )}
+
       {nudgeFilter && (
         <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
           <span>
@@ -457,9 +526,14 @@ function PatientsIndex() {
               ? t("gabinet.patients.nudgeFilter.missingContact", {
                   defaultValue: "Pokazywani są klienci bez telefonu i e-maila.",
                 })
-              : t("gabinet.patients.nudgeFilter.noRecentVisit", {
+              : nudgeFilter === "no-recent-visit"
+              ? t("gabinet.patients.nudgeFilter.noRecentVisit", {
                   defaultValue:
                     "Pokazywani są klienci bez wizyty w ostatnich 90 dniach.",
+                })
+              : t("gabinet.patients.nudgeFilter.duplicates", {
+                  defaultValue:
+                    "Pokazywani są klienci z duplikatem e-maila lub telefonu. Użyj akcji „Scal z…”, aby je połączyć.",
                 })}
           </span>
           <Button

@@ -75,7 +75,7 @@ const defaultGabinetActions: FooterAction[] = [
 
 const gabinetRouteActions: Record<string, FooterAction[]> = {
   calendar: [
-    { labelKey: "nav.actions.bookAppointment", icon: CalendarCheck, quickCreate: "appointment" },
+    { labelKey: "nav.actions.bookAppointment", icon: CalendarCheck, action: "openCreateAppointment" },
     { labelKey: "nav.actions.filters", icon: Filter, action: "openFilter" },
     { labelKey: "nav.actions.addPatient", icon: UserPlus, quickCreate: "patient" },
     { labelKey: "nav.actions.manageTags", icon: Tag, action: "manageTags" },

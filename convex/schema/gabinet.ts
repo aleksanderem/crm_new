@@ -103,11 +103,16 @@ export function createGabinetTables({
     requiresApproval: v.optional(v.boolean()),
     color: v.optional(v.string()),
     sortOrder: v.optional(v.number()),
+    // Legacy session count for multi-visit courses. Deprecated since #1533 —
+    // no longer written by `treatments.create`/`update`; remaining writes only
+    // clear it. The `migrateLegacyTreatmentCountsToPackages` action backfills
+    // a real `gabinetTreatmentPackages` row and switches the link to
+    // `packageId` below. Kept on the schema only for pre-migration reads.
     treatmentCount: v.optional(v.number()),
     // When the treatment represents a package, link to an existing
     // `gabinetTreatmentPackages` row so the package's session count and
     // composition drive purchase behaviour. Replaces the standalone
-    // `treatmentCount` input on the treatment form (see #1525).
+    // `treatmentCount` input on the treatment form (see #1525, #1533).
     packageId: v.optional(v.id("gabinetTreatmentPackages")),
     // Treatment detail: typed parameter definitions
     parameters: v.optional(

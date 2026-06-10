@@ -5,6 +5,7 @@ import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetTreatment, useSupabaseGabinetTreatmentVariants } from "@/hooks/use-supabase-gabinet-treatments";
+import { useSupabaseGabinetTreatmentPackagesActive } from "@/hooks/use-supabase-gabinet-packages";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { useSupabaseGabinetEquipmentList } from "@/hooks/use-supabase-gabinet-equipment";
@@ -259,6 +260,22 @@ function TreatmentDetail() {
   // Equipment list for resolving IDs to names
   const { data: equipmentList } = useSupabaseGabinetEquipmentList(organizationId);
 
+  // Active packages — used to render the session count for treatments linked
+  // to a package via `packageId` (the post-#1525 shape, see #1533).
+  const { data: activePackages } =
+    useSupabaseGabinetTreatmentPackagesActive(organizationId);
+
+  const linkedPackageSessionCount = useMemo<number | null>(() => {
+    if (!treatment?.packageId) return null;
+    const pkg = (activePackages ?? []).find((p) => p._id === treatment.packageId);
+    if (!pkg) return null;
+    let total = 0;
+    for (const entry of pkg.treatments ?? []) {
+      total += entry.quantity ?? 0;
+    }
+    return total > 0 ? total : null;
+  }, [treatment?.packageId, activePackages]);
+
   const getEquipmentName = (id: Id<"gabinetEquipment">) =>
     equipmentList?.find((e) => e._id === id)?.name ?? id;
 
@@ -307,11 +324,16 @@ function TreatmentDetail() {
     if (treatment.requiresApproval) {
       fields.push({ label: t("gabinet.treatments.requiresApproval"), value: <Badge variant="outline" className="text-[10px]">{t("common.yes")}</Badge>, fieldKey: "approval" });
     }
-    if (treatment.treatmentCount && treatment.treatmentCount > 1) {
-      fields.push({ label: t("gabinet.treatments.treatmentCount", "Liczba zabiegów"), value: <Badge variant="outline" className="text-[10px]">{treatment.treatmentCount}x</Badge>, fieldKey: "count" });
+    const sessionCount =
+      linkedPackageSessionCount ??
+      (treatment.treatmentCount && treatment.treatmentCount > 1
+        ? treatment.treatmentCount
+        : null);
+    if (sessionCount) {
+      fields.push({ label: t("gabinet.treatments.treatmentCount", "Liczba zabiegów"), value: <Badge variant="outline" className="text-[10px]">{sessionCount}x</Badge>, fieldKey: "count" });
     }
     return fields;
-  }, [treatment, equipmentList, t, categoryName]);
+  }, [treatment, equipmentList, t, categoryName, linkedPackageSessionCount]);
 
   // Derived: unassigned employees (those that don't have this treatment in qualifiedTreatmentIds)
   const assignedEmployeeIds = useMemo(() => {

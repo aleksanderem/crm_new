@@ -48,6 +48,11 @@ export interface TreatmentFormData {
   aftercareInstructions?: string | null;
   requiresApproval?: boolean;
   color?: string | null;
+  /**
+   * Legacy count of sessions per course. Read-only — used only to auto-tick
+   * the "this treatment is a package" checkbox when editing rows that pre-date
+   * #1525. New writes always go through `packageId`. See #1533.
+   */
   treatmentCount?: number;
   packageId?: string | null;
 }
@@ -125,11 +130,11 @@ export function TreatmentForm({
   );
   const [requiresApproval, setRequiresApproval] = useState(initialData?.requiresApproval ?? false);
   const [color, setColor] = useState(initialData?.color ?? "");
-  const initialTreatmentCount = initialData?.treatmentCount;
   const initialPackageId = initialData?.packageId ?? null;
+  const legacyTreatmentCount = initialData?.treatmentCount;
   const [isPackage, setIsPackage] = useState(
     !!initialPackageId ||
-      (initialTreatmentCount != null && initialTreatmentCount > 1),
+      (legacyTreatmentCount != null && legacyTreatmentCount > 1),
   );
   const [selectedPackageId, setSelectedPackageId] = useState<string>(
     initialPackageId ?? "",

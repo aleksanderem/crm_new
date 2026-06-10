@@ -5,6 +5,7 @@ import { useAction } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
+import { useSupabaseGabinetTreatmentPackagesActive } from "@/hooks/use-supabase-gabinet-packages";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
@@ -175,6 +176,42 @@ function TreatmentsIndex() {
   );
 
   const { data: allTreatments = [], isLoading } = useSupabaseGabinetTreatmentsList(organizationId);
+  // Load active packages so we can show the session count for treatments that
+  // link to a real package row via `packageId` (preferred path after #1533).
+  const { data: activePackages } =
+    useSupabaseGabinetTreatmentPackagesActive(organizationId);
+
+  // For a given treatment row, return the "session count" (the number of
+  // bookings the course covers) — preferring the linked package's quantity
+  // for that treatment, falling back to legacy `treatmentCount` for rows that
+  // haven't been migrated yet (#1533).
+  const packageSessionCountById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const pkg of activePackages ?? []) {
+      let total = 0;
+      for (const entry of pkg.treatments ?? []) {
+        total += entry.quantity ?? 0;
+      }
+      if (total > 0) map.set(pkg._id, total);
+    }
+    return map;
+  }, [activePackages]);
+
+  const getTreatmentSessionCount = useCallback(
+    (item: Treatment): number => {
+      if (item.packageId) {
+        return packageSessionCountById.get(item.packageId) ?? 0;
+      }
+      return item.treatmentCount ?? 0;
+    },
+    [packageSessionCountById],
+  );
+
+  const isPackageTreatment = useCallback(
+    (item: Treatment): boolean =>
+      !!item.packageId || (item.treatmentCount ?? 1) > 1,
+    [],
+  );
 
   const {
     views,
@@ -270,10 +307,10 @@ function TreatmentsIndex() {
         label: t("gabinet.treatments.type", "Typ"),
         sortable: true,
         render: (item) => {
-          const isPackage = (item.treatmentCount ?? 1) > 1;
-          if (isPackage) {
+          if (isPackageTreatment(item)) {
+            const sessionCount = getTreatmentSessionCount(item);
             const tooltipLabel = t("gabinet.treatments.isPackageTooltip", {
-              count: item.treatmentCount ?? 0,
+              count: sessionCount,
               defaultValue: "Pakiet — {{count}} zabiegów w cyklu",
             });
             return (
@@ -285,7 +322,7 @@ function TreatmentsIndex() {
                       className="border-violet-200 bg-violet-100 text-violet-800 dark:border-violet-900 dark:bg-violet-950/60 dark:text-violet-200"
                     >
                       {t("gabinet.treatments.packageBadge", {
-                        count: item.treatmentCount ?? 0,
+                        count: sessionCount,
                         defaultValue: "Pakiet · {{count}}x",
                       })}
                     </Badge>
@@ -301,7 +338,7 @@ function TreatmentsIndex() {
             </Badge>
           );
         },
-        getSortValue: (item) => ((item.treatmentCount ?? 1) > 1 ? 1 : 0),
+        getSortValue: (item) => (isPackageTreatment(item) ? 1 : 0),
       },
       {
         id: "category",
@@ -345,7 +382,7 @@ function TreatmentsIndex() {
         ),
       },
     ],
-    [t, getCategoryLabel],
+    [t, getCategoryLabel, isPackageTreatment, getTreatmentSessionCount],
   );
 
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);

@@ -5,6 +5,7 @@ import { useAction } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
+import { useSupabaseGabinetTreatmentPackagesList } from "@/hooks/use-supabase-gabinet-packages";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
@@ -175,6 +176,13 @@ function TreatmentsIndex() {
   );
 
   const { data: allTreatments = [], isLoading } = useSupabaseGabinetTreatmentsList(organizationId);
+  const { data: allPackages } = useSupabaseGabinetTreatmentPackagesList(organizationId);
+
+  const packageNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const pkg of allPackages ?? []) map.set(pkg._id, pkg.name);
+    return map;
+  }, [allPackages]);
 
   const {
     views,
@@ -270,12 +278,29 @@ function TreatmentsIndex() {
         label: t("gabinet.treatments.type", "Typ"),
         sortable: true,
         render: (item) => {
-          const isPackage = (item.treatmentCount ?? 1) > 1;
+          const linkedPackageName = item.packageId
+            ? packageNameById.get(item.packageId)
+            : undefined;
+          const isPackage = !!item.packageId || (item.treatmentCount ?? 1) > 1;
           if (isPackage) {
-            const tooltipLabel = t("gabinet.treatments.isPackageTooltip", {
-              count: item.treatmentCount ?? 0,
-              defaultValue: "Pakiet — {{count}} zabiegów w cyklu",
-            });
+            const badgeLabel = linkedPackageName
+              ? t("gabinet.treatments.packageBadgeNamed", {
+                  name: linkedPackageName,
+                  defaultValue: "Pakiet · {{name}}",
+                })
+              : t("gabinet.treatments.packageBadge", {
+                  count: item.treatmentCount ?? 0,
+                  defaultValue: "Pakiet · {{count}}x",
+                });
+            const tooltipLabel = linkedPackageName
+              ? t("gabinet.treatments.isPackageTooltipNamed", {
+                  name: linkedPackageName,
+                  defaultValue: "Powiązany pakiet: {{name}}",
+                })
+              : t("gabinet.treatments.isPackageTooltip", {
+                  count: item.treatmentCount ?? 0,
+                  defaultValue: "Pakiet — {{count}} zabiegów w cyklu",
+                });
             return (
               <TooltipProvider>
                 <Tooltip>
@@ -284,10 +309,7 @@ function TreatmentsIndex() {
                       variant="secondary"
                       className="border-violet-200 bg-violet-100 text-violet-800 dark:border-violet-900 dark:bg-violet-950/60 dark:text-violet-200"
                     >
-                      {t("gabinet.treatments.packageBadge", {
-                        count: item.treatmentCount ?? 0,
-                        defaultValue: "Pakiet · {{count}}x",
-                      })}
+                      {badgeLabel}
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent>{tooltipLabel}</TooltipContent>
@@ -301,7 +323,8 @@ function TreatmentsIndex() {
             </Badge>
           );
         },
-        getSortValue: (item) => ((item.treatmentCount ?? 1) > 1 ? 1 : 0),
+        getSortValue: (item) =>
+          item.packageId || (item.treatmentCount ?? 1) > 1 ? 1 : 0,
       },
       {
         id: "category",
@@ -345,7 +368,7 @@ function TreatmentsIndex() {
         ),
       },
     ],
-    [t, getCategoryLabel],
+    [t, getCategoryLabel, packageNameById],
   );
 
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);

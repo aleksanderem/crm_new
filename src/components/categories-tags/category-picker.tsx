@@ -191,7 +191,13 @@ export function CategoryPicker({
             </span>
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-60 p-0" align="start">
+        <PopoverContent
+          className="flex w-60 flex-col p-0"
+          align="start"
+          style={{
+            maxHeight: "var(--radix-popover-content-available-height)",
+          }}
+        >
           <div className="p-2">
             <Input
               size="sm"
@@ -201,7 +207,7 @@ export function CategoryPicker({
               autoFocus
             />
           </div>
-          <div className="max-h-48 overflow-y-auto px-1 pb-1">
+          <div className="max-h-48 min-h-0 overflow-y-auto px-1 pb-1">
             {filteredFlat
               ? filteredFlat.map((cat) => (
                   <button

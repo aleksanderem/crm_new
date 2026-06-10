@@ -5,6 +5,7 @@ import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetTreatment, useSupabaseGabinetTreatmentVariants } from "@/hooks/use-supabase-gabinet-treatments";
+import { useSupabaseGabinetTreatmentPackagesList } from "@/hooks/use-supabase-gabinet-packages";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { useSupabaseGabinetEquipmentList } from "@/hooks/use-supabase-gabinet-equipment";
@@ -163,6 +164,14 @@ function TreatmentDetail() {
 
   const { categories } = useCategoryDefinitions(organizationId, "gabinetTreatment");
 
+  const { data: allPackages } = useSupabaseGabinetTreatmentPackagesList(organizationId);
+  const linkedPackageName = useMemo(() => {
+    if (!treatment?.packageId) return null;
+    return (
+      allPackages?.find((p) => p._id === treatment.packageId)?.name ?? null
+    );
+  }, [allPackages, treatment?.packageId]);
+
   const getDetailedStatsAction = useAction(api.gabinet.treatments.getTreatmentDetailedStats);
   const listTreatmentAppointmentsAction = useAction(api.gabinet.treatments.listTreatmentAppointments);
   const getTreatmentEmployeesAction = useAction(api.gabinet.treatments.getTreatmentEmployees);
@@ -307,11 +316,24 @@ function TreatmentDetail() {
     if (treatment.requiresApproval) {
       fields.push({ label: t("gabinet.treatments.requiresApproval"), value: <Badge variant="outline" className="text-[10px]">{t("common.yes")}</Badge>, fieldKey: "approval" });
     }
-    if (treatment.treatmentCount && treatment.treatmentCount > 1) {
+    if (treatment.packageId) {
+      fields.push({
+        label: t("gabinet.treatments.linkedPackage", "Powiązany pakiet"),
+        value: (
+          <Badge
+            variant="secondary"
+            className="border-violet-200 bg-violet-100 text-[10px] text-violet-800 dark:border-violet-900 dark:bg-violet-950/60 dark:text-violet-200"
+          >
+            {linkedPackageName ?? t("gabinet.treatments.package", "Pakiet")}
+          </Badge>
+        ),
+        fieldKey: "package",
+      });
+    } else if (treatment.treatmentCount && treatment.treatmentCount > 1) {
       fields.push({ label: t("gabinet.treatments.treatmentCount", "Liczba zabiegów"), value: <Badge variant="outline" className="text-[10px]">{treatment.treatmentCount}x</Badge>, fieldKey: "count" });
     }
     return fields;
-  }, [treatment, equipmentList, t, categoryName]);
+  }, [treatment, equipmentList, t, categoryName, linkedPackageName]);
 
   // Derived: unassigned employees (those that don't have this treatment in qualifiedTreatmentIds)
   const assignedEmployeeIds = useMemo(() => {

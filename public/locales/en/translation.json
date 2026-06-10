@@ -2289,8 +2289,10 @@
       "noPackagesAvailable": "No packages available. Add one in the \"Packages\" tab.",
       "type": "Type",
       "packageBadge": "Package · {{count}}x",
+      "packageBadgeNamed": "Package · {{name}}",
       "singleBadge": "Single",
       "isPackageTooltip": "Package — {{count}} sessions in a course",
+      "isPackageTooltipNamed": "Linked package: {{name}}",
       "isRegularTooltip": "Regular treatment",
       "views": {
         "all": "All Treatments",

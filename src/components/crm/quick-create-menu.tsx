@@ -15,19 +15,20 @@ import {
   UserCog,
   CalendarDaysIcon,
   UserPlus,
+  ArrowLeft,
 } from "@/lib/ez-icons";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { usePermissions, type Feature } from "@/hooks/use-permission";
 import {
   Tooltip,
@@ -298,10 +299,11 @@ export const QuickCreateMenu = forwardRef<QuickCreateMenuHandle, QuickCreateMenu
   };
 
   const visibleItems = entityItems.filter((i) => i.group === activeTab);
+  const showBackButton = selectedType !== null && !directMode;
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
+      <SheetTrigger asChild>
         <Button
           variant="ghost"
           size="icon"
@@ -311,30 +313,42 @@ export const QuickCreateMenu = forwardRef<QuickCreateMenuHandle, QuickCreateMenu
         >
           <CirclePlusIcon className="size-4" variant="stroke" />
         </Button>
-      </DialogTrigger>
-      <DialogContent
-        className={cn(
-          "[&>[data-slot=dialog-close]>svg]:size-5 max-h-[90vh] overflow-y-auto",
-          selectedType ? "md:max-w-4xl" : "md:max-w-sm"
-        )}
+      </SheetTrigger>
+      <SheetContent
+        side="right"
+        className="flex flex-col sm:max-w-[480px]"
       >
-        <DialogHeader>
-          <DialogTitle>
+        <SheetHeader>
+          {showBackButton && (
+            <button
+              type="button"
+              onClick={() => setSelectedType(null)}
+              className="text-muted-foreground hover:text-foreground -ml-1 mb-1 flex items-center gap-1 self-start text-xs"
+            >
+              <ArrowLeft className="size-3.5" variant="stroke" />
+              {t("common.back")}
+            </button>
+          )}
+          <SheetTitle>
             {selectedType
               ? t(`quickCreate.formTitles.${selectedType}`)
               : t("quickCreate.dialogTitle")}
-          </DialogTitle>
-        </DialogHeader>
+          </SheetTitle>
+          {!selectedType && (
+            <SheetDescription className="sr-only">
+              {t("quickCreate.dialogTitle")}
+            </SheetDescription>
+          )}
+        </SheetHeader>
 
-        <div className="flex gap-6 max-md:flex-col">
-          {/* Left: tabs + entity list */}
-          {!directMode && (
-            <div
-              className={cn(
-                "flex flex-col gap-3",
-                selectedType ? "md:min-w-52 md:border-r md:pr-6" : "w-full"
-              )}
-            >
+        <div className="flex-1 overflow-y-auto overscroll-contain py-4">
+          {selectedType ? (
+            renderForm(selectedType, {
+              onSuccess: handleFormSuccess,
+              onCancel: handleCancel,
+            })
+          ) : (
+            <div className="flex flex-col gap-3">
               <Tabs
                 value={activeTab}
                 onValueChange={(v) => {
@@ -374,21 +388,9 @@ export const QuickCreateMenu = forwardRef<QuickCreateMenuHandle, QuickCreateMenu
               </nav>
             </div>
           )}
-
-          {/* Right: form area */}
-          {selectedType && (
-            <ScrollArea className="max-h-[65vh] flex-1">
-              <div className="pr-3">
-                {renderForm(selectedType, {
-                  onSuccess: handleFormSuccess,
-                  onCancel: handleCancel,
-                })}
-              </div>
-            </ScrollArea>
-          )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
   }
 );

@@ -86,6 +86,7 @@ import {
   useEmployeeLeaveOnDate,
   useMissingEquipment,
 } from "@/components/gabinet/appointment-shared/use-appointment-warnings";
+import { SlotPicker } from "@/components/gabinet/appointment-shared/slot-picker";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { formatPhoneNumber } from "@/lib/phone";
@@ -428,15 +429,6 @@ export function AppointmentDialog({
     },
     [applyDragTransform, clampDragOffset],
   );
-
-  // Auto-scroll the currently-selected slot button into view so the user
-  // doesn't have to scroll through the full day's slot list to find a time
-  // pre-filled from a calendar click or "Find nearest slot". Issue #786.
-  const selectedSlotButtonRef = useCallback((node: HTMLButtonElement | null) => {
-    if (node) {
-      node.scrollIntoView({ block: "nearest" });
-    }
-  }, []);
 
   // -------------------------------------------------------------------------
   // Derived data
@@ -1729,40 +1721,13 @@ export function AppointmentDialog({
                         </p>
                       </div>
                     ) : availableSlots && availableSlots.length > 0 ? (
-                      availableSlots.map((slot) => (
-                        <button
-                          key={slot.start}
-                          ref={
-                            selectedSlot?.start === slot.start
-                              ? selectedSlotButtonRef
-                              : undefined
-                          }
-                          type="button"
-                          onClick={() => handleSlotSelect(slot)}
-                          className={cn(
-                            "w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors",
-                            "hover:bg-accent hover:text-accent-foreground",
-                            "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
-                            selectedSlot?.start === slot.start
-                              ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
-                              : "bg-muted/40",
-                          )}
-                        >
-                          <span className="font-medium tabular-nums">
-                            {slot.start}
-                          </span>
-                          <span
-                            className={cn(
-                              "text-xs",
-                              selectedSlot?.start === slot.start
-                                ? "text-primary-foreground/70"
-                                : "text-muted-foreground",
-                            )}
-                          >
-                            {slot.end}
-                          </span>
-                        </button>
-                      ))
+                      <SlotPicker
+                        slots={availableSlots}
+                        selectedStart={selectedSlot?.start ?? null}
+                        onSelect={handleSlotSelect}
+                        layout="list"
+                        autoScrollSelected
+                      />
                     ) : (
                       <div className="py-8 text-center">
                         <p className="text-sm text-muted-foreground">

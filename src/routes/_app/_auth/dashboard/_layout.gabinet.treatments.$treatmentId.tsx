@@ -1246,6 +1246,7 @@ function TreatmentDetail() {
               requiresApproval: treatment.requiresApproval ?? undefined,
               color: treatment.color ?? undefined,
               treatmentCount: treatment.treatmentCount ?? undefined,
+              packageId: treatment.packageId ?? null,
             }}
             onSubmit={handleEditSubmit}
             onCancel={() => setEditPanelOpen(false)}

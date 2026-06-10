@@ -27,6 +27,7 @@ export interface MappedGabinetTreatment {
   color?: string;
   sortOrder?: number;
   treatmentCount?: number;
+  packageId?: string;
   parameters?: unknown;
   requiredDocumentTemplateIds?: string[];
   requiredFormTemplates?: unknown;

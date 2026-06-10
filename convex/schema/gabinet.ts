@@ -104,6 +104,11 @@ export function createGabinetTables({
     color: v.optional(v.string()),
     sortOrder: v.optional(v.number()),
     treatmentCount: v.optional(v.number()),
+    // When the treatment represents a package, link to an existing
+    // `gabinetTreatmentPackages` row so the package's session count and
+    // composition drive purchase behaviour. Replaces the standalone
+    // `treatmentCount` input on the treatment form (see #1525).
+    packageId: v.optional(v.id("gabinetTreatmentPackages")),
     // Treatment detail: typed parameter definitions
     parameters: v.optional(
       v.array(

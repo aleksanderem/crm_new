@@ -368,7 +368,7 @@ export const markEventProcessed = internalMutation({
     providerMessageId: v.optional(v.string()),
     metadata: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     await db.patch("appointmentSmsEvents", args.eventId, {
       providerMessageId: args.providerMessageId,
@@ -386,7 +386,7 @@ export const markEventFailed = internalMutation({
     error: v.string(),
     metadata: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     await db.patch("appointmentSmsEvents", args.eventId, {
       processingStatus: "failed",

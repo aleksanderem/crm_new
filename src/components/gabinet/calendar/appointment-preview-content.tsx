@@ -280,17 +280,17 @@ export function AppointmentPreviewContent({
   const [settleDialogOpen, setSettleDialogOpen] = useState(false);
   const [settleAmount, setSettleAmount] = useState("");
   const [settleMethod, setSettleMethod] = useState<
-    "cash" | "card" | "transfer" | "other"
+    "cash" | "card" | "transfer" | "package" | "other"
   >("cash");
   const [settleNotes, setSettleNotes] = useState("");
   const [settleMarkCompleted, setSettleMarkCompleted] = useState(true);
   const [settleSubmitting, setSettleSubmitting] = useState(false);
   const [settleSplitPayment, setSettleSplitPayment] = useState(false);
   const [settleFirstSplitMethod, setSettleFirstSplitMethod] = useState<
-    "cash" | "card" | "transfer" | "other"
+    "cash" | "card" | "transfer" | "package" | "other"
   >("cash");
   const [settleSecondSplitMethod, setSettleSecondSplitMethod] = useState<
-    "cash" | "card" | "transfer" | "other"
+    "cash" | "card" | "transfer" | "package" | "other"
   >("card");
   const [settleFirstSplitAmount, setSettleFirstSplitAmount] = useState("");
   const [settleSecondSplitAmount, setSettleSecondSplitAmount] = useState("");
@@ -848,7 +848,7 @@ export function AppointmentPreviewContent({
       }
       if (settleSplitPayment && patient?._id) {
         const parts: Array<{
-          method: "cash" | "card" | "transfer" | "other";
+          method: "cash" | "card" | "transfer" | "package" | "other";
           amount: number;
         }> = [];
         if (parsedFirstSplitAmount > 0)
@@ -1587,6 +1587,9 @@ export function AppointmentPreviewContent({
                   <SelectItem value="transfer">
                     {t("gabinet.payments.methods.transfer")}
                   </SelectItem>
+                  <SelectItem value="package">
+                    {t("gabinet.payments.methods.package")}
+                  </SelectItem>
                   <SelectItem value="other">
                     {t("gabinet.payments.methods.other")}
                   </SelectItem>
@@ -1730,6 +1733,9 @@ export function AppointmentPreviewContent({
                       <SelectItem value="transfer">
                         {t("gabinet.payments.methods.transfer")}
                       </SelectItem>
+                      <SelectItem value="package">
+                        {t("gabinet.payments.methods.package")}
+                      </SelectItem>
                       <SelectItem value="other">
                         {t("gabinet.payments.methods.other")}
                       </SelectItem>
@@ -1772,6 +1778,9 @@ export function AppointmentPreviewContent({
                       </SelectItem>
                       <SelectItem value="transfer">
                         {t("gabinet.payments.methods.transfer")}
+                      </SelectItem>
+                      <SelectItem value="package">
+                        {t("gabinet.payments.methods.package")}
                       </SelectItem>
                       <SelectItem value="other">
                         {t("gabinet.payments.methods.other")}

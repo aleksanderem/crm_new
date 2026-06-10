@@ -105,14 +105,34 @@ export function useSupabase(): SupabaseContextValue {
  * Non-throwing variant of `useSupabase()`.
  *
  * Returns `{ client: null, isReady: false }` when called outside
- * `<SupabaseProvider>` instead of throwing. Use in components that
- * render *above* the provider but conditionally need the client
- * (e.g. the dashboard layout which both renders the provider and
- * uses global search).
+ * `<SupabaseProvider>` instead of throwing. Reserved for rare cases
+ * where a component genuinely renders both above and below the provider
+ * (none exist in this codebase as of #1499). Prefer `useSupabase()` —
+ * the throwing variant surfaces misuse instead of silently disabling
+ * fetches.
+ *
+ * In development, logs a one-shot warning when called outside the
+ * provider so a "called above provider" bug doesn't sit dormant the
+ * way `useSupabaseScheduledActivityById` did before #1499.
  */
+let warnedSupabaseSafeOutsideProvider = false;
+
 export function useSupabaseSafe(): SupabaseContextValue {
   const ctx = useContext(SupabaseContext);
-  return ctx ?? { client: null, isReady: false };
+  if (ctx === null) {
+    if (import.meta.env.DEV && !warnedSupabaseSafeOutsideProvider) {
+      warnedSupabaseSafeOutsideProvider = true;
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[useSupabaseSafe] called outside <SupabaseProvider>. " +
+          "Returning { client: null, isReady: false } — fetches will be disabled. " +
+          "If this hook is supposed to fetch data, the component is mounted above " +
+          "the provider; switch to useSupabase() or move the consumer below the provider.",
+      );
+    }
+    return { client: null, isReady: false };
+  }
+  return ctx;
 }
 
 /**

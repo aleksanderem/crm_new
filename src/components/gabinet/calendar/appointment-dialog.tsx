@@ -358,6 +358,18 @@ export function AppointmentDialog({
   const handleDragStart = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.button !== 0) return;
+      // Drag-from-anywhere (issue #1459): users found the small top bar too
+      // hard to hit, so the whole dialog now initiates a drag. Bail out when
+      // the pointerdown landed on (or inside) an interactive control so
+      // clicks on buttons, inputs, popover triggers, etc. still work.
+      const target = e.target as HTMLElement | null;
+      if (
+        target?.closest(
+          'button, a, input, textarea, select, [role="button"], [role="combobox"], [role="menuitem"], [role="option"], [role="switch"], [role="checkbox"], [role="radio"], [role="tab"], [contenteditable="true"], [data-radix-popper-content-wrapper]',
+        )
+      ) {
+        return;
+      }
       e.preventDefault();
       const startX = e.clientX;
       const startY = e.clientY;
@@ -972,7 +984,11 @@ export function AppointmentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         ref={dialogContentRef}
-        className="max-w-5xl p-0 gap-0 overflow-hidden max-h-[90vh] md:max-h-[640px]"
+        onPointerDown={handleDragStart}
+        className={cn(
+          "max-w-5xl p-0 gap-0 overflow-hidden max-h-[90vh] md:max-h-[640px]",
+          isDragging && "cursor-grabbing select-none",
+        )}
         overlayClassName="bg-black/40"
       >
         <DialogTitle className="sr-only">
@@ -982,10 +998,12 @@ export function AppointmentDialog({
           {t("gabinet.appointments.createAppointment")}
         </DialogDescription>
 
-        {/* Drag handle bar — lets the user move the dialog aside to peek at the
-            calendar underneath (issue #977, made discoverable in #1281). */}
+        {/* Drag affordance bar — visual hint that the dialog is draggable.
+            The pointer handler lives on DialogContent so a click anywhere on
+            the dialog body initiates a drag (issue #1459); this bar still
+            triggers it via event bubbling and keeps the discoverability cue
+            added in #1281. */}
         <div
-          onPointerDown={handleDragStart}
           className={cn(
             "flex items-center justify-center gap-2 border-b bg-muted px-4 py-2 text-xs font-medium uppercase tracking-wide text-foreground/80 hover:bg-muted/80 select-none touch-none transition-colors",
             isDragging ? "cursor-grabbing" : "cursor-grab",

@@ -1069,7 +1069,11 @@ export function AppointmentDialog({
                     <PopoverContent
                       className="p-0"
                       align="start"
-                      style={{ width: "var(--radix-popover-trigger-width)" }}
+                      style={{
+                        width: "var(--radix-popover-trigger-width)",
+                        maxHeight:
+                          "var(--radix-popover-content-available-height)",
+                      }}
                     >
                       <Command shouldFilter={false}>
                         <CommandInput
@@ -1079,7 +1083,7 @@ export function AppointmentDialog({
                           value={patientSearch}
                           onValueChange={setPatientSearch}
                         />
-                        <CommandList>
+                        <CommandList className="flex-1 min-h-0">
                           <CommandEmpty>
                             {t("common.noResults")}
                           </CommandEmpty>
@@ -1153,7 +1157,11 @@ export function AppointmentDialog({
                     <PopoverContent
                       className="p-0"
                       align="start"
-                      style={{ width: "var(--radix-popover-trigger-width)" }}
+                      style={{
+                        width: "var(--radix-popover-trigger-width)",
+                        maxHeight:
+                          "var(--radix-popover-content-available-height)",
+                      }}
                     >
                       <Command shouldFilter={false}>
                         <CommandInput
@@ -1163,7 +1171,7 @@ export function AppointmentDialog({
                           value={treatmentSearch}
                           onValueChange={setTreatmentSearch}
                         />
-                        <CommandList>
+                        <CommandList className="flex-1 min-h-0">
                           <CommandEmpty>
                             {t("common.noResults")}
                           </CommandEmpty>

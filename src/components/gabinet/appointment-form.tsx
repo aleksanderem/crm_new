@@ -554,7 +554,10 @@ export function AppointmentForm({
           </PopoverTrigger>
           <PopoverContent
             className="p-0"
-            style={{ width: "var(--radix-popover-trigger-width)" }}
+            style={{
+              width: "var(--radix-popover-trigger-width)",
+              maxHeight: "var(--radix-popover-content-available-height)",
+            }}
             align="start"
           >
             <Command shouldFilter={false}>
@@ -563,7 +566,7 @@ export function AppointmentForm({
                 value={patientSearch}
                 onValueChange={setPatientSearch}
               />
-              <CommandList>
+              <CommandList className="flex-1 min-h-0">
                 {filteredPatients.length === 0 &&
                   !isCrmSearching &&
                   (!unlinkedContacts || unlinkedContacts.length === 0) && (
@@ -675,14 +678,17 @@ export function AppointmentForm({
           </PopoverTrigger>
           <PopoverContent
             className="p-0"
-            style={{ width: "var(--radix-popover-trigger-width)" }}
+            style={{
+              width: "var(--radix-popover-trigger-width)",
+              maxHeight: "var(--radix-popover-content-available-height)",
+            }}
             align="start"
           >
             <Command>
               <CommandInput
                 placeholder={t("gabinet.appointments.searchTreatment")}
               />
-              <CommandList>
+              <CommandList className="flex-1 min-h-0">
                 <CommandEmpty>{t("common.noResults")}</CommandEmpty>
                 <CommandGroup>
                   {treatments?.map((tr) => (

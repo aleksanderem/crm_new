@@ -112,15 +112,31 @@ export function isChunkLoadError(err: unknown): boolean {
   );
 }
 
-// Reload once per tab when a stale chunk is detected, so the browser fetches
-// the new index.html (and the chunk hashes it references). sessionStorage
-// guards against an infinite reload loop if the failure persists.
+// Reload when a stale chunk is detected, so the browser fetches the new
+// index.html (and the chunk hashes it references). A time-boxed sessionStorage
+// marker guards against an infinite reload loop if the failure persists
+// immediately after reload, while still allowing recovery from later deploys
+// in long-running tab sessions (e.g. active testing on the dev deployment).
+// Issue #1536 — the original one-shot guard from #1368 left users stuck on
+// the error UI after a second deploy in the same session.
 const CHUNK_RELOAD_KEY = "chunk-reload-attempted-v1";
+const CHUNK_RELOAD_COOLDOWN_MS = 30_000;
 export function maybeReloadForStaleChunk(err: unknown): boolean {
   if (typeof window === "undefined") return false;
   if (!isChunkLoadError(err)) return false;
   try {
-    if (sessionStorage.getItem(CHUNK_RELOAD_KEY)) return false;
+    const prev = sessionStorage.getItem(CHUNK_RELOAD_KEY);
+    if (prev) {
+      const ts = Number.parseInt(prev, 10);
+      // If we already reloaded recently and the chunk error came back inside
+      // the cooldown window, assume the reload didn't fix it (CDN still
+      // serving a stale index.html, missing chunk on server, etc.) and stop
+      // looping. Outside the cooldown, treat this as a fresh stale-chunk
+      // situation from a later deploy and reload again.
+      if (Number.isFinite(ts) && Date.now() - ts < CHUNK_RELOAD_COOLDOWN_MS) {
+        return false;
+      }
+    }
     sessionStorage.setItem(CHUNK_RELOAD_KEY, String(Date.now()));
   } catch {
     // sessionStorage may be unavailable (private mode, etc.) — proceed anyway.

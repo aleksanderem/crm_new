@@ -99,7 +99,7 @@ export const gabinetManifest: ModuleManifest = {
         {
           labelKey: "nav.actions.addAppointment",
           icon: CalendarCheck,
-          quickCreate: "appointment",
+          dispatch: "openCreateAppointment",
           permissionFeature: "gabinet_appointments",
         },
         { labelKey: "nav.actions.filters", icon: Filter, dispatch: "openFilter" },

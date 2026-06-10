@@ -888,6 +888,10 @@ function GabinetCalendarPage() {
   useSidebarDispatch("goToToday", goToday);
   useSidebarDispatch("openFilter", () => setFilterOpen(true));
   useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
+  // Route the sidebar/footer "Add appointment" entries to the same dialog
+  // used by the toolbar's "Nowa wizyta" button so all entry points behave
+  // identically on the calendar page (issue #1502).
+  useSidebarDispatch("openCreateAppointment", openCreateDialog);
 
   // ?action=sell-package opens the sell package side panel after navigation
   // from the gabinet quick-actions dropdown (issue #1236). Clear the param

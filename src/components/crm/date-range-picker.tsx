@@ -54,9 +54,16 @@ export function DateRangePicker() {
           <ChevronDownIcon className="size-3.5 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="flex w-auto p-0" sideOffset={8}>
-        {/* Presets sidebar */}
-        <div className="flex flex-col gap-0.5 border-r p-2">
+      <PopoverContent
+        align="end"
+        sideOffset={8}
+        className="flex w-auto max-w-[var(--radix-popover-content-available-width)] flex-col overflow-y-auto p-0 sm:flex-row"
+        style={{
+          maxHeight: "var(--radix-popover-content-available-height)",
+        }}
+      >
+        {/* Presets — horizontal wrap on mobile, sidebar on sm+ */}
+        <div className="flex flex-row flex-wrap gap-0.5 border-b p-2 sm:flex-col sm:flex-nowrap sm:border-b-0 sm:border-r">
           {PRESETS.map((preset) => (
             <Button
               key={preset.value}

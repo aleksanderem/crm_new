@@ -74,10 +74,16 @@ export function DataTableFacetedFilter<TData, TValue>({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0" align="start">
+      <PopoverContent
+        className="w-[200px] p-0"
+        align="start"
+        style={{
+          maxHeight: "var(--radix-popover-content-available-height)",
+        }}
+      >
         <Command>
           <CommandInput placeholder={title} />
-          <CommandList>
+          <CommandList className="flex-1 min-h-0">
             <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup>
               {options.map((option) => {

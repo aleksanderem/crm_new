@@ -373,7 +373,13 @@ export function TreatmentForm({
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+            <PopoverContent
+              className="w-[var(--radix-popover-trigger-width)] p-0"
+              align="start"
+              style={{
+                maxHeight: "var(--radix-popover-content-available-height)",
+              }}
+            >
               {addingNewEquipment ? (
                 <div className="p-2 space-y-2">
                   <Label className="text-xs">
@@ -417,7 +423,7 @@ export function TreatmentForm({
               ) : (
                 <Command>
                   <CommandInput placeholder={t("gabinet.treatments.searchEquipment", "Search equipment...")} />
-                  <CommandList>
+                  <CommandList className="flex-1 min-h-0">
                     <CommandEmpty>{t("common.noResults", "No results found.")}</CommandEmpty>
                     <CommandGroup>
                       {(equipmentList ?? []).map((eq) => {

@@ -99,10 +99,16 @@ function QuickFilterChip({
           <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0" align="start">
+      <PopoverContent
+        className="w-[200px] p-0"
+        align="start"
+        style={{
+          maxHeight: "var(--radix-popover-content-available-height)",
+        }}
+      >
         <Command>
           <CommandInput placeholder={`Filter ${filter.label}...`} />
-          <CommandList>
+          <CommandList className="flex-1 min-h-0">
             <CommandEmpty>No options found.</CommandEmpty>
             <CommandGroup>
               {filter.options.map((option) => {

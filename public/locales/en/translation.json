@@ -2225,6 +2225,22 @@
       "errors": {
         "createFailed": "Could not add the client.",
         "saveFailed": "Could not save client changes."
+      },
+      "merge": {
+        "action": "Merge with...",
+        "title": "Merge clients",
+        "description": "Pick the client that data should be moved to. The source client will be deactivated.",
+        "sourceLabel": "Source (will be deactivated)",
+        "searchPlaceholder": "Search by name, email or phone...",
+        "matchEmail": "Same email",
+        "matchPhone": "Same phone",
+        "matchSearch": "Search",
+        "noDuplicates": "No duplicates by email or phone. Use the search above to pick another client.",
+        "noContactInfo": "This client has no email or phone, so automatic matching is unavailable. Search manually.",
+        "warning": "All appointments, documents, payments, loyalty points and notes will be transferred. This operation cannot be undone.",
+        "confirm": "Merge",
+        "success": "Client merged. {{count}} related records were moved.",
+        "error": "Could not merge clients."
       }
     },
     "treatments": {

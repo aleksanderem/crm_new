@@ -1,10 +1,12 @@
 import { createFileRoute, useNavigate, useSearch, Link } from "@tanstack/react-router";
 import { useAction } from "convex/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseGabinetRecentVisitPatientIds } from "@/hooks/use-supabase-gabinet-appointments";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
@@ -12,10 +14,11 @@ import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { MiniChartsRow } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
+import { MergePatientsDialog } from "@/components/gabinet/merge-patients-dialog";
 import { Button } from "@/components/ui/button";
 import { AvatarLabelGroup } from "@untitled/base/avatar/avatar-label-group";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Download, X } from "@/lib/ez-icons";
+import { Plus, Trash2, Download, X, Users } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { Id } from "@cvx/_generated/dataModel";
@@ -56,12 +59,14 @@ function PatientsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { nudge: nudgeFilter } = useSearch({ from: Route.id });
   const createPatient = useAction(api.gabinet.patients.create);
   const removePatient = useAction(api.gabinet.patients.remove);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [mergeSourcePatient, setMergeSourcePatient] = useState<Patient | null>(null);
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
@@ -415,6 +420,11 @@ function PatientsIndex() {
           navigate({ to: `/dashboard/gabinet/patients/${row._id}` }),
       },
       {
+        label: t("gabinet.patients.merge.action", { defaultValue: "Scal z..." }),
+        icon: <Users className="h-4 w-4" variant="stroke" />,
+        onClick: () => setMergeSourcePatient(row),
+      },
+      {
         label: t("common.delete"),
         icon: <Trash2 className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
@@ -564,6 +574,21 @@ function PatientsIndex() {
         organizationId={organizationId}
         entityType="gabinetPatient"
         categories={categories}
+      />
+
+      <MergePatientsDialog
+        open={!!mergeSourcePatient}
+        onOpenChange={(open) => {
+          if (!open) setMergeSourcePatient(null);
+        }}
+        organizationId={organizationId}
+        sourcePatient={mergeSourcePatient}
+        allPatients={patients}
+        onMerged={() => {
+          void queryClient.invalidateQueries({
+            queryKey: supabaseKeys.gabinetPatients.list(organizationId),
+          });
+        }}
       />
     </div>
   );

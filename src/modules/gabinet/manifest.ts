@@ -77,7 +77,8 @@ export const gabinetManifest: ModuleManifest = {
         {
           labelKey: "nav.actions.bookAppointment",
           icon: CalendarCheck,
-          quickCreate: "appointment",
+          href: "/dashboard/gabinet/calendar",
+          search: { action: "create-appointment" },
           permissionFeature: "gabinet_appointments",
         },
         { labelKey: "nav.actions.viewCalendar", icon: Calendar, href: "/dashboard/gabinet/calendar" },

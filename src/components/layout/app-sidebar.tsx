@@ -226,7 +226,7 @@ export function AppSidebar() {
                                 } else if (action.dispatch) {
                                   dispatch(action.dispatch);
                                 } else if (action.href) {
-                                  navigateTo(action.href);
+                                  navigateTo(action.href, action.search);
                                 }
                               }}
                             >

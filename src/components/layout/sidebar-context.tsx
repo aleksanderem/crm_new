@@ -7,7 +7,7 @@ export interface SidebarDispatch {
 
 interface SidebarActionsContextValue {
   openQuickCreate: (type: string) => void;
-  navigateTo: (href: string) => void;
+  navigateTo: (href: string, search?: Record<string, string>) => void;
   dispatch: (actionId: string) => void;
   lastDispatch: SidebarDispatch | null;
   openActivityDetail: (activityId: string) => void;

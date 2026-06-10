@@ -3,7 +3,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { useSupabaseSafe as useSupabase } from "@/components/supabase-provider";
+import { useSupabase } from "@/components/supabase-provider";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { mapScheduledActivityFromSupabase, type MappedScheduledActivity } from "@/lib/supabase/mappers";
 

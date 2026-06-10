@@ -5,7 +5,7 @@ import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
-import { useSupabaseSafe } from "@/components/supabase-provider";
+import { useSupabase } from "@/components/supabase-provider";
 import { supabaseGlobalSearch } from "@/hooks/use-supabase-search";
 import { useSupabaseScheduledActivityById } from "@/hooks/use-supabase-scheduled-activities";
 import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
@@ -212,7 +212,7 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
   const quickCreateRef = useRef<QuickCreateMenuHandle>(null);
   const signOut = useSignOut();
   const navigate = useNavigate();
-  const { client: supabase } = useSupabaseSafe();
+  const { client: supabase } = useSupabase();
   const queryClient = useQueryClient();
 
   const [searchOpen, setSearchOpen] = useState(false);

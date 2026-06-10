@@ -715,7 +715,8 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
       openQuickCreate: (type: string) => {
         quickCreateRef.current?.open(type as FormEntityType);
       },
-      navigateTo: (href: string) => navigate({ to: href }),
+      navigateTo: (href: string, search?: Record<string, string>) =>
+        navigate(search ? { to: href, search } : { to: href }),
       dispatch: (actionId: string) => {
         dispatchSeqRef.current += 1;
         setLastDispatch({ id: actionId, seq: dispatchSeqRef.current });

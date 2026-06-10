@@ -30,6 +30,7 @@ export interface ModuleContextAction {
   icon: ElementType;
   quickCreate?: string;
   href?: string;
+  search?: Record<string, string>;
   dispatch?: string;
   permissionFeature?: Feature;
 }

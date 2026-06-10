@@ -22,6 +22,7 @@ interface FooterAction {
   icon: React.ElementType;
   quickCreate?: string;
   href?: string;
+  search?: Record<string, string>;
   action?: string;
 }
 
@@ -69,7 +70,14 @@ const routeActions: Record<string, FooterAction[]> = {
 };
 
 const defaultGabinetActions: FooterAction[] = [
-  { labelKey: "nav.actions.bookAppointment", icon: CalendarCheck, quickCreate: "appointment" },
+  // "Bookings" off-calendar pages route through the calendar so every
+  // entry point opens the same AppointmentDialog (issue #1506).
+  {
+    labelKey: "nav.actions.bookAppointment",
+    icon: CalendarCheck,
+    href: "/dashboard/gabinet/calendar",
+    search: { action: "create-appointment" },
+  },
   { labelKey: "nav.actions.addPatient", icon: UserPlus, quickCreate: "patient" },
 ];
 
@@ -154,7 +162,7 @@ export function AppFooter() {
                 } else if (action.action) {
                   dispatch(action.action);
                 } else if (action.href) {
-                  navigateTo(action.href);
+                  navigateTo(action.href, action.search);
                 }
               }}
             >

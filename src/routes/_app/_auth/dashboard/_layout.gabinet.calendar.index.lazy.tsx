@@ -894,18 +894,25 @@ function GabinetCalendarPage() {
   useSidebarDispatch("openCreateAppointment", openCreateDialog);
 
   // ?action=sell-package opens the sell package side panel after navigation
-  // from the gabinet quick-actions dropdown (issue #1236). Clear the param
-  // after consuming so a refresh doesn't reopen it.
+  // from the gabinet quick-actions dropdown (issue #1236).
+  // ?action=create-appointment opens the AppointmentDialog so off-calendar
+  // entry points (dashboard pageContext, footer, quick-actions dropdown)
+  // converge on the same flow as the toolbar button (issue #1506).
+  // Clear the param after consuming so a refresh doesn't reopen it.
   useEffect(() => {
     if (actionParam === "sell-package") {
       setSellPackageOpen(true);
-      routeNavigate({
-        to: "/dashboard/gabinet/calendar",
-        search: { nudge: nudgeFilter, action: undefined },
-        replace: true,
-      });
+    } else if (actionParam === "create-appointment") {
+      openCreateDialog();
+    } else {
+      return;
     }
-  }, [actionParam, nudgeFilter, routeNavigate]);
+    routeNavigate({
+      to: "/dashboard/gabinet/calendar",
+      search: { nudge: nudgeFilter, action: undefined },
+      replace: true,
+    });
+  }, [actionParam, nudgeFilter, routeNavigate, openCreateDialog]);
 
   // Click-to-create handler
   const handleSlotClick = useCallback(

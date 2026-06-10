@@ -27,6 +27,13 @@ export function GabinetQuickActionsDropdown() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { openQuickCreate } = useSidebarActions();
+  // "Umów wizytę" routes through the calendar so every appointment entry
+  // point opens the same AppointmentDialog (issue #1506).
+  const goToCalendarCreateAppointment = () =>
+    navigate({
+      to: "/dashboard/gabinet/calendar",
+      search: { action: "create-appointment" },
+    });
 
   return (
     <DropdownMenu>
@@ -44,7 +51,7 @@ export function GabinetQuickActionsDropdown() {
       >
         <DropdownMenuItem
           className="px-3 py-2.5 text-sm"
-          onSelect={() => openQuickCreate("appointment")}
+          onSelect={goToCalendarCreateAppointment}
         >
           <CalendarCheck className="text-foreground size-5" />
           {t("sidebar.gabinet.bookAppointment", "Umów wizytę")}

@@ -195,14 +195,21 @@ const typeIcons: Record<string, React.ReactNode> = {
   product: <Package className="h-4 w-4" variant="stroke" />,
 };
 
-function DashboardLayout() {
+// Inner component runs inside the provider stack so Supabase hooks (e.g.
+// useSupabaseCustomFieldDefinitions) resolve their context. Mounting the
+// providers and calling these hooks in the same component would throw —
+// the context lookup walks ancestors, not descendants. See #1496.
+interface DashboardLayoutInnerProps {
+  // Loose typing avoids fighting Convex codegen's deep instantiation here.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  user: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  firstOrg: any;
+}
+
+function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
   const { t } = useTranslation();
   const quickCreateRef = useRef<QuickCreateMenuHandle>(null);
-  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-  const { data: user } = useQuery(convexQuery(api.app.getCurrentUser, {}));
-  const { data: orgs } = useQuery(
-    convexQuery(api.organizations.getMyOrganizations, {})
-  );
   const signOut = useSignOut();
   const navigate = useNavigate();
   const { client: supabase } = useSupabaseSafe();
@@ -232,8 +239,6 @@ function DashboardLayout() {
   // Global activity detail drawer
   const [activityDetailId, setActivityDetailId] = useState<string | null>(null);
   const [activityDetailSubmitting, setActivityDetailSubmitting] = useState(false);
-
-  const firstOrg = orgs?.[0];
 
   // Tag & category definitions for quick-create forms.
   // Tag defs are org-scoped (not entity-typed) so a single fetch covers all forms.
@@ -721,22 +726,8 @@ function DashboardLayout() {
     [navigate, lastDispatch]
   );
 
-  if (!user || !orgs) {
-    return null;
-  }
-
-  if (!firstOrg) {
-    return null;
-  }
-
   return (
-    <DateRangeProvider>
-    <OrgProvider initialOrgId={firstOrg?._id}>
-      <SupabaseProvider>
-      <NudgesProvider>
-      <MiniCalendarProvider>
-      <SidebarSlotProvider>
-      <HeaderSlotProvider>
+    <>
       <div className="flex h-dvh w-full flex-col overflow-hidden">
         {/* Beta strip */}
         <div
@@ -931,13 +922,36 @@ function DashboardLayout() {
         }}
         isSubmitting={activityDetailSubmitting}
       />
+    </>
+  );
+}
 
-    </HeaderSlotProvider>
-    </SidebarSlotProvider>
-    </MiniCalendarProvider>
-    </NudgesProvider>
-    </SupabaseProvider>
-    </OrgProvider>
+function DashboardLayout() {
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+  const { data: user } = useQuery(convexQuery(api.app.getCurrentUser, {}));
+  const { data: orgs } = useQuery(
+    convexQuery(api.organizations.getMyOrganizations, {})
+  );
+
+  if (!user || !orgs) return null;
+  const firstOrg = orgs[0];
+  if (!firstOrg) return null;
+
+  return (
+    <DateRangeProvider>
+      <OrgProvider initialOrgId={firstOrg._id}>
+        <SupabaseProvider>
+          <NudgesProvider>
+            <MiniCalendarProvider>
+              <SidebarSlotProvider>
+                <HeaderSlotProvider>
+                  <DashboardLayoutInner user={user} firstOrg={firstOrg} />
+                </HeaderSlotProvider>
+              </SidebarSlotProvider>
+            </MiniCalendarProvider>
+          </NudgesProvider>
+        </SupabaseProvider>
+      </OrgProvider>
     </DateRangeProvider>
   );
 }

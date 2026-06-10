@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChangeEmployeeModal } from "@/components/gabinet/change-employee-modal";
 import { DocumentationTab } from "@/components/gabinet/documentation-tab";
+import { TreatmentPicker } from "@/components/gabinet/appointment-shared/treatment-picker";
 import { RichTextEditor, plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import { Avatar as UntitledAvatar } from "@untitled/base/avatar/avatar";
 import { Input } from "@/components/ui/input";
@@ -55,20 +56,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { cn } from "@/lib/utils";
 import {
   EntityDetailLayout,
   type DetailField,
@@ -112,7 +99,6 @@ import {
   MapPin,
   Building2,
 } from "@/lib/ez-icons";
-import { ChevronsUpDown } from "lucide-react";
 import { Id } from "@cvx/_generated/dataModel";
 import type { AppointmentFullDetailNote } from "@cvx/gabinet/appointments";
 import { useTranslation } from "react-i18next";
@@ -1313,86 +1299,31 @@ function AppointmentDetail() {
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                   {t("common.name")}
                 </Label>
-                <Popover
-                  open={treatmentPickerOpen}
-                  onOpenChange={(o) => {
-                    setTreatmentPickerOpen(o);
-                    if (!o) setTreatmentSearch("");
+                <TreatmentPicker
+                  treatments={treatmentsList}
+                  value={editTreatmentId}
+                  onSelect={(id) => {
+                    setEditTreatmentId(id);
+                    setTreatmentPickerOpen(false);
+                    setTreatmentSearch("");
                   }}
-                >
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={treatmentPickerOpen}
-                      className="w-full justify-between font-normal"
-                    >
-                      <span className="flex items-center gap-2 truncate">
-                        <Stethoscope className="size-4 shrink-0 text-primary" />
-                        <span className="truncate">
-                          {treatmentsList?.find((tr) => tr._id === editTreatmentId)?.name
-                            ?? treatment?.name
-                            ?? t("gabinet.appointments.selectTreatment")}
-                        </span>
-                      </span>
-                      <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="p-0"
-                    align="start"
-                    style={{
-                      width: "var(--radix-popover-trigger-width)",
-                      maxHeight:
-                        "var(--radix-popover-content-available-height)",
-                    }}
-                  >
-                    <Command shouldFilter={false}>
-                      <CommandInput
-                        placeholder={t("gabinet.appointments.searchTreatment")}
-                        value={treatmentSearch}
-                        onValueChange={setTreatmentSearch}
-                        onClose={() => setTreatmentPickerOpen(false)}
-                        closeLabel={t("common.close")}
-                      />
-                      <CommandList className="flex-1 min-h-0">
-                        <CommandEmpty>{t("common.noResults")}</CommandEmpty>
-                        <CommandGroup>
-                          {(treatmentsList ?? [])
-                            .filter((tr) => {
-                              const q = treatmentSearch.trim().toLowerCase();
-                              if (!q) return true;
-                              return tr.name.toLowerCase().includes(q);
-                            })
-                            .map((tr) => (
-                              <CommandItem
-                                key={tr._id}
-                                value={tr._id}
-                                onSelect={() => {
-                                  setEditTreatmentId(tr._id);
-                                  setTreatmentPickerOpen(false);
-                                  setTreatmentSearch("");
-                                }}
-                                className={cn(
-                                  "px-3",
-                                  editTreatmentId === tr._id &&
-                                    "bg-accent font-medium text-accent-foreground",
-                                )}
-                              >
-                                <div className="flex flex-col">
-                                  <span className="text-sm">{tr.name}</span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {tr.duration} min
-                                    {tr.price != null && ` · ${formatCurrencyPLN(tr.price, tr.currency ?? "PLN")}`}
-                                  </span>
-                                </div>
-                              </CommandItem>
-                            ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
+                  open={treatmentPickerOpen}
+                  onOpenChange={setTreatmentPickerOpen}
+                  search={treatmentSearch}
+                  onSearchChange={setTreatmentSearch}
+                  formatPrice={(price, currency) =>
+                    formatCurrencyPLN(price ?? 0, currency ?? "PLN")
+                  }
+                  placeholder={t("gabinet.appointments.selectTreatment")}
+                  searchPlaceholder={t("gabinet.appointments.searchTreatment")}
+                  emptyText={t("common.noResults")}
+                  closeLabel={t("common.close")}
+                  selectedLabel={treatment?.name}
+                  triggerIcon={
+                    <Stethoscope className="size-4 shrink-0 text-primary" />
+                  }
+                />
+
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">

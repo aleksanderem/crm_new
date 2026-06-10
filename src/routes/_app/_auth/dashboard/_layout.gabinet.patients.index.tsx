@@ -77,6 +77,7 @@ function PatientsIndex() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [mergeSourcePatient, setMergeSourcePatient] = useState<Patient | null>(null);
+  const [mergePreselectedTargetId, setMergePreselectedTargetId] = useState<string | null>(null);
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
@@ -447,9 +448,20 @@ function PatientsIndex() {
         for (const row of selectedRows) {
           await removePatient({ organizationId, patientId: row._id as Id<"gabinetPatients"> });
         }
+      } else if (action === "merge") {
+        if (selectedRows.length !== 2) {
+          toast.error(
+            t("gabinet.patients.merge.selectExactlyTwo", {
+              defaultValue: "Aby scalić, zaznacz dokładnie dwóch klientów.",
+            }),
+          );
+          return;
+        }
+        setMergeSourcePatient(selectedRows[0]);
+        setMergePreselectedTargetId(selectedRows[1]._id);
       }
     },
-    [removePatient, organizationId],
+    [removePatient, organizationId, t],
   );
 
   const rowActions = useCallback(
@@ -608,6 +620,10 @@ function PatientsIndex() {
         enableBulkSelect
         bulkActions={[
           {
+            label: t("gabinet.patients.merge.bulkAction", { defaultValue: "Scal zaznaczonych" }),
+            value: "merge",
+          },
+          {
             label: t("common.delete"),
             value: "delete",
             variant: "destructive",
@@ -653,11 +669,15 @@ function PatientsIndex() {
       <MergePatientsDialog
         open={!!mergeSourcePatient}
         onOpenChange={(open) => {
-          if (!open) setMergeSourcePatient(null);
+          if (!open) {
+            setMergeSourcePatient(null);
+            setMergePreselectedTargetId(null);
+          }
         }}
         organizationId={organizationId}
         sourcePatient={mergeSourcePatient}
         allPatients={patients}
+        preselectedTargetId={mergePreselectedTargetId}
         onMerged={() => {
           void queryClient.invalidateQueries({
             queryKey: supabaseKeys.gabinetPatients.list(organizationId),

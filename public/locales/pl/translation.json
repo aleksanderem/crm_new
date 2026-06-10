@@ -2262,6 +2262,8 @@
       },
       "merge": {
         "action": "Scal z...",
+        "bulkAction": "Scal zaznaczonych",
+        "selectExactlyTwo": "Aby scalić, zaznacz dokładnie dwóch klientów.",
         "title": "Scal klientów",
         "description": "Wybierz klienta, do którego mają zostać przeniesione dane. Klient źródłowy zostanie dezaktywowany.",
         "sourceLabel": "Źródło (zostanie dezaktywowane)",
@@ -2269,6 +2271,7 @@
         "matchEmail": "Ten sam e-mail",
         "matchPhone": "Ten sam telefon",
         "matchSearch": "Wyszukiwanie",
+        "matchSelected": "Wybrany",
         "noDuplicates": "Brak duplikatów po e-mailu lub telefonie. Skorzystaj z wyszukiwarki powyżej, aby wybrać innego klienta.",
         "noContactInfo": "Klient nie ma e-maila ani telefonu, więc automatyczne dopasowanie nie jest możliwe. Wyszukaj klienta ręcznie.",
         "warning": "Wszystkie wizyty, dokumenty, płatności, punkty lojalnościowe i notatki zostaną przeniesione. Operacja jest nieodwracalna.",

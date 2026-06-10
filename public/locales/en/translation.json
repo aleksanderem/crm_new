@@ -2234,6 +2234,8 @@
       },
       "merge": {
         "action": "Merge with...",
+        "bulkAction": "Merge selected",
+        "selectExactlyTwo": "Select exactly two clients to merge.",
         "title": "Merge clients",
         "description": "Pick the client that data should be moved to. The source client will be deactivated.",
         "sourceLabel": "Source (will be deactivated)",
@@ -2241,6 +2243,7 @@
         "matchEmail": "Same email",
         "matchPhone": "Same phone",
         "matchSearch": "Search",
+        "matchSelected": "Selected",
         "noDuplicates": "No duplicates by email or phone. Use the search above to pick another client.",
         "noContactInfo": "This client has no email or phone, so automatic matching is unavailable. Search manually.",
         "warning": "All appointments, documents, payments, loyalty points and notes will be transferred. This operation cannot be undone.",

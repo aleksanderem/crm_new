@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAction } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -27,6 +27,7 @@ interface MergePatientsDialogProps {
   organizationId: string;
   sourcePatient: MappedGabinetPatient | null;
   allPatients: MappedGabinetPatient[];
+  preselectedTargetId?: string | null;
   onMerged?: () => void;
 }
 
@@ -48,14 +49,19 @@ export function MergePatientsDialog({
   organizationId,
   sourcePatient,
   allPatients,
+  preselectedTargetId,
   onMerged,
 }: MergePatientsDialogProps) {
   const { t } = useTranslation();
   const mergePatients = useAction(api.gabinet.patients.merge);
 
-  const [targetId, setTargetId] = useState<string | null>(null);
+  const [targetId, setTargetId] = useState<string | null>(preselectedTargetId ?? null);
   const [search, setSearch] = useState("");
   const [isMerging, setIsMerging] = useState(false);
+
+  useEffect(() => {
+    if (open) setTargetId(preselectedTargetId ?? null);
+  }, [open, preselectedTargetId, sourcePatient?._id]);
 
   const sourceEmail = normalizeEmail(sourcePatient?.email);
   const sourcePhone = normalizePhone(sourcePatient?.phone);
@@ -66,8 +72,19 @@ export function MergePatientsDialog({
     const matches: Array<MappedGabinetPatient & { matchReason: string }> = [];
     const seen = new Set<string>();
 
+    if (preselectedTargetId && preselectedTargetId !== sourcePatient._id) {
+      const preselected = allPatients.find((p) => p._id === preselectedTargetId);
+      if (preselected) {
+        matches.push({
+          ...preselected,
+          matchReason: t("gabinet.patients.merge.matchSelected", { defaultValue: "Wybrany" }),
+        });
+        seen.add(preselected._id);
+      }
+    }
+
     for (const p of allPatients) {
-      if (p._id === sourcePatient._id) continue;
+      if (p._id === sourcePatient._id || seen.has(p._id)) continue;
       const pEmail = normalizeEmail(p.email);
       const pPhone = normalizePhone(p.phone);
 
@@ -100,7 +117,7 @@ export function MergePatientsDialog({
     }
 
     return matches.slice(0, 50);
-  }, [allPatients, sourcePatient, sourceEmail, sourcePhone, search, t]);
+  }, [allPatients, sourcePatient, sourceEmail, sourcePhone, search, t, preselectedTargetId]);
 
   const target = useMemo(
     () => candidates.find((c) => c._id === targetId) ?? null,

@@ -1707,8 +1707,19 @@ export function AppointmentDialog({
 
                 <Separator />
 
-                {/* Slots list */}
-                <ScrollShadow className="flex-1 min-h-0 overflow-y-auto">
+                {/* Slots list.
+                    On mobile (#1463) the right panel has no defined height
+                    — `md:h-[600px]` lives on the 3-panel wrapper and only
+                    applies on md+. With `min-h-0` on mobile the flex item
+                    collapses to 0px, hiding the slot buttons and leaving
+                    the user with no way to pick a time (and therefore no
+                    Confirmation area / "Potwierdź rezerwację" button below).
+                    Gating both `min-h-0` and the inner `overflow-y-auto` on
+                    `md:` lets the slot list expand to its content on mobile
+                    (the outer DialogContent already handles overall scroll,
+                    per #1462) while keeping desktop's in-panel scroll
+                    behavior intact. */}
+                <ScrollShadow className="flex-1 md:min-h-0 md:overflow-y-auto">
                   <div className="p-3 space-y-1.5">
                     {slotsLoading ? (
                       // Skeleton loading

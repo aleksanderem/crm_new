@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useSupabaseGabinetTreatmentPackagesActive } from "@/hooks/use-supabase-gabinet-packages";
 import {
   Command,
   CommandEmpty,
@@ -48,6 +49,7 @@ export interface TreatmentFormData {
   requiresApproval?: boolean;
   color?: string | null;
   treatmentCount?: number;
+  packageId?: string | null;
 }
 
 interface TreatmentFormProps {
@@ -124,14 +126,17 @@ export function TreatmentForm({
   const [requiresApproval, setRequiresApproval] = useState(initialData?.requiresApproval ?? false);
   const [color, setColor] = useState(initialData?.color ?? "");
   const initialTreatmentCount = initialData?.treatmentCount;
+  const initialPackageId = initialData?.packageId ?? null;
   const [isPackage, setIsPackage] = useState(
-    initialTreatmentCount != null && initialTreatmentCount > 1,
+    !!initialPackageId ||
+      (initialTreatmentCount != null && initialTreatmentCount > 1),
   );
-  const [treatmentCount, setTreatmentCount] = useState(
-    initialTreatmentCount != null && initialTreatmentCount > 1
-      ? String(initialTreatmentCount)
-      : "",
+  const [selectedPackageId, setSelectedPackageId] = useState<string>(
+    initialPackageId ?? "",
   );
+
+  const { data: packagesList } =
+    useSupabaseGabinetTreatmentPackagesActive(organizationId);
 
   const queryClient = useQueryClient();
   const listEquipmentAction = useAction(api.gabinet.equipment.listEquipment);
@@ -216,10 +221,7 @@ export function TreatmentForm({
       aftercareInstructions: aftercareInstructions || null,
       requiresApproval: requiresApproval || undefined,
       color: color || null,
-      treatmentCount:
-        isPackage && parseInt(treatmentCount) > 1
-          ? parseInt(treatmentCount)
-          : undefined,
+      packageId: isPackage && selectedPackageId ? selectedPackageId : null,
     });
   };
 
@@ -300,12 +302,8 @@ export function TreatmentForm({
               onCheckedChange={(checked) => {
                 const next = !!checked;
                 setIsPackage(next);
-                if (next) {
-                  if (!treatmentCount || parseInt(treatmentCount) < 2) {
-                    setTreatmentCount("2");
-                  }
-                } else {
-                  setTreatmentCount("");
+                if (!next) {
+                  setSelectedPackageId("");
                 }
               }}
             />
@@ -316,17 +314,41 @@ export function TreatmentForm({
         </div>
         {isPackage && (
           <div className="space-y-1.5">
-            <Label>{t("gabinet.treatments.treatmentCount", "Liczba zabiegów")}</Label>
-            <Input
-              type="number"
-              min="2"
-              value={treatmentCount}
-              onChange={(e) => setTreatmentCount(e.target.value)}
-              onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
-              placeholder="2"
-            />
+            <Label>{t("gabinet.treatments.linkedPackage", "Powiązany pakiet")}</Label>
+            <Select
+              value={selectedPackageId}
+              onValueChange={setSelectedPackageId}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={t(
+                    "gabinet.treatments.selectPackagePlaceholder",
+                    "Wybierz pakiet...",
+                  )}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {(packagesList ?? []).length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                    {t(
+                      "gabinet.treatments.noPackagesAvailable",
+                      "Brak pakietów. Dodaj pakiet w zakładce \"Pakiety\".",
+                    )}
+                  </div>
+                ) : (
+                  (packagesList ?? []).map((pkg) => (
+                    <SelectItem key={pkg._id} value={pkg._id}>
+                      {pkg.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
             <p className="text-xs text-muted-foreground">
-              {t("gabinet.treatments.treatmentCountHint", "Ilość zabiegów w cyklu (np. 20). Automatycznie tworzy pakiet przy pierwszej wizycie.")}
+              {t(
+                "gabinet.treatments.linkedPackageHint",
+                "Wybierz pakiet z zakładki \"Pakiety\" — liczba zabiegów zostanie pobrana z pakietu.",
+              )}
             </p>
           </div>
         )}

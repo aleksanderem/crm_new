@@ -2640,6 +2640,7 @@ export interface Database {
           created_at: number;
           updated_at: number;
           tax_exempt: boolean | null;
+          package_id: string | null;
         };
         Insert: {
           id?: string;
@@ -2672,6 +2673,7 @@ export interface Database {
           created_at: number;
           updated_at: number;
           tax_exempt?: boolean | null;
+          package_id?: string | null;
         };
         Update: {
           id?: string;
@@ -2704,6 +2706,7 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
           tax_exempt?: boolean | null;
+          package_id?: string | null;
         };
       };
       gabinet_treatment_variants: {

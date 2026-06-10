@@ -9,6 +9,8 @@ import { useSupabaseCompany } from "@/hooks/use-supabase-companies";
 import { useSupabaseNotesByEntity } from "@/hooks/use-supabase-notes";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
 import { useSupabaseCustomFieldValues, useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import {
   useSupabaseRelationshipsByEntity,
   type MappedRelationship,
@@ -112,6 +114,18 @@ function CompanyDetail() {
   const { data: activityCustomFieldDefs } = useSupabaseCustomFieldDefinitions(
     organizationId,
     "activity",
+  );
+
+  // Contact tag/category/custom-field defs for the create-contact drawer
+  // (kept in sync with the contacts list create-form props).
+  const { data: contactCustomFieldDefs } = useSupabaseCustomFieldDefinitions(
+    organizationId,
+    "contact",
+  );
+  const { tags: orgTags } = useTagDefinitions(organizationId);
+  const { categories: contactCategories } = useCategoryDefinitions(
+    organizationId,
+    "contact",
   );
 
   // Company entity custom fields
@@ -448,18 +462,25 @@ function CompanyDetail() {
       email?: string | null;
       phone?: string | null;
       title?: string | null;
+      source?: string | null;
+      tags?: string[];
+      tagIds?: Id<"tagDefinitions">[];
+      categoryId?: Id<"categoryDefinitions"> | null;
+      notes?: string | null;
     },
-    _customFields: Record<string, unknown>
+    customFieldRecord: Record<string, unknown>
   ) => {
     setIsSubmitting(true);
     try {
+      const customFields = contactCustomFieldDefs && Object.keys(customFieldRecord).length > 0
+        ? contactCustomFieldDefs
+            .filter((d) => customFieldRecord[d.fieldKey] !== undefined && customFieldRecord[d.fieldKey] !== "")
+            .map((d) => ({ fieldDefinitionId: d._id, value: customFieldRecord[d.fieldKey] }))
+        : undefined;
       const contactId = await createContact({
         organizationId,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-        title: formData.title,
+        ...formData,
+        customFields: customFields && customFields.length > 0 ? customFields : undefined,
       });
       await createRelationship({
         organizationId,
@@ -1153,6 +1174,11 @@ function CompanyDetail() {
           onSubmit={handleCreateContact}
           onCancel={() => setCreateContactDrawerOpen(false)}
           isSubmitting={isSubmitting}
+          showSourceAndTags
+          customFieldDefinitions={contactCustomFieldDefs as any}
+          tagDefinitions={orgTags}
+          categoryDefinitions={contactCategories}
+          organizationId={organizationId}
         />
       </SidePanel>
 

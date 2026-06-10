@@ -6,6 +6,7 @@ import { useAction } from "convex/react";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
 import { api } from "@cvx/_generated/api";
+import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetPatient } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
@@ -22,6 +23,8 @@ import {
   useSupabaseGabinetTreatmentPackagesList,
 } from "@/hooks/use-supabase-gabinet-packages";
 import { useSupabasePaymentsByPatient } from "@/hooks/use-supabase-payments";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
@@ -102,6 +105,14 @@ function PatientDetail() {
 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Tag and category definitions for the edit drawer PatientForm
+  // (kept in sync with the patients list create-form props).
+  const { tags: orgTags } = useTagDefinitions(organizationId);
+  const { categories: patientCategories } = useCategoryDefinitions(
+    organizationId,
+    "gabinetPatient",
+  );
 
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [paymentEditAmount, setPaymentEditAmount] = useState("");
@@ -403,6 +414,8 @@ function PatientDetail() {
     emergencyContactName?: string | null;
     emergencyContactPhone?: string | null;
     referralSource?: string | null;
+    tagIds?: Id<"tagDefinitions">[];
+    categoryId?: Id<"categoryDefinitions">;
   }) => {
     setIsSubmitting(true);
     try {
@@ -1467,11 +1480,15 @@ function PatientDetail() {
               emergencyContactName: patient.emergencyContactName ?? undefined,
               emergencyContactPhone: patient.emergencyContactPhone ?? undefined,
               referralSource: patient.referralSource ?? undefined,
+              tagIds: patient.tagIds as Id<"tagDefinitions">[] | undefined,
+              categoryId: patient.categoryId as Id<"categoryDefinitions"> | undefined,
             }}
             onSubmit={handleEditSubmit}
             onCancel={() => setEditDrawerOpen(false)}
             isSubmitting={isSubmitting}
             organizationId={organizationId}
+            tagDefinitions={orgTags}
+            categoryDefinitions={patientCategories}
           />
         </SidePanel>
       )}

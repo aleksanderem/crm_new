@@ -8,6 +8,7 @@ import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { useSupabaseSafe } from "@/components/supabase-provider";
 import { supabaseGlobalSearch } from "@/hooks/use-supabase-search";
 import { useSupabaseScheduledActivityById } from "@/hooks/use-supabase-scheduled-activities";
+import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppFooter } from "@/components/layout/app-footer";
 import { RouteErrorBoundary } from "@/components/layout/route-error-boundary";
@@ -234,9 +235,11 @@ function DashboardLayout() {
 
   const firstOrg = orgs?.[0];
 
-  // Tag & category definitions for quick-create appointment form
+  // Tag & category definitions for quick-create forms.
+  // Tag defs are org-scoped (not entity-typed) so a single fetch covers all forms.
+  // Category defs are entity-typed, so one fetch per entity type used in quick-create.
   const listTagDefinitionsAction = useAction(api.tagDefinitions.list);
-  const { data: appointmentTags } = useQuery({
+  const { data: orgTags } = useQuery({
     queryKey: ["tagDefinitions.list", firstOrg?._id ?? null],
     queryFn: () => listTagDefinitionsAction({
       organizationId: firstOrg?._id as Id<"organizations">,
@@ -252,6 +255,27 @@ function DashboardLayout() {
     }),
     enabled: !!firstOrg,
   }) as { data: any[] | undefined };
+  const { data: contactCategories } = useQuery({
+    queryKey: ["categoryDefinitions.list", firstOrg?._id ?? null, "contact"],
+    queryFn: () => listCategoryDefinitionsAction({
+      organizationId: firstOrg?._id as Id<"organizations">,
+      entityType: "contact" as const,
+    }),
+    enabled: !!firstOrg,
+  }) as { data: any[] | undefined };
+  const { data: patientCategories } = useQuery({
+    queryKey: ["categoryDefinitions.list", firstOrg?._id ?? null, "gabinetPatient"],
+    queryFn: () => listCategoryDefinitionsAction({
+      organizationId: firstOrg?._id as Id<"organizations">,
+      entityType: "gabinetPatient" as const,
+    }),
+    enabled: !!firstOrg,
+  }) as { data: any[] | undefined };
+  const { data: contactCustomFieldDefs } = useSupabaseCustomFieldDefinitions(
+    (firstOrg?._id ?? "") as string,
+    "contact",
+    { enabled: !!firstOrg },
+  );
 
   // Global activity detail drawer data — Supabase-primary
   const { data: activityDetailData } = useSupabaseScheduledActivityById(
@@ -382,10 +406,19 @@ function DashboardLayout() {
         case "contact":
           return (
             <ContactForm
-              onSubmit={async (data) => {
+              onSubmit={async (data, customFieldRecord) => {
                 setIsCreating(true);
                 try {
-                  await createContact({ organizationId: orgId, ...data });
+                  const customFields = contactCustomFieldDefs && Object.keys(customFieldRecord).length > 0
+                    ? contactCustomFieldDefs
+                        .filter((d) => customFieldRecord[d.fieldKey] !== undefined && customFieldRecord[d.fieldKey] !== "")
+                        .map((d) => ({ fieldDefinitionId: d._id, value: customFieldRecord[d.fieldKey] }))
+                    : undefined;
+                  await createContact({
+                    organizationId: orgId,
+                    ...data,
+                    customFields: customFields && customFields.length > 0 ? customFields : undefined,
+                  });
                   void queryClient.invalidateQueries({ queryKey: supabaseKeys.contacts.list(orgId) });
                   opts.onSuccess();
                 } finally {
@@ -394,6 +427,11 @@ function DashboardLayout() {
               }}
               onCancel={opts.onCancel}
               isSubmitting={isCreating}
+              showSourceAndTags
+              customFieldDefinitions={contactCustomFieldDefs as any}
+              tagDefinitions={orgTags}
+              categoryDefinitions={contactCategories}
+              organizationId={orgId}
             />
           );
         case "company":
@@ -454,6 +492,8 @@ function DashboardLayout() {
               onCancel={opts.onCancel}
               isSubmitting={isCreating}
               organizationId={orgId}
+              tagDefinitions={orgTags}
+              categoryDefinitions={patientCategories}
             />
           );
         case "appointment":
@@ -472,7 +512,7 @@ function DashboardLayout() {
               }}
               onCancel={opts.onCancel}
               isSubmitting={isCreating}
-              tagDefinitions={appointmentTags}
+              tagDefinitions={orgTags}
               categoryDefinitions={appointmentCategories}
             />
           );

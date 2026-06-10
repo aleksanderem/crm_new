@@ -79,6 +79,8 @@ import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
 import { PackageUsageSelector } from "@/components/gabinet/package-usage-selector";
 import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
+import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { formatPhoneNumber } from "@/lib/phone";
 
 // ---------------------------------------------------------------------------
@@ -236,6 +238,14 @@ export function AppointmentDialog({
     queryFn: () => listLocationsAction({ organizationId }),
     enabled: !!organizationId,
   });
+
+  // Patient tag/category defs for the inline create-patient drawer
+  // (kept in sync with the patients list create-form props).
+  const { tags: orgTags } = useTagDefinitions(organizationId);
+  const { categories: patientCategories } = useCategoryDefinitions(
+    organizationId,
+    "gabinetPatient",
+  );
 
   // -------------------------------------------------------------------------
   // State
@@ -1896,6 +1906,8 @@ export function AppointmentDialog({
         onCancel={() => setAddPatientOpen(false)}
         isSubmitting={creatingPatient}
         organizationId={organizationId}
+        tagDefinitions={orgTags}
+        categoryDefinitions={patientCategories}
       />
     </SidePanel>
     </>

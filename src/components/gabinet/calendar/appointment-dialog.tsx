@@ -72,13 +72,20 @@ import {
   MapPin,
   Building2,
 } from "@/lib/ez-icons";
-import { AlertTriangle, CalendarSearch, GripHorizontal } from "lucide-react";
+import { CalendarSearch, GripHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
 import { PackageUsageSelector } from "@/components/gabinet/package-usage-selector";
-import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
+import {
+  EquipmentWarning,
+  LeaveWarning,
+} from "@/components/gabinet/appointment-shared/warnings";
+import {
+  useEmployeeLeaveOnDate,
+  useMissingEquipment,
+} from "@/components/gabinet/appointment-shared/use-appointment-warnings";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { formatPhoneNumber } from "@/lib/phone";
@@ -577,44 +584,19 @@ export function AppointmentDialog({
   });
   const activeRooms = locationWithRooms?.rooms?.filter((r) => r.isActive) ?? [];
 
-  // Equipment at selected location — for advisory warnings
-  const listEquipmentAction = useAction(api.gabinet.equipment.listEquipment);
-  const { data: equipmentAtLocation } = useQuery({
-    queryKey: ["gabinet.equipment.listEquipment", organizationId, locationId],
-    queryFn: () => listEquipmentAction({
-      organizationId,
-      locationId,
-    }),
-    enabled: !!organizationId && !!locationId,
-  });
-
   const activeLocations = locations?.filter((l) => l.isActive) ?? [];
 
-  // Approved leaves for the selected employee — flag overlaps with the chosen
-  // date so the user sees an explicit warning. The available-slots backend
-  // already filters leave time but does not tell the user why. Issue #652.
-  const { data: employeeLeaves } = useSupabaseGabinetLeavesList(
+  const employeeLeaveOnSelectedDate = useEmployeeLeaveOnDate({
     organizationId,
-    { userId: employeeId || undefined, status: "approved", enabled: !!employeeId },
-  );
+    employeeId,
+    dateStr,
+  });
 
-  const employeeLeaveOnSelectedDate = useMemo(() => {
-    if (!dateStr || !employeeLeaves || employeeLeaves.length === 0) return null;
-    return (
-      employeeLeaves.find(
-        (l) => l.startDate <= dateStr && l.endDate >= dateStr,
-      ) ?? null
-    );
-  }, [employeeLeaves, dateStr]);
-
-  // Equipment check — block submit when the selected location is missing
-  // required equipment for the chosen treatment (issue #1504).
-  const missingEquipmentIds = useMemo(() => {
-    if (!locationId || !selectedTreatment?.requiredEquipmentIds?.length) return [];
-    const atLocationIds = new Set(equipmentAtLocation?.map((e: { _id: string }) => e._id) ?? []);
-    return selectedTreatment.requiredEquipmentIds.filter((id: string) => !atLocationIds.has(id));
-  }, [locationId, selectedTreatment, equipmentAtLocation]);
-  const equipmentBlocking = missingEquipmentIds.length > 0;
+  const { blocking: equipmentBlocking } = useMissingEquipment({
+    organizationId,
+    locationId,
+    treatment: selectedTreatment,
+  });
 
   // -------------------------------------------------------------------------
   // Auto-select employee when only one qualified
@@ -1382,15 +1364,7 @@ export function AppointmentDialog({
                     </div>
 
                     {/* Equipment error — blocks submission (issue #1504) */}
-                    {equipmentBlocking && (
-                      <div
-                        role="alert"
-                        className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
-                      >
-                        <AlertTriangle className="size-3.5 shrink-0" />
-                        {t("gabinet.appointments.equipmentWarning")}
-                      </div>
-                    )}
+                    {equipmentBlocking && <EquipmentWarning size="compact" />}
                   </>
                 )}
 
@@ -1703,26 +1677,11 @@ export function AppointmentDialog({
                 </div>
 
                 {employeeLeaveOnSelectedDate && (
-                  <div
-                    role="alert"
-                    className="mx-3 mb-2 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
-                  >
-                    <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-                    <span>
-                      {employeeLeaveOnSelectedDate.startTime &&
-                      employeeLeaveOnSelectedDate.endTime
-                        ? t("gabinet.appointments.warnings.leavePartial", {
-                            start: employeeLeaveOnSelectedDate.startTime,
-                            end: employeeLeaveOnSelectedDate.endTime,
-                            defaultValue:
-                              "Pracownik jest na urlopie w tym dniu w godzinach {{start}}–{{end}}.",
-                          })
-                        : t("gabinet.appointments.warnings.leave", {
-                            defaultValue:
-                              "Pracownik jest na urlopie w tym terminie",
-                          })}
-                    </span>
-                  </div>
+                  <LeaveWarning
+                    leave={employeeLeaveOnSelectedDate}
+                    size="compact"
+                    className="mx-3 mb-2"
+                  />
                 )}
 
                 <Separator />

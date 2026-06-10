@@ -607,12 +607,14 @@ export function AppointmentDialog({
     );
   }, [employeeLeaves, dateStr]);
 
-  // Equipment warning — advisory only
+  // Equipment check — block submit when the selected location is missing
+  // required equipment for the chosen treatment (issue #1504).
   const missingEquipmentIds = useMemo(() => {
     if (!locationId || !selectedTreatment?.requiredEquipmentIds?.length) return [];
     const atLocationIds = new Set(equipmentAtLocation?.map((e: { _id: string }) => e._id) ?? []);
     return selectedTreatment.requiredEquipmentIds.filter((id: string) => !atLocationIds.has(id));
   }, [locationId, selectedTreatment, equipmentAtLocation]);
+  const equipmentBlocking = missingEquipmentIds.length > 0;
 
   // -------------------------------------------------------------------------
   // Auto-select employee when only one qualified
@@ -843,6 +845,7 @@ export function AppointmentDialog({
     !!employeeId &&
     !!dateStr &&
     !!selectedSlot &&
+    !equipmentBlocking &&
     !submitting;
 
   const performCreate = useCallback(async () => {
@@ -1378,9 +1381,12 @@ export function AppointmentDialog({
                       )}
                     </div>
 
-                    {/* Equipment warnings — advisory only */}
-                    {missingEquipmentIds.length > 0 && (
-                      <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+                    {/* Equipment error — blocks submission (issue #1504) */}
+                    {equipmentBlocking && (
+                      <div
+                        role="alert"
+                        className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+                      >
                         <AlertTriangle className="size-3.5 shrink-0" />
                         {t("gabinet.appointments.equipmentWarning")}
                       </div>

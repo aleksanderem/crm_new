@@ -2792,7 +2792,7 @@
       "room": "Room",
       "autoLocation": "Auto (from schedule)",
       "roomConflict": "Room is occupied at this time",
-      "equipmentWarning": "Required equipment not at this location",
+      "equipmentWarning": "Required equipment not at this location — cannot save appointment",
       "warnings": {
         "title": "Warning",
         "qualification": "Employee is not qualified for this treatment",

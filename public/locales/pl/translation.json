@@ -2821,7 +2821,7 @@
       "room": "Gabinet",
       "autoLocation": "Auto (z grafiku)",
       "roomConflict": "Gabinet zajęty w tym terminie",
-      "equipmentWarning": "Brak wymaganego sprzętu w tej lokalizacji",
+      "equipmentWarning": "Brak wymaganego sprzętu w tej lokalizacji — nie można zapisać wizyty",
       "warnings": {
         "title": "Ostrzeżenie",
         "qualification": "Pracownik nie ma kwalifikacji do tego zabiegu",

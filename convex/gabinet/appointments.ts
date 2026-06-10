@@ -79,6 +79,32 @@ function getSmsTargetStatus(intent: "confirm" | "cancel") {
   return intent === "confirm" ? "confirmed" : "cancelled";
 }
 
+// Issue #1504: reject appointment writes whose treatment requires equipment
+// the resolved location does not have. No-op when location is unset (no
+// location to validate against) or when the treatment lists no equipment.
+async function assertRequiredEquipmentAtLocation(
+  db: ReturnType<typeof createSupabaseDb>,
+  args: {
+    organizationId: string;
+    treatment: GabinetTreatmentRow | null;
+    locationId: string | null;
+  },
+) {
+  const required = args.treatment?.requiredEquipmentIds as string[] | null | undefined;
+  if (!args.locationId || !required?.length) return;
+
+  const atLocation = (await db
+    .query("gabinetEquipment")
+    .eq("organizationId", args.organizationId)
+    .eq("currentLocationId", args.locationId)
+    .collect()) as Array<{ _id: string }>;
+  const present = new Set(atLocation.map((e) => String(e._id)));
+  const missing = required.filter((id) => !present.has(String(id)));
+  if (missing.length > 0) {
+    throw new Error("Required equipment is not available at this location");
+  }
+}
+
 async function emitAutomationEvent(
   ctx: MutationCtx,
   args: {
@@ -1116,6 +1142,17 @@ export const create = action({
       });
     }
 
+    // --- Equipment check (issue #1504) ---
+    // Block creation when the resolved location is missing any equipment the
+    // treatment requires. Matches the client-side block in appointment-form
+    // and appointment-dialog so the rule is enforced even when callers bypass
+    // the UI.
+    await assertRequiredEquipmentAtLocation(db, {
+      organizationId: String(args.organizationId),
+      treatment,
+      locationId: resolvedLocationId,
+    });
+
     const patientName = patient
       ? `${patient.firstName}${patient.lastName ? " " + (patient.lastName as string) : ""}`
       : "Patient";
@@ -1387,6 +1424,31 @@ export const update = action({
       if (conflict.hasConflict) {
         throw new Error(conflict.reason ?? "Time slot conflict");
       }
+    }
+
+    // --- Equipment check on location/treatment change (issue #1504) ---
+    // Re-validate only when the caller is touching the location or treatment;
+    // status-only or notes-only edits on existing appointments shouldn't trip
+    // a check whose inputs haven't changed.
+    if (args.locationId !== undefined || args.treatmentId !== undefined) {
+      const effectiveTreatmentId =
+        args.treatmentId !== undefined
+          ? args.treatmentId
+          : (appt.treatmentId as string | null);
+      const effectiveLocationId =
+        args.locationId !== undefined
+          ? args.locationId
+          : (appt.locationId as string | null);
+      const effectiveTreatment = effectiveTreatmentId
+        ? ((await db.get("gabinetTreatments", String(effectiveTreatmentId))) as
+            | GabinetTreatmentRow
+            | null)
+        : null;
+      await assertRequiredEquipmentAtLocation(db, {
+        organizationId: String(args.organizationId),
+        treatment: effectiveTreatment,
+        locationId: effectiveLocationId,
+      });
     }
 
     const {

@@ -3,7 +3,7 @@
 import * as React from "react"
 import { type DialogProps } from "@radix-ui/react-dialog"
 import { Command as CommandPrimitive } from "cmdk"
-import { Search } from "lucide-react"
+import { Search, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
@@ -39,10 +39,23 @@ const CommandDialog = ({ children, ...props }: DialogProps) => {
   )
 }
 
+type CommandInputProps = React.ComponentPropsWithoutRef<
+  typeof CommandPrimitive.Input
+> & {
+  /**
+   * When provided, renders a close (X) button next to the input. Lets mobile
+   * users dismiss a Popover+Command picker without selecting an item, since
+   * tapping "outside" is hard once the on-screen keyboard fills the screen
+   * (issue #1472).
+   */
+  onClose?: () => void
+  closeLabel?: string
+}
+
 const CommandInput = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Input>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
->(({ className, ...props }, ref) => (
+  CommandInputProps
+>(({ className, onClose, closeLabel = "Close", ...props }, ref) => (
   <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
     <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
     <CommandPrimitive.Input
@@ -53,6 +66,16 @@ const CommandInput = React.forwardRef<
       )}
       {...props}
     />
+    {onClose && (
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label={closeLabel}
+        className="ml-2 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    )}
   </div>
 ))
 

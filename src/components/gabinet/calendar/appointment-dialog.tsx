@@ -1093,6 +1093,8 @@ export function AppointmentDialog({
                           )}
                           value={patientSearch}
                           onValueChange={setPatientSearch}
+                          onClose={() => setPatientOpen(false)}
+                          closeLabel={t("common.close")}
                         />
                         <CommandList className="flex-1 min-h-0">
                           <CommandEmpty>
@@ -1181,6 +1183,8 @@ export function AppointmentDialog({
                           )}
                           value={treatmentSearch}
                           onValueChange={setTreatmentSearch}
+                          onClose={() => setTreatmentOpen(false)}
+                          closeLabel={t("common.close")}
                         />
                         <CommandList className="flex-1 min-h-0">
                           <CommandEmpty>

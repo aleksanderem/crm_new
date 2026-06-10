@@ -333,7 +333,14 @@ export function AdvancedFilter({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto min-w-[500px] p-4" align="start">
+        <PopoverContent
+          className="w-auto sm:min-w-[500px] p-4 overflow-y-auto"
+          align="start"
+          style={{
+            maxHeight: "var(--radix-popover-content-available-height)",
+            maxWidth: "var(--radix-popover-content-available-width)",
+          }}
+        >
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium">Advanced Filters</h4>

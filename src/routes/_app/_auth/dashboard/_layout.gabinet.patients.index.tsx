@@ -598,7 +598,6 @@ function PatientsIndex() {
         ]}
         onBulkAction={handleBulkAction}
         rowActions={rowActions}
-        onRowAction={(id) => navigate({ to: '/dashboard/gabinet/patients/$patientId', params: { patientId: id } })}
         emptyTitle={t("gabinet.patients.emptyTitle")}
         emptyDescription={t("gabinet.patients.emptyDescription")}
       />

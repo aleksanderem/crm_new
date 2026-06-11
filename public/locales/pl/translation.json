@@ -2862,6 +2862,7 @@
       "equipmentWarning": "Brak wymaganego sprzętu w tej lokalizacji — nie można zapisać wizyty",
       "warnings": {
         "title": "Ostrzeżenie",
+        "past": "Termin wizyty jest w przeszłości",
         "qualification": "Pracownik nie ma kwalifikacji do tego zabiegu",
         "leave": "Pracownik jest na urlopie w tym terminie",
         "leavePartial": "Pracownik jest na urlopie w tym dniu w godzinach {{start}}–{{end}}.",

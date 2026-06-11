@@ -9,7 +9,9 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Button as UntitledButton } from "@untitled/base/buttons/button";
 import { ChevronDown, ChevronUp } from "@/lib/ez-icons";
+import { ChevronDown as UiChevronDown, ChevronUp as UiChevronUp } from "@untitledui/icons";
 import type { TimeRange } from "./types";
 
 export interface MiniChartData {
@@ -154,14 +156,10 @@ export function MiniChartsRow({ leftChart, rightChart, storageKey }: MiniChartsR
   return <CollapsibleCharts storageKey={storageKey}>{charts}</CollapsibleCharts>;
 }
 
-function CollapsibleCharts({
-  storageKey,
-  children,
-}: {
-  storageKey: string;
-  children: React.ReactNode;
-}) {
-  const { t } = useTranslation();
+export function useChartsToggleState(storageKey: string): {
+  open: boolean;
+  toggle: () => void;
+} {
   const lsKey = `mini-charts:${storageKey}`;
   const [open, setOpen] = useState<boolean>(() => {
     try {
@@ -181,6 +179,42 @@ function CollapsibleCharts({
       return next;
     });
   }, [lsKey]);
+
+  return { open, toggle };
+}
+
+export function ChartsToggleButton({
+  open,
+  onToggle,
+}: {
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <UntitledButton
+      size="sm"
+      color="secondary"
+      iconLeading={open ? UiChevronUp : UiChevronDown}
+      onClick={onToggle}
+      aria-expanded={open}
+    >
+      {open
+        ? t("common.hideStatistics", { defaultValue: "Ukryj statystyki" })
+        : t("common.showStatistics", { defaultValue: "Pokaż statystyki" })}
+    </UntitledButton>
+  );
+}
+
+function CollapsibleCharts({
+  storageKey,
+  children,
+}: {
+  storageKey: string;
+  children: React.ReactNode;
+}) {
+  const { t } = useTranslation();
+  const { open, toggle } = useChartsToggleState(storageKey);
 
   return (
     <div className="space-y-3">

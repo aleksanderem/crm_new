@@ -11,7 +11,7 @@ import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
-import { MiniChartsRow } from "@/components/crm/mini-charts";
+import { MiniChartsRow, useChartsToggleState, ChartsToggleButton } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
 import { MergePatientsDialog } from "@/components/gabinet/merge-patients-dialog";
@@ -80,6 +80,7 @@ function PatientsIndex() {
   const [mergePreselectedTargetId, setMergePreselectedTargetId] = useState<string | null>(null);
   const [leftTimeRange, setLeftTimeRange] = useState<TimeRange>("last30days");
   const [rightTimeRange, setRightTimeRange] = useState<TimeRange>("all");
+  const { open: chartsOpen, toggle: toggleCharts } = useChartsToggleState("gabinet-patients");
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
@@ -557,25 +558,27 @@ function PatientsIndex() {
         onTagsManage={() => setTagsSlideoutOpen(true)}
         onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
         onFiltersChange={setActiveFilters}
+        leftExtras={<ChartsToggleButton open={chartsOpen} onToggle={toggleCharts} />}
       />
 
-      <MiniChartsRow
-        storageKey="gabinet-patients"
-        leftChart={{
-          title: t("gabinet.patients.byDay"),
-          data: patientsByDay,
-          chartType: "line",
-          timeRange: leftTimeRange,
-          onTimeRangeChange: setLeftTimeRange,
-        }}
-        rightChart={{
-          title: t("gabinet.patients.bySource"),
-          data: patientsBySource,
-          chartType: "bar",
-          timeRange: rightTimeRange,
-          onTimeRangeChange: setRightTimeRange,
-        }}
-      />
+      {chartsOpen && (
+        <MiniChartsRow
+          leftChart={{
+            title: t("gabinet.patients.byDay"),
+            data: patientsByDay,
+            chartType: "line",
+            timeRange: leftTimeRange,
+            onTimeRangeChange: setLeftTimeRange,
+          }}
+          rightChart={{
+            title: t("gabinet.patients.bySource"),
+            data: patientsBySource,
+            chartType: "bar",
+            timeRange: rightTimeRange,
+            onTimeRangeChange: setRightTimeRange,
+          }}
+        />
+      )}
 
       <CrmDataTable
         columns={allColumns}

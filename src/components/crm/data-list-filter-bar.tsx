@@ -110,6 +110,9 @@ export interface DataListFilterBarProps {
   // Tags & Categories management
   onTagsManage?: () => void;
   onCategoriesManage?: () => void;
+
+  // Extra elements rendered on the left side next to the view selector
+  leftExtras?: React.ReactNode;
 }
 
 let filterIdCounter = 0;
@@ -157,6 +160,7 @@ export function DataListFilterBar({
   dropdownActions = [],
   onTagsManage: _onTagsManage,
   onCategoriesManage: _onCategoriesManage,
+  leftExtras,
 }: DataListFilterBarProps) {
   const { t } = useTranslation();
   const [internalFilterSlideoutOpen, setInternalFilterSlideoutOpen] =
@@ -411,6 +415,7 @@ export function DataListFilterBar({
             })}
           </button>
         )}
+        {leftExtras}
       </div>
 
       {/* Right: search + filter trigger (desktop) */}

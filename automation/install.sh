@@ -28,7 +28,7 @@ fi
 install -d -o "$BOT_USER" -g "$BOT_USER" "$WORKER_DIR" "$LOGS_DIR" "$WT_BASE"
 
 # --- copy worker files ---
-cp "$DIR/worker/"{webhook,worker,extract-followups,health-queue,tune}.mjs "$WORKER_DIR/"
+cp "$DIR/worker/"{webhook,worker,extract-followups,health-queue,tune,ground-pr-body}.mjs "$WORKER_DIR/"
 cp "$DIR/worker/"{run-claude,auto-retry}.sh "$WORKER_DIR/"
 cp "$DIR/worker/"{package.json,package-lock.json,tuning.json} "$WORKER_DIR/"
 chmod +x "$WORKER_DIR"/*.sh

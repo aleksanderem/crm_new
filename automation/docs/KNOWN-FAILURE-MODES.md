@@ -28,6 +28,13 @@ verification step it'll synthesize plausible-looking references.
 `run-claude.sh` flips the label, but doesn't verify cited symbols.
 Add a post-hoc grep step before posting — currently a TODO.
 
+For PR bodies specifically, `worker/ground-pr-body.mjs` (wired in by #1586)
+scans Claude's summary for `path/to/file.ext:NN` references and cross-checks
+them against `git diff --name-only origin/main..HEAD`. If every citation is
+ungrounded, the worker discards the summary and falls back to a commit-log /
+diff-stat body. Mixed cases keep the summary but append a `:warning:` footer
+naming the ungrounded refs.
+
 ## 3. Bot replies to its own comments
 
 **Symptom:** Infinite loop of `@claude` replies.

@@ -4,6 +4,11 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
+import type { FunctionArgs } from "convex/server";
+
+type MergeFieldOverrides = NonNullable<
+  FunctionArgs<typeof api.gabinet.patients.merge>["fieldOverrides"]
+>;
 import {
   Dialog,
   DialogContent,
@@ -41,6 +46,81 @@ function normalizePhone(value: string | null | undefined): string {
 
 function fullName(p: MappedGabinetPatient): string {
   return `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim();
+}
+
+// Whitelisted fields the user can pick a winning value for. Scalar field keys
+// match the patient row directly; `address.*` keys read from the JSON address
+// sub-object and are recomposed into a single `address` patch on submit.
+const SCALAR_FIELDS = [
+  "firstName",
+  "lastName",
+  "email",
+  "phone",
+  "pesel",
+  "dateOfBirth",
+  "gender",
+  "allergies",
+  "bloodType",
+  "emergencyContactName",
+  "emergencyContactPhone",
+  "medicalNotes",
+  "referralSource",
+] as const;
+type ScalarFieldKey = (typeof SCALAR_FIELDS)[number];
+const ADDRESS_SUBFIELDS = ["street", "postalCode", "city"] as const;
+type AddressSubKey = (typeof ADDRESS_SUBFIELDS)[number];
+type MergeFieldKey = ScalarFieldKey | `address.${AddressSubKey}`;
+
+// Required NOT NULL columns — we never patch these with null even if the user
+// somehow lands on an empty source value.
+const REQUIRED_FIELDS = new Set<MergeFieldKey>(["firstName", "lastName", "email"]);
+
+// Display order matches the Versum reference UI.
+const FIELD_ORDER: ReadonlyArray<{ key: MergeFieldKey; labelKey: string }> = [
+  { key: "email", labelKey: "gabinet.patients.merge.field.email" },
+  { key: "firstName", labelKey: "gabinet.patients.merge.field.firstName" },
+  { key: "lastName", labelKey: "gabinet.patients.merge.field.lastName" },
+  { key: "phone", labelKey: "gabinet.patients.merge.field.phone" },
+  { key: "gender", labelKey: "gabinet.patients.merge.field.gender" },
+  { key: "pesel", labelKey: "gabinet.patients.merge.field.pesel" },
+  { key: "dateOfBirth", labelKey: "gabinet.patients.merge.field.dateOfBirth" },
+  { key: "address.street", labelKey: "gabinet.patients.merge.field.addressStreet" },
+  { key: "address.postalCode", labelKey: "gabinet.patients.merge.field.addressPostalCode" },
+  { key: "address.city", labelKey: "gabinet.patients.merge.field.addressCity" },
+  { key: "allergies", labelKey: "gabinet.patients.merge.field.allergies" },
+  { key: "bloodType", labelKey: "gabinet.patients.merge.field.bloodType" },
+  { key: "emergencyContactName", labelKey: "gabinet.patients.merge.field.emergencyContactName" },
+  { key: "emergencyContactPhone", labelKey: "gabinet.patients.merge.field.emergencyContactPhone" },
+  { key: "medicalNotes", labelKey: "gabinet.patients.merge.field.medicalNotes" },
+  { key: "referralSource", labelKey: "gabinet.patients.merge.field.referralSource" },
+];
+
+function readAddressSub(p: MappedGabinetPatient, sub: AddressSubKey): string | null {
+  const addr = p.address as { street?: string; postalCode?: string; city?: string } | null | undefined;
+  if (!addr) return null;
+  const v = addr[sub];
+  return typeof v === "string" && v.trim() !== "" ? v : null;
+}
+
+function readFieldRaw(p: MappedGabinetPatient, key: MergeFieldKey): string | null {
+  if (key.startsWith("address.")) {
+    return readAddressSub(p, key.slice("address.".length) as AddressSubKey);
+  }
+  const v = p[key as ScalarFieldKey];
+  if (v == null) return null;
+  const s = String(v);
+  return s.trim() === "" ? null : s;
+}
+
+function displayValue(
+  p: MappedGabinetPatient,
+  key: MergeFieldKey,
+  emptyPlaceholder: string,
+): string {
+  const raw = readFieldRaw(p, key);
+  if (raw === null) return emptyPlaceholder;
+  if (key === "phone" || key === "emergencyContactPhone") return formatPhoneNumber(raw);
+  return raw;
 }
 
 export function MergePatientsDialog({
@@ -124,21 +204,88 @@ export function MergePatientsDialog({
     [candidates, targetId],
   );
 
+  // Per-field winner picked by the user. Only fields where target/source differ
+  // are stored here; the default for those is "target" (i.e. keep the row that
+  // survives unchanged).
+  const [fieldChoices, setFieldChoices] = useState<Record<string, "target" | "source">>({});
+
+  const comparisonRows = useMemo(() => {
+    if (!sourcePatient || !target) return [] as Array<{
+      key: MergeFieldKey;
+      labelKey: string;
+      targetValue: string | null;
+      sourceValue: string | null;
+      differs: boolean;
+    }>;
+    return FIELD_ORDER.map(({ key, labelKey }) => {
+      const targetValue = readFieldRaw(target, key);
+      const sourceValue = readFieldRaw(sourcePatient, key);
+      const differs = targetValue !== sourceValue;
+      return { key, labelKey, targetValue, sourceValue, differs };
+    });
+  }, [sourcePatient, target]);
+
+  // Reset choices to "target" whenever the comparison changes (target selected,
+  // dialog reopened, etc.). Auto-pick source for rows where target is empty so
+  // the merge picks up missing data by default — matches Versum's behaviour.
+  useEffect(() => {
+    const next: Record<string, "target" | "source"> = {};
+    for (const row of comparisonRows) {
+      if (!row.differs) continue;
+      next[row.key] = row.targetValue === null && row.sourceValue !== null ? "source" : "target";
+    }
+    setFieldChoices(next);
+  }, [comparisonRows]);
+
   function handleClose() {
     if (isMerging) return;
     setTargetId(null);
     setSearch("");
+    setFieldChoices({});
     onOpenChange(false);
+  }
+
+  function buildFieldOverrides(): MergeFieldOverrides | undefined {
+    if (!sourcePatient || !target) return undefined;
+    const scalars: Record<string, unknown> = {};
+    let addressTouched = false;
+    const nextAddress: Record<string, string> = {
+      ...((target.address as { street?: string; city?: string; postalCode?: string } | null | undefined) ?? {}),
+    };
+    for (const row of comparisonRows) {
+      if (!row.differs) continue;
+      if (fieldChoices[row.key] !== "source") continue;
+      // Never null-out a required column — fall through to the existing target value.
+      if (REQUIRED_FIELDS.has(row.key) && row.sourceValue === null) continue;
+      if (row.key.startsWith("address.")) {
+        const sub = row.key.slice("address.".length) as AddressSubKey;
+        if (row.sourceValue === null) {
+          delete nextAddress[sub];
+        } else {
+          nextAddress[sub] = row.sourceValue;
+        }
+        addressTouched = true;
+      } else {
+        scalars[row.key] = row.sourceValue;
+      }
+    }
+    if (addressTouched) {
+      const hasAnySub = ADDRESS_SUBFIELDS.some((s) => typeof nextAddress[s] === "string" && nextAddress[s] !== "");
+      scalars.address = hasAnySub ? nextAddress : null;
+    }
+    return Object.keys(scalars).length > 0 ? (scalars as MergeFieldOverrides) : undefined;
   }
 
   async function handleMerge() {
     if (!sourcePatient || !target) return;
     setIsMerging(true);
     try {
+      const fieldOverrides = buildFieldOverrides();
       const result = await mergePatients({
         organizationId: organizationId as Id<"organizations">,
         targetPatientId: target._id,
         sourcePatientId: sourcePatient._id,
+        ...(fieldOverrides ? { fieldOverrides } : {}),
       });
       const moved =
         result.movedAppointments +
@@ -173,7 +320,7 @@ export function MergePatientsDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t("gabinet.patients.merge.title", { defaultValue: "Scal klientów" })}</DialogTitle>
           <DialogDescription>
@@ -251,6 +398,111 @@ export function MergePatientsDialog({
               </ul>
             )}
           </div>
+
+          {target && (
+            <div className="rounded-md border">
+              <div className="border-b p-3">
+                <div className="text-sm font-semibold">
+                  {t("gabinet.patients.merge.fieldsTitle", { defaultValue: "Formularz scalania klientów" })}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t("gabinet.patients.merge.fieldsIntro", {
+                    defaultValue:
+                      "Nie wszystkie dane scalanych klientów są identyczne. Wybierz poniżej, które dane zostaną użyte w wynikowej karcie klienta.",
+                  })}
+                </p>
+              </div>
+              <div className="max-h-72 overflow-y-auto">
+                <table className="w-full table-fixed text-sm">
+                  <thead className="sticky top-0 bg-muted/50 text-xs text-muted-foreground">
+                    <tr>
+                      <th className="w-1/3 p-2 text-left font-medium" />
+                      <th className="w-1/3 truncate p-2 text-left font-medium">
+                        {target.firstName || fullName(target) || "—"}
+                      </th>
+                      <th className="w-1/3 truncate p-2 text-left font-medium">
+                        {sourcePatient.firstName || fullName(sourcePatient) || "—"}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {comparisonRows.map((row) => {
+                      const emptyPlaceholder = t("gabinet.patients.merge.emptyValue", { defaultValue: "—" });
+                      const targetText = displayValue(target, row.key, emptyPlaceholder);
+                      const sourceText = displayValue(sourcePatient, row.key, emptyPlaceholder);
+                      const choice = fieldChoices[row.key] ?? "target";
+                      const groupName = `merge-${row.key}`;
+                      const targetRadioId = `${groupName}-target`;
+                      const sourceRadioId = `${groupName}-source`;
+                      return (
+                        <tr key={row.key} className="align-top">
+                          <th
+                            scope="row"
+                            className="bg-muted/30 p-2 text-left text-xs font-medium text-muted-foreground"
+                          >
+                            {t(row.labelKey)}
+                          </th>
+                          {row.differs ? (
+                            <>
+                              <td className="p-2">
+                                <label
+                                  htmlFor={targetRadioId}
+                                  className="flex cursor-pointer items-start gap-2 break-words font-normal"
+                                >
+                                  <input
+                                    id={targetRadioId}
+                                    type="radio"
+                                    name={groupName}
+                                    value="target"
+                                    checked={choice === "target"}
+                                    onChange={() =>
+                                      setFieldChoices((prev) => ({
+                                        ...prev,
+                                        [row.key]: "target",
+                                      }))
+                                    }
+                                    className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-primary"
+                                  />
+                                  <span>{targetText}</span>
+                                </label>
+                              </td>
+                              <td className="p-2">
+                                <label
+                                  htmlFor={sourceRadioId}
+                                  className="flex cursor-pointer items-start gap-2 break-words font-normal"
+                                >
+                                  <input
+                                    id={sourceRadioId}
+                                    type="radio"
+                                    name={groupName}
+                                    value="source"
+                                    checked={choice === "source"}
+                                    onChange={() =>
+                                      setFieldChoices((prev) => ({
+                                        ...prev,
+                                        [row.key]: "source",
+                                      }))
+                                    }
+                                    className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-primary"
+                                  />
+                                  <span>{sourceText}</span>
+                                </label>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="break-words p-2 text-muted-foreground">{targetText}</td>
+                              <td className="break-words p-2 text-muted-foreground">{sourceText}</td>
+                            </>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {target && (
             <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">

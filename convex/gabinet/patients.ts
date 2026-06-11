@@ -534,6 +534,43 @@ export const merge = action({
     organizationId: v.id("organizations"),
     targetPatientId: v.string(),
     sourcePatientId: v.string(),
+    // Per-field overrides to apply to the target patient before deactivating
+    // the source. Only fields where the user picked the source-side value need
+    // to be sent; missing keys mean "keep the target's current value".
+    fieldOverrides: v.optional(
+      v.object({
+        firstName: v.optional(v.string()),
+        lastName: v.optional(v.string()),
+        email: v.optional(v.string()),
+        phone: v.optional(v.union(v.string(), v.null())),
+        pesel: v.optional(v.union(v.string(), v.null())),
+        dateOfBirth: v.optional(v.union(v.string(), v.null())),
+        gender: v.optional(
+          v.union(
+            v.literal("male"),
+            v.literal("female"),
+            v.literal("other"),
+            v.null(),
+          ),
+        ),
+        address: v.optional(
+          v.union(
+            v.object({
+              street: v.optional(v.string()),
+              city: v.optional(v.string()),
+              postalCode: v.optional(v.string()),
+            }),
+            v.null(),
+          ),
+        ),
+        allergies: v.optional(v.union(v.string(), v.null())),
+        bloodType: v.optional(v.union(v.string(), v.null())),
+        emergencyContactName: v.optional(v.union(v.string(), v.null())),
+        emergencyContactPhone: v.optional(v.union(v.string(), v.null())),
+        medicalNotes: v.optional(v.union(v.string(), v.null())),
+        referralSource: v.optional(v.union(v.string(), v.null())),
+      }),
+    ),
   },
   handler: async (ctx, args): Promise<{
     movedAppointments: number;
@@ -719,6 +756,15 @@ export const merge = action({
       }
     } else if (targetLoyalty) {
       consolidatedLoyaltyBalance = Number(targetLoyalty.balance ?? 0);
+    }
+
+    // Apply the user's per-field choices to the target before deactivating
+    // the source — the target is the row that survives the merge.
+    if (args.fieldOverrides && Object.keys(args.fieldOverrides).length > 0) {
+      await db.patch("gabinetPatients", args.targetPatientId, {
+        ...args.fieldOverrides,
+        updatedAt: Date.now(),
+      });
     }
 
     // Soft-delete the source patient and annotate why it was deactivated.

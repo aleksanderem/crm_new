@@ -2249,7 +2249,28 @@
         "warning": "All appointments, documents, payments, loyalty points and notes will be transferred. This operation cannot be undone.",
         "confirm": "Merge",
         "success": "Client merged. {{count}} related records were moved.",
-        "error": "Could not merge clients."
+        "error": "Could not merge clients.",
+        "fieldsTitle": "Client merge form",
+        "fieldsIntro": "Some fields differ between the two clients. Pick which value should end up on the resulting client card.",
+        "emptyValue": "—",
+        "field": {
+          "firstName": "First name",
+          "lastName": "Last name",
+          "email": "Email",
+          "phone": "Phone number",
+          "pesel": "PESEL",
+          "dateOfBirth": "Date of birth",
+          "gender": "Gender",
+          "addressStreet": "Address (street, no.)",
+          "addressPostalCode": "Postal code",
+          "addressCity": "City",
+          "allergies": "Allergies",
+          "bloodType": "Blood type",
+          "emergencyContactName": "Emergency contact — name",
+          "emergencyContactPhone": "Emergency contact — phone",
+          "medicalNotes": "Medical notes",
+          "referralSource": "Referral source"
+        }
       }
     },
     "treatments": {

@@ -38,6 +38,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { formatAppointmentError } from "@/lib/format-action-error";
+import { useDraggableDialog } from "@/hooks/use-draggable-dialog";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -289,9 +290,18 @@ export function ChangeEmployeeModal({
 
   const isLoading = isCheckingAvailability || isSearchingSlot;
 
+  const drag = useDraggableDialog(open);
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent
+        ref={drag.contentRef}
+        onPointerDown={drag.onPointerDown}
+        className={cn(
+          "max-w-md",
+          drag.isDragging && "cursor-grabbing select-none",
+        )}
+      >
         <DialogHeader>
           <DialogTitle>
             {t("gabinet.appointments.changeEmployee", "Zmień pracownika")}

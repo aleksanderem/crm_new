@@ -62,17 +62,6 @@ interface TreatmentFormProps {
   children?: React.ReactNode;
 }
 
-const COLOR_OPTIONS = [
-  { value: "#3b82f6", label: "Blue" },
-  { value: "#22c55e", label: "Green" },
-  { value: "#ef4444", label: "Red" },
-  { value: "#f59e0b", label: "Yellow" },
-  { value: "#8b5cf6", label: "Purple" },
-  { value: "#ec4899", label: "Pink" },
-  { value: "#f97316", label: "Orange" },
-  { value: "#6b7280", label: "Gray" },
-];
-
 // VAT-exempt ("zwolniony") is tracked as a separate boolean (taxExempt) on the
 // treatment. The "zw" option is selected when the boolean is true; otherwise
 // the numeric percentage is used.
@@ -105,7 +94,6 @@ export function TreatmentForm({
 }: TreatmentFormProps) {
   const { t } = useTranslation();
   const [name, setName] = useState(initialData?.name ?? "");
-  const [description, setDescription] = useState(initialData?.description ?? "");
   const [duration, setDuration] = useState(String(initialData?.duration ?? ""));
   const [price, setPrice] = useState(String(initialData?.price ?? ""));
   const [currency, setCurrency] = useState(initialData?.currency ?? "PLN");
@@ -116,7 +104,6 @@ export function TreatmentForm({
     initialData?.requiredEquipmentIds ?? []
   );
   const [equipmentOpen, setEquipmentOpen] = useState(false);
-  const [contraindications, setContraindications] = useState(initialData?.contraindications ?? "");
   const [preparationInstructions, setPreparationInstructions] = useState(
     initialData?.preparationInstructions ?? ""
   );
@@ -124,7 +111,6 @@ export function TreatmentForm({
     initialData?.aftercareInstructions ?? ""
   );
   const [requiresApproval, setRequiresApproval] = useState(initialData?.requiresApproval ?? false);
-  const [color, setColor] = useState(initialData?.color ?? "");
   const initialTreatmentCount = initialData?.treatmentCount;
   const initialPackageId = initialData?.packageId ?? null;
   const [isPackage, setIsPackage] = useState(
@@ -209,18 +195,18 @@ export function TreatmentForm({
 
     onSubmit({
       name,
-      description: description || null,
+      description: initialData?.description ?? null,
       duration: parseInt(duration) || 30,
       price: parseFloat(price.replace(",", ".")) || 0,
       currency: currency || undefined,
       taxRate: numericTaxRate,
       taxExempt: isExempt ? true : false,
       requiredEquipmentIds: selectedEquipmentIds.length > 0 ? selectedEquipmentIds : undefined,
-      contraindications: contraindications || null,
+      contraindications: initialData?.contraindications ?? null,
       preparationInstructions: preparationInstructions || null,
       aftercareInstructions: aftercareInstructions || null,
       requiresApproval: requiresApproval || undefined,
-      color: color || null,
+      color: initialData?.color ?? null,
       packageId: isPackage && selectedPackageId ? selectedPackageId : null,
     });
   };
@@ -497,46 +483,9 @@ export function TreatmentForm({
             </p>
           )}
         </div>
-        <div className="space-y-1.5 sm:col-span-2">
-          <Label>{t("common.description")}</Label>
-          <RichTextEditor
-            value={description}
-            onChange={(v) => setDescription(v ?? "")}
-            minHeight="80px"
-          />
-        </div>
-      </div>
-
-      {/* Color picker */}
-      <div className="space-y-2">
-        <Label>{t("gabinet.treatments.color")}</Label>
-        <div className="flex gap-2">
-          {COLOR_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              className={`h-7 w-7 rounded-full border-2 transition-all ${
-                color === opt.value
-                  ? "border-foreground scale-110"
-                  : "border-transparent hover:border-muted-foreground/40"
-              }`}
-              style={{ backgroundColor: opt.value }}
-              onClick={() => setColor(color === opt.value ? "" : opt.value)}
-              title={opt.label}
-            />
-          ))}
-        </div>
       </div>
 
       <div className="space-y-4 border-t pt-4">
-        <div className="space-y-1.5">
-          <Label>{t("gabinet.treatments.contraindications")}</Label>
-          <RichTextEditor
-            value={contraindications}
-            onChange={(v) => setContraindications(v ?? "")}
-            minHeight="80px"
-          />
-        </div>
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.preparationInstructions")}</Label>
           <RichTextEditor

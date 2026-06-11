@@ -191,6 +191,10 @@ export function ChartsToggleButton({
   onToggle: () => void;
 }) {
   const { t } = useTranslation();
+  const fullLabel = open
+    ? t("common.hideStatistics", { defaultValue: "Ukryj statystyki" })
+    : t("common.showStatistics", { defaultValue: "Pokaż statystyki" });
+  const shortLabel = t("common.statistics", { defaultValue: "Statystyki" });
   return (
     <UntitledButton
       size="sm"
@@ -198,10 +202,10 @@ export function ChartsToggleButton({
       iconLeading={open ? UiChevronUp : UiChevronDown}
       onClick={onToggle}
       aria-expanded={open}
+      aria-label={fullLabel}
     >
-      {open
-        ? t("common.hideStatistics", { defaultValue: "Ukryj statystyki" })
-        : t("common.showStatistics", { defaultValue: "Pokaż statystyki" })}
+      <span className="hidden md:inline">{fullLabel}</span>
+      <span className="md:hidden">{shortLabel}</span>
     </UntitledButton>
   );
 }

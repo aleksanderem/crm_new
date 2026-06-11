@@ -397,6 +397,102 @@ describe("gabinet/patients.merge", () => {
     });
   });
 
+  describe("field overrides", () => {
+    test("applies per-field overrides onto the target before deactivating source", async () => {
+      const t = createTestCtx();
+      const { organizationId, userId, identity } = await seedTestUser(t);
+      const { patientId: targetId } = await seedGabinetPrereqs(
+        t,
+        organizationId,
+        userId,
+      );
+      const sourceId = "patient_fieldoverrides_source";
+      await seedSecondPatient(String(organizationId), String(userId), sourceId, {
+        firstName: "Ewelina",
+        lastName: "Adamska",
+        email: "eadamska@example.com",
+        phone: "+48797305209",
+        pesel: "90010112345",
+      });
+
+      const db = createSupabaseDb();
+      // Confirm target starts with its seeded data so the assertion below is meaningful.
+      const beforeTarget = await db.get<{
+        firstName: string;
+        email: string;
+        phone: string | null;
+        pesel: string | null;
+      }>("gabinetPatients", String(targetId));
+      expect(beforeTarget?.firstName).not.toBe("Ewelina");
+
+      await t
+        .withIdentity(identity)
+        .action(api.gabinet.patients.merge, {
+          organizationId,
+          targetPatientId: String(targetId),
+          sourcePatientId: sourceId,
+          fieldOverrides: {
+            // Pick the source's first name and PESEL; everything else stays on target.
+            firstName: "Ewelina",
+            pesel: "90010112345",
+          },
+        });
+
+      const afterTarget = await db.get<{
+        firstName: string;
+        email: string;
+        phone: string | null;
+        pesel: string | null;
+      }>("gabinetPatients", String(targetId));
+      expect(afterTarget?.firstName).toBe("Ewelina");
+      expect(afterTarget?.pesel).toBe("90010112345");
+      // Fields not in fieldOverrides remain on the target.
+      expect(afterTarget?.email).toBe(beforeTarget?.email);
+
+      // Source is still deactivated regardless of overrides.
+      const source = await db.get<{ isActive: boolean }>(
+        "gabinetPatients",
+        sourceId,
+      );
+      expect(source?.isActive).toBe(false);
+    });
+
+    test("skipped when fieldOverrides is omitted (back-compat)", async () => {
+      const t = createTestCtx();
+      const { organizationId, userId, identity } = await seedTestUser(t);
+      const { patientId: targetId } = await seedGabinetPrereqs(
+        t,
+        organizationId,
+        userId,
+      );
+      const sourceId = "patient_no_overrides_source";
+      await seedSecondPatient(String(organizationId), String(userId), sourceId, {
+        firstName: "ShouldNotLand",
+      });
+
+      const db = createSupabaseDb();
+      const before = await db.get<{ firstName: string }>(
+        "gabinetPatients",
+        String(targetId),
+      );
+
+      await t
+        .withIdentity(identity)
+        .action(api.gabinet.patients.merge, {
+          organizationId,
+          targetPatientId: String(targetId),
+          sourcePatientId: sourceId,
+        });
+
+      const after = await db.get<{ firstName: string }>(
+        "gabinetPatients",
+        String(targetId),
+      );
+      // Target was untouched in absence of fieldOverrides.
+      expect(after?.firstName).toBe(before?.firstName);
+    });
+  });
+
   describe("source patient deactivation", () => {
     test("marks source patient inactive and annotates medicalNotes", async () => {
       const t = createTestCtx();

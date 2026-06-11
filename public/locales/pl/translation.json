@@ -2277,7 +2277,28 @@
         "warning": "Wszystkie wizyty, dokumenty, płatności, punkty lojalnościowe i notatki zostaną przeniesione. Operacja jest nieodwracalna.",
         "confirm": "Scal",
         "success": "Scalono klienta. Przeniesiono {{count}} powiązanych rekordów.",
-        "error": "Nie udało się scalić klientów."
+        "error": "Nie udało się scalić klientów.",
+        "fieldsTitle": "Formularz scalania klientów",
+        "fieldsIntro": "Nie wszystkie dane scalanych klientów są identyczne. Wybierz poniżej, które dane zostaną użyte w wynikowej karcie klienta.",
+        "emptyValue": "—",
+        "field": {
+          "firstName": "Imię",
+          "lastName": "Nazwisko",
+          "email": "Email",
+          "phone": "Numer telefonu",
+          "pesel": "PESEL",
+          "dateOfBirth": "Data urodzenia",
+          "gender": "Płeć",
+          "addressStreet": "Adres (ulica, nr)",
+          "addressPostalCode": "Kod pocztowy",
+          "addressCity": "Miasto",
+          "allergies": "Alergie",
+          "bloodType": "Grupa krwi",
+          "emergencyContactName": "Kontakt awaryjny — imię",
+          "emergencyContactPhone": "Kontakt awaryjny — telefon",
+          "medicalNotes": "Notatki medyczne",
+          "referralSource": "Źródło polecenia"
+        }
       }
     },
     "treatments": {

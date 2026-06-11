@@ -173,15 +173,12 @@ interface TableHeadProps extends AriaColumnProps, Omit<ThHTMLAttributes<HTMLTabl
 }
 
 const TableHead = ({ className, tooltip, label, children, ...props }: TableHeadProps) => {
-    const { selectionBehavior } = useTableOptions();
-
     return (
         <AriaColumn
             {...props}
             className={(state) =>
                 cx(
                     "relative p-0 px-6 py-2 outline-hidden focus-visible:z-1 focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-bg-primary focus-visible:ring-inset",
-                    selectionBehavior === "toggle" && "nth-2:pl-3",
                     state.allowsSorting && "cursor-pointer",
                     typeof className === "function" ? className(state) : className,
                 )
@@ -269,7 +266,6 @@ interface TableCellProps extends AriaCellProps, Omit<TdHTMLAttributes<HTMLTableC
 
 const TableCell = ({ className, children, size: sizeProp, ...props }: TableCellProps) => {
     const context = useContext(TableContext);
-    const { selectionBehavior } = useTableOptions();
 
     const size = sizeProp ?? context.size;
 
@@ -281,8 +277,6 @@ const TableCell = ({ className, children, size: sizeProp, ...props }: TableCellP
                     "relative text-sm text-fg-tertiary outline-focus-ring focus-visible:z-1 focus-visible:outline-2 focus-visible:-outline-offset-2",
                     size === "sm" && "px-5 py-3",
                     size === "md" && "px-6 py-4",
-
-                    selectionBehavior === "toggle" && "nth-2:pl-3",
 
                     typeof className === "function" ? className(state) : className,
                 )

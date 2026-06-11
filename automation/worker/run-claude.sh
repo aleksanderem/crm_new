@@ -195,6 +195,21 @@ done
 COMMITS_AHEAD=$(git rev-list --count "origin/main..HEAD" 2>/dev/null || echo 0)
 echo "commits ahead of origin/main: $COMMITS_AHEAD (final exit=$CLAUDE_EXIT, kind=$LAST_ERROR_KIND)"
 
+# Detect the "branch head unchanged vs main" case (#1587). When the worker
+# re-runs on an issue whose fix already landed (e.g. user manually cherry-
+# picked, or a prior run merged but we don't realize), Claude can produce
+# commits whose net tree-diff against main is empty. The CI guard from
+# #1585 rejects such PRs at GitHub, but the worker uses --admin which can
+# bypass that. Mark this case so we squash-merge with a chore: no-op
+# subject instead of reusing the original feat()/fix() title, otherwise
+# `git log main` ends up with duplicate "same feature" commits like the
+# four #1555 entries from #1565/#1574/#1577/#1580.
+EMPTY_DIFF=0
+if [ "$COMMITS_AHEAD" -gt 0 ] && git diff --quiet origin/main...HEAD 2>/dev/null; then
+  EMPTY_DIFF=1
+  echo "branch tree is identical to origin/main — squash-merge will use 'chore: no-op' subject"
+fi
+
 COMMENT_FILE=$(mktemp)
 FINAL_LABEL=""
 
@@ -270,8 +285,16 @@ ${PR_SUMMARY}"
     } > "$COMMENT_FILE"
     FINAL_LABEL="claude:done"
   else
-    echo "auto-merging PR #$PR_NUM (squash)"
-    MERGE_OUT=$(gh pr merge "$PR_NUM" --repo "$REPO" --squash --delete-branch --admin 2>&1)
+    if [ "$EMPTY_DIFF" -eq 1 ]; then
+      echo "auto-merging PR #$PR_NUM (squash, chore: no-op subject — empty diff vs main)"
+      NOOP_SUBJECT="chore: no-op re-merge for #${ISSUE_NUMBER} (#${PR_NUM})"
+      NOOP_BODY="Worker re-ran on issue #${ISSUE_NUMBER} but the branch tree is identical to main (no net changes). Squash-merged with a no-op subject so git log doesn't get a duplicate feat()/fix() entry — see #1587."
+      MERGE_OUT=$(gh pr merge "$PR_NUM" --repo "$REPO" --squash --delete-branch --admin \
+        --subject "$NOOP_SUBJECT" --body "$NOOP_BODY" 2>&1)
+    else
+      echo "auto-merging PR #$PR_NUM (squash)"
+      MERGE_OUT=$(gh pr merge "$PR_NUM" --repo "$REPO" --squash --delete-branch --admin 2>&1)
+    fi
     MERGE_EXIT=$?
     echo "merge output: $MERGE_OUT"
     echo "merge exit: $MERGE_EXIT"

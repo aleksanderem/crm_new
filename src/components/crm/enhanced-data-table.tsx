@@ -271,11 +271,20 @@ export function CrmDataTable<TData>({
               const rowId = getRowId(item, (page - 1) * pageSize + index);
               return (
                 <Table.Row key={rowId} id={rowId}>
-                  {visibleColumns.map((col) => (
+                  {visibleColumns.map((col, colIndex) => (
                     <Table.Cell key={col.id} className={col.className}>
                       {onRowAction && !col.interactive ? (
                         <div
-                          className="cursor-pointer -mx-5 -my-3 px-5 py-3"
+                          // First data column next to the selection checkbox
+                          // drops the negative left margin so the navigation
+                          // hit area starts after the cell's left padding —
+                          // leaves a buffer zone next to the checkbox so users
+                          // aiming at the checkbox don't accidentally navigate.
+                          className={
+                            enableBulkSelect && colIndex === 0
+                              ? "cursor-pointer -mr-5 -my-3 pr-5 py-3"
+                              : "cursor-pointer -mx-5 -my-3 px-5 py-3"
+                          }
                           onClick={(e) => {
                             e.stopPropagation();
                             onRowAction(rowId);

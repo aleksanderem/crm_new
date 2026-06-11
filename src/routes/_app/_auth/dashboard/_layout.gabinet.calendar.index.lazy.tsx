@@ -1832,6 +1832,14 @@ function GabinetCalendarPage() {
           defaultTime={createDefaultTime}
           defaultEndTime={createDefaultEndTime}
           defaultEmployeeId={createDefaultEmployeeId}
+          onSwitchToEvent={() => {
+            // Pivot to the EventDialog while preserving the date/time/employee
+            // the user already picked by clicking a calendar slot. The shared
+            // createDefault* state means the EventDialog will re-seed with the
+            // same values when it opens (issue #1598).
+            setCreateDialogOpen(false);
+            setEventDialogOpen(true);
+          }}
         />
 
         {/* Create event dialog (non-patient calendar block — issue #1555) */}

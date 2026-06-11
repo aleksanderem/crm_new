@@ -560,6 +560,7 @@ function PatientsIndex() {
       />
 
       <MiniChartsRow
+        storageKey="gabinet-patients"
         leftChart={{
           title: t("gabinet.patients.byDay"),
           data: patientsByDay,

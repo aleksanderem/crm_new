@@ -1,3 +1,5 @@
+import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/utils/misc";
 import {
   Card,
@@ -6,6 +8,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { ChevronDown, ChevronUp } from "@/lib/ez-icons";
 import type { TimeRange } from "./types";
 
 export interface MiniChartData {
@@ -129,13 +133,74 @@ function MetricCard({
 export interface MiniChartsRowProps {
   leftChart: MiniChartCardProps;
   rightChart: MiniChartCardProps;
+  /**
+   * When provided, the row becomes collapsible and the open/closed state is
+   * persisted in localStorage under this key. Defaults to collapsed on first
+   * visit so the table is visible without scrolling.
+   */
+  storageKey?: string;
 }
 
-export function MiniChartsRow({ leftChart, rightChart }: MiniChartsRowProps) {
-  return (
+export function MiniChartsRow({ leftChart, rightChart, storageKey }: MiniChartsRowProps) {
+  const charts = (
     <div className="grid gap-4 sm:grid-cols-2">
       <MetricCard {...leftChart} />
       <MetricCard {...rightChart} />
+    </div>
+  );
+
+  if (!storageKey) return charts;
+
+  return <CollapsibleCharts storageKey={storageKey}>{charts}</CollapsibleCharts>;
+}
+
+function CollapsibleCharts({
+  storageKey,
+  children,
+}: {
+  storageKey: string;
+  children: React.ReactNode;
+}) {
+  const { t } = useTranslation();
+  const lsKey = `mini-charts:${storageKey}`;
+  const [open, setOpen] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem(lsKey);
+      if (stored === "1") return true;
+      if (stored === "0") return false;
+    } catch { /* ignore */ }
+    return false;
+  });
+
+  const toggle = useCallback(() => {
+    setOpen((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(lsKey, next ? "1" : "0");
+      } catch { /* ignore */ }
+      return next;
+    });
+  }, [lsKey]);
+
+  return (
+    <div className="space-y-3">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={toggle}
+        aria-expanded={open}
+        className="text-muted-foreground hover:text-foreground -ml-2 h-7 gap-1 px-2 text-xs"
+      >
+        {open ? (
+          <ChevronUp className="h-3.5 w-3.5" variant="stroke" />
+        ) : (
+          <ChevronDown className="h-3.5 w-3.5" variant="stroke" />
+        )}
+        {open
+          ? t("common.hideStatistics", { defaultValue: "Ukryj statystyki" })
+          : t("common.showStatistics", { defaultValue: "Pokaż statystyki" })}
+      </Button>
+      {open && children}
     </div>
   );
 }

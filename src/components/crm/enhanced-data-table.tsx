@@ -1,4 +1,4 @@
-import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type Key, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Selection, SortDescriptor } from "react-aria-components";
 import { SearchLg, Menu01 } from "@untitledui/icons";
@@ -30,8 +30,6 @@ export interface CrmColumn<TData> {
   render: (item: TData) => ReactNode;
   /** Value used for sorting. Required if `sortable` is true. */
   getSortValue?: (item: TData) => string | number | boolean;
-  /** If true, this cell has its own interaction (toggle, button, etc.) and won't be wrapped in a row-click link. */
-  interactive?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -68,7 +66,12 @@ export interface CrmDataTableProps<TData> {
   toolbar?: ReactNode;
   /** Column IDs to hide. */
   hiddenColumnIds?: Set<string>;
-  /** Called when a non-interactive cell is clicked. Receives the row ID (from getRowId). Use for navigation. */
+  /**
+   * Called when a row is activated (clicked, Enter, or Space). Receives the
+   * row ID (from getRowId). Use for navigation. Clicks on buttons, links, and
+   * the selection checkbox inside cells don't trigger this — React Aria skips
+   * the row action when the user is interacting with a focusable child.
+   */
   onRowAction?: (rowId: string) => void;
 }
 
@@ -157,33 +160,18 @@ export function CrmDataTable<TData>({
   // --- Selection ---
   const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set());
 
-  // Track if last click was on a checkbox
-  const lastClickTargetRef = useRef({ isCheckbox: false });
-
-  // Global click handler to detect checkbox clicks
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      const isCheckbox =
-        target.closest('[slot="selection"]') !== null ||
-        target.getAttribute('role') === 'checkbox' ||
-        target.querySelector('[slot="selection"]') !== null;
-
-      lastClickTargetRef.current.isCheckbox = isCheckbox;
-    };
-
-    document.addEventListener('click', handleClick, true);
-    return () => document.removeEventListener('click', handleClick, true);
-  }, []);
-
-  // Handle selection changes - only allow checkbox clicks to change selection
-  const handleSelectionChange = (keys: Selection) => {
-    if (lastClickTargetRef.current.isCheckbox) {
-      setSelectedKeys(keys);
-    }
-    // Reset the flag
-    lastClickTargetRef.current.isCheckbox = false;
-  };
+  // React Aria's Table treats row clicks as selection toggles in multi-select
+  // mode UNLESS `onRowAction` is set, in which case row clicks fire the action
+  // and only checkbox clicks toggle selection. We always provide an action when
+  // bulk-select is on so checkbox-only selection is the native behavior — if
+  // the caller didn't ask for navigation, the action is a no-op. This avoids
+  // the document-level click listener / target-sniffing workaround that used
+  // to fight with the cell-wide navigation div.
+  const tableRowAction = useMemo(() => {
+    if (onRowAction) return (key: Key) => onRowAction(String(key));
+    if (enableBulkSelect) return () => {};
+    return undefined;
+  }, [onRowAction, enableBulkSelect]);
 
   // --- Derived data ---
   const sorted = useMemo(() => sortItems(data, sort, columns), [data, sort, columns]);
@@ -250,8 +238,8 @@ export function CrmDataTable<TData>({
           sortDescriptor={sort}
           onSortChange={handleSortChange}
           selectedKeys={enableBulkSelect ? selectedKeys : undefined}
-          onSelectionChange={enableBulkSelect ? handleSelectionChange : undefined}
-          onRowAction={onRowAction ? (key) => onRowAction(String(key)) : undefined}
+          onSelectionChange={enableBulkSelect ? setSelectedKeys : undefined}
+          onRowAction={tableRowAction}
         >
           <Table.Header>
             {visibleColumns.map((col) => (
@@ -270,35 +258,14 @@ export function CrmDataTable<TData>({
             {paged.map((item, index) => {
               const rowId = getRowId(item, (page - 1) * pageSize + index);
               return (
-                <Table.Row key={rowId} id={rowId}>
-                  {visibleColumns.map((col, colIndex) => (
+                <Table.Row
+                  key={rowId}
+                  id={rowId}
+                  className={onRowAction ? "cursor-pointer" : undefined}
+                >
+                  {visibleColumns.map((col) => (
                     <Table.Cell key={col.id} className={col.className}>
-                      {onRowAction && !col.interactive ? (
-                        <div
-                          // First data column next to the selection checkbox
-                          // drops the negative left margin so the navigation
-                          // hit area starts after the cell's left padding —
-                          // leaves a buffer zone next to the checkbox so users
-                          // aiming at the checkbox don't accidentally navigate.
-                          className={
-                            enableBulkSelect && colIndex === 0
-                              ? "cursor-pointer -mr-5 -my-3 pr-5 py-3"
-                              : "cursor-pointer -mx-5 -my-3 px-5 py-3"
-                          }
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onRowAction(rowId);
-                          }}
-                          onPointerDown={(e) => {
-                            // Prevent React Aria from starting selection on pointer down
-                            e.stopPropagation();
-                          }}
-                        >
-                          {col.render(item)}
-                        </div>
-                      ) : (
-                        col.render(item)
-                      )}
+                      {col.render(item)}
                     </Table.Cell>
                   ))}
                   {hasActions && (

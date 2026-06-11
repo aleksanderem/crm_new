@@ -84,6 +84,7 @@ import {
 } from "lucide-react";
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useDraggableDialog } from "@/hooks/use-draggable-dialog";
 import { useSidebarActions } from "@/components/layout/sidebar-context";
 import {
   useSupabaseGabinetFirstAppointmentIdsByPatient,
@@ -278,6 +279,12 @@ export function AppointmentPreviewContent({
   const [changeEmployeeOpen, setChangeEmployeeOpen] = useState(false);
 
   const [settleDialogOpen, setSettleDialogOpen] = useState(false);
+  // Drag-to-reposition for the sub-dialogs that open from the preview popover
+  // (issue #1548). Same drag-from-anywhere behaviour as the appointment dialog
+  // and preview popover (#1459, #1476) — users want to peek at what's behind
+  // these modal confirmations without dismissing them first.
+  const cancelDrag = useDraggableDialog(cancelDialogOpen);
+  const settleDrag = useDraggableDialog(settleDialogOpen);
   const [settleAmount, setSettleAmount] = useState("");
   const [settleMethod, setSettleMethod] = useState<
     "cash" | "card" | "transfer" | "package" | "other"
@@ -1402,7 +1409,14 @@ export function AppointmentPreviewContent({
         if (!o) setCancelReason("");
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        ref={cancelDrag.contentRef}
+        onPointerDown={cancelDrag.onPointerDown}
+        className={cn(
+          "sm:max-w-md",
+          cancelDrag.isDragging && "cursor-grabbing select-none",
+        )}
+      >
         <DialogHeader>
           <DialogTitle>{t("gabinet.appointments.cancelTitle")}</DialogTitle>
           <DialogDescription>
@@ -1476,7 +1490,14 @@ export function AppointmentPreviewContent({
         setSettleDialogOpen(o);
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        ref={settleDrag.contentRef}
+        onPointerDown={settleDrag.onPointerDown}
+        className={cn(
+          "sm:max-w-md",
+          settleDrag.isDragging && "cursor-grabbing select-none",
+        )}
+      >
         <DialogHeader>
           <DialogTitle>
             {t("gabinet.appointmentDetail.closeAndSettle", "Rozlicz wizytę")}

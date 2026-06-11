@@ -16,6 +16,7 @@ import { AlertTriangle, Circle } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { DocumentStatusBadge } from "./document-status-badge";
+import { useDraggableDialog } from "@/hooks/use-draggable-dialog";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -99,9 +100,18 @@ export function DocumentGateDialog({
       ? t("documents.gate.timingBefore", "Przed wizyta")
       : t("documents.gate.timingAfter", "Po wizycie");
 
+  const drag = useDraggableDialog(open);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        ref={drag.contentRef}
+        onPointerDown={drag.onPointerDown}
+        className={cn(
+          "sm:max-w-md",
+          drag.isDragging && "cursor-grabbing select-none",
+        )}
+      >
         {/* Warning header banner */}
         <div className="rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 p-4 -mt-2">
           <div className="flex items-start gap-3">

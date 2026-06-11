@@ -5,6 +5,7 @@ import { api } from "@cvx/_generated/api";
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
 import { useOrganization } from "@/components/org-context";
 import { useWideContent } from "@/hooks/use-wide-content";
+import { useDraggableDialog } from "@/hooks/use-draggable-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -141,6 +142,7 @@ function GabinetCalendarPage() {
 
   // Filter dialog
   const [filterOpen, setFilterOpen] = useState(false);
+  const filterDrag = useDraggableDialog(filterOpen);
 
   // Mobile-only collapsible employee picker (issue #1235). On phones the pill
   // row stole an entire row of vertical space; the popover keeps the same
@@ -1521,7 +1523,14 @@ function GabinetCalendarPage() {
 
           {/* Filter dialog */}
           <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent
+              ref={filterDrag.contentRef}
+              onPointerDown={filterDrag.onPointerDown}
+              className={cn(
+                "sm:max-w-md",
+                filterDrag.isDragging && "cursor-grabbing select-none",
+              )}
+            >
               <DialogTitle>{t("gabinet.calendar.filters", "Filtry")}</DialogTitle>
               <DialogDescription className="sr-only">
                 {t("gabinet.calendar.filters", "Filtry")}

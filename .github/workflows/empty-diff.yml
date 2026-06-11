@@ -1,0 +1,36 @@
+name: Empty Diff Guard
+
+# Rejects PRs whose tree is identical to main. Catches the duplicate-tree
+# pattern where a branch has commits but `git diff origin/main...HEAD`
+# produces zero changes (e.g. commits that cancel out, or a stale branch
+# rebased onto main after its work landed). See #1585 (discovered in #1573).
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  empty-diff:
+    name: Reject empty-diff PRs
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need full history so the three-dot diff against origin/main works
+          # regardless of how far the PR branch has diverged.
+          fetch-depth: 0
+
+      - name: Check PR introduces changes vs. main
+        run: |
+          set -euo pipefail
+          git fetch origin main --depth=0 2>/dev/null || git fetch origin main
+          if git diff --quiet origin/main...HEAD; then
+            echo "::error::PR diff against origin/main is empty — nothing to merge."
+            echo "This usually means the branch's commits net to zero changes"
+            echo "(e.g. a revert of a revert, or a rebase onto main after the"
+            echo "work already landed). Close the PR or push real changes."
+            exit 1
+          fi
+          echo "OK: PR introduces $(git diff --shortstat origin/main...HEAD)"

@@ -94,6 +94,7 @@ Bot's own comments are filtered out via `BOT_GH_LOGIN`.
 | `worker/run-claude.sh`          | The actual issue-handling logic (the brain of the bot)   |
 | `worker/auto-retry.sh`          | Re-triggers jobs that hit the per-attempt timeout        |
 | `worker/extract-followups.mjs`  | Parses Claude's output for `Opened follow-up issue(s)`   |
+| `worker/ground-pr-body.mjs`     | Rejects PR summaries citing files that aren't in the diff |
 | `worker/health-queue.mjs`       | Queue stats (pending / running / stuck > 1h)             |
 | `worker/tune.mjs`               | Auto-tunes `max_turns` / `per_attempt_timeout` based on  |
 |                                 | exit codes across the last N jobs                        |

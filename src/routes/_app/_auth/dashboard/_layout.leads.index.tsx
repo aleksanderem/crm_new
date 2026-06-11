@@ -697,7 +697,6 @@ function LeadsIndex() {
             onClick: handleDelete,
           },
         ]}
-        onRowAction={(id) => navigate({ to: '/dashboard/leads/$leadId', params: { leadId: id } })}
         emptyTitle={t("deals.emptyTitle")}
         emptyDescription={t("deals.emptyDescription")}
       />

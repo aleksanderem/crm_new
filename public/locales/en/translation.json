@@ -2831,6 +2831,7 @@
       "equipmentWarning": "Required equipment not at this location — cannot save appointment",
       "warnings": {
         "title": "Warning",
+        "past": "Appointment time is in the past",
         "qualification": "Employee is not qualified for this treatment",
         "leave": "Employee is on leave at this time",
         "leavePartial": "Employee is on leave on this day between {{start}}–{{end}}.",

@@ -1,0 +1,133 @@
+name: Supabase Schema Drift Healthcheck
+
+# Hourly cron that runs the same migration check the boot banner (#1576) runs
+# in the browser, but from CI so drift surfaces before users see the banner
+# (#1593). Reuses `scripts/supabase-migrations.mjs check`, which compares the
+# filenames in `supabase/migrations/` against the rows in
+# `supabase_migrations.schema_migrations` (the same table the boot banner's
+# `app_schema_version()` RPC reads).
+#
+# On drift the workflow opens a single tracking issue (idempotent by latest
+# expected version in the body) and stays green — the issue is the durable
+# alert, mirroring `netlify-deploy-healthcheck.yml`.
+
+on:
+  schedule:
+    # Every hour at :37 — offset from :00 (GitHub scheduling crush) and from
+    # :17 (netlify-deploy-healthcheck.yml) so the two healthchecks don't pile
+    # on the runner queue together.
+    - cron: "37 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-schema:
+    name: Check deployed schema against source migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run migrations check
+        id: check
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "${SUPABASE_DB_URL:-}" ]; then
+            echo "::warning::SUPABASE_DB_URL not set — skipping schema drift check."
+            echo "::warning::secrets-health.yml is responsible for alerting on the missing secret."
+            echo "drift=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          set +e
+          OUTPUT="$(node scripts/supabase-migrations.mjs check 2>&1)"
+          EXIT=$?
+          set -e
+          echo "$OUTPUT"
+
+          if [ $EXIT -eq 0 ]; then
+            echo "drift=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Drift detected. The latest filename in supabase/migrations/ is what
+          # the build was cut for — same value vite.config.ts injects as
+          # __EXPECTED_SCHEMA_VERSION__ for the boot banner.
+          LATEST=$(ls supabase/migrations \
+            | grep -E '^[0-9]+_.*\.sql$' \
+            | sort \
+            | tail -n1 \
+            | sed -E 's/^([0-9]+)_.*$/\1/')
+
+          {
+            echo "drift=true"
+            echo "latest_version=${LATEST}"
+            echo "output<<DRIFT_OUTPUT_EOF"
+            echo "$OUTPUT"
+            echo "DRIFT_OUTPUT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open tracking issue for schema drift
+        if: steps.check.outputs.drift == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LATEST: ${{ steps.check.outputs.latest_version }}
+          DRIFT_OUTPUT: ${{ steps.check.outputs.output }}
+        run: |
+          set -euo pipefail
+          title="Supabase schema drift detected (expected ${LATEST})"
+
+          # Idempotency: only one open issue per expected version. The hourly
+          # cron would otherwise spam an issue every run for the same drift.
+          # Same pattern as netlify-deploy-healthcheck.yml, keyed by version
+          # instead of commit SHA.
+          existing=$(gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --search "in:body \"supabase-schema-drift\" \"expected ${LATEST}\"" \
+            --json number \
+            --jq '.[0].number // empty')
+
+          if [ -n "$existing" ]; then
+            echo "Open issue #${existing} already tracks drift past ${LATEST} — not creating a duplicate."
+            exit 0
+          fi
+
+          body=$(cat <<EOF
+          The hourly schema drift healthcheck found that the deployed Supabase database is behind the migrations in source. This is the same condition the boot banner shows to browser users (#1576), surfaced here so it can be triaged before users see it.
+
+          - Expected latest version: \`${LATEST}\` (latest file under \`supabase/migrations/\` on \`main\`)
+          - Check output:
+
+          \`\`\`
+          ${DRIFT_OUTPUT}
+          \`\`\`
+
+          Resolve by applying the pending migrations:
+
+          \`\`\`
+          SUPABASE_DB_URL=... npm run migrations:apply
+          \`\`\`
+
+          The push-to-\`main\` workflow (\`supabase-migrations.yml\`) normally does this automatically. If this issue is open, that gate was bypassed (manual deploy, rollback, or failed apply step) — investigate why before just re-running.
+
+          ---
+
+          This issue was opened automatically by \`.github/workflows/supabase-schema-drift.yml\` (supabase-schema-drift). Close it once the deployed database has caught up. Tracking: #1593.
+          EOF
+          )
+
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$title" \
+            --body "$body" \
+            --label "bug"

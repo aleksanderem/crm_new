@@ -585,7 +585,6 @@ function TreatmentsIndex() {
         ]}
         onBulkAction={handleBulkAction}
         rowActions={rowActions}
-        onRowAction={(id) => navigate({ to: '/dashboard/gabinet/treatments/$treatmentId', params: { treatmentId: id } })}
         emptyTitle={t("gabinet.treatments.emptyTitle")}
         emptyDescription={t("gabinet.treatments.emptyDescription")}
       />

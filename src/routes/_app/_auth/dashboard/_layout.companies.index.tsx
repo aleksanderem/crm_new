@@ -475,7 +475,6 @@ function CompaniesIndex() {
         ]}
         onBulkAction={handleBulkAction}
         rowActions={rowActions}
-        onRowAction={(id) => navigate({ to: '/dashboard/companies/$companyId', params: { companyId: id } })}
         emptyTitle={t('companies.emptyTitle')}
         emptyDescription={t('companies.emptyDescription')}
       />

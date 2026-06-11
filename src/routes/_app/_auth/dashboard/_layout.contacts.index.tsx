@@ -448,7 +448,6 @@ function ContactsIndex() {
         ]}
         onBulkAction={handleBulkAction}
         rowActions={rowActions}
-        onRowAction={(id) => navigate({ to: '/dashboard/contacts/$contactId', params: { contactId: id } })}
         emptyTitle={t('contacts.emptyTitle')}
         emptyDescription={t('contacts.emptyDescription')}
       />

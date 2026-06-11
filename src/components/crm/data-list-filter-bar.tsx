@@ -159,7 +159,6 @@ export function DataListFilterBar({
   onCategoriesManage: _onCategoriesManage,
 }: DataListFilterBarProps) {
   const { t } = useTranslation();
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [internalFilterSlideoutOpen, setInternalFilterSlideoutOpen] =
     useState(false);
   const [internalCreateDialogOpen, setInternalCreateDialogOpen] =
@@ -378,7 +377,7 @@ export function DataListFilterBar({
 
   // --- Full toolbar: views + search + filter trigger + actions ---
   const toolbarContent = (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-col items-stretch gap-2 md:flex-row md:items-center md:gap-3">
       {/* Left: view selector + add view */}
       <div className="flex shrink-0 items-center gap-2">
         {views.length > 0 && (
@@ -514,14 +513,28 @@ export function DataListFilterBar({
         {renderMoreActions()}
       </div>
 
-      {/* Mobile: compact buttons */}
-      <div className="ml-auto flex items-center gap-2 md:hidden">
-        <Button
-          size="sm"
-          color="secondary"
-          iconLeading={SearchMd}
-          onClick={() => setMobileOpen(true)}
-        />
+      {/* Mobile: inline search + filter + actions */}
+      <div className="flex items-center gap-2 md:hidden">
+        <div className="relative min-w-0 flex-1">
+          <Input
+            size="sm"
+            icon={SearchMd}
+            placeholder={searchPlaceholder ?? t("common.search")}
+            value={localSearch}
+            onChange={handleSearchInput}
+            inputClassName={localSearch ? "pr-9" : undefined}
+          />
+          {localSearch && (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              aria-label={t("common.clearSearch", { defaultValue: "Wyczyść" })}
+              className="absolute top-1/2 right-2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-fg-quaternary transition hover:bg-bg-primary_hover hover:text-fg-quaternary_hover focus:outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2"
+            >
+              <X className="size-4 stroke-[2.25px]" />
+            </button>
+          )}
+        </div>
         {hasFilterableFields && (
           <Button
             size="sm"
@@ -534,6 +547,7 @@ export function DataListFilterBar({
             )}
           </Button>
         )}
+        {dropdownActions.length > 0 && renderMoreActions()}
       </div>
     </div>
   );
@@ -709,58 +723,6 @@ export function DataListFilterBar({
             </div>
           </div>
         </SlideoutMenu.Footer>
-      </SlideoutMenu>
-
-      {/* Mobile search slideout */}
-      <SlideoutMenu isOpen={mobileOpen} onOpenChange={setMobileOpen} isDismissable>
-        <SlideoutMenu.Header onClose={() => setMobileOpen(false)}>
-          <h2 className="text-lg font-semibold text-fg-primary">
-            {t("common.search")}
-          </h2>
-        </SlideoutMenu.Header>
-        <SlideoutMenu.Content className="gap-4">
-          <div className="relative w-full">
-            <Input
-              size="sm"
-              icon={SearchMd}
-              placeholder={searchPlaceholder ?? t("common.search")}
-              value={localSearch}
-              onChange={handleSearchInput}
-              inputClassName={localSearch ? "pr-9" : undefined}
-            />
-            {localSearch && (
-              <button
-                type="button"
-                onClick={handleClearSearch}
-                aria-label={t("common.clearSearch", { defaultValue: "Wyczyść" })}
-                className="absolute top-1/2 right-2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-fg-quaternary transition hover:bg-bg-primary_hover hover:text-fg-quaternary_hover focus:outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2"
-              >
-                <X className="size-4 stroke-[2.25px]" />
-              </button>
-            )}
-          </div>
-          {dropdownActions.length > 0 && (
-            <div className="space-y-1 border-t border-border-secondary pt-3">
-              {dropdownActions.map((action) => (
-                <Button
-                  key={action.label}
-                  size="sm"
-                  color="tertiary"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    action.onClick();
-                    setMobileOpen(false);
-                  }}
-                >
-                  {action.icon && (
-                    <span className="mr-2">{action.icon}</span>
-                  )}
-                  {action.label}
-                </Button>
-              ))}
-            </div>
-          )}
-        </SlideoutMenu.Content>
       </SlideoutMenu>
 
       {/* Create view dialog */}

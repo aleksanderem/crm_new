@@ -11,6 +11,12 @@
  *   • 00004_document_components.sql
  *   • 00005_gabinet_treatment_tax_exempt.sql
  *   • 00006_products_tax_exempt.sql
+ *   • 00007_form_documents_sort_order.sql
+ *   • 00008_payments_patient_credit.sql
+ *   • 00009_payments_package_method.sql
+ *   • 00010_gabinet_treatment_package_link.sql
+ *   • 00011_entity_type_gabinet_event.sql
+ *   • 00012_app_schema_version_rpc.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -2387,6 +2393,9 @@ export interface Database {
           created_by: string;
           created_at: number;
           updated_at: number;
+          credit_earned: number | null;
+          credit_applied: number | null;
+          kind: string | null;
         };
         Insert: {
           id?: string;
@@ -2403,6 +2412,9 @@ export interface Database {
           created_by: string;
           created_at: number;
           updated_at: number;
+          credit_earned?: number | null;
+          credit_applied?: number | null;
+          kind?: string | null;
         };
         Update: {
           id?: string;
@@ -2419,6 +2431,9 @@ export interface Database {
           created_by?: string;
           created_at?: number;
           updated_at?: number;
+          credit_earned?: number | null;
+          credit_applied?: number | null;
+          kind?: string | null;
         };
       };
       org_sms_config: {
@@ -4218,6 +4233,7 @@ export interface Database {
           created_by: string;
           created_at: number;
           updated_at: number;
+          sort_order: number | null;
         };
         Insert: {
           id?: string;
@@ -4246,6 +4262,7 @@ export interface Database {
           created_by: string;
           created_at: number;
           updated_at: number;
+          sort_order?: number | null;
         };
         Update: {
           id?: string;
@@ -4274,6 +4291,7 @@ export interface Database {
           created_by?: string;
           created_at?: number;
           updated_at?: number;
+          sort_order?: number | null;
         };
       };
       automation_rules: {
@@ -4514,7 +4532,12 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      app_schema_version: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

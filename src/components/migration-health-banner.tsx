@@ -44,10 +44,7 @@ export function MigrationHealthBanner() {
     let cancelled = false;
 
     void (async () => {
-      // The RPC is untyped (not in database.types.ts Functions); cast at the
-      // call site rather than polluting the generated types file.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (client as any).rpc("app_schema_version");
+      const { data, error } = await client.rpc("app_schema_version");
       if (cancelled) return;
 
       if (error) {

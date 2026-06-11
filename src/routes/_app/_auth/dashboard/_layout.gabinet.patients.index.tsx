@@ -18,7 +18,7 @@ import { MergePatientsDialog } from "@/components/gabinet/merge-patients-dialog"
 import { Button } from "@/components/ui/button";
 import { AvatarLabelGroup } from "@untitled/base/avatar/avatar-label-group";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Download, X, Users, AlertCircle } from "@/lib/ez-icons";
+import { Plus, Trash2, Download, Users, AlertCircle } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { Id } from "@cvx/_generated/dataModel";
@@ -527,40 +527,6 @@ function PatientsIndex() {
             {t("gabinet.patients.duplicatesBanner.action", {
               defaultValue: "Przejrzyj duplikaty",
             })}
-          </Button>
-        </div>
-      )}
-
-      {nudgeFilter && (
-        <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
-          <span>
-            {nudgeFilter === "missing-contact"
-              ? t("gabinet.patients.nudgeFilter.missingContact", {
-                  defaultValue: "Pokazywani są klienci bez telefonu i e-maila.",
-                })
-              : nudgeFilter === "no-recent-visit"
-              ? t("gabinet.patients.nudgeFilter.noRecentVisit", {
-                  defaultValue:
-                    "Pokazywani są klienci bez wizyty w ostatnich 90 dniach.",
-                })
-              : t("gabinet.patients.nudgeFilter.duplicates", {
-                  defaultValue:
-                    "Pokazywani są klienci z duplikatem e-maila lub telefonu. Użyj akcji „Scal z…”, aby je połączyć.",
-                })}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1 text-xs"
-            onClick={() =>
-              navigate({
-                to: "/dashboard/gabinet/patients",
-                search: { nudge: undefined },
-              })
-            }
-          >
-            <X className="h-3.5 w-3.5" variant="stroke" />
-            {t("common.clearFilters")}
           </Button>
         </div>
       )}

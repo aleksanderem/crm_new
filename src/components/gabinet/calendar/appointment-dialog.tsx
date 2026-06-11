@@ -105,6 +105,11 @@ interface AppointmentDialogProps {
   /** Pre-select an employee when opening — used by the day-by-employee
    *  calendar view so clicking inside a column carries the column owner. */
   defaultEmployeeId?: string;
+  /** Optional handler to switch from creating a patient appointment to
+   *  creating a non-patient calendar event (meeting / training that blocks
+   *  time without booking a wizyta). When provided, a "Utwórz zdarzenie"
+   *  link is rendered at the top of the dialog. Issue #1598. */
+  onSwitchToEvent?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -199,6 +204,7 @@ export function AppointmentDialog({
   defaultTime,
   defaultEndTime,
   defaultEmployeeId,
+  onSwitchToEvent,
 }: AppointmentDialogProps) {
   const { t, i18n } = useTranslation();
   const dateFnsLocale = i18n.resolvedLanguage === "pl" ? pl : undefined;
@@ -1012,6 +1018,29 @@ export function AppointmentDialog({
           <GripHorizontal className="size-4" />
           <span>{t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}</span>
         </div>
+
+        {/* "Utwórz zdarzenie zamiast wizyty" — lets the user pivot from the
+            appointment form to the EventDialog when the calendar slot is for
+            a non-patient block (meeting / training). The toolbar already
+            exposes both options, but users who jumped straight into the
+            appointment dialog by tapping a slot had no way to switch without
+            cancelling first (issue #1598). Carries over the date/time/employee
+            defaults via the parent handler. */}
+        {onSwitchToEvent && (
+          <div className="flex items-center justify-center border-b bg-background px-4 py-2 text-xs">
+            <button
+              type="button"
+              onClick={onSwitchToEvent}
+              className="font-medium text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
+              data-testid="appointment-switch-to-event-button"
+            >
+              {t(
+                "gabinet.appointments.createEventInstead",
+                "Utwórz zdarzenie (zebranie, szkolenie)",
+              )}
+            </button>
+          </div>
+        )}
 
         {/* 3-panel layout: stacks vertically on mobile */}
         <div className="relative flex flex-col md:flex-row md:h-[600px]">

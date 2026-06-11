@@ -162,16 +162,16 @@ export function CrmDataTable<TData>({
 
   // React Aria's Table treats row clicks as selection toggles in multi-select
   // mode UNLESS `onRowAction` is set, in which case row clicks fire the action
-  // and only checkbox clicks toggle selection. We always provide an action when
-  // bulk-select is on so checkbox-only selection is the native behavior — if
-  // the caller didn't ask for navigation, the action is a no-op. This avoids
-  // the document-level click listener / target-sniffing workaround that used
-  // to fight with the cell-wide navigation div.
+  // and only checkbox clicks toggle selection. Letting React Aria default to
+  // row-click → toggle when no `onRowAction` is provided gives the user the
+  // entire row as a hit target for selection (issue #1594 — tiny checkbox is
+  // hard to hit on mobile). Focusable children like the patient-name Link or
+  // the kebab button still take priority — React Aria skips the row action
+  // when the press lands on a focusable descendant.
   const tableRowAction = useMemo(() => {
     if (onRowAction) return (key: Key) => onRowAction(String(key));
-    if (enableBulkSelect) return () => {};
     return undefined;
-  }, [onRowAction, enableBulkSelect]);
+  }, [onRowAction]);
 
   // --- Derived data ---
   const sorted = useMemo(() => sortItems(data, sort, columns), [data, sort, columns]);

@@ -406,13 +406,19 @@ export function DataListFilterBar({
           <button
             type="button"
             onClick={openCreateDialog}
-            className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap px-2 py-1.5 text-sm font-medium text-fg-quaternary transition hover:text-fg-primary"
-          >
-            <Plus className="size-4" />
-            {t("views.addView", {
+            aria-label={t("views.addView", {
               current: customViewCount,
               max: maxCustomViews,
             })}
+            className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap px-2 py-1.5 text-sm font-medium text-fg-quaternary transition hover:text-fg-primary"
+          >
+            <Plus className="size-4" />
+            <span className="hidden md:inline">
+              {t("views.addView", {
+                current: customViewCount,
+                max: maxCustomViews,
+              })}
+            </span>
           </button>
         )}
         {leftExtras}

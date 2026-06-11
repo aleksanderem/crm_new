@@ -147,7 +147,7 @@ const TableHeader = <T extends object>({ columns, children, bordered = true, cla
             }
         >
             {selectionBehavior === "toggle" && (
-                <AriaColumn className={cx("relative py-2 pr-0 pl-4", size === "sm" ? "w-12 md:pl-5" : "w-14 md:pl-6")}>
+                <AriaColumn className={cx("relative py-2 pr-0 pl-4", size === "sm" ? "w-16 md:pl-5" : "w-18 md:pl-6")}>
                     {selectionMode === "multiple" && (
                         <Checkbox
                             slot="selection"
@@ -241,7 +241,7 @@ const TableRow = <T extends object>({ columns, children, className, highlightSel
             }
         >
             {selectionBehavior === "toggle" && (
-                <AriaCell className={cx("relative py-2 pr-0 pl-4", size === "sm" ? "w-12 md:pl-5" : "w-14 md:pl-6")}>
+                <AriaCell className={cx("relative py-2 pr-0 pl-4", size === "sm" ? "w-16 md:pl-5" : "w-18 md:pl-6")}>
                     <Checkbox
                         slot="selection"
                         size="md"

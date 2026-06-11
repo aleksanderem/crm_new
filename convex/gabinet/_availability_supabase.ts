@@ -398,7 +398,36 @@ export async function checkConflictSupabase(
     const actDate = new Date(activity.dueDate);
     const actDateStr = `${actDate.getFullYear()}-${String(actDate.getMonth() + 1).padStart(2, "0")}-${String(actDate.getDate()).padStart(2, "0")}`;
     if (actDateStr !== args.date) continue;
-    if (activity.moduleRef?.moduleId === "gabinet") continue;
+    // Gabinet appointments are already counted via gabinetAppointments above.
+    // Manual gabinet events (entityType="gabinetEvent") must still block time.
+    if (
+      activity.moduleRef?.moduleId === "gabinet" &&
+      activity.moduleRef?.entityType !== "gabinetEvent"
+    )
+      continue;
+
+    const actStartMin = actDate.getHours() * 60 + actDate.getMinutes();
+    const actEndDate = new Date(activity.endDate);
+    const actEndMin = actEndDate.getHours() * 60 + actEndDate.getMinutes();
+    if (reqStart < actEndMin && reqEnd > actStartMin) {
+      return { hasConflict: true, reason: `Conflicts with: ${activity.title}` };
+    }
+  }
+
+  // Org-wide events (no resourceId, blocks the whole clinic).
+  const orgEvents = await db
+    .query("scheduledActivities")
+    .eq("organizationId", args.organizationId)
+    .eq("activityType", "gabinet:event")
+    .collect();
+
+  for (const activity of orgEvents as any[]) {
+    if (activity.isCompleted) continue;
+    if (!activity.endDate) continue;
+    if (activity.resourceId) continue; // per-resource events already checked above
+    const actDate = new Date(activity.dueDate);
+    const actDateStr = `${actDate.getFullYear()}-${String(actDate.getMonth() + 1).padStart(2, "0")}-${String(actDate.getDate()).padStart(2, "0")}`;
+    if (actDateStr !== args.date) continue;
 
     const actStartMin = actDate.getHours() * 60 + actDate.getMinutes();
     const actEndDate = new Date(activity.endDate);

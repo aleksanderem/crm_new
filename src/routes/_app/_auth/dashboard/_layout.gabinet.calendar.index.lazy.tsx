@@ -20,6 +20,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Plus, Search, Users, X } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -72,7 +78,10 @@ import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leave
 import { useSupabaseScheduledActivitiesByDateRange } from "@/hooks/use-supabase-scheduled-activities";
 import { useSupabaseGabinetPatientCreditBalances } from "@/hooks/use-supabase-payments";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
+import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
+import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
+import { EventDialog } from "@/components/gabinet/calendar/event-dialog";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatAppointmentError } from "@/lib/format-action-error";
 
@@ -152,8 +161,13 @@ function GabinetCalendarPage() {
   // Tags manager slideout
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
 
+  // Event-types manager slideout (categoryDefinitions filtered by
+  // entityType="gabinetEvent" — issue #1555)
+  const [eventTypesSlideoutOpen, setEventTypesSlideoutOpen] = useState(false);
+
   // Dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [sellPackageOpen, setSellPackageOpen] = useState(false);
   const [createDefaultDate, setCreateDefaultDate] = useState<
     string | undefined
@@ -320,6 +334,29 @@ function GabinetCalendarPage() {
 
   // Fetch tag definitions to render colored pills on appointment cards
   const { tags: tagDefinitions } = useTagDefinitions(organizationId);
+
+  // Event-type categories (gabinetEvent) — drives the picker in EventDialog and
+  // the lookup that colors event tiles on the calendar (issue #1555).
+  const { categories: eventTypeCategories } = useCategoryDefinitions(
+    organizationId,
+    "gabinetEvent",
+  );
+  const eventTypeColorMap = useMemo(() => {
+    const map = new Map<string, { name: string; color?: string }>();
+    for (const cat of (eventTypeCategories ?? []) as Array<{
+      _id?: string;
+      name?: string;
+      color?: string;
+    }>) {
+      if (cat?._id) {
+        map.set(String(cat._id), {
+          name: String(cat.name ?? ""),
+          color: cat.color ? String(cat.color) : undefined,
+        });
+      }
+    }
+    return map;
+  }, [eventTypeCategories]);
   const tagMap = useMemo(() => {
     const map = new Map<string, { name: string; color: string }>();
     for (const tag of tagDefinitions ?? []) {
@@ -802,7 +839,10 @@ function GabinetCalendarPage() {
       }
     }
 
-    // Merge Google-synced blocked time (no gabinetAppointment counterpart)
+    // Merge non-appointment scheduledActivities that block calendar time:
+    //   - Google-synced blocks (sourceType="google", no gabinetAppointment row)
+    //   - Manual gabinet events (moduleRef.entityType="gabinetEvent",
+    //     issue #1555 — meetings, training etc.)
     if (blockedTimeActivities) {
       const appointmentActivityIds = new Set(
         rawAppointments?.map((a) => a.scheduledActivityId).filter(Boolean) ?? [],
@@ -810,8 +850,11 @@ function GabinetCalendarPage() {
       for (const act of blockedTimeActivities) {
         // Skip activities that already have a gabinet appointment (avoid duplicates)
         if (appointmentActivityIds.has(act._id)) continue;
-        // Only include google-synced blocked time
-        if (act.sourceType !== "google") continue;
+
+        const isGoogleBlock = act.sourceType === "google";
+        const isManualEvent =
+          act.moduleRef?.entityType === "gabinetEvent";
+        if (!isGoogleBlock && !isManualEvent) continue;
 
         const dt = new Date(act.dueDate);
         const endDt = act.endDate ? new Date(act.endDate) : dt;
@@ -819,21 +862,29 @@ function GabinetCalendarPage() {
         const startTime = `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
         const endTime = `${String(endDt.getHours()).padStart(2, "0")}:${String(endDt.getMinutes()).padStart(2, "0")}`;
 
+        const eventType = act.categoryId
+          ? eventTypeColorMap.get(String(act.categoryId))
+          : undefined;
+        const subtitle = isManualEvent
+          ? eventType?.name ?? t("gabinet.events.label", "Zdarzenie")
+          : t("gabinet.calendar.googleEvent");
+
         items.push({
           _id: act._id,
           date,
           startTime,
           endTime,
           patientName: act.title ?? t("gabinet.calendar.blockedTime"),
-          treatmentName: t("gabinet.calendar.googleEvent"),
+          treatmentName: subtitle,
           status: "blocked",
-          color: "#9ca3af",
+          color: eventType?.color ?? "#9ca3af",
+          employeeId: act.resourceId,
         });
       }
     }
 
     return items;
-  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, tagMap, employeeColorMap, firstAppointmentIds, packagePositions, recurringPositions, appointmentPaymentTotals, creditByAppointmentId, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
+  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, tagMap, employeeColorMap, eventTypeColorMap, firstAppointmentIds, packagePositions, recurringPositions, appointmentPaymentTotals, creditByAppointmentId, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
 
   // Build print-friendly appointment data for the current day
   const printDate = formatDateStr(currentDate);
@@ -884,6 +935,16 @@ function GabinetCalendarPage() {
     setCreateDefaultEndTime(undefined);
     setCreateDefaultEmployeeId(undefined);
     setCreateDialogOpen(true);
+  }, [currentDate]);
+
+  // Opens the create-event dialog (non-patient calendar block — e.g.
+  // meeting/training that blocks time in the calendar, issue #1555).
+  const openCreateEventDialog = useCallback(() => {
+    setCreateDefaultDate(formatDateStr(currentDate));
+    setCreateDefaultTime(undefined);
+    setCreateDefaultEndTime(undefined);
+    setCreateDefaultEmployeeId(undefined);
+    setEventDialogOpen(true);
   }, [currentDate]);
 
   // Sidebar dispatch handlers
@@ -1273,14 +1334,28 @@ function GabinetCalendarPage() {
                 </Button>
                 <h2 className="ml-2 truncate text-xs font-semibold">{title}</h2>
               </div>
-              <Button
-                size="sm"
-                className="h-7 shrink-0 text-xs md:hidden"
-                aria-label={t("gabinet.appointments.createAppointment", "Nowa wizyta")}
-                onClick={openCreateDialog}
-              >
-                <Plus className="h-3.5 w-3.5" variant="stroke" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    className="h-7 shrink-0 text-xs md:hidden"
+                    aria-label={t("gabinet.calendar.add", "Dodaj")}
+                  >
+                    <Plus className="h-3.5 w-3.5" variant="stroke" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={openCreateDialog}>
+                    {t(
+                      "gabinet.appointments.createAppointment",
+                      "Nowa wizyta",
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={openCreateEventDialog}>
+                    {t("gabinet.events.create", "Nowe zdarzenie")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -1344,18 +1419,39 @@ function GabinetCalendarPage() {
               )}
 
               {/* Create button — hidden on mobile where it lives next to the
-                  date nav (above) to avoid wrapping onto its own row. */}
-              <Button
-                size="sm"
-                className="hidden h-7 text-xs md:inline-flex"
-                data-testid="calendar-create-appointment-button"
-                onClick={openCreateDialog}
-              >
-                <Plus className="h-3.5 w-3.5 sm:mr-1" variant="stroke" />
-                <span className="hidden sm:inline">
-                  {t("gabinet.appointments.createAppointment", "Nowa wizyta")}
-                </span>
-              </Button>
+                  date nav (above) to avoid wrapping onto its own row.
+                  Split into a DropdownMenu (issue #1555) so the user can pick
+                  between a regular appointment and a non-patient event
+                  (meeting / training etc.). */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    className="hidden h-7 text-xs md:inline-flex"
+                    data-testid="calendar-create-appointment-button"
+                  >
+                    <Plus className="h-3.5 w-3.5 sm:mr-1" variant="stroke" />
+                    <span className="hidden sm:inline">
+                      {t("gabinet.calendar.add", "Dodaj")}
+                    </span>
+                    <ChevronDown
+                      className="ml-1 hidden h-3.5 w-3.5 sm:inline"
+                      variant="stroke"
+                    />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={openCreateDialog}>
+                    {t(
+                      "gabinet.appointments.createAppointment",
+                      "Nowa wizyta",
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={openCreateEventDialog}>
+                    {t("gabinet.events.create", "Nowe zdarzenie")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
@@ -1738,6 +1834,18 @@ function GabinetCalendarPage() {
           defaultEmployeeId={createDefaultEmployeeId}
         />
 
+        {/* Create event dialog (non-patient calendar block — issue #1555) */}
+        <EventDialog
+          organizationId={organizationId}
+          open={eventDialogOpen}
+          onOpenChange={setEventDialogOpen}
+          defaultDate={createDefaultDate}
+          defaultTime={createDefaultTime}
+          defaultEndTime={createDefaultEndTime}
+          defaultEmployeeId={createDefaultEmployeeId}
+          onManageEventTypes={() => setEventTypesSlideoutOpen(true)}
+        />
+
         {/* Sell package side panel */}
         <SellPackagePanel
           organizationId={organizationId}
@@ -1754,6 +1862,14 @@ function GabinetCalendarPage() {
         onOpenChange={setTagsSlideoutOpen}
         organizationId={organizationId}
         tags={tagDefinitions}
+      />
+
+      <CategoriesManagerSlideout
+        isOpen={eventTypesSlideoutOpen}
+        onOpenChange={setEventTypesSlideoutOpen}
+        organizationId={organizationId}
+        entityType="gabinetEvent"
+        categories={eventTypeCategories as any}
       />
 
       {/* Drag overlay - shows appointment being dragged */}

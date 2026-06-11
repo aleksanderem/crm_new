@@ -5,6 +5,7 @@ import {
   PopoverAnchor,
   PopoverContent,
 } from "@/components/ui/popover";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import {
   AppointmentCard,
@@ -71,6 +72,7 @@ export function DraggableAppointment({
 
   const [previewEndTime, setPreviewEndTime] = useState<string | null>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const isMobile = useIsMobile();
   // Suppress popover open when the click follows a drag — useDraggable triggers
   // onClick after a successful drop, which would otherwise pop the preview.
   const isPopoverDisabled = status === "blocked";
@@ -286,8 +288,12 @@ export function DraggableAppointment({
           "w-[553px] max-w-[calc(100vw-24px)] max-h-[calc(100dvh-24px)] overflow-y-auto p-4",
           isPreviewDragging && "cursor-grabbing select-none",
         )}
-        align="start"
-        side="right"
+        // On mobile the appointment can sit on either side of the screen, and a
+        // 378px popover does not fit beside it. Anchor it to the bottom of the
+        // card and center horizontally so the whole preview stays on-screen;
+        // Radix will flip to "top" if there is no room below (issue #1566).
+        align={isMobile ? "center" : "start"}
+        side={isMobile ? "bottom" : "right"}
         sideOffset={8}
         collisionPadding={12}
         onOpenAutoFocus={(e) => e.preventDefault()}

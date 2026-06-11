@@ -62,6 +62,17 @@ const enums = new Map();
 const tables = new Map();
 
 /**
+ * Functions in the `public` schema callable via PostgREST RPC, keyed by name.
+ * Only `public.<name>` qualified definitions are collected — unqualified
+ * helpers (e.g. RLS helpers that live in the default search_path) are not
+ * intended to be invoked from the client and are skipped.
+ *
+ * @typedef {{ args: Array<{ name: string, tsType: string }>, returnsTs: string }} Fn
+ * @type {Map<string, Fn>}
+ */
+const functions = new Map();
+
+/**
  * Map a raw SQL type token (already upper-cased) to a TS type, or `null`
  * if the column should be skipped (e.g. tsvector generated column).
  *
@@ -114,6 +125,43 @@ function parseColumnLine(rawLine) {
   const hasDefault = rest.includes("DEFAULT") || rest.includes("GENERATED");
 
   return { name: colName, tsType, nullable, hasDefault, isPk, isGenerated: false };
+}
+
+/**
+ * Map a SQL return type token to a TS type, with `void` → `undefined`.
+ * Returns `null` to skip emission (e.g. SETOF / TABLE / unsupported shapes).
+ *
+ * @param {string} rawType
+ * @returns {string | null}
+ */
+function mapReturnType(rawType) {
+  const t = rawType.trim().toUpperCase();
+  if (t === "VOID") return "undefined";
+  return mapSqlType(t);
+}
+
+/**
+ * Parse a function argument list (text between the outer parens of
+ * `CREATE FUNCTION ... ( ... )`). Returns an empty array for `()`.
+ * Each argument is `[mode] name type [DEFAULT ...]`.
+ *
+ * @param {string} argsBlob
+ * @returns {Array<{ name: string, tsType: string }>}
+ */
+function parseFunctionArgs(argsBlob) {
+  const trimmed = argsBlob.trim();
+  if (!trimmed) return [];
+  const args = [];
+  for (const rawArg of trimmed.split(",")) {
+    const piece = rawArg.trim();
+    if (!piece) continue;
+    const m = piece.match(/^(?:(?:IN|OUT|INOUT|VARIADIC)\s+)?"?(\w+)"?\s+(.+?)(?:\s+DEFAULT\b.*)?$/i);
+    if (!m) continue;
+    const tsType = mapSqlType(m[2].trim().toUpperCase());
+    if (tsType === null) continue;
+    args.push({ name: m[1], tsType });
+  }
+  return args;
 }
 
 /**
@@ -173,6 +221,18 @@ function applyMigration(sql) {
       const col = table.columns.find((c) => c.name === colName);
       if (col) col.nullable = true;
     }
+  }
+
+  // ─── CREATE [OR REPLACE] FUNCTION public.<name>(<args>) RETURNS <type> ──
+  // Only public-schema functions are exposed via PostgREST RPC; unqualified
+  // helper functions (RLS helpers, triggers) are intentionally skipped.
+  const fnRe = /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+public\."?(\w+)"?\s*\(([^)]*)\)\s+RETURNS\s+([A-Z]+(?:\[\])?)\b/gi;
+  for (const m of sql.matchAll(fnRe)) {
+    const name = m[1];
+    const args = parseFunctionArgs(m[2]);
+    const returnsTs = mapReturnType(m[3]);
+    if (returnsTs === null) continue;
+    functions.set(name, { args, returnsTs });
   }
 }
 
@@ -241,7 +301,26 @@ for (const table of tablesList) {
 
 lines.push(`    };`);
 lines.push(`    Views: Record<string, never>;`);
-lines.push(`    Functions: Record<string, never>;`);
+if (functions.size === 0) {
+  lines.push(`    Functions: Record<string, never>;`);
+} else {
+  lines.push(`    Functions: {`);
+  for (const [name, fn] of functions) {
+    lines.push(`      ${name}: {`);
+    if (fn.args.length === 0) {
+      lines.push(`        Args: Record<string, never>;`);
+    } else {
+      lines.push(`        Args: {`);
+      for (const arg of fn.args) {
+        lines.push(`          ${arg.name}: ${arg.tsType};`);
+      }
+      lines.push(`        };`);
+    }
+    lines.push(`        Returns: ${fn.returnsTs};`);
+    lines.push(`      };`);
+  }
+  lines.push(`    };`);
+}
 lines.push(`    Enums: Record<string, never>;`);
 lines.push(`    CompositeTypes: Record<string, never>;`);
 lines.push(`  };`);
@@ -328,6 +407,7 @@ console.log(`✅ Generated ${outPath}`);
 console.log(`   Migrations: ${migrationFiles.length}`);
 console.log(`   Tables: ${tablesList.length}`);
 console.log(`   Row types: ${tablesList.length} (one per table)`);
+console.log(`   Functions: ${functions.size}`);
 
 // ─── Generate runtime column registry ───────────────────────────────────────
 //

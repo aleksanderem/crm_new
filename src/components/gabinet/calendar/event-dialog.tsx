@@ -6,6 +6,7 @@ import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { ChevronDown, Users } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -19,17 +20,17 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatActionError } from "@/lib/format-action-error";
+import { cn } from "@/lib/utils";
 
 interface EventDialogProps {
   organizationId: Id<"organizations">;
@@ -41,8 +42,6 @@ interface EventDialogProps {
   defaultEmployeeId?: string;
   onManageEventTypes?: () => void;
 }
-
-const ALL_EMPLOYEES = "__all__";
 
 function computeEndTime(start: string, minutes: number): string {
   const [h, m] = start.split(":").map(Number);
@@ -90,9 +89,13 @@ export function EventDialog({
   const [date, setDate] = useState<string>(defaultDate ?? todayStr());
   const [startTime, setStartTime] = useState<string>(defaultTime ?? "09:00");
   const [endTime, setEndTime] = useState<string>(defaultEndTime ?? "10:00");
-  const [employeeId, setEmployeeId] = useState<string>(
-    defaultEmployeeId ?? ALL_EMPLOYEES,
+  // Empty array means "Cały gabinet" (all employees / whole office).
+  // Multiple selections create one scheduled activity per employee so the
+  // event renders in every selected employee's calendar column (issue #1608).
+  const [employeeIds, setEmployeeIds] = useState<string[]>(
+    defaultEmployeeId ? [defaultEmployeeId] : [],
   );
+  const [employeePickerOpen, setEmployeePickerOpen] = useState(false);
   const [categoryId, setCategoryId] = useState<
     Id<"categoryDefinitions"> | undefined
   >(undefined);
@@ -108,7 +111,7 @@ export function EventDialog({
     setEndTime(
       defaultEndTime ?? computeEndTime(defaultTime ?? "09:00", 60),
     );
-    setEmployeeId(defaultEmployeeId ?? ALL_EMPLOYEES);
+    setEmployeeIds(defaultEmployeeId ? [defaultEmployeeId] : []);
     setCategoryId(undefined);
     setNotes("");
   }, [open, defaultDate, defaultTime, defaultEndTime, defaultEmployeeId]);
@@ -133,6 +136,34 @@ export function EventDialog({
     }));
   }, [employees, t]);
 
+  const toggleEmployee = useCallback((userId: string) => {
+    setEmployeeIds((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId],
+    );
+  }, []);
+
+  const selectAllEmployees = useCallback(() => {
+    setEmployeeIds([]);
+  }, []);
+
+  const employeeTriggerLabel = useMemo(() => {
+    if (employeeIds.length === 0) {
+      return t("gabinet.events.scopeAll", {
+        defaultValue: "Cały gabinet (wszyscy pracownicy)",
+      });
+    }
+    if (employeeIds.length === 1) {
+      const match = employeeOptions.find((e) => e.userId === employeeIds[0]);
+      return match?.name ?? employeeIds[0];
+    }
+    return t("gabinet.events.scopeMultiple", {
+      defaultValue: "{{count}} pracowników",
+      count: employeeIds.length,
+    });
+  }, [employeeIds, employeeOptions, t]);
+
   const canSubmit =
     title.trim().length > 0 &&
     !!date &&
@@ -154,35 +185,48 @@ export function EventDialog({
     try {
       const dueDateMs = new Date(`${date}T${startTime}:00`).getTime();
       const endDateMs = new Date(`${date}T${endTime}:00`).getTime();
-      const resourceId =
-        employeeId === ALL_EMPLOYEES ? undefined : employeeId;
 
-      await createActivity({
-        organizationId,
-        title: title.trim(),
-        activityType: "gabinet:event",
-        dueDate: dueDateMs,
-        endDate: endDateMs,
-        ownerId: String(currentUser._id),
-        description: notes.trim() ? notes.trim() : undefined,
-        categoryId: categoryId ? String(categoryId) : undefined,
-        resourceId,
-        sourceType: "manual",
-        moduleRef: {
-          moduleId: "gabinet",
-          entityType: "gabinetEvent",
-          // The activity row IS the event — there's no separate entity record.
-          // Use a placeholder so the moduleRef shape stays consistent with
-          // gabinetAppointment rows (which point at a gabinet_appointments row).
-          entityId: "self",
-        },
-      });
+      // Empty selection means "whole office" — one activity, no resourceId.
+      // Otherwise create one activity per selected employee so the block
+      // shows up in each of their calendar columns.
+      const targets: (string | undefined)[] =
+        employeeIds.length === 0 ? [undefined] : employeeIds;
+
+      await Promise.all(
+        targets.map((resourceId) =>
+          createActivity({
+            organizationId,
+            title: title.trim(),
+            activityType: "gabinet:event",
+            dueDate: dueDateMs,
+            endDate: endDateMs,
+            ownerId: String(currentUser._id),
+            description: notes.trim() ? notes.trim() : undefined,
+            categoryId: categoryId ? String(categoryId) : undefined,
+            resourceId,
+            sourceType: "manual",
+            moduleRef: {
+              moduleId: "gabinet",
+              entityType: "gabinetEvent",
+              // The activity row IS the event — there's no separate entity record.
+              // Use a placeholder so the moduleRef shape stays consistent with
+              // gabinetAppointment rows (which point at a gabinet_appointments row).
+              entityId: "self",
+            },
+          }),
+        ),
+      );
 
       invalidateActivities();
       toast.success(
-        t("gabinet.events.created", {
-          defaultValue: "Dodano zdarzenie",
-        }),
+        targets.length > 1
+          ? t("gabinet.events.createdMultiple", {
+              defaultValue: "Dodano {{count}} zdarzenia",
+              count: targets.length,
+            })
+          : t("gabinet.events.created", {
+              defaultValue: "Dodano zdarzenie",
+            }),
       );
       onOpenChange(false);
     } catch (err) {
@@ -201,7 +245,7 @@ export function EventDialog({
     date,
     startTime,
     endTime,
-    employeeId,
+    employeeIds,
     createActivity,
     organizationId,
     title,
@@ -292,23 +336,77 @@ export function EventDialog({
                 defaultValue: "Kogo dotyczy",
               })}
             </Label>
-            <Select value={employeeId} onValueChange={setEmployeeId}>
-              <SelectTrigger id="event-employee">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_EMPLOYEES}>
-                  {t("gabinet.events.scopeAll", {
-                    defaultValue: "Cały gabinet (wszyscy pracownicy)",
-                  })}
-                </SelectItem>
-                {employeeOptions.map((emp) => (
-                  <SelectItem key={emp.userId} value={emp.userId}>
-                    {emp.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover
+              open={employeePickerOpen}
+              onOpenChange={setEmployeePickerOpen}
+            >
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  id="event-employee"
+                  className={cn(
+                    "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                  )}
+                >
+                  <span className="flex items-center gap-2 truncate text-left">
+                    <Users className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="truncate">{employeeTriggerLabel}</span>
+                  </span>
+                  <ChevronDown className="size-4 shrink-0 opacity-50" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                className="w-[var(--radix-popover-trigger-width)] p-0"
+              >
+                <div className="flex flex-col">
+                  <button
+                    type="button"
+                    onClick={selectAllEmployees}
+                    className="flex w-full items-center gap-2 border-b px-3 py-2 text-left text-sm hover:bg-accent"
+                  >
+                    <Checkbox
+                      checked={employeeIds.length === 0}
+                      tabIndex={-1}
+                      className="pointer-events-none"
+                    />
+                    <span>
+                      {t("gabinet.events.scopeAll", {
+                        defaultValue: "Cały gabinet (wszyscy pracownicy)",
+                      })}
+                    </span>
+                  </button>
+                  <div className="max-h-60 overflow-y-auto py-1">
+                    {employeeOptions.length === 0 ? (
+                      <p className="px-3 py-2 text-sm text-muted-foreground">
+                        {t("gabinet.events.noEmployees", {
+                          defaultValue: "Brak pracowników",
+                        })}
+                      </p>
+                    ) : (
+                      employeeOptions.map((emp) => {
+                        const selected = employeeIds.includes(emp.userId);
+                        return (
+                          <button
+                            key={emp.userId}
+                            type="button"
+                            onClick={() => toggleEmployee(emp.userId)}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
+                          >
+                            <Checkbox
+                              checked={selected}
+                              tabIndex={-1}
+                              className="pointer-events-none"
+                            />
+                            <span className="truncate">{emp.name}</span>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="space-y-1.5">

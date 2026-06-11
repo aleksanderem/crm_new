@@ -72,6 +72,7 @@ import { HeaderSlotProvider, HeaderBackButton } from "@/components/layout/header
 import { getVisibleModules, moduleRegistry } from "@/modules/registry";
 import { useMatchRoute } from "@tanstack/react-router";
 import { useOrganization } from "@/components/org-context";
+import { MigrationHealthBanner } from "@/components/migration-health-banner";
 import { ContactForm } from "@/components/forms/contact-form";
 import { CompanyForm } from "@/components/forms/company-form";
 import { LeadForm } from "@/components/forms/lead-form";
@@ -725,6 +726,7 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
             </button>
           </span>
         </div>
+        <MigrationHealthBanner />
         <DevInfoDialog open={devInfoOpen} onOpenChange={handleDevInfoClose} />
 
         <div className="flex min-h-0 min-w-0 flex-1">

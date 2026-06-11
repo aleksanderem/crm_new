@@ -3,8 +3,24 @@ import tailwindcss from "@tailwindcss/vite";
 import viteReact from "@vitejs/plugin-react";
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import path from "path";
+import { readdirSync } from "node:fs";
+
+// Latest committed migration version (e.g. "00012"), read from supabase/migrations/
+// at config load time. The frontend boot health check (#1576) compares this against
+// the version returned by public.app_schema_version() to detect a stale schema.
+function latestMigrationVersion(): string {
+  const dir = path.resolve(__dirname, "./supabase/migrations");
+  const versions = readdirSync(dir)
+    .map((f) => /^(\d+)_.+\.sql$/.exec(f)?.[1])
+    .filter((v): v is string => !!v)
+    .sort();
+  return versions.at(-1) ?? "";
+}
 
 export default defineConfig({
+  define: {
+    __EXPECTED_SCHEMA_VERSION__: JSON.stringify(latestMigrationVersion()),
+  },
   plugins: [tailwindcss(), TanStackRouterVite(), viteReact()],
   server: {
     host: true,

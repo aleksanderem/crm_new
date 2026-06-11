@@ -143,6 +143,17 @@ export const create = action({
     linkedEntityId: v.optional(v.string()),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.string()),
+    resourceId: v.optional(v.string()),
+    sourceType: v.optional(
+      v.union(v.literal("manual"), v.literal("google"), v.literal("system")),
+    ),
+    moduleRef: v.optional(
+      v.object({
+        moduleId: v.string(),
+        entityType: v.string(),
+        entityId: v.string(),
+      }),
+    ),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runQuery(
@@ -171,6 +182,9 @@ export const create = action({
       linkedEntityId: args.linkedEntityId ?? null,
       tagIds: args.tagIds ?? null,
       categoryId: args.categoryId ?? null,
+      resourceId: args.resourceId ?? null,
+      sourceType: args.sourceType ?? null,
+      moduleRef: args.moduleRef ?? null,
       createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
@@ -207,6 +221,7 @@ export const update = action({
     linkedEntityId: v.optional(v.string()),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.string()),
+    resourceId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runQuery(
@@ -241,6 +256,7 @@ export const update = action({
     if (updates.linkedEntityId !== undefined) patchData.linkedEntityId = updates.linkedEntityId;
     if (updates.tagIds !== undefined) patchData.tagIds = updates.tagIds;
     if (updates.categoryId !== undefined) patchData.categoryId = updates.categoryId;
+    if (updates.resourceId !== undefined) patchData.resourceId = updates.resourceId;
 
     await db.patch("scheduledActivities", activityId, patchData);
 

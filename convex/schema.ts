@@ -91,6 +91,7 @@ export const entityTypeValidator = v.union(
   v.literal("gabinetPatient"),
   v.literal("gabinetTreatment"),
   v.literal("gabinetAppointment"),
+  v.literal("gabinetEvent"),
   v.literal("gabinetPackage"),
   v.literal("gabinetDocument"),
   v.literal("gabinetEmployee"),

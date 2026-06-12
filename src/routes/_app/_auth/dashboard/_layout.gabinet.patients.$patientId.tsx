@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
@@ -72,6 +71,7 @@ import {
 } from "@/lib/ez-icons";
 
 import { useTranslation } from "react-i18next";
+import { usePermission } from "@/hooks/use-permission";
 import { PatientPackagesCard } from "@/components/gabinet/patient-packages-card";
 import { PatientTreatmentsCard } from "@/components/gabinet/patient-treatments-card";
 import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
@@ -97,8 +97,13 @@ function PatientDetail() {
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action
   const removePatient = useAction(api.gabinet.patients.remove);
   const updatePaymentAction = useAction(api.payments.update);
+  const createPaymentAction = useAction(api.payments.create);
+  const cancelPaymentAction = useAction(api.payments.cancel);
   const getPatientCreditAction = useAction(api.payments.getPatientCredit);
   const refundCreditAction = useAction(api.payments.refundCredit);
+  const requestRefundAuthAction = useAction(
+    api.payments.requestRefundAuthorization,
+  );
   const trackView = useAction(api.recentlyViewed.track);
   const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
   const queryClient = useQueryClient();
@@ -129,6 +134,25 @@ function PatientDetail() {
   >("cash");
   const [refundNotes, setRefundNotes] = useState("");
   const [isRefundSubmitting, setIsRefundSubmitting] = useState(false);
+
+  // Issue #1690: Add Payment from patient page (no appointment required —
+  // funds go straight into the credit balance via creditEarned).
+  const [addPaymentOpen, setAddPaymentOpen] = useState(false);
+  const [addPaymentAmount, setAddPaymentAmount] = useState("");
+  const [addPaymentMethod, setAddPaymentMethod] = useState<
+    "cash" | "card" | "transfer" | "other"
+  >("cash");
+  const [addPaymentNotes, setAddPaymentNotes] = useState("");
+  const [addPaymentAppointmentId, setAddPaymentAppointmentId] =
+    useState<string>("");
+  const [isAddPaymentSubmitting, setIsAddPaymentSubmitting] = useState(false);
+
+  // Cancel-payment confirm state.
+  const [cancellingPaymentId, setCancellingPaymentId] = useState<string | null>(
+    null,
+  );
+  const [cancelReason, setCancelReason] = useState("");
+  const [isCancelSubmitting, setIsCancelSubmitting] = useState(false);
 
   const { data: patient, isLoading } = useSupabaseGabinetPatient(
     organizationId,
@@ -217,15 +241,21 @@ function PatientDetail() {
     enabled: !!organizationId && !!patientId,
   });
 
-  // @ts-ignore — TS2589: deep type instantiation in Convex codegen
-  const { data: myOrgs } = useQuery(
-    convexQuery(api.organizations.getMyOrganizations, {}),
+  // Issue #1690: refund and delete actions are gated by the new
+  // gabinet_payments feature. Members of the org without `refund` permission
+  // get a "request authorization" flow that pings owners/admins instead.
+  const { allowed: canRefundCredit } = usePermission(
+    "gabinet_payments",
+    "refund",
   );
-  const currentOrgRole = (myOrgs ?? []).find(
-    (o: { _id: string; role: string } | null) => o?._id === organizationId,
-  )?.role as "owner" | "admin" | "member" | "viewer" | undefined;
-  const canRefundCredit =
-    currentOrgRole === "owner" || currentOrgRole === "admin";
+  const { allowed: canCancelPayment } = usePermission(
+    "gabinet_payments",
+    "delete",
+  );
+  const { allowed: canCreatePayment } = usePermission(
+    "gabinet_payments",
+    "create",
+  );
 
   const getPaymentForLabel = (payment: {
     appointmentId?: string;
@@ -556,6 +586,142 @@ function PatientDetail() {
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(organizationId) });
       navigate({ to: "/dashboard/gabinet/patients" });
+    }
+  };
+
+  // Issue #1690 — open the "Dodaj wpłatę" dialog from the patient page.
+  const openAddPaymentDialog = () => {
+    setAddPaymentAmount("");
+    setAddPaymentMethod("cash");
+    setAddPaymentNotes("");
+    setAddPaymentAppointmentId("");
+    setAddPaymentOpen(true);
+  };
+
+  const handleAddPayment = async () => {
+    const normalized = addPaymentAmount.replace(",", ".").trim();
+    const amount = parseFloat(normalized);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error(t("gabinet.payments.amountRequired"));
+      return;
+    }
+    setIsAddPaymentSubmitting(true);
+    try {
+      // No appointment selected → full amount goes to the patient's credit
+      // balance (issue #1690 Q2). With an appointment selected, the backend
+      // still credits any overpayment via creditEarned computed here.
+      let creditEarned = 0;
+      if (!addPaymentAppointmentId) {
+        creditEarned = amount;
+      } else {
+        // Compute outstanding for the chosen appointment from completed
+        // payments visible in patientPayments. Falls back to crediting the
+        // whole amount when we can't price the visit.
+        const apt = (patientAppointments ?? []).find(
+          (a) => a._id === addPaymentAppointmentId,
+        );
+        const treatmentPrice =
+          apt?.treatmentId
+            ? treatmentsData?.find((tr) => tr._id === apt.treatmentId)?.price ??
+              0
+            : 0;
+        const paidForVisit = (patientPayments ?? [])
+          .filter(
+            (p) =>
+              p.appointmentId === addPaymentAppointmentId &&
+              p.status === "completed",
+          )
+          .reduce((sum, p) => sum + (p.amount ?? 0), 0);
+        const outstanding = Math.max(0, treatmentPrice - paidForVisit);
+        if (amount > outstanding + 0.005) {
+          creditEarned = Math.round((amount - outstanding) * 100) / 100;
+        }
+      }
+      await createPaymentAction({
+        organizationId,
+        patientId,
+        appointmentId: addPaymentAppointmentId || undefined,
+        amount,
+        currency: "PLN",
+        paymentMethod: addPaymentMethod,
+        notes: addPaymentNotes.trim() ? addPaymentNotes.trim() : undefined,
+        creditEarned: creditEarned > 0 ? creditEarned : undefined,
+      });
+      toast.success(t("gabinet.payments.created"));
+      setAddPaymentOpen(false);
+      await refetchPatientCredit();
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.payments.all });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "common.error",
+          defaultValue: "Wystąpił błąd.",
+        }),
+      );
+    } finally {
+      setIsAddPaymentSubmitting(false);
+    }
+  };
+
+  const openCancelDialog = (paymentId: string) => {
+    setCancellingPaymentId(paymentId);
+    setCancelReason("");
+  };
+
+  const handleCancelPayment = async () => {
+    if (!cancellingPaymentId) return;
+    setIsCancelSubmitting(true);
+    try {
+      await cancelPaymentAction({
+        organizationId,
+        paymentId: cancellingPaymentId,
+        reason: cancelReason.trim() ? cancelReason.trim() : undefined,
+      });
+      toast.success(t("gabinet.payments.cancelled"));
+      setCancellingPaymentId(null);
+      setCancelReason("");
+      await refetchPatientCredit();
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.payments.all });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "common.error",
+          defaultValue: "Wystąpił błąd.",
+        }),
+      );
+    } finally {
+      setIsCancelSubmitting(false);
+    }
+  };
+
+  // For users without refund permission — sends a request to admins instead
+  // of executing the refund. Same dialog state as the regular refund.
+  const handleRequestRefundAuthorization = async () => {
+    const normalized = refundAmount.replace(",", ".").trim();
+    const amount = parseFloat(normalized);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error(t("gabinet.payments.amountRequired"));
+      return;
+    }
+    setIsRefundSubmitting(true);
+    try {
+      await requestRefundAuthAction({
+        organizationId,
+        patientId,
+        amount,
+        notes: refundNotes.trim() ? refundNotes.trim() : undefined,
+      });
+      toast.success(t("gabinet.payments.credit.refundRequestSent"));
+      setRefundDialogOpen(false);
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "common.error",
+          defaultValue: "Wystąpił błąd.",
+        }),
+      );
+    } finally {
+      setIsRefundSubmitting(false);
     }
   };
 
@@ -894,11 +1060,13 @@ function PatientDetail() {
       ),
     },
     {
+      // Issue #1690: one merged tab — wpłaty, saldo, naliczenia, zwroty in
+      // a single chronological table with a "Typ" column.
       label: t("gabinet.payments.payments"),
       count: patientPayments?.length ?? 0,
       content: (() => {
         const completedPayments = (patientPayments ?? []).filter(
-          (p) => p.status === "completed",
+          (p) => p.status === "completed" && p.kind !== "credit_refund",
         );
         const totalSpent = completedPayments.reduce(
           (sum, p) => sum + (p.amount ?? 0),
@@ -911,10 +1079,71 @@ function PatientDetail() {
           (sum, p) => sum + (p.amount ?? 0),
           0,
         );
-        const lastPayment = patientPayments?.[0];
+        const balance = patientCredit?.balance ?? 0;
+
+        type PaymentRowType =
+          | "payment"
+          | "overpayment"
+          | "credit_applied"
+          | "credit_refund"
+          | "cancelled"
+          | "refunded";
+
+        const classifyPayment = (p: NonNullable<typeof patientPayments>[number]) => {
+          const earned = p.creditEarned ?? 0;
+          const applied = p.creditApplied ?? 0;
+          if (p.kind === "credit_refund") return "credit_refund" as const;
+          if (p.status === "cancelled") return "cancelled" as const;
+          if (p.status === "refunded") return "refunded" as const;
+          if (earned > 0) return "overpayment" as const;
+          if (applied > 0) return "credit_applied" as const;
+          return "payment" as const;
+        };
+
+        const typeLabelKey: Record<PaymentRowType, string> = {
+          payment: "gabinet.payments.types.payment",
+          overpayment: "gabinet.payments.types.overpayment",
+          credit_applied: "gabinet.payments.types.creditApplied",
+          credit_refund: "gabinet.payments.types.creditRefund",
+          cancelled: "gabinet.payments.types.cancelled",
+          refunded: "gabinet.payments.types.refunded",
+        };
+
+        const typeBadgeClass: Record<PaymentRowType, string> = {
+          payment: "",
+          overpayment:
+            "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300",
+          credit_applied:
+            "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300",
+          credit_refund:
+            "border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300",
+          cancelled:
+            "border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800/60 dark:bg-gray-950/40 dark:text-gray-300",
+          refunded:
+            "border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300",
+        };
+
         return (
           <div className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <WalletIcon
+                      className="h-4 w-4 text-emerald-600"
+                      variant="stroke"
+                    />
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        {t("gabinet.payments.credit.available")}
+                      </p>
+                      <p className="text-2xl font-bold tabular-nums">
+                        {formatCurrencyPLN(balance)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3">
@@ -953,23 +1182,28 @@ function PatientDetail() {
               </Card>
               <Card>
                 <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <Calendar
-                      className="h-4 w-4 text-muted-foreground"
-                      variant="stroke"
-                    />
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        {t("gabinet.payments.lastPayment")}
-                      </p>
-                      <p className="font-medium">
-                        {lastPayment
-                          ? new Date(lastPayment.createdAt).toLocaleDateString(
-                              "pl-PL",
-                            )
-                          : "—"}
-                      </p>
-                    </div>
+                  <div className="flex flex-col gap-2">
+                    {canCreatePayment && (
+                      <Button
+                        size="sm"
+                        onClick={openAddPaymentDialog}
+                        className="w-full"
+                      >
+                        <Plus className="mr-1 h-4 w-4" variant="stroke" />
+                        {t("gabinet.payments.addPayment")}
+                      </Button>
+                    )}
+                    {balance > 0 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={openRefundDialog}
+                        className="w-full"
+                      >
+                        <RefreshCw className="mr-1 h-4 w-4" variant="stroke" />
+                        {t("gabinet.payments.credit.refundCredit")}
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -997,7 +1231,10 @@ function PatientDetail() {
                       <thead>
                         <tr className="border-b bg-muted/50">
                           <th className="text-left p-3 text-sm font-medium">
-                            {t("gabinet.payments.amount")}
+                            {t("common.date")}
+                          </th>
+                          <th className="text-left p-3 text-sm font-medium">
+                            {t("gabinet.payments.type")}
                           </th>
                           <th className="text-left p-3 text-sm font-medium">
                             {t("gabinet.payments.for")}
@@ -1005,11 +1242,11 @@ function PatientDetail() {
                           <th className="text-left p-3 text-sm font-medium">
                             {t("gabinet.payments.method")}
                           </th>
-                          <th className="text-left p-3 text-sm font-medium">
-                            {t("common.date")}
+                          <th className="text-right p-3 text-sm font-medium">
+                            {t("gabinet.payments.amount")}
                           </th>
-                          <th className="text-left p-3 text-sm font-medium">
-                            {t("common.status")}
+                          <th className="text-right p-3 text-sm font-medium">
+                            {t("gabinet.payments.balanceDelta")}
                           </th>
                           <th className="text-right p-3 text-sm font-medium">
                             {t("common.actions")}
@@ -1017,90 +1254,138 @@ function PatientDetail() {
                         </tr>
                       </thead>
                       <tbody>
-                        {patientPayments.map((payment) => (
-                          <tr
-                            key={payment._id}
-                            className={`border-b last:border-0 hover:bg-muted/30 ${
-                              payment.appointmentId
-                                ? "cursor-pointer"
-                                : ""
-                            }`}
-                            onClick={() => {
-                              if (payment.appointmentId) {
-                                navigate({
-                                  to: "/dashboard/gabinet/appointments/$appointmentId",
-                                  params: {
-                                    appointmentId: payment.appointmentId,
-                                  },
-                                });
-                              }
-                            }}
-                          >
-                            <td className="p-3 font-medium">
-                              {formatCurrencyPLN(
-                                payment.amount,
-                                payment.currency ?? "PLN",
-                              )}
-                            </td>
-                            <td className="p-3 text-sm">
-                              <div
-                                className="max-w-[260px] truncate"
-                                title={getPaymentForLabel(payment)}
-                              >
-                                {getPaymentForLabel(payment)}
-                              </div>
-                            </td>
-                            <td className="p-3">
-                              <Badge variant="outline">
-                                {t(
-                                  `gabinet.payments.methods.${payment.paymentMethod}`,
-                                )}
-                              </Badge>
-                            </td>
-                            <td className="p-3 text-sm text-muted-foreground">
-                              {new Date(
-                                payment.createdAt,
-                              ).toLocaleDateString("pl-PL")}
-                            </td>
-                            <td className="p-3">
-                              <Badge
-                                variant={
-                                  payment.status === "completed"
-                                    ? "default"
-                                    : payment.status === "refunded"
-                                      ? "destructive"
-                                      : "secondary"
-                                }
-                              >
-                                {t(
-                                  `gabinet.payments.status.${payment.status}`,
-                                )}
-                              </Badge>
-                            </td>
-                            <td className="p-3 text-right">
-                              {(payment.status === "completed" ||
-                                payment.status === "pending") && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  aria-label={t("common.edit")}
-                                  title={t("gabinet.payments.editPayment")}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openEditPaymentDialog({
-                                      _id: payment._id,
-                                      amount: payment.amount,
-                                      paymentMethod: payment.paymentMethod,
-                                      notes: payment.notes,
+                        {[...patientPayments]
+                          .sort((a, b) => b.createdAt - a.createdAt)
+                          .map((payment) => {
+                            const type = classifyPayment(payment);
+                            const earned = payment.creditEarned ?? 0;
+                            const applied = payment.creditApplied ?? 0;
+                            const balanceDelta = earned - applied;
+                            const isCancellable =
+                              canCancelPayment &&
+                              (payment.status === "completed" ||
+                                payment.status === "pending");
+                            const isEditable =
+                              payment.status === "completed" ||
+                              payment.status === "pending";
+                            return (
+                              <tr
+                                key={payment._id}
+                                className={`border-b last:border-0 hover:bg-muted/30 ${
+                                  payment.appointmentId
+                                    ? "cursor-pointer"
+                                    : ""
+                                }`}
+                                onClick={() => {
+                                  if (payment.appointmentId) {
+                                    navigate({
+                                      to: "/dashboard/gabinet/appointments/$appointmentId",
+                                      params: {
+                                        appointmentId: payment.appointmentId,
+                                      },
                                     });
-                                  }}
+                                  }
+                                }}
+                              >
+                                <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">
+                                  {new Date(
+                                    payment.createdAt,
+                                  ).toLocaleDateString("pl-PL")}
+                                </td>
+                                <td className="p-3">
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-[10px] ${typeBadgeClass[type]}`}
+                                  >
+                                    {t(typeLabelKey[type])}
+                                  </Badge>
+                                </td>
+                                <td className="p-3 text-sm">
+                                  <div
+                                    className="max-w-[220px] truncate"
+                                    title={getPaymentForLabel(payment)}
+                                  >
+                                    {getPaymentForLabel(payment)}
+                                  </div>
+                                </td>
+                                <td className="p-3">
+                                  <Badge variant="outline">
+                                    {t(
+                                      `gabinet.payments.methods.${payment.paymentMethod}`,
+                                    )}
+                                  </Badge>
+                                </td>
+                                <td className="p-3 text-right font-medium tabular-nums">
+                                  {formatCurrencyPLN(
+                                    payment.amount,
+                                    payment.currency ?? "PLN",
+                                  )}
+                                </td>
+                                <td
+                                  className={`p-3 text-right font-semibold tabular-nums ${
+                                    balanceDelta > 0
+                                      ? "text-emerald-600"
+                                      : balanceDelta < 0
+                                        ? "text-red-600"
+                                        : "text-muted-foreground"
+                                  }`}
                                 >
-                                  <Pencil className="h-4 w-4" variant="stroke" />
-                                </Button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
+                                  {balanceDelta === 0
+                                    ? "—"
+                                    : `${balanceDelta > 0 ? "+" : "−"}${formatCurrencyPLN(Math.abs(balanceDelta))}`}
+                                </td>
+                                <td className="p-3 text-right">
+                                  <div className="flex justify-end gap-1">
+                                    {isEditable && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        aria-label={t("common.edit")}
+                                        title={t(
+                                          "gabinet.payments.editPayment",
+                                        )}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openEditPaymentDialog({
+                                            _id: payment._id,
+                                            amount: payment.amount,
+                                            paymentMethod:
+                                              payment.paymentMethod,
+                                            notes: payment.notes,
+                                          });
+                                        }}
+                                      >
+                                        <Pencil
+                                          className="h-4 w-4"
+                                          variant="stroke"
+                                        />
+                                      </Button>
+                                    )}
+                                    {isCancellable && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-destructive"
+                                        aria-label={t("common.cancel")}
+                                        title={t(
+                                          "gabinet.payments.cancelPayment",
+                                        )}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openCancelDialog(payment._id);
+                                        }}
+                                      >
+                                        <Minus
+                                          className="h-4 w-4"
+                                          variant="stroke"
+                                        />
+                                      </Button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
                       </tbody>
                     </table>
                   </div>
@@ -1281,148 +1566,6 @@ function PatientDetail() {
       ),
     },
     {
-      label: t("gabinet.patients.tabs.credit"),
-      count: patientCredit?.history.length ?? 0,
-      content: (() => {
-        const balance = patientCredit?.balance ?? 0;
-        const history = patientCredit?.history ?? [];
-        return (
-          <div className="space-y-6">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                      <WalletIcon className="h-5 w-5" variant="stroke" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        {t("gabinet.payments.credit.available")}
-                      </p>
-                      <p className="text-2xl font-bold tabular-nums">
-                        {formatCurrencyPLN(balance)}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground max-w-md">
-                        {t("gabinet.payments.credit.description")}
-                      </p>
-                    </div>
-                  </div>
-                  {canRefundCredit && balance > 0 && (
-                    <Button
-                      variant="outline"
-                      onClick={openRefundDialog}
-                      className="sm:self-start"
-                    >
-                      <RefreshCw className="mr-1 h-4 w-4" variant="stroke" />
-                      {t("gabinet.payments.credit.refundCredit")}
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6 space-y-4">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <WalletIcon
-                    className="h-4 w-4 text-muted-foreground"
-                    variant="stroke"
-                  />
-                  {t("gabinet.payments.credit.history")}
-                </h3>
-                {history.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <WalletIcon className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                    <p className="text-sm text-muted-foreground">
-                      {t("gabinet.payments.credit.noCredit")}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto border rounded-lg">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b bg-muted/50">
-                          <th className="text-left p-3 text-sm font-medium">
-                            {t("common.date")}
-                          </th>
-                          <th className="text-left p-3 text-sm font-medium">
-                            {t("gabinet.payments.for")}
-                          </th>
-                          <th className="text-right p-3 text-sm font-medium">
-                            {t("gabinet.payments.amount")}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {history.map((entry) => {
-                          const isRefund = entry.kind === "credit_refund";
-                          const isEarned = entry.creditEarned > 0;
-                          const isApplied = entry.creditApplied > 0;
-                          let label: string;
-                          let delta: number;
-                          let deltaClass: string;
-                          if (isRefund) {
-                            label = t("gabinet.payments.credit.refund");
-                            // Refund row stores creditEarned = -amount; show as
-                            // negative delta to balance.
-                            delta = entry.creditEarned;
-                            deltaClass = "text-red-600";
-                          } else if (isEarned) {
-                            label = t("gabinet.payments.credit.earned");
-                            delta = entry.creditEarned;
-                            deltaClass = "text-emerald-600";
-                          } else if (isApplied) {
-                            label = t("gabinet.payments.credit.applied");
-                            delta = -entry.creditApplied;
-                            deltaClass = "text-red-600";
-                          } else {
-                            label = entry.notes ?? "—";
-                            delta = 0;
-                            deltaClass = "text-muted-foreground";
-                          }
-                          return (
-                            <tr
-                              key={entry._id}
-                              className={`border-b last:border-0 hover:bg-muted/30 ${
-                                entry.appointmentId ? "cursor-pointer" : ""
-                              }`}
-                              onClick={() => {
-                                if (entry.appointmentId) {
-                                  navigate({
-                                    to: "/dashboard/gabinet/appointments/$appointmentId",
-                                    params: {
-                                      appointmentId: entry.appointmentId,
-                                    },
-                                  });
-                                }
-                              }}
-                            >
-                              <td className="p-3 text-sm text-muted-foreground">
-                                {new Date(entry.createdAt).toLocaleDateString(
-                                  "pl-PL",
-                                )}
-                              </td>
-                              <td className="p-3 text-sm">{label}</td>
-                              <td
-                                className={`p-3 text-right font-semibold tabular-nums ${deltaClass}`}
-                              >
-                                {delta > 0 ? "+" : delta < 0 ? "−" : ""}
-                                {formatCurrencyPLN(Math.abs(delta))}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        );
-      })(),
-    },
-    {
       label: t("gabinet.patients.tabs.activity"),
       content: (
         <ActivityFeed
@@ -1591,10 +1734,14 @@ function PatientDetail() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {t("gabinet.payments.credit.refundDialogTitle")}
+              {canRefundCredit
+                ? t("gabinet.payments.credit.refundDialogTitle")
+                : t("gabinet.payments.credit.requestRefundDialogTitle")}
             </DialogTitle>
             <DialogDescription>
-              {t("gabinet.payments.credit.refundDialogDesc")}
+              {canRefundCredit
+                ? t("gabinet.payments.credit.refundDialogDesc")
+                : t("gabinet.payments.credit.requestRefundDialogDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -1621,12 +1768,108 @@ function PatientDetail() {
                 placeholder="0.00"
               />
             </div>
+            {canRefundCredit && (
+              <div>
+                <Label>{t("gabinet.payments.credit.refundMethod")}</Label>
+                <Select
+                  value={refundMethod}
+                  onValueChange={(v) =>
+                    setRefundMethod(
+                      v as "cash" | "card" | "transfer" | "other",
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">
+                      {t("gabinet.payments.methods.cash")}
+                    </SelectItem>
+                    <SelectItem value="card">
+                      {t("gabinet.payments.methods.card")}
+                    </SelectItem>
+                    <SelectItem value="transfer">
+                      {t("gabinet.payments.methods.transfer")}
+                    </SelectItem>
+                    <SelectItem value="other">
+                      {t("gabinet.payments.methods.other")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
-              <Label>{t("gabinet.payments.credit.refundMethod")}</Label>
+              <Label>{t("gabinet.payments.credit.refundNotes")}</Label>
+              <Input
+                type="text"
+                value={refundNotes}
+                onChange={(e) => setRefundNotes(e.target.value)}
+                placeholder={t("gabinet.payments.notePlaceholder")}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRefundDialogOpen(false)}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              onClick={
+                canRefundCredit
+                  ? handleRefundCredit
+                  : handleRequestRefundAuthorization
+              }
+              disabled={isRefundSubmitting}
+            >
+              {isRefundSubmitting
+                ? t("common.processing")
+                : canRefundCredit
+                  ? t("gabinet.payments.credit.refundConfirm")
+                  : t("gabinet.payments.credit.requestRefundConfirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Issue #1690: Add a free-standing payment from the patient page. */}
+      <Dialog
+        open={addPaymentOpen}
+        onOpenChange={(open) => {
+          if (!open) setAddPaymentOpen(false);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("gabinet.payments.addPayment")}</DialogTitle>
+            <DialogDescription>
+              {t("gabinet.payments.addPaymentPatientDesc")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>{t("gabinet.payments.amount")}</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={addPaymentAmount}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                    setAddPaymentAmount(v);
+                  }
+                }}
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <Label>{t("gabinet.payments.method")}</Label>
               <Select
-                value={refundMethod}
+                value={addPaymentMethod}
                 onValueChange={(v) =>
-                  setRefundMethod(
+                  setAddPaymentMethod(
                     v as "cash" | "card" | "transfer" | "other",
                   )
                 }
@@ -1651,11 +1894,60 @@ function PatientDetail() {
               </Select>
             </div>
             <div>
-              <Label>{t("gabinet.payments.credit.refundNotes")}</Label>
+              <Label>
+                {t("gabinet.payments.linkedAppointment")}{" "}
+                <span className="text-xs text-muted-foreground">
+                  ({t("common.optional")})
+                </span>
+              </Label>
+              <Select
+                value={addPaymentAppointmentId || "none"}
+                onValueChange={(v) =>
+                  setAddPaymentAppointmentId(v === "none" ? "" : v)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    {t("gabinet.payments.noAppointmentToCredit")}
+                  </SelectItem>
+                  {(() => {
+                    const today = new Date().toISOString().split("T")[0];
+                    const upcoming = (patientAppointments ?? [])
+                      .filter(
+                        (a) =>
+                          a.date >= today &&
+                          a.status !== "cancelled" &&
+                          a.status !== "no_show",
+                      )
+                      .slice(0, 20);
+                    return upcoming.map((apt) => {
+                      const treatmentName =
+                        treatmentsData?.find((tr) => tr._id === apt.treatmentId)
+                          ?.name ?? t("common.unknown");
+                      return (
+                        <SelectItem key={apt._id} value={apt._id}>
+                          {apt.date} · {apt.startTime} · {treatmentName}
+                        </SelectItem>
+                      );
+                    });
+                  })()}
+                </SelectContent>
+              </Select>
+              {!addPaymentAppointmentId && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t("gabinet.payments.fullAmountToCreditHint")}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label>{t("common.notes")}</Label>
               <Input
                 type="text"
-                value={refundNotes}
-                onChange={(e) => setRefundNotes(e.target.value)}
+                value={addPaymentNotes}
+                onChange={(e) => setAddPaymentNotes(e.target.value)}
                 placeholder={t("gabinet.payments.notePlaceholder")}
               />
             </div>
@@ -1663,22 +1955,77 @@ function PatientDetail() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setRefundDialogOpen(false)}
+              onClick={() => setAddPaymentOpen(false)}
             >
               {t("common.cancel")}
             </Button>
             <Button
-              onClick={handleRefundCredit}
-              disabled={isRefundSubmitting}
+              onClick={handleAddPayment}
+              disabled={isAddPaymentSubmitting}
             >
-              {isRefundSubmitting
+              {isAddPaymentSubmitting
                 ? t("common.processing")
-                : t("gabinet.payments.credit.refundConfirm")}
+                : t("gabinet.payments.create")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Issue #1690: per-row soft-cancel (no hard delete — status flip). */}
+      <Dialog
+        open={cancellingPaymentId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCancellingPaymentId(null);
+            setCancelReason("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("gabinet.payments.cancelPayment")}</DialogTitle>
+            <DialogDescription>
+              {t("gabinet.payments.cancelPaymentDesc")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>
+                {t("gabinet.payments.cancelReason")}{" "}
+                <span className="text-xs text-muted-foreground">
+                  ({t("common.optional")})
+                </span>
+              </Label>
+              <Input
+                type="text"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder={t("gabinet.payments.cancelReasonPlaceholder")}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCancellingPaymentId(null);
+                setCancelReason("");
+              }}
+            >
+              {t("common.close")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancelPayment}
+              disabled={isCancelSubmitting}
+            >
+              {isCancelSubmitting
+                ? t("common.processing")
+                : t("gabinet.payments.cancelConfirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

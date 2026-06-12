@@ -45,6 +45,7 @@ function buildGabinet(
     delete: "none",
     approve: "none",
     sign: "none",
+    refund: "none",
   };
   const result = {} as FeaturePermissions;
   // Every feature defaults to all-none, so MAX-merge with org-role is a no-op
@@ -64,6 +65,7 @@ function buildGabinet(
     "gabinet_treatments",
     "gabinet_packages",
     "gabinet_employees",
+    "gabinet_payments",
     "gabinet_settings",
     "settings",
     "team",
@@ -96,6 +98,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_treatments: { view: "all" },
     gabinet_packages: { view: "all" },
     gabinet_employees: { view: "all" },
+    gabinet_payments: { view: "all" },
     gabinet_settings: {},
   }),
   therapist: buildGabinet({
@@ -104,6 +107,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_treatments: { view: "all" },
     gabinet_packages: { view: "all" },
     gabinet_employees: { view: "all" },
+    gabinet_payments: { view: "all" },
     gabinet_settings: {},
   }),
   nurse: buildGabinet({
@@ -112,6 +116,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_treatments: { view: "all" },
     gabinet_packages: { view: "all" },
     gabinet_employees: { view: "all" },
+    gabinet_payments: { view: "all" },
     gabinet_settings: {},
   }),
   receptionist: buildGabinet({
@@ -120,6 +125,9 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_treatments: { view: "all" },
     gabinet_packages: { view: "all" },
     gabinet_employees: { view: "all" },
+    // Recepcja może rejestrować wpłaty i edytować je, ale NIE robi zwrotów —
+    // zwrot wymaga osobnej autoryzacji administratora (issue #1690).
+    gabinet_payments: { view: "all", create: "all", edit: "all" },
     gabinet_settings: {},
   }),
   admin: buildGabinet({
@@ -128,6 +136,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_treatments: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_packages: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_employees: { view: "all", create: "all", edit: "all", delete: "all" },
+    gabinet_payments: { view: "all", create: "all", edit: "all", delete: "all", refund: "all" },
     gabinet_settings: { view: "all", create: "all", edit: "all", delete: "all" },
   }),
   other: buildGabinet({
@@ -136,6 +145,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_treatments: { view: "all" },
     gabinet_packages: { view: "all" },
     gabinet_employees: { view: "all" },
+    gabinet_payments: { view: "all" },
     gabinet_settings: {},
   }),
 };

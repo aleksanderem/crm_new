@@ -3389,6 +3389,29 @@
       "creditAmountToApply": "Kwota z salda",
       "creditExceedsBalance": "Kwota użytego salda nadpłat przekracza dostępne środki.",
       "overpaymentNote": "Nadpłata {{amount}} zostanie dopisana do salda klienta i można ją wykorzystać przy kolejnych wizytach.",
+      "overpaymentToCredit": "Nadpłata {{amount}} zostanie dopisana do salda klienta.",
+      "useBalance": "Użyj salda klienta ({{amount}})",
+      "useBalanceHint": "Brakująca kwota zostanie pokryta z salda nadpłat klienta.",
+      "addPaymentPatientDesc": "Zarejestruj wpłatę klienta. Bez wybranej wizyty całość trafi do salda.",
+      "linkedAppointment": "Powiązana wizyta",
+      "noAppointmentToCredit": "Brak — wpłata do salda klienta",
+      "fullAmountToCreditHint": "Całość wpłaty zostanie dopisana do salda klienta.",
+      "type": "Typ",
+      "balanceDelta": "Wpływ na saldo",
+      "cancelled": "Płatność anulowana",
+      "cancelPayment": "Anuluj płatność",
+      "cancelPaymentDesc": "Anulowana płatność nie zostanie wliczona do salda ani do rozliczeń. Operacja zachowuje wpis w historii.",
+      "cancelReason": "Powód anulowania",
+      "cancelReasonPlaceholder": "Np. błędna kwota, rezygnacja klienta...",
+      "cancelConfirm": "Anuluj wpłatę",
+      "types": {
+        "payment": "Wpłata",
+        "overpayment": "Nadpłata",
+        "creditApplied": "Użycie salda",
+        "creditRefund": "Zwrot salda",
+        "cancelled": "Anulowana",
+        "refunded": "Zwrócona"
+      },
       "credit": {
         "title": "Saldo nadpłat",
         "description": "Nadpłaty są dopisywane do salda klienta i mogą zostać wykorzystane przy kolejnych wizytach.",
@@ -3407,7 +3430,11 @@
         "refundConfirm": "Potwierdź zwrot",
         "refundSuccess": "Saldo zwrócone",
         "refundExceeds": "Kwota zwrotu przekracza dostępne saldo.",
-        "adminOnly": "Tylko właściciele i administratorzy organizacji mogą zwracać saldo nadpłat."
+        "adminOnly": "Tylko właściciele i administratorzy organizacji mogą zwracać saldo nadpłat.",
+        "requestRefundDialogTitle": "Poproś o autoryzację zwrotu",
+        "requestRefundDialogDesc": "Nie masz uprawnień do bezpośrednich zwrotów. Twoja prośba trafi do administratora organizacji.",
+        "requestRefundConfirm": "Wyślij prośbę",
+        "refundRequestSent": "Prośba o autoryzację zwrotu wysłana do administratora."
       }
     },
     "schedules": {

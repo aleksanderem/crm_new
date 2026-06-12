@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { logAudit } from "./auditLog";
 import { logActivity } from "./_helpers/activities";
+import { createNotificationDirect } from "./notifications";
 
 const paymentMethodValidator = v.union(
   v.literal("cash"),
@@ -305,8 +306,20 @@ export const refundCredit = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Only organization admins can refund patient credit");
+    // Issue #1690: refunds are gated by gabinet_payments.refund (separate slot
+    // so e.g. reception can record payments but not authorize refunds).
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_payments",
+        action: "refund",
+      },
+    );
+    if (!perm.allowed) {
+      throw new Error(
+        "REFUND_NOT_AUTHORIZED: requires gabinet_payments.refund — use requestRefundAuthorization to ask an admin",
+      );
     }
     if (!Number.isFinite(args.amount) || args.amount <= 0) {
       throw new Error("Refund amount must be positive");
@@ -712,6 +725,205 @@ export const _refundCreditSideEffects = internalMutation({
       entityType: "payment",
       entityId: args.paymentId as any,
       details: JSON.stringify({ amount: args.amount }),
+    });
+  },
+});
+
+/**
+ * Soft-cancel a payment (issue #1690 — "Usuń wpłatę").
+ *
+ * Never hard-deletes the row, so credit-history is preserved. Flips the
+ * status to "cancelled" which drops the row from balance + outstanding
+ * computations (see computePatientCreditBalance which filters on
+ * status="completed"). Already-refunded/cancelled rows are rejected.
+ */
+export const cancel = action({
+  args: {
+    organizationId: v.id("organizations"),
+    paymentId: v.string(),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_payments",
+        action: "delete",
+      },
+    );
+    if (!perm.allowed) {
+      throw new Error("Not authorized to cancel payments");
+    }
+
+    const db = createSupabaseDb();
+    const payment = await db.get("payments", args.paymentId);
+    if (!payment || payment.organizationId !== String(args.organizationId)) {
+      throw new Error("Payment not found");
+    }
+    if (payment.status === "refunded" || payment.status === "cancelled") {
+      throw new Error(`Cannot cancel a ${payment.status} payment`);
+    }
+
+    const baseNotes = (payment.notes as string | null) ?? "";
+    const newNotes = args.reason
+      ? `${baseNotes ? baseNotes + "\n" : ""}Cancelled: ${args.reason}`
+      : baseNotes || null;
+
+    await db.patch("payments", args.paymentId, {
+      status: "cancelled",
+      notes: newNotes,
+      updatedAt: Date.now(),
+    });
+
+    try {
+      await ctx.runMutation(internal.payments._cancelPaymentSideEffects, {
+        paymentId: args.paymentId,
+        organizationId: args.organizationId,
+        userId: authResult.userId,
+        amount: payment.amount as number,
+        reason: args.reason,
+      });
+    } catch {
+      // side effects are best-effort
+    }
+
+    return args.paymentId;
+  },
+});
+
+export const _cancelPaymentSideEffects = internalMutation({
+  args: {
+    paymentId: v.string(),
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    amount: v.number(),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.userId,
+      action: "payment_cancelled",
+      entityType: "payment",
+      entityId: args.paymentId as any,
+      details: JSON.stringify({ amount: args.amount, reason: args.reason }),
+    });
+  },
+});
+
+/**
+ * Issue #1690: when a staff member without gabinet_payments.refund permission
+ * tries to issue a refund, they instead call this action. It records the
+ * request in the audit log and notifies every owner/admin in the org with a
+ * link back to the patient. The admin then approves by clicking through and
+ * executing `refundCredit` from the UI.
+ *
+ * Note: email delivery and a single-click email-link approval flow are
+ * tracked as a follow-up. The notification-based flow ships first so refund
+ * gating works end-to-end immediately.
+ */
+export const requestRefundAuthorization = action({
+  args: {
+    organizationId: v.id("organizations"),
+    patientId: v.string(),
+    amount: v.number(),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (!Number.isFinite(args.amount) || args.amount <= 0) {
+      throw new Error("Refund amount must be positive");
+    }
+
+    // Sanity-check the patient still has enough credit to refund — saves
+    // admins from approving impossible requests.
+    const db = createSupabaseDb();
+    const balance = await computePatientCreditBalance(
+      db,
+      String(args.organizationId),
+      String(args.patientId),
+    );
+    if (args.amount > balance + 0.005) {
+      throw new Error(
+        `Refund amount ${args.amount} exceeds available credit ${balance}`,
+      );
+    }
+
+    const patient = await db.get("gabinetPatients", args.patientId);
+    const patientLabel = patient
+      ? `${(patient.firstName as string) ?? ""} ${(patient.lastName as string) ?? ""}`.trim() || "Pacjent"
+      : "Pacjent";
+
+    await ctx.runMutation(internal.payments._requestRefundAuthSideEffects, {
+      organizationId: args.organizationId,
+      requesterId: authResult.userId,
+      requesterName: authResult.userName ?? authResult.userEmail ?? "Pracownik",
+      patientId: args.patientId,
+      patientLabel,
+      amount: args.amount,
+      notes: args.notes,
+    });
+
+    return { ok: true };
+  },
+});
+
+export const _requestRefundAuthSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    requesterId: v.id("users"),
+    requesterName: v.string(),
+    patientId: v.string(),
+    patientLabel: v.string(),
+    amount: v.number(),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Notify every owner/admin in the org.
+    const memberships = await ctx.db
+      .query("teamMemberships")
+      .withIndex("by_organizationId", (q) =>
+        q.eq("organizationId", args.organizationId),
+      )
+      .collect();
+
+    const adminIds = memberships
+      .filter((m) => m.role === "owner" || m.role === "admin")
+      .map((m) => m.userId);
+
+    const message = `${args.requesterName} prosi o autoryzację zwrotu ${args.amount.toFixed(2)} zł z salda klienta ${args.patientLabel}${args.notes ? ` (${args.notes})` : ""}.`;
+    const link = `/dashboard/gabinet/patients/${args.patientId}?tab=payments`;
+
+    for (const userId of adminIds) {
+      await createNotificationDirect(ctx, {
+        organizationId: args.organizationId,
+        userId,
+        type: "refund_authorization_requested",
+        title: "Prośba o autoryzację zwrotu",
+        message,
+        link,
+      });
+    }
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.requesterId,
+      action: "refund_authorization_requested",
+      entityType: "payment",
+      entityId: args.patientId as any,
+      details: JSON.stringify({
+        patientId: args.patientId,
+        amount: args.amount,
+        notes: args.notes,
+      }),
     });
   },
 });

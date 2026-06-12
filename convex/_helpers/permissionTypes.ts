@@ -18,6 +18,7 @@ export const FEATURES = [
   "gabinet_treatments",
   "gabinet_packages",
   "gabinet_employees",
+  "gabinet_payments",
   "gabinet_settings",
   "settings",
   "team",
@@ -27,7 +28,7 @@ export const FEATURES = [
   "categoryDefinitions",
 ] as const;
 
-export const ACTIONS = ["view", "create", "edit", "delete", "approve", "sign"] as const;
+export const ACTIONS = ["view", "create", "edit", "delete", "approve", "sign", "refund"] as const;
 
 export const SCOPES = ["none", "own", "all"] as const;
 

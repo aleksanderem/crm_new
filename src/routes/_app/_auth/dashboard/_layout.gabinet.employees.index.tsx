@@ -356,6 +356,9 @@ function EmployeesIndex() {
         ]}
         onBulkAction={handleBulkAction}
         rowActions={rowActions}
+        onRowAction={(employeeId) =>
+          navigate({ to: `/dashboard/gabinet/employees/${employeeId}` })
+        }
       />
 
       <TagsManagerSlideout

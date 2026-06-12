@@ -486,6 +486,9 @@ function CompaniesIndex() {
         rowActions={rowActions}
         emptyTitle={t('companies.emptyTitle')}
         emptyDescription={t('companies.emptyDescription')}
+        onRowAction={(companyId) =>
+          navigate({ to: `/dashboard/companies/${companyId}` })
+        }
       />
 
       <CsvImportDialog

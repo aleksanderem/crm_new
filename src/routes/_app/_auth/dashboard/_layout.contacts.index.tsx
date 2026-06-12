@@ -459,6 +459,9 @@ function ContactsIndex() {
         rowActions={rowActions}
         emptyTitle={t('contacts.emptyTitle')}
         emptyDescription={t('contacts.emptyDescription')}
+        onRowAction={(contactId) =>
+          navigate({ to: `/dashboard/contacts/${contactId}` })
+        }
       />
 
       <CsvImportDialog

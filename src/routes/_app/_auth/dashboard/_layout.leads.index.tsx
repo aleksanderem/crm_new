@@ -701,6 +701,9 @@ function LeadsIndex() {
         ]}
         emptyTitle={t("deals.emptyTitle")}
         emptyDescription={t("deals.emptyDescription")}
+        onRowAction={(leadId) =>
+          navigate({ to: `/dashboard/leads/${leadId}` })
+        }
       />
 
       <CsvImportDialog

@@ -17,6 +17,7 @@
  *   • 00010_gabinet_treatment_package_link.sql
  *   • 00011_entity_type_gabinet_event.sql
  *   • 00012_app_schema_version_rpc.sql
+ *   • 00013_product_inventory_foundation.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  */
@@ -113,7 +114,9 @@ export type TableName =
   | "automation_rules"
   | "automation_runs"
   | "automation_run_steps"
-  | "document_components";
+  | "document_components"
+  | "product_stock_levels"
+  | "product_stock_movements";
 
 /**
  * Column names per table, as a runtime-checkable Set.
@@ -153,7 +156,7 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   object_relationships: new Set(["id", "organization_id", "source_type", "source_id", "target_type", "target_id", "relationship_type", "created_by", "created_at"]),
   activities: new Set(["id", "organization_id", "entity_type", "entity_id", "action", "description", "metadata", "performed_by", "created_at"]),
   notes: new Set(["id", "organization_id", "entity_type", "entity_id", "content", "created_by", "is_pinned", "parent_note_id", "created_at", "updated_at"]),
-  products: new Set(["id", "organization_id", "name", "sku", "unit_price", "tax_rate", "is_active", "description", "tag_ids", "category_id", "created_by", "created_at", "updated_at", "tax_exempt"]),
+  products: new Set(["id", "organization_id", "name", "sku", "unit_price", "tax_rate", "is_active", "description", "tag_ids", "category_id", "created_by", "created_at", "updated_at", "tax_exempt", "track_stock", "stock_unit"]),
   deal_products: new Set(["id", "organization_id", "deal_id", "product_id", "quantity", "unit_price", "discount", "created_at"]),
   calls: new Set(["id", "organization_id", "outcome", "call_date", "note", "duration", "tag_ids", "category_id", "created_by", "created_at", "updated_at"]),
   lost_reasons: new Set(["id", "organization_id", "label", "order", "is_active", "created_by", "created_at", "updated_at"]),
@@ -211,4 +214,6 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   automation_runs: new Set(["id", "organization_id", "rule_id", "module", "event_type", "entity_type", "entity_id", "event_idempotency_key", "correlation_key", "payload_snapshot", "actor_user_id", "status", "error_message", "occurred_at", "processed_at", "created_at", "updated_at"]),
   automation_run_steps: new Set(["id", "organization_id", "run_id", "rule_id", "action_index", "action_type", "idempotency_key", "status", "recipient", "recipient_name", "linked_entity_type", "linked_entity_id", "rendered_subject", "rendered_body", "metadata_snapshot", "error_message", "email_event_log_id", "appointment_sms_event_id", "processed_at", "created_at", "updated_at"]),
   document_components: new Set(["id", "organization_id", "scope", "created_by", "name", "description", "category", "content_json", "protected", "position_constraint", "version", "is_active", "created_at", "updated_at"]),
+  product_stock_levels: new Set(["id", "organization_id", "product_id", "location_id", "quantity", "updated_at"]),
+  product_stock_movements: new Set(["id", "organization_id", "product_id", "location_id", "delta", "balance_after", "reason", "source_type", "source_id", "note", "performed_by", "created_at"]),
 };

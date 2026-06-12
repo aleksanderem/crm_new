@@ -774,6 +774,14 @@
     },
     "errors": {
       "saveFailed": "Nie udało się zapisać produktu."
+    },
+    "stock": {
+      "column": "Stan",
+      "trackToggle": "Śledź stan magazynowy",
+      "trackHelp": "Każda zmiana stanu zapisuje się w historii ruchów. Jeśli wyłączone, historia może być nadal prowadzona ręcznie, ale stan nie jest pilnowany.",
+      "unitLabel": "Jednostka",
+      "unitPlaceholder": "szt., ml, g…",
+      "initialLabel": "Stan początkowy"
     }
   },
   "calls": {

@@ -8,6 +8,7 @@ import { logActivity } from "./_helpers/activities";
 import { checkPermission } from "./_helpers/permissions";
 import { Id } from "./_generated/dataModel";
 import type { SupabaseRow } from "./_helpers/supabaseRows";
+import { applyMovementInternal } from "./inventory";
 
 type DealProductRow = SupabaseRow<"dealProducts">;
 type ProductRow = SupabaseRow<"products">;
@@ -74,6 +75,9 @@ export const create = action({
     description: v.optional(v.union(v.string(), v.null())),
     tagIds: v.optional(v.union(v.array(v.string()), v.null())),
     categoryId: v.optional(v.union(v.string(), v.null())),
+    trackStock: v.optional(v.union(v.boolean(), v.null())),
+    stockUnit: v.optional(v.union(v.string(), v.null())),
+    initialStock: v.optional(v.union(v.number(), v.null())),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runQuery(
@@ -89,6 +93,7 @@ export const create = action({
     const now = Date.now();
     const db = createSupabaseDb();
 
+    const trackStock = args.trackStock ?? false;
     const productId = await db.insert("products", {
       organizationId: String(args.organizationId),
       name: args.name,
@@ -100,10 +105,31 @@ export const create = action({
       description: args.description ?? null,
       tagIds: args.tagIds ?? null,
       categoryId: args.categoryId ?? null,
+      trackStock,
+      stockUnit: args.stockUnit ?? null,
       createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
+
+    // Seed an initial stock movement when the product opts into tracking with
+    // a non-zero starting balance. We do this even if trackStock=false but the
+    // user provided an initial number, so the history reflects the intent.
+    const initial = args.initialStock ?? null;
+    if (initial !== null && initial !== 0) {
+      try {
+        await applyMovementInternal({
+          organizationId: String(args.organizationId),
+          productId,
+          locationId: null,
+          delta: initial,
+          reason: "initial",
+          performedBy: String(authResult.userId),
+        });
+      } catch (e) {
+        console.error("[products.create] initial stock seed FAILED:", e);
+      }
+    }
 
     try {
       await ctx.runMutation(internal.products._createSideEffects, {
@@ -151,6 +177,8 @@ export const update = action({
     description: v.optional(v.union(v.string(), v.null())),
     tagIds: v.optional(v.union(v.array(v.string()), v.null())),
     categoryId: v.optional(v.union(v.string(), v.null())),
+    trackStock: v.optional(v.union(v.boolean(), v.null())),
+    stockUnit: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runQuery(

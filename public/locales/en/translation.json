@@ -760,6 +760,14 @@
     },
     "errors": {
       "saveFailed": "Could not save the product."
+    },
+    "stock": {
+      "column": "Stock",
+      "trackToggle": "Track stock",
+      "trackHelp": "Every stock change is recorded in the movement history. When disabled, history can still be kept manually, but the running balance is not enforced.",
+      "unitLabel": "Unit",
+      "unitPlaceholder": "pcs, ml, g…",
+      "initialLabel": "Initial stock"
     }
   },
   "calls": {

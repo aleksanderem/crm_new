@@ -305,12 +305,65 @@ export function createCrmTables({
     description: v.optional(v.string()),
     tagIds: v.optional(v.array(v.id("tagDefinitions"))),
     categoryId: v.optional(v.id("categoryDefinitions")),
+    // Inventory foundation (#1700 PR-A). When trackStock=true, the product has
+    // managed quantity-on-hand stored in productStockLevels (optionally
+    // per-location for Gabinet) and every change writes a productStockMovements
+    // audit row. When trackStock=false, callers may still log movements for
+    // history but no balance is maintained.
+    trackStock: v.optional(v.boolean()),
+    stockUnit: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"])
     .index("by_orgAndSku", ["organizationId", "sku"]),
+
+  // Inventory foundation (#1700 PR-A): current quantity-on-hand per
+  // (product, location). locationId is optional so CRM-only orgs (no
+  // gabinetLocations) can keep a single null-location row per product.
+  productStockLevels: defineTable({
+    organizationId: v.id("organizations"),
+    productId: v.id("products"),
+    locationId: v.optional(v.id("gabinetLocations")),
+    quantity: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_product", ["productId"])
+    .index("by_productAndLocation", ["productId", "locationId"]),
+
+  // Inventory foundation (#1700 PR-A): append-only audit trail for every stock
+  // change. `delta` is positive for receipts (purchase/manual add) and negative
+  // for issues (appointment use, sale, manual remove). `balanceAfter` snapshots
+  // the per-(product, location) running balance after this movement so we can
+  // render history without recomputing.
+  productStockMovements: defineTable({
+    organizationId: v.id("organizations"),
+    productId: v.id("products"),
+    locationId: v.optional(v.id("gabinetLocations")),
+    delta: v.number(),
+    balanceAfter: v.optional(v.number()),
+    reason: v.union(
+      v.literal("initial"),
+      v.literal("manual_adjust"),
+      v.literal("appointment_use"),
+      v.literal("appointment_return"),
+      v.literal("deal_close"),
+      v.literal("deal_reopen"),
+      v.literal("transfer_in"),
+      v.literal("transfer_out"),
+      v.literal("other"),
+    ),
+    sourceType: v.optional(v.string()),
+    sourceId: v.optional(v.string()),
+    note: v.optional(v.string()),
+    performedBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["organizationId", "createdAt"])
+    .index("by_product", ["productId", "createdAt"])
+    .index("by_source", ["sourceType", "sourceId"]),
 
   dealProducts: defineTable({
     organizationId: v.id("organizations"),

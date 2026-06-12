@@ -18,6 +18,8 @@ export interface MappedProduct {
   description?: string;
   tagIds?: string[];
   categoryId?: string;
+  trackStock?: boolean;
+  stockUnit?: string;
   createdBy: string;
   createdAt: number;
   updatedAt: number;

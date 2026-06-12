@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
+import { toast } from "sonner";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -402,9 +403,19 @@ function DocumentSection({
       try {
         await resendSigningEmail({ organizationId, documentId: docId });
         setResendSuccess(docId);
+        toast.success(t("documents.emailSent", "Wysłano e-mail do klienta"));
         setTimeout(() => setResendSuccess(null), 3000);
-      } catch {
-        // silent — toast could be added later
+      } catch (err) {
+        // Surface the real reason — previously this was a silent `catch {}`
+        // so users on the appointment > Dokumenty tab saw the send button
+        // spin briefly and then nothing, with no clue why no mail went out
+        // (no email on patient, expired Gmail OAuth, missing default email
+        // account on the org, etc).
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : t("documents.sendFailed", "Nie udało się wysłać e-maila"),
+        );
       } finally {
         setResendingDocId(null);
       }

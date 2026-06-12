@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronUp, Plus } from "@/lib/ez-icons";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -151,11 +152,13 @@ function buildDetailActions({
   primaryAction,
   secondaryActions,
   onEdit,
+  editLabel,
   quickActionItems,
 }: {
   primaryAction?: { label: string; onClick: () => void };
   secondaryActions?: { label: string; onClick: () => void; variant?: "default" | "outline" | "destructive" }[];
   onEdit?: () => void;
+  editLabel: string;
   quickActionItems?: { key: string; label: string; icon?: React.ReactNode; onClick: () => void }[];
 }) {
   const allActions: { label: string; icon?: React.ReactNode; onClick: () => void; variant?: string }[] = [];
@@ -165,7 +168,7 @@ function buildDetailActions({
   }
 
   if (onEdit) {
-    allActions.push({ label: "Edit", onClick: onEdit });
+    allActions.push({ label: editLabel, onClick: onEdit });
   }
 
   if (secondaryActions) {
@@ -256,6 +259,7 @@ export function EntityDetailLayout({
   sidebarExtra,
   quickActionItems,
 }: EntityDetailLayoutProps) {
+  const { t } = useTranslation();
   const [showAllFields, setShowAllFields] = useState(false);
 
   // Resizable sidebar width (hooks must be before early returns)
@@ -321,6 +325,7 @@ export function EntityDetailLayout({
     primaryAction,
     secondaryActions,
     onEdit,
+    editLabel: t("common.edit"),
     quickActionItems,
   });
 

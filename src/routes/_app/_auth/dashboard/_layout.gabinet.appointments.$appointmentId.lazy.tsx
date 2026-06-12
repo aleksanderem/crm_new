@@ -1017,12 +1017,16 @@ function AppointmentDetail() {
   // Payment handlers
   const handleCreatePayment = async () => {
     const normalizedAmount = paymentAmount.replace(",", ".");
-    if (!paymentAmount || isNaN(parseFloat(normalizedAmount))) {
+    // When the user opts to settle from the patient's balance, an empty
+    // amount means "pay 100% from balance" — treat it as 0 instead of
+    // rejecting the submit.
+    const isBalanceOnly = paymentUseBalance && !paymentAmount;
+    if (!isBalanceOnly && (!paymentAmount || isNaN(parseFloat(normalizedAmount)))) {
       toast.error(t("gabinet.payments.amountRequired"));
       return;
     }
 
-    const amount = parseFloat(normalizedAmount);
+    const amount = isBalanceOnly ? 0 : parseFloat(normalizedAmount);
     // Issue #1690: any portion of `amount` above the visit's outstanding
     // automatically flows to the patient's credit balance as creditEarned.
     // Outstanding is treatmentPrice - sum(completed payments) at the moment
@@ -2915,31 +2919,33 @@ function AppointmentDetail() {
                 </label>
               </div>
             )}
-            <div>
-              <Label>{t("gabinet.payments.method")}</Label>
-              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">
-                    {t("gabinet.payments.methods.cash")}
-                  </SelectItem>
-                  <SelectItem value="card">
-                    {t("gabinet.payments.methods.card")}
-                  </SelectItem>
-                  <SelectItem value="transfer">
-                    {t("gabinet.payments.methods.transfer")}
-                  </SelectItem>
-                  <SelectItem value="package">
-                    {t("gabinet.payments.methods.package")}
-                  </SelectItem>
-                  <SelectItem value="other">
-                    {t("gabinet.payments.methods.other")}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {!paymentUseBalance && (
+              <div>
+                <Label>{t("gabinet.payments.method")}</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">
+                      {t("gabinet.payments.methods.cash")}
+                    </SelectItem>
+                    <SelectItem value="card">
+                      {t("gabinet.payments.methods.card")}
+                    </SelectItem>
+                    <SelectItem value="transfer">
+                      {t("gabinet.payments.methods.transfer")}
+                    </SelectItem>
+                    <SelectItem value="package">
+                      {t("gabinet.payments.methods.package")}
+                    </SelectItem>
+                    <SelectItem value="other">
+                      {t("gabinet.payments.methods.other")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
               <Label>{t("common.notes")}</Label>
               <RichTextEditor

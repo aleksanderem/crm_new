@@ -109,7 +109,7 @@ function buildActiveUsageDetails(
         byPackage[u.packageId].treatmentProgress[key] = { usedCount: 0, totalCount: 0 };
       }
       byPackage[u.packageId].treatmentProgress[key].usedCount += t.usedCount;
-      byPackage[u.packageId].treatmentProgress[key].totalCount += t.totalAllowed;
+      byPackage[u.packageId].treatmentProgress[key].totalCount += t.totalCount;
     }
   }
 

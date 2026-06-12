@@ -1,4 +1,4 @@
-import { action, internalMutation } from "./_generated/server";
+import { action, internalAction, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
@@ -6,6 +6,8 @@ import { paginationOptsValidator } from "convex/server";
 import { logAudit } from "./auditLog";
 import { logActivity } from "./_helpers/activities";
 import { createNotificationDirect } from "./notifications";
+import { sendEmail } from "@cvx/email";
+import { AUTH_RESEND_KEY, SITE_URL } from "@cvx/env";
 
 const paymentMethodValidator = v.union(
   v.literal("cash"),
@@ -819,13 +821,9 @@ export const _cancelPaymentSideEffects = internalMutation({
 /**
  * Issue #1690: when a staff member without gabinet_payments.refund permission
  * tries to issue a refund, they instead call this action. It records the
- * request in the audit log and notifies every owner/admin in the org with a
- * link back to the patient. The admin then approves by clicking through and
- * executing `refundCredit` from the UI.
- *
- * Note: email delivery and a single-click email-link approval flow are
- * tracked as a follow-up. The notification-based flow ships first so refund
- * gating works end-to-end immediately.
+ * request in the audit log, posts in-app notifications to every owner/admin,
+ * and emails each admin a deep link back to the patient payments tab so they
+ * can approve by clicking through and executing `refundCredit` from the UI.
  */
 export const requestRefundAuthorization = action({
   args: {
@@ -862,15 +860,35 @@ export const requestRefundAuthorization = action({
       ? `${(patient.firstName as string) ?? ""} ${(patient.lastName as string) ?? ""}`.trim() || "Pacjent"
       : "Pacjent";
 
-    await ctx.runMutation(internal.payments._requestRefundAuthSideEffects, {
-      organizationId: args.organizationId,
-      requesterId: authResult.userId,
-      requesterName: authResult.userName ?? authResult.userEmail ?? "Pracownik",
-      patientId: args.patientId,
-      patientLabel,
-      amount: args.amount,
-      notes: args.notes,
-    });
+    const sideEffects = await ctx.runMutation(
+      internal.payments._requestRefundAuthSideEffects,
+      {
+        organizationId: args.organizationId,
+        requesterId: authResult.userId,
+        requesterName: authResult.userName ?? authResult.userEmail ?? "Pracownik",
+        patientId: args.patientId,
+        patientLabel,
+        amount: args.amount,
+        notes: args.notes,
+      },
+    );
+
+    // Email is best-effort: if Resend is misconfigured or down we still want
+    // the in-app notification + audit log to succeed.
+    try {
+      await ctx.runAction(internal.payments._sendRefundAuthEmails, {
+        organizationId: args.organizationId,
+        admins: sideEffects.admins,
+        requesterName:
+          authResult.userName ?? authResult.userEmail ?? "Pracownik",
+        patientId: args.patientId,
+        patientLabel,
+        amount: args.amount,
+        notes: args.notes,
+      });
+    } catch (e) {
+      console.error("[requestRefundAuthorization] email send failed:", e);
+    }
 
     return { ok: true };
   },
@@ -895,22 +913,32 @@ export const _requestRefundAuthSideEffects = internalMutation({
       )
       .collect();
 
-    const adminIds = memberships
-      .filter((m) => m.role === "owner" || m.role === "admin")
-      .map((m) => m.userId);
+    const admins = memberships.filter(
+      (m) => m.role === "owner" || m.role === "admin",
+    );
 
     const message = `${args.requesterName} prosi o autoryzację zwrotu ${args.amount.toFixed(2)} zł z salda klienta ${args.patientLabel}${args.notes ? ` (${args.notes})` : ""}.`;
     const link = `/dashboard/gabinet/patients/${args.patientId}?tab=payments`;
 
-    for (const userId of adminIds) {
+    const adminContacts: Array<{ userId: string; email: string; name: string | null }> = [];
+
+    for (const m of admins) {
       await createNotificationDirect(ctx, {
         organizationId: args.organizationId,
-        userId,
+        userId: m.userId,
         type: "refund_authorization_requested",
         title: "Prośba o autoryzację zwrotu",
         message,
         link,
       });
+      const user = await ctx.db.get(m.userId);
+      if (user?.email) {
+        adminContacts.push({
+          userId: String(m.userId),
+          email: user.email,
+          name: (user.name as string | undefined) ?? null,
+        });
+      }
     }
 
     await logAudit(ctx, {
@@ -925,8 +953,110 @@ export const _requestRefundAuthSideEffects = internalMutation({
         notes: args.notes,
       }),
     });
+
+    return { admins: adminContacts };
   },
 });
+
+/**
+ * Email each admin a refund-authorization request with a deep link to the
+ * patient payments tab. Best-effort — failures are logged and swallowed by
+ * the caller so the in-app notification flow always succeeds. Skipped at
+ * runtime when Resend is not configured.
+ */
+export const _sendRefundAuthEmails = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    admins: v.array(
+      v.object({
+        userId: v.string(),
+        email: v.string(),
+        name: v.union(v.string(), v.null()),
+      }),
+    ),
+    requesterName: v.string(),
+    patientId: v.string(),
+    patientLabel: v.string(),
+    amount: v.number(),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    if (!AUTH_RESEND_KEY) {
+      console.warn(
+        "[_sendRefundAuthEmails] AUTH_RESEND_KEY not set, skipping email",
+      );
+      return;
+    }
+    if (args.admins.length === 0) return;
+
+    const db = createSupabaseDb();
+    const org = await db.get("organizations", String(args.organizationId));
+    const orgName = (org?.name as string | undefined) ?? "Twoja organizacja";
+
+    const path = `/dashboard/gabinet/patients/${args.patientId}?tab=payments`;
+    const deepLink = SITE_URL ? `${SITE_URL}${path}` : path;
+    const amountLabel = `${args.amount.toFixed(2)} zł`;
+    const subject = `Prośba o autoryzację zwrotu ${amountLabel} — ${orgName}`;
+    const notesLine = args.notes
+      ? `<p style="margin: 0 0 16px; color: #444;">Uwagi: ${escapeHtml(args.notes)}</p>`
+      : "";
+    const notesText = args.notes ? `Uwagi: ${args.notes}\n\n` : "";
+
+    const html = `
+      <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+        <h2 style="margin: 0 0 16px; color: #1a1a1a;">Prośba o autoryzację zwrotu</h2>
+        <p style="margin: 0 0 16px; color: #444;">
+          <strong>${escapeHtml(args.requesterName)}</strong> prosi o autoryzację zwrotu
+          <strong>${amountLabel}</strong> z salda klienta
+          <strong>${escapeHtml(args.patientLabel)}</strong>.
+        </p>
+        ${notesLine}
+        <p style="margin: 24px 0;">
+          <a href="${deepLink}" style="background: #2563eb; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-block; font-weight: 600; font-size: 14px;">
+            Otwórz kartę pacjenta
+          </a>
+        </p>
+        <p style="margin: 24px 0 0; color: #888; font-size: 13px;">
+          Zatwierdź lub odrzuć zwrot na karcie pacjenta w zakładce „Płatności".
+        </p>
+      </div>
+    `;
+    const text = `${args.requesterName} prosi o autoryzację zwrotu ${amountLabel} z salda klienta ${args.patientLabel}.\n\n${notesText}Otwórz kartę pacjenta: ${deepLink}\n`;
+
+    for (const admin of args.admins) {
+      try {
+        await sendEmail({
+          to: admin.email,
+          subject,
+          html,
+          text,
+          log: {
+            ctx,
+            organizationId: args.organizationId,
+            source: "system",
+            recipientName: admin.name ?? undefined,
+            relatedEntityType: "gabinetPatient",
+            relatedEntityId: args.patientId,
+          },
+        });
+      } catch (e) {
+        console.error(
+          `[_sendRefundAuthEmails] failed to send to ${admin.email}:`,
+          e,
+        );
+      }
+    }
+  },
+});
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 /** Revenue summary for a time range */
 export const getRevenueSummary = action({

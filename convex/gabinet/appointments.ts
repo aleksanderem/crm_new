@@ -1046,6 +1046,11 @@ export const create = action({
     // or crafted API call cannot silently create a past appointment. Issue
     // #1414.
     allowPast: v.optional(v.boolean()),
+    // When true, allow saving even if the slot overlaps with another
+    // appointment, calendar activity, or occupied room. The UI shows an
+    // explicit warning before the user opts in. Hard constraints (working
+    // hours, approved leave, clinic closed) still block creation. Issue #1526.
+    allowConflict: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     // --- Auth + permissions (via internal queries) ---
@@ -1102,6 +1107,7 @@ export const create = action({
       startTime: args.startTime,
       endTime: args.endTime,
       roomId: args.roomId ?? undefined,
+      allowBookingConflict: args.allowConflict ?? false,
     });
     if (conflict.hasConflict) {
       throw new Error(conflict.reason ?? "Time slot conflict");

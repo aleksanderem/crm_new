@@ -306,6 +306,12 @@ export async function checkConflictSupabase(
     endTime: string;
     excludeAppointmentId?: string;
     roomId?: string;
+    // When true, soft "booking" conflicts (overlapping appointment, overlapping
+    // calendar activity, occupied room) are ignored so the caller can
+    // double-book on purpose with a warning surfaced in the UI. Hard
+    // constraints (working hours, approved leave, clinic closed) still apply.
+    // Issue #1526.
+    allowBookingConflict?: boolean;
   },
 ): Promise<{ hasConflict: boolean; reason?: string }> {
   const dayOfWeek = new Date(args.date + "T00:00:00").getDay();
@@ -369,71 +375,73 @@ export async function checkConflictSupabase(
     }
   }
 
-  const appointments = await db
-    .query("gabinetAppointments")
-    .eq("organizationId", args.organizationId)
-    .eq("employeeId", args.userId)
-    .eq("date", args.date)
-    .collect();
+  if (!args.allowBookingConflict) {
+    const appointments = await db
+      .query("gabinetAppointments")
+      .eq("organizationId", args.organizationId)
+      .eq("employeeId", args.userId)
+      .eq("date", args.date)
+      .collect();
 
-  for (const appt of appointments as any[]) {
-    if (args.excludeAppointmentId && String(appt.id ?? appt._id) === args.excludeAppointmentId) continue;
-    if (appt.status === "cancelled" || appt.status === "no_show") continue;
-    const apptStart = timeToMinutes(String(appt.startTime));
-    const apptEnd = timeToMinutes(String(appt.endTime));
-    if (reqStart < apptEnd && reqEnd > apptStart) {
-      return { hasConflict: true, reason: "Conflicts with existing appointment" };
+    for (const appt of appointments as any[]) {
+      if (args.excludeAppointmentId && String(appt.id ?? appt._id) === args.excludeAppointmentId) continue;
+      if (appt.status === "cancelled" || appt.status === "no_show") continue;
+      const apptStart = timeToMinutes(String(appt.startTime));
+      const apptEnd = timeToMinutes(String(appt.endTime));
+      if (reqStart < apptEnd && reqEnd > apptStart) {
+        return { hasConflict: true, reason: "Conflicts with existing appointment" };
+      }
     }
-  }
 
-  const resourceActivities = await db
-    .query("scheduledActivities")
-    .eq("organizationId", args.organizationId)
-    .eq("resourceId", args.userId)
-    .collect();
+    const resourceActivities = await db
+      .query("scheduledActivities")
+      .eq("organizationId", args.organizationId)
+      .eq("resourceId", args.userId)
+      .collect();
 
-  for (const activity of resourceActivities as any[]) {
-    if (activity.isCompleted) continue;
-    if (!activity.endDate) continue;
-    const actDate = new Date(activity.dueDate);
-    const actDateStr = `${actDate.getFullYear()}-${String(actDate.getMonth() + 1).padStart(2, "0")}-${String(actDate.getDate()).padStart(2, "0")}`;
-    if (actDateStr !== args.date) continue;
-    // Gabinet appointments are already counted via gabinetAppointments above.
-    // Manual gabinet events (entityType="gabinetEvent") must still block time.
-    if (
-      activity.moduleRef?.moduleId === "gabinet" &&
-      activity.moduleRef?.entityType !== "gabinetEvent"
-    )
-      continue;
+    for (const activity of resourceActivities as any[]) {
+      if (activity.isCompleted) continue;
+      if (!activity.endDate) continue;
+      const actDate = new Date(activity.dueDate);
+      const actDateStr = `${actDate.getFullYear()}-${String(actDate.getMonth() + 1).padStart(2, "0")}-${String(actDate.getDate()).padStart(2, "0")}`;
+      if (actDateStr !== args.date) continue;
+      // Gabinet appointments are already counted via gabinetAppointments above.
+      // Manual gabinet events (entityType="gabinetEvent") must still block time.
+      if (
+        activity.moduleRef?.moduleId === "gabinet" &&
+        activity.moduleRef?.entityType !== "gabinetEvent"
+      )
+        continue;
 
-    const actStartMin = actDate.getHours() * 60 + actDate.getMinutes();
-    const actEndDate = new Date(activity.endDate);
-    const actEndMin = actEndDate.getHours() * 60 + actEndDate.getMinutes();
-    if (reqStart < actEndMin && reqEnd > actStartMin) {
-      return { hasConflict: true, reason: `Conflicts with: ${activity.title}` };
+      const actStartMin = actDate.getHours() * 60 + actDate.getMinutes();
+      const actEndDate = new Date(activity.endDate);
+      const actEndMin = actEndDate.getHours() * 60 + actEndDate.getMinutes();
+      if (reqStart < actEndMin && reqEnd > actStartMin) {
+        return { hasConflict: true, reason: `Conflicts with: ${activity.title}` };
+      }
     }
-  }
 
-  // Org-wide events (no resourceId, blocks the whole clinic).
-  const orgEvents = await db
-    .query("scheduledActivities")
-    .eq("organizationId", args.organizationId)
-    .eq("activityType", "gabinet:event")
-    .collect();
+    // Org-wide events (no resourceId, blocks the whole clinic).
+    const orgEvents = await db
+      .query("scheduledActivities")
+      .eq("organizationId", args.organizationId)
+      .eq("activityType", "gabinet:event")
+      .collect();
 
-  for (const activity of orgEvents as any[]) {
-    if (activity.isCompleted) continue;
-    if (!activity.endDate) continue;
-    if (activity.resourceId) continue; // per-resource events already checked above
-    const actDate = new Date(activity.dueDate);
-    const actDateStr = `${actDate.getFullYear()}-${String(actDate.getMonth() + 1).padStart(2, "0")}-${String(actDate.getDate()).padStart(2, "0")}`;
-    if (actDateStr !== args.date) continue;
+    for (const activity of orgEvents as any[]) {
+      if (activity.isCompleted) continue;
+      if (!activity.endDate) continue;
+      if (activity.resourceId) continue; // per-resource events already checked above
+      const actDate = new Date(activity.dueDate);
+      const actDateStr = `${actDate.getFullYear()}-${String(actDate.getMonth() + 1).padStart(2, "0")}-${String(actDate.getDate()).padStart(2, "0")}`;
+      if (actDateStr !== args.date) continue;
 
-    const actStartMin = actDate.getHours() * 60 + actDate.getMinutes();
-    const actEndDate = new Date(activity.endDate);
-    const actEndMin = actEndDate.getHours() * 60 + actEndDate.getMinutes();
-    if (reqStart < actEndMin && reqEnd > actStartMin) {
-      return { hasConflict: true, reason: `Conflicts with: ${activity.title}` };
+      const actStartMin = actDate.getHours() * 60 + actDate.getMinutes();
+      const actEndDate = new Date(activity.endDate);
+      const actEndMin = actEndDate.getHours() * 60 + actEndDate.getMinutes();
+      if (reqStart < actEndMin && reqEnd > actStartMin) {
+        return { hasConflict: true, reason: `Conflicts with: ${activity.title}` };
+      }
     }
   }
 
@@ -441,18 +449,59 @@ export async function checkConflictSupabase(
     const roomAppointments = await db
       .query("gabinetAppointments")
       .eq("organizationId", args.organizationId)
-      .eq("roomId", args.roomId)
+      .eq("employeeId", args.userId)
       .eq("date", args.date)
       .collect();
 
-    for (const appt of roomAppointments as any[]) {
+    for (const appt of appointments as any[]) {
       if (args.excludeAppointmentId && String(appt.id ?? appt._id) === args.excludeAppointmentId) continue;
       if (appt.status === "cancelled" || appt.status === "no_show") continue;
-      if (
-        String(appt.startTime) < args.endTime &&
-        String(appt.endTime) > args.startTime
-      ) {
-        return { hasConflict: true, reason: "Room is occupied at this time" };
+      const apptStart = timeToMinutes(String(appt.startTime));
+      const apptEnd = timeToMinutes(String(appt.endTime));
+      if (reqStart < apptEnd && reqEnd > apptStart) {
+        return { hasConflict: true, reason: "Conflicts with existing appointment" };
+      }
+    }
+
+    const resourceActivities = await db
+      .query("scheduledActivities")
+      .eq("organizationId", args.organizationId)
+      .eq("resourceId", args.userId)
+      .collect();
+
+    for (const activity of resourceActivities as any[]) {
+      if (activity.isCompleted) continue;
+      if (!activity.endDate) continue;
+      const actDate = new Date(activity.dueDate);
+      const actDateStr = `${actDate.getFullYear()}-${String(actDate.getMonth() + 1).padStart(2, "0")}-${String(actDate.getDate()).padStart(2, "0")}`;
+      if (actDateStr !== args.date) continue;
+      if (activity.moduleRef?.moduleId === "gabinet") continue;
+
+      const actStartMin = actDate.getHours() * 60 + actDate.getMinutes();
+      const actEndDate = new Date(activity.endDate);
+      const actEndMin = actEndDate.getHours() * 60 + actEndDate.getMinutes();
+      if (reqStart < actEndMin && reqEnd > actStartMin) {
+        return { hasConflict: true, reason: `Conflicts with: ${activity.title}` };
+      }
+    }
+
+    if (args.roomId) {
+      const roomAppointments = await db
+        .query("gabinetAppointments")
+        .eq("organizationId", args.organizationId)
+        .eq("roomId", args.roomId)
+        .eq("date", args.date)
+        .collect();
+
+      for (const appt of roomAppointments as any[]) {
+        if (args.excludeAppointmentId && String(appt.id ?? appt._id) === args.excludeAppointmentId) continue;
+        if (appt.status === "cancelled" || appt.status === "no_show") continue;
+        if (
+          String(appt.startTime) < args.endTime &&
+          String(appt.endTime) > args.startTime
+        ) {
+          return { hasConflict: true, reason: "Room is occupied at this time" };
+        }
       }
     }
   }

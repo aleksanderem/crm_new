@@ -185,11 +185,21 @@ const STATUS_HOVER_CLASSES: Record<AppointmentStatus, string> = {
 interface AppointmentPreviewContentProps {
   appointmentId: string;
   onClose: () => void;
+  // Touch-only drag handler from the parent popover. When provided, the
+  // title row acts as the popover's drag affordance on touch devices
+  // (issue #1626 follow-up) — replaces the separate grab strip removed in
+  // the #1738 redesign.
+  titleDragHandler?: (e: React.PointerEvent<HTMLDivElement>) => void;
+  isPreviewDragging?: boolean;
+  dragToMoveLabel?: string;
 }
 
 export function AppointmentPreviewContent({
   appointmentId,
   onClose,
+  titleDragHandler,
+  isPreviewDragging,
+  dragToMoveLabel,
 }: AppointmentPreviewContentProps) {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
@@ -412,7 +422,7 @@ export function AppointmentPreviewContent({
 
   if (isLoading || !detail) {
     return (
-      <div className="space-y-3 p-1">
+      <div className="space-y-3 p-4">
         <Skeleton className="h-5 w-40" />
         <Skeleton className="h-4 w-32" />
         <Skeleton className="h-4 w-full" />
@@ -1171,121 +1181,148 @@ export function AppointmentPreviewContent({
 
   return (
     <>
-    <div className="space-y-4">
-      {/* Header — patient + treatment */}
+    {/* Title bar — sticky modal-style header with patient name + close (#1738
+        follow-up). The bar is the drag affordance for touch users: pressing
+        the empty space starts the popover reposition (replaces the standalone
+        grab strip that broke the header rhythm). The drag handler skips
+        interactive children (Link, close button) so clicks still land on
+        them — same pattern as the body-wide drag handler in
+        draggable-appointment.tsx (#1476). */}
+    <div
+      role={titleDragHandler ? "button" : undefined}
+      aria-label={titleDragHandler ? dragToMoveLabel : undefined}
+      onPointerDown={(e) => {
+        if (!titleDragHandler) return;
+        const target = e.target as HTMLElement | null;
+        if (
+          target?.closest(
+            'button, a, input, textarea, select, [role="button"], [contenteditable="true"]',
+          )
+        ) {
+          return;
+        }
+        titleDragHandler(e);
+      }}
+      className={cn(
+        "sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur-sm",
+        titleDragHandler && (isPreviewDragging ? "cursor-grabbing select-none touch-none" : "cursor-grab select-none touch-none"),
+      )}
+    >
+      <div className="min-w-0 flex-1">
+        {patient?._id ? (
+          <Link
+            to="/dashboard/gabinet/patients/$patientId"
+            params={{ patientId: patient._id }}
+            onClick={onClose}
+            className="block truncate text-base font-semibold leading-tight hover:underline focus:underline focus:outline-none"
+          >
+            {patientFullName}
+          </Link>
+        ) : (
+          <p className="truncate text-base font-semibold leading-tight">
+            {patientFullName}
+          </p>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={onClose}
+        disabled={saving}
+        aria-label={t("gabinet.appointmentDetail.close", "Zamknij")}
+        className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+      >
+        <X className="size-4" />
+      </button>
+    </div>
+
+    <div className="space-y-4 px-4 py-4">
+      {/* Secondary info — treatment, status, indicators, contact links */}
       <div className="space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            {patient?._id ? (
-              <Link
-                to="/dashboard/gabinet/patients/$patientId"
-                params={{ patientId: patient._id }}
-                onClick={onClose}
-                className="block truncate text-sm font-semibold leading-tight hover:underline focus:underline focus:outline-none"
+        <div className="flex flex-wrap items-center gap-2">
+          <Popover
+            open={treatmentOpen}
+            onOpenChange={(o) => {
+              setTreatmentOpen(o);
+              if (!o) setTreatmentSearch("");
+            }}
+          >
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-md border border-border/60 bg-background px-2 py-1 text-sm font-medium text-foreground hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring"
+                aria-label={t("gabinet.appointments.selectTreatment")}
               >
-                {patientFullName}
-              </Link>
-            ) : (
-              <p className="truncate text-sm font-semibold leading-tight">
-                {patientFullName}
-              </p>
-            )}
-            <Popover
-              open={treatmentOpen}
-              onOpenChange={(o) => {
-                setTreatmentOpen(o);
-                if (!o) setTreatmentSearch("");
+                <Stethoscope className="size-3.5 shrink-0 text-primary" />
+                <span className="truncate">
+                  {treatmentDisplayName ||
+                    t("gabinet.appointments.selectTreatment")}
+                </span>
+                <ChevronsUpDown className="size-3.5 shrink-0 opacity-60" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-72 p-0"
+              align="start"
+              style={{
+                maxHeight: "var(--radix-popover-content-available-height)",
               }}
             >
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className="mt-1 inline-flex max-w-full items-center gap-1.5 rounded text-sm font-medium text-foreground hover:text-primary focus:outline-none focus:ring-1 focus:ring-ring"
-                  aria-label={t("gabinet.appointments.selectTreatment")}
-                >
-                  <Stethoscope className="size-3.5 shrink-0 text-primary" />
-                  <span className="truncate">
-                    {treatmentDisplayName ||
-                      t("gabinet.appointments.selectTreatment")}
-                  </span>
-                  <ChevronsUpDown className="size-3.5 shrink-0 opacity-60" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-72 p-0"
-                align="start"
-                style={{
-                  maxHeight: "var(--radix-popover-content-available-height)",
-                }}
-              >
-                <Command shouldFilter={false}>
-                  <CommandInput
-                    placeholder={t("gabinet.appointments.searchTreatment")}
-                    value={treatmentSearch}
-                    onValueChange={setTreatmentSearch}
-                    onClose={() => setTreatmentOpen(false)}
-                    closeLabel={t("common.close")}
-                  />
-                  <CommandList className="flex-1 min-h-0">
-                    <CommandEmpty>{t("common.noResults")}</CommandEmpty>
-                    <CommandGroup>
-                      {filteredTreatments.map((tr) => (
-                        <CommandItem
-                          key={tr._id}
-                          value={tr._id}
-                          onSelect={() => {
-                            setTreatmentId(tr._id);
-                            setTreatmentOpen(false);
-                            setTreatmentSearch("");
-                          }}
-                          className={cn(
-                            "px-3",
-                            treatmentId === tr._id &&
-                              "bg-accent font-medium text-accent-foreground",
-                          )}
-                        >
-                          <div className="flex flex-col">
-                            <span className="text-sm">{tr.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {tr.duration} min
-                            </span>
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-            {previewIndicators.length > 0 && (
-              <div className="flex items-center gap-0.5">
-                {previewIndicators.map((ind, i) => (
-                  <AppointmentIndicatorBadge
-                    key={`preview-ind-${ind.kind}-${i}`}
-                    indicator={ind}
-                    ringClass="ring-black/10 dark:ring-white/20"
-                  />
-                ))}
-              </div>
-            )}
-            <Badge variant="outline" className="text-xs">
-              <span
-                className={`mr-1.5 inline-block h-2 w-2 rounded-full ${STATUS_DOT_COLORS[initialStatus] ?? "bg-muted-foreground"}`}
-              />
-              {t(`gabinet.appointments.statuses.${initialStatus}`)}
-            </Badge>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              aria-label={t("gabinet.appointmentDetail.close", "Zamknij")}
-              className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
+              <Command shouldFilter={false}>
+                <CommandInput
+                  placeholder={t("gabinet.appointments.searchTreatment")}
+                  value={treatmentSearch}
+                  onValueChange={setTreatmentSearch}
+                  onClose={() => setTreatmentOpen(false)}
+                  closeLabel={t("common.close")}
+                />
+                <CommandList className="flex-1 min-h-0">
+                  <CommandEmpty>{t("common.noResults")}</CommandEmpty>
+                  <CommandGroup>
+                    {filteredTreatments.map((tr) => (
+                      <CommandItem
+                        key={tr._id}
+                        value={tr._id}
+                        onSelect={() => {
+                          setTreatmentId(tr._id);
+                          setTreatmentOpen(false);
+                          setTreatmentSearch("");
+                        }}
+                        className={cn(
+                          "px-3",
+                          treatmentId === tr._id &&
+                            "bg-accent font-medium text-accent-foreground",
+                        )}
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-sm">{tr.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {tr.duration} min
+                          </span>
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          <Badge variant="outline" className="text-xs">
+            <span
+              className={`mr-1.5 inline-block h-2 w-2 rounded-full ${STATUS_DOT_COLORS[initialStatus] ?? "bg-muted-foreground"}`}
+            />
+            {t(`gabinet.appointments.statuses.${initialStatus}`)}
+          </Badge>
+          {previewIndicators.length > 0 && (
+            <div className="flex items-center gap-0.5">
+              {previewIndicators.map((ind, i) => (
+                <AppointmentIndicatorBadge
+                  key={`preview-ind-${ind.kind}-${i}`}
+                  indicator={ind}
+                  ringClass="ring-black/10 dark:ring-white/20"
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Quick contact links */}
@@ -1367,8 +1404,8 @@ export function AppointmentPreviewContent({
       </div>
 
       {warnings.length > 0 && (
-        <div className="space-y-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
-          <div className="flex items-center gap-1.5 font-medium">
+        <div className="space-y-1 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+          <div className="flex items-center gap-1.5 font-semibold">
             <AlertTriangle className="size-3.5 shrink-0" />
             {t("gabinet.appointments.warnings.title", "Ostrzeżenie")}
           </div>
@@ -1382,16 +1419,24 @@ export function AppointmentPreviewContent({
 
       <Separator />
 
-      {/* Employee + Date summary */}
-      <div className="grid grid-cols-2 gap-2 text-xs">
+      {/* Employee + Date summary — labelled grid so it's clear what each
+          value is and that "Zmień" rebinds the employee, not something
+          unrelated. */}
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+        <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          {t("gabinet.appointmentDetail.employeeLabel", "Pracownik")}
+        </Label>
+        <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          {t("gabinet.appointmentDetail.appointmentDateLabel", "Data wizyty")}
+        </Label>
         {appointment.treatmentId ? (
-          <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
-            <User className="size-3 shrink-0" />
-            <span className="truncate">{employeeName}</span>
+          <div className="flex min-w-0 items-center gap-1.5 text-foreground">
+            <User className="size-3.5 shrink-0 text-muted-foreground" />
+            <span className="truncate text-sm">{employeeName}</span>
             <button
               type="button"
               onClick={() => setChangeEmployeeOpen(true)}
-              className="shrink-0 rounded text-[10px] font-medium text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              className="shrink-0 rounded text-[11px] font-medium text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={t(
                 "gabinet.appointments.changeEmployee",
                 "Zmień pracownika",
@@ -1401,14 +1446,14 @@ export function AppointmentPreviewContent({
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <User className="size-3" />
-            <span className="truncate">{employeeName}</span>
+          <div className="flex items-center gap-1.5 text-foreground">
+            <User className="size-3.5 text-muted-foreground" />
+            <span className="truncate text-sm">{employeeName}</span>
           </div>
         )}
-        <div className="flex items-center gap-1.5 text-muted-foreground">
-          <Calendar className="size-3" />
-          <span className="truncate">{formatDateLabel(appointment.date)}</span>
+        <div className="flex items-center gap-1.5 text-foreground">
+          <Calendar className="size-3.5 text-muted-foreground" />
+          <span className="truncate text-sm">{formatDateLabel(appointment.date)}</span>
         </div>
       </div>
 
@@ -1448,7 +1493,11 @@ export function AppointmentPreviewContent({
                           handleStatusChange(s);
                         }}
                         className={cn(
-                          "inline-flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          // Bumped contrast so the icons read clearly on the
+                          // dark popover surface (#1738): foreground text and
+                          // a stronger border, plus the colour-coded active
+                          // ring is unchanged.
+                          "inline-flex size-9 items-center justify-center rounded-md border border-border bg-background text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                           isCurrent && STATUS_ACTIVE_CLASSES[s],
                           isCurrent && "cursor-default",
                           isAvailable && STATUS_HOVER_CLASSES[s],
@@ -1507,34 +1556,41 @@ export function AppointmentPreviewContent({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-          <div className="min-w-0 flex-1">
-            <TagsPicker
-              tags={tagDefinitions}
-              selectedIds={tagIds}
-              onChange={setTagIds}
-              direction="horizontal"
-              size="md"
-              placeholder={
-                tagDefinitions.length === 0
-                  ? t("gabinet.appointmentDetail.addFirstTagHint", {
-                      defaultValue: 'Dodaj pierwszy tag w "Zarządzaj"',
-                    })
-                  : t("gabinet.appointmentDetail.addTagsPlaceholder", {
-                      defaultValue: "Etykiety",
-                    })
-              }
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => dispatch("manageTags")}
-            className="shrink-0 self-center text-[10px] font-medium text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
-          >
-            {t("gabinet.appointmentDetail.manageTags", {
-              defaultValue: "Zarządzaj",
+        <div className="space-y-1">
+          <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            {t("gabinet.appointmentDetail.tagsLabel", {
+              defaultValue: "Etykiety",
             })}
-          </button>
+          </Label>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+            <div className="min-w-0 flex-1">
+              <TagsPicker
+                tags={tagDefinitions}
+                selectedIds={tagIds}
+                onChange={setTagIds}
+                direction="horizontal"
+                size="sm"
+                placeholder={
+                  tagDefinitions.length === 0
+                    ? t("gabinet.appointmentDetail.addFirstTagHint", {
+                        defaultValue: 'Dodaj pierwszy tag w "Zarządzaj"',
+                      })
+                    : t("gabinet.appointmentDetail.addTagsPlaceholder", {
+                        defaultValue: "Dodaj etykietę",
+                      })
+                }
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => dispatch("manageTags")}
+              className="shrink-0 self-center text-[11px] font-medium text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
+            >
+              {t("gabinet.appointmentDetail.manageTags", {
+                defaultValue: "Zarządzaj",
+              })}
+            </button>
+          </div>
         </div>
 
         <div className="space-y-1">
@@ -1550,26 +1606,30 @@ export function AppointmentPreviewContent({
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex flex-wrap items-center justify-end gap-1.5 pt-1">
+      <Separator />
+
+      {/* Actions — unified Button size="sm" (h-9) so every clickable in the
+          popover matches the same scale (issue #1738 follow-up: previously
+          this row mixed h-8/h-9 and a TagsPicker md trigger). "Przeprowadź
+          zabieg" stays full-width on its own row because it's a primary
+          shortcut into a different surface. */}
+      <div className="flex flex-wrap items-center justify-end gap-1.5">
         <Button
           asChild
           variant="ghost"
           size="sm"
-          className="h-8 text-xs"
         >
           <Link
             to="/dashboard/gabinet/appointments/$appointmentId"
             params={{ appointmentId: appointment._id }}
           >
-            <ExternalLink className="mr-1 size-3" />
+            <ExternalLink className="mr-1 size-3.5" />
             {t("gabinet.appointmentDetail.edit", "Edytuj")}
           </Link>
         </Button>
         <Button
           variant="outline"
           size="sm"
-          className="h-8 text-xs"
           onClick={handleSave}
           disabled={!dirty || saving || settleSubmitting}
         >
@@ -1580,7 +1640,6 @@ export function AppointmentPreviewContent({
         <Button
           size="sm"
           variant={isSettled ? "outline" : "default"}
-          className="h-8 text-xs"
           onClick={handleOpenSettleDialog}
           disabled={saving || settleSubmitting || isSettled}
         >
@@ -1588,7 +1647,7 @@ export function AppointmentPreviewContent({
             t("common.saving")
           ) : isSettled ? (
             <>
-              <CircleCheck className="mr-1 size-3" />
+              <CircleCheck className="mr-1 size-3.5" />
               {t("gabinet.appointmentDetail.settled", "Rozliczono")}
             </>
           ) : (
@@ -1604,7 +1663,7 @@ export function AppointmentPreviewContent({
         asChild
         size="sm"
         variant="outline"
-        className="h-9 w-full text-xs"
+        className="w-full"
       >
         <Link
           to="/dashboard/gabinet/appointments/$appointmentId"

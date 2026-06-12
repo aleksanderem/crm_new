@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useAction } from "convex/react";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { LayersTwo02, XClose, ChevronRight, Plus } from "@untitledui/icons";
 import { Button, styles as buttonStyles } from "@untitled/base/buttons/button";
 import { Input } from "@untitled/base/input/input";
@@ -12,6 +13,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cx } from "@/lib/utils/cx";
+import { formatActionError } from "@/lib/format-action-error";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import type { EntityType } from "@cvx/schema";
@@ -122,6 +124,16 @@ export function CategoryPicker({
       onChange(newId);
       resetAddForm();
       setOpen(false);
+    } catch (e) {
+      // Without this, action failures (missing permission, missing
+      // entity_type_enum value, network error) leave the user staring at
+      // a "Dodaj" button that appears to do nothing — issue #1653.
+      toast.error(
+        formatActionError(e, t, {
+          key: "categories.errors.createFailed",
+          defaultValue: "Nie udało się dodać kategorii.",
+        }),
+      );
     } finally {
       setIsCreating(false);
     }

@@ -30,6 +30,7 @@ import { applyFilterConditions } from "@/hooks/use-saved-views";
 import { PlateText } from "@/components/plate-text";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { EmployeeForm } from "@/components/forms/employee-form";
+import { EventDialog } from "@/components/gabinet/calendar/event-dialog";
 
 // shadcn/studio statistics blocks
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -62,6 +63,8 @@ function EmployeesIndex() {
   const [showCreate, setShowCreate] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
+  const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const [eventDefaultEmployeeIds, setEventDefaultEmployeeIds] = useState<string[]>([]);
 
   const filterableFields = useMemo((): FieldDef[] => [
     { id: "firstName", label: t("gabinet.employees.firstName"), type: "text" },
@@ -264,6 +267,12 @@ function EmployeesIndex() {
         for (const row of selectedRows) {
           await removeEmployee({ organizationId, employeeId: row._id as Id<"gabinetEmployees"> });
         }
+      } else if (action === "addEvent") {
+        // EventDialog identifies employees by userId (it creates one
+        // scheduledActivity per resourceId=userId so the block lands in each
+        // selected employee's calendar column).
+        setEventDefaultEmployeeIds(selectedRows.map((row) => row.userId));
+        setEventDialogOpen(true);
       }
     },
     [removeEmployee, organizationId]
@@ -342,6 +351,7 @@ function EmployeesIndex() {
         enableBulkSelect
         hiddenColumnIds={hiddenColumnIds}
         bulkActions={[
+          { label: t("gabinet.events.create", { defaultValue: "Nowe zdarzenie" }), value: "addEvent" },
           { label: t("common.delete"), value: "delete", variant: "destructive" },
         ]}
         onBulkAction={handleBulkAction}
@@ -368,6 +378,13 @@ function EmployeesIndex() {
         organizationId={organizationId}
         tagDefinitions={tags}
         categoryDefinitions={categories}
+      />
+
+      <EventDialog
+        organizationId={organizationId}
+        open={eventDialogOpen}
+        onOpenChange={setEventDialogOpen}
+        defaultEmployeeIds={eventDefaultEmployeeIds}
       />
     </div>
   );

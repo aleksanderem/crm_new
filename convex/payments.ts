@@ -1171,6 +1171,18 @@ export const approveRefundAuth = action({
       );
     }
 
+    // DB-level claim (#1730): atomically transition every sibling notification
+    // for this requestId from "pending" → "approved" inside a single Convex
+    // transaction. Two admins clicking Approve at the same time both pass the
+    // JS-level check above, but only the first claim mutation lands — the
+    // second sees status="approved" and throws before we touch Supabase.
+    await ctx.runMutation(internal.payments._claimRefundAuthRequest, {
+      organizationId: args.organizationId,
+      callerId: authResult.userId,
+      requestId: meta.requestId,
+      decision: "approved",
+    });
+
     const paymentMethod = args.paymentMethod ?? "cash";
     const now = Date.now();
     const paymentId = await db.insert("payments", {
@@ -1247,6 +1259,17 @@ export const rejectRefundAuth = action({
     }
 
     const meta = loaded.metadata;
+
+    // DB-level claim (#1730): see approveRefundAuth for the full rationale.
+    // We claim before side effects so two concurrent rejects can't both
+    // generate a "rejected" requester notification and audit log entry.
+    await ctx.runMutation(internal.payments._claimRefundAuthRequest, {
+      organizationId: args.organizationId,
+      callerId: authResult.userId,
+      requestId: meta.requestId,
+      decision: "rejected",
+    });
+
     await ctx.runMutation(internal.payments._resolveRefundAuthSideEffects, {
       organizationId: args.organizationId,
       approverId: authResult.userId,
@@ -1265,6 +1288,57 @@ export const rejectRefundAuth = action({
   },
 });
 
+/**
+ * Atomic DB-level claim for a refund-authorization request (#1730).
+ *
+ * Convex runs each mutation as a serializable transaction, so concurrent
+ * callers cannot both observe `status === "pending"` here: the second one
+ * sees the patched siblings and throws "Refund request already resolved"
+ * before the action proceeds to insert a payment row in Supabase.
+ *
+ * Patches every sibling notification for `requestId` to the final decision
+ * status, so any other admin that already had the bell open stops seeing the
+ * inline Approve/Reject buttons the moment one of them lands.
+ */
+export const _claimRefundAuthRequest = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    callerId: v.id("users"),
+    requestId: v.string(),
+    decision: v.union(v.literal("approved"), v.literal("rejected")),
+  },
+  handler: async (ctx, args) => {
+    const siblings = await ctx.db
+      .query("notifications")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .filter((q) => q.eq(q.field("type"), "refund_authorization_requested"))
+      .collect();
+
+    const matching = siblings.filter((n) => {
+      const meta = n.metadata as RefundAuthMetadata | undefined;
+      return meta?.requestId === args.requestId;
+    });
+    if (matching.length === 0) {
+      throw new Error("Refund request notification not found");
+    }
+    if (
+      matching.some(
+        (n) => (n.metadata as RefundAuthMetadata).status !== "pending",
+      )
+    ) {
+      throw new Error("Refund request already resolved");
+    }
+
+    for (const n of matching) {
+      const meta = n.metadata as RefundAuthMetadata;
+      await ctx.db.patch(n._id, {
+        isRead: true,
+        metadata: { ...meta, status: args.decision },
+      });
+    }
+  },
+});
+
 export const _resolveRefundAuthSideEffects = internalMutation({
   args: {
     organizationId: v.id("organizations"),
@@ -1280,26 +1354,9 @@ export const _resolveRefundAuthSideEffects = internalMutation({
     reason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Resolve every sibling notification carrying the same requestId so
-    // other admins immediately see the request has been handled.
-    const siblings = await ctx.db
-      .query("notifications")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .filter((q) => q.eq(q.field("type"), "refund_authorization_requested"))
-      .collect();
-
-    for (const n of siblings) {
-      const meta = n.metadata as RefundAuthMetadata | undefined;
-      if (!meta || meta.requestId !== args.requestId) continue;
-      if (meta.status !== "pending") continue;
-      await ctx.db.patch(n._id, {
-        isRead: true,
-        metadata: {
-          ...meta,
-          status: args.decision,
-        },
-      });
-    }
+    // Sibling notifications are already patched to the decision status by
+    // `_claimRefundAuthRequest` (called from the action before the Supabase
+    // insert). This mutation only handles requester notification + audit log.
 
     // Tell the requester what happened so they don't keep refreshing the
     // patient page wondering whether their request landed.

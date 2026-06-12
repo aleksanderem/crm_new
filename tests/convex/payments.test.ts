@@ -712,5 +712,97 @@ describe("payments", () => {
           }),
       ).rejects.toThrow(/already resolved/i);
     });
+
+    test("concurrent approveRefundAuth calls produce exactly one refund (#1730)", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity: ownerIdentity, userId: ownerUserId } =
+        await seedTestUser(t);
+      // Second owner so two distinct admin sessions each have their own
+      // notification carrying the shared requestId.
+      const { identity: secondOwnerIdentity } = await seedSecondUser(
+        t,
+        organizationId,
+        { role: "owner" },
+      );
+      const { identity: memberIdentity } = await seedSecondUser(
+        t,
+        organizationId,
+        { role: "member" },
+      );
+      const patientId = TEST_PATIENT_ID;
+
+      await t.withIdentity(ownerIdentity).action(api.payments.create, {
+        organizationId,
+        patientId,
+        amount: 500,
+        currency: "PLN",
+        paymentMethod: "cash",
+        creditEarned: 500,
+      });
+
+      await t
+        .withIdentity(memberIdentity)
+        .action(api.payments.requestRefundAuthorization, {
+          organizationId,
+          patientId,
+          amount: 150,
+        });
+
+      const ownerNotifications = await t.run(async (ctx) =>
+        ctx.db
+          .query("notifications")
+          .withIndex("by_user", (q) => q.eq("userId", ownerUserId))
+          .collect(),
+      );
+      const refundNotification = ownerNotifications.find(
+        (n) => n.type === "refund_authorization_requested",
+      )!;
+
+      // Locate the sibling notification fanned out to the second owner so
+      // each session approves from its own notification id — the worst case
+      // for the race described in #1730.
+      const siblingNotification = await t.run(async (ctx) => {
+        const rows = await ctx.db
+          .query("notifications")
+          .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
+          .filter((q) =>
+            q.eq(q.field("type"), "refund_authorization_requested"),
+          )
+          .collect();
+        return rows.find((n) => n._id !== refundNotification._id)!;
+      });
+
+      // Kick off both approvals in parallel. Convex serializes mutations, so
+      // the DB-level claim guarantees exactly one of them lands the refund.
+      const results = await Promise.allSettled([
+        t.withIdentity(ownerIdentity).action(api.payments.approveRefundAuth, {
+          organizationId,
+          notificationId: refundNotification._id,
+        }),
+        t
+          .withIdentity(secondOwnerIdentity)
+          .action(api.payments.approveRefundAuth, {
+            organizationId,
+            notificationId: siblingNotification._id,
+          }),
+      ]);
+
+      const fulfilled = results.filter((r) => r.status === "fulfilled");
+      const rejected = results.filter((r) => r.status === "rejected");
+      expect(fulfilled).toHaveLength(1);
+      expect(rejected).toHaveLength(1);
+      expect((rejected[0] as PromiseRejectedResult).reason.message).toMatch(
+        /already resolved/i,
+      );
+
+      // Patient credit reflects a single 150 refund, not two.
+      const credit = await t
+        .withIdentity(ownerIdentity)
+        .action(api.payments.getPatientCredit, {
+          organizationId,
+          patientId,
+        });
+      expect(credit.balance).toBe(350);
+    });
   });
 });

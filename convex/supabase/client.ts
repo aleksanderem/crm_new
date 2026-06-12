@@ -41,7 +41,9 @@ export async function upsertWithFkRetry(
   table: string,
   row: Record<string, unknown>,
   maxRetries = 3,
-  delayMs = 2000,
+  // Kept for back-compat; ignored after we dropped the setTimeout-based
+  // backoff. See comment inside the loop.
+  _delayMs = 2000,
 ): Promise<{ id: string }> {
   let lastError: { message: string; code: string } | null = null;
 
@@ -60,9 +62,15 @@ export async function upsertWithFkRetry(
 
     if (error?.code === "23503" && attempt < maxRetries - 1) {
       console.warn(
-        `[${table}] FK violation attempt ${attempt + 1}/${maxRetries}, retrying in ${delayMs}ms: ${error.message}`,
+        `[${table}] FK violation attempt ${attempt + 1}/${maxRetries}, retrying: ${error.message}`,
       );
-      await new Promise((r) => setTimeout(r, delayMs));
+      // Previously this awaited a setTimeout-based delay so concurrent
+      // writes had a chance to settle. setTimeout is forbidden in Convex
+      // queries/mutations — `_createSideEffects` was logging
+      // "Can't use setTimeout in queries and mutations" on every
+      // appointment create (dev 2026-06-12 14:36 UTC). Inside a mutation
+      // the FK target either exists in the snapshot or doesn't, so the
+      // pause couldn't help anyway. In actions the tighter retry is cheap.
       continue;
     }
 

@@ -2697,7 +2697,11 @@ function AppointmentDetail() {
         sidebarExtra={sidebarExtra}
         tabs={tabs}
         defaultTab={
-          tabSearch === "payments" ? t("gabinet.payments.payments") : undefined
+          tabSearch === "payments"
+            ? t("gabinet.payments.payments")
+            : tabSearch === "documentation"
+              ? t("gabinet.appointments.tabs.documentation", "Dokumentacja")
+              : undefined
         }
       />
 

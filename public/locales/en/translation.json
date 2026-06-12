@@ -2896,6 +2896,7 @@
       "close": "Close",
       "saveChanges": "Save changes",
       "closeAndSettle": "Settle visit",
+      "performTreatment": "Perform treatment",
       "settleDesc": "Record payment and optionally close the appointment as completed.",
       "settleMarkCompleted": "Mark appointment as completed",
       "settleNothingToDo": "Enter an amount or check the close option.",

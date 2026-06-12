@@ -70,6 +70,7 @@ import {
   OctagonX,
   Phone,
   PlayCircle,
+  Sparkles,
   Stethoscope,
   User,
   XCircle,
@@ -1400,6 +1401,26 @@ export function AppointmentPreviewContent({
             : t("gabinet.appointmentDetail.closeAndSettle", "Rozlicz wizytę")}
         </Button>
       </div>
+
+      {/* Perform treatment shortcut — issue #1629. Sends staff straight to the
+          Dokumentacja tab where they can attach before/after photos, fill the
+          treatment card, and complete the per-appointment paperwork. */}
+      <Button
+        asChild
+        size="sm"
+        variant="outline"
+        className="h-9 w-full text-xs"
+      >
+        <Link
+          to="/dashboard/gabinet/appointments/$appointmentId"
+          params={{ appointmentId: appointment._id }}
+          search={{ tab: "documentation" }}
+          onClick={onClose}
+        >
+          <Sparkles className="mr-1.5 size-3.5" />
+          {t("gabinet.appointmentDetail.performTreatment", "Przeprowadź zabieg")}
+        </Link>
+      </Button>
     </div>
 
     <Dialog

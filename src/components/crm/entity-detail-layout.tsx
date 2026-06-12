@@ -131,16 +131,17 @@ function EntityDetailSkeleton() {
 }
 
 function EntityDetailNotFound({ onBack }: { onBack?: () => void }) {
+  const { t } = useTranslation();
   return (
     <div className="flex h-full items-center justify-center">
       <div className="text-center space-y-3">
-        <h2 className="text-lg font-semibold">Not found</h2>
+        <h2 className="text-lg font-semibold">{t("common.notFound")}</h2>
         <p className="text-sm text-muted-foreground">
-          The requested record could not be found. It may have been deleted or you may not have access.
+          {t("common.notFoundDescription")}
         </p>
         {onBack && (
           <Button variant="outline" size="sm" onClick={onBack}>
-            &larr; Go back
+            &larr; {t("common.goBack")}
           </Button>
         )}
       </div>

@@ -587,6 +587,9 @@ function TreatmentsIndex() {
         rowActions={rowActions}
         emptyTitle={t("gabinet.treatments.emptyTitle")}
         emptyDescription={t("gabinet.treatments.emptyDescription")}
+        onRowAction={(treatmentId) =>
+          navigate({ to: `/dashboard/gabinet/treatments/${treatmentId}` })
+        }
       />
 
       <SidePanel

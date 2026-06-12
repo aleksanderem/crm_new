@@ -33,9 +33,16 @@ if (!["check", "apply", "mark"].includes(MODE)) {
 
 const dbUrl = process.env.SUPABASE_DB_URL;
 if (!dbUrl) {
-  console.error("SUPABASE_DB_URL is not set. Skipping migration check.");
+  // Emit a GitHub Actions warning annotation so the missing-secret state is
+  // visible in the PR checks UI instead of being silently green. Plain text
+  // outside Actions, parsed as an annotation when GITHUB_ACTIONS=true (#1651,
+  // surfaced during #1284 PR review where this had silently skipped).
+  console.log(
+    `::warning::SUPABASE_DB_URL is not set — skipping migration ${MODE}. ` +
+      `Configure the SUPABASE_DB_URL repository secret to enable this check.`,
+  );
   // Exit 0 so callers that haven't configured the secret aren't blocked.
-  // The CI workflow gates the job on the secret separately for stricter enforcement.
+  // The CI workflow gates the apply job on the secret separately for stricter enforcement.
   process.exit(0);
 }
 

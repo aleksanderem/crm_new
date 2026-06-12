@@ -792,7 +792,25 @@
       "trackHelp": "Każda zmiana stanu zapisuje się w historii ruchów. Jeśli wyłączone, historia może być nadal prowadzona ręcznie, ale stan nie jest pilnowany.",
       "unitLabel": "Jednostka",
       "unitPlaceholder": "szt., ml, g…",
-      "initialLabel": "Stan początkowy"
+      "initialLabel": "Stan początkowy",
+      "adjust": {
+        "action": "Przyjmij / wydaj towar",
+        "title": "Przyjmij / wydaj towar",
+        "currentBalance": "Aktualny stan",
+        "modeLabel": "Operacja",
+        "receive": "Przyjęcie (+)",
+        "issue": "Wydanie (−)",
+        "quantityLabel": "Ilość",
+        "projected": "Nowy stan: {{value}}",
+        "negativeHint": "uwaga: stan ujemny",
+        "locationLabel": "Lokalizacja",
+        "locationNone": "Bez lokalizacji",
+        "noteLabel": "Notatka",
+        "notePlaceholder": "Powód operacji, numer dokumentu, …",
+        "success": "Stan magazynowy zaktualizowany.",
+        "negativeWarning": "Stan magazynowy spadł poniżej zera. Sprawdź historię ruchów i skoryguj braki.",
+        "error": "Nie udało się zaktualizować stanu magazynowego."
+      }
     }
   },
   "calls": {

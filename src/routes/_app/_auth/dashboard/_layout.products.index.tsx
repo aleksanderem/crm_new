@@ -26,9 +26,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Power, Upload, Download, X } from "@/lib/ez-icons";
+import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
+import { ProductStockAdjustDialog } from "@/components/forms/product-stock-adjust-dialog";
 import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
 import { Id } from "@cvx/_generated/dataModel";
 import type { MappedProduct } from "@/lib/supabase/mappers/products";
@@ -147,6 +148,7 @@ function ProductsPage() {
   useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
   useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [stockAdjustProduct, setStockAdjustProduct] = useState<Product | null>(null);
 
   // Form state
   const [name, setName] = useState("");
@@ -356,23 +358,35 @@ function ProductsPage() {
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
   const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "products");
 
-  const rowActions = (row: Product) => [
-    {
-      label: t('common.edit'),
-      icon: <Pencil className="h-4 w-4" variant="stroke" />,
-      onClick: () => openEditPanel(row),
-    },
-    {
-      label: row.isActive ? t('products.deactivate') : t('products.activate'),
-      icon: <Power className="h-4 w-4" variant="stroke" />,
-      onClick: () => toggleActive({ organizationId, productId: row._id }),
-    },
-    {
-      label: t('common.delete'),
-      icon: <Trash2 className="h-4 w-4" variant="stroke" />,
-      onClick: () => removeProduct({ organizationId, productId: row._id }),
-    },
-  ];
+  const rowActions = (row: Product) => {
+    const actions = [
+      {
+        label: t('common.edit'),
+        icon: <Pencil className="h-4 w-4" variant="stroke" />,
+        onClick: () => openEditPanel(row),
+      },
+    ];
+    if (row.trackStock) {
+      actions.push({
+        label: t('products.stock.adjust.action', { defaultValue: 'Przyjmij / wydaj towar' }),
+        icon: <Package className="h-4 w-4" variant="stroke" />,
+        onClick: () => setStockAdjustProduct(row),
+      });
+    }
+    actions.push(
+      {
+        label: row.isActive ? t('products.deactivate') : t('products.activate'),
+        icon: <Power className="h-4 w-4" variant="stroke" />,
+        onClick: () => toggleActive({ organizationId, productId: row._id }),
+      },
+      {
+        label: t('common.delete'),
+        icon: <Trash2 className="h-4 w-4" variant="stroke" />,
+        onClick: () => removeProduct({ organizationId, productId: row._id }),
+      },
+    );
+    return actions;
+  };
 
   return (
     <div className="space-y-4">
@@ -629,6 +643,15 @@ function ProductsPage() {
           </div>
         </div>
       </SidePanel>
+
+      <ProductStockAdjustDialog
+        open={!!stockAdjustProduct}
+        onOpenChange={(open) => {
+          if (!open) setStockAdjustProduct(null);
+        }}
+        organizationId={organizationId}
+        product={stockAdjustProduct}
+      />
 
       <TagsManagerSlideout
         isOpen={tagsSlideoutOpen}

@@ -778,7 +778,25 @@
       "trackHelp": "Every stock change is recorded in the movement history. When disabled, history can still be kept manually, but the running balance is not enforced.",
       "unitLabel": "Unit",
       "unitPlaceholder": "pcs, ml, g…",
-      "initialLabel": "Initial stock"
+      "initialLabel": "Initial stock",
+      "adjust": {
+        "action": "Receive / issue stock",
+        "title": "Receive / issue stock",
+        "currentBalance": "Current balance",
+        "modeLabel": "Operation",
+        "receive": "Receive (+)",
+        "issue": "Issue (−)",
+        "quantityLabel": "Quantity",
+        "projected": "New balance: {{value}}",
+        "negativeHint": "warning: negative stock",
+        "locationLabel": "Location",
+        "locationNone": "No location",
+        "noteLabel": "Note",
+        "notePlaceholder": "Reason, document number, …",
+        "success": "Stock updated.",
+        "negativeWarning": "Stock went negative. Review the movement history and correct shortages.",
+        "error": "Could not update stock."
+      }
     }
   },
   "calls": {

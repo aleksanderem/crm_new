@@ -203,6 +203,14 @@ export function AppointmentPreviewContent({
   const getWarnings = useAction(api.gabinet.appointments.getWarnings);
   const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
   const createPaymentAction = useAction(api.payments.create);
+  // #1697 — settle dialog wykrywa aktywne pakiety pacjenta zawierające zabieg
+  // tej wizyty i pozwala odjąć N sesji.
+  const getPatientPackagesEnrichedAction = useAction(
+    api.gabinet.packages.getPatientPackagesEnriched,
+  );
+  const usePackageTreatmentsBatchAction = useAction(
+    api.gabinet.packages.usePackageTreatmentsBatch,
+  );
 
   const { data: detail, isLoading, refetch } = useQuery({
     queryKey: ["gabinet.appointment.fullDetail", organizationId, appointmentId],
@@ -230,6 +238,39 @@ export function AppointmentPreviewContent({
     queryFn: () => listActiveTreatments({ organizationId }),
     enabled: !!organizationId,
   }) as { data: Array<{ _id: string; name: string; duration: number }> | undefined };
+
+  // #1697 — fetch patient's active packages so the settle dialog can offer to
+  // deduct N sessions from any package that covers the appointment's treatment.
+  const patientIdForPackages = detail?.patient?._id
+    ? String(detail.patient._id)
+    : "";
+  const { data: patientPackages } = useQuery({
+    queryKey: [
+      "gabinet.packages.getPatientPackagesEnriched",
+      organizationId,
+      patientIdForPackages,
+    ],
+    queryFn: () =>
+      getPatientPackagesEnrichedAction({
+        organizationId,
+        patientId: patientIdForPackages,
+      }),
+    enabled: !!organizationId && !!patientIdForPackages,
+  }) as {
+    data:
+      | Array<{
+          _id: string;
+          status: string;
+          expiresAt?: number;
+          treatmentsUsed: Array<{
+            treatmentId: string;
+            usedCount: number;
+            totalCount: number;
+          }>;
+          packageName?: string;
+        }>
+      | undefined;
+  };
 
   const [status, setStatus] = useState<AppointmentStatus | "">("");
   const [date, setDate] = useState("");
@@ -293,6 +334,12 @@ export function AppointmentPreviewContent({
   const [settleNotes, setSettleNotes] = useState("");
   const [settleMarkCompleted, setSettleMarkCompleted] = useState(true);
   const [settleSubmitting, setSettleSubmitting] = useState(false);
+  // #1697 — per-usageId count of sessions to deduct on settle. Keyed by
+  // gabinetPackageUsage._id; only usages whose package covers the appointment's
+  // treatment are listed in the settle dialog.
+  const [settlePackageDeductions, setSettlePackageDeductions] = useState<
+    Record<string, number>
+  >({});
   const [settleSplitPayment, setSettleSplitPayment] = useState(false);
   const [settleFirstSplitMethod, setSettleFirstSplitMethod] = useState<
     "cash" | "card" | "transfer" | "package" | "other"
@@ -386,6 +433,40 @@ export function AppointmentPreviewContent({
     treatments?.find((tr) => tr._id === treatmentId) ?? null;
   const treatmentDisplayName =
     selectedTreatment?.name ?? treatment?.name ?? "";
+
+  // #1697 — pakiety które realnie pokrywają zabieg tej wizyty i mają jeszcze
+  // sesje do skonsumowania (active + nie wygasły + remaining > 0). Settle dialog
+  // pokaże po jednej sekcji per pakiet z input "ile sesji odjąć?".
+  const treatmentIdForPackages = treatmentId || initialTreatmentId;
+  const settlablePackages = (() => {
+    if (!treatmentIdForPackages || !patientPackages) return [];
+    const now = Date.now();
+    const out: Array<{
+      usageId: string;
+      packageName: string;
+      usedCount: number;
+      totalCount: number;
+      remaining: number;
+    }> = [];
+    for (const p of patientPackages) {
+      if (p.status !== "active") continue;
+      if (p.expiresAt && p.expiresAt < now) continue;
+      const entry = p.treatmentsUsed.find(
+        (t) => String(t.treatmentId) === String(treatmentIdForPackages),
+      );
+      if (!entry) continue;
+      const remaining = entry.totalCount - entry.usedCount;
+      if (remaining <= 0) continue;
+      out.push({
+        usageId: String(p._id),
+        packageName: p.packageName ?? t("gabinet.packages.unnamed", "Pakiet"),
+        usedCount: entry.usedCount,
+        totalCount: entry.totalCount,
+        remaining,
+      });
+    }
+    return out;
+  })();
   const filteredTreatments = (() => {
     const all = treatments ?? [];
     const q = treatmentSearch.trim().toLowerCase();
@@ -754,6 +835,7 @@ export function AppointmentPreviewContent({
     setSettleCreditAmount(
       Math.min(patientCreditBalance, outstanding).toFixed(2),
     );
+    setSettlePackageDeductions({});
     setSettleDialogOpen(true);
   };
 
@@ -861,6 +943,23 @@ export function AppointmentPreviewContent({
       if (dirty) {
         await handleSave();
       }
+
+      // #1697 — najpierw odejmij sesje z pakietu(ów). Robimy to PRZED utworzeniem
+      // payment row, żeby kasa nie poszła w bok jeśli decrement się sypnie
+      // (np. pakiet już wyczerpany przez współbieżny zapis).
+      if (treatmentIdForPackages) {
+        for (const pkg of settlablePackages) {
+          const count = settlePackageDeductions[pkg.usageId] ?? 0;
+          if (count <= 0) continue;
+          await usePackageTreatmentsBatchAction({
+            organizationId,
+            usageId: pkg.usageId,
+            items: [{ treatmentId: treatmentIdForPackages, quantity: count }],
+            appointmentId: appointment._id,
+          });
+        }
+      }
+
       if (settleSplitPayment && patient?._id) {
         const parts: Array<{
           method: "cash" | "card" | "transfer" | "package" | "other";
@@ -949,8 +1048,17 @@ export function AppointmentPreviewContent({
         queryClient.invalidateQueries({
           queryKey: supabaseKeys.payments.all,
         }),
+        // #1697 — refresh the patient's package list so the next settle
+        // dialog open reflects the consumed sessions.
+        queryClient.invalidateQueries({
+          queryKey: [
+            "gabinet.packages.getPatientPackagesEnriched",
+            organizationId,
+          ],
+        }),
       ]);
       await refetch();
+      setSettlePackageDeductions({});
       setSettleDialogOpen(false);
       toast.success(
         t("gabinet.appointmentDetail.settleSuccess", {
@@ -1742,6 +1850,66 @@ export function AppointmentPreviewContent({
                 defaultValue:
                   "Nadpłata {{amount}} zostanie dopisana do salda klienta i można ją wykorzystać przy kolejnych wizytach.",
                 amount: formatCurrencyPLN(overpaymentAmount),
+              })}
+            </div>
+          )}
+
+          {/* #1697 — odejmowanie sesji z pakietu(ów) klienta. Pokazuje
+              osobną kartę dla każdego aktywnego pakietu pacjenta, który
+              zawiera bieżący zabieg i ma jeszcze sesje do skonsumowania. */}
+          {settlablePackages.length > 0 && (
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-3">
+              <div className="text-sm font-medium">
+                {t(
+                  "gabinet.packages.deductFromPackage",
+                  "Odejmij sesje z pakietu",
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {t(
+                  "gabinet.packages.deductFromPackageHint",
+                  "Klient ma aktywny pakiet zawierający ten zabieg. Wpisz, ile sesji zdjąć z każdego pakietu.",
+                )}
+              </div>
+              {settlablePackages.map((pkg) => {
+                const value = settlePackageDeductions[pkg.usageId] ?? 0;
+                return (
+                  <div
+                    key={pkg.usageId}
+                    className="rounded-md border bg-background p-2 space-y-1"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-sm font-medium truncate">
+                        {pkg.packageName}
+                      </div>
+                      <div className="text-xs text-muted-foreground whitespace-nowrap">
+                        {t("gabinet.packages.remainingSessions", {
+                          defaultValue: "Pozostało: {{r}}/{{t}}",
+                          r: pkg.remaining,
+                          t: pkg.totalCount,
+                        })}
+                      </div>
+                    </div>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={pkg.remaining}
+                      step={1}
+                      value={value === 0 ? "" : String(value)}
+                      onChange={(e) => {
+                        const raw = e.target.value.trim();
+                        const n = raw === "" ? 0 : Math.floor(Number(raw));
+                        if (!Number.isFinite(n) || n < 0) return;
+                        setSettlePackageDeductions((prev) => ({
+                          ...prev,
+                          [pkg.usageId]: Math.min(n, pkg.remaining),
+                        }));
+                      }}
+                      placeholder="0"
+                      className="h-8"
+                    />
+                  </div>
+                );
               })}
             </div>
           )}

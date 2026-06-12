@@ -1,0 +1,111 @@
+name: Supabase Migrations Health Check
+
+# When the `Supabase Migrations` workflow fails on `main`, open (or reuse) a
+# GitHub issue so the failure is surfaced outside the Actions tab. Companion
+# to `secrets-health.yml` (proactive secret presence check) and
+# `netlify-deploy-healthcheck.yml` (same idea, different surface).
+#
+# Motivation (#1650): 324 consecutive failed runs of `Supabase Migrations`
+# went unnoticed because failures only surfaced in the Actions tab — there was
+# no notification path for that workflow specifically. Opening a tracking
+# issue makes the failure visible to anyone watching the repo and to the
+# @claude worker bots.
+#
+# Dedup strategy: a single open issue at a time, identified by the
+# `supabase-migrations-healthcheck` marker in the body. While that issue is
+# open, subsequent failures add a comment rather than opening duplicates —
+# otherwise a missing secret on a busy day would spam dozens of issues.
+
+on:
+  workflow_run:
+    workflows: ["Supabase Migrations"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+
+jobs:
+  alert-on-failure:
+    name: Open tracking issue on failure
+    # Only act on real failures of pushes to main. PR runs of `Supabase
+    # Migrations` are advisory (see that workflow's `check` job) and we don't
+    # want to spam issues for them.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'failure' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Open or update tracking issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_HTML_URL: ${{ github.event.workflow_run.html_url }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          EVENT_NAME: ${{ github.event.workflow_run.event }}
+          DISPATCH_FALLBACK_URL: ${{ github.server_url }}/${{ github.repository }}/actions/workflows/supabase-migrations.yml
+        run: |
+          set -euo pipefail
+
+          marker="supabase-migrations-healthcheck"
+          run_url="${RUN_HTML_URL:-$DISPATCH_FALLBACK_URL}"
+          head_sha="${HEAD_SHA:-unknown}"
+          short_sha="${head_sha:0:7}"
+          head_branch="${HEAD_BRANCH:-main}"
+          event_name="${EVENT_NAME:-workflow_dispatch}"
+
+          existing=$(gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --search "in:body \"${marker}\"" \
+            --json number \
+            --jq '.[0].number // empty')
+
+          if [ -n "$existing" ]; then
+            comment=$(cat <<EOF
+          Another \`Supabase Migrations\` run failed on \`${head_branch}\` at commit \`${short_sha}\` (event: \`${event_name}\`).
+
+          Failing run: ${run_url}
+
+          (Auto-comment from \`.github/workflows/supabase-migrations-healthcheck.yml\`. This issue stays open until manually closed; the next failure after closure opens a fresh one.)
+          EOF
+          )
+            gh issue comment "$existing" \
+              --repo "$GITHUB_REPOSITORY" \
+              --body "$comment"
+            echo "Existing tracking issue #${existing} updated with new failure."
+            exit 0
+          fi
+
+          title="Supabase Migrations workflow is failing on main (${short_sha})"
+          body=$(cat <<EOF
+          The \`Supabase Migrations\` workflow failed on \`${head_branch}\`. Pushes to \`main\` that follow this state will not apply migrations to the deployed database — if migrations were pending, the frontend may be deployed against an out-of-date schema.
+
+          - Failing run: ${run_url}
+          - Commit: \`${short_sha}\`
+          - Triggering event: \`${event_name}\`
+
+          Common causes:
+
+          1. The \`SUPABASE_DB_URL\` repository secret was rotated, removed, or never set. (The \`Secrets Health Check\` workflow checks for this daily — if it is also failing, that confirms the cause.)
+          2. A migration under \`supabase/migrations/\` is invalid or conflicts with the deployed schema.
+          3. The Supabase instance at the configured URL is unreachable.
+
+          Fix the underlying problem, then close this issue. While this issue is open, subsequent failures are added as comments rather than opening new issues. After it is closed, the next failure on \`main\` will open a fresh tracking issue.
+
+          ---
+
+          This issue was opened automatically by \`.github/workflows/supabase-migrations-healthcheck.yml\` (\`${marker}\`). Tracking: #1650.
+          EOF
+          )
+
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$title" \
+            --body "$body" \
+            --label "bug"

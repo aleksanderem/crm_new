@@ -65,8 +65,11 @@ function SigningPage() {
 // ---------------------------------------------------------------------------
 
 function PageShell({ children }: { children: React.ReactNode }) {
+  // body has `overflow: hidden; height: 100dvh` globally, so this shell must
+  // be the scroll container — otherwise long documents overflow with no
+  // way to scroll. See #1687.
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="h-dvh overflow-y-auto bg-muted/30">
       <div className="mx-auto max-w-3xl px-4 py-8">{children}</div>
     </div>
   );

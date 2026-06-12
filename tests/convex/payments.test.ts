@@ -424,7 +424,7 @@ describe("payments", () => {
     ).rejects.toThrow(/exceeds available credit/);
   });
 
-  test("refundCredit is admin-only", async () => {
+  test("refundCredit is gated by gabinet_payments.refund (issue #1690)", async () => {
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t, {
       role: "member",
@@ -438,7 +438,7 @@ describe("payments", () => {
         amount: 50,
         paymentMethod: "cash",
       }),
-    ).rejects.toThrow(/admins can refund/);
+    ).rejects.toThrow(/REFUND_NOT_AUTHORIZED/);
   });
 
   test("refunding a payment with creditEarned releases that credit", async () => {

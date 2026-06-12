@@ -3369,6 +3369,29 @@
       "creditAmountToApply": "Amount from credit",
       "creditExceedsBalance": "Credit amount exceeds available balance.",
       "overpaymentNote": "Overpayment of {{amount}} will be added to the patient's credit balance and can be used on future visits.",
+      "overpaymentToCredit": "Overpayment of {{amount}} will be added to the patient's credit.",
+      "useBalance": "Use patient balance ({{amount}})",
+      "useBalanceHint": "The unpaid portion will be covered from the patient's credit balance.",
+      "addPaymentPatientDesc": "Record a patient payment. With no appointment selected the full amount goes to the credit balance.",
+      "linkedAppointment": "Linked appointment",
+      "noAppointmentToCredit": "None — add to credit balance",
+      "fullAmountToCreditHint": "The full amount will be added to the patient's credit balance.",
+      "type": "Type",
+      "balanceDelta": "Balance change",
+      "cancelled": "Payment cancelled",
+      "cancelPayment": "Cancel payment",
+      "cancelPaymentDesc": "A cancelled payment is excluded from balance and settlements. The history entry stays for audit.",
+      "cancelReason": "Cancellation reason",
+      "cancelReasonPlaceholder": "E.g. wrong amount, customer withdrawal...",
+      "cancelConfirm": "Cancel payment",
+      "types": {
+        "payment": "Payment",
+        "overpayment": "Overpayment",
+        "creditApplied": "Credit used",
+        "creditRefund": "Credit refund",
+        "cancelled": "Cancelled",
+        "refunded": "Refunded"
+      },
       "credit": {
         "title": "Credit balance",
         "description": "Overpayments are added to the patient's credit and can be applied to future visits.",
@@ -3387,7 +3410,11 @@
         "refundConfirm": "Confirm refund",
         "refundSuccess": "Credit refunded",
         "refundExceeds": "Refund amount exceeds available credit.",
-        "adminOnly": "Only organization owners and admins can refund credit."
+        "adminOnly": "Only organization owners and admins can refund credit.",
+        "requestRefundDialogTitle": "Request refund authorization",
+        "requestRefundDialogDesc": "You don't have permission to refund credit. Your request will be sent to an organization admin.",
+        "requestRefundConfirm": "Send request",
+        "refundRequestSent": "Refund authorization request sent to admin."
       }
     },
     "schedules": {

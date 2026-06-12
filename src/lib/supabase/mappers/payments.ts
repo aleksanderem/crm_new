@@ -23,6 +23,9 @@ export interface MappedPayment {
   createdBy: string;
   createdAt: number;
   updatedAt: number;
+  creditEarned?: number;
+  creditApplied?: number;
+  kind?: string;
   _source: "supabase";
 }
 

@@ -356,7 +356,11 @@ function AppointmentDetail() {
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
   const [paymentNote, setPaymentNote] = useState("");
+  const [paymentUseBalance, setPaymentUseBalance] = useState(false);
   const [isPaymentSubmitting, setIsPaymentSubmitting] = useState(false);
+  const [patientCreditBalance, setPatientCreditBalance] = useState<number | null>(
+    null,
+  );
 
   // Body chart state
   const [bodyChartData, setBodyChartData] = useState<BodyRegion[]>([]);
@@ -408,6 +412,7 @@ function AppointmentDetail() {
   const createPayment = useAction(api.payments.create);
   const markPaymentPaid = useAction(api.payments.markPaid);
   const refundPayment = useAction(api.payments.refund);
+  const getPatientCreditAction = useAction(api.payments.getPatientCredit);
 
   // Note actions (Supabase-primary)
   const createNote = useAction(api.notes.create);
@@ -975,6 +980,26 @@ function AppointmentDetail() {
     }
   };
 
+  // Open the Add Payment dialog and fetch the patient's current credit
+  // balance — needed so the dialog can offer "Użyj salda klienta" with a
+  // correct cap. Best-effort: failure leaves balance at null and hides the
+  // option, the user can still record the payment.
+  const openPaymentDialog = async () => {
+    setPaymentDialogOpen(true);
+    setPaymentUseBalance(false);
+    if (patient?._id) {
+      try {
+        const credit = await getPatientCreditAction({
+          organizationId,
+          patientId: patient._id,
+        });
+        setPatientCreditBalance(credit.balance);
+      } catch {
+        setPatientCreditBalance(null);
+      }
+    }
+  };
+
   // Payment handlers
   const handleCreatePayment = async () => {
     const normalizedAmount = paymentAmount.replace(",", ".");
@@ -983,23 +1008,61 @@ function AppointmentDetail() {
       return;
     }
 
+    const amount = parseFloat(normalizedAmount);
+    // Issue #1690: any portion of `amount` above the visit's outstanding
+    // automatically flows to the patient's credit balance as creditEarned.
+    // Outstanding is treatmentPrice - sum(completed payments) at the moment
+    // of submit, so the math stays consistent with what the user sees in the
+    // summary card.
+    const outstandingNow = Math.max(0, treatmentPrice - totalPaid);
+    const creditEarned =
+      amount > outstandingNow + 0.005
+        ? Math.round((amount - outstandingNow) * 100) / 100
+        : 0;
+    // Issue #1690: when "Użyj salda klienta" is checked, apply available
+    // balance against the visit. We send creditApplied so the backend
+    // deducts from the patient ledger; it does not increase `amount`.
+    const balanceAvailable = patientCreditBalance ?? 0;
+    const creditApplied =
+      paymentUseBalance && balanceAvailable > 0
+        ? Math.round(
+            Math.min(balanceAvailable, Math.max(0, outstandingNow - amount)) *
+              100,
+          ) / 100
+        : 0;
+
     setIsPaymentSubmitting(true);
     try {
       await createPayment({
         organizationId,
         patientId: patient!._id,
         appointmentId: appointment._id,
-        amount: parseFloat(normalizedAmount),
+        amount,
         currency: "PLN",
         paymentMethod: paymentMethod as "cash" | "card" | "transfer" | "package" | "other",
         notes: paymentNote || undefined,
+        creditEarned: creditEarned > 0 ? creditEarned : undefined,
+        creditApplied: creditApplied > 0 ? creditApplied : undefined,
       });
 
       toast.success(t("gabinet.payments.created"));
       setPaymentDialogOpen(false);
       setPaymentAmount("");
       setPaymentNote("");
+      setPaymentUseBalance(false);
       refetch();
+      // Refresh credit balance for any further dialog opens.
+      if (patient?._id) {
+        try {
+          const credit = await getPatientCreditAction({
+            organizationId,
+            patientId: patient._id,
+          });
+          setPatientCreditBalance(credit.balance);
+        } catch {
+          // best-effort; balance will refresh next time the dialog opens
+        }
+      }
     } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
@@ -1765,7 +1828,7 @@ function AppointmentDetail() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setPaymentDialogOpen(true)}
+                onClick={() => void openPaymentDialog()}
               >
                 <Plus className="mr-2 h-4 w-4" variant="stroke" />
                 {t("gabinet.payments.addPayment")}
@@ -1778,7 +1841,7 @@ function AppointmentDetail() {
                   title={t("gabinet.payments.noPayments")}
                   description={t("gabinet.payments.noPaymentsDesc")}
                   action={
-                    <Button onClick={() => setPaymentDialogOpen(true)}>
+                    <Button onClick={() => void openPaymentDialog()}>
                       <Plus className="mr-2 h-4 w-4" variant="stroke" />
                       {t("gabinet.payments.addFirst")}
                     </Button>
@@ -2742,7 +2805,47 @@ function AppointmentDetail() {
                   {t("gabinet.payments.outstanding")}: {formatCurrencyPLN(outstanding)}
                 </p>
               )}
+              {(() => {
+                // Live preview of overpayment → patient credit (issue #1690).
+                const parsed = parseFloat(paymentAmount.replace(",", "."));
+                const overpay =
+                  Number.isFinite(parsed) && outstanding > 0
+                    ? Math.max(0, parsed - outstanding)
+                    : Number.isFinite(parsed) && outstanding <= 0
+                      ? Math.max(0, parsed)
+                      : 0;
+                if (overpay <= 0) return null;
+                return (
+                  <p className="text-xs text-emerald-600 mt-1">
+                    {t("gabinet.payments.overpaymentToCredit", {
+                      amount: formatCurrencyPLN(overpay),
+                    })}
+                  </p>
+                );
+              })()}
             </div>
+            {patientCreditBalance !== null && patientCreditBalance > 0 && (
+              <div className="rounded-md border bg-emerald-50/50 p-2.5 dark:bg-emerald-950/20">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={paymentUseBalance}
+                    onChange={(e) => setPaymentUseBalance(e.target.checked)}
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">
+                      {t("gabinet.payments.useBalance", {
+                        amount: formatCurrencyPLN(patientCreditBalance),
+                      })}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("gabinet.payments.useBalanceHint")}
+                    </p>
+                  </div>
+                </label>
+              </div>
+            )}
             <div>
               <Label>{t("gabinet.payments.method")}</Label>
               <Select value={paymentMethod} onValueChange={setPaymentMethod}>

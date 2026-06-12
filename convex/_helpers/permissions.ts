@@ -27,10 +27,26 @@ function buildDefaults(scope: Record<Action, Scope>): FeaturePermissions {
 }
 
 export const DEFAULT_PERMISSIONS: Record<OrgRole, FeaturePermissions> = {
-  owner: buildDefaults({ view: "all", create: "all", edit: "all", delete: "all", approve: "none", sign: "none" }),
-  admin: buildDefaults({ view: "all", create: "all", edit: "all", delete: "all", approve: "none", sign: "none" }),
-  member: buildDefaults({ view: "all", create: "all", edit: "own", delete: "own", approve: "none", sign: "none" }),
-  viewer: buildDefaults({ view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none" }),
+  owner: buildDefaults({ view: "all", create: "all", edit: "all", delete: "all", approve: "none", sign: "none", refund: "none" }),
+  admin: buildDefaults({ view: "all", create: "all", edit: "all", delete: "all", approve: "none", sign: "none", refund: "none" }),
+  member: buildDefaults({ view: "all", create: "all", edit: "own", delete: "own", approve: "none", sign: "none", refund: "none" }),
+  viewer: buildDefaults({ view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none" }),
+};
+
+// --- Per-feature overrides for gabinet_payments ---
+// owner/admin: full incl. refund; member: view/create/edit (no delete, no
+// refund — recepcja); viewer: view only. Issue #1690.
+DEFAULT_PERMISSIONS.owner.gabinet_payments = {
+  view: "all", create: "all", edit: "all", delete: "all", approve: "none", sign: "none", refund: "all",
+};
+DEFAULT_PERMISSIONS.admin.gabinet_payments = {
+  view: "all", create: "all", edit: "all", delete: "all", approve: "none", sign: "none", refund: "all",
+};
+DEFAULT_PERMISSIONS.member.gabinet_payments = {
+  view: "all", create: "all", edit: "all", delete: "none", approve: "none", sign: "none", refund: "none",
+};
+DEFAULT_PERMISSIONS.viewer.gabinet_payments = {
+  view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
 };
 
 // --- Per-feature overrides for document_templates ---
@@ -38,44 +54,44 @@ export const DEFAULT_PERMISSIONS: Record<OrgRole, FeaturePermissions> = {
 // member: view only (no create/edit/delete)
 // viewer: view only
 DEFAULT_PERMISSIONS.member.document_templates = {
-  view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none",
+  view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
 };
 
 // --- Per-feature overrides for document_instances ---
 // owner/admin: all actions allowed
 DEFAULT_PERMISSIONS.owner.document_instances = {
-  view: "all", create: "all", edit: "all", delete: "all", approve: "all", sign: "all",
+  view: "all", create: "all", edit: "all", delete: "all", approve: "all", sign: "all", refund: "none",
 };
 DEFAULT_PERMISSIONS.admin.document_instances = {
-  view: "all", create: "all", edit: "all", delete: "all", approve: "all", sign: "all",
+  view: "all", create: "all", edit: "all", delete: "all", approve: "all", sign: "all", refund: "none",
 };
 // member: view, create, edit, sign; NO approve or delete
 DEFAULT_PERMISSIONS.member.document_instances = {
-  view: "all", create: "all", edit: "own", delete: "none", approve: "none", sign: "all",
+  view: "all", create: "all", edit: "own", delete: "none", approve: "none", sign: "all", refund: "none",
 };
 // viewer: view only
 DEFAULT_PERMISSIONS.viewer.document_instances = {
-  view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none",
+  view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
 };
 
 // --- Per-feature overrides for tagDefinitions ---
 // member: create only (no edit/delete)
 DEFAULT_PERMISSIONS.member.tagDefinitions = {
-  view: "all", create: "all", edit: "none", delete: "none", approve: "none", sign: "none",
+  view: "all", create: "all", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
 };
 // viewer: no CRUD
 DEFAULT_PERMISSIONS.viewer.tagDefinitions = {
-  view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none",
+  view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
 };
 
 // --- Per-feature overrides for categoryDefinitions ---
 // member: create only (no edit/delete)
 DEFAULT_PERMISSIONS.member.categoryDefinitions = {
-  view: "all", create: "all", edit: "none", delete: "none", approve: "none", sign: "none",
+  view: "all", create: "all", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
 };
 // viewer: no CRUD
 DEFAULT_PERMISSIONS.viewer.categoryDefinitions = {
-  view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none",
+  view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
 };
 
 // --- checkPermission ---

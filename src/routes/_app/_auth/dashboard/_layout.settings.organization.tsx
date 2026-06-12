@@ -29,6 +29,8 @@ import {
   Package,
   Mail,
 } from "@/lib/ez-icons";
+import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/organization"
@@ -111,6 +113,13 @@ function OrganizationSettings() {
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.organizations.detail(organizationId, organizationId) });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.orgSettings.detail(organizationId, organizationId) });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "organization.errors.saveFailed",
+          defaultValue: "Nie udało się zapisać ustawień organizacji.",
+        }),
+      );
     } finally {
       setIsSaving(false);
     }

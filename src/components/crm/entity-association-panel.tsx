@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Search, Plus } from "@/lib/ez-icons";
@@ -15,6 +16,7 @@ import {
   type EntityLinkResult,
   type EntityTypeConfig,
 } from "@/components/crm/entity-link-modal";
+import { formatActionError } from "@/lib/format-action-error";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -99,11 +101,18 @@ export function EntityAssociationPanel({
       setIsLinking(true);
       try {
         await onLink?.({ id: result.id, label: result.label, sublabel: result.sublabel });
+      } catch (e) {
+        toast.error(
+          formatActionError(e, t, {
+            key: "associations.errors.linkFailed",
+            defaultValue: "Nie udało się powiązać rekordów.",
+          }),
+        );
       } finally {
         setIsLinking(false);
       }
     },
-    [onLink],
+    [onLink, t],
   );
 
   // Convert search results to EntityLinkResult format

@@ -18,6 +18,8 @@ import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
+import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/lost-reasons"
@@ -57,6 +59,13 @@ function LostReasonsSettings() {
       setNewLabel("");
       setShowCreateForm(false);
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.lostReasons.list(organizationId) });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "lostReasons.errors.createFailed",
+          defaultValue: "Nie udało się dodać powodu utraty.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -73,6 +82,13 @@ function LostReasonsSettings() {
       });
       setEditingId(null);
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.lostReasons.list(organizationId) });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "lostReasons.errors.updateFailed",
+          defaultValue: "Nie udało się zapisać powodu utraty.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }

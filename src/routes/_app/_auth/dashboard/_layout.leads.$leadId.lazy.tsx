@@ -84,6 +84,8 @@ import { cn } from "@/lib/utils";
 import { useCustomFieldForm } from "@/hooks/use-custom-field-form";
 import { EmailEntityTab } from "@/components/email/email-entity-tab";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
+import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/leads/$leadId"
@@ -538,6 +540,13 @@ function LeadDetail() {
       setEditDrawerOpen(false);
       queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
       queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelineStages.all });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "leads.errors.updateFailed",
+          defaultValue: "Nie udało się zapisać szansy sprzedaży.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -740,6 +749,13 @@ function LeadDetail() {
       });
       setCreateContactDrawerOpen(false);
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.all });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "contacts.errors.createFailed",
+          defaultValue: "Nie udało się dodać kontaktu.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -770,6 +786,13 @@ function LeadDetail() {
       });
       setCreateCompanyDrawerOpen(false);
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.all });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "companies.errors.createFailed",
+          defaultValue: "Nie udało się dodać firmy.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -787,6 +810,13 @@ function LeadDetail() {
       });
       setNewNote("");
       queryClient.invalidateQueries({ queryKey: supabaseKeys.notes.all });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "notes.errors.createFailed",
+          defaultValue: "Nie udało się dodać notatki.",
+        }),
+      );
     } finally {
       setIsAddingNote(false);
     }

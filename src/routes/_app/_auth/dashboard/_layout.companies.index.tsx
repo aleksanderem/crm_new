@@ -34,6 +34,8 @@ import { CategoriesManagerSlideout } from "@/components/categories-tags/categori
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 type CompanyNudgeFilter = "no-contacts" | "no-industry";
 
@@ -346,11 +348,18 @@ function CompaniesIndex() {
         setPanelOpen(false);
         setTagIds([]);
         setCategoryId(undefined);
+      } catch (e) {
+        toast.error(
+          formatActionError(e, t, {
+            key: "companies.errors.createFailed",
+            defaultValue: "Nie udało się dodać firmy.",
+          }),
+        );
       } finally {
         setIsCreating(false);
       }
     },
-    [createCompany, organizationId, cfDefs, setCustomFieldValues, tagIds, categoryId]
+    [createCompany, organizationId, cfDefs, setCustomFieldValues, tagIds, categoryId, t]
   );
 
   const handleBulkAction = useCallback(

@@ -39,6 +39,8 @@ import { CategoriesManagerSlideout } from "@/components/categories-tags/categori
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { AvatarLabelGroup } from "@untitled/base/avatar/avatar-label-group";
+import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 type CallsNudgeFilter = "no-outcome";
 
@@ -213,6 +215,17 @@ function CallsPage() {
       }
       setPanelOpen(false);
       resetForm();
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: editingCall
+            ? "calls.errors.updateFailed"
+            : "calls.errors.createFailed",
+          defaultValue: editingCall
+            ? "Nie udało się zapisać rozmowy."
+            : "Nie udało się dodać rozmowy.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }

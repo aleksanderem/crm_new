@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 import {
   CommandDialog,
   CommandEmpty,
@@ -98,11 +100,18 @@ export function GlobalSearch({
       try {
         const searchResults = await onSearch(value);
         setResults(searchResults);
+      } catch (e) {
+        toast.error(
+          formatActionError(e, t, {
+            key: "search.errors.searchFailed",
+            defaultValue: "Nie udało się wyszukać.",
+          }),
+        );
       } finally {
         setIsLoading(false);
       }
     },
-    [onSearch]
+    [onSearch, t]
   );
 
   function handleSelect(result: SearchResult) {

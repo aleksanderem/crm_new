@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Mail, Calendar, Unplug, ExternalLink } from "@/lib/ez-icons";
 import { useState } from "react";
+import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 interface GoogleIntegrationCardProps {
   organizationId: Id<"organizations">;
@@ -42,6 +44,13 @@ export function GoogleIntegrationCard({
     setDisconnecting(true);
     try {
       await revokeAndDeactivate({ organizationId, connectionId: connection._id });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "integrations.errors.disconnectFailed",
+          defaultValue: "Nie udało się odłączyć integracji.",
+        }),
+      );
     } finally {
       setDisconnecting(false);
     }

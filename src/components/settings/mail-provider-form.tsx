@@ -22,6 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ExternalLink } from "@/lib/ez-icons";
+import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 type ProviderType = "google" | "microsoft" | "mailgun" | "resend";
 
@@ -147,6 +149,17 @@ export function MailProviderForm({
         await createProvider(payload);
       }
       onOpenChange(false);
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: isEdit
+            ? "mailProviders.errors.updateFailed"
+            : "mailProviders.errors.createFailed",
+          defaultValue: isEdit
+            ? "Nie udało się zapisać dostawcy poczty."
+            : "Nie udało się dodać dostawcy poczty.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }

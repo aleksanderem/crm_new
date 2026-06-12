@@ -58,6 +58,8 @@ import { EntityAssociationPanel } from "@/components/crm/entity-association-pane
 import type { SearchResultItem } from "@/components/crm/entity-association-panel";
 import { CompanyOverviewTab } from "@/components/crm/company-overview-tab";
 import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
+import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/companies/$companyId"
@@ -319,6 +321,13 @@ function CompanyDetail() {
       }
       setEditDrawerOpen(false);
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.companies.all });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "companies.errors.updateFailed",
+          defaultValue: "Nie udało się zapisać firmy.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -491,6 +500,13 @@ function CompanyDetail() {
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
       setCreateContactDrawerOpen(false);
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "contacts.errors.createFailed",
+          defaultValue: "Nie udało się dodać kontaktu.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -508,6 +524,13 @@ function CompanyDetail() {
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.notes.list(organizationId) });
       setNewNote("");
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "notes.errors.createFailed",
+          defaultValue: "Nie udało się dodać notatki.",
+        }),
+      );
     } finally {
       setIsAddingNote(false);
     }
@@ -540,6 +563,13 @@ function CompanyDetail() {
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
       setCreateLeadDrawerOpen(false);
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "leads.errors.createFailed",
+          defaultValue: "Nie udało się dodać szansy sprzedaży.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }

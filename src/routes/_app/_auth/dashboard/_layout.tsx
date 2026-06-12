@@ -812,7 +812,9 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
             </button>
           </span>
         </div>
-        <MigrationHealthBanner />
+        {(firstOrg?.role === "owner" || firstOrg?.role === "admin") && (
+          <MigrationHealthBanner />
+        )}
         <DevInfoDialog open={devInfoOpen} onOpenChange={handleDevInfoClose} />
 
         <div className="flex min-h-0 min-w-0 flex-1">

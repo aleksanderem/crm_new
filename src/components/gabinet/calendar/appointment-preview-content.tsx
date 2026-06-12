@@ -203,6 +203,12 @@ export function AppointmentPreviewContent({
   const getWarnings = useAction(api.gabinet.appointments.getWarnings);
   const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
   const createPaymentAction = useAction(api.payments.create);
+  const getPatientPackagesEnriched = useAction(
+    api.gabinet.packages.getPatientPackagesEnriched,
+  );
+  const usePackageTreatmentsBatch = useAction(
+    api.gabinet.packages.usePackageTreatmentsBatch,
+  );
 
   const { data: detail, isLoading, refetch } = useQuery({
     queryKey: ["gabinet.appointment.fullDetail", organizationId, appointmentId],
@@ -230,6 +236,43 @@ export function AppointmentPreviewContent({
     queryFn: () => listActiveTreatments({ organizationId }),
     enabled: !!organizationId,
   }) as { data: Array<{ _id: string; name: string; duration: number }> | undefined };
+
+  // Patient's enriched package usage — drives the "deduct from active package"
+  // section of the settle dialog (issue #1697). We need the enriched shape
+  // because the per-treatment progress is what tells us whether this visit's
+  // treatment can be covered by a package the patient already has.
+  const patientIdForPackages = detail?.appointment.patientId
+    ? String(detail.appointment.patientId)
+    : "";
+  const { data: patientPackagesEnriched } = useQuery({
+    queryKey: [
+      "gabinet.packages.getPatientPackagesEnriched",
+      organizationId,
+      patientIdForPackages,
+    ],
+    queryFn: () =>
+      getPatientPackagesEnriched({
+        organizationId,
+        patientId: patientIdForPackages,
+      }),
+    enabled: !!organizationId && !!patientIdForPackages,
+  }) as {
+    data:
+      | Array<{
+          _id: string;
+          packageId: string;
+          packageName: string | null;
+          status: string;
+          expiresAt?: number | null;
+          treatmentsUsed: Array<{
+            treatmentId: string;
+            treatmentName: string | null;
+            usedCount: number;
+            totalCount: number;
+          }>;
+        }>
+      | undefined;
+  };
 
   const [status, setStatus] = useState<AppointmentStatus | "">("");
   const [date, setDate] = useState("");
@@ -305,6 +348,13 @@ export function AppointmentPreviewContent({
   // Patient credit (overpayment carry-forward) — issue #1059.
   const [settleUseCredit, setSettleUseCredit] = useState(false);
   const [settleCreditAmount, setSettleCreditAmount] = useState("");
+  // Deduct units from an active package covering this visit's treatment
+  // (issue #1697). Staff opens "Rozlicz wizytę" and chooses how many "sztuki"
+  // of the package to draw down — defaults to 1 when a single matching
+  // package exists, otherwise the picker stays empty until staff selects one.
+  const [settleUsePackage, setSettleUsePackage] = useState(false);
+  const [settlePackageUsageId, setSettlePackageUsageId] = useState<string>("");
+  const [settlePackageQuantity, setSettlePackageQuantity] = useState<number>(1);
 
   const { tags: tagDefinitions } = useTagDefinitions(organizationId);
   const { dispatch } = useSidebarActions();
@@ -739,6 +789,37 @@ export function AppointmentPreviewContent({
     return out;
   })();
 
+  // Active package usages that still have remaining sessions for THIS visit's
+  // treatment. Drives the new "Pakiet aktywny" section in the settle dialog
+  // (issue #1697). Skip when the appointment already has a linked
+  // `packageUsageId` — that path auto-deducts 1 on completion via
+  // `handleAppointmentCompletion`, so showing the picker would double-deduct.
+  const eligiblePackageUsages =
+    appointment.packageUsageId || !appointment.treatmentId
+      ? []
+      : (patientPackagesEnriched ?? []).filter((u) => {
+          if (u.status !== "active") return false;
+          if (u.expiresAt && (u.expiresAt as number) < Date.now()) return false;
+          const entry = u.treatmentsUsed.find(
+            (tu) => tu.treatmentId === String(appointment.treatmentId),
+          );
+          return !!entry && entry.usedCount < entry.totalCount;
+        });
+
+  const selectedPackageUsage = eligiblePackageUsages.find(
+    (u) => u._id === settlePackageUsageId,
+  );
+  const selectedPackageEntry = selectedPackageUsage?.treatmentsUsed.find(
+    (tu) => tu.treatmentId === String(appointment.treatmentId),
+  );
+  const selectedPackageRemaining = selectedPackageEntry
+    ? selectedPackageEntry.totalCount - selectedPackageEntry.usedCount
+    : 0;
+  const packageQuantityExceedsRemaining =
+    settleUsePackage &&
+    !!selectedPackageEntry &&
+    settlePackageQuantity > selectedPackageRemaining;
+
   const handleOpenSettleDialog = () => {
     if (saving || settleSubmitting) return;
     setSettleAmount(outstanding > 0 ? outstanding.toFixed(2) : "");
@@ -754,6 +835,14 @@ export function AppointmentPreviewContent({
     setSettleCreditAmount(
       Math.min(patientCreditBalance, outstanding).toFixed(2),
     );
+    // Pre-arm the package-deduction section when exactly one matching package
+    // is available — the common case is a single active package, so staff get
+    // a one-click "rozlicz z pakietu" affordance without juggling a picker.
+    // With 0 or 2+ packages, leave the toggle off and let staff decide.
+    const singlePkg = eligiblePackageUsages.length === 1;
+    setSettleUsePackage(singlePkg);
+    setSettlePackageUsageId(singlePkg ? eligiblePackageUsages[0]._id : "");
+    setSettlePackageQuantity(1);
     setSettleDialogOpen(true);
   };
 
@@ -814,6 +903,33 @@ export function AppointmentPreviewContent({
       );
       return;
     }
+    if (settleUsePackage) {
+      if (!settlePackageUsageId) {
+        toast.error(
+          t("gabinet.appointmentDetail.packageNotSelected", {
+            defaultValue: "Wybierz pakiet, z którego chcesz zdjąć sztuki.",
+          }),
+        );
+        return;
+      }
+      if (settlePackageQuantity < 1) {
+        toast.error(
+          t("gabinet.appointmentDetail.packageQuantityMin", {
+            defaultValue: "Liczba sztuk musi wynosić co najmniej 1.",
+          }),
+        );
+        return;
+      }
+      if (packageQuantityExceedsRemaining) {
+        toast.error(
+          t("gabinet.appointmentDetail.packageQuantityExceeds", {
+            defaultValue:
+              "Liczba sztuk przekracza pozostałą ilość w pakiecie.",
+          }),
+        );
+        return;
+      }
+    }
     if (settleSplitPayment) {
       if (splitMissingAmount) {
         toast.error(
@@ -847,7 +963,12 @@ export function AppointmentPreviewContent({
         toast.error(t("gabinet.payments.amountRequired"));
         return;
       }
-      if (!hasAmount && creditApplied <= 0 && !settleMarkCompleted) {
+      if (
+        !hasAmount &&
+        creditApplied <= 0 &&
+        !settleMarkCompleted &&
+        !settleUsePackage
+      ) {
         toast.error(
           t("gabinet.appointmentDetail.settleNothingToDo", {
             defaultValue: "Wpisz kwotę lub zaznacz zamknięcie wizyty.",
@@ -860,6 +981,27 @@ export function AppointmentPreviewContent({
     try {
       if (dirty) {
         await handleSave();
+      }
+      // Issue #1697: deduct chosen number of "sztuki" from the active package
+      // before recording the payment row, so the visible package progress is
+      // up-to-date by the time the dialog closes and the calendar refreshes.
+      if (
+        settleUsePackage &&
+        settlePackageUsageId &&
+        settlePackageQuantity > 0 &&
+        appointment.treatmentId
+      ) {
+        await usePackageTreatmentsBatch({
+          organizationId,
+          usageId: settlePackageUsageId,
+          items: [
+            {
+              treatmentId: String(appointment.treatmentId),
+              quantity: settlePackageQuantity,
+            },
+          ],
+          appointmentId: appointment._id,
+        });
       }
       if (settleSplitPayment && patient?._id) {
         const parts: Array<{
@@ -929,6 +1071,28 @@ export function AppointmentPreviewContent({
             : {}),
           ...(creditApplied > 0 ? { creditApplied } : {}),
         });
+      } else if (
+        // Issue #1697: package-only settle — staff drew sessions from a
+        // package and did not enter a cash amount. Record a package-method
+        // payment for the outstanding total so the visit clears the unpaid
+        // indicator, mirroring the auto-deduction path that runs for
+        // appointments already linked via `packageUsageId` (#1524).
+        settleUsePackage &&
+        settlePackageUsageId &&
+        patient?._id &&
+        outstanding > 0 &&
+        !settleSplitPayment
+      ) {
+        await createPaymentAction({
+          organizationId,
+          patientId: patient._id,
+          appointmentId: appointment._id,
+          packageUsageId: settlePackageUsageId,
+          amount: outstanding,
+          currency: "PLN",
+          paymentMethod: "package",
+          notes: settleNotes.trim() || undefined,
+        });
       }
       if (settleMarkCompleted && canMarkCompleted) {
         await updateStatus({
@@ -948,6 +1112,22 @@ export function AppointmentPreviewContent({
         // (issue #1040) after a settle action records a new payment.
         queryClient.invalidateQueries({
           queryKey: supabaseKeys.payments.all,
+        }),
+        // Issue #1697: refresh patient package usage so the settle dialog
+        // (and any other open package widgets) reflect the deducted units.
+        queryClient.invalidateQueries({
+          queryKey: [
+            "gabinet.packages.getPatientPackagesEnriched",
+            organizationId,
+            patientIdForPackages,
+          ],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: [
+            "gabinet.packages.getPatientPackages",
+            organizationId,
+            patientIdForPackages,
+          ],
         }),
       ]);
       await refetch();
@@ -1594,6 +1774,128 @@ export function AppointmentPreviewContent({
             )}
           </div>
 
+          {eligiblePackageUsages.length > 0 && (
+            <div className="space-y-2 rounded-md border border-blue-200 bg-blue-50 p-2.5 dark:border-blue-900 dark:bg-blue-950/30">
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="settle-use-package"
+                  checked={settleUsePackage}
+                  onCheckedChange={(v) => {
+                    const next = v === true;
+                    setSettleUsePackage(next);
+                    if (next && !settlePackageUsageId) {
+                      setSettlePackageUsageId(eligiblePackageUsages[0]._id);
+                    }
+                  }}
+                />
+                <Label
+                  htmlFor="settle-use-package"
+                  className="cursor-pointer text-sm font-normal leading-snug"
+                >
+                  {t("gabinet.appointmentDetail.deductFromPackage", {
+                    defaultValue:
+                      "Zdejmij sztuki z aktywnego pakietu pacjenta",
+                  })}
+                </Label>
+              </div>
+              {settleUsePackage && (
+                <>
+                  {eligiblePackageUsages.length > 1 && (
+                    <div className="space-y-1">
+                      <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        {t("gabinet.appointmentDetail.choosePackage", {
+                          defaultValue: "Wybierz pakiet",
+                        })}
+                      </Label>
+                      <Select
+                        value={settlePackageUsageId}
+                        onValueChange={(v) => setSettlePackageUsageId(v)}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue
+                            placeholder={t(
+                              "gabinet.appointmentDetail.choosePackage",
+                              { defaultValue: "Wybierz pakiet" },
+                            )}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {eligiblePackageUsages.map((u) => {
+                            const entry = u.treatmentsUsed.find(
+                              (tu) =>
+                                tu.treatmentId ===
+                                String(appointment.treatmentId),
+                            );
+                            const remaining = entry
+                              ? entry.totalCount - entry.usedCount
+                              : 0;
+                            const total = entry?.totalCount ?? 0;
+                            const pkgLabel =
+                              u.packageName ?? t("gabinet.packages.package");
+                            return (
+                              <SelectItem key={u._id} value={u._id}>
+                                {`${pkgLabel} — ${remaining}/${total}`}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {selectedPackageUsage && (
+                    <div className="text-[11px] text-muted-foreground">
+                      {t("gabinet.appointmentDetail.packageRemaining", {
+                        defaultValue:
+                          "{{name}} — pozostało {{remaining}} z {{total}}",
+                        name:
+                          selectedPackageUsage.packageName ??
+                          t("gabinet.packages.package"),
+                        remaining: selectedPackageRemaining,
+                        total: selectedPackageEntry?.totalCount ?? 0,
+                      })}
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {t("gabinet.appointmentDetail.unitsToDeduct", {
+                        defaultValue: "Ile sztuk zdjąć?",
+                      })}
+                    </Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={
+                        selectedPackageEntry
+                          ? selectedPackageRemaining
+                          : undefined
+                      }
+                      value={settlePackageQuantity}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        if (Number.isFinite(v) && v >= 1) {
+                          setSettlePackageQuantity(v);
+                        } else if (e.target.value === "") {
+                          setSettlePackageQuantity(1);
+                        }
+                      }}
+                    />
+                    {packageQuantityExceedsRemaining && (
+                      <p className="text-[11px] text-destructive">
+                        {t(
+                          "gabinet.appointmentDetail.packageQuantityExceeds",
+                          {
+                            defaultValue:
+                              "Liczba sztuk przekracza pozostałą ilość w pakiecie.",
+                          },
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {!settleSplitPayment && (
             <div className="space-y-1.5">
               <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -1946,6 +2248,8 @@ export function AppointmentPreviewContent({
               disabled={
                 settleSubmitting ||
                 creditApplyExceedsBalance ||
+                packageQuantityExceedsRemaining ||
+                (settleUsePackage && !settlePackageUsageId) ||
                 (settleSplitPayment &&
                   (splitMissingAmount || splitMismatch || splitSameMethod))
               }

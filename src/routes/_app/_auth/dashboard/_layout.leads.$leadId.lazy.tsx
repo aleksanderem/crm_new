@@ -69,6 +69,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -1230,6 +1231,32 @@ function LeadDetail() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => setShowActivityForm(true)}>
+          {t("entityActions.scheduleActivity")}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => {}}>
+          {t("entityActions.sendEmail")}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => {}}>
+          {t("entityActions.addNote")}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => {}}>
+          {t("entityActions.logCall")}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => {}}>
+          {t("entityActions.share")}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleMarkWon}>
+          {t('detail.won')}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => setLostDialogOpen(true)}
+          className="text-destructive focus:text-destructive"
+        >
+          {t('detail.lost')}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => setEditDrawerOpen(true)}>
           <Pencil className="mr-2 h-4 w-4" variant="stroke" />
           {t('detail.actions.edit')}
@@ -1271,16 +1298,6 @@ function LeadDetail() {
       />
     </div>
   ) : undefined;
-
-  // --- Quick actions + tab content ---
-
-  const quickActions = [
-    { key: "scheduleActivity", label: t("entityActions.scheduleActivity"), onClick: () => setShowActivityForm(true) },
-    { key: "sendEmail", label: t("entityActions.sendEmail"), onClick: () => {} },
-    { key: "addNote", label: t("entityActions.addNote"), onClick: () => {} },
-    { key: "logCall", label: t("entityActions.logCall"), onClick: () => {} },
-    { key: "share", label: t("entityActions.share"), onClick: () => {} },
-  ];
 
   // --- Tab definitions ---
 
@@ -1492,11 +1509,6 @@ function LeadDetail() {
         title={lead?.title ?? ""}
         headerSubtitle={headerSubtitle}
         avatarFallback={avatarFallback}
-        primaryAction={{ label: t('detail.won'), onClick: handleMarkWon }}
-        secondaryActions={[
-          { label: t('detail.lost'), onClick: () => setLostDialogOpen(true), variant: "destructive" },
-        ]}
-        onEdit={() => setEditDrawerOpen(true)}
         owner={lead?.assignedTo ? { name: t('detail.actions.owner') } : undefined}
         actionsMenu={actionsMenu}
         fields={fields}
@@ -1505,7 +1517,6 @@ function LeadDetail() {
         attachments={attachmentsContent}
         sidebarExtra={productsSidebarCard}
         beforeTabs={pipelineProgressBar}
-        quickActionItems={quickActions}
         tabs={tabs}
         defaultTab={t('detail.tabs.all')}
       />

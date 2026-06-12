@@ -259,6 +259,7 @@ function PatientAppointments() {
                 <Input
                   id="reschedule-time"
                   type="time"
+                  step={300}
                   value={requestedTime}
                   onChange={(e) => setRequestedTime(e.target.value)}
                 />

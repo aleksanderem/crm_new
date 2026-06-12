@@ -204,6 +204,7 @@ export function EmployeeScheduleManager({ employeeId }: EmployeeScheduleManagerP
                         <Label>{t("gabinet.schedules.startTime")}</Label>
                         <Input
                           type="time"
+                          step={300}
                           value={formData.startTime ?? ""}
                           onChange={(e) => setFormData((prev) => ({ ...prev, startTime: e.target.value }))}
                         />
@@ -212,6 +213,7 @@ export function EmployeeScheduleManager({ employeeId }: EmployeeScheduleManagerP
                         <Label>{t("gabinet.schedules.endTime")}</Label>
                         <Input
                           type="time"
+                          step={300}
                           value={formData.endTime ?? ""}
                           onChange={(e) => setFormData((prev) => ({ ...prev, endTime: e.target.value }))}
                         />
@@ -223,6 +225,7 @@ export function EmployeeScheduleManager({ employeeId }: EmployeeScheduleManagerP
                         <Label>{t("gabinet.schedules.breakStart")}</Label>
                         <Input
                           type="time"
+                          step={300}
                           value={formData.breakStartTime ?? ""}
                           onChange={(e) => setFormData((prev) => ({ ...prev, breakStartTime: e.target.value || undefined }))}
                         />
@@ -231,6 +234,7 @@ export function EmployeeScheduleManager({ employeeId }: EmployeeScheduleManagerP
                         <Label>{t("gabinet.schedules.breakEnd")}</Label>
                         <Input
                           type="time"
+                          step={300}
                           value={formData.breakEndTime ?? ""}
                           onChange={(e) => setFormData((prev) => ({ ...prev, breakEndTime: e.target.value || undefined }))}
                         />

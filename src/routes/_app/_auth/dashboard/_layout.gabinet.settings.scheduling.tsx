@@ -175,6 +175,7 @@ function SchedulingSettings() {
             />
             <Input
               type="time"
+              step={300}
               className="h-8 w-24"
               value={h.startTime}
               onChange={(e) => updateDay(h.dayOfWeek, "startTime", e.target.value)}
@@ -182,6 +183,7 @@ function SchedulingSettings() {
             />
             <Input
               type="time"
+              step={300}
               className="h-8 w-24"
               value={h.endTime}
               onChange={(e) => updateDay(h.dayOfWeek, "endTime", e.target.value)}
@@ -191,6 +193,7 @@ function SchedulingSettings() {
               <div className="flex items-center gap-1">
                 <Input
                   type="time"
+                  step={300}
                   className="h-8 w-24"
                   value={h.breakStart}
                   onChange={(e) => updateDay(h.dayOfWeek, "breakStart", e.target.value)}
@@ -199,6 +202,7 @@ function SchedulingSettings() {
                 <span className="text-xs text-muted-foreground">–</span>
                 <Input
                   type="time"
+                  step={300}
                   className="h-8 w-24"
                   value={h.breakEnd}
                   onChange={(e) => updateDay(h.dayOfWeek, "breakEnd", e.target.value)}

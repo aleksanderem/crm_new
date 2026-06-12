@@ -227,6 +227,7 @@ export function LeaveForm({
             <Label>{t("schedule.startTime")}</Label>
             <Input
               type="time"
+              step={300}
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
             />
@@ -236,6 +237,7 @@ export function LeaveForm({
             <Label>{t("schedule.endTime")}</Label>
             <Input
               type="time"
+              step={300}
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
             />

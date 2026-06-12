@@ -1080,3 +1080,51 @@ Immediate next action: Await new feature requirements
 Open questions: Should ACT-01 be re-evaluated or archived?
 Warnings: ACT-01 design assumptions may be outdated after 6+ months of evolution
 Files modified: session_state.json, tasks_progress.json, tasks_progress_verbose.txt
+
+=== SESSION S0103 START === 2026-06-12T16:00:00Z
+Focus: Issue #1700 PR-A — Product inventory foundation
+Continuing from: S0102 (paused, unrelated gabinet appointments work)
+
+---
+
+S0103. PR-A scope review (issue #1700):
+- User clarified plan in issue comments: ship incrementally (PR-A → PR-B → PR-C → PR-D).
+- Gabinet HAS locations (confirmed by user, verified gabinet_locations in schema/00001 and gabinetLocations in convex/schema/gabinet.ts:864).
+- No-stock products: still allow movement history rows but do not maintain balance.
+- Negative stock: warn-and-allow (matches double-booking pattern from #1526).
+- CRM dealProducts: should also deduct stock on deal close (deferred to a later PR).
+
+S0103. Working tree state on entry:
+- An earlier session had already drafted PR-A scaffolding (uncommitted).
+- Modified: convex/products.ts, convex/schema/crm.ts, convex/_helpers/supabaseDb.ts,
+  src/hooks/use-supabase-products.ts, src/lib/supabase/database.{columns,types}.ts,
+  src/lib/supabase/mappers/products.ts, src/lib/supabase/query-keys.ts,
+  src/routes/_app/_auth/dashboard/_layout.products.index.tsx,
+  public/locales/{en,pl}/translation.json
+- New: convex/inventory.ts, supabase/migrations/00013_product_inventory_foundation.sql
+- Verified migration matches schema (track_stock/stock_unit on products; product_stock_levels has
+  unique-by-product partial indexes for nullable location_id; product_stock_movements is append-only
+  with delta + balance_after + reason + source_type/source_id).
+
+S0103. Typecheck:
+- App typecheck (npx tsc -p tsconfig.app.json --pretty false): only 2 pre-existing errors in
+  convex/gabinet/_availability_supabase.ts (introduced by #1526 / commit 64e351a — not in scope).
+- Initial TS2589 in convex/products.ts on internal._helpers.authAction.verifyOrgAccess was a stale
+  tsconfig.app.tsbuildinfo artefact; cleared and re-ran clean.
+- Convex typecheck (npx tsc -p convex/tsconfig.json --pretty false): same 2 pre-existing errors only.
+
+S0103. PR-A acceptance criteria for this commit:
+- Schema source-of-truth (convex/schema/crm.ts) and Supabase migration aligned.
+- Backend inventory.ts exposes adjustStock + getStockSummary + listMovements actions and re-exports
+  applyMovementInternal for higher-level callers (PR-C/D will call it from settle-visit + deal-close).
+- Products create form takes optional initial stock that seeds an "initial" movement.
+- Products list surfaces a "Stan" column for tracked products with negative-value styling.
+- No Gabinet code touched; no module-feature-flag yet (that is PR-B).
+
+S0103. Deferred until later PRs (explicitly out of scope for PR-A):
+- Manual "Receive / issue stock" dialog in UI (we have the action; no UI button yet).
+- Module feature flag system (PR-B).
+- Treatment ↔ products join table with default quantities (PR-C).
+- Appointment ↔ products + settle-visit stock deduction (PR-D).
+- CRM dealProducts stock deduction on deal close.
+

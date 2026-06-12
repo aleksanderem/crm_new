@@ -1,19 +1,18 @@
 {
-  "session_id": "S0102",
-  "started_at": "2026-04-15T10:00:00Z",
-  "last_updated": "2026-04-15T10:25:00Z",
-  "status": "paused",
-  "focus": "Phase 1: Convert gabinet appointments.create from mutation to action with Supabase-primary write",
+  "session_id": "S0103",
+  "started_at": "2026-06-12T16:00:00Z",
+  "last_updated": "2026-06-12T16:30:00Z",
+  "status": "active",
+  "focus": "Issue #1700 PR-A: Product inventory foundation (track_stock, stock_levels, stock_movements)",
   "tasks_snapshot": {
-    "total": 36,
+    "total": 1,
     "not_started": 0,
-    "in_progress": 1,
-    "passing": 27,
+    "in_progress": 0,
+    "passing": 1,
     "failing": 0,
-    "blocked": 1,
-    "stale": 6
+    "blocked": 0
   },
-  "active_task_ids": ["SUP-01"],
-  "blockers": ["Frontend callers use useMutation(api.gabinet.appointments.create) which will not work with an action. Must switch to useAction in appointment-dialog.tsx and _layout.tsx before the change is testable end-to-end."],
-  "notes": "S0102: Backend conversion complete. create is now an action writing to Supabase directly. Side effects in _createSideEffects internalMutation. Internal queries created for conflict check, org settings, qualification, location. Auto-package usage wrapped in internalMutation. Frontend MUST be updated to useAction before runtime testing."
+  "active_task_ids": ["INV-A"],
+  "blockers": [],
+  "notes": "S0103: Reviewed and shipped PR-A from an in-progress worktree state. Schema adds trackStock/stockUnit to products plus productStockLevels and productStockMovements tables (location-aware via gabinetLocations FK). Convex action `inventory.adjustStock` writes movements + level updates and returns negative_stock warning. Products list shows Stan column, create form has track-stock toggle + initial stock seed. PR-B (module feature flags) and PR-C/D (treatment defaults + visit settle + dealProducts stock deduction) are still ahead."
 }

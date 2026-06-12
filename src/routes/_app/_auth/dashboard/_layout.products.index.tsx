@@ -7,6 +7,7 @@ import { api } from "@cvx/_generated/api";
 import {
   useSupabaseProductsList,
   useSupabaseUsedProductIds,
+  useSupabaseProductStockTotals,
 } from "@/hooks/use-supabase-products";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
@@ -156,11 +157,16 @@ function ProductsPage() {
   const [description, setDescription] = useState("");
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
+  // Inventory (#1700 PR-A)
+  const [trackStock, setTrackStock] = useState(false);
+  const [stockUnit, setStockUnit] = useState("");
+  const [initialStock, setInitialStock] = useState("");
 
   const { data: allProducts = [], isLoading } = useSupabaseProductsList(organizationId);
   const { data: usedProductIds } = useSupabaseUsedProductIds(organizationId, {
     enabled: nudgeFilter === "unused",
   });
+  const { totalsByProductId } = useSupabaseProductStockTotals(organizationId);
 
   const products = useMemo(() => {
     let data = allProducts;
@@ -196,6 +202,9 @@ function ProductsPage() {
     setDescription("");
     setTagIds([]);
     setCategoryId(undefined);
+    setTrackStock(false);
+    setStockUnit("");
+    setInitialStock("");
     setEditingProduct(null);
   };
 
@@ -214,6 +223,9 @@ function ProductsPage() {
     setDescription(product.description ?? "");
     setTagIds((product.tagIds as Id<"tagDefinitions">[]) ?? []);
     setCategoryId(product.categoryId as Id<"categoryDefinitions"> | undefined);
+    setTrackStock(!!product.trackStock);
+    setStockUnit(product.stockUnit ?? "");
+    setInitialStock("");
     setPanelOpen(true);
   };
 
@@ -229,6 +241,12 @@ function ProductsPage() {
         : null
       : null;
     const normalizedUnitPrice = unitPrice.replace(",", ".");
+    const normalizedStockUnit = stockUnit.trim() || null;
+    const normalizedInitialStock = (() => {
+      if (!initialStock.trim()) return null;
+      const parsed = parseFloat(initialStock.replace(",", "."));
+      return Number.isFinite(parsed) ? parsed : null;
+    })();
     try {
       if (editingProduct) {
         await updateProduct({
@@ -242,6 +260,8 @@ function ProductsPage() {
           description: description.trim() || null,
           tagIds,
           categoryId: categoryId ?? null,
+          trackStock,
+          stockUnit: normalizedStockUnit,
         });
       } else {
         await createProduct({
@@ -255,6 +275,9 @@ function ProductsPage() {
           description: description.trim() || null,
           tagIds,
           categoryId: categoryId ?? null,
+          trackStock,
+          stockUnit: normalizedStockUnit,
+          initialStock: normalizedInitialStock,
         });
       }
       setPanelOpen(false);
@@ -300,6 +323,28 @@ function ProductsPage() {
         if (item.taxRate == null) return "\u2014";
         return `${item.taxRate}%`;
       },
+    },
+    {
+      id: "stock",
+      label: t('products.stock.column', { defaultValue: "Stan" }),
+      render: (item) => {
+        if (!item.trackStock) return "\u2014";
+        const summary = totalsByProductId.get(item._id);
+        const total = summary?.total ?? 0;
+        const unit = item.stockUnit?.trim();
+        const negative = total < 0;
+        return (
+          <span className={negative ? "text-destructive font-medium" : undefined}>
+            {total}
+            {unit ? ` ${unit}` : ""}
+          </span>
+        );
+      },
+      getSortValue: (item) => {
+        if (!item.trackStock) return -Infinity;
+        return totalsByProductId.get(item._id)?.total ?? 0;
+      },
+      sortable: true,
     },
     {
       id: "isActive",
@@ -493,6 +538,68 @@ function ProductsPage() {
               <Label className="cursor-pointer">{t('common.active')}</Label>
             </div>
           )}
+
+          <div className="space-y-3 rounded-md border bg-muted/30 px-3 py-3">
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="product-track-stock"
+                checked={trackStock}
+                onCheckedChange={(checked) => setTrackStock(!!checked)}
+                className="mt-0.5"
+              />
+              <div className="space-y-1">
+                <Label htmlFor="product-track-stock" className="cursor-pointer">
+                  {t("products.stock.trackToggle", {
+                    defaultValue: "Śledź stan magazynowy",
+                  })}
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {t("products.stock.trackHelp", {
+                    defaultValue:
+                      "Każda zmiana stanu zapisuje się w historii ruchów. Jeśli wyłączone, historia może być nadal prowadzona ręcznie, ale stan nie jest pilnowany.",
+                  })}
+                </p>
+              </div>
+            </div>
+
+            {trackStock && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>
+                    {t("products.stock.unitLabel", { defaultValue: "Jednostka" })}
+                  </Label>
+                  <Input
+                    value={stockUnit}
+                    onChange={(e) => setStockUnit(e.target.value)}
+                    placeholder={t("products.stock.unitPlaceholder", {
+                      defaultValue: "szt., ml, g…",
+                    })}
+                  />
+                </div>
+                {!editingProduct && (
+                  <div className="space-y-1.5">
+                    <Label>
+                      {t("products.stock.initialLabel", {
+                        defaultValue: "Stan początkowy",
+                      })}
+                    </Label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={initialStock}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === "" || /^-?[0-9]*[.,]?[0-9]*$/.test(v)) {
+                          setInitialStock(v);
+                        }
+                      }}
+                      placeholder="0"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="space-y-1.5">
             <Label>{t('common.description')}</Label>

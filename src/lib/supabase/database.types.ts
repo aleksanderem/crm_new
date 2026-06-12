@@ -17,6 +17,7 @@
  *   • 00010_gabinet_treatment_package_link.sql
  *   • 00011_entity_type_gabinet_event.sql
  *   • 00012_app_schema_version_rpc.sql
+ *   • 00013_product_inventory_foundation.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -1346,6 +1347,8 @@ export interface Database {
           created_at: number;
           updated_at: number;
           tax_exempt: boolean | null;
+          track_stock: boolean | null;
+          stock_unit: string | null;
         };
         Insert: {
           id?: string;
@@ -1362,6 +1365,8 @@ export interface Database {
           created_at: number;
           updated_at: number;
           tax_exempt?: boolean | null;
+          track_stock?: boolean | null;
+          stock_unit?: string | null;
         };
         Update: {
           id?: string;
@@ -1378,6 +1383,8 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
           tax_exempt?: boolean | null;
+          track_stock?: boolean | null;
+          stock_unit?: string | null;
         };
       };
       deal_products: {
@@ -4528,6 +4535,76 @@ export interface Database {
           is_active?: boolean;
           created_at?: number;
           updated_at?: number;
+        };
+      };
+      product_stock_levels: {
+        Row: {
+          id: string;
+          organization_id: string;
+          product_id: string;
+          location_id: string | null;
+          quantity: number;
+          updated_at: number;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          product_id: string;
+          location_id?: string | null;
+          quantity?: number;
+          updated_at: number;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          product_id?: string;
+          location_id?: string | null;
+          quantity?: number;
+          updated_at?: number;
+        };
+      };
+      product_stock_movements: {
+        Row: {
+          id: string;
+          organization_id: string;
+          product_id: string;
+          location_id: string | null;
+          delta: number;
+          balance_after: number | null;
+          reason: string;
+          source_type: string | null;
+          source_id: string | null;
+          note: string | null;
+          performed_by: string;
+          created_at: number;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          product_id: string;
+          location_id?: string | null;
+          delta: number;
+          balance_after?: number | null;
+          reason: string;
+          source_type?: string | null;
+          source_id?: string | null;
+          note?: string | null;
+          performed_by: string;
+          created_at: number;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          product_id?: string;
+          location_id?: string | null;
+          delta?: number;
+          balance_after?: number | null;
+          reason?: string;
+          source_type?: string | null;
+          source_id?: string | null;
+          note?: string | null;
+          performed_by?: string;
+          created_at?: number;
         };
       };
     };

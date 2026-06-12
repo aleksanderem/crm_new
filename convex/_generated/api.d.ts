@@ -115,6 +115,7 @@ import type * as google_oauth from "../google/oauth.js";
 import type * as googleCalendarSyncConfigs from "../googleCalendarSyncConfigs.js";
 import type * as http from "../http.js";
 import type * as init from "../init.js";
+import type * as inventory from "../inventory.js";
 import type * as invitations from "../invitations.js";
 import type * as leads from "../leads.js";
 import type * as lostReasons from "../lostReasons.js";
@@ -298,6 +299,7 @@ declare const fullApi: ApiFromModules<{
   googleCalendarSyncConfigs: typeof googleCalendarSyncConfigs;
   http: typeof http;
   init: typeof init;
+  inventory: typeof inventory;
   invitations: typeof invitations;
   leads: typeof leads;
   lostReasons: typeof lostReasons;

@@ -262,9 +262,12 @@ export const FormFieldNode = Node.create({
         "data-form-field": HTMLAttributes.fieldId,
         "data-field-type": HTMLAttributes.fieldType,
         "data-filled-by": HTMLAttributes.filledBy || "employee",
+        // No dark: variants — this HTML is always rendered inside a
+        // white-paper document container (bg-white + [&_*]:!text-gray-900),
+        // where dark-mode backgrounds would clash with the forced dark text.
         class: isClient
-          ? "inline-flex items-center rounded border border-dashed border-blue-300 bg-blue-50 px-2 py-0.5 text-xs text-blue-700 dark:border-blue-600 dark:bg-blue-950 dark:text-blue-300"
-          : "inline-flex items-center rounded border border-dashed border-orange-300 bg-orange-50 px-2 py-0.5 text-xs text-orange-700 dark:border-orange-600 dark:bg-orange-950 dark:text-orange-300",
+          ? "inline-flex items-center rounded border border-dashed border-blue-300 bg-blue-50 px-2 py-0.5 text-xs text-blue-700"
+          : "inline-flex items-center rounded border border-dashed border-orange-300 bg-orange-50 px-2 py-0.5 text-xs text-orange-700",
         contenteditable: "false",
       }),
       `[${HTMLAttributes.label || HTMLAttributes.fieldId || "Field"}]`,

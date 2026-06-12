@@ -56,6 +56,8 @@
     "all": "All",
     "notFound": "Not found",
     "back": "Back",
+    "details": "Details",
+    "attachments": "Attachments",
     "createdAt": "Created at",
     "date": "Date",
     "error": "Error",

@@ -449,59 +449,18 @@ export async function checkConflictSupabase(
     const roomAppointments = await db
       .query("gabinetAppointments")
       .eq("organizationId", args.organizationId)
-      .eq("employeeId", args.userId)
+      .eq("roomId", args.roomId)
       .eq("date", args.date)
       .collect();
 
-    for (const appt of appointments as any[]) {
+    for (const appt of roomAppointments as any[]) {
       if (args.excludeAppointmentId && String(appt.id ?? appt._id) === args.excludeAppointmentId) continue;
       if (appt.status === "cancelled" || appt.status === "no_show") continue;
-      const apptStart = timeToMinutes(String(appt.startTime));
-      const apptEnd = timeToMinutes(String(appt.endTime));
-      if (reqStart < apptEnd && reqEnd > apptStart) {
-        return { hasConflict: true, reason: "Conflicts with existing appointment" };
-      }
-    }
-
-    const resourceActivities = await db
-      .query("scheduledActivities")
-      .eq("organizationId", args.organizationId)
-      .eq("resourceId", args.userId)
-      .collect();
-
-    for (const activity of resourceActivities as any[]) {
-      if (activity.isCompleted) continue;
-      if (!activity.endDate) continue;
-      const actDate = new Date(activity.dueDate);
-      const actDateStr = `${actDate.getFullYear()}-${String(actDate.getMonth() + 1).padStart(2, "0")}-${String(actDate.getDate()).padStart(2, "0")}`;
-      if (actDateStr !== args.date) continue;
-      if (activity.moduleRef?.moduleId === "gabinet") continue;
-
-      const actStartMin = actDate.getHours() * 60 + actDate.getMinutes();
-      const actEndDate = new Date(activity.endDate);
-      const actEndMin = actEndDate.getHours() * 60 + actEndDate.getMinutes();
-      if (reqStart < actEndMin && reqEnd > actStartMin) {
-        return { hasConflict: true, reason: `Conflicts with: ${activity.title}` };
-      }
-    }
-
-    if (args.roomId) {
-      const roomAppointments = await db
-        .query("gabinetAppointments")
-        .eq("organizationId", args.organizationId)
-        .eq("roomId", args.roomId)
-        .eq("date", args.date)
-        .collect();
-
-      for (const appt of roomAppointments as any[]) {
-        if (args.excludeAppointmentId && String(appt.id ?? appt._id) === args.excludeAppointmentId) continue;
-        if (appt.status === "cancelled" || appt.status === "no_show") continue;
-        if (
-          String(appt.startTime) < args.endTime &&
-          String(appt.endTime) > args.startTime
-        ) {
-          return { hasConflict: true, reason: "Room is occupied at this time" };
-        }
+      if (
+        String(appt.startTime) < args.endTime &&
+        String(appt.endTime) > args.startTime
+      ) {
+        return { hasConflict: true, reason: "Room is occupied at this time" };
       }
     }
   }

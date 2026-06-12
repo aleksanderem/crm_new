@@ -219,6 +219,17 @@
       "appointmentCancelledTitle": "Wizyta odwołana",
       "appointmentCancelledMessage": "Wizyta została odwołana",
       "appointmentCancelledMessageWithReason": "Wizyta została odwołana: {{reason}}"
+    },
+    "refundAuth": {
+      "approve": "Zatwierdź",
+      "reject": "Odrzuć",
+      "approving": "Zatwierdzam…",
+      "rejecting": "Odrzucam…",
+      "approved": "Zwrot zatwierdzony",
+      "rejected": "Prośba odrzucona",
+      "resolved": "Prośba została rozstrzygnięta",
+      "approveError": "Nie udało się zatwierdzić zwrotu",
+      "rejectError": "Nie udało się odrzucić prośby"
     }
   },
   "sidebar": {

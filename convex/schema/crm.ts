@@ -656,6 +656,11 @@ export function createCrmTables({
     link: v.optional(v.string()),
     isRead: v.boolean(),
     createdAt: v.number(),
+    // Optional JSON payload carrying type-specific data for inline actions.
+    // For type="refund_authorization_requested" it holds the shared
+    // requestId plus patientId/amount/notes so the bell can approve/reject
+    // without round-tripping to the patient page (#1722).
+    metadata: v.optional(v.any()),
   })
     .index("by_user", ["userId", "createdAt"])
     .index("by_userAndRead", ["userId", "isRead", "createdAt"])

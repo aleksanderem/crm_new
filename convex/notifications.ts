@@ -99,6 +99,7 @@ export const _createNotification = internalMutation({
     title: v.string(),
     message: v.string(),
     link: v.optional(v.string()),
+    metadata: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
     await ctx.db.insert("notifications", {
@@ -118,6 +119,7 @@ export async function createNotificationDirect(
     title: string;
     message: string;
     link?: string;
+    metadata?: unknown;
   }
 ) {
   // Still write to Convex DB for real-time subscriptions

@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
-import { createTestCtx, seedTestUser } from "../../convex/_test_helpers";
+import {
+  createTestCtx,
+  seedSecondUser,
+  seedTestUser,
+} from "../../convex/_test_helpers";
 
 afterEach(async () => {
   // Let any pending setTimeout(0) side-effect callbacks from the test fire
@@ -507,5 +511,206 @@ describe("payments", () => {
     });
 
     expect(result.page[0].paymentMethod).toBe("card");
+  });
+
+  // Inline approve/reject for refund authorization requests (#1722) ---------
+
+  describe("refund authorization inline actions", () => {
+    test("approveRefundAuth executes the refund and resolves siblings", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity: ownerIdentity, userId: ownerUserId } =
+        await seedTestUser(t);
+      const { identity: memberIdentity } = await seedSecondUser(
+        t,
+        organizationId,
+        { role: "member" },
+      );
+      const patientId = TEST_PATIENT_ID;
+
+      // Seed 500 credit for the patient.
+      await t.withIdentity(ownerIdentity).action(api.payments.create, {
+        organizationId,
+        patientId,
+        amount: 500,
+        currency: "PLN",
+        paymentMethod: "cash",
+        creditEarned: 500,
+      });
+
+      // Member (no refund permission) asks for authorization.
+      await t
+        .withIdentity(memberIdentity)
+        .action(api.payments.requestRefundAuthorization, {
+          organizationId,
+          patientId,
+          amount: 200,
+          notes: "Patient changed mind",
+        });
+
+      // The owner should now have a pending refund_authorization_requested
+      // notification carrying the metadata we need to approve inline.
+      const ownerNotifications = await t.run(async (ctx) => {
+        return await ctx.db
+          .query("notifications")
+          .withIndex("by_user", (q) => q.eq("userId", ownerUserId))
+          .collect();
+      });
+      const refundNotification = ownerNotifications.find(
+        (n) => n.type === "refund_authorization_requested",
+      );
+      expect(refundNotification).toBeTruthy();
+      expect(refundNotification!.metadata).toMatchObject({
+        patientId,
+        amount: 200,
+        status: "pending",
+      });
+
+      // Approve via the inline action.
+      await t
+        .withIdentity(ownerIdentity)
+        .action(api.payments.approveRefundAuth, {
+          organizationId,
+          notificationId: refundNotification!._id,
+        });
+
+      // Patient credit balance should have dropped by the refund amount.
+      const credit = await t
+        .withIdentity(ownerIdentity)
+        .action(api.payments.getPatientCredit, {
+          organizationId,
+          patientId,
+        });
+      expect(credit.balance).toBe(300);
+
+      // The original notification is now marked read and its metadata
+      // status flipped so the bell will hide the inline buttons.
+      const resolved = await t.run(async (ctx) =>
+        ctx.db.get(refundNotification!._id),
+      );
+      expect(resolved?.isRead).toBe(true);
+      expect((resolved?.metadata as { status: string }).status).toBe(
+        "approved",
+      );
+    });
+
+    test("rejectRefundAuth resolves the request without refunding", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity: ownerIdentity, userId: ownerUserId } =
+        await seedTestUser(t);
+      const { identity: memberIdentity } = await seedSecondUser(
+        t,
+        organizationId,
+        { role: "member" },
+      );
+      const patientId = TEST_PATIENT_ID;
+
+      await t.withIdentity(ownerIdentity).action(api.payments.create, {
+        organizationId,
+        patientId,
+        amount: 500,
+        currency: "PLN",
+        paymentMethod: "cash",
+        creditEarned: 500,
+      });
+
+      await t
+        .withIdentity(memberIdentity)
+        .action(api.payments.requestRefundAuthorization, {
+          organizationId,
+          patientId,
+          amount: 100,
+        });
+
+      const ownerNotifications = await t.run(async (ctx) =>
+        ctx.db
+          .query("notifications")
+          .withIndex("by_user", (q) => q.eq("userId", ownerUserId))
+          .collect(),
+      );
+      const refundNotification = ownerNotifications.find(
+        (n) => n.type === "refund_authorization_requested",
+      )!;
+
+      await t
+        .withIdentity(ownerIdentity)
+        .action(api.payments.rejectRefundAuth, {
+          organizationId,
+          notificationId: refundNotification._id,
+          reason: "Already refunded offline",
+        });
+
+      // Balance unchanged.
+      const credit = await t
+        .withIdentity(ownerIdentity)
+        .action(api.payments.getPatientCredit, {
+          organizationId,
+          patientId,
+        });
+      expect(credit.balance).toBe(500);
+
+      // Notification flipped to rejected + read.
+      const resolved = await t.run(async (ctx) =>
+        ctx.db.get(refundNotification._id),
+      );
+      expect(resolved?.isRead).toBe(true);
+      expect((resolved?.metadata as { status: string }).status).toBe(
+        "rejected",
+      );
+    });
+
+    test("approveRefundAuth twice is rejected (already resolved)", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity: ownerIdentity, userId: ownerUserId } =
+        await seedTestUser(t);
+      const { identity: memberIdentity } = await seedSecondUser(
+        t,
+        organizationId,
+        { role: "member" },
+      );
+      const patientId = TEST_PATIENT_ID;
+
+      await t.withIdentity(ownerIdentity).action(api.payments.create, {
+        organizationId,
+        patientId,
+        amount: 500,
+        currency: "PLN",
+        paymentMethod: "cash",
+        creditEarned: 500,
+      });
+
+      await t
+        .withIdentity(memberIdentity)
+        .action(api.payments.requestRefundAuthorization, {
+          organizationId,
+          patientId,
+          amount: 100,
+        });
+
+      const ownerNotifications = await t.run(async (ctx) =>
+        ctx.db
+          .query("notifications")
+          .withIndex("by_user", (q) => q.eq("userId", ownerUserId))
+          .collect(),
+      );
+      const refundNotification = ownerNotifications.find(
+        (n) => n.type === "refund_authorization_requested",
+      )!;
+
+      await t
+        .withIdentity(ownerIdentity)
+        .action(api.payments.approveRefundAuth, {
+          organizationId,
+          notificationId: refundNotification._id,
+        });
+
+      await expect(
+        t
+          .withIdentity(ownerIdentity)
+          .action(api.payments.approveRefundAuth, {
+            organizationId,
+            notificationId: refundNotification._id,
+          }),
+      ).rejects.toThrow(/already resolved/i);
+    });
   });
 });

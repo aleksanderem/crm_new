@@ -673,6 +673,8 @@ function GabinetCalendarPage() {
       employeeId?: string;
       tags?: Array<{ name: string; color: string }>;
       indicators?: Indicator[];
+      employeeCount?: number;
+      employeeNames?: string[];
     }> = [];
 
     if (rawAppointments) {
@@ -885,6 +887,47 @@ function GabinetCalendarPage() {
 
     return items;
   }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, tagMap, employeeColorMap, eventTypeColorMap, firstAppointmentIds, packagePositions, recurringPositions, appointmentPaymentTotals, creditByAppointmentId, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
+
+  // Collapse blocked-time events that target multiple employees into a single
+  // tile for views that don't break the day into per-employee columns
+  // (week, day-all-employees, month). The EventDialog writes one
+  // scheduledActivity per selected employee — correct for the day-by-employee
+  // view, but in the other views the same event appears as N stacked
+  // duplicates. We group by date+time+title+subtitle+color and keep the first
+  // _id as the canonical row so drag/resize handlers still resolve to a real
+  // activity. The badge + tooltip show "N pracowników" with the full name list
+  // (issue #1694).
+  const aggregatedAppointments = useMemo(() => {
+    const out: typeof viewAppointments = [];
+    const groups = new Map<string, number>(); // key -> index in `out`
+    for (const a of viewAppointments) {
+      if (a.status !== "blocked") {
+        out.push(a);
+        continue;
+      }
+      const key = `${a.date}|${a.startTime}|${a.endTime}|${a.patientName}|${a.treatmentName}|${a.color ?? ""}`;
+      const existingIdx = groups.get(key);
+      const employeeName = a.employeeId ? userMap.get(a.employeeId) : undefined;
+      if (existingIdx === undefined) {
+        out.push({
+          ...a,
+          employeeCount: 1,
+          employeeNames: employeeName ? [employeeName] : [],
+        });
+        groups.set(key, out.length - 1);
+      } else {
+        const existing = out[existingIdx];
+        existing.employeeCount = (existing.employeeCount ?? 1) + 1;
+        if (employeeName) {
+          existing.employeeNames = [
+            ...(existing.employeeNames ?? []),
+            employeeName,
+          ];
+        }
+      }
+    }
+    return out;
+  }, [viewAppointments, userMap]);
 
   // Build print-friendly appointment data for the current day
   const printDate = formatDateStr(currentDate);
@@ -1784,7 +1827,7 @@ function GabinetCalendarPage() {
           {viewMode === "day" && !isDayByEmployeeView && (
             <CalendarDayView
               date={formatDateStr(currentDate)}
-              appointments={viewAppointments}
+              appointments={aggregatedAppointments}
               onSlotClick={(time) =>
                 handleSlotClick(formatDateStr(currentDate), time)
               }
@@ -1798,7 +1841,7 @@ function GabinetCalendarPage() {
           {viewMode === "week" && (
             <CalendarWeekView
               weekStart={formatDateStr(getMonday(currentDate))}
-              appointments={viewAppointments}
+              appointments={aggregatedAppointments}
               onSlotClick={handleSlotClick}
               onSlotDragSelect={handleSlotDragSelect}
               onAppointmentResize={handleAppointmentResize}
@@ -1813,7 +1856,7 @@ function GabinetCalendarPage() {
             <CalendarMonthView
               year={currentDate.getFullYear()}
               month={currentDate.getMonth()}
-              appointments={viewAppointments}
+              appointments={aggregatedAppointments}
               onDayClick={handleDayClick}
               selectedDate={formatDateStr(currentDate)}
               leaveDates={leaveDates}

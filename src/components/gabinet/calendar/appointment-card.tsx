@@ -1,3 +1,4 @@
+import { Users } from "lucide-react";
 import {
   appointmentEmployeeStyle,
   appointmentStatusBadgeClass,
@@ -24,6 +25,14 @@ interface AppointmentCardProps {
   color?: string;
   tags?: AppointmentTag[];
   indicators?: AppointmentIndicator[];
+  /**
+   * When > 1 the same event covers multiple employees. The card collapses
+   * those duplicate scheduled-activity rows into one tile and shows a
+   * "👥 N" badge. The full list of employee names goes into the button's
+   * title so the user can see who the event covers on hover (issue #1694).
+   */
+  employeeCount?: number;
+  employeeNames?: string[];
   onClick?: () => void;
 }
 
@@ -36,6 +45,8 @@ export function AppointmentCard({
   color,
   tags,
   indicators,
+  employeeCount,
+  employeeNames,
   onClick,
 }: AppointmentCardProps) {
   // When a base color is provided (employee color, treatment color, or an
@@ -48,10 +59,20 @@ export function AppointmentCard({
     ? ""
     : appointmentStatusBadgeClass(status);
   const strike = status === "cancelled" ? " line-through" : "";
+  const showEmployeeCount = (employeeCount ?? 0) > 1;
+  const employeeListTitle =
+    showEmployeeCount && employeeNames && employeeNames.length > 0
+      ? employeeNames.join(", ")
+      : undefined;
+  const hasHeaderBadges =
+    (tags && tags.length > 0) ||
+    (indicators && indicators.length > 0) ||
+    showEmployeeCount;
 
   return (
     <button
       onClick={onClick}
+      title={employeeListTitle}
       className={`flex w-full h-full flex-col overflow-hidden rounded border-l-4 text-left text-xs transition-opacity hover:opacity-80 ${employeeStyle ? "gabinet-tile-tint" : ""} ${fallbackCls}${strike}`}
       style={
         employeeStyle
@@ -70,7 +91,7 @@ export function AppointmentCard({
         style={employeeStyle ? employeeStyle.headerStyle : undefined}
       >
         <span className="truncate">{startTime}–{endTime}</span>
-        {((tags && tags.length > 0) || (indicators && indicators.length > 0)) && (
+        {hasHeaderBadges && (
           <div className="flex shrink-0 items-center gap-0.5">
             {tags?.map((tag, i) => (
               <span
@@ -86,6 +107,16 @@ export function AppointmentCard({
                 indicator={ind}
               />
             ))}
+            {showEmployeeCount && (
+              <span
+                className="inline-flex items-center gap-0.5 rounded-sm bg-white/25 px-1 text-[10px] font-semibold leading-none dark:bg-white/15"
+                title={employeeListTitle}
+                aria-label={employeeListTitle}
+              >
+                <Users className="size-2.5" />
+                {employeeCount}
+              </span>
+            )}
           </div>
         )}
       </div>

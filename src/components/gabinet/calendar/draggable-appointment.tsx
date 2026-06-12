@@ -27,6 +27,8 @@ interface Appointment {
   color?: string;
   tags?: AppointmentTag[];
   indicators?: AppointmentIndicator[];
+  employeeCount?: number;
+  employeeNames?: string[];
 }
 
 interface DraggableAppointmentProps extends Appointment {
@@ -57,6 +59,8 @@ export function DraggableAppointment({
   color,
   tags,
   indicators,
+  employeeCount,
+  employeeNames,
   onResize,
   hourHeight = 60,
   snapMinutes = 15,
@@ -308,6 +312,8 @@ export function DraggableAppointment({
         color={color}
         tags={tags}
         indicators={indicators}
+        employeeCount={employeeCount}
+        employeeNames={employeeNames}
         onClick={handleCardClick}
       />
       {onResize && status !== "blocked" && (

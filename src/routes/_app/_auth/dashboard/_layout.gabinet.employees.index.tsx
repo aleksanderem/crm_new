@@ -64,7 +64,7 @@ function EmployeesIndex() {
   const [searchValue, setSearchValue] = useState("");
   const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
-  const [eventDefaultEmployeeIds, setEventDefaultEmployeeIds] = useState<string[]>([]);
+  const [eventDefaultUserIds, setEventDefaultUserIds] = useState<string[]>([]);
 
   const filterableFields = useMemo((): FieldDef[] => [
     { id: "firstName", label: t("gabinet.employees.firstName"), type: "text" },
@@ -271,7 +271,7 @@ function EmployeesIndex() {
         // EventDialog identifies employees by userId (it creates one
         // scheduledActivity per resourceId=userId so the block lands in each
         // selected employee's calendar column).
-        setEventDefaultEmployeeIds(selectedRows.map((row) => row.userId));
+        setEventDefaultUserIds(selectedRows.map((row) => row.userId));
         setEventDialogOpen(true);
       }
     },
@@ -384,7 +384,7 @@ function EmployeesIndex() {
         organizationId={organizationId}
         open={eventDialogOpen}
         onOpenChange={setEventDialogOpen}
-        defaultUserIds={eventDefaultEmployeeIds}
+        defaultUserIds={eventDefaultUserIds}
       />
     </div>
   );

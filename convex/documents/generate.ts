@@ -1,4 +1,4 @@
-import { action, internalMutation } from "../_generated/server";
+import { action, internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
@@ -153,10 +153,12 @@ export const generateDocument = action({
       updatedAt: now,
     });
 
-    // Send signing/filling email via side effects (needs Convex db for scope resolution)
+    // Send signing/filling email via side effects.
+    // _generateSideEffects is now an internalAction (was internalMutation) —
+    // postgrest-js setTimeout-based retry would crash in mutation context.
     if (signingToken) {
       try {
-        await ctx.runMutation(internal.documents.generate._generateSideEffects, {
+        await ctx.runAction(internal.documents.generate._generateSideEffects, {
           documentId: docId,
           organizationId: args.organizationId,
           entityType: args.entityType,
@@ -171,7 +173,13 @@ export const generateDocument = action({
   },
 });
 
-export const _generateSideEffects = internalMutation({
+// Converted from internalMutation → internalAction so it can survive
+// transient Supabase retries. postgrest-js retries failed fetches via
+// `executeWithRetry → sleep → setTimeout`, which the Convex mutation runtime
+// rejects. The body only does Supabase reads and a scheduler.runAfter call —
+// both legal in actions, neither needs the determinism guarantees a
+// mutation provides.
+export const _generateSideEffects = internalAction({
   args: {
     documentId: v.string(),
     organizationId: v.id("organizations"),

@@ -400,6 +400,10 @@ function ProductsPage() {
         data={products}
         rowActions={rowActions}
         isLoading={isLoading}
+        onRowAction={(productId) => {
+          const product = products.find((p) => p._id === productId);
+          if (product) openEditPanel(product);
+        }}
       />
 
       <CsvImportDialog

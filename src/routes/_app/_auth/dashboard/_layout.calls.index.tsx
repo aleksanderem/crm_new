@@ -420,6 +420,10 @@ function CallsPage() {
         data={calls}
         rowActions={rowActions}
         isLoading={isLoading}
+        onRowAction={(callId) => {
+          const call = calls.find((c) => c._id === callId);
+          if (call) openEditPanel(call);
+        }}
       />
 
       <SidePanel

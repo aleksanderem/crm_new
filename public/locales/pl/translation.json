@@ -2927,6 +2927,7 @@
       "close": "Zamknij",
       "saveChanges": "Zapisz zmiany",
       "closeAndSettle": "Rozlicz wizytę",
+      "performTreatment": "Przeprowadź zabieg",
       "settleDesc": "Zarejestruj płatność i opcjonalnie zamknij wizytę jako zakończoną.",
       "settleMarkCompleted": "Oznacz wizytę jako zakończoną",
       "settleNothingToDo": "Wpisz kwotę lub zaznacz zamknięcie wizyty.",

@@ -738,7 +738,6 @@ function EmployeeDetail() {
         headerSubtitle={headerSubtitle}
         avatarFallback={avatarFallback}
         actionsMenu={actionsMenu}
-        onEdit={() => setEditDrawerOpen(true)}
         fields={detailFields}
         expandedFieldCount={5}
         sidebarExtra={sidebarExtra}

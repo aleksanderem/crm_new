@@ -153,7 +153,7 @@ export function renderDocument(
         span.setAttribute("data-missing-var", path);
         el.replaceWith(span);
       } else {
-        el.replaceWith(document.createTextNode(`[${path}]`));
+        el.replaceWith(document.createTextNode(""));
       }
     }
   });

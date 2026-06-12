@@ -2553,7 +2553,7 @@ function AppointmentDetail() {
       ),
     },
     {
-      label: t("gabinet.appointments.tabs.documentation", "Dokumentacja"),
+      label: t("gabinet.appointments.tabs.documentation", "Notatki z wizyty"),
       content: (
         <DocumentationTab
           organizationId={organizationId}
@@ -2700,7 +2700,7 @@ function AppointmentDetail() {
           tabSearch === "payments"
             ? t("gabinet.payments.payments")
             : tabSearch === "documentation"
-              ? t("gabinet.appointments.tabs.documentation", "Dokumentacja")
+              ? t("gabinet.appointments.tabs.documentation", "Notatki z wizyty")
               : undefined
         }
       />

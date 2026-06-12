@@ -38,6 +38,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -766,14 +767,6 @@ function ContactDetail() {
       ]
     : [];
 
-  // --- Sidebar content passed as props (no useEffect loop) ---
-  const quickActionItems = [
-    { key: "scheduleActivity", label: t("entityActions.scheduleActivity", { defaultValue: "Zaplanuj aktywność" }), onClick: () => { setActiveTab(t('detail.tabs.activities')); setShowActivityForm(true); } },
-    { key: "sendEmail", label: t("entityActions.sendEmail", { defaultValue: "Wyślij email" }), onClick: () => { setActiveTab(t('detail.tabs.emails')); setAutoComposeCounter(c => c + 1); } },
-    { key: "addNote", label: t("entityActions.addNote", { defaultValue: "Dodaj notatkę" }), onClick: () => { setActiveTab(t('detail.tabs.notes')); setIsAddingNote(true); } },
-    { key: "logCall", label: t("entityActions.logCall", { defaultValue: "Zarejestruj połączenie" }), onClick: () => setActiveTab(t('detail.tabs.calls')) },
-  ];
-
   // --- Actions menu ---
   const actionsMenu = (
     <DropdownMenu>
@@ -784,6 +777,19 @@ function ContactDetail() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => { setActiveTab(t('detail.tabs.activities')); setShowActivityForm(true); }}>
+          {t("entityActions.scheduleActivity", { defaultValue: "Zaplanuj aktywność" })}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => { setActiveTab(t('detail.tabs.emails')); setAutoComposeCounter(c => c + 1); }}>
+          {t("entityActions.sendEmail", { defaultValue: "Wyślij email" })}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => { setActiveTab(t('detail.tabs.notes')); setIsAddingNote(true); }}>
+          {t("entityActions.addNote", { defaultValue: "Dodaj notatkę" })}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setActiveTab(t('detail.tabs.calls'))}>
+          {t("entityActions.logCall", { defaultValue: "Zarejestruj połączenie" })}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => setCreateLeadDrawerOpen(true)}>
           <Plus className="mr-2 h-4 w-4" variant="stroke" />
           {t('detail.actions.addLead')}
@@ -1091,7 +1097,6 @@ function ContactDetail() {
           },
         ]}
         attachments={attachmentsContent}
-        quickActionItems={quickActionItems}
         tabs={tabs}
         defaultTab={t('detail.tabs.all')}
         activeTab={activeTab}

@@ -38,6 +38,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -805,6 +806,20 @@ function CompanyDetail() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => setShowActivityForm(true)}>
+          {t("entityActions.scheduleActivity")}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => {}}>
+          {t("entityActions.addNote")}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => {}}>
+          {t("entityActions.share")}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => setCreateLeadDrawerOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" variant="stroke" />
+          {t('detail.actions.addLead')}
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setEditDrawerOpen(true)}>
           {t('detail.actions.edit')}
         </DropdownMenuItem>
@@ -827,11 +842,6 @@ function CompanyDetail() {
         onBack={() => navigate({ to: "/dashboard/companies" })}
         title={company?.name ?? ""}
         avatarFallback={company?.name?.[0]?.toUpperCase() ?? "C"}
-        primaryAction={{
-          label: t('detail.actions.addLead'),
-          onClick: () => setCreateLeadDrawerOpen(true),
-        }}
-        onEdit={() => setEditDrawerOpen(true)}
         owner={{
           name: company?.createdBy ? "U" : "?",
         }}
@@ -885,11 +895,6 @@ function CompanyDetail() {
             </Button>
           </div>
         }
-        quickActionItems={[
-          { key: "scheduleActivity", label: t("entityActions.scheduleActivity"), onClick: () => setShowActivityForm(true) },
-          { key: "addNote", label: t("entityActions.addNote"), onClick: () => {} },
-          { key: "share", label: t("entityActions.share"), onClick: () => {} },
-        ]}
         defaultTab={t('detail.tabs.overview', 'Przegląd')}
         tabs={[
           {

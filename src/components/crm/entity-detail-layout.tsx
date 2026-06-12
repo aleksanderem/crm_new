@@ -225,7 +225,7 @@ interface EntityDetailLayoutProps {
   beforeTabs?: React.ReactNode;
   breadcrumbs?: React.ReactNode;
   sidebarExtra?: React.ReactNode;
-  /** Quick action items to include in the sidebar "Akcje" dropdown (sidebar-slot variant only). */
+  /** Quick action items to include in the sidebar actions dropdown (sidebar-slot variant only). */
   quickActionItems?: { key: string; label: string; icon?: React.ReactNode; onClick: () => void }[];
 }
 
@@ -406,7 +406,7 @@ export function EntityDetailLayout({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="w-full justify-between">
-                  Akcje
+                  {t("common.actions")}
                   <ChevronDown className="ml-2 h-3 w-3" variant="stroke" />
                 </Button>
               </DropdownMenuTrigger>
@@ -429,7 +429,7 @@ export function EntityDetailLayout({
 
           {/* Details section (display-only) */}
           <div className="space-y-3">
-            <h2 className="text-sm font-semibold">Details</h2>
+            <h2 className="text-sm font-semibold">{t("common.details")}</h2>
 
             <dl className="space-y-2">
               {visibleFields.map((field) => (
@@ -493,7 +493,7 @@ export function EntityDetailLayout({
           {attachments && (
             <div className="space-y-2">
               <Separator />
-              <h3 className="text-sm font-semibold">Attachments</h3>
+              <h3 className="text-sm font-semibold">{t("common.attachments")}</h3>
               {attachments}
             </div>
           )}
@@ -555,6 +555,7 @@ function SidebarSlotEntityDetail({
   header: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   const { setContent } = useSidebarSlot();
   const { setBackAction } = useHeaderSlot();
 
@@ -577,7 +578,7 @@ function SidebarSlotEntityDetail({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="w-full justify-between">
-                Akcje
+                {t("common.actions")}
                 <ChevronDown className="ml-2 h-3 w-3" variant="stroke" />
               </Button>
             </DropdownMenuTrigger>
@@ -598,7 +599,7 @@ function SidebarSlotEntityDetail({
 
         {/* Details section */}
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold">Details</h2>
+          <h2 className="text-sm font-semibold">{t("common.details")}</h2>
           <dl className="space-y-2">
             {fields.map((field) => (
               <div key={field.fieldKey}>
@@ -655,7 +656,7 @@ function SidebarSlotEntityDetail({
         {attachments && (
           <div className="space-y-2">
             <Separator />
-            <h3 className="text-sm font-semibold">Attachments</h3>
+            <h3 className="text-sm font-semibold">{t("common.attachments")}</h3>
             {attachments}
           </div>
         )}

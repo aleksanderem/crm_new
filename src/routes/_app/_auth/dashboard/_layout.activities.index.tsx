@@ -448,6 +448,10 @@ function ActivitiesPage() {
         rowActions={rowActions}
         enableBulkSelect
         isLoading={isLoading}
+        onRowAction={(activityId) => {
+          const activity = tableData.find((a) => a._id === activityId);
+          if (activity) openEditPanel(activity);
+        }}
       />
 
       <SidePanel

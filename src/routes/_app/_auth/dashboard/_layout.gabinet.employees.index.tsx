@@ -384,7 +384,7 @@ function EmployeesIndex() {
         organizationId={organizationId}
         open={eventDialogOpen}
         onOpenChange={setEventDialogOpen}
-        defaultEmployeeIds={eventDefaultEmployeeIds}
+        defaultUserIds={eventDefaultEmployeeIds}
       />
     </div>
   );

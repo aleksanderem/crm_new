@@ -1831,7 +1831,7 @@ function GabinetCalendarPage() {
           defaultDate={createDefaultDate}
           defaultTime={createDefaultTime}
           defaultEndTime={createDefaultEndTime}
-          defaultEmployeeId={createDefaultEmployeeId}
+          defaultUserId={createDefaultEmployeeId}
           onSwitchToEvent={() => {
             // Pivot to the EventDialog while preserving the date/time/employee
             // the user already picked by clicking a calendar slot. The shared

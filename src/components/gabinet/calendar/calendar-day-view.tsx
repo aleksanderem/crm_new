@@ -16,6 +16,8 @@ interface Appointment {
   color?: string;
   tags?: Array<{ name: string; color: string }>;
   indicators?: AppointmentIndicator[];
+  employeeCount?: number;
+  employeeNames?: string[];
 }
 
 interface CalendarDayViewProps {

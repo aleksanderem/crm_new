@@ -72,7 +72,7 @@ import {
   MapPin,
   Building2,
 } from "@/lib/ez-icons";
-import { CalendarSearch, GripHorizontal } from "lucide-react";
+import { CalendarSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { SidePanel } from "@/components/crm/side-panel";
@@ -1030,21 +1030,21 @@ export function AppointmentDialog({
           {t("gabinet.appointments.createAppointment")}
         </DialogDescription>
 
-        {/* Drag affordance bar — visual hint that the dialog is draggable.
-            The pointer handler lives on DialogContent so a click anywhere on
-            the dialog body initiates a drag (issue #1459); this bar still
-            triggers it via event bubbling and keeps the discoverability cue
-            added in #1281. */}
+        {/* Drag affordance — compact iOS-style grab indicator. Replaces the
+            previous uppercase "PRZECIĄGNIJ, ABY PRZESUNĄĆ" bar (issue #1738)
+            which dominated the dialog header. The pointer handler lives on
+            DialogContent so a click anywhere on the dialog body initiates a
+            drag (#1459); this bar still triggers it via event bubbling and
+            keeps the discoverability cue added in #1281. */}
         <div
           className={cn(
-            "flex items-center justify-center gap-2 border-b bg-muted px-4 py-2 text-xs font-medium uppercase tracking-wide text-foreground/80 hover:bg-muted/80 select-none touch-none transition-colors",
+            "flex items-center justify-center border-b border-border/60 bg-background/90 py-2 select-none touch-none transition-colors backdrop-blur-sm hover:bg-muted/40",
             isDragging ? "cursor-grabbing" : "cursor-grab",
           )}
           title={t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}
           aria-label={t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}
         >
-          <GripHorizontal className="size-4" />
-          <span>{t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}</span>
+          <div className="h-1 w-9 rounded-full bg-foreground/25" />
         </div>
 
         {/* "Utwórz zdarzenie zamiast wizyty" — lets the user pivot from the

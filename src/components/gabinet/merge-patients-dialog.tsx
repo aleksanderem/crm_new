@@ -24,6 +24,7 @@ import { Loader2, ArrowRight, AlertCircle } from "@/lib/ez-icons";
 import type { MappedGabinetPatient } from "@/lib/supabase/mappers/gabinet/patients";
 import { formatPhoneNumber } from "@/lib/phone";
 import { formatActionError } from "@/lib/format-action-error";
+import { plateJsonToText } from "@/components/plate-text";
 import { cn } from "@/lib/utils";
 
 interface MergePatientsDialogProps {
@@ -108,8 +109,11 @@ function readFieldRaw(p: MappedGabinetPatient, key: MergeFieldKey): string | nul
   }
   const v = p[key as ScalarFieldKey];
   if (v == null) return null;
-  const s = String(v);
-  return s.trim() === "" ? null : s;
+  // Defensive: schema declares these as strings, but if a row somehow holds a
+  // non-string (legacy data, bad migration), skip rather than stringify into
+  // garbage like "[object Object]".
+  if (typeof v !== "string") return null;
+  return v.trim() === "" ? null : v;
 }
 
 function displayValue(
@@ -120,6 +124,13 @@ function displayValue(
   const raw = readFieldRaw(p, key);
   if (raw === null) return emptyPlaceholder;
   if (key === "phone" || key === "emergencyContactPhone") return formatPhoneNumber(raw);
+  // medicalNotes is written by the Plate rich-text editor and stored as a JSON
+  // string. Extract plain text so the comparison rows are readable rather than
+  // showing raw `[{"type":"p",...}]` payloads.
+  if (key === "medicalNotes") {
+    const text = plateJsonToText(raw).trim();
+    return text === "" ? emptyPlaceholder : text;
+  }
   return raw;
 }
 

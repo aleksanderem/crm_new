@@ -154,6 +154,26 @@ export function MergePatientsDialog({
     if (open) setTargetId(preselectedTargetId ?? null);
   }, [open, preselectedTargetId, sourcePatient?._id]);
 
+  // Watchdog: if the merge action's promise never settles (e.g. WebSocket
+  // reconnect leaves it hanging, or a state-update flush is dropped), the
+  // `finally` in handleMerge never runs and the dialog becomes uncloseable —
+  // both the close handler and Cancel button gate on `isMerging`. After the
+  // timeout, force-clear the flag so the user can always close the dialog.
+  // The action will continue server-side; results show up on the next refresh.
+  useEffect(() => {
+    if (!isMerging) return;
+    const id = window.setTimeout(() => {
+      setIsMerging(false);
+      toast.warning(
+        t("gabinet.patients.merge.timeout", {
+          defaultValue:
+            "Scalanie trwa dłużej niż zwykle. Możesz zamknąć okno — wynik pojawi się po odświeżeniu listy.",
+        }),
+      );
+    }, 60_000);
+    return () => window.clearTimeout(id);
+  }, [isMerging, t]);
+
   const sourceEmail = normalizeEmail(sourcePatient?.email);
   const sourcePhone = normalizePhone(sourcePatient?.phone);
 

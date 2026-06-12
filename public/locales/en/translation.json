@@ -206,6 +206,17 @@
       "appointmentCancelledTitle": "Appointment cancelled",
       "appointmentCancelledMessage": "An appointment has been cancelled",
       "appointmentCancelledMessageWithReason": "An appointment has been cancelled: {{reason}}"
+    },
+    "refundAuth": {
+      "approve": "Approve",
+      "reject": "Reject",
+      "approving": "Approving…",
+      "rejecting": "Rejecting…",
+      "approved": "Refund approved",
+      "rejected": "Request rejected",
+      "resolved": "Request already resolved",
+      "approveError": "Could not approve refund",
+      "rejectError": "Could not reject request"
     }
   },
   "sidebar": {

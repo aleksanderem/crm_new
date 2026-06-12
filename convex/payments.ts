@@ -1,5 +1,11 @@
-import { action, internalAction, internalMutation } from "./_generated/server";
+import {
+  action,
+  internalAction,
+  internalMutation,
+  internalQuery,
+} from "./_generated/server";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
@@ -920,6 +926,20 @@ export const _requestRefundAuthSideEffects = internalMutation({
     const message = `${args.requesterName} prosi o autoryzację zwrotu ${args.amount.toFixed(2)} zł z salda klienta ${args.patientLabel}${args.notes ? ` (${args.notes})` : ""}.`;
     const link = `/dashboard/gabinet/patients/${args.patientId}?tab=payments`;
 
+    // Shared requestId so approve/reject can find sibling notifications across
+    // every admin and resolve them together (#1722).
+    const requestId = `rar_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    const metadata = {
+      requestId,
+      patientId: args.patientId,
+      patientLabel: args.patientLabel,
+      amount: args.amount,
+      notes: args.notes ?? null,
+      requesterId: String(args.requesterId),
+      requesterName: args.requesterName,
+      status: "pending" as const,
+    };
+
     const adminContacts: Array<{ userId: string; email: string; name: string | null }> = [];
 
     for (const m of admins) {
@@ -930,6 +950,7 @@ export const _requestRefundAuthSideEffects = internalMutation({
         title: "Prośba o autoryzację zwrotu",
         message,
         link,
+        metadata,
       });
       const user = await ctx.db.get(m.userId);
       if (user?.email) {
@@ -1057,6 +1078,275 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
+
+/**
+ * Inline approve/reject for refund-authorization notifications (#1722).
+ *
+ * Each refund request fans out one notification per owner/admin with a
+ * shared `metadata.requestId`. The notification bell calls these actions to
+ * resolve a request without round-tripping to the patient page. Resolving
+ * one admin's notification marks every sibling resolved too, so the others
+ * stop seeing the pending CTA the moment the request is handled.
+ */
+
+type RefundAuthMetadata = {
+  requestId: string;
+  patientId: string;
+  patientLabel: string;
+  amount: number;
+  notes: string | null;
+  requesterId: string;
+  requesterName: string;
+  status: "pending" | "approved" | "rejected";
+};
+
+export const _loadRefundAuthNotification = internalQuery({
+  args: { notificationId: v.id("notifications") },
+  handler: async (ctx, args) => {
+    const notification = await ctx.db.get(args.notificationId);
+    if (!notification) return null;
+    return {
+      notificationId: notification._id,
+      organizationId: notification.organizationId,
+      userId: notification.userId,
+      type: notification.type,
+      metadata: (notification.metadata ?? null) as RefundAuthMetadata | null,
+    };
+  },
+});
+
+export const approveRefundAuth = action({
+  args: {
+    organizationId: v.id("organizations"),
+    notificationId: v.id("notifications"),
+    paymentMethod: v.optional(paymentMethodValidator),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_payments",
+        action: "refund",
+      },
+    );
+    if (!perm.allowed) {
+      throw new Error(
+        "REFUND_NOT_AUTHORIZED: requires gabinet_payments.refund",
+      );
+    }
+
+    const loaded = await ctx.runQuery(
+      internal.payments._loadRefundAuthNotification,
+      { notificationId: args.notificationId },
+    );
+    if (!loaded) throw new Error("Notification not found");
+    if (loaded.organizationId !== args.organizationId) {
+      throw new Error("Notification belongs to a different organization");
+    }
+    if (loaded.userId !== authResult.userId) {
+      throw new Error("Notification belongs to another user");
+    }
+    if (loaded.type !== "refund_authorization_requested" || !loaded.metadata) {
+      throw new Error("Not a refund authorization notification");
+    }
+    if (loaded.metadata.status !== "pending") {
+      throw new Error("Refund request already resolved");
+    }
+
+    const meta = loaded.metadata;
+    const db = createSupabaseDb();
+    const balance = await computePatientCreditBalance(
+      db,
+      String(args.organizationId),
+      meta.patientId,
+    );
+    if (meta.amount > balance + 0.005) {
+      throw new Error(
+        `Refund amount ${meta.amount} exceeds available credit ${balance}`,
+      );
+    }
+
+    const paymentMethod = args.paymentMethod ?? "cash";
+    const now = Date.now();
+    const paymentId = await db.insert("payments", {
+      organizationId: String(args.organizationId),
+      patientId: meta.patientId,
+      appointmentId: null,
+      packageUsageId: null,
+      amount: meta.amount,
+      currency: "PLN",
+      paymentMethod,
+      status: "completed",
+      paidAt: now,
+      notes: meta.notes ?? null,
+      creditEarned: -meta.amount,
+      creditApplied: null,
+      kind: "credit_refund",
+      createdBy: String(authResult.userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await ctx.runMutation(internal.payments._resolveRefundAuthSideEffects, {
+      organizationId: args.organizationId,
+      approverId: authResult.userId,
+      approverName:
+        authResult.userName ?? authResult.userEmail ?? "Administrator",
+      requestId: meta.requestId,
+      requesterId: meta.requesterId,
+      patientId: meta.patientId,
+      patientLabel: meta.patientLabel,
+      amount: meta.amount,
+      decision: "approved",
+      paymentId,
+    });
+
+    return { paymentId };
+  },
+});
+
+export const rejectRefundAuth = action({
+  args: {
+    organizationId: v.id("organizations"),
+    notificationId: v.id("notifications"),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    // Reject is allowed for any owner/admin who received the notification.
+    // We don't gate by gabinet_payments.refund — refusing a request is not
+    // the same as authorizing one.
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
+      throw new Error("Only owners or admins can reject refund requests");
+    }
+
+    const loaded = await ctx.runQuery(
+      internal.payments._loadRefundAuthNotification,
+      { notificationId: args.notificationId },
+    );
+    if (!loaded) throw new Error("Notification not found");
+    if (loaded.organizationId !== args.organizationId) {
+      throw new Error("Notification belongs to a different organization");
+    }
+    if (loaded.userId !== authResult.userId) {
+      throw new Error("Notification belongs to another user");
+    }
+    if (loaded.type !== "refund_authorization_requested" || !loaded.metadata) {
+      throw new Error("Not a refund authorization notification");
+    }
+    if (loaded.metadata.status !== "pending") {
+      throw new Error("Refund request already resolved");
+    }
+
+    const meta = loaded.metadata;
+    await ctx.runMutation(internal.payments._resolveRefundAuthSideEffects, {
+      organizationId: args.organizationId,
+      approverId: authResult.userId,
+      approverName:
+        authResult.userName ?? authResult.userEmail ?? "Administrator",
+      requestId: meta.requestId,
+      requesterId: meta.requesterId,
+      patientId: meta.patientId,
+      patientLabel: meta.patientLabel,
+      amount: meta.amount,
+      decision: "rejected",
+      reason: args.reason,
+    });
+
+    return { ok: true };
+  },
+});
+
+export const _resolveRefundAuthSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    approverId: v.id("users"),
+    approverName: v.string(),
+    requestId: v.string(),
+    requesterId: v.string(),
+    patientId: v.string(),
+    patientLabel: v.string(),
+    amount: v.number(),
+    decision: v.union(v.literal("approved"), v.literal("rejected")),
+    paymentId: v.optional(v.string()),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Resolve every sibling notification carrying the same requestId so
+    // other admins immediately see the request has been handled.
+    const siblings = await ctx.db
+      .query("notifications")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .filter((q) => q.eq(q.field("type"), "refund_authorization_requested"))
+      .collect();
+
+    for (const n of siblings) {
+      const meta = n.metadata as RefundAuthMetadata | undefined;
+      if (!meta || meta.requestId !== args.requestId) continue;
+      if (meta.status !== "pending") continue;
+      await ctx.db.patch(n._id, {
+        isRead: true,
+        metadata: {
+          ...meta,
+          status: args.decision,
+        },
+      });
+    }
+
+    // Tell the requester what happened so they don't keep refreshing the
+    // patient page wondering whether their request landed.
+    const requesterUserId = args.requesterId as Id<"users">;
+    const amountLabel = `${args.amount.toFixed(2)} zł`;
+    const title =
+      args.decision === "approved"
+        ? "Zwrot zatwierdzony"
+        : "Zwrot odrzucony";
+    const baseMessage =
+      args.decision === "approved"
+        ? `${args.approverName} zatwierdził(a) zwrot ${amountLabel} dla klienta ${args.patientLabel}.`
+        : `${args.approverName} odrzucił(a) prośbę o zwrot ${amountLabel} dla klienta ${args.patientLabel}.`;
+    const message = args.reason
+      ? `${baseMessage} (${args.reason})`
+      : baseMessage;
+    await createNotificationDirect(ctx, {
+      organizationId: args.organizationId,
+      userId: requesterUserId,
+      type:
+        args.decision === "approved"
+          ? "refund_authorization_approved"
+          : "refund_authorization_rejected",
+      title,
+      message,
+      link: `/dashboard/gabinet/patients/${args.patientId}?tab=payments`,
+    });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.approverId,
+      action:
+        args.decision === "approved"
+          ? "refund_authorization_approved"
+          : "refund_authorization_rejected",
+      entityType: "payment",
+      entityId: (args.paymentId ?? args.patientId) as any,
+      details: JSON.stringify({
+        requestId: args.requestId,
+        patientId: args.patientId,
+        amount: args.amount,
+        paymentId: args.paymentId ?? null,
+        reason: args.reason ?? null,
+      }),
+    });
+  },
+});
 
 /** Revenue summary for a time range */
 export const getRevenueSummary = action({

@@ -1,10 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { useState } from "react";
+import { toast } from "sonner";
 import { Bell, Mail, TrendingUp, Users, Calendar, FileText, Info } from "@/lib/ez-icons";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +19,26 @@ import {
   translateNotificationTitle,
 } from "@/components/notifications/translate-notification";
 import type { Id } from "@cvx/_generated/dataModel";
+
+type RefundAuthMetadata = {
+  requestId: string;
+  patientId: string;
+  patientLabel: string;
+  amount: number;
+  notes: string | null;
+  requesterId: string;
+  requesterName: string;
+  status: "pending" | "approved" | "rejected";
+};
+
+function isPendingRefundAuth(notification: {
+  type?: string;
+  metadata?: unknown;
+}): notification is { type: string; metadata: RefundAuthMetadata } {
+  if (notification.type !== "refund_authorization_requested") return false;
+  const m = notification.metadata as RefundAuthMetadata | null | undefined;
+  return !!m && m.status === "pending";
+}
 
 function useFormatRelativeTime() {
   const { t, i18n } = useTranslation();
@@ -77,6 +99,13 @@ export function NotificationBell() {
 
   const markAsRead = useAction(api.notifications.markAsRead);
   const markAllRead = useAction(api.notifications.markAllRead);
+  const approveRefundAuth = useAction(api.payments.approveRefundAuth);
+  const rejectRefundAuth = useAction(api.payments.rejectRefundAuth);
+  const queryClient = useQueryClient();
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<"approve" | "reject" | null>(
+    null,
+  );
 
   const handleNotificationClick = async (notification: {
     _id: Id<"notifications">;
@@ -93,6 +122,62 @@ export function NotificationBell() {
 
   const handleMarkAllRead = async () => {
     await markAllRead({ organizationId });
+  };
+
+  const refreshNotifications = () => {
+    void queryClient.invalidateQueries({
+      queryKey: convexQuery(api.notifications.list, {
+        organizationId,
+        limit: 20,
+      }).queryKey,
+    });
+    void queryClient.invalidateQueries({
+      queryKey: convexQuery(api.notifications.getUnreadCount, {
+        organizationId,
+      }).queryKey,
+    });
+  };
+
+  const handleApproveRefund = async (
+    notificationId: Id<"notifications">,
+  ) => {
+    setPendingId(notificationId);
+    setPendingAction("approve");
+    try {
+      await approveRefundAuth({ organizationId, notificationId });
+      toast.success(t("notifications.refundAuth.approved"));
+      refreshNotifications();
+    } catch (e) {
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : t("notifications.refundAuth.approveError"),
+      );
+    } finally {
+      setPendingId(null);
+      setPendingAction(null);
+    }
+  };
+
+  const handleRejectRefund = async (
+    notificationId: Id<"notifications">,
+  ) => {
+    setPendingId(notificationId);
+    setPendingAction("reject");
+    try {
+      await rejectRefundAuth({ organizationId, notificationId });
+      toast.success(t("notifications.refundAuth.rejected"));
+      refreshNotifications();
+    } catch (e) {
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : t("notifications.refundAuth.rejectError"),
+      );
+    } finally {
+      setPendingId(null);
+      setPendingAction(null);
+    }
   };
 
   const count = unreadCount?.count ?? 0;
@@ -132,41 +217,89 @@ export function NotificationBell() {
               {t("notifications.empty", "No notifications")}
             </div>
           ) : (
-            notifications.map((notification) => (
-              <button
-                key={notification._id}
-                type="button"
-                className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50"
-                onClick={() => handleNotificationClick(notification)}
-              >
-                {!notification.isRead && (
-                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                )}
-                {notification.isRead && <span className="w-2 shrink-0" />}
-                <div className="mt-0.5 shrink-0 text-muted-foreground">
-                  {getNotificationIcon(notification.type)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p
-                    className={
-                      notification.isRead
-                        ? "truncate text-sm text-foreground"
-                        : "truncate text-sm font-medium text-foreground"
-                    }
+            notifications.map((notification) => {
+              const showRefundActions = isPendingRefundAuth(notification);
+              const isThisRowBusy = pendingId === notification._id;
+              return (
+                <div
+                  key={notification._id}
+                  className="border-b last:border-b-0"
+                >
+                  <button
+                    type="button"
+                    className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50"
+                    onClick={() => handleNotificationClick(notification)}
                   >
-                    {translateNotificationTitle(notification.title, t)}
-                  </p>
-                  {notification.message && (
-                    <p className="truncate text-xs text-muted-foreground">
-                      {translateNotificationMessage(notification.message, t)}
-                    </p>
+                    {!notification.isRead && (
+                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                    )}
+                    {notification.isRead && <span className="w-2 shrink-0" />}
+                    <div className="mt-0.5 shrink-0 text-muted-foreground">
+                      {getNotificationIcon(notification.type)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className={
+                          notification.isRead
+                            ? "truncate text-sm text-foreground"
+                            : "truncate text-sm font-medium text-foreground"
+                        }
+                      >
+                        {translateNotificationTitle(notification.title, t)}
+                      </p>
+                      {notification.message && (
+                        <p
+                          className={
+                            showRefundActions
+                              ? "text-xs text-muted-foreground"
+                              : "truncate text-xs text-muted-foreground"
+                          }
+                        >
+                          {translateNotificationMessage(
+                            notification.message,
+                            t,
+                          )}
+                        </p>
+                      )}
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {formatRelativeTime(notification._creationTime)}
+                      </p>
+                    </div>
+                  </button>
+                  {showRefundActions && (
+                    <div className="flex items-center gap-2 px-4 pb-3 pl-[3.25rem]">
+                      <Button
+                        size="sm"
+                        className="h-7 px-3 text-xs"
+                        disabled={pendingId !== null}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleApproveRefund(notification._id);
+                        }}
+                      >
+                        {isThisRowBusy && pendingAction === "approve"
+                          ? t("notifications.refundAuth.approving")
+                          : t("notifications.refundAuth.approve")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-3 text-xs"
+                        disabled={pendingId !== null}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleRejectRefund(notification._id);
+                        }}
+                      >
+                        {isThisRowBusy && pendingAction === "reject"
+                          ? t("notifications.refundAuth.rejecting")
+                          : t("notifications.refundAuth.reject")}
+                      </Button>
+                    </div>
                   )}
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {formatRelativeTime(notification._creationTime)}
-                  </p>
                 </div>
-              </button>
-            ))
+              );
+            })
           )}
         </div>
       </PopoverContent>

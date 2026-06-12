@@ -178,7 +178,7 @@ function GabinetCalendarPage() {
   const [createDefaultEndTime, setCreateDefaultEndTime] = useState<
     string | undefined
   >();
-  const [createDefaultEmployeeId, setCreateDefaultEmployeeId] = useState<
+  const [createDefaultUserId, setCreateDefaultUserId] = useState<
     string | undefined
   >();
 
@@ -933,7 +933,7 @@ function GabinetCalendarPage() {
     setCreateDefaultDate(formatDateStr(currentDate));
     setCreateDefaultTime(undefined);
     setCreateDefaultEndTime(undefined);
-    setCreateDefaultEmployeeId(undefined);
+    setCreateDefaultUserId(undefined);
     setCreateDialogOpen(true);
   }, [currentDate]);
 
@@ -943,7 +943,7 @@ function GabinetCalendarPage() {
     setCreateDefaultDate(formatDateStr(currentDate));
     setCreateDefaultTime(undefined);
     setCreateDefaultEndTime(undefined);
-    setCreateDefaultEmployeeId(undefined);
+    setCreateDefaultUserId(undefined);
     setEventDialogOpen(true);
   }, [currentDate]);
 
@@ -989,7 +989,7 @@ function GabinetCalendarPage() {
         setCreateDefaultTime(dateOrTime);
       }
       setCreateDefaultEndTime(undefined);
-      setCreateDefaultEmployeeId(undefined);
+      setCreateDefaultUserId(undefined);
       setCreateDialogOpen(true);
     },
     [currentDate],
@@ -1001,7 +1001,7 @@ function GabinetCalendarPage() {
       setCreateDefaultDate(date);
       setCreateDefaultTime(startTime);
       setCreateDefaultEndTime(endTime);
-      setCreateDefaultEmployeeId(undefined);
+      setCreateDefaultUserId(undefined);
       setCreateDialogOpen(true);
     },
     [],
@@ -1014,7 +1014,7 @@ function GabinetCalendarPage() {
       setCreateDefaultDate(date);
       setCreateDefaultTime(time);
       setCreateDefaultEndTime(undefined);
-      setCreateDefaultEmployeeId(employeeId);
+      setCreateDefaultUserId(employeeId);
       setCreateDialogOpen(true);
     },
     [],
@@ -1025,7 +1025,7 @@ function GabinetCalendarPage() {
       setCreateDefaultDate(date);
       setCreateDefaultTime(startTime);
       setCreateDefaultEndTime(endTime);
-      setCreateDefaultEmployeeId(employeeId);
+      setCreateDefaultUserId(employeeId);
       setCreateDialogOpen(true);
     },
     [],
@@ -1831,7 +1831,7 @@ function GabinetCalendarPage() {
           defaultDate={createDefaultDate}
           defaultTime={createDefaultTime}
           defaultEndTime={createDefaultEndTime}
-          defaultUserId={createDefaultEmployeeId}
+          defaultUserId={createDefaultUserId}
           onSwitchToEvent={() => {
             // Pivot to the EventDialog while preserving the date/time/employee
             // the user already picked by clicking a calendar slot. The shared
@@ -1850,7 +1850,7 @@ function GabinetCalendarPage() {
           defaultDate={createDefaultDate}
           defaultTime={createDefaultTime}
           defaultEndTime={createDefaultEndTime}
-          defaultUserId={createDefaultEmployeeId}
+          defaultUserId={createDefaultUserId}
           onManageEventTypes={() => setEventTypesSlideoutOpen(true)}
         />
 

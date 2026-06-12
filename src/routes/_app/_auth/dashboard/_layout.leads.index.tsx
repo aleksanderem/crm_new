@@ -58,6 +58,8 @@ import { CategoriesManagerSlideout } from "@/components/categories-tags/categori
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 type LeadNudgeFilter = "stale" | "closing-this-week";
 
@@ -772,6 +774,13 @@ function LeadsIndex() {
                 categoryId,
               });
               setCreateOpen(false);
+            } catch (e) {
+              toast.error(
+                formatActionError(e, t, {
+                  key: "leads.errors.createFailed",
+                  defaultValue: "Nie udało się dodać szansy sprzedaży.",
+                }),
+              );
             } finally {
               setIsSubmitting(false);
             }

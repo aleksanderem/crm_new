@@ -92,6 +92,8 @@ import { DateRangePicker } from "@/components/crm/date-range-picker";
 import { AgendaStrip } from "@/components/layout/agenda-strip";
 import type { Id } from "@cvx/_generated/dataModel";
 import { NudgesProvider } from "@/contexts/nudges-context";
+import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout")({
   errorComponent: ({ error, reset }) => (
@@ -427,6 +429,13 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
                   });
                   void queryClient.invalidateQueries({ queryKey: supabaseKeys.contacts.list(orgId) });
                   opts.onSuccess();
+                } catch (e) {
+                  toast.error(
+                    formatActionError(e, t, {
+                      key: "contacts.errors.createFailed",
+                      defaultValue: "Nie udało się dodać kontaktu.",
+                    }),
+                  );
                 } finally {
                   setIsCreating(false);
                 }
@@ -449,6 +458,13 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
                   await createCompany({ organizationId: orgId, ...data });
                   void queryClient.invalidateQueries({ queryKey: supabaseKeys.companies.list(orgId) });
                   opts.onSuccess();
+                } catch (e) {
+                  toast.error(
+                    formatActionError(e, t, {
+                      key: "companies.errors.createFailed",
+                      defaultValue: "Nie udało się dodać firmy.",
+                    }),
+                  );
                 } finally {
                   setIsCreating(false);
                 }
@@ -474,6 +490,13 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
                   });
                   void queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.list(orgId) });
                   opts.onSuccess();
+                } catch (e) {
+                  toast.error(
+                    formatActionError(e, t, {
+                      key: "leads.errors.createFailed",
+                      defaultValue: "Nie udało się dodać szansy sprzedaży.",
+                    }),
+                  );
                 } finally {
                   setIsCreating(false);
                 }
@@ -491,6 +514,13 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
                   await createPatient({ organizationId: orgId, ...data });
                   void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(orgId) });
                   opts.onSuccess();
+                } catch (e) {
+                  toast.error(
+                    formatActionError(e, t, {
+                      key: "gabinet.patients.errors.createFailed",
+                      defaultValue: "Nie udało się dodać pacjenta.",
+                    }),
+                  );
                 } finally {
                   setIsCreating(false);
                 }
@@ -512,6 +542,13 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
                   await createTreatment({ organizationId: orgId, ...data });
                   void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(orgId) });
                   opts.onSuccess();
+                } catch (e) {
+                  toast.error(
+                    formatActionError(e, t, {
+                      key: "gabinet.treatments.errors.createFailed",
+                      defaultValue: "Nie udało się dodać zabiegu.",
+                    }),
+                  );
                 } finally {
                   setIsCreating(false);
                 }
@@ -529,6 +566,13 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
                   await createPackage({ organizationId: orgId, ...data });
                   void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatmentPackages.list(orgId) });
                   opts.onSuccess();
+                } catch (e) {
+                  toast.error(
+                    formatActionError(e, t, {
+                      key: "gabinet.packages.errors.createFailed",
+                      defaultValue: "Nie udało się dodać pakietu.",
+                    }),
+                  );
                 } finally {
                   setIsCreating(false);
                 }
@@ -547,6 +591,13 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
                   await createEmployee({ organizationId: orgId, ...data, userId: data.userId });
                   void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(orgId) });
                   opts.onSuccess();
+                } catch (e) {
+                  toast.error(
+                    formatActionError(e, t, {
+                      key: "gabinet.employees.errors.createFailed",
+                      defaultValue: "Nie udało się dodać pracownika.",
+                    }),
+                  );
                 } finally {
                   setIsCreating(false);
                 }
@@ -575,6 +626,13 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
                   void queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.list(orgId) });
                   void queryClient.invalidateQueries({ queryKey: supabaseKeys.activities.list(orgId) });
                   opts.onSuccess();
+                } catch (e) {
+                  toast.error(
+                    formatActionError(e, t, {
+                      key: "activities.errors.createFailed",
+                      defaultValue: "Nie udało się dodać aktywności.",
+                    }),
+                  );
                 } finally {
                   setIsCreating(false);
                 }
@@ -602,6 +660,13 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
                   });
                   void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLeaves.list(orgId) });
                   opts.onSuccess();
+                } catch (e) {
+                  toast.error(
+                    formatActionError(e, t, {
+                      key: "gabinet.leaves.errors.createFailed",
+                      defaultValue: "Nie udało się dodać urlopu.",
+                    }),
+                  );
                 } finally {
                   setIsCreating(false);
                 }
@@ -619,6 +684,13 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
                   await createProduct({ organizationId: orgId, ...data });
                   void queryClient.invalidateQueries({ queryKey: supabaseKeys.products.list(orgId) });
                   opts.onSuccess();
+                } catch (e) {
+                  toast.error(
+                    formatActionError(e, t, {
+                      key: "products.errors.createFailed",
+                      defaultValue: "Nie udało się dodać produktu.",
+                    }),
+                  );
                 } finally {
                   setIsCreating(false);
                 }
@@ -636,6 +708,13 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
                   await createCall({ organizationId: orgId, ...data });
                   void queryClient.invalidateQueries({ queryKey: supabaseKeys.calls.list(orgId) });
                   opts.onSuccess();
+                } catch (e) {
+                  toast.error(
+                    formatActionError(e, t, {
+                      key: "calls.errors.createFailed",
+                      defaultValue: "Nie udało się dodać rozmowy.",
+                    }),
+                  );
                 } finally {
                   setIsCreating(false);
                 }
@@ -659,6 +738,13 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
                   });
                   void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(orgId) });
                   opts.onSuccess();
+                } catch (e) {
+                  toast.error(
+                    formatActionError(e, t, {
+                      key: "invitations.errors.createFailed",
+                      defaultValue: "Nie udało się wysłać zaproszenia.",
+                    }),
+                  );
                 } finally {
                   setIsCreating(false);
                 }
@@ -874,6 +960,13 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
               endDate: data.endDate,
               description: data.description,
             });
+          } catch (e) {
+            toast.error(
+              formatActionError(e, t, {
+                key: "activities.errors.updateFailed",
+                defaultValue: "Nie udało się zapisać aktywności.",
+              }),
+            );
           } finally {
             setActivityDetailSubmitting(false);
           }
@@ -886,6 +979,13 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
               activityId: id as Id<"scheduledActivities">,
             });
             setActivityDetailId(null);
+          } catch (e) {
+            toast.error(
+              formatActionError(e, t, {
+                key: "activities.errors.deleteFailed",
+                defaultValue: "Nie udało się usunąć aktywności.",
+              }),
+            );
           } finally {
             setActivityDetailSubmitting(false);
           }

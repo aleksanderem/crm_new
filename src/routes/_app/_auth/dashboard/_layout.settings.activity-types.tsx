@@ -20,6 +20,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { getActivityIcon } from "@/lib/activity-icon-registry";
 import { Id } from "@cvx/_generated/dataModel";
+import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/activity-types"
@@ -91,6 +93,13 @@ function ActivityTypesSettings() {
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.activityTypes.list(organizationId) });
       setShowCreateForm(false);
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "activityTypes.errors.createFailed",
+          defaultValue: "Nie udało się dodać typu aktywności.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -111,6 +120,13 @@ function ActivityTypesSettings() {
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.activityTypes.list(organizationId) });
       setEditingId(null);
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "activityTypes.errors.updateFailed",
+          defaultValue: "Nie udało się zapisać typu aktywności.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }

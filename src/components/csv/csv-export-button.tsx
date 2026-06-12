@@ -4,9 +4,11 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Download } from "@/lib/ez-icons";
 import Papa from "papaparse";
+import { formatActionError } from "@/lib/format-action-error";
 
 type EntityType = "contacts" | "companies" | "leads" | "products" | "patients";
 
@@ -23,6 +25,7 @@ export function useCsvExport(
   entityType: EntityType,
   fileNamePrefix?: string,
 ) {
+  const { t } = useTranslation();
   const [isExporting, setIsExporting] = useState(false);
 
   const { refetch } = useQuery({
@@ -48,10 +51,17 @@ export function useCsvExport(
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "csv.errors.exportFailed",
+          defaultValue: "Nie udało się wyeksportować danych do CSV.",
+        }),
+      );
     } finally {
       setIsExporting(false);
     }
-  }, [refetch, entityType, fileNamePrefix]);
+  }, [refetch, entityType, fileNamePrefix, t]);
 
   return { handleExport, isExporting };
 }

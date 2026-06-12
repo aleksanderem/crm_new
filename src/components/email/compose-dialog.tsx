@@ -5,8 +5,10 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { useSupabaseEmailTemplatesList } from "@/hooks/use-supabase-email-templates";
 import { useSupabaseMailProvidersList } from "@/hooks/use-supabase-mail-providers";
+import { formatActionError } from "@/lib/format-action-error";
 import {
   Dialog,
   DialogContent,
@@ -195,6 +197,13 @@ export function ComposeDialog({
       setSelectedProviderId(defaultProviderId ?? "");
       lastAppliedTemplateRef.current = null;
       onOpenChange(false);
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "email.errors.sendFailed",
+          defaultValue: "Nie udało się wysłać wiadomości.",
+        }),
+      );
     } finally {
       setIsSending(false);
     }

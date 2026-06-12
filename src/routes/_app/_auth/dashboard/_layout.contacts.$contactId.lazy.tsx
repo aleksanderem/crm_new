@@ -57,6 +57,8 @@ import { EntityAssociationPanel } from "@/components/crm/entity-association-pane
 import type { SearchResultItem } from "@/components/crm/entity-association-panel";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
+import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/contacts/$contactId"
@@ -321,6 +323,13 @@ function ContactDetail() {
         }
       }
       setEditDrawerOpen(false);
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "contacts.errors.updateFailed",
+          defaultValue: "Nie udało się zapisać kontaktu.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -495,6 +504,13 @@ function ContactDetail() {
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
       setCreateCompanyDrawerOpen(false);
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "companies.errors.createFailed",
+          defaultValue: "Nie udało się dodać firmy.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -512,6 +528,13 @@ function ContactDetail() {
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.notes.list(organizationId) });
       setNewNote("");
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "notes.errors.createFailed",
+          defaultValue: "Nie udało się dodać notatki.",
+        }),
+      );
     } finally {
       setIsAddingNote(false);
     }
@@ -544,6 +567,13 @@ function ContactDetail() {
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.objectRelationships.list(organizationId) });
       setCreateLeadDrawerOpen(false);
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "leads.errors.createFailed",
+          defaultValue: "Nie udało się dodać szansy sprzedaży.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }

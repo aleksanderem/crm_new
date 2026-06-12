@@ -549,6 +549,17 @@ function TreatmentDetail() {
       setVariantDialogOpen(false);
       resetVariantForm();
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatmentVariants.list(organizationId) });
+    } catch (e) {
+      toast.error(
+        formatTreatmentError(e, t, {
+          key: editingVariant
+            ? "gabinet.treatmentDetail.variants.errors.updateFailed"
+            : "gabinet.treatmentDetail.variants.errors.createFailed",
+          defaultValue: editingVariant
+            ? "Nie udało się zapisać wariantu zabiegu."
+            : "Nie udało się dodać wariantu zabiegu.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }

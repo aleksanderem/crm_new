@@ -28,6 +28,8 @@ import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 import { formatPhoneNumber } from "@/lib/phone";
+import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 type ContactNudgeFilter = "unlinked-company";
 
@@ -321,11 +323,18 @@ function ContactsIndex() {
           }
         }
         setPanelOpen(false);
+      } catch (e) {
+        toast.error(
+          formatActionError(e, t, {
+            key: "contacts.errors.createFailed",
+            defaultValue: "Nie udało się dodać kontaktu.",
+          }),
+        );
       } finally {
         setIsCreating(false);
       }
     },
-    [createContact, organizationId, cfDefs, setCustomFieldValues]
+    [createContact, organizationId, cfDefs, setCustomFieldValues, t]
   );
 
   const handleBulkAction = useCallback(

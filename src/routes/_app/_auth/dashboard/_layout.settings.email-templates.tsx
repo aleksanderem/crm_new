@@ -40,6 +40,8 @@ import { Plus, Pencil, Trash2 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import { EmailTemplateEditor } from "@/components/email/template-editor";
 import type { EmailTemplateEditorHandle } from "@/components/email/template-editor";
+import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/email-templates",
@@ -160,6 +162,17 @@ function EmailTemplatesSettings() {
       setDialogOpen(false);
       setForm(emptyForm);
       setEditingId(null);
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: editingId
+            ? "emailTemplates.errors.updateFailed"
+            : "emailTemplates.errors.createFailed",
+          defaultValue: editingId
+            ? "Nie udało się zapisać szablonu."
+            : "Nie udało się dodać szablonu.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }

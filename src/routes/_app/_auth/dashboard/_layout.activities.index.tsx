@@ -53,6 +53,8 @@ import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-s
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
+import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 type ActivityNudgeFilter = "overdue";
 
@@ -277,6 +279,17 @@ function ActivitiesPage() {
       await saveCfValues(activityId);
       setPanelOpen(false);
       resetForm();
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: editingActivity
+            ? "activities.errors.updateFailed"
+            : "activities.errors.createFailed",
+          defaultValue: editingActivity
+            ? "Nie udało się zapisać aktywności."
+            : "Nie udało się dodać aktywności.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }

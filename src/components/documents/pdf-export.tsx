@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Download } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
+import { formatActionError } from "@/lib/format-action-error";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -231,6 +233,13 @@ export function PdfExportButton({
           signatureAlt: t("documents.signature"),
         },
       });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "documents.errors.pdfExportFailed",
+          defaultValue: "Nie udało się wygenerować pliku PDF.",
+        }),
+      );
     } finally {
       setIsPrinting(false);
     }

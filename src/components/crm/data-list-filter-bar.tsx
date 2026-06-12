@@ -36,39 +36,39 @@ import type { FieldDef, FilterCondition, FilterConfig, SavedView } from "./types
 
 const OPERATORS_BY_TYPE: Record<
   FieldDef["type"],
-  Array<{ value: string; label: string }>
+  Array<{ value: string; labelKey: string }>
 > = {
   text: [
-    { value: "contains", label: "Contains" },
-    { value: "equals", label: "Equals" },
-    { value: "notContains", label: "Does not contain" },
-    { value: "notEquals", label: "Does not equal" },
-    { value: "isEmpty", label: "Is empty" },
-    { value: "isNotEmpty", label: "Is not empty" },
+    { value: "contains", labelKey: "operators.contains" },
+    { value: "equals", labelKey: "operators.equals" },
+    { value: "notContains", labelKey: "operators.notContains" },
+    { value: "notEquals", labelKey: "operators.notEquals" },
+    { value: "isEmpty", labelKey: "operators.isEmpty" },
+    { value: "isNotEmpty", labelKey: "operators.isNotEmpty" },
   ],
   number: [
-    { value: "equals", label: "Equals" },
-    { value: "greaterThan", label: "Greater than" },
-    { value: "lessThan", label: "Less than" },
-    { value: "between", label: "Between" },
+    { value: "equals", labelKey: "operators.equals" },
+    { value: "greaterThan", labelKey: "operators.greaterThan" },
+    { value: "lessThan", labelKey: "operators.lessThan" },
+    { value: "between", labelKey: "operators.between" },
   ],
   date: [
-    { value: "equals", label: "Is" },
-    { value: "before", label: "Before" },
-    { value: "after", label: "After" },
-    { value: "between", label: "Between" },
+    { value: "equals", labelKey: "operators.is" },
+    { value: "before", labelKey: "operators.before" },
+    { value: "after", labelKey: "operators.after" },
+    { value: "between", labelKey: "operators.between" },
   ],
   select: [
-    { value: "equals", label: "Is" },
-    { value: "notEquals", label: "Is not" },
+    { value: "equals", labelKey: "operators.is" },
+    { value: "notEquals", labelKey: "operators.isNot" },
   ],
   boolean: [
-    { value: "equals", label: "Is" },
+    { value: "equals", labelKey: "operators.is" },
   ],
   multiSelect: [
-    { value: "hasAnyOf", label: "Has any of" },
-    { value: "hasAllOf", label: "Has all of" },
-    { value: "isEmpty", label: "Is empty" },
+    { value: "hasAnyOf", labelKey: "operators.hasAnyOf" },
+    { value: "hasAllOf", labelKey: "operators.hasAllOf" },
+    { value: "isEmpty", labelKey: "operators.isEmpty" },
   ],
 };
 
@@ -313,10 +313,10 @@ export function DataListFilterBar({
       const fieldType = fieldDef?.type ?? "text";
       return OPERATORS_BY_TYPE[fieldType].map((op) => ({
         id: op.value,
-        label: op.label,
+        label: t(op.labelKey),
       }));
     },
-    [fieldMap],
+    [fieldMap, t],
   );
 
   const customViewCount = views.filter((v) => !v.isSystem).length;
@@ -456,7 +456,7 @@ export function DataListFilterBar({
             className={appliedConditions.length > 0 ? "bg-bg-primary_hover" : ""}
           >
             <span className="flex items-center gap-1.5">
-              Filters
+              {t("filters.filters", { defaultValue: "Filters" })}
               {appliedConditions.length > 0 && (
                 <CountBadge count={appliedConditions.length} />
               )}
@@ -762,7 +762,7 @@ export function DataListFilterBar({
                     return (
                       <p key={i} className="text-sm text-fg-secondary">
                         {fieldDef?.label ?? c.field}{" "}
-                        <span className="text-fg-quaternary">{c.operator}</span>{" "}
+                        <span className="text-fg-quaternary">{t(`operators.${c.operator}`, { defaultValue: c.operator })}</span>{" "}
                         {c.value && <span className="font-medium text-fg-primary">{c.value}</span>}
                       </p>
                     );

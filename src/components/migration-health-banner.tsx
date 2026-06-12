@@ -62,7 +62,10 @@ export function MigrationHealthBanner() {
         return;
       }
 
-      const applied = typeof data === "string" ? data : null;
+      // supabase-js types `data` from a primitive-return RPC as `null` even on
+      // success, so narrow via `unknown` to preserve the runtime guard.
+      const raw: unknown = data;
+      const applied = typeof raw === "string" ? raw : null;
       if (applied !== null && applied >= expected) {
         setState({ kind: "ok" });
       } else {

@@ -189,7 +189,7 @@ export function EditableCell({
         );
       case "time":
         return (
-          <Input ref={inputRef} type="time" value={editValue ?? ""} onChange={(e) => setEditValue(e.target.value)} {...inputProps} />
+          <Input ref={inputRef} type="time" step={300} value={editValue ?? ""} onChange={(e) => setEditValue(e.target.value)} {...inputProps} />
         );
       case "datetime":
         return (

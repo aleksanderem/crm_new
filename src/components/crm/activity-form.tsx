@@ -310,6 +310,7 @@ export function ActivityForm({
           <div className="relative flex items-center">
             <Input
               type="time"
+              step={300}
               className="w-auto pr-8"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}

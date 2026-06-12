@@ -274,6 +274,7 @@ export function ActivityDetailDrawer({
                   />
                   <Input
                     type="time"
+                    step={300}
                     className="w-auto"
                     value={editDueTime}
                     onChange={(e) => setEditDueTime(e.target.value)}
@@ -292,6 +293,7 @@ export function ActivityDetailDrawer({
                   />
                   <Input
                     type="time"
+                    step={300}
                     className="w-auto"
                     value={editEndTime}
                     onChange={(e) => setEditEndTime(e.target.value)}

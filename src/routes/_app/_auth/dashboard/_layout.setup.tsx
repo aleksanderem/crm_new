@@ -341,6 +341,7 @@ function SetupWizard() {
                     <>
                       <Input
                         type="time"
+                        step={300}
                         value={schedule[day]?.start || ""}
                         onChange={(e) => updateSchedule(day, "start", e.target.value)}
                         className="w-32"
@@ -348,6 +349,7 @@ function SetupWizard() {
                       <span className="text-muted-foreground">-</span>
                       <Input
                         type="time"
+                        step={300}
                         value={schedule[day]?.end || ""}
                         onChange={(e) => updateSchedule(day, "end", e.target.value)}
                         className="w-32"

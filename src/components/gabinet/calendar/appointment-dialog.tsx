@@ -103,8 +103,9 @@ interface AppointmentDialogProps {
   defaultTime?: string;
   defaultEndTime?: string;
   /** Pre-select an employee when opening — used by the day-by-employee
-   *  calendar view so clicking inside a column carries the column owner. */
-  defaultEmployeeId?: string;
+   *  calendar view so clicking inside a column carries the column owner.
+   *  Holds a userId (gabinetAppointments.employeeId is a users._id). */
+  defaultUserId?: string;
   /** Optional handler to switch from creating a patient appointment to
    *  creating a non-patient calendar event (meeting / training that blocks
    *  time without booking a wizyta). When provided, a "Utwórz zdarzenie"
@@ -203,7 +204,7 @@ export function AppointmentDialog({
   defaultDate,
   defaultTime,
   defaultEndTime,
-  defaultEmployeeId,
+  defaultUserId,
   onSwitchToEvent,
 }: AppointmentDialogProps) {
   const { t, i18n } = useTranslation();
@@ -266,7 +267,7 @@ export function AppointmentDialog({
   // -------------------------------------------------------------------------
 
   const [treatmentId, setTreatmentId] = useState("");
-  const [employeeId, setEmployeeId] = useState(defaultEmployeeId ?? "");
+  const [employeeId, setEmployeeId] = useState(defaultUserId ?? "");
   const [patientId, setPatientId] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     defaultDate ? new Date(defaultDate + "T00:00:00") : undefined,
@@ -937,12 +938,12 @@ export function AppointmentDialog({
       // Seed employee from prop when opening so the day-by-employee view's
       // column selection survives even though the auto-select effect below
       // would otherwise overwrite it once treatments load.
-      if (defaultEmployeeId) {
-        setEmployeeId(defaultEmployeeId);
+      if (defaultUserId) {
+        setEmployeeId(defaultUserId);
       }
     } else {
       setTreatmentId("");
-      setEmployeeId(defaultEmployeeId ?? "");
+      setEmployeeId(defaultUserId ?? "");
       setPatientId("");
       setSelectedDate(
         defaultDate ? new Date(defaultDate + "T00:00:00") : undefined,
@@ -964,7 +965,7 @@ export function AppointmentDialog({
       setPendingPatientLabel(null);
       setRecordWalkIn(false);
     }
-  }, [open, defaultDate, defaultTime, defaultEndTime, defaultEmployeeId]);
+  }, [open, defaultDate, defaultTime, defaultEndTime, defaultUserId]);
 
   // -------------------------------------------------------------------------
   // Determine which panels are active

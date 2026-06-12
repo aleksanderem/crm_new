@@ -13,7 +13,7 @@ export interface PackageTreatmentUsageEntry {
   treatmentId: string;
   variantId?: string;
   usedCount: number;
-  totalAllowed: number;
+  totalCount: number;
 }
 
 export interface MappedGabinetPackageUsage {

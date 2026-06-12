@@ -9,19 +9,74 @@
  * When the database is behind, render a single warning banner instead of
  * letting every feature fail individually with PGRST204 toasts (#1576).
  *
+ * Fallback path (#1646): the RPC itself is added by migration 00012. If the
+ * DB is far enough behind that the RPC doesn't exist yet, we additionally
+ * probe a column from an earlier migration (00010's
+ * `gabinet_treatments.package_id`) so the banner still fires with concrete
+ * evidence the schema is stale, rather than going silent on the unknown
+ * version.
+ *
  * Mounts inside <SupabaseProvider> so the authenticated client is available.
  */
 
 import { useEffect, useState } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/database.types";
 import { useSupabase } from "@/components/supabase-provider";
 
 type CheckState =
   | { kind: "checking" }
   | { kind: "ok" }
-  | { kind: "stale"; applied: string | null; expected: string }
-  | { kind: "rpc-missing"; expected: string };
+  | { kind: "stale"; applied: string | null; expected: string };
 
 const DISMISS_KEY = "quera-migration-banner-dismissed";
+
+// Probe target for the RPC-missing fallback. `gabinet_treatments.package_id`
+// was added in migration 00010, two before the RPC migration (00012). If the
+// probe column is missing, the schema is provably behind 00010 — strong
+// independent evidence to surface the banner.
+const PROBE_TABLE = "gabinet_treatments" as const;
+const PROBE_COLUMN = "package_id" as const;
+const PROBE_FLOOR_VERSION = "00010";
+
+type ProbeResult = "present" | "absent" | "inconclusive";
+
+async function probeRecentColumn(
+  client: SupabaseClient<Database>,
+): Promise<ProbeResult> {
+  const { error } = await client
+    .from(PROBE_TABLE)
+    .select(PROBE_COLUMN)
+    .limit(0);
+  if (!error) return "present";
+  const message = error.message ?? "";
+  // 42703 = undefined_column, 42P01 = undefined_table. PostgREST also surfaces
+  // these via PGRST20x codes with descriptive messages — match liberally so a
+  // schema_cache vs. SQL-error variance doesn't break the fallback.
+  if (
+    error.code === "42703" ||
+    error.code === "42P01" ||
+    /column .* does not exist/i.test(message) ||
+    /relation .* does not exist/i.test(message) ||
+    /could not find the .* (column|table)/i.test(message)
+  ) {
+    return "absent";
+  }
+  return "inconclusive";
+}
+
+function isMissingFunctionError(error: { code?: string; message?: string }): boolean {
+  const message = error.message ?? "";
+  // 42883 = undefined_function (raw PG). PGRST202 is what PostgREST returns
+  // when the function isn't in the schema cache — the message is "Could not
+  // find the function ..." which would NOT match `function .* does not exist`.
+  return (
+    error.code === "42883" ||
+    error.code === "PGRST202" ||
+    /function .* does not exist/i.test(message) ||
+    /could not find the function/i.test(message)
+  );
+}
 
 export function MigrationHealthBanner() {
   const { client, isReady } = useSupabase();
@@ -48,17 +103,34 @@ export function MigrationHealthBanner() {
       if (cancelled) return;
 
       if (error) {
-        // 42883 = undefined_function. Any other error (network, auth) we
-        // treat as inconclusive and stay silent — failing loudly on transient
-        // hiccups would defeat the purpose.
-        if (error.code === "42883" || /function .* does not exist/i.test(error.message ?? "")) {
-          setState({ kind: "rpc-missing", expected });
-        } else {
+        if (!isMissingFunctionError(error)) {
+          // Network / auth / other transient errors — treat as inconclusive
+          // and stay silent. Failing loudly on every hiccup would defeat the
+          // purpose.
           setState({ kind: "ok" });
           if (import.meta.env.DEV) {
             console.warn("[MigrationHealthBanner] schema check inconclusive:", error);
           }
+          return;
         }
+        // RPC missing — fall back to probing a known-recent column so we
+        // can fire the banner even before migration 00012 is applied.
+        const probe = await probeRecentColumn(client);
+        if (cancelled) return;
+        if (probe === "inconclusive") {
+          setState({ kind: "ok" });
+          if (import.meta.env.DEV) {
+            console.warn(
+              "[MigrationHealthBanner] RPC missing but column probe inconclusive — staying silent",
+            );
+          }
+          return;
+        }
+        // probe === "present": schema has the 00010 column but is missing the
+        // 00012 RPC — just behind by the most recent migrations.
+        // probe === "absent": schema is behind 00010 too — significantly stale.
+        const applied = probe === "present" ? `≥ ${PROBE_FLOOR_VERSION}` : null;
+        setState({ kind: "stale", applied, expected });
         return;
       }
 
@@ -81,8 +153,7 @@ export function MigrationHealthBanner() {
   if (dismissed) return null;
   if (state.kind === "checking" || state.kind === "ok") return null;
 
-  const expected = state.expected;
-  const applied = state.kind === "stale" ? state.applied : null;
+  const { expected, applied } = state;
 
   return (
     <div

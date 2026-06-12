@@ -40,6 +40,12 @@ interface EventDialogProps {
   defaultTime?: string;
   defaultEndTime?: string;
   defaultEmployeeId?: string;
+  /**
+   * Pre-select multiple employees by userId (e.g. when opened from a bulk
+   * action on the employees list — issue #1614). Takes precedence over
+   * defaultEmployeeId when provided and non-empty.
+   */
+  defaultEmployeeIds?: string[];
   onManageEventTypes?: () => void;
 }
 
@@ -64,6 +70,7 @@ export function EventDialog({
   defaultTime,
   defaultEndTime,
   defaultEmployeeId,
+  defaultEmployeeIds,
   onManageEventTypes,
 }: EventDialogProps) {
   const { t } = useTranslation();
@@ -93,7 +100,11 @@ export function EventDialog({
   // Multiple selections create one scheduled activity per employee so the
   // event renders in every selected employee's calendar column (issue #1608).
   const [employeeIds, setEmployeeIds] = useState<string[]>(
-    defaultEmployeeId ? [defaultEmployeeId] : [],
+    defaultEmployeeIds && defaultEmployeeIds.length > 0
+      ? defaultEmployeeIds
+      : defaultEmployeeId
+      ? [defaultEmployeeId]
+      : [],
   );
   const [employeePickerOpen, setEmployeePickerOpen] = useState(false);
   const [categoryId, setCategoryId] = useState<
@@ -111,10 +122,16 @@ export function EventDialog({
     setEndTime(
       defaultEndTime ?? computeEndTime(defaultTime ?? "09:00", 60),
     );
-    setEmployeeIds(defaultEmployeeId ? [defaultEmployeeId] : []);
+    setEmployeeIds(
+      defaultEmployeeIds && defaultEmployeeIds.length > 0
+        ? defaultEmployeeIds
+        : defaultEmployeeId
+        ? [defaultEmployeeId]
+        : [],
+    );
     setCategoryId(undefined);
     setNotes("");
-  }, [open, defaultDate, defaultTime, defaultEndTime, defaultEmployeeId]);
+  }, [open, defaultDate, defaultTime, defaultEndTime, defaultEmployeeId, defaultEmployeeIds]);
 
   // Keep endTime ≥ startTime as user edits start
   const handleStartTimeChange = useCallback(

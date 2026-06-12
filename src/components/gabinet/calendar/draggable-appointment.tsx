@@ -1,6 +1,6 @@
 import { useDraggable } from "@dnd-kit/core";
-import { GripHorizontal } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
   Popover,
@@ -336,10 +336,25 @@ export function DraggableAppointment({
   return (
     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
       <PopoverAnchor asChild>{card}</PopoverAnchor>
+      {/* Backdrop — dims the busy calendar grid behind the preview so the
+          popover establishes itself as a modal surface (issue #1738). The
+          backdrop sits below the popover (z-40 vs Popover's z-50). Clicking
+          it bubbles to Radix's outside-click detector which closes the
+          popover; drag-to-peek (#1476) still works because the body-drag
+          handler on PopoverContent fires first on its own surface. */}
+      {popoverOpen && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              aria-hidden
+              className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-[2px] animate-in fade-in-0 duration-150"
+            />,
+            document.body,
+          )
+        : null}
       <PopoverContent
         ref={previewContentRef}
         className={cn(
-          "w-[553px] max-w-[calc(100vw-24px)] max-h-[calc(100dvh-24px)] overflow-y-auto p-0",
+          "w-[553px] max-w-[calc(100vw-24px)] max-h-[calc(100dvh-24px)] overflow-y-auto p-0 rounded-xl border-border/60 shadow-2xl",
           isPreviewDragging && "cursor-grabbing select-none",
         )}
         // On mobile the appointment can sit on either side of the screen, and a
@@ -365,23 +380,23 @@ export function DraggableAppointment({
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drag handle bar — mirrors the AppointmentDialog affordance and is
-            the only path to drag the popover on touch devices (issue #1626).
-            role="button" makes the body-wide drag handler skip it via its
-            interactive-element guard, so the bar's own handler (which allows
-            touch input) runs without the body also kicking in. */}
+        {/* Drag affordance — compact iOS-style grab indicator. Replaces the
+            previous uppercase "PRZECIĄGNIJ, ABY PRZESUNĄĆ" bar (issue #1738)
+            which dominated the popover header. The bar is the only path to
+            drag the popover on touch devices (#1626); role="button" makes the
+            body-wide drag handler skip it so the bar's own handler (which
+            allows touch input) runs without double-firing. */}
         <div
           role="button"
           aria-label={t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}
           title={t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}
           onPointerDown={handlePreviewHandleDragStart}
           className={cn(
-            "sticky top-0 z-10 flex items-center justify-center gap-2 border-b bg-muted px-4 py-2 text-xs font-medium uppercase tracking-wide text-foreground/80 hover:bg-muted/80 select-none touch-none transition-colors",
+            "sticky top-0 z-10 flex items-center justify-center border-b border-border/60 bg-background/90 py-2 select-none touch-none transition-colors backdrop-blur-sm hover:bg-muted/40",
             isPreviewDragging ? "cursor-grabbing" : "cursor-grab",
           )}
         >
-          <GripHorizontal className="size-4" />
-          <span>{t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}</span>
+          <div className="h-1 w-9 rounded-full bg-foreground/25" />
         </div>
         <div className="p-4">
           <AppointmentPreviewContent

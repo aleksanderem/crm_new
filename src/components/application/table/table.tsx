@@ -153,7 +153,7 @@ const TableHeader = <T extends object>({ columns, children, bordered = true, cla
                         // Right separator via ::before so we don't clash with the parent's
                         // [&>tr>th]:after rule that draws the header bottom border.
                         "before:pointer-events-none before:absolute before:inset-y-0 before:right-0 before:w-px before:bg-border-secondary before:content-['']",
-                        size === "sm" ? "w-16 md:pl-5" : "w-20 md:pl-6",
+                        size === "sm" ? "w-24 md:pl-5" : "w-28 md:pl-6",
                     )}
                 >
                     {selectionMode === "multiple" && (
@@ -255,7 +255,7 @@ const TableRow = <T extends object>({ columns, children, className, highlightSel
                         // Right separator via ::before so we don't clash with the parent's
                         // [&>td]:after rule that draws the row bottom border.
                         "before:pointer-events-none before:absolute before:inset-y-0 before:right-0 before:w-px before:bg-border-secondary before:content-['']",
-                        size === "sm" ? "w-16 md:pl-5" : "w-20 md:pl-6",
+                        size === "sm" ? "w-24 md:pl-5" : "w-28 md:pl-6",
                     )}
                 >
                     <Checkbox

@@ -1,5 +1,7 @@
 import { useDraggable } from "@dnd-kit/core";
+import { GripHorizontal } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Popover,
   PopoverAnchor,
@@ -70,6 +72,7 @@ export function DraggableAppointment({
     },
   });
 
+  const { t } = useTranslation();
   const [previewEndTime, setPreviewEndTime] = useState<string | null>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -150,6 +153,51 @@ export function DraggableAppointment({
       ) {
         return;
       }
+      e.preventDefault();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startOffset = { ...previewDragOffsetRef.current };
+      setIsPreviewDragging(true);
+
+      let rafId: number | null = null;
+      const flush = () => {
+        rafId = null;
+        applyPreviewDragTransform();
+      };
+
+      const handleMove = (ev: PointerEvent) => {
+        previewDragOffsetRef.current = clampPreviewDragOffset(
+          startOffset.x + (ev.clientX - startX),
+          startOffset.y + (ev.clientY - startY),
+        );
+        if (rafId === null) rafId = requestAnimationFrame(flush);
+      };
+
+      const handleUp = () => {
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+        applyPreviewDragTransform();
+        window.removeEventListener("pointermove", handleMove);
+        window.removeEventListener("pointerup", handleUp);
+        setIsPreviewDragging(false);
+      };
+
+      window.addEventListener("pointermove", handleMove);
+      window.addEventListener("pointerup", handleUp);
+    },
+    [applyPreviewDragTransform, clampPreviewDragOffset],
+  );
+
+  // Drag handle variant (issue #1626): the body-wide handler above skips
+  // touch input so the popover body can scroll natively on mobile, but that
+  // leaves users with no way to reposition the popup on a touch device. The
+  // dedicated bar at the top of the popover invokes this handler so touch
+  // dragging works there without stealing scroll gestures from the body.
+  const handlePreviewHandleDragStart = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0) return;
       e.preventDefault();
       const startX = e.clientX;
       const startY = e.clientY;
@@ -285,7 +333,7 @@ export function DraggableAppointment({
       <PopoverContent
         ref={previewContentRef}
         className={cn(
-          "w-[553px] max-w-[calc(100vw-24px)] max-h-[calc(100dvh-24px)] overflow-y-auto p-4",
+          "w-[553px] max-w-[calc(100vw-24px)] max-h-[calc(100dvh-24px)] overflow-y-auto p-0",
           isPreviewDragging && "cursor-grabbing select-none",
         )}
         // On mobile the appointment can sit on either side of the screen, and a
@@ -311,10 +359,30 @@ export function DraggableAppointment({
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
-        <AppointmentPreviewContent
-          appointmentId={_id}
-          onClose={() => setPopoverOpen(false)}
-        />
+        {/* Drag handle bar — mirrors the AppointmentDialog affordance and is
+            the only path to drag the popover on touch devices (issue #1626).
+            role="button" makes the body-wide drag handler skip it via its
+            interactive-element guard, so the bar's own handler (which allows
+            touch input) runs without the body also kicking in. */}
+        <div
+          role="button"
+          aria-label={t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}
+          title={t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}
+          onPointerDown={handlePreviewHandleDragStart}
+          className={cn(
+            "sticky top-0 z-10 flex items-center justify-center gap-2 border-b bg-muted px-4 py-2 text-xs font-medium uppercase tracking-wide text-foreground/80 hover:bg-muted/80 select-none touch-none transition-colors",
+            isPreviewDragging ? "cursor-grabbing" : "cursor-grab",
+          )}
+        >
+          <GripHorizontal className="size-4" />
+          <span>{t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}</span>
+        </div>
+        <div className="p-4">
+          <AppointmentPreviewContent
+            appointmentId={_id}
+            onClose={() => setPopoverOpen(false)}
+          />
+        </div>
       </PopoverContent>
     </Popover>
   );

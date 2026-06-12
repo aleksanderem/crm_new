@@ -640,7 +640,7 @@ export function FlexibleScheduleEditor({
                     />
                     <Input
                       type="time"
-                      step={300}
+                      step={900}
                       className="h-7 w-22"
                       value={h.startTime}
                       onChange={(e) =>
@@ -650,7 +650,7 @@ export function FlexibleScheduleEditor({
                     />
                     <Input
                       type="time"
-                      step={300}
+                      step={900}
                       className="h-7 w-22"
                       value={h.endTime}
                       onChange={(e) =>
@@ -662,7 +662,7 @@ export function FlexibleScheduleEditor({
                       <div className="flex items-center gap-1">
                         <Input
                           type="time"
-                          step={300}
+                          step={900}
                           className="h-7 w-22"
                           value={h.breakStart}
                           onChange={(e) =>
@@ -677,7 +677,7 @@ export function FlexibleScheduleEditor({
                         <span className="text-xs text-muted-foreground">–</span>
                         <Input
                           type="time"
-                          step={300}
+                          step={900}
                           className="h-7 w-22"
                           value={h.breakEnd}
                           onChange={(e) =>

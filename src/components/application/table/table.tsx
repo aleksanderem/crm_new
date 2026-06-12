@@ -149,11 +149,11 @@ const TableHeader = <T extends object>({ columns, children, bordered = true, cla
             {selectionBehavior === "toggle" && (
                 <AriaColumn
                     className={cx(
-                        "relative py-2 pr-0 pl-4",
+                        "relative py-2 pr-0 pl-2",
                         // Right separator via ::before so we don't clash with the parent's
                         // [&>tr>th]:after rule that draws the header bottom border.
                         "before:pointer-events-none before:absolute before:inset-y-0 before:right-0 before:w-px before:bg-border-secondary before:content-['']",
-                        size === "sm" ? "w-24 md:pl-5" : "w-28 md:pl-6",
+                        size === "sm" ? "w-24 md:pl-3" : "w-28 md:pl-4",
                     )}
                 >
                     {selectionMode === "multiple" && (
@@ -161,8 +161,8 @@ const TableHeader = <T extends object>({ columns, children, bordered = true, cla
                             slot="selection"
                             size="md"
                             className={cx(
-                                "absolute inset-0 !flex !items-center cursor-pointer pl-4",
-                                size === "sm" ? "md:pl-5" : "md:pl-6",
+                                "absolute inset-0 !flex !items-center cursor-pointer pl-2",
+                                size === "sm" ? "md:pl-3" : "md:pl-4",
                             )}
                         />
                     )}
@@ -251,19 +251,19 @@ const TableRow = <T extends object>({ columns, children, className, highlightSel
             {selectionBehavior === "toggle" && (
                 <AriaCell
                     className={cx(
-                        "relative py-2 pr-0 pl-4",
+                        "relative py-2 pr-0 pl-2",
                         // Right separator via ::before so we don't clash with the parent's
                         // [&>td]:after rule that draws the row bottom border.
                         "before:pointer-events-none before:absolute before:inset-y-0 before:right-0 before:w-px before:bg-border-secondary before:content-['']",
-                        size === "sm" ? "w-24 md:pl-5" : "w-28 md:pl-6",
+                        size === "sm" ? "w-24 md:pl-3" : "w-28 md:pl-4",
                     )}
                 >
                     <Checkbox
                         slot="selection"
                         size="md"
                         className={cx(
-                            "absolute inset-0 !flex !items-center cursor-pointer pl-4",
-                            size === "sm" ? "md:pl-5" : "md:pl-6",
+                            "absolute inset-0 !flex !items-center cursor-pointer pl-2",
+                            size === "sm" ? "md:pl-3" : "md:pl-4",
                         )}
                     />
                 </AriaCell>

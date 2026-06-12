@@ -1,5 +1,147 @@
 import type { TFunction } from "i18next";
 
+// Snake_case Postgres column name → Polish form label. Used to turn raw
+// backend errors like `null value in column "duration"` into something the
+// end-user can act on (#1647 — generic "nieprawidłowe dane" toast hid which
+// field was wrong). Treatment-specific entries are listed first; the map is
+// shared across domains since column names rarely collide.
+const COLUMN_LABEL_MAP: Record<string, string> = {
+  name: "Nazwa",
+  duration: "Czas trwania",
+  price: "Cena",
+  currency: "Waluta",
+  tax_rate: "Stawka VAT",
+  tax_exempt: "Zwolnienie z VAT",
+  color: "Kolor",
+  category: "Kategoria",
+  category_id: "Kategoria",
+  tag_ids: "Tagi",
+  description: "Opis",
+  contraindications: "Przeciwwskazania",
+  preparation_instructions: "Instrukcje przygotowania",
+  aftercare_instructions: "Zalecenia po zabiegu",
+  required_equipment: "Wymagany sprzęt",
+  required_equipment_ids: "Wymagany sprzęt",
+  requires_approval: "Wymaga zatwierdzenia",
+  treatment_count: "Liczba zabiegów w pakiecie",
+  package_id: "Powiązany pakiet",
+  organization_id: "Organizacja",
+  created_by: "Utworzone przez",
+};
+
+function humanFieldLabel(rawField: string): string {
+  const snake = rawField
+    .replace(/([A-Z])/g, "_$1")
+    .toLowerCase()
+    .replace(/^_/, "");
+  return COLUMN_LABEL_MAP[snake] ?? COLUMN_LABEL_MAP[rawField] ?? rawField;
+}
+
+// Best-effort extraction of "which field" and "why" from raw Postgres /
+// Convex validator error messages. Returns `null` when we cannot identify a
+// specific field — callers fall back to the generic invalidArguments toast.
+export interface FieldValidationDetail {
+  /** Human-readable Polish label for the offending field. */
+  fieldLabel: string;
+  /** Raw column or argument name as it appeared in the backend message. */
+  rawField: string;
+  /** Short Polish reason suitable for inclusion in a toast. */
+  reason: string;
+}
+
+export function extractFieldValidationDetail(
+  msg: string,
+): FieldValidationDetail | null {
+  // Postgres: null value in column "X" of relation "..." violates not-null
+  const nullCol = msg.match(/null value in column "([^"]+)"/i);
+  if (nullCol) {
+    return {
+      rawField: nullCol[1],
+      fieldLabel: humanFieldLabel(nullCol[1]),
+      reason: "to pole jest wymagane",
+    };
+  }
+
+  // Postgres: column "X" of relation "..." does not exist (also raw column
+  // missing — PGRST204 is caught separately by the schemaCache matcher).
+  const missingCol = msg.match(/column "([^"]+)" (?:of relation [^ ]+ )?does not exist/i);
+  if (missingCol) {
+    return {
+      rawField: missingCol[1],
+      fieldLabel: humanFieldLabel(missingCol[1]),
+      reason: "kolumna nie istnieje w bazie",
+    };
+  }
+
+  // Postgres: invalid input syntax for type X: "Y"  (no column in message,
+  // so we can only report the type).
+  const invalidSyntax = msg.match(/invalid input syntax for type (\w+)(?:: "([^"]*)")?/i);
+  if (invalidSyntax) {
+    return {
+      rawField: invalidSyntax[1],
+      fieldLabel: invalidSyntax[2]
+        ? `wartość "${invalidSyntax[2]}"`
+        : invalidSyntax[1],
+      reason: `nieprawidłowy format (oczekiwano: ${invalidSyntax[1]})`,
+    };
+  }
+
+  // Postgres: numeric field overflow
+  const overflow = msg.match(/numeric field overflow/i);
+  if (overflow) {
+    return {
+      rawField: "numeric",
+      fieldLabel: "Wartość liczbowa",
+      reason: "liczba jest za duża",
+    };
+  }
+
+  // Postgres: value too long for type character varying(N)
+  const tooLong = msg.match(/value too long for type [^,]+/i);
+  if (tooLong) {
+    return {
+      rawField: "string",
+      fieldLabel: "Tekst",
+      reason: "wartość jest za długa",
+    };
+  }
+
+  // Postgres: violates check constraint "X" — extract constraint name.
+  const checkCon = msg.match(/violates check constraint "([^"]+)"/i);
+  if (checkCon) {
+    return {
+      rawField: checkCon[1],
+      fieldLabel: humanFieldLabel(checkCon[1]),
+      reason: "wartość nie spełnia ograniczenia",
+    };
+  }
+
+  // Postgres: violates foreign key constraint "X" — happens when a referenced
+  // row (e.g. selected package, category) no longer exists.
+  const fkCon = msg.match(/violates foreign key constraint "([^"]+)"/i);
+  if (fkCon) {
+    return {
+      rawField: fkCon[1],
+      fieldLabel: humanFieldLabel(fkCon[1]),
+      reason: "powiązany rekord nie istnieje",
+    };
+  }
+
+  // Convex: Value '...' for argument 'X' is not a valid value
+  // (also matches "Value ... does not match validator").
+  const convexArg = msg.match(/(?:for argument|argument) ['"]?([A-Za-z_][A-Za-z0-9_]*)['"]?/i);
+  if (convexArg) {
+    const rawField = convexArg[1];
+    return {
+      rawField,
+      fieldLabel: humanFieldLabel(rawField),
+      reason: "nieprawidłowa wartość",
+    };
+  }
+
+  return null;
+}
+
 // Convex Action errors arrive on the client as plain `Error` instances whose
 // `.message` is wrapped with the framework's diagnostic prefix, e.g.:
 //
@@ -185,6 +327,16 @@ export function formatTreatmentError(
   const inner = extractActionErrorMessage(err);
   for (const entry of TREATMENT_ERROR_MAP) {
     if (entry.test(inner)) {
+      if (entry.key === "gabinet.treatments.errors.invalidArguments") {
+        const detail = extractFieldValidationDetail(inner);
+        if (detail) {
+          return t("gabinet.treatments.errors.invalidField", {
+            field: detail.fieldLabel,
+            reason: detail.reason,
+            defaultValue: `Nieprawidłowe dane: ${detail.fieldLabel} — ${detail.reason}.`,
+          });
+        }
+      }
       return t(entry.key, { defaultValue: entry.fallback });
     }
   }
@@ -234,6 +386,16 @@ export function formatActionError(
   const inner = extractActionErrorMessage(err);
   for (const entry of GENERIC_ERROR_MAP) {
     if (entry.test(inner)) {
+      if (entry.key === "common.errors.invalidArguments") {
+        const detail = extractFieldValidationDetail(inner);
+        if (detail) {
+          return t("common.errors.invalidField", {
+            field: detail.fieldLabel,
+            reason: detail.reason,
+            defaultValue: `Nieprawidłowe dane: ${detail.fieldLabel} — ${detail.reason}.`,
+          });
+        }
+      }
       return t(entry.key, { defaultValue: entry.fallback });
     }
   }

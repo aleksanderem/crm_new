@@ -623,6 +623,13 @@ export function AppointmentPreviewContent({
     .filter((p) => p.status === "completed")
     .reduce((sum, p) => sum + (p.amount ?? 0), 0);
 
+  // Drives the "already settled" affordance on the Rozlicz button (issue #1688).
+  // Settle = visit closed AND nothing left to pay; otherwise the primary button
+  // stays blue so staff can finish the workflow.
+  const isSettled =
+    appointment.status === "completed" &&
+    (treatmentPrice === 0 || completedPaid >= treatmentPrice);
+
   const patientCreditBalance = (detail.patientCreditBalance ?? 0) as number;
 
   // Compact indicator pills mirroring the calendar card surface (issue #730).
@@ -1392,13 +1399,21 @@ export function AppointmentPreviewContent({
         </Button>
         <Button
           size="sm"
+          variant={isSettled ? "outline" : "default"}
           className="h-8 text-xs"
           onClick={handleOpenSettleDialog}
-          disabled={saving || settleSubmitting}
+          disabled={saving || settleSubmitting || isSettled}
         >
-          {saving
-            ? t("common.saving")
-            : t("gabinet.appointmentDetail.closeAndSettle", "Rozlicz wizytę")}
+          {saving ? (
+            t("common.saving")
+          ) : isSettled ? (
+            <>
+              <CircleCheck className="mr-1 size-3" />
+              {t("gabinet.appointmentDetail.settled", "Rozliczono")}
+            </>
+          ) : (
+            t("gabinet.appointmentDetail.closeAndSettle", "Rozlicz wizytę")
+          )}
         </Button>
       </div>
 

@@ -2326,20 +2326,23 @@ async function handleAppointmentCompletion(
     }
   }
 
-  // 3. Create pending payment (if not covered by package)
-  if (
-    !args.packageUsageId &&
-    treatment &&
-    (treatment.price ?? 0) > 0
-  ) {
+  // 3. Create payment row for the completed visit.
+  // Package-covered visits get a completed `package` row (the package was
+  // paid for at purchase, so the visit clears the calendar's unpaid
+  // indicator without manual settling — #1524). Otherwise insert the
+  // pending cash row staff settle later.
+  if (treatment && (treatment.price ?? 0) > 0) {
+    const isPackageCovered = !!args.packageUsageId;
     await supabaseDb.insert("payments", {
       organizationId: organizationIdStr,
       patientId: patientIdStr,
       appointmentId: String(args.appointmentId),
+      packageUsageId: isPackageCovered ? String(args.packageUsageId) : null,
       amount: treatment.price as number,
       currency: "PLN",
-      paymentMethod: "cash",
-      status: "pending",
+      paymentMethod: isPackageCovered ? "package" : "cash",
+      status: isPackageCovered ? "completed" : "pending",
+      paidAt: isPackageCovered ? now : null,
       createdBy: userIdStr,
       createdAt: now,
       updatedAt: now,

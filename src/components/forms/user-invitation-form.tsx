@@ -82,12 +82,14 @@ interface UserInvitationFormProps {
   onSubmit: (data: UserInvitationFormData) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
+  defaultModule?: InviteModule;
 }
 
 export function UserInvitationForm({
   onSubmit,
   onCancel,
   isSubmitting = false,
+  defaultModule = "none",
 }: UserInvitationFormProps) {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
@@ -103,7 +105,7 @@ export function UserInvitationForm({
   );
 
   // Gabinet-specific data sources — only fetched lazily once Gabinet is picked.
-  const [module, setModule] = useState<InviteModule>("none");
+  const [module, setModule] = useState<InviteModule>(defaultModule);
 
   const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
   const { data: treatments } = useQuery({

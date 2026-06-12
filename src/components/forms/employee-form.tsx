@@ -1,9 +1,9 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
-import { Link } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
@@ -18,8 +18,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
+import {
+  UserInvitationForm,
+  type UserInvitationFormData,
+} from "@/components/forms/user-invitation-form";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { Search } from "@/lib/ez-icons";
 
 const ROLES = ["doctor", "nurse", "therapist", "receptionist", "admin", "other"] as const;
@@ -112,6 +124,11 @@ export function EmployeeForm({
       .map((m) => ({ _id: m.userId, name: m.user!.name, email: m.user!.email }));
   }, [members, employees]);
 
+  const queryClient = useQueryClient();
+  const createInvitation = useAction(api.invitations.create);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
+
   const [userId, setUserId] = useState<string>(initialData?.userId ?? "");
   const [firstName, setFirstName] = useState(initialData?.firstName ?? "");
   const [lastName, setLastName] = useState(initialData?.lastName ?? "");
@@ -188,18 +205,61 @@ export function EmployeeForm({
               )}
             </SelectContent>
           </Select>
-          {availableUsers.length === 0 && (
-            <p className="text-xs text-muted-foreground">
-              {t("gabinet.employees.allUsersRegistered")}{" "}
-              <Link
-                to="/dashboard/settings/team"
-                className="text-brand-secondary underline hover:no-underline"
-              >
-                {t("gabinet.employees.inviteTeamMember", { defaultValue: "Zaproś nowego członka zespołu" })}
-              </Link>
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground">
+            {availableUsers.length === 0 && (
+              <>{t("gabinet.employees.allUsersRegistered")}{" "}</>
+            )}
+            <button
+              type="button"
+              onClick={() => setInviteOpen(true)}
+              className="text-brand-secondary underline hover:no-underline"
+            >
+              {t("gabinet.employees.inviteTeamMember", { defaultValue: "Zaproś nowego członka zespołu" })}
+            </button>
+          </p>
         </div>
+      )}
+
+      {requireUserSelection && (
+        <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+          <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{t("team.inviteDialog.title")}</DialogTitle>
+              <DialogDescription>
+                {t("team.inviteDialog.description")}
+              </DialogDescription>
+            </DialogHeader>
+            <UserInvitationForm
+              defaultModule="gabinet"
+              isSubmitting={isSendingInvite}
+              onCancel={() => setInviteOpen(false)}
+              onSubmit={async (data: UserInvitationFormData) => {
+                setIsSendingInvite(true);
+                try {
+                  await createInvitation({
+                    organizationId,
+                    email: data.email,
+                    role: data.role as "admin" | "member" | "viewer" | "owner",
+                    module: data.module,
+                    moduleData: data.moduleData,
+                  });
+                  toast.success(t("team.invitationSent"));
+                  void queryClient.invalidateQueries({
+                    queryKey: supabaseKeys.invitations.list(organizationId),
+                  });
+                  void queryClient.invalidateQueries({
+                    queryKey: supabaseKeys.teamMemberships.list(organizationId),
+                  });
+                  setInviteOpen(false);
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : String(e));
+                } finally {
+                  setIsSendingInvite(false);
+                }
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Name fields */}

@@ -445,7 +445,7 @@ export async function checkConflictSupabase(
     }
   }
 
-  if (args.roomId) {
+  if (args.roomId && !args.allowBookingConflict) {
     const roomAppointments = await db
       .query("gabinetAppointments")
       .eq("organizationId", args.organizationId)

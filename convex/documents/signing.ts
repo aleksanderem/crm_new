@@ -15,6 +15,21 @@ async function markSent(db: SupabaseDb, documentId: string): Promise<void> {
   });
 }
 
+/** RFC 2047 encoded-word for non-ASCII Subject headers. Without this Gmail
+ *  ships the raw UTF-8 bytes and clients (Gmail/Outlook) render `ż`, `ą`, `ę`
+ *  as mojibake. Format: `=?UTF-8?B?<base64>?=`. */
+function encodeMimeSubject(s: string): string {
+  // Skip the wrapping if the subject is pure ASCII — saves bytes and is more
+  // readable in raw headers.
+  // eslint-disable-next-line no-control-regex
+  if (!/[^\x00-\x7F]/.test(s)) return s;
+  // btoa needs binary string; encode UTF-8 first.
+  const utf8 = unescape(encodeURIComponent(s));
+  return `=?UTF-8?B?${btoa(utf8)}?=`;
+}
+
+const SIGNING_TOKEN_TTL_MS = 48 * 60 * 60 * 1000; // 48h, matches the email copy
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -71,6 +86,22 @@ export const sendSigningEmailInternal = internalAction({
         `[signing] Cannot send email — document ${args.documentId} not found or has no signing token`,
       );
       return;
+    }
+
+    // Bump the expiry so the link the recipient is about to click is valid
+    // for the full window advertised in the email copy ("ważny 48h"). Without
+    // this every resend would carry the original (possibly already expired)
+    // expiry from the doc creation moment, and the recipient would see
+    // "Signing link expired" the second they click.
+    const newExpiry = Date.now() + SIGNING_TOKEN_TTL_MS;
+    if (
+      !doc.signingTokenExpiresAt ||
+      (doc.signingTokenExpiresAt as number) < newExpiry
+    ) {
+      await db.patch("formDocuments", args.documentId, {
+        signingTokenExpiresAt: newExpiry,
+        updatedAt: Date.now(),
+      });
     }
 
     const organizationId = String(doc.organizationId);
@@ -236,10 +267,13 @@ export const sendSigningEmailInternal = internalAction({
         ? `${data.senderName} <${data.senderEmail}>`
         : data.senderEmail;
 
-      // Build RFC 2822 MIME message
+      // Build RFC 2822 MIME message. Subject goes through RFC 2047
+      // encoded-word so Gmail/Outlook render Polish diacritics correctly
+      // (previously the raw UTF-8 turned into mojibake in the inbox).
       let rawMessage = `From: ${fromAddress}\r\n`;
       rawMessage += `To: ${args.recipientEmail}\r\n`;
-      rawMessage += `Subject: ${subject}\r\n`;
+      rawMessage += `Subject: ${encodeMimeSubject(subject)}\r\n`;
+      rawMessage += `MIME-Version: 1.0\r\n`;
       rawMessage += `Content-Type: text/html; charset=utf-8\r\n`;
       rawMessage += `\r\n`;
       rawMessage += html;

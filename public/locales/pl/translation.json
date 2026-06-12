@@ -2936,6 +2936,13 @@
       "settleMarkCompleted": "Oznacz wizytę jako zakończoną",
       "settleNothingToDo": "Wpisz kwotę lub zaznacz zamknięcie wizyty.",
       "settleSuccess": "Wizyta rozliczona",
+      "deductFromPackage": "Zdejmij sztuki z aktywnego pakietu pacjenta",
+      "choosePackage": "Wybierz pakiet",
+      "packageRemaining": "{{name}} — pozostało {{remaining}} z {{total}}",
+      "unitsToDeduct": "Ile sztuk zdjąć?",
+      "packageNotSelected": "Wybierz pakiet, z którego chcesz zdjąć sztuki.",
+      "packageQuantityMin": "Liczba sztuk musi wynosić co najmniej 1.",
+      "packageQuantityExceeds": "Liczba sztuk przekracza pozostałą ilość w pakiecie.",
       "history": {
         "unifiedDescription": "Ujednolicona historia operacyjna tej wizyty, w tym wiadomości i zdarzenia workflow.",
         "metadata": {

@@ -1850,7 +1850,7 @@ function GabinetCalendarPage() {
           defaultDate={createDefaultDate}
           defaultTime={createDefaultTime}
           defaultEndTime={createDefaultEndTime}
-          defaultEmployeeId={createDefaultEmployeeId}
+          defaultUserId={createDefaultEmployeeId}
           onManageEventTypes={() => setEventTypesSlideoutOpen(true)}
         />
 

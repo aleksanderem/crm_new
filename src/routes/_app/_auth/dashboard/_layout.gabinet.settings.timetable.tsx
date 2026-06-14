@@ -642,6 +642,49 @@ function TimetablePage() {
       <div className="flex flex-col gap-6">
         {weeks.map((week, weekIdx) => {
           const isCurrentWeek = weekIdx === 0;
+          const buildEmployeeWeekRow = (emp: MappedGabinetEmployee) => {
+            const meta = getEmployeeScheduleMeta(emp, schedules, clinicHours);
+            const upcomingLeave = findUpcomingOrActiveLeave(
+              leaves,
+              emp.userId,
+              today,
+              leaveHorizon,
+            );
+            const leaveBadgeLabel = upcomingLeave
+              ? upcomingLeave.startDate <= today
+                ? t("gabinet.timetable.onLeaveBadge", {
+                    end: upcomingLeave.endDate,
+                  })
+                : t("gabinet.timetable.upcomingLeaveBadge", {
+                    start: upcomingLeave.startDate,
+                    end: upcomingLeave.endDate,
+                  })
+              : null;
+            const { entries, activePeriod } = resolveWeekSchedule(
+              meta,
+              week.monday,
+            );
+            const activeDatedLabel = activePeriod?.effectiveFrom
+              ? `${activePeriod.effectiveFrom}${
+                  activePeriod.effectiveTo
+                    ? ` — ${activePeriod.effectiveTo}`
+                    : ` — ${t("gabinet.employees.schedule.ongoing")}`
+                }`
+              : null;
+            const totalWeeklyMinutes = computeWeeklyMinutes(
+              entries,
+              week.dates,
+              leaves,
+              emp.userId,
+            );
+            return {
+              meta,
+              leaveBadgeLabel,
+              entries,
+              activeDatedLabel,
+              totalWeeklyMinutes,
+            };
+          };
           return (
             <div key={week.monday} className="flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-2">
@@ -654,85 +697,206 @@ function TimetablePage() {
                   </Badge>
                 )}
               </div>
-              <div className="rounded-lg border overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50 text-xs font-medium text-muted-foreground">
-                      <th className="px-3 py-2 text-left min-w-[180px]">
-                        {t("gabinet.timetable.employee")}
-                      </th>
-                      {DISPLAY_ORDER.map((dayIdx, i) => (
-                        <th
-                          key={dayIdx}
-                          className="px-1.5 py-2 text-center min-w-[72px]"
-                        >
-                          <span>{dayNames[i]}</span>
-                        </th>
-                      ))}
-                      <th className="px-1.5 py-2 text-center min-w-[64px] whitespace-nowrap">
-                        {t("gabinet.timetable.totalHours")}
-                      </th>
-                      <th className="px-1.5 py-2 w-[88px]"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedEmployees.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={10}
-                          className="px-4 py-8 text-center text-muted-foreground"
-                        >
-                          {t("gabinet.timetable.empty")}
-                        </td>
-                      </tr>
-                    )}
+              {sortedEmployees.length === 0 ? (
+                <div className="rounded-lg border px-4 py-8 text-center text-sm text-muted-foreground">
+                  {t("gabinet.timetable.empty")}
+                </div>
+              ) : (
+                <>
+                  <div className="hidden md:block rounded-lg border overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/50 text-xs font-medium text-muted-foreground">
+                          <th className="px-3 py-2 text-left min-w-[180px]">
+                            {t("gabinet.timetable.employee")}
+                          </th>
+                          {DISPLAY_ORDER.map((dayIdx, i) => (
+                            <th
+                              key={dayIdx}
+                              className="px-1.5 py-2 text-center min-w-[72px]"
+                            >
+                              <span>{dayNames[i]}</span>
+                            </th>
+                          ))}
+                          <th className="px-1.5 py-2 text-center min-w-[64px] whitespace-nowrap">
+                            {t("gabinet.timetable.totalHours")}
+                          </th>
+                          <th className="px-1.5 py-2 w-[88px]"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sortedEmployees.map((emp) => {
+                          const row = buildEmployeeWeekRow(emp);
+                          return (
+                            <tr
+                              key={`${emp._id}-${week.monday}`}
+                              className="border-b last:border-b-0"
+                            >
+                              <td className="px-3 py-2 align-top">
+                                <div className="flex flex-col">
+                                  <span className="font-medium">
+                                    {employeeName(emp)}
+                                  </span>
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                    {emp.specialization && (
+                                      <span className="text-xs text-muted-foreground">
+                                        {emp.specialization}
+                                      </span>
+                                    )}
+                                    {!row.meta.hasOverrides && (
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[10px] h-4 px-1"
+                                      >
+                                        {t("gabinet.timetable.usingDefaults")}
+                                      </Badge>
+                                    )}
+                                    {row.meta.datedPeriods > 0 && (
+                                      <Badge
+                                        variant="secondary"
+                                        className="text-[10px] h-4 px-1"
+                                        title={t(
+                                          "gabinet.timetable.datedPeriodsHint",
+                                        )}
+                                      >
+                                        {t(
+                                          "gabinet.timetable.datedPeriodsCount",
+                                          { count: row.meta.datedPeriods },
+                                        )}
+                                      </Badge>
+                                    )}
+                                    {row.leaveBadgeLabel && (
+                                      <Badge
+                                        variant="destructive"
+                                        className="text-[10px] h-4 px-1"
+                                        title={t(
+                                          "gabinet.timetable.leaveBadgeHint",
+                                        )}
+                                      >
+                                        {row.leaveBadgeLabel}
+                                      </Badge>
+                                    )}
+                                    {row.activeDatedLabel && (
+                                      <Badge
+                                        variant="secondary"
+                                        className="text-[10px] h-4 px-1 whitespace-nowrap"
+                                        title={t(
+                                          "gabinet.timetable.activePeriodHint",
+                                        )}
+                                      >
+                                        {row.activeDatedLabel}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              {DISPLAY_ORDER.map((dayIdx) => {
+                                const entry = row.entries.find(
+                                  (e) => e.dayOfWeek === dayIdx,
+                                );
+                                const date = week.dates.get(dayIdx);
+                                const leave = date
+                                  ? findLeaveForDate(leaves, emp.userId, date)
+                                  : undefined;
+                                const dateLabel = formatShortDate(
+                                  date,
+                                  i18n.language,
+                                );
+                                return (
+                                  <td
+                                    key={dayIdx}
+                                    className="px-1.5 py-2 text-center align-middle"
+                                  >
+                                    <div className="flex flex-col items-center leading-tight">
+                                      {dateLabel && (
+                                        <span className="text-[10px] text-muted-foreground">
+                                          {dateLabel}
+                                        </span>
+                                      )}
+                                      {leave ? (
+                                        <div
+                                          className="text-xs leading-tight"
+                                          title={`${leave.startDate} — ${leave.endDate}${
+                                            leave.reason
+                                              ? `\n${leave.reason}`
+                                              : ""
+                                          }`}
+                                        >
+                                          <Badge
+                                            variant="destructive"
+                                            className="text-[10px] h-4 px-1"
+                                          >
+                                            {t("gabinet.timetable.onLeaveCell")}
+                                          </Badge>
+                                          {entry?.isWorking && (
+                                            <div className="text-muted-foreground text-[10px] line-through mt-0.5">
+                                              {entry.startTime}–{entry.endTime}
+                                            </div>
+                                          )}
+                                        </div>
+                                      ) : entry?.isWorking ? (
+                                        <div className="text-xs leading-tight">
+                                          <div className="font-medium">
+                                            {entry.startTime}–{entry.endTime}
+                                          </div>
+                                          {entry.breakStart &&
+                                            entry.breakEnd && (
+                                              <div className="text-muted-foreground text-[10px]">
+                                                {t("gabinet.schedules.break")}:{" "}
+                                                {entry.breakStart}–
+                                                {entry.breakEnd}
+                                              </div>
+                                            )}
+                                        </div>
+                                      ) : (
+                                        <span className="text-xs text-muted-foreground">
+                                          —
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                );
+                              })}
+                              <td className="px-1.5 py-2 text-center align-middle">
+                                <span
+                                  className="text-xs font-medium tabular-nums"
+                                  title={t("gabinet.timetable.totalHoursHint")}
+                                >
+                                  {formatMinutesAsHours(row.totalWeeklyMinutes)}
+                                </span>
+                              </td>
+                              <td className="px-1.5 py-2 text-right align-top">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setEditingEmployee(emp)}
+                                  aria-label={t("common.edit")}
+                                >
+                                  <Pencil
+                                    className="mr-1 h-4 w-4"
+                                    variant="stroke"
+                                  />
+                                  {t("common.edit")}
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="md:hidden flex flex-col gap-3">
                     {sortedEmployees.map((emp) => {
-                      const meta = getEmployeeScheduleMeta(
-                        emp,
-                        schedules,
-                        clinicHours,
-                      );
-                      const upcomingLeave = findUpcomingOrActiveLeave(
-                        leaves,
-                        emp.userId,
-                        today,
-                        leaveHorizon,
-                      );
-                      const leaveBadgeLabel = upcomingLeave
-                        ? upcomingLeave.startDate <= today
-                          ? t("gabinet.timetable.onLeaveBadge", {
-                              end: upcomingLeave.endDate,
-                            })
-                          : t("gabinet.timetable.upcomingLeaveBadge", {
-                              start: upcomingLeave.startDate,
-                              end: upcomingLeave.endDate,
-                            })
-                        : null;
-                      const { entries, activePeriod } = resolveWeekSchedule(
-                        meta,
-                        week.monday,
-                      );
-                      const activeDatedLabel = activePeriod?.effectiveFrom
-                        ? `${activePeriod.effectiveFrom}${
-                            activePeriod.effectiveTo
-                              ? ` — ${activePeriod.effectiveTo}`
-                              : ` — ${t("gabinet.employees.schedule.ongoing")}`
-                          }`
-                        : null;
-                      const totalWeeklyMinutes = computeWeeklyMinutes(
-                        entries,
-                        week.dates,
-                        leaves,
-                        emp.userId,
-                      );
+                      const row = buildEmployeeWeekRow(emp);
                       return (
-                        <tr
-                          key={`${emp._id}-${week.monday}`}
-                          className="border-b last:border-b-0"
+                        <div
+                          key={`${emp._id}-${week.monday}-mobile`}
+                          className="rounded-lg border p-3 flex flex-col gap-3"
                         >
-                          <td className="px-3 py-2 align-top">
-                            <div className="flex flex-col">
-                              <span className="font-medium">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <span className="font-medium truncate">
                                 {employeeName(emp)}
                               </span>
                               <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
@@ -741,7 +905,7 @@ function TimetablePage() {
                                     {emp.specialization}
                                   </span>
                                 )}
-                                {!meta.hasOverrides && (
+                                {!row.meta.hasOverrides && (
                                   <Badge
                                     variant="outline"
                                     className="text-[10px] h-4 px-1"
@@ -749,123 +913,40 @@ function TimetablePage() {
                                     {t("gabinet.timetable.usingDefaults")}
                                   </Badge>
                                 )}
-                                {meta.datedPeriods > 0 && (
+                                {row.meta.datedPeriods > 0 && (
                                   <Badge
                                     variant="secondary"
                                     className="text-[10px] h-4 px-1"
-                                    title={t(
-                                      "gabinet.timetable.datedPeriodsHint",
-                                    )}
                                   >
                                     {t("gabinet.timetable.datedPeriodsCount", {
-                                      count: meta.datedPeriods,
+                                      count: row.meta.datedPeriods,
                                     })}
                                   </Badge>
                                 )}
-                                {leaveBadgeLabel && (
+                                {row.leaveBadgeLabel && (
                                   <Badge
                                     variant="destructive"
                                     className="text-[10px] h-4 px-1"
-                                    title={t(
-                                      "gabinet.timetable.leaveBadgeHint",
-                                    )}
                                   >
-                                    {leaveBadgeLabel}
+                                    {row.leaveBadgeLabel}
                                   </Badge>
                                 )}
-                                {activeDatedLabel && (
+                                {row.activeDatedLabel && (
                                   <Badge
                                     variant="secondary"
-                                    className="text-[10px] h-4 px-1 whitespace-nowrap"
-                                    title={t(
-                                      "gabinet.timetable.activePeriodHint",
-                                    )}
+                                    className="text-[10px] h-4 px-1"
                                   >
-                                    {activeDatedLabel}
+                                    {row.activeDatedLabel}
                                   </Badge>
                                 )}
                               </div>
                             </div>
-                          </td>
-                          {DISPLAY_ORDER.map((dayIdx) => {
-                            const entry = entries.find(
-                              (e) => e.dayOfWeek === dayIdx,
-                            );
-                            const date = week.dates.get(dayIdx);
-                            const leave = date
-                              ? findLeaveForDate(leaves, emp.userId, date)
-                              : undefined;
-                            const dateLabel = formatShortDate(
-                              date,
-                              i18n.language,
-                            );
-                            return (
-                              <td
-                                key={dayIdx}
-                                className="px-1.5 py-2 text-center align-middle"
-                              >
-                                <div className="flex flex-col items-center leading-tight">
-                                  {dateLabel && (
-                                    <span className="text-[10px] text-muted-foreground">
-                                      {dateLabel}
-                                    </span>
-                                  )}
-                                  {leave ? (
-                                    <div
-                                      className="text-xs leading-tight"
-                                      title={`${leave.startDate} — ${leave.endDate}${
-                                        leave.reason
-                                          ? `\n${leave.reason}`
-                                          : ""
-                                      }`}
-                                    >
-                                      <Badge
-                                        variant="destructive"
-                                        className="text-[10px] h-4 px-1"
-                                      >
-                                        {t("gabinet.timetable.onLeaveCell")}
-                                      </Badge>
-                                      {entry?.isWorking && (
-                                        <div className="text-muted-foreground text-[10px] line-through mt-0.5">
-                                          {entry.startTime}–{entry.endTime}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ) : entry?.isWorking ? (
-                                    <div className="text-xs leading-tight">
-                                      <div className="font-medium">
-                                        {entry.startTime}–{entry.endTime}
-                                      </div>
-                                      {entry.breakStart && entry.breakEnd && (
-                                        <div className="text-muted-foreground text-[10px]">
-                                          {t("gabinet.schedules.break")}:{" "}
-                                          {entry.breakStart}–{entry.breakEnd}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <span className="text-xs text-muted-foreground">
-                                      —
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-                            );
-                          })}
-                          <td className="px-1.5 py-2 text-center align-middle">
-                            <span
-                              className="text-xs font-medium tabular-nums"
-                              title={t("gabinet.timetable.totalHoursHint")}
-                            >
-                              {formatMinutesAsHours(totalWeeklyMinutes)}
-                            </span>
-                          </td>
-                          <td className="px-1.5 py-2 text-right align-top">
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => setEditingEmployee(emp)}
                               aria-label={t("common.edit")}
+                              className="shrink-0"
                             >
                               <Pencil
                                 className="mr-1 h-4 w-4"
@@ -873,13 +954,93 @@ function TimetablePage() {
                               />
                               {t("common.edit")}
                             </Button>
-                          </td>
-                        </tr>
+                          </div>
+
+                          <div className="flex flex-col text-sm border-t border-b">
+                            {DISPLAY_ORDER.map((dayIdx, i) => {
+                              const entry = row.entries.find(
+                                (e) => e.dayOfWeek === dayIdx,
+                              );
+                              const date = week.dates.get(dayIdx);
+                              const leave = date
+                                ? findLeaveForDate(leaves, emp.userId, date)
+                                : undefined;
+                              const dateLabel = formatShortDate(
+                                date,
+                                i18n.language,
+                              );
+                              return (
+                                <div
+                                  key={dayIdx}
+                                  className="flex items-center justify-between gap-2 py-1.5 border-b last:border-b-0"
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="text-xs font-medium text-muted-foreground w-7 shrink-0">
+                                      {dayNames[i]}
+                                    </span>
+                                    {dateLabel && (
+                                      <span className="text-xs text-muted-foreground shrink-0">
+                                        {dateLabel}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-right min-w-0">
+                                    {leave ? (
+                                      <div className="flex items-center justify-end gap-1.5">
+                                        <Badge
+                                          variant="destructive"
+                                          className="text-[10px] h-4 px-1"
+                                        >
+                                          {t("gabinet.timetable.onLeaveCell")}
+                                        </Badge>
+                                        {entry?.isWorking && (
+                                          <span className="text-muted-foreground line-through">
+                                            {entry.startTime}–{entry.endTime}
+                                          </span>
+                                        )}
+                                      </div>
+                                    ) : entry?.isWorking ? (
+                                      <div>
+                                        <span className="font-medium">
+                                          {entry.startTime}–{entry.endTime}
+                                        </span>
+                                        {entry.breakStart &&
+                                          entry.breakEnd && (
+                                            <span className="ml-1.5 text-muted-foreground text-[10px]">
+                                              {t("gabinet.schedules.break")}:{" "}
+                                              {entry.breakStart}–
+                                              {entry.breakEnd}
+                                            </span>
+                                          )}
+                                      </div>
+                                    ) : (
+                                      <span className="text-muted-foreground">
+                                        —
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">
+                              {t("gabinet.timetable.totalHours")}
+                            </span>
+                            <span
+                              className="font-medium tabular-nums"
+                              title={t("gabinet.timetable.totalHoursHint")}
+                            >
+                              {formatMinutesAsHours(row.totalWeeklyMinutes)}
+                            </span>
+                          </div>
+                        </div>
                       );
                     })}
-                  </tbody>
-                </table>
-              </div>
+                  </div>
+                </>
+              )}
             </div>
           );
         })}

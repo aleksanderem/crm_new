@@ -149,27 +149,31 @@ export function AppFooter() {
           <NudgesBadge />
         </div>
 
-        <div className="flex items-center gap-2 max-sm:min-w-0 max-sm:flex-1 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:-mx-4 max-sm:px-4 max-sm:scrollbar-none sm:flex-wrap">
-          {actions.map((action) => (
-            <Button
-              key={action.labelKey}
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs shrink-0"
-              onClick={() => {
-                if (action.quickCreate) {
-                  openQuickCreate(action.quickCreate);
-                } else if (action.action) {
-                  dispatch(action.action);
-                } else if (action.href) {
-                  navigateTo(action.href, action.search);
-                }
-              }}
-            >
-              <action.icon className="mr-1 h-3.5 w-3.5" />
-              {t(action.labelKey)}
-            </Button>
-          ))}
+        <div className="flex items-center gap-2 max-sm:min-w-0 max-sm:flex-1 max-sm:flex-nowrap max-sm:justify-end sm:flex-wrap">
+          {actions.map((action) => {
+            const label = t(action.labelKey);
+            return (
+              <Button
+                key={action.labelKey}
+                variant="outline"
+                size="sm"
+                aria-label={label}
+                className="h-7 text-xs shrink-0 max-sm:h-8 max-sm:w-8 max-sm:p-0"
+                onClick={() => {
+                  if (action.quickCreate) {
+                    openQuickCreate(action.quickCreate);
+                  } else if (action.action) {
+                    dispatch(action.action);
+                  } else if (action.href) {
+                    navigateTo(action.href, action.search);
+                  }
+                }}
+              >
+                <action.icon className="h-3.5 w-3.5 sm:mr-1" />
+                <span className="max-sm:sr-only">{label}</span>
+              </Button>
+            );
+          })}
           {showGabinetQuickActions && <GabinetQuickActionsDropdown />}
         </div>
       </div>

@@ -30,8 +30,24 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Checkbox } from "@/components/ui/checkbox";
 import { EMPLOYEE_ROLES } from "@/lib/options";
 import { Pencil } from "@/lib/ez-icons";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   FlexibleScheduleEditor,
   findActivePeriod,
@@ -343,6 +359,11 @@ function TimetablePage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [locationFilter, setLocationFilter] = useState<string>("all");
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [employeePickerOpen, setEmployeePickerOpen] = useState(false);
+  const [employeePickerSearch, setEmployeePickerSearch] = useState("");
   const [editingEmployee, setEditingEmployee] =
     useState<MappedGabinetEmployee | null>(null);
 
@@ -372,6 +393,9 @@ function TimetablePage() {
     });
     const needle = search.trim().toLowerCase();
     return list.filter((e) => {
+      if (selectedEmployeeIds.size > 0 && !selectedEmployeeIds.has(e._id)) {
+        return false;
+      }
       if (roleFilter !== "all" && e.role !== roleFilter) return false;
       if (locationFilter !== "all") {
         const locs = employeeLocationIds.get(e.userId);
@@ -387,7 +411,15 @@ function TimetablePage() {
         (e.specialization?.toLowerCase().includes(needle) ?? false)
       );
     });
-  }, [employees, userMap, search, roleFilter, locationFilter, employeeLocationIds]);
+  }, [
+    employees,
+    userMap,
+    search,
+    roleFilter,
+    locationFilter,
+    employeeLocationIds,
+    selectedEmployeeIds,
+  ]);
 
   const employeeName = (e: MappedGabinetEmployee) => {
     if (e.firstName || e.lastName) {
@@ -396,6 +428,46 @@ function TimetablePage() {
     const u = userMap.get(e.userId);
     return u?.name || u?.email || t("common.unknown");
   };
+
+  const allEmployeesSorted = useMemo(() => {
+    const list = [...(employees ?? [])];
+    list.sort((a, b) => employeeName(a).localeCompare(employeeName(b)));
+    return list;
+  }, [employees, userMap]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const pickerFilteredEmployees = useMemo(() => {
+    const needle = employeePickerSearch.trim().toLowerCase();
+    if (!needle) return allEmployeesSorted;
+    return allEmployeesSorted.filter((e) => {
+      const u = userMap.get(e.userId);
+      const fullName = employeeName(e);
+      return (
+        fullName.toLowerCase().includes(needle) ||
+        u?.email?.toLowerCase().includes(needle) ||
+        (e.specialization?.toLowerCase().includes(needle) ?? false)
+      );
+    });
+  }, [allEmployeesSorted, employeePickerSearch, userMap]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleEmployeeSelection = (employeeId: string) => {
+    setSelectedEmployeeIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(employeeId)) {
+        next.delete(employeeId);
+      } else {
+        next.add(employeeId);
+      }
+      return next;
+    });
+  };
+
+  const employeePickerLabel =
+    selectedEmployeeIds.size === 0
+      ? t("gabinet.timetable.allEmployees", "Wszyscy pracownicy")
+      : t("gabinet.timetable.employeesSelectedCount", {
+          count: selectedEmployeeIds.size,
+          defaultValue: "{{count}} pracowników",
+        });
 
   const invalidateScheduleCache = () => {
     void queryClient.invalidateQueries({
@@ -476,6 +548,95 @@ function TimetablePage() {
             ))}
           </SelectContent>
         </Select>
+        <Popover
+          open={employeePickerOpen}
+          onOpenChange={(o) => {
+            setEmployeePickerOpen(o);
+            if (!o) setEmployeePickerSearch("");
+          }}
+        >
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={employeePickerOpen}
+              className="w-[220px] justify-between font-normal"
+            >
+              <span className="truncate">{employeePickerLabel}</span>
+              <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            className="p-0"
+            align="start"
+            style={{
+              width: "var(--radix-popover-trigger-width)",
+              maxHeight: "var(--radix-popover-content-available-height)",
+            }}
+          >
+            <Command shouldFilter={false}>
+              <CommandInput
+                placeholder={t("gabinet.timetable.searchPlaceholder")}
+                value={employeePickerSearch}
+                onValueChange={setEmployeePickerSearch}
+                onClose={() => setEmployeePickerOpen(false)}
+                closeLabel={t("common.close", "Zamknij")}
+              />
+              <CommandList className="flex-1 min-h-0">
+                <CommandEmpty>
+                  {t(
+                    "gabinet.timetable.noEmployeesFound",
+                    "Nie znaleziono pracowników",
+                  )}
+                </CommandEmpty>
+                {selectedEmployeeIds.size > 0 && (
+                  <div className="border-b p-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-full justify-start text-xs"
+                      onClick={() => setSelectedEmployeeIds(new Set())}
+                    >
+                      {t(
+                        "gabinet.timetable.clearEmployeeSelection",
+                        "Wyczyść wybór",
+                      )}
+                    </Button>
+                  </div>
+                )}
+                <CommandGroup>
+                  {pickerFilteredEmployees.map((emp) => {
+                    const checked = selectedEmployeeIds.has(emp._id);
+                    return (
+                      <CommandItem
+                        key={emp._id}
+                        value={emp._id}
+                        onSelect={() => toggleEmployeeSelection(emp._id)}
+                        className="flex items-center gap-2 px-3"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          aria-hidden
+                          tabIndex={-1}
+                          className="pointer-events-none"
+                        />
+                        <span className="flex-1 truncate text-sm">
+                          {employeeName(emp)}
+                        </span>
+                        <Check
+                          className={cn(
+                            "h-4 w-4 shrink-0",
+                            checked ? "opacity-100" : "opacity-0",
+                          )}
+                        />
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
       </div>
 
       <div className="flex flex-col gap-6">

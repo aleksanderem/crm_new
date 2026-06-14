@@ -47,6 +47,11 @@ export const COUNTRIES: Country[] = [
 
 export const DEFAULT_DIAL_CODE = "+48";
 
+// Minimum number of digits required after the dial code for a phone number
+// to be considered well-formed. Matches the Polish 9-digit national format
+// and is sufficient as a baseline for the other supported countries.
+export const MIN_PHONE_NATIONAL_DIGITS = 9;
+
 export const SORTED_CODES = [...COUNTRIES].sort(
   (a, b) => b.code.length - a.code.length,
 );
@@ -106,6 +111,32 @@ function applyGrouping(digits: string, pattern: number[]): string {
 // "+1 555 123 4567" for the US convention.
 // Falls back to the original input when no dial code is detected and no
 // digits are present.
+// Counts digits in the national part of a phone number (i.e. after the
+// dial code, if one is recognised). Returns 0 for empty/blank input.
+export function countPhoneNationalDigits(
+  value: string | null | undefined,
+): number {
+  if (!value) return 0;
+  const trimmed = value.trim();
+  if (!trimmed) return 0;
+  const detected = detectDialCode(trimmed);
+  const rest = detected ? detected.rest : trimmed;
+  return rest.replace(/\D/g, "").length;
+}
+
+// Returns true when the phone number is acceptable for submission.
+// An empty value is acceptable iff the field is not required.
+// A non-empty value must contain at least MIN_PHONE_NATIONAL_DIGITS digits
+// in the national part.
+export function isPhoneNumberValid(
+  value: string | null | undefined,
+  options: { required?: boolean } = {},
+): boolean {
+  const digits = countPhoneNationalDigits(value);
+  if (digits === 0) return !options.required;
+  return digits >= MIN_PHONE_NATIONAL_DIGITS;
+}
+
 export function formatPhoneNumber(value: string | null | undefined): string {
   if (!value) return "";
   const trimmed = value.trim();

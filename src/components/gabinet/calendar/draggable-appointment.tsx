@@ -145,10 +145,14 @@ export function DraggableAppointment({
   const handlePreviewDragStart = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.button !== 0) return;
-      // Skip touch input to mirror the dialog's choice (#1459): on mobile the
-      // popover is near full-width and capturing touch pointerdown here would
-      // block native vertical scrolling of the popover body.
-      if (e.pointerType === "touch") return;
+      // Touch input is allowed here too (issue #1741): mobile users complained
+      // that only the tiny grab pill at the top could drag the popover. The
+      // interactive-element filter below already lets taps on buttons,
+      // inputs, textareas etc. fall through, so native scroll inside the
+      // textarea (the only realistically scrollable surface on mobile) and
+      // form interactions still work. Drag-from-anywhere wins over native
+      // popover-body scrolling on non-interactive surface — the popover is
+      // short enough on mobile that this is the right trade-off.
       const target = e.target as HTMLElement | null;
       if (
         target?.closest(
@@ -194,11 +198,11 @@ export function DraggableAppointment({
     [applyPreviewDragTransform, clampPreviewDragOffset],
   );
 
-  // Drag handle variant (issue #1626): the body-wide handler above skips
-  // touch input so the popover body can scroll natively on mobile, but that
-  // leaves users with no way to reposition the popup on a touch device. The
-  // dedicated bar at the top of the popover invokes this handler so touch
-  // dragging works there without stealing scroll gestures from the body.
+  // Drag handle variant (issue #1626): the bar at the top of the popover.
+  // The body-wide handler now accepts touch too (issue #1741) so the bar is
+  // no longer the only touch drag affordance, but it's kept as a visual cue
+  // (matches the iOS-style grab pill on the create dialog) and because its
+  // `touch-none` class guarantees the drag wins over native scroll there.
   const handlePreviewHandleDragStart = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.button !== 0) return;
@@ -370,9 +374,9 @@ export function DraggableAppointment({
         // activates a screenshot tool like Snipping Tool); otherwise the
         // preview disappears before it can be captured.
         onFocusOutside={(e) => e.preventDefault()}
-        // Drag-from-anywhere (issue #1476): clicking on the popup body (away
-        // from any interactive control) initiates a reposition drag so the
-        // user can peek at the appointment underneath.
+        // Drag-from-anywhere (#1476, extended to touch in #1741): pressing on
+        // the popup body away from any interactive control initiates a
+        // reposition drag so the user can peek at the appointment underneath.
         onPointerDown={handlePreviewDragStart}
         // Popover content is portaled in the DOM but still part of the React
         // tree, so React synthetic events bubble through to the calendar grid's
@@ -382,10 +386,10 @@ export function DraggableAppointment({
       >
         {/* Drag affordance — compact iOS-style grab indicator. Replaces the
             previous uppercase "PRZECIĄGNIJ, ABY PRZESUNĄĆ" bar (issue #1738)
-            which dominated the popover header. The bar is the only path to
-            drag the popover on touch devices (#1626); role="button" makes the
-            body-wide drag handler skip it so the bar's own handler (which
-            allows touch input) runs without double-firing. */}
+            which dominated the popover header. The body-wide drag handler now
+            accepts touch (#1741) so the bar is no longer mandatory for mobile
+            drag, but it stays as a visual cue; role="button" makes the
+            body-wide handler skip it so the bar's own handler runs once. */}
         <div
           role="button"
           aria-label={t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}

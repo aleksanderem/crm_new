@@ -460,9 +460,12 @@ function PatientsIndex() {
         }
         setMergeSourcePatient(selectedRows[0]);
         setMergePreselectedTargetId(selectedRows[1]._id);
+      } else if (action === "edit") {
+        const first = selectedRows[0];
+        if (first) navigate({ to: `/dashboard/gabinet/patients/${first._id}` });
       }
     },
-    [removePatient, organizationId, t],
+    [removePatient, organizationId, t, navigate],
   );
 
   const rowActions = useCallback(
@@ -589,6 +592,7 @@ function PatientsIndex() {
         onSortChange={setSortDescriptor}
         enableBulkSelect
         bulkActions={[
+          { label: t("common.edit"), value: "edit" },
           {
             label: t("gabinet.patients.merge.bulkAction", { defaultValue: "Scal zaznaczonych" }),
             value: "merge",

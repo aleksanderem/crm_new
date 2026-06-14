@@ -273,9 +273,12 @@ function EmployeesIndex() {
         // selected employee's calendar column).
         setEventDefaultUserIds(selectedRows.map((row) => row.userId));
         setEventDialogOpen(true);
+      } else if (action === "edit") {
+        const first = selectedRows[0];
+        if (first) navigate({ to: `/dashboard/gabinet/employees/${first._id}` });
       }
     },
-    [removeEmployee, organizationId]
+    [removeEmployee, organizationId, navigate]
   );
 
   return (
@@ -351,6 +354,7 @@ function EmployeesIndex() {
         enableBulkSelect
         hiddenColumnIds={hiddenColumnIds}
         bulkActions={[
+          { label: t("common.edit"), value: "edit" },
           { label: t("gabinet.events.create", { defaultValue: "Nowe zdarzenie" }), value: "addEvent" },
           { label: t("common.delete"), value: "delete", variant: "destructive" },
         ]}

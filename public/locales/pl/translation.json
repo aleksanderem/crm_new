@@ -68,6 +68,7 @@
     "stats": "Statystyki",
     "time": "Godzina",
     "titleRequired": "Tytuł jest wymagany",
+    "phoneTooShort": "Numer telefonu musi mieć co najmniej 9 cyfr.",
     "type": "Typ",
     "actionCannotBeUndone": "Tej operacji nie można cofnąć",
     "module": "Moduł",

@@ -68,6 +68,7 @@
     "stats": "Stats",
     "time": "Time",
     "titleRequired": "Title is required",
+    "phoneTooShort": "Phone number must be at least 9 digits.",
     "type": "Type",
     "actionCannotBeUndone": "This action cannot be undone",
     "module": "Module",

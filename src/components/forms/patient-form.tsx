@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { isPhoneNumberValid } from "@/lib/phone";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import {
   Select,
@@ -410,7 +411,17 @@ export function PatientForm({
         <Button type="button" variant="outline" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
-        <Button type="submit" disabled={!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim() || isSubmitting}>
+        <Button
+          type="submit"
+          disabled={
+            !firstName.trim() ||
+            !lastName.trim() ||
+            !email.trim() ||
+            !isPhoneNumberValid(phone, { required: true }) ||
+            !isPhoneNumberValid(emergencyContactPhone, { required: false }) ||
+            isSubmitting
+          }
+        >
           {isSubmitting
             ? t("common.saving")
             : initialData

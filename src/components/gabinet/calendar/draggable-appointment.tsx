@@ -357,8 +357,12 @@ export function DraggableAppointment({
         : null}
       <PopoverContent
         ref={previewContentRef}
+        // `touch-none` here is what makes body-drag actually win on iOS: without
+        // it, the `overflow-y-auto` surface starts a native scroll before our
+        // `onPointerDown`'s `preventDefault()` can take effect (issue #1756).
+        // Desktop wheel scroll is unaffected; `touch-action` only gates touch.
         className={cn(
-          "w-[553px] max-w-[calc(100vw-24px)] max-h-[calc(100dvh-24px)] overflow-y-auto p-0 rounded-xl border-border/60 shadow-2xl",
+          "w-[553px] max-w-[calc(100vw-24px)] max-h-[calc(100dvh-24px)] overflow-y-auto p-0 rounded-xl border-border/60 shadow-2xl touch-none",
           isPreviewDragging && "cursor-grabbing select-none",
         )}
         // On mobile the appointment can sit on either side of the screen, and a

@@ -4,16 +4,24 @@ import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
+import { useSupabaseGabinetEmployeeSchedulesList } from "@/hooks/use-supabase-gabinet-employee-schedules";
+import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Avatar } from "@untitled/base/avatar/avatar";
 import { employeeRoleOptions } from "@/lib/options";
-import { Plus, Trash2 } from "@/lib/ez-icons";
+import { Calendar, Plus, Trash2 } from "@/lib/ez-icons";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
@@ -31,6 +39,10 @@ import { PlateText } from "@/components/plate-text";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { EmployeeForm } from "@/components/forms/employee-form";
 import { EventDialog } from "@/components/gabinet/calendar/event-dialog";
+import {
+  FlexibleScheduleEditor,
+  groupSchedulesIntoPeriods,
+} from "@/components/gabinet/flexible-schedule-editor";
 
 // shadcn/studio statistics blocks
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -50,6 +62,7 @@ function EmployeesIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { tags } = useTagDefinitions(organizationId);
   const { categories } = useCategoryDefinitions(organizationId, "gabinetEmployee");
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
@@ -65,6 +78,8 @@ function EmployeesIndex() {
   const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [eventDefaultUserIds, setEventDefaultUserIds] = useState<string[]>([]);
+  const [editingScheduleEmployee, setEditingScheduleEmployee] =
+    useState<Employee | null>(null);
 
   const filterableFields = useMemo((): FieldDef[] => [
     { id: "firstName", label: t("gabinet.employees.firstName"), type: "text" },
@@ -90,10 +105,25 @@ function EmployeesIndex() {
   ], [t, tags, categories]);
 
   const removeEmployee = useAction(api.gabinet.employees.remove);
+  const bulkSetEmployeeSchedule = useAction(
+    // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+    api.gabinet.scheduling.bulkSetEmployeeSchedule,
+  );
+  const saveSchedulePeriod = useAction(
+    // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+    api.gabinet.scheduling.saveSchedulePeriod,
+  );
+  const removeSchedulePeriod = useAction(
+    // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+    api.gabinet.scheduling.removeSchedulePeriod,
+  );
 
   const { data: employees } = useSupabaseGabinetEmployeesList(organizationId);
 
   const { data: members } = useSupabaseOrganizationMembers(organizationId);
+  const { data: employeeSchedules } =
+    useSupabaseGabinetEmployeeSchedulesList(organizationId);
+  const { data: clinicHours } = useSupabaseGabinetWorkingHoursList(organizationId);
 
   const getEmployeesKpis = useAction(api.gabinet.sidebarWidgets.getEmployeesKpis);
   const getStaffLoad = useAction(api.gabinet.sidebarWidgets.getStaffLoad);
@@ -242,11 +272,43 @@ function EmployeesIndex() {
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
   const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "gabinet-employees");
 
+  const editingSchedulePeriods = useMemo(() => {
+    if (!editingScheduleEmployee) return [];
+    const own = (employeeSchedules ?? []).filter(
+      (s) => s.userId === editingScheduleEmployee.userId,
+    );
+    return groupSchedulesIntoPeriods(own);
+  }, [employeeSchedules, editingScheduleEmployee]);
+
+  const editorClinicHours = useMemo(
+    () =>
+      (clinicHours ?? []).map((h) => ({
+        dayOfWeek: h.dayOfWeek,
+        startTime: h.startTime,
+        endTime: h.endTime,
+        isOpen: h.isOpen,
+        breakStart: h.breakStart ?? undefined,
+        breakEnd: h.breakEnd ?? undefined,
+      })),
+    [clinicHours],
+  );
+
+  const invalidateScheduleCache = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: supabaseKeys.gabinetEmployeeSchedules.list(organizationId),
+    });
+  }, [queryClient, organizationId]);
+
   const rowActions = useCallback(
     (row: Employee) => [
       {
         label: t("common.edit"),
         onClick: () => navigate({ to: `/dashboard/gabinet/employees/${row._id}` }),
+      },
+      {
+        label: t("gabinet.timetable.editTitle"),
+        icon: <Calendar className="h-4 w-4" variant="stroke" />,
+        onClick: () => setEditingScheduleEmployee(row),
       },
       {
         label: t("common.delete"),
@@ -338,6 +400,11 @@ function EmployeesIndex() {
             icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
             onClick: () => setShowCreate(true),
           },
+          {
+            label: t("gabinet.timetable.title"),
+            icon: <Calendar className="mr-1.5 h-4 w-4" variant="stroke" />,
+            onClick: () => navigate({ to: "/dashboard/gabinet/settings/timetable" }),
+          },
         ]}
         columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
         hiddenColumnIds={hiddenColumnIds}
@@ -393,6 +460,49 @@ function EmployeesIndex() {
         onOpenChange={setEventDialogOpen}
         defaultUserIds={eventDefaultUserIds}
       />
+
+      {editingScheduleEmployee && (
+        <Sheet
+          open
+          onOpenChange={(open) => !open && setEditingScheduleEmployee(null)}
+        >
+          <SheetContent
+            side="right"
+            className="flex flex-col sm:max-w-[760px] overflow-y-auto"
+          >
+            <SheetHeader>
+              <SheetTitle>{t("gabinet.timetable.editTitle")}</SheetTitle>
+              <SheetDescription>
+                {getDisplayName(editingScheduleEmployee)}
+              </SheetDescription>
+            </SheetHeader>
+
+            <div className="flex-1 overflow-y-auto py-4">
+              <FlexibleScheduleEditor
+                organizationId={organizationId}
+                userId={editingScheduleEmployee.userId as Id<"users">}
+                periods={editingSchedulePeriods}
+                clinicHours={editorClinicHours}
+                onSavePeriod={async (a) => {
+                  await saveSchedulePeriod(a);
+                  invalidateScheduleCache();
+                }}
+                onRemovePeriod={async (a) => {
+                  await removeSchedulePeriod(a);
+                  invalidateScheduleCache();
+                }}
+                onSaveLegacy={async (a) => {
+                  await bulkSetEmployeeSchedule(a);
+                  invalidateScheduleCache();
+                }}
+                onManageLeaves={() =>
+                  navigate({ to: "/dashboard/gabinet/settings/leaves" })
+                }
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
     </div>
   );
 }

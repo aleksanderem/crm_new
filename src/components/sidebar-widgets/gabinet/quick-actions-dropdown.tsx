@@ -38,9 +38,16 @@ export function GabinetQuickActionsDropdown() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="h-7 gap-1 text-xs">
-          <Plus className="mr-1 h-3.5 w-3.5" />
-          {t("sidebar.gabinet.quickActions", "Szybkie akcje")}
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label={t("sidebar.gabinet.quickActions", "Szybkie akcje")}
+          className="h-7 gap-1 text-xs max-sm:h-8 max-sm:w-8 max-sm:gap-0 max-sm:p-0"
+        >
+          <Plus className="h-3.5 w-3.5 sm:mr-1" />
+          <span className="max-sm:sr-only">
+            {t("sidebar.gabinet.quickActions", "Szybkie akcje")}
+          </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent

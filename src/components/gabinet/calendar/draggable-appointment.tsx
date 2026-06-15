@@ -1,6 +1,5 @@
 import { useDraggable } from "@dnd-kit/core";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
   Popover,
@@ -345,42 +344,6 @@ export function DraggableAppointment({
   return (
     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
       <PopoverAnchor asChild>{card}</PopoverAnchor>
-      {/* Backdrop — dims the busy calendar grid behind the preview so the
-          popover establishes itself as a modal surface (issue #1738). The
-          backdrop sits below the popover (z-40 vs Popover's z-50). Clicking
-          it bubbles to Radix's outside-click detector which closes the
-          popover; drag-to-peek (#1476) still works because the body-drag
-          handler on PopoverContent fires first on its own surface.
-
-          The backdrop is portaled to document.body but stays in the React
-          tree, so React synthetic events bubble up through Popover →
-          DraggableAppointment → the calendar slot, which would trigger the
-          grid's onMouseDown drag-to-create handler and open the new-
-          appointment dialog (issue #1797). Stop the synthetic events here —
-          the native DOM event still reaches Radix's document-level
-          outside-click listener (which uses pointerdown), so the popover
-          continues to close.
-
-          iOS Safari needs an extra guard (issue #1790): Radix closes the
-          popover on the native pointerdown, which unmounts the backdrop
-          before the synthesized mousedown/mouseup/click sequence fires
-          after touchend. Those synthesized events then land on whatever is
-          topmost — the calendar grid — bypassing the stopPropagation above
-          because the backdrop element is gone. Calling preventDefault() on
-          touchstart tells Safari not to synthesize mouse events for this
-          touch at all, so the calendar slot click never fires. */}
-      {popoverOpen && typeof document !== "undefined"
-        ? createPortal(
-            <div
-              aria-hidden
-              className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-[2px] animate-in fade-in-0 duration-150"
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-              onTouchStart={(e) => e.preventDefault()}
-            />,
-            document.body,
-          )
-        : null}
       <PopoverContent
         ref={previewContentRef}
         // Touch scrolling is left on so users on small phones can reach all the

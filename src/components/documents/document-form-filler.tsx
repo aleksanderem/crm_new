@@ -21,6 +21,8 @@ import type { ExtractedFormField } from "@/components/documents/document-rendere
 interface DocumentFormFillerProps {
   formFields: ExtractedFormField[];
   filledByFilter?: "employee" | "client";
+  initialValues?: Record<string, string>;
+  submitLabel?: string;
   onComplete: (fieldValues: Record<string, string>) => void;
   onCancel: () => void;
 }
@@ -32,6 +34,8 @@ interface DocumentFormFillerProps {
 export function DocumentFormFiller({
   formFields,
   filledByFilter,
+  initialValues,
+  submitLabel,
   onComplete,
   onCancel,
 }: DocumentFormFillerProps) {
@@ -45,7 +49,12 @@ export function DocumentFormFiller({
   const [values, setValues] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
     for (const field of visibleFields) {
-      init[field.fieldId] = field.fieldType === "checkbox" ? "false" : "";
+      const existing = initialValues?.[field.fieldId];
+      if (existing !== undefined && existing !== null) {
+        init[field.fieldId] = existing;
+      } else {
+        init[field.fieldId] = field.fieldType === "checkbox" ? "false" : "";
+      }
     }
     return init;
   });
@@ -154,7 +163,7 @@ export function DocumentFormFiller({
 
       <div className="flex gap-2 pt-2">
         <Button type="submit" className="flex-1">
-          {t("documentEditor.generate", "Generuj dokument")}
+          {submitLabel ?? t("documentEditor.generate", "Generuj dokument")}
         </Button>
         <Button type="button" variant="outline" onClick={onCancel}>
           {t("common.cancel", "Anuluj")}

@@ -30,11 +30,11 @@ import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 import {
-  CrmDataTable,
   useColumnVisibility,
   useAllColumns,
   type CrmColumn,
 } from "@/components/crm/enhanced-data-table";
+import { DocumentsGroupedView } from "@/components/documents/documents-grouped-view";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
 import { useSavedViews, applyFilterConditions } from "@/hooks/use-saved-views";
@@ -523,10 +523,13 @@ function DocumentsPage() {
         onFiltersChange={setActiveFilters}
       />
 
-      <CrmDataTable
+      <DocumentsGroupedView
         columns={allColumns}
         hiddenColumnIds={hiddenColumnIds}
-        data={filteredDocuments}
+        documents={filteredDocuments}
+        getFolderPath={(doc) =>
+          templateMap.get(doc.templateId as Id<"formTemplates">)?.folderPath ?? undefined
+        }
         rowActions={rowActions}
         isLoading={docsLoading}
         enableBulkSelect

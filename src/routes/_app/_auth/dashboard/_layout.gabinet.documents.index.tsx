@@ -8,7 +8,8 @@ import { PageHeader } from "@/components/layout/page-header";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import { DocumentViewer } from "@/components/documents/document-viewer";
 import { renderDocument } from "@/components/documents/document-renderer";
-import { CrmDataTable, type CrmColumn, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
+import { type CrmColumn, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
+import { DocumentsGroupedView } from "@/components/documents/documents-grouped-view";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { MiniChartsRow, type MiniChartData } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
@@ -545,10 +546,11 @@ function GabinetDocumentsPage() {
 
       {/* Data Table */}
       {!docsLoading && filteredDocuments.length > 0 && (
-        <CrmDataTable
-          data={filteredDocuments}
+        <DocumentsGroupedView
+          documents={filteredDocuments}
           columns={allColumns}
           hiddenColumnIds={hiddenColumnIds}
+          getFolderPath={(doc) => templateMap.get(doc.templateId)?.folderPath ?? undefined}
           enableBulkSelect={true}
           getRowId={(item, index) => item._id ?? String(index)}
           onBulkAction={(action, items) => {

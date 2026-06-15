@@ -5,6 +5,7 @@ import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
@@ -579,24 +580,35 @@ function MissingDataFormStep({
                   ? varInfo.labelEn
                   : varInfo.label
                 : path;
-              const inputType = varInfo?.type === "date" ? "date" : "text";
+              const fieldType = varInfo?.type ?? "text";
               return (
                 <div key={path} className="space-y-1.5">
                   <Label htmlFor={`missing-${path}`} className="text-sm">
                     {label}
                   </Label>
-                  <Input
-                    id={`missing-${path}`}
-                    type={inputType}
-                    value={values[path] ?? ""}
-                    onChange={(e) =>
-                      setValues((prev) => ({
-                        ...prev,
-                        [path]: e.target.value,
-                      }))
-                    }
-                    placeholder={inputType === "date" ? undefined : label}
-                  />
+                  {fieldType === "phone" ? (
+                    <PhoneInput
+                      id={`missing-${path}`}
+                      value={values[path] ?? ""}
+                      onChange={(v) =>
+                        setValues((prev) => ({ ...prev, [path]: v }))
+                      }
+                      placeholder={label}
+                    />
+                  ) : (
+                    <Input
+                      id={`missing-${path}`}
+                      type={fieldType === "date" ? "date" : "text"}
+                      value={values[path] ?? ""}
+                      onChange={(e) =>
+                        setValues((prev) => ({
+                          ...prev,
+                          [path]: e.target.value,
+                        }))
+                      }
+                      placeholder={fieldType === "date" ? undefined : label}
+                    />
+                  )}
                 </div>
               );
             })}

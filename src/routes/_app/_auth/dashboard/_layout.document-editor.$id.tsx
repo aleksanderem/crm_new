@@ -347,6 +347,8 @@ function EditDocumentEditorPage() {
         onOpenChange={setSettingsOpen}
         settings={settings}
         onSettingsChange={setSettings}
+        onSave={handleSave}
+        saving={saving}
       />
 
       <Sheet open={navOpen} onOpenChange={setNavOpen}>

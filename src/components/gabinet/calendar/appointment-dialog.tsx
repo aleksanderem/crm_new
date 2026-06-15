@@ -144,14 +144,14 @@ function computeEndTime(start: string, durationMinutes: number): string {
  * Snap a "HH:MM" string to the nearest 15-minute boundary. Chrome's clock
  * picker and direct typing ignore the input's `step` attribute, so we enforce
  * the grid on every change. Mirrors the helper used by the appointment preview
- * popover and detail page (issue #1365).
+ * popover and detail page (issues #1365, #1789).
  */
-function snapTimeTo15Min(value: string): string {
+function snapTimeTo5Min(value: string): string {
   if (!value) return value;
   const [h, m] = value.split(":").map(Number);
   if (!Number.isFinite(h) || !Number.isFinite(m)) return value;
   const total = Math.min(Math.max(h * 60 + m, 0), 24 * 60 - 1);
-  const snapped = Math.min(Math.round(total / 15) * 15, 24 * 60 - 1);
+  const snapped = Math.min(Math.round(total / 5) * 5, 24 * 60 - 1);
   return `${String(Math.floor(snapped / 60)).padStart(2, "0")}:${String(snapped % 60).padStart(2, "0")}`;
 }
 
@@ -1547,7 +1547,7 @@ export function AppointmentDialog({
                                     )}
                                     <input
                                       type="time"
-                                      step={900}
+                                      step={300}
                                       value={occ.startTime}
                                       disabled={occ.index === 0}
                                       onChange={(e) =>
@@ -1555,7 +1555,7 @@ export function AppointmentDialog({
                                           ...prev,
                                           [occ.index]: {
                                             ...prev[occ.index],
-                                            startTime: snapTimeTo15Min(
+                                            startTime: snapTimeTo5Min(
                                               e.target.value,
                                             ),
                                           },

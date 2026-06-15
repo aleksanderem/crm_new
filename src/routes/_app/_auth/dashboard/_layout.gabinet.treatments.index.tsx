@@ -251,12 +251,11 @@ function TreatmentsIndex() {
         isRowHeader: true,
         render: (item) => (
           <div className="flex items-center gap-2">
-            {item.color && (
-              <span
-                className="h-4 w-4 rounded-full shrink-0"
-                style={{ backgroundColor: item.color }}
-              />
-            )}
+            <span
+              className="h-4 w-4 rounded-full shrink-0"
+              style={{ backgroundColor: item.color ?? "transparent" }}
+              aria-hidden="true"
+            />
             <Link
               to="/dashboard/gabinet/treatments/$treatmentId"
               params={{ treatmentId: item._id }}

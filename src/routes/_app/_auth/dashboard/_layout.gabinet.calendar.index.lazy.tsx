@@ -44,7 +44,8 @@ import {
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -210,11 +211,25 @@ function GabinetCalendarPage() {
   const updateAppointment = useAction(api.gabinet.appointments.update);
   const queryClient = useQueryClient();
 
-  // DnD sensors
+  // DnD sensors — split mouse vs touch so taps still open the preview on iOS
+  // (issue #1766 follow-up). The previous PointerSensor with `distance: 5`
+  // combined with `touch-none` on the card meant any finger micro-movement
+  // during a tap crossed the threshold and activated drag instead of click,
+  // so users could never tap to open the preview popover and "see what's in
+  // the window". Mouse keeps the snappy 5px-distance activation; touch uses a
+  // 200ms press-and-hold with 5px tolerance, so quick taps fall through to
+  // the card button's onClick (preview opens) and only a deliberate hold
+  // starts a drag.
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
         distance: 5,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
       },
     }),
   );

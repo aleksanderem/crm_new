@@ -1789,6 +1789,19 @@ export function AppointmentPreviewContent({
                     if (next && !settlePackageUsageId) {
                       setSettlePackageUsageId(eligiblePackageUsages[0]._id);
                     }
+                    // Issue #1793: client already paid for the package, so the
+                    // visit should settle without an additional cash/card row.
+                    // Clearing the amount sends `handleConfirmSettle` down the
+                    // package-only path (writes a `paymentMethod: "package"`
+                    // ledger entry for the outstanding total). Unchecking
+                    // restores the cash flow.
+                    if (next) {
+                      setSettleAmount("");
+                    } else {
+                      setSettleAmount(
+                        outstanding > 0 ? outstanding.toFixed(2) : "",
+                      );
+                    }
                   }}
                   className="mt-0.5"
                 />
@@ -1897,7 +1910,7 @@ export function AppointmentPreviewContent({
             </div>
           )}
 
-          {!settleSplitPayment && (
+          {!settleSplitPayment && !settleUsePackage && (
             <div className="space-y-1.5">
               <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
                 {t("gabinet.payments.amount")}
@@ -1923,7 +1936,7 @@ export function AppointmentPreviewContent({
             </div>
           )}
 
-          {!settleSplitPayment && (
+          {!settleSplitPayment && !settleUsePackage && (
             <div className="space-y-1.5">
               <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
                 {t("gabinet.payments.method")}
@@ -1955,6 +1968,15 @@ export function AppointmentPreviewContent({
                   </SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {settleUsePackage && !settleSplitPayment && (
+            <div className="rounded-md border border-blue-200 bg-blue-50 p-2.5 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200">
+              {t("gabinet.payments.packageCoversVisitNote", {
+                defaultValue:
+                  "Wizyta zostanie rozliczona z pakietu — klient już opłacił pakiet, nie wymaga dodatkowej formy płatności.",
+              })}
             </div>
           )}
 

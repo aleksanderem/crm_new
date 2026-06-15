@@ -250,7 +250,7 @@ function TreatmentsIndex() {
         sortable: true,
         isRowHeader: true,
         render: (item) => (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 pl-2 md:pl-0">
             <span
               className="h-4 w-4 rounded-full shrink-0"
               style={{ backgroundColor: item.color ?? "transparent" }}

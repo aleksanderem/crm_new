@@ -100,7 +100,20 @@
     "insights": "Insights",
     "products": "Products",
     "calls": "Calls",
-    "gabinet": "Cabinet",
+    "gabinet": {
+      "_": "Cabinet",
+      "dashboard": "Cabinet Dashboard",
+      "calendar": "Calendar",
+      "patients": "Clients",
+      "treatments": "Treatments",
+      "packages": "Packages",
+      "documents": "Documents",
+      "employees": "Employees",
+      "reports": "Reports",
+      "scheduling": "Working Hours",
+      "leaves": "Leaves",
+      "documentTemplates": "Document Templates"
+    },
     "sections": {
       "main": "Main",
       "database": "Database",

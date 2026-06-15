@@ -152,11 +152,23 @@ export function DraggableAppointment({
       const target = e.target as HTMLElement | null;
       if (
         target?.closest(
-          'button, a, input, textarea, select, [role="button"], [role="combobox"], [role="menuitem"], [role="option"], [role="switch"], [role="checkbox"], [role="radio"], [role="tab"], [contenteditable="true"], [data-radix-popper-content-wrapper]',
+          'button, a, input, textarea, select, [role="button"], [role="combobox"], [role="menuitem"], [role="option"], [role="switch"], [role="checkbox"], [role="radio"], [role="tab"], [contenteditable="true"]',
         )
       ) {
         return;
       }
+      // Skip clicks coming from a NESTED popper (e.g. the treatment selector
+      // dropdown that opens from inside this popover). The selector list above
+      // intentionally does NOT include `[data-radix-popper-content-wrapper]`
+      // because the popover content is itself wrapped in one — including it
+      // would block drag from the entire popover body (regression from #1476
+      // that the dialog version doesn't have because Dialog has no popper
+      // wrapper ancestor). Compare against our own wrapper to detect nesting.
+      const ownWrapper = previewContentRef.current?.parentElement ?? null;
+      const closestWrapper = target?.closest(
+        "[data-radix-popper-content-wrapper]",
+      );
+      if (closestWrapper && closestWrapper !== ownWrapper) return;
       e.preventDefault();
       const startX = e.clientX;
       const startY = e.clientY;

@@ -107,6 +107,7 @@ function NewDocumentEditorPage() {
       });
 
       toast.success(t("settings.formTemplates.created"));
+      setSettingsOpen(false);
       navigate({
         to: "/dashboard/document-editor/$id",
         params: { id: templateId },

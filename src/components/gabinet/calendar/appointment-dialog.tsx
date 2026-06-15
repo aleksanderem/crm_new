@@ -1359,20 +1359,18 @@ export function AppointmentDialog({
                 {/* Walk-in toggle — explicit opt-in to expose past time slots
                     so the user can record an appointment they already saw.
                     Default-off keeps past slots filtered server-side. #1406. */}
-                <div className="flex items-start gap-2">
+                <Label
+                  htmlFor="record-walk-in"
+                  className="-mx-1 flex min-h-11 select-none items-start gap-3 rounded-md px-1 py-1.5 text-sm leading-tight mb-0 cursor-pointer transition-colors hover:bg-accent/40 active:bg-accent"
+                >
                   <Checkbox
                     id="record-walk-in"
                     checked={recordWalkIn}
                     onCheckedChange={(c) => setRecordWalkIn(c as boolean)}
                     className="mt-0.5"
                   />
-                  <Label
-                    htmlFor="record-walk-in"
-                    className="text-sm leading-tight mb-0"
-                  >
-                    {t("gabinet.appointments.recordWalkIn")}
-                  </Label>
-                </div>
+                  {t("gabinet.appointments.recordWalkIn")}
+                </Label>
 
                 {/* Find nearest slot */}
                 <Button
@@ -1421,7 +1419,10 @@ export function AppointmentDialog({
 
                 {/* Recurring */}
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2">
+                  <Label
+                    htmlFor="recurring-appt"
+                    className="-mx-1 flex min-h-11 select-none items-center gap-3 rounded-md px-1 py-1.5 text-sm mb-0 cursor-pointer transition-colors hover:bg-accent/40 active:bg-accent"
+                  >
                     <Checkbox
                       id="recurring-appt"
                       checked={isRecurring}
@@ -1429,13 +1430,8 @@ export function AppointmentDialog({
                         setIsRecurring(c as boolean)
                       }
                     />
-                    <Label
-                      htmlFor="recurring-appt"
-                      className="text-sm mb-0"
-                    >
-                      {t("gabinet.appointments.recurring")}
-                    </Label>
-                  </div>
+                    {t("gabinet.appointments.recurring")}
+                  </Label>
                   {isRecurring && (
                     <div className="grid gap-2">
                       <Select

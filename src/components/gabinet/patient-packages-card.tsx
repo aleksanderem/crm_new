@@ -507,19 +507,17 @@ function InstallmentPayButton({
           </Select>
         </div>
 
-        <div className="flex items-center gap-2">
+        <Label
+          htmlFor={`split-installment-${paymentId}`}
+          className="-mx-2 flex min-h-11 select-none items-center gap-3 rounded-md px-2 py-2.5 cursor-pointer text-xs font-normal transition-colors hover:bg-accent/40 active:bg-accent"
+        >
           <Checkbox
             id={`split-installment-${paymentId}`}
             checked={splitPayment}
             onCheckedChange={(v) => setSplitPayment(v === true)}
           />
-          <Label
-            htmlFor={`split-installment-${paymentId}`}
-            className="cursor-pointer text-xs font-normal"
-          >
-            {t("gabinet.packages.splitPayment", "Split payment")}
-          </Label>
-        </div>
+          {t("gabinet.packages.splitPayment", "Split payment")}
+        </Label>
 
         {splitPayment && (
           <div className="space-y-2">

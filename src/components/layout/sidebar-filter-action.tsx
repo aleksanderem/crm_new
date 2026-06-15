@@ -112,21 +112,20 @@ export function SidebarFilterAction({
               {selected.length > 0 ? "Clear" : "Reset"}
             </Button>
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col">
             {options.map((option) => (
-              <div key={option.value} className="flex items-center gap-2">
+              <Label
+                key={option.value}
+                htmlFor={`filter-${option.value}`}
+                className="-mx-2 flex min-h-11 select-none items-center gap-3 rounded-md px-2 py-2.5 cursor-pointer text-sm font-normal transition-colors hover:bg-accent/40 active:bg-accent"
+              >
                 <Checkbox
                   id={`filter-${option.value}`}
                   checked={selected.includes(option.value)}
                   onCheckedChange={() => handleToggle(option.value)}
                 />
-                <Label
-                  htmlFor={`filter-${option.value}`}
-                  className="cursor-pointer text-sm font-normal"
-                >
-                  {option.label}
-                </Label>
-              </div>
+                {option.label}
+              </Label>
             ))}
           </div>
           {selected.length > 0 && (

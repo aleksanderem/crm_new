@@ -364,21 +364,22 @@ export function PackagePurchaseDrawer({
             </Select>
           </div>
 
-          <div className="flex items-center gap-2">
+          <Label
+            htmlFor="split-payment"
+            className="-mx-2 flex min-h-11 select-none items-center gap-3 rounded-md px-2 py-2.5 cursor-pointer text-sm font-normal transition-colors hover:bg-accent/40 active:bg-accent"
+          >
             <Checkbox
               id="split-payment"
               checked={splitPayment}
               onCheckedChange={(v) => setSplitPayment(v === true)}
             />
-            <Label htmlFor="split-payment" className="cursor-pointer text-sm font-normal">
-              {isInstallment
-                ? t(
-                    "gabinet.packages.splitFirstInstallment",
-                    "Split first installment",
-                  )
-                : t("gabinet.packages.splitPayment", "Split payment")}
-            </Label>
-          </div>
+            {isInstallment
+              ? t(
+                  "gabinet.packages.splitFirstInstallment",
+                  "Split first installment",
+                )
+              : t("gabinet.packages.splitPayment", "Split payment")}
+          </Label>
 
           {isInstallment && selectedPkg && (
             <div className="rounded-lg border p-3 space-y-3">

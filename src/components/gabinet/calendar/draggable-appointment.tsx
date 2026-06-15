@@ -394,30 +394,21 @@ export function DraggableAppointment({
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drag affordance — compact iOS-style grab indicator. Replaces the
-            previous uppercase "PRZECIĄGNIJ, ABY PRZESUNĄĆ" bar (issue #1738)
-            which dominated the popover header. The body-wide drag handler now
-            accepts touch (#1741) so the bar is no longer mandatory for mobile
-            drag, but it stays as a visual cue; role="button" makes the
-            body-wide handler skip it so the bar's own handler runs once. */}
-        <div
-          role="button"
-          aria-label={t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}
-          title={t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}
-          onPointerDown={handlePreviewHandleDragStart}
-          className={cn(
-            "sticky top-0 z-10 flex items-center justify-center border-b border-border/60 bg-background/90 py-2 select-none touch-none transition-colors backdrop-blur-sm hover:bg-muted/40",
-            isPreviewDragging ? "cursor-grabbing" : "cursor-grab",
-          )}
-        >
-          <div className="h-1 w-9 rounded-full bg-foreground/25" />
-        </div>
-        <div className="p-4">
-          <AppointmentPreviewContent
-            appointmentId={_id}
-            onClose={() => setPopoverOpen(false)}
-          />
-        </div>
+        {/* No dedicated drag bar (issue #1738 follow-up): the previous strip
+            broke the header rhythm and floated over the popover edge. The
+            touch drag handler is wired into the title row inside
+            AppointmentPreviewContent (`titleDragHandler`), where it
+            piggy-backs on the title bar so touch users can still reposition
+            the popover (#1626) without an extra visual element. Desktop mouse
+            users keep drag-from-anywhere via the body handler on
+            PopoverContent (#1476). */}
+        <AppointmentPreviewContent
+          appointmentId={_id}
+          onClose={() => setPopoverOpen(false)}
+          titleDragHandler={handlePreviewHandleDragStart}
+          isPreviewDragging={isPreviewDragging}
+          dragToMoveLabel={t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}
+        />
       </PopoverContent>
     </Popover>
   );

@@ -389,9 +389,22 @@ export function DraggableAppointment({
         // made tall content unreadable. Drag-to-peek is now touch-driven only
         // via the grab pill at the top, which has its own `touch-none` zone.
         className={cn(
-          "w-[553px] max-w-[calc(100vw-24px)] max-h-[calc(100dvh-24px)] overflow-y-auto p-0 rounded-xl border-border/60 shadow-2xl",
+          "w-[553px] max-w-[calc(100vw-24px)] overflow-y-auto p-0 rounded-xl border-border/60 shadow-2xl",
           isPreviewDragging && "cursor-grabbing select-none",
         )}
+        // Cap the popover at whatever vertical space Radix's collision logic has
+        // reserved for it (issue #1805). With a static `max-h-[calc(100dvh-24px)]`
+        // a tall preview on a small iPhone could exceed the space available on
+        // its chosen side, so Radix would render the top edge above the visual
+        // viewport — pushing the sticky title bar (with the X close button) up
+        // behind the iOS status bar / notch. The available-height variable
+        // already factors in `collisionPadding` so the title bar stays in view
+        // regardless of which side Radix picks. Fallback keeps the old behavior
+        // before Radix has measured (first paint).
+        style={{
+          maxHeight:
+            "var(--radix-popover-content-available-height, calc(100dvh - 24px))",
+        }}
         // On mobile the appointment can sit on either side of the screen, and a
         // 378px popover does not fit beside it. Anchor it to the bottom of the
         // card and center horizontally so the whole preview stays on-screen;

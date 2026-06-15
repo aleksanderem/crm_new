@@ -800,6 +800,27 @@ function PatientDetail() {
       label: t("gabinet.patients.tabs.overview"),
       content: (
         <div className="space-y-6">
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Calendar
+                  className="h-4 w-4 text-muted-foreground"
+                  variant="stroke"
+                />
+                {t("gabinet.patients.upcomingAppointments")}
+              </h3>
+              {upcomingAppointments.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("gabinet.patients.noUpcomingAppointments")}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {upcomingAppointments.map(renderAppointmentRow)}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <div className="grid gap-4 sm:grid-cols-3">
             <Card>
               <CardContent className="pt-6">
@@ -860,27 +881,6 @@ function PatientDetail() {
               </CardContent>
             </Card>
           </div>
-
-          <Card>
-            <CardContent className="pt-6 space-y-4">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                <Calendar
-                  className="h-4 w-4 text-muted-foreground"
-                  variant="stroke"
-                />
-                {t("gabinet.patients.upcomingAppointments")}
-              </h3>
-              {upcomingAppointments.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  {t("gabinet.patients.noUpcomingAppointments")}
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {upcomingAppointments.map(renderAppointmentRow)}
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
           <Card>
             <CardContent className="pt-6 space-y-4">

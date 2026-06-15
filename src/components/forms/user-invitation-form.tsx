@@ -409,10 +409,42 @@ export function UserInvitationForm({
                   />
                 </div>
               )}
-              <div className="max-h-48 overflow-y-auto rounded-md border p-2 space-y-1">
-                {filteredTreatments.map((tr) => (
-                  <label key={tr._id} className="flex items-center gap-2 text-sm cursor-pointer">
+              <div className="max-h-64 overflow-y-auto rounded-md border p-2">
+                {filteredTreatments.length > 0 && (
+                  <label className="-mx-2 -mt-2 mb-1 flex min-h-11 select-none items-center gap-3 rounded-t border-b bg-muted/60 px-3 py-2.5 text-sm font-medium cursor-pointer active:bg-muted">
                     <Checkbox
+                      className="h-5 w-5"
+                      checked={
+                        filteredTreatments.every((tr) => selectedTreatments.includes(tr._id))
+                          ? true
+                          : filteredTreatments.some((tr) => selectedTreatments.includes(tr._id))
+                            ? "indeterminate"
+                            : false
+                      }
+                      onCheckedChange={(checked) => {
+                        const visibleIds = filteredTreatments.map((tr) => tr._id);
+                        if (checked === true) {
+                          setSelectedTreatments(
+                            Array.from(new Set([...selectedTreatments, ...visibleIds])),
+                          );
+                        } else {
+                          const visibleSet = new Set(visibleIds);
+                          setSelectedTreatments(
+                            selectedTreatments.filter((id) => !visibleSet.has(id)),
+                          );
+                        }
+                      }}
+                    />
+                    {t("common.selectAll")}
+                  </label>
+                )}
+                {filteredTreatments.map((tr) => (
+                  <label
+                    key={tr._id}
+                    className="-mx-2 flex min-h-11 select-none items-center gap-3 rounded-md px-3 py-2.5 text-sm cursor-pointer transition-colors hover:bg-accent/40 active:bg-accent"
+                  >
+                    <Checkbox
+                      className="h-5 w-5"
                       checked={selectedTreatments.includes(tr._id)}
                       onCheckedChange={(checked) => {
                         if (checked) {

@@ -622,27 +622,46 @@ function PackagesIndex() {
               </Button>
             </div>
             {selectedTreatments.map((st, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <Select value={st.treatmentId} onValueChange={(val) => updateTreatment(i, "treatmentId", val)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(treatments ?? []).map((tr) => (
-                      <SelectItem key={tr._id} value={tr._id}>{tr.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  type="number"
-                  className="w-20"
-                  value={st.quantity}
-                  onChange={(e) => updateTreatment(i, "quantity", parseInt(e.target.value) || 1)}
-                  min={1}
-                />
-                <Button type="button" variant="ghost" size="sm" onClick={() => removeTreatment(i)}>
-                  <Trash2 className="h-4 w-4" variant="stroke" />
-                </Button>
+              <div key={i} className="rounded-md border p-3">
+                <div className="flex items-end gap-2">
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <Label className="text-xs text-muted-foreground">
+                      {t("gabinet.packages.treatment")}
+                    </Label>
+                    <Select value={st.treatmentId} onValueChange={(val) => updateTreatment(i, "treatmentId", val)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(treatments ?? []).map((tr) => (
+                          <SelectItem key={tr._id} value={tr._id}>{tr.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-24 shrink-0 space-y-1">
+                    <Label className="text-xs text-muted-foreground">
+                      {t("gabinet.packages.quantity")}
+                    </Label>
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      value={st.quantity}
+                      onChange={(e) => updateTreatment(i, "quantity", parseInt(e.target.value) || 1)}
+                      min={1}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => removeTreatment(i)}
+                    aria-label={t("common.delete")}
+                  >
+                    <Trash2 className="h-4 w-4" variant="stroke" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

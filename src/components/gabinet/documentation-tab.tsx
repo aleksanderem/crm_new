@@ -396,7 +396,7 @@ export function DocumentationTab({
                       />
                     )}
                     {paramType === "checkbox" && (
-                      <div className="flex items-center gap-2 pt-1">
+                      <label className="-mx-2 flex min-h-11 select-none items-center gap-3 rounded-md px-2 py-2.5 cursor-pointer transition-colors hover:bg-accent/40 active:bg-accent">
                         <Checkbox
                           checked={param.value === true || param.value === "true"}
                           onCheckedChange={(checked) => handleParamChange(i, !!checked)}
@@ -404,7 +404,7 @@ export function DocumentationTab({
                         <span className="text-sm text-muted-foreground">
                           {def?.options?.[0] ?? t("common.yes", "Tak")}
                         </span>
-                      </div>
+                      </label>
                     )}
                     {paramType === "radio" && def?.options && (
                       <RadioGroup

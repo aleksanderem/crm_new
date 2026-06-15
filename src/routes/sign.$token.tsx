@@ -311,7 +311,7 @@ function SigningFlow({
           {(!needsOtp || otpVerified) && (
             <div className="space-y-4">
               {/* Acknowledgment checkbox */}
-              <label className="flex items-start gap-3 cursor-pointer">
+              <label className="-mx-2 flex min-h-11 select-none items-start gap-3 rounded-md px-2 py-2.5 cursor-pointer transition-colors hover:bg-accent/40 active:bg-accent">
                 <Checkbox
                   checked={acknowledged}
                   onCheckedChange={(v) => setAcknowledged(!!v)}

@@ -477,7 +477,7 @@ export function DataListFilterBar({
                   <button
                     key={col.id}
                     type="button"
-                    className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left hover:bg-bg-primary_hover"
+                    className="flex min-h-11 w-full select-none items-center gap-3 rounded-md px-2.5 py-2.5 text-left transition-colors hover:bg-bg-primary_hover active:bg-bg-primary_hover"
                     onClick={() => onToggleColumn(col.id)}
                   >
                     <CheckboxBase

@@ -68,7 +68,7 @@ export function PackageUsageSelector({
         return (
           <label
             key={usage._id}
-            className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+            className="flex min-h-11 select-none items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-muted/50 active:bg-muted"
           >
             <Checkbox
               checked={isChecked}

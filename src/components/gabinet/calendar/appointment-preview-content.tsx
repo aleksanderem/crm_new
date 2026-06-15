@@ -1776,7 +1776,10 @@ export function AppointmentPreviewContent({
 
           {eligiblePackageUsages.length > 0 && (
             <div className="space-y-2 rounded-md border border-blue-200 bg-blue-50 p-2.5 dark:border-blue-900 dark:bg-blue-950/30">
-              <div className="flex items-start gap-2">
+              <Label
+                htmlFor="settle-use-package"
+                className="-mx-1 flex min-h-11 select-none items-start gap-3 rounded-md px-1 py-1.5 cursor-pointer text-sm font-normal leading-snug active:bg-blue-100 dark:active:bg-blue-900/40"
+              >
                 <Checkbox
                   id="settle-use-package"
                   checked={settleUsePackage}
@@ -1787,17 +1790,15 @@ export function AppointmentPreviewContent({
                       setSettlePackageUsageId(eligiblePackageUsages[0]._id);
                     }
                   }}
+                  className="mt-0.5"
                 />
-                <Label
-                  htmlFor="settle-use-package"
-                  className="cursor-pointer text-sm font-normal leading-snug"
-                >
+                <span>
                   {t("gabinet.appointmentDetail.deductFromPackage", {
                     defaultValue:
                       "Zdejmij sztuki z aktywnego pakietu pacjenta",
                   })}
-                </Label>
-              </div>
+                </span>
+              </Label>
               {settleUsePackage && (
                 <>
                   {eligiblePackageUsages.length > 1 && (
@@ -1959,10 +1960,14 @@ export function AppointmentPreviewContent({
 
           {patient?._id && patientCreditBalance > 0 && (
             <div className="space-y-2 rounded-md border border-emerald-200 bg-emerald-50 p-2.5 dark:border-emerald-900 dark:bg-emerald-950/30">
-              <div className="flex items-start gap-2">
+              <Label
+                htmlFor="settle-use-credit"
+                className="-mx-1 flex min-h-11 select-none items-start gap-3 rounded-md px-1 py-1.5 cursor-pointer text-sm font-normal leading-snug active:bg-emerald-100 dark:active:bg-emerald-900/40"
+              >
                 <Checkbox
                   id="settle-use-credit"
                   checked={settleUseCredit}
+                  className="mt-0.5"
                   onCheckedChange={(v) => {
                     const next = v === true;
                     setSettleUseCredit(next);
@@ -1990,10 +1995,7 @@ export function AppointmentPreviewContent({
                     }
                   }}
                 />
-                <Label
-                  htmlFor="settle-use-credit"
-                  className="cursor-pointer text-sm font-normal leading-snug"
-                >
+                <span>
                   {t("gabinet.payments.useCredit", {
                     defaultValue: "Użyj salda nadpłat",
                     amount: formatCurrencyPLN(patientCreditBalance),
@@ -2001,8 +2003,8 @@ export function AppointmentPreviewContent({
                   <span className="text-muted-foreground">
                     ({formatCurrencyPLN(patientCreditBalance)})
                   </span>
-                </Label>
-              </div>
+                </span>
+              </Label>
               {settleUseCredit && (
                 <div className="space-y-1">
                   <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">

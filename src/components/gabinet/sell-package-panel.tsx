@@ -249,19 +249,17 @@ export function SellPackagePanel({
           </Select>
         </div>
 
-        <div className="flex items-center gap-2">
+        <Label
+          htmlFor="sell-package-split-payment"
+          className="-mx-2 flex min-h-11 select-none items-center gap-3 rounded-md px-2 py-2.5 cursor-pointer text-sm font-normal transition-colors hover:bg-accent/40 active:bg-accent"
+        >
           <Checkbox
             id="sell-package-split-payment"
             checked={splitPayment}
             onCheckedChange={(v) => setSplitPayment(v === true)}
           />
-          <Label
-            htmlFor="sell-package-split-payment"
-            className="cursor-pointer text-sm font-normal"
-          >
-            {t("gabinet.packages.splitPayment", "Podziel płatność")}
-          </Label>
-        </div>
+          {t("gabinet.packages.splitPayment", "Podziel płatność")}
+        </Label>
 
         {splitPayment && (
           <div className="rounded-lg border p-3 space-y-3">

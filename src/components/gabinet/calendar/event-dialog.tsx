@@ -380,7 +380,7 @@ export function EventDialog({
                   <button
                     type="button"
                     onClick={selectAllEmployees}
-                    className="flex w-full items-center gap-2 border-b px-3 py-2 text-left text-sm hover:bg-accent"
+                    className="flex min-h-11 w-full select-none items-center gap-3 border-b px-3 py-2.5 text-left text-sm transition-colors hover:bg-accent active:bg-accent"
                   >
                     <Checkbox
                       checked={employeeIds.length === 0}
@@ -408,7 +408,7 @@ export function EventDialog({
                             key={emp.userId}
                             type="button"
                             onClick={() => toggleEmployee(emp.userId)}
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
+                            className="flex min-h-11 w-full select-none items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-accent active:bg-accent"
                           >
                             <Checkbox
                               checked={selected}

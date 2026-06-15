@@ -289,7 +289,7 @@ function LeaveTypeDialog({
             />
           </div>
 
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <label className="-mx-3 flex min-h-11 select-none items-center gap-3 rounded-md px-3 py-2.5 text-sm cursor-pointer transition-colors hover:bg-accent/40 active:bg-accent">
             <Checkbox
               checked={isPaid}
               onCheckedChange={(checked) => setIsPaid(checked as boolean)}
@@ -297,7 +297,7 @@ function LeaveTypeDialog({
             {t("gabinet.leaveTypes.paid")}
           </label>
 
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <label className="-mx-3 flex min-h-11 select-none items-center gap-3 rounded-md px-3 py-2.5 text-sm cursor-pointer transition-colors hover:bg-accent/40 active:bg-accent">
             <Checkbox
               checked={requiresApproval}
               onCheckedChange={(checked) => setRequiresApproval(checked as boolean)}
@@ -306,7 +306,7 @@ function LeaveTypeDialog({
           </label>
 
           {initial && (
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <label className="-mx-3 flex min-h-11 select-none items-center gap-3 rounded-md px-3 py-2.5 text-sm cursor-pointer transition-colors hover:bg-accent/40 active:bg-accent">
               <Checkbox
                 checked={isActive}
                 onCheckedChange={(checked) => setIsActive(checked as boolean)}

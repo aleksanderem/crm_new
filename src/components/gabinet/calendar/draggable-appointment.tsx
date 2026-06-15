@@ -350,12 +350,22 @@ export function DraggableAppointment({
           backdrop sits below the popover (z-40 vs Popover's z-50). Clicking
           it bubbles to Radix's outside-click detector which closes the
           popover; drag-to-peek (#1476) still works because the body-drag
-          handler on PopoverContent fires first on its own surface. */}
+          handler on PopoverContent fires first on its own surface.
+
+          The backdrop is portaled to document.body but stays in the React
+          tree, so React synthetic events bubble up through Popover →
+          DraggableAppointment → the calendar slot, which would trigger the
+          grid's onMouseDown drag-to-create handler and open the new-
+          appointment dialog (issue #1797). Stop the synthetic events here —
+          the native DOM event still reaches Radix's document-level
+          outside-click listener, so the popover continues to close. */}
       {popoverOpen && typeof document !== "undefined"
         ? createPortal(
             <div
               aria-hidden
               className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-[2px] animate-in fade-in-0 duration-150"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
             />,
             document.body,
           )

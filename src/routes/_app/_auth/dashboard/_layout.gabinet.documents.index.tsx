@@ -100,7 +100,7 @@ function GabinetDocumentsPage() {
 
   useSidebarDispatch("openFilter", () => setFilterSlideoutOpen(true));
   useSidebarDispatch("createFromTemplate", () =>
-    navigate({ to: "/dashboard/settings/form-templates" }),
+    navigate({ to: "/dashboard/gabinet/document-templates" }),
   );
 
   // --- State ---
@@ -472,7 +472,7 @@ function GabinetDocumentsPage() {
         actions={
           <Button
             onClick={() =>
-              navigate({ to: "/dashboard/settings/form-templates" })
+              navigate({ to: "/dashboard/gabinet/document-templates" })
             }
             variant="outline"
           >

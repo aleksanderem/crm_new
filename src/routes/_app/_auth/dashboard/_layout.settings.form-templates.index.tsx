@@ -497,7 +497,7 @@ function TemplateTree({
 // Main page
 // ---------------------------------------------------------------------------
 
-function FormTemplatesListPage() {
+export function FormTemplatesListPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();

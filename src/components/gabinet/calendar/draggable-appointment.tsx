@@ -358,7 +358,17 @@ export function DraggableAppointment({
           grid's onMouseDown drag-to-create handler and open the new-
           appointment dialog (issue #1797). Stop the synthetic events here —
           the native DOM event still reaches Radix's document-level
-          outside-click listener, so the popover continues to close. */}
+          outside-click listener (which uses pointerdown), so the popover
+          continues to close.
+
+          iOS Safari needs an extra guard (issue #1790): Radix closes the
+          popover on the native pointerdown, which unmounts the backdrop
+          before the synthesized mousedown/mouseup/click sequence fires
+          after touchend. Those synthesized events then land on whatever is
+          topmost — the calendar grid — bypassing the stopPropagation above
+          because the backdrop element is gone. Calling preventDefault() on
+          touchstart tells Safari not to synthesize mouse events for this
+          touch at all, so the calendar slot click never fires. */}
       {popoverOpen && typeof document !== "undefined"
         ? createPortal(
             <div
@@ -366,6 +376,7 @@ export function DraggableAppointment({
               className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-[2px] animate-in fade-in-0 duration-150"
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.preventDefault()}
             />,
             document.body,
           )

@@ -6,6 +6,7 @@ import {
   Clock,
   ClipboardList,
   Download,
+  FilePlus,
   FileText,
   Filter,
   Gift,
@@ -51,6 +52,7 @@ export const gabinetManifest: ModuleManifest = {
     { labelKey: "nav.gabinet.packages", href: "/dashboard/gabinet/packages", icon: Gift },
     { labelKey: "nav.gabinet.employees", href: "/dashboard/gabinet/employees", icon: UserCog },
     { labelKey: "nav.gabinet.documents", href: "/dashboard/gabinet/documents", icon: ClipboardList },
+    { labelKey: "nav.gabinet.documentTemplates", href: "/dashboard/gabinet/document-templates", icon: FilePlus },
     { labelKey: "nav.gabinet.reports", href: "/dashboard/gabinet/reports", icon: PieChart },
   ],
   settingsNav: [

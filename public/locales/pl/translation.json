@@ -3524,7 +3524,9 @@
       "colStatus": "Status",
       "colCreatedAt": "Data utworzenia",
       "colCreatedBy": "Utworzony przez",
-      "templateNotFound": "Szablon dokumentu nie jest dostępny."
+      "templateNotFound": "Szablon dokumentu nie jest dostępny.",
+      "editFields": "Edytuj pola dokumentu",
+      "editSaved": "Dokument zaktualizowany"
     },
     "locations": {
       "title": "Lokalizacje",

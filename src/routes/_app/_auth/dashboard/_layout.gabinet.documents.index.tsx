@@ -1,13 +1,19 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
+import { toast } from "sonner";
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import { DocumentViewer } from "@/components/documents/document-viewer";
-import { renderDocument } from "@/components/documents/document-renderer";
+import { DocumentFormFiller } from "@/components/documents/document-form-filler";
+import {
+  extractFormFields,
+  renderDocument,
+} from "@/components/documents/document-renderer";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { type CrmColumn, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
 import { DocumentsGroupedView } from "@/components/documents/documents-grouped-view";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
@@ -25,7 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { FileText, Send, Download, Menu, Trash2, Calendar, User, Tag, FileSignature } from "@/lib/ez-icons";
+import { FileText, Send, Download, Menu, Trash2, Calendar, User, Tag, FileSignature, Pencil } from "@/lib/ez-icons";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,7 +41,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/layout/empty-state";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import type { FieldDef, FilterCondition, SavedView } from "@/components/crm/types";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
@@ -90,6 +96,7 @@ function GabinetDocumentsPage() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const lang = i18n.language === "en" ? "en" : "pl";
 
   const { tags } = useTagDefinitions(organizationId);
@@ -142,6 +149,11 @@ function GabinetDocumentsPage() {
   // --- Mutations ---
   const resendSigningEmail = useAction(api.documents.documents.resendSigningEmail);
   const removeDocument = useAction(api.documents.documents.remove);
+  const updateResponseData = useAction(api.documents.documents.updateResponseData);
+
+  // --- Edit mode state ---
+  const [isEditing, setIsEditing] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // --- Data ---
   const { data: documents, isLoading: docsLoading } = useSupabaseFormDocumentsList(
@@ -275,6 +287,127 @@ function GabinetDocumentsPage() {
     if (!selectedDoc) return null;
     return templateMap.get(selectedDoc.templateId) ?? null;
   }, [selectedDoc, templateMap]);
+
+  // --- Editable form fields for selected document ---
+  // Pulls employee-fillable fields from the template and pre-populates them
+  // from the values stored in the document's responseData.
+  const editableFormFields = useMemo(() => {
+    if (!selectedTemplate?.contentJson) return [];
+    try {
+      const all = extractFormFields(JSON.parse(selectedTemplate.contentJson));
+      return all.filter((f) => (f.filledBy || "employee") === "employee");
+    } catch {
+      return [];
+    }
+  }, [selectedTemplate?.contentJson]);
+
+  const allTemplateFormFields = useMemo(() => {
+    if (!selectedTemplate?.contentJson) return [];
+    try {
+      return extractFormFields(JSON.parse(selectedTemplate.contentJson));
+    } catch {
+      return [];
+    }
+  }, [selectedTemplate?.contentJson]);
+
+  const parsedResponseData = useMemo(() => {
+    if (!selectedDoc) return null;
+    try {
+      return JSON.parse(selectedDoc.responseData) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  }, [selectedDoc]);
+
+  const existingFormFieldValues = useMemo(() => {
+    const out: Record<string, string> = {};
+    const raw = parsedResponseData?.formFieldValues;
+    if (raw && typeof raw === "object") {
+      for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+        if (v != null) out[k] = String(v);
+      }
+    }
+    return out;
+  }, [parsedResponseData]);
+
+  const existingScopeData = useMemo(() => {
+    if (!parsedResponseData) return {} as Record<string, string>;
+    const out: Record<string, string> = {};
+    // scopeData is nested when html is present, otherwise the top-level object IS the scope map
+    const source =
+      typeof parsedResponseData.scopeData === "object" && parsedResponseData.scopeData !== null
+        ? (parsedResponseData.scopeData as Record<string, unknown>)
+        : !parsedResponseData.html
+          ? parsedResponseData
+          : {};
+    for (const [k, v] of Object.entries(source)) {
+      if (k === "html" || k === "formFieldValues" || k === "scopeData") continue;
+      if (v != null) out[k] = String(v);
+    }
+    return out;
+  }, [parsedResponseData]);
+
+  const canEditDocument =
+    !!selectedDoc &&
+    selectedDoc.status === "draft" &&
+    editableFormFields.length > 0;
+
+  // Reset edit mode whenever the selection changes
+  useEffect(() => {
+    setIsEditing(false);
+  }, [selectedId]);
+
+  const handleSaveEdit = useCallback(
+    async (fieldValues: Record<string, string>) => {
+      if (!selectedDoc || !selectedTemplate?.contentJson) return;
+      setSavingEdit(true);
+      try {
+        const mergedFieldValues = { ...existingFormFieldValues, ...fieldValues };
+        const renderedHtml = renderDocument(
+          selectedTemplate.contentJson,
+          existingScopeData,
+          mergedFieldValues,
+        );
+        const newResponseData: Record<string, unknown> = {
+          html: renderedHtml,
+          formFieldValues: mergedFieldValues,
+        };
+        if (Object.keys(existingScopeData).length > 0) {
+          newResponseData.scopeData = existingScopeData;
+        }
+        await updateResponseData({
+          organizationId,
+          documentId: selectedDoc._id,
+          responseData: JSON.stringify(newResponseData),
+        });
+        await queryClient.invalidateQueries({
+          queryKey: supabaseKeys.formDocuments.all,
+        });
+        toast.success(
+          t("gabinet.formDocuments.editSaved", "Dokument zaktualizowany"),
+        );
+        setIsEditing(false);
+      } catch (err) {
+        const message =
+          err instanceof Error
+            ? err.message
+            : t("common.error", "Wystąpił błąd");
+        toast.error(message);
+      } finally {
+        setSavingEdit(false);
+      }
+    },
+    [
+      selectedDoc,
+      selectedTemplate?.contentJson,
+      existingFormFieldValues,
+      existingScopeData,
+      updateResponseData,
+      organizationId,
+      queryClient,
+      t,
+    ],
+  );
 
   // --- Helpers ---
   const getCategoryLabel = useCallback(
@@ -600,6 +733,17 @@ function GabinetDocumentsPage() {
               <span className="text-xs text-muted-foreground">
                 {formatDate(selectedDoc.createdAt)}
               </span>
+              {canEditDocument && !isEditing && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto h-7"
+                  onClick={() => setIsEditing(true)}
+                >
+                  <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                  {t("common.edit", "Edytuj")}
+                </Button>
+              )}
             </div>
             {/* Statistics section */}
             <div className="space-y-2">
@@ -657,8 +801,29 @@ function GabinetDocumentsPage() {
               </div>
             </div>
 
-            {/* Document content */}
-            {selectedTemplate &&
+            {/* Edit mode: re-fill form fields */}
+            {isEditing && selectedTemplate && (
+              <div className="mt-6 space-y-3">
+                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                  {t("gabinet.formDocuments.editFields", "Edytuj pola dokumentu")}
+                </p>
+                <DocumentFormFiller
+                  formFields={allTemplateFormFields}
+                  filledByFilter="employee"
+                  initialValues={existingFormFieldValues}
+                  submitLabel={
+                    savingEdit
+                      ? t("common.saving", "Zapisywanie...")
+                      : t("common.save", "Zapisz")
+                  }
+                  onComplete={handleSaveEdit}
+                  onCancel={() => setIsEditing(false)}
+                />
+              </div>
+            )}
+
+            {/* Document content (view mode) */}
+            {!isEditing && selectedTemplate &&
               (() => {
                 // Try to extract rendered HTML from responseData
                 try {

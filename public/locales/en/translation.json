@@ -3504,7 +3504,9 @@
       "colStatus": "Status",
       "colCreatedAt": "Created",
       "colCreatedBy": "Created by",
-      "templateNotFound": "Document template is not available."
+      "templateNotFound": "Document template is not available.",
+      "editFields": "Edit document fields",
+      "editSaved": "Document updated"
     },
     "locations": {
       "title": "Locations",

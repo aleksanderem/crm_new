@@ -361,10 +361,11 @@ export function EmployeeForm({
               />
             </div>
           )}
-          <div className="max-h-48 overflow-y-auto rounded-md border p-2 space-y-1">
+          <div className="max-h-64 overflow-y-auto rounded-md border p-2">
             {filteredTreatments.length > 0 && (
-              <label className="-mx-2 -mt-2 mb-1 flex items-center gap-2 rounded-t bg-muted/60 px-2 py-2 text-sm font-medium cursor-pointer border-b">
+              <label className="-mx-2 -mt-2 mb-1 flex min-h-11 select-none items-center gap-3 rounded-t border-b bg-muted/60 px-3 py-2.5 text-sm font-medium cursor-pointer active:bg-muted">
                 <Checkbox
+                  className="h-5 w-5"
                   checked={
                     filteredTreatments.every((tr) => selectedTreatments.includes(tr._id))
                       ? true
@@ -392,9 +393,10 @@ export function EmployeeForm({
             {filteredTreatments.map((tr) => (
               <label
                 key={tr._id}
-                className="flex items-center gap-2 text-sm cursor-pointer"
+                className="-mx-2 flex min-h-11 select-none items-center gap-3 rounded-md px-3 py-2.5 text-sm cursor-pointer transition-colors hover:bg-accent/40 active:bg-accent"
               >
                 <Checkbox
+                  className="h-5 w-5"
                   checked={selectedTreatments.includes(tr._id)}
                   onCheckedChange={() => toggleTreatment(tr._id)}
                 />

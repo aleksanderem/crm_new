@@ -299,12 +299,14 @@ export function DraggableAppointment({
       {...listeners}
       {...attributes}
       data-appointment-card="true"
-      // `touch-none` lets dnd-kit detect drag intent from anywhere on the card
-      // on touch (issue #1766). Without it, iOS preempts pointer events with
-      // native scroll the moment the user starts moving their finger, so the
-      // PointerSensor never sees enough movement to cross its 5px activation
-      // threshold and the user can't drag the appointment from the card body.
-      // Desktop is unaffected — `touch-action` only gates touch input.
+      // `touch-none` keeps iOS from preempting the touch as a scroll gesture
+      // before the TouchSensor's 200ms press-and-hold activation can fire
+      // (issue #1766). The original fix paired this with a distance-based
+      // PointerSensor, but that meant any micro-movement during a tap looked
+      // like a drag and users could never reach the preview popover — see the
+      // delay-based TouchSensor in `_layout.gabinet.calendar.index.lazy.tsx`
+      // that now disambiguates quick taps (→ click → preview) from holds (→
+      // drag). Desktop is unaffected — `touch-action` only gates touch input.
       className={`relative h-full touch-none ${isDragging ? "opacity-50 cursor-grabbing" : "cursor-grab"}`}
       style={
         previewHeightPx !== null ? { height: `${previewHeightPx}px` } : undefined

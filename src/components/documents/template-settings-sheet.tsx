@@ -3,11 +3,13 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -64,6 +66,8 @@ interface TemplateSettingsSheetProps {
   onOpenChange: (open: boolean) => void;
   settings: TemplateSettings;
   onSettingsChange: (settings: TemplateSettings) => void;
+  onSave?: () => void;
+  saving?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -117,6 +121,8 @@ export function TemplateSettingsSheet({
   onOpenChange,
   settings,
   onSettingsChange,
+  onSave,
+  saving = false,
 }: TemplateSettingsSheetProps) {
   const { t } = useTranslation();
 
@@ -143,7 +149,7 @@ export function TemplateSettingsSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg">
+      <SheetContent className="flex w-full flex-col sm:max-w-lg">
         <SheetHeader>
           <SheetTitle>
             {t("formEditor.settings.title", "Ustawienia szablonu")}
@@ -156,7 +162,7 @@ export function TemplateSettingsSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <ScrollArea className="mt-6 h-[calc(100vh-10rem)] pr-4">
+        <ScrollArea className="-mr-4 mt-6 min-h-0 flex-1 pr-4">
           <div className="space-y-6">
             {/* Name */}
             <div className="space-y-2">
@@ -342,6 +348,27 @@ export function TemplateSettingsSheet({
             </div>
           </div>
         </ScrollArea>
+
+        {onSave && (
+          <SheetFooter className="mt-4 border-t pt-4">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={saving}
+            >
+              {t("common.close")}
+            </Button>
+            <Button
+              onClick={onSave}
+              disabled={saving || !settings.name.trim()}
+              className="min-w-[6rem]"
+            >
+              {saving
+                ? t("common.saving")
+                : t("formEditor.save", "Zapisz")}
+            </Button>
+          </SheetFooter>
+        )}
       </SheetContent>
     </Sheet>
   );

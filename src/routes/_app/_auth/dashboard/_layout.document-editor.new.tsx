@@ -257,6 +257,8 @@ function NewDocumentEditorPage() {
         onOpenChange={setSettingsOpen}
         settings={settings}
         onSettingsChange={setSettings}
+        onSave={handleSave}
+        saving={saving}
       />
 
       {/* Navigation overlay sidebar */}

@@ -112,6 +112,7 @@ export function AppSidebar() {
                 activeWorkspace={activeWorkspace}
                 workspaces={visibleModules.map((module) => module.workspace)}
                 onSelect={closeMobile}
+                inline
               />
             </div>
           )}

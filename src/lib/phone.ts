@@ -137,6 +137,25 @@ export function isPhoneNumberValid(
   return digits >= MIN_PHONE_NATIONAL_DIGITS;
 }
 
+// Formats the national portion of a phone number (digits after the dial code)
+// using either the country-specific grouping pattern from COUNTRIES or the
+// default 3-3-3-... grouping. Non-digit characters in the input are stripped.
+// Used by inputs that show the dial code separately and need just the
+// national digits formatted for display.
+export function formatPhoneNational(
+  value: string,
+  dialCode?: string,
+): string {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+  const country = dialCode
+    ? COUNTRIES.find((c) => c.code === dialCode)
+    : undefined;
+  return country?.grouping
+    ? applyGrouping(digits, country.grouping)
+    : groupDigitsByThree(digits);
+}
+
 export function formatPhoneNumber(value: string | null | undefined): string {
   if (!value) return "";
   const trimmed = value.trim();

@@ -16,7 +16,7 @@ export interface VariableField {
   /** Grouping category, e.g. "patient", "contact" */
   category: string;
   /** Input type hint — drives the form control used when collecting missing data */
-  type?: "text" | "date";
+  type?: "text" | "date" | "phone";
 }
 
 // ---------------------------------------------------------------------------
@@ -35,7 +35,7 @@ export const VARIABLE_REGISTRY: Record<string, VariableField[]> = {
     { path: "contact.firstName", label: "Imię kontaktu", labelEn: "Contact first name", category: "contact" },
     { path: "contact.lastName", label: "Nazwisko kontaktu", labelEn: "Contact last name", category: "contact" },
     { path: "contact.email", label: "Email kontaktu", labelEn: "Contact email", category: "contact" },
-    { path: "contact.phone", label: "Telefon kontaktu", labelEn: "Contact phone", category: "contact" },
+    { path: "contact.phone", label: "Telefon kontaktu", labelEn: "Contact phone", category: "contact", type: "phone" },
     { path: "contact.title", label: "Stanowisko kontaktu", labelEn: "Contact title", category: "contact" },
     { path: "contact.source", label: "Źródło kontaktu", labelEn: "Contact source", category: "contact" },
   ],
@@ -44,7 +44,7 @@ export const VARIABLE_REGISTRY: Record<string, VariableField[]> = {
     { path: "company.domain", label: "Domena firmy", labelEn: "Company domain", category: "company" },
     { path: "company.industry", label: "Branża firmy", labelEn: "Company industry", category: "company" },
     { path: "company.website", label: "Strona www firmy", labelEn: "Company website", category: "company" },
-    { path: "company.phone", label: "Telefon firmy", labelEn: "Company phone", category: "company" },
+    { path: "company.phone", label: "Telefon firmy", labelEn: "Company phone", category: "company", type: "phone" },
     { path: "company.address.street", label: "Ulica firmy", labelEn: "Company street", category: "company" },
     { path: "company.address.city", label: "Miasto firmy", labelEn: "Company city", category: "company" },
     { path: "company.address.zip", label: "Kod pocztowy firmy", labelEn: "Company ZIP", category: "company" },
@@ -54,7 +54,7 @@ export const VARIABLE_REGISTRY: Record<string, VariableField[]> = {
     { path: "patient.firstName", label: "Imię pacjenta", labelEn: "Patient first name", category: "patient" },
     { path: "patient.lastName", label: "Nazwisko pacjenta", labelEn: "Patient last name", category: "patient" },
     { path: "patient.email", label: "Email pacjenta", labelEn: "Patient email", category: "patient" },
-    { path: "patient.phone", label: "Telefon pacjenta", labelEn: "Patient phone", category: "patient" },
+    { path: "patient.phone", label: "Telefon pacjenta", labelEn: "Patient phone", category: "patient", type: "phone" },
     { path: "patient.pesel", label: "PESEL pacjenta", labelEn: "Patient PESEL", category: "patient" },
     { path: "patient.dateOfBirth", label: "Data urodzenia", labelEn: "Date of birth", category: "patient", type: "date" },
     { path: "patient.gender", label: "Płeć", labelEn: "Gender", category: "patient" },
@@ -65,7 +65,7 @@ export const VARIABLE_REGISTRY: Record<string, VariableField[]> = {
     { path: "patient.address.city", label: "Miasto pacjenta", labelEn: "Patient city", category: "patient" },
     { path: "patient.address.postalCode", label: "Kod pocztowy pacjenta", labelEn: "Patient postal code", category: "patient" },
     { path: "patient.emergencyContactName", label: "Kontakt awaryjny — imię", labelEn: "Emergency contact name", category: "patient" },
-    { path: "patient.emergencyContactPhone", label: "Kontakt awaryjny — telefon", labelEn: "Emergency contact phone", category: "patient" },
+    { path: "patient.emergencyContactPhone", label: "Kontakt awaryjny — telefon", labelEn: "Emergency contact phone", category: "patient", type: "phone" },
   ],
   employee: [
     { path: "employee.firstName", label: "Imię pracownika", labelEn: "Employee first name", category: "employee" },
@@ -73,7 +73,7 @@ export const VARIABLE_REGISTRY: Record<string, VariableField[]> = {
     { path: "employee.role", label: "Rola pracownika", labelEn: "Employee role", category: "employee" },
     { path: "employee.specialization", label: "Specjalizacja", labelEn: "Specialization", category: "employee" },
     { path: "employee.licenseNumber", label: "Numer licencji", labelEn: "License number", category: "employee" },
-    { path: "employee.phone", label: "Telefon pracownika", labelEn: "Employee phone", category: "employee" },
+    { path: "employee.phone", label: "Telefon pracownika", labelEn: "Employee phone", category: "employee", type: "phone" },
     { path: "employee.email", label: "Email pracownika", labelEn: "Employee email", category: "employee" },
     { path: "employee.position", label: "Stanowisko", labelEn: "Position", category: "employee" },
     { path: "employee.department", label: "Dział", labelEn: "Department", category: "employee" },

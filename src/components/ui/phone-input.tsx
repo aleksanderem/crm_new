@@ -14,11 +14,12 @@ import {
   DEFAULT_DIAL_CODE,
   MIN_PHONE_NATIONAL_DIGITS,
   detectDialCode,
+  formatPhoneNational,
 } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 
-function combine(dialCode: string, number: string): string {
-  const trimmed = number.trim();
+function combine(dialCode: string, digits: string): string {
+  const trimmed = digits.trim();
   return trimmed ? `${dialCode} ${trimmed}` : "";
 }
 
@@ -43,8 +44,12 @@ export function PhoneInput({
   const [{ dialCode, number }, setState] = useState(() => {
     if (!value) return { dialCode: DEFAULT_DIAL_CODE, number: "" };
     const detected = detectDialCode(value);
-    if (detected) return { dialCode: detected.dialCode, number: detected.rest };
-    return { dialCode: DEFAULT_DIAL_CODE, number: value };
+    if (detected)
+      return {
+        dialCode: detected.dialCode,
+        number: detected.rest.replace(/\D/g, ""),
+      };
+    return { dialCode: DEFAULT_DIAL_CODE, number: value.replace(/\D/g, "") };
   });
   const [touched, setTouched] = useState(false);
 
@@ -53,22 +58,29 @@ export function PhoneInput({
     [dialCode],
   );
 
-  const digitCount = useMemo(() => number.replace(/\D/g, "").length, [number]);
+  const digitCount = number.length;
   const isInvalid =
     digitCount === 0
       ? Boolean(required)
       : digitCount < MIN_PHONE_NATIONAL_DIGITS;
   const showError = touched && isInvalid && digitCount > 0;
 
+  const displayValue = useMemo(
+    () => formatPhoneNational(number, dialCode),
+    [number, dialCode],
+  );
+
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
     const detected = detectDialCode(v);
     if (detected) {
-      setState({ dialCode: detected.dialCode, number: detected.rest });
-      onChange(combine(detected.dialCode, detected.rest));
+      const digits = detected.rest.replace(/\D/g, "");
+      setState({ dialCode: detected.dialCode, number: digits });
+      onChange(combine(detected.dialCode, digits));
     } else {
-      setState({ dialCode, number: v });
-      onChange(combine(dialCode, v));
+      const digits = v.replace(/\D/g, "");
+      setState({ dialCode, number: digits });
+      onChange(combine(dialCode, digits));
     }
   };
 
@@ -98,7 +110,7 @@ export function PhoneInput({
         <Input
           type="tel"
           id={id}
-          value={number}
+          value={displayValue}
           onChange={handleNumberChange}
           onBlur={() => setTouched(true)}
           required={required}

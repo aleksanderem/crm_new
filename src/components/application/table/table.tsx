@@ -153,7 +153,10 @@ const TableHeader = <T extends object>({ columns, children, bordered = true, cla
                         // Right separator via ::before so we don't clash with the parent's
                         // [&>tr>th]:after rule that draws the header bottom border.
                         "before:pointer-events-none before:absolute before:inset-y-0 before:right-0 before:w-px before:bg-border-secondary before:content-['']",
-                        size === "sm" ? "w-24 md:pl-3" : "w-28 md:pl-4",
+                        // Narrow on mobile so the selection cell doesn't eat ~25% of the
+                        // row width as an accidental-toggle hit area (issue #1772 — finger
+                        // taps meant to open a row landed on the wide checkbox cell on iOS).
+                        size === "sm" ? "w-12 md:w-24 md:pl-3" : "w-14 md:w-28 md:pl-4",
                     )}
                 >
                     {selectionMode === "multiple" && (
@@ -255,7 +258,10 @@ const TableRow = <T extends object>({ columns, children, className, highlightSel
                         // Right separator via ::before so we don't clash with the parent's
                         // [&>td]:after rule that draws the row bottom border.
                         "before:pointer-events-none before:absolute before:inset-y-0 before:right-0 before:w-px before:bg-border-secondary before:content-['']",
-                        size === "sm" ? "w-24 md:pl-3" : "w-28 md:pl-4",
+                        // Narrow on mobile so the selection cell doesn't eat ~25% of the
+                        // row width as an accidental-toggle hit area (issue #1772 — finger
+                        // taps meant to open a row landed on the wide checkbox cell on iOS).
+                        size === "sm" ? "w-12 md:w-24 md:pl-3" : "w-14 md:w-28 md:pl-4",
                     )}
                 >
                     <Checkbox

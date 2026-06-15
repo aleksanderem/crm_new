@@ -145,14 +145,11 @@ export function DraggableAppointment({
   const handlePreviewDragStart = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.button !== 0) return;
-      // Touch input is allowed here too (issue #1741): mobile users complained
-      // that only the tiny grab pill at the top could drag the popover. The
-      // interactive-element filter below already lets taps on buttons,
-      // inputs, textareas etc. fall through, so native scroll inside the
-      // textarea (the only realistically scrollable surface on mobile) and
-      // form interactions still work. Drag-from-anywhere wins over native
-      // popover-body scrolling on non-interactive surface — the popover is
-      // short enough on mobile that this is the right trade-off.
+      // Skip touch — on iOS the popover content scrolls natively (issue #1769)
+      // and body-wide drag-from-anywhere only worked by suppressing that scroll
+      // (#1756), which made tall content unreachable on small phones. Mobile
+      // users drag via the grab pill at the top (which has its own touch-none).
+      if (e.pointerType === "touch") return;
       const target = e.target as HTMLElement | null;
       if (
         target?.closest(
@@ -363,12 +360,13 @@ export function DraggableAppointment({
         : null}
       <PopoverContent
         ref={previewContentRef}
-        // `touch-none` here is what makes body-drag actually win on iOS: without
-        // it, the `overflow-y-auto` surface starts a native scroll before our
-        // `onPointerDown`'s `preventDefault()` can take effect (issue #1756).
-        // Desktop wheel scroll is unaffected; `touch-action` only gates touch.
+        // Touch scrolling is left on so users on small phones can reach all the
+        // content inside the popover (issue #1769). The earlier `touch-none`
+        // (#1756) made body-drag win over native scroll on iOS, but it also
+        // made tall content unreadable. Drag-to-peek is now touch-driven only
+        // via the grab pill at the top, which has its own `touch-none` zone.
         className={cn(
-          "w-[553px] max-w-[calc(100vw-24px)] max-h-[calc(100dvh-24px)] overflow-y-auto p-0 rounded-xl border-border/60 shadow-2xl touch-none",
+          "w-[553px] max-w-[calc(100vw-24px)] max-h-[calc(100dvh-24px)] overflow-y-auto p-0 rounded-xl border-border/60 shadow-2xl",
           isPreviewDragging && "cursor-grabbing select-none",
         )}
         // On mobile the appointment can sit on either side of the screen, and a

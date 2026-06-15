@@ -279,17 +279,17 @@ export function AppointmentPreviewContent({
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
 
-  const snapTimeTo15Min = (value: string): string => {
+  const snapTimeTo5Min = (value: string): string => {
     if (!value) return value;
     const [h, m] = value.split(":").map(Number);
     if (!Number.isFinite(h) || !Number.isFinite(m)) return value;
     const total = Math.min(Math.max(h * 60 + m, 0), 24 * 60 - 1);
-    const snapped = Math.min(Math.round(total / 15) * 15, 24 * 60 - 1);
+    const snapped = Math.min(Math.round(total / 5) * 5, 24 * 60 - 1);
     return `${String(Math.floor(snapped / 60)).padStart(2, "0")}:${String(snapped % 60).padStart(2, "0")}`;
   };
 
   const handleStartTimeChange = (rawStart: string) => {
-    const newStart = snapTimeTo15Min(rawStart);
+    const newStart = snapTimeTo5Min(rawStart);
     setStartTime(newStart);
     if (!newStart || !startTime || !endTime) return;
     const toMin = (s: string) => {
@@ -1487,7 +1487,7 @@ export function AppointmentPreviewContent({
             </Label>
             <Input
               type="time"
-              step={900}
+              step={300}
               value={startTime}
               onChange={(e) => handleStartTimeChange(e.target.value)}
               className="h-8 w-[88px] text-sm"
@@ -1499,9 +1499,9 @@ export function AppointmentPreviewContent({
             </Label>
             <Input
               type="time"
-              step={900}
+              step={300}
               value={endTime}
-              onChange={(e) => setEndTime(snapTimeTo15Min(e.target.value))}
+              onChange={(e) => setEndTime(snapTimeTo5Min(e.target.value))}
               className="h-8 w-[88px] text-sm"
             />
           </div>

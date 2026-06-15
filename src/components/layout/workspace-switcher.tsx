@@ -1,4 +1,4 @@
-import { CircleCheckIcon } from "@/lib/ez-icons";
+import { ChevronsUpDown, CircleCheckIcon } from "@/lib/ez-icons";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import type { ModuleId, ModuleWorkspaceOption } from "@/modules/types";
@@ -32,10 +32,11 @@ export function WorkspaceSwitcher({ activeWorkspace, workspaces, onSelect }: Wor
         <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
           <current.icon className="size-4" />
         </div>
-        <div className="flex flex-col gap-0.5 leading-none">
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5 leading-none">
           <span className="text-sm font-semibold leading-none">{t(current.nameKey)}</span>
           <span className="text-muted-foreground text-xs">{t(current.descKey)}</span>
         </div>
+        <ChevronsUpDown className="text-muted-foreground ml-auto size-4 shrink-0" variant="stroke" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-60">
         <DropdownMenuLabel>{t("nav.sections.workspace", "Workspace")}</DropdownMenuLabel>

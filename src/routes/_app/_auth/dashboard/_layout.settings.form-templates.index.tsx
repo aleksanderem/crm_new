@@ -354,7 +354,7 @@ function TemplateTree({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 opacity-0 group-hover/folder:opacity-100 transition-opacity shrink-0"
+                          className="h-6 w-6 shrink-0 sm:opacity-0 sm:group-hover/folder:opacity-100 sm:transition-opacity"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <Menu className="h-3.5 w-3.5" />
@@ -409,22 +409,24 @@ function TemplateTree({
                 style={{
                   paddingLeft: `${item.getItemMeta().level * TREE_INDENT}px`,
                 }}
-                className="flex items-center gap-2 w-full rounded-md border bg-card px-3 py-2 group/tpl hover:bg-accent/50 transition-colors cursor-grab active:cursor-grabbing"
+                className="flex flex-wrap items-center gap-x-2 gap-y-1.5 w-full rounded-md border bg-card px-3 py-2 group/tpl hover:bg-accent/50 transition-colors cursor-grab active:cursor-grabbing"
               >
-                <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
-                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                <button
-                  type="button"
-                  className="flex-1 min-w-0 text-left"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEditTemplate(tpl._id);
-                  }}
-                >
-                  <span className="text-sm font-medium truncate block">
-                    {tpl.name}
-                  </span>
-                </button>
+                <div className="flex items-center gap-2 min-w-0 basis-full sm:basis-0 sm:flex-1">
+                  <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <button
+                    type="button"
+                    className="flex-1 min-w-0 text-left"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditTemplate(tpl._id);
+                    }}
+                  >
+                    <span className="text-sm font-medium truncate block">
+                      {tpl.name}
+                    </span>
+                  </button>
+                </div>
                 <Badge variant="outline" className="text-[10px] shrink-0">
                   {t(`settings.formTemplates.categories.${tpl.category}`)}
                 </Badge>
@@ -443,7 +445,7 @@ function TemplateTree({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 shrink-0 opacity-0 group-hover/tpl:opacity-100 transition-opacity"
+                      className="h-7 w-7 shrink-0 sm:opacity-0 sm:group-hover/tpl:opacity-100 sm:transition-opacity"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Menu className="h-3.5 w-3.5" />

@@ -2442,6 +2442,15 @@
         "active": "Aktywne",
         "inactive": "Nieaktywne"
       },
+      "groupByEquipment": "Grupuj wg sprzętu",
+      "groupCount_one": "{{count}} zabieg",
+      "groupCount_few": "{{count}} zabiegi",
+      "groupCount_many": "{{count}} zabiegów",
+      "groupCount_other": "{{count}} zabiegów",
+      "groups": {
+        "noEquipment": "Bez sprzętu",
+        "unknownEquipment": "Nieznany sprzęt"
+      },
       "aftercare": "Zalecenia pozabiegowe",
       "treatment": "Zabieg",
       "nudgeFilter": {

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { useSupabaseGabinetTreatmentPackagesList } from "@/hooks/use-supabase-gabinet-packages";
+import { useSupabaseGabinetEquipmentList } from "@/hooks/use-supabase-gabinet-equipment";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
@@ -23,7 +24,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Plus, Pencil, Trash2, Power, X } from "@/lib/ez-icons";
+import { Plus, Pencil, Trash2, Power, X, LayoutDashboard } from "@/lib/ez-icons";
 import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
 import { Id } from "@cvx/_generated/dataModel";
 import type { MappedGabinetTreatment } from "@/lib/supabase/mappers/gabinet/treatments";
@@ -177,12 +178,20 @@ function TreatmentsIndex() {
 
   const { data: allTreatments = [], isLoading } = useSupabaseGabinetTreatmentsList(organizationId);
   const { data: allPackages } = useSupabaseGabinetTreatmentPackagesList(organizationId);
+  const { data: allEquipment = [] } = useSupabaseGabinetEquipmentList(organizationId);
+  const [groupByEquipment, setGroupByEquipment] = useState(false);
 
   const packageNameById = useMemo(() => {
     const map = new Map<string, string>();
     for (const pkg of allPackages ?? []) map.set(pkg._id, pkg.name);
     return map;
   }, [allPackages]);
+
+  const equipmentNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const eq of allEquipment) map.set(eq._id, eq.name);
+    return map;
+  }, [allEquipment]);
 
   const {
     views,
@@ -373,6 +382,46 @@ function TreatmentsIndex() {
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
   const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "gabinet-treatments");
 
+  const treatmentGroups = useMemo(() => {
+    if (!groupByEquipment) return null;
+    const buckets = new Map<string, { id: string | null; name: string; items: Treatment[] }>();
+    const noEquipKey = "__none__";
+    for (const treatment of filteredTreatments) {
+      const equipIds = treatment.requiredEquipmentIds ?? [];
+      if (equipIds.length === 0) {
+        const bucket = buckets.get(noEquipKey) ?? {
+          id: null,
+          name: t("gabinet.treatments.groups.noEquipment", {
+            defaultValue: "Bez sprzętu",
+          }),
+          items: [],
+        };
+        bucket.items.push(treatment);
+        buckets.set(noEquipKey, bucket);
+        continue;
+      }
+      for (const equipId of equipIds) {
+        const bucket = buckets.get(equipId) ?? {
+          id: equipId,
+          name:
+            equipmentNameById.get(equipId) ??
+            t("gabinet.treatments.groups.unknownEquipment", {
+              defaultValue: "Nieznany sprzęt",
+            }),
+          items: [],
+        };
+        bucket.items.push(treatment);
+        buckets.set(equipId, bucket);
+      }
+    }
+    const groups = Array.from(buckets.values()).sort((a, b) => {
+      if (a.id === null) return 1;
+      if (b.id === null) return -1;
+      return a.name.localeCompare(b.name);
+    });
+    return groups;
+  }, [groupByEquipment, filteredTreatments, equipmentNameById, t]);
+
   const openCreatePanel = () => {
     setEditingTreatment(null);
     setTagIds([]);
@@ -482,10 +531,22 @@ function TreatmentsIndex() {
         title={t("gabinet.treatments.title")}
         description={t("gabinet.treatments.description")}
         actions={
-          <Button onClick={openCreatePanel}>
-            <Plus className="mr-2 h-4 w-4" variant="stroke" />
-            {t("gabinet.treatments.addTreatment")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={groupByEquipment ? "default" : "outline"}
+              onClick={() => setGroupByEquipment((prev) => !prev)}
+              aria-pressed={groupByEquipment}
+            >
+              <LayoutDashboard className="mr-2 h-4 w-4" variant="stroke" />
+              {t("gabinet.treatments.groupByEquipment", {
+                defaultValue: "Grupuj wg sprzętu",
+              })}
+            </Button>
+            <Button onClick={openCreatePanel}>
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
+              {t("gabinet.treatments.addTreatment")}
+            </Button>
+          </div>
         }
       />
 
@@ -567,29 +628,90 @@ function TreatmentsIndex() {
         />
       </div>
 
-      <CrmDataTable
-        columns={allColumns}
-        data={filteredTreatments}
-        isLoading={isLoading}
-        hiddenColumnIds={hiddenColumnIds}
-        sortDescriptor={sortDescriptor}
-        onSortChange={setSortDescriptor}
-        enableBulkSelect
-        bulkActions={[
-          {
-            label: t("common.delete"),
-            value: "delete",
-            variant: "destructive",
-          },
-        ]}
-        onBulkAction={handleBulkAction}
-        rowActions={rowActions}
-        emptyTitle={t("gabinet.treatments.emptyTitle")}
-        emptyDescription={t("gabinet.treatments.emptyDescription")}
-        onRowAction={(treatmentId) =>
-          navigate({ to: `/dashboard/gabinet/treatments/${treatmentId}` })
-        }
-      />
+      {groupByEquipment && treatmentGroups ? (
+        treatmentGroups.length === 0 ? (
+          <CrmDataTable
+            columns={allColumns}
+            data={[]}
+            isLoading={isLoading}
+            hiddenColumnIds={hiddenColumnIds}
+            emptyTitle={t("gabinet.treatments.emptyTitle")}
+            emptyDescription={t("gabinet.treatments.emptyDescription")}
+          />
+        ) : (
+          <div className="space-y-6">
+            {treatmentGroups.map((group) => (
+              <section
+                key={group.id ?? "no-equipment"}
+                className="space-y-2"
+                aria-labelledby={`treatment-group-${group.id ?? "none"}`}
+              >
+                <div className="flex items-baseline gap-2">
+                  <h3
+                    id={`treatment-group-${group.id ?? "none"}`}
+                    className="text-base font-semibold text-fg-primary"
+                  >
+                    {group.name}
+                  </h3>
+                  <span className="text-sm text-fg-quaternary">
+                    {t("gabinet.treatments.groupCount", {
+                      count: group.items.length,
+                      defaultValue: "{{count}} zabiegów",
+                    })}
+                  </span>
+                </div>
+                <CrmDataTable
+                  columns={allColumns}
+                  data={group.items}
+                  isLoading={isLoading}
+                  hiddenColumnIds={hiddenColumnIds}
+                  sortDescriptor={sortDescriptor}
+                  onSortChange={setSortDescriptor}
+                  enableBulkSelect
+                  bulkActions={[
+                    {
+                      label: t("common.delete"),
+                      value: "delete",
+                      variant: "destructive",
+                    },
+                  ]}
+                  onBulkAction={handleBulkAction}
+                  rowActions={rowActions}
+                  emptyTitle={t("gabinet.treatments.emptyTitle")}
+                  emptyDescription={t("gabinet.treatments.emptyDescription")}
+                  onRowAction={(treatmentId) =>
+                    navigate({ to: `/dashboard/gabinet/treatments/${treatmentId}` })
+                  }
+                />
+              </section>
+            ))}
+          </div>
+        )
+      ) : (
+        <CrmDataTable
+          columns={allColumns}
+          data={filteredTreatments}
+          isLoading={isLoading}
+          hiddenColumnIds={hiddenColumnIds}
+          sortDescriptor={sortDescriptor}
+          onSortChange={setSortDescriptor}
+          enableBulkSelect
+          bulkActions={[
+            {
+              label: t("common.delete"),
+              value: "delete",
+              variant: "destructive",
+            },
+          ]}
+          onBulkAction={handleBulkAction}
+          rowActions={rowActions}
+          emptyTitle={t("gabinet.treatments.emptyTitle")}
+          emptyDescription={t("gabinet.treatments.emptyDescription")}
+          onRowAction={(treatmentId) =>
+            navigate({ to: `/dashboard/gabinet/treatments/${treatmentId}` })
+          }
+        />
+      )}
 
       <SidePanel
         open={panelOpen}

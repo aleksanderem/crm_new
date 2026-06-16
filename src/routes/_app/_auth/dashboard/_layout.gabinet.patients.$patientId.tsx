@@ -74,6 +74,7 @@ import { useTranslation } from "react-i18next";
 import { usePermission } from "@/hooks/use-permission";
 import { PatientPackagesCard } from "@/components/gabinet/patient-packages-card";
 import { PatientTreatmentsCard } from "@/components/gabinet/patient-treatments-card";
+import { PatientPhotosTab } from "@/components/gabinet/patient-photos-tab";
 import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
 import { displayReferralSource } from "@/lib/options";
@@ -1057,6 +1058,21 @@ function PatientDetail() {
             </div>
           )}
         </div>
+      ),
+    },
+    {
+      label: t("gabinet.patients.tabs.photos", "Zdjęcia"),
+      count: (patientAppointments ?? []).reduce(
+        (sum, apt) =>
+          sum + (Array.isArray(apt.photos) ? apt.photos.length : 0),
+        0,
+      ),
+      content: (
+        <PatientPhotosTab
+          organizationId={organizationId}
+          appointments={patientAppointments}
+          treatments={treatmentsData}
+        />
       ),
     },
     {

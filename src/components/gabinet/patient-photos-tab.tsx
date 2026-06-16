@@ -137,6 +137,28 @@ export function PatientPhotosTab({
 
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [compareAppointmentId, setCompareAppointmentId] = useState<
+    string | null
+  >(null);
+
+  const dialogBeforeEntries = useMemo(
+    () =>
+      compareAppointmentId === null
+        ? beforeEntries
+        : beforeEntries.filter(
+            (e) => e.group.appointment._id === compareAppointmentId,
+          ),
+    [beforeEntries, compareAppointmentId],
+  );
+  const dialogAfterEntries = useMemo(
+    () =>
+      compareAppointmentId === null
+        ? afterEntries
+        : afterEntries.filter(
+            (e) => e.group.appointment._id === compareAppointmentId,
+          ),
+    [afterEntries, compareAppointmentId],
+  );
 
   const closePreview = useCallback(() => setPreviewIndex(null), []);
 
@@ -197,7 +219,10 @@ export function PatientPhotosTab({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCompareOpen(true)}
+            onClick={() => {
+              setCompareAppointmentId(null);
+              setCompareOpen(true);
+            }}
           >
             <ColumnsIcon className="mr-1.5 size-4" />
             {t("gabinet.patients.photos.compare", "Porównaj zdjęcia")}
@@ -207,6 +232,8 @@ export function PatientPhotosTab({
       {groups.map((group) => {
         const beforePhotos = group.photos.filter((p) => p.type === "before");
         const afterPhotos = group.photos.filter((p) => p.type === "after");
+        const canCompareGroup =
+          beforePhotos.length > 0 && afterPhotos.length > 0;
         const treatmentName = treatments?.find(
           (tr) => tr._id === group.appointment.treatmentId,
         )?.name;
@@ -225,18 +252,36 @@ export function PatientPhotosTab({
                     {group.appointment.endTime}
                   </CardDescription>
                 </div>
-                <Button asChild size="sm" variant="outline">
-                  <Link
-                    to="/dashboard/gabinet/appointments/$appointmentId"
-                    params={{ appointmentId: group.appointment._id }}
-                    search={{ tab: "documentation" }}
-                  >
-                    {t(
-                      "gabinet.patients.photos.openAppointment",
-                      "Otwórz wizytę",
-                    )}
-                  </Link>
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  {canCompareGroup && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setCompareAppointmentId(group.appointment._id);
+                        setCompareOpen(true);
+                      }}
+                    >
+                      <ColumnsIcon className="mr-1.5 size-4" />
+                      {t(
+                        "gabinet.patients.photos.compareVisit",
+                        "Porównaj",
+                      )}
+                    </Button>
+                  )}
+                  <Button asChild size="sm" variant="outline">
+                    <Link
+                      to="/dashboard/gabinet/appointments/$appointmentId"
+                      params={{ appointmentId: group.appointment._id }}
+                      search={{ tab: "documentation" }}
+                    >
+                      {t(
+                        "gabinet.patients.photos.openAppointment",
+                        "Otwórz wizytę",
+                      )}
+                    </Link>
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="px-6 py-4">
@@ -345,9 +390,12 @@ export function PatientPhotosTab({
 
       <ComparisonDialog
         open={compareOpen}
-        onOpenChange={setCompareOpen}
-        beforeEntries={beforeEntries}
-        afterEntries={afterEntries}
+        onOpenChange={(o) => {
+          setCompareOpen(o);
+          if (!o) setCompareAppointmentId(null);
+        }}
+        beforeEntries={dialogBeforeEntries}
+        afterEntries={dialogAfterEntries}
         urlMap={urlMap}
         treatments={treatments}
       />

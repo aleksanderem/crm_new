@@ -2320,6 +2320,7 @@
         "openAppointment": "Open appointment",
         "noTreatment": "Appointment",
         "compare": "Compare photos",
+        "compareVisit": "Compare",
         "compareTitle": "Before / after photo comparison"
       },
       "byDay": "Clients by Day",

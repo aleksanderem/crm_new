@@ -37,19 +37,19 @@ const REGION_MAPPING: Record<string, string[]> = {
 };
 
 const COLORS = [
-  { name: "Red", value: "#ef4444" },
-  { name: "Orange", value: "#f97316" },
-  { name: "Yellow", value: "#eab308" },
-  { name: "Green", value: "#22c55e" },
-  { name: "Blue", value: "#3b82f6" },
-  { name: "Purple", value: "#a855f7" },
+  { name: "red", value: "#ef4444" },
+  { name: "orange", value: "#f97316" },
+  { name: "yellow", value: "#eab308" },
+  { name: "green", value: "#22c55e" },
+  { name: "blue", value: "#3b82f6" },
+  { name: "purple", value: "#a855f7" },
 ];
 
 const INTENSITIES = [
-  { label: "Light", value: 0.25 },
-  { label: "Medium", value: 0.5 },
-  { label: "Strong", value: 0.75 },
-  { label: "Very Strong", value: 1 },
+  { key: "light", value: 0.25 },
+  { key: "medium", value: 0.5 },
+  { key: "strong", value: 0.75 },
+  { key: "veryStrong", value: 1 },
 ];
 
 // All available regions for the legend
@@ -336,7 +336,7 @@ export function BodyChart({ data = [], onChange, readOnly = false }: BodyChartPr
                       )}
                       style={{ backgroundColor: color.value }}
                       onClick={() => updateRegion(selectedRegion, { color: color.value })}
-                      title={color.name}
+                      title={t(`gabinet.bodyChart.colors.${color.name}`, color.name)}
                     />
                   ))}
                 </div>
@@ -359,7 +359,7 @@ export function BodyChart({ data = [], onChange, readOnly = false }: BodyChartPr
                       )}
                       onClick={() => updateRegion(selectedRegion, { intensity: int.value })}
                     >
-                      {int.label}
+                      {t(`gabinet.bodyChart.intensities.${int.key}`, int.key)}
                     </button>
                   ))}
                 </div>
@@ -412,7 +412,7 @@ export function BodyChart({ data = [], onChange, readOnly = false }: BodyChartPr
             
             {/* Upper Body */}
             <div>
-              <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Upper Body</p>
+              <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">{t("gabinet.bodyChart.groups.upper")}</p>
               <div className="grid grid-cols-2 gap-1">
                 {groupedRegions.upper.map((region) => {
                   const regionData = getRegionData(region.id);
@@ -443,7 +443,7 @@ export function BodyChart({ data = [], onChange, readOnly = false }: BodyChartPr
 
             {/* Core */}
             <div>
-              <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Core</p>
+              <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">{t("gabinet.bodyChart.groups.core")}</p>
               <div className="grid grid-cols-2 gap-1">
                 {groupedRegions.core.map((region) => {
                   const regionData = getRegionData(region.id);
@@ -474,7 +474,7 @@ export function BodyChart({ data = [], onChange, readOnly = false }: BodyChartPr
 
             {/* Lower Body */}
             <div>
-              <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Lower Body</p>
+              <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">{t("gabinet.bodyChart.groups.lower")}</p>
               <div className="grid grid-cols-2 gap-1">
                 {groupedRegions.lower.map((region) => {
                   const regionData = getRegionData(region.id);

@@ -886,8 +886,12 @@ export function AppointmentPreviewContent({
   // Credit reduces what the two methods need to cover.
   const splitExpectedTotal =
     Math.round(Math.max(0, outstanding - creditApplied) * 100) / 100;
+  // Issue #1852: only an UNDER-payment blocks submit. Over-payment is
+  // accepted and the excess flows to the patient's credit balance — same
+  // as the single-amount path does. The amber "Nadpłata…" note below
+  // tells staff what will happen.
   const splitMismatch =
-    settleSplitPayment && splitTotal !== splitExpectedTotal;
+    settleSplitPayment && splitTotal < splitExpectedTotal - 0.005;
   // When credit covers the entire visit, no split amounts are required —
   // the visit will be settled by a credit-only payment row.
   const splitMissingAmount =
@@ -902,9 +906,9 @@ export function AppointmentPreviewContent({
     parsedSecondSplitAmount > 0 &&
     settleFirstSplitMethod === settleSecondSplitMethod;
 
-  const overpaymentAmount = !settleSplitPayment
-    ? Math.max(0, parsedSettleAmount + creditApplied - outstanding)
-    : 0;
+  const overpaymentAmount = settleSplitPayment
+    ? Math.max(0, splitTotal - splitExpectedTotal)
+    : Math.max(0, parsedSettleAmount + creditApplied - outstanding);
 
   const handleConfirmSettle = async () => {
     if (settleSubmitting) return;
@@ -959,8 +963,8 @@ export function AppointmentPreviewContent({
       if (splitMismatch) {
         toast.error(
           t(
-            "gabinet.packages.splitMismatchError",
-            "Suma rozdzielonych płatności musi być równa cenie",
+            "gabinet.packages.splitUnderpaidError",
+            "Suma rozdzielonych płatności jest niższa niż kwota do zapłaty",
           ),
         );
         return;
@@ -1048,6 +1052,15 @@ export function AppointmentPreviewContent({
             creditApplied,
           });
         } else {
+          // Issue #1852: distribute over-payment across split rows so the
+          // excess lands on the patient's credit balance. Process the rows
+          // sequentially — each row absorbs whatever is left of the visit's
+          // outstanding (after creditApplied); the remainder of the row is
+          // recorded as creditEarned. Backend constraint: creditEarned per
+          // row must not exceed that row's amount, so this per-row split is
+          // required (one big creditEarned on the first row would trip the
+          // server-side check whenever the per-row amount is smaller).
+          let remainingExpected = splitExpectedTotal;
           for (let i = 0; i < parts.length; i++) {
             const part = parts[i];
             const baseNote = settleNotes.trim();
@@ -1055,6 +1068,11 @@ export function AppointmentPreviewContent({
             const combinedNote = baseNote
               ? `${baseNote} (${splitNote})`
               : splitNote;
+            const absorbedOutstanding = Math.min(part.amount, remainingExpected);
+            const rowCreditEarned =
+              Math.round((part.amount - absorbedOutstanding) * 100) / 100;
+            remainingExpected =
+              Math.round((remainingExpected - absorbedOutstanding) * 100) / 100;
             await createPaymentAction({
               organizationId,
               patientId: patient._id,
@@ -1067,6 +1085,7 @@ export function AppointmentPreviewContent({
               // backend ledger entry on that row drains the patient's
               // balance for the whole settle action.
               ...(i === 0 && creditApplied > 0 ? { creditApplied } : {}),
+              ...(rowCreditEarned > 0 ? { creditEarned: rowCreditEarned } : {}),
             });
           }
         }
@@ -2232,7 +2251,7 @@ export function AppointmentPreviewContent({
             </div>
           )}
 
-          {!settleSplitPayment && overpaymentAmount > 0 && (
+          {overpaymentAmount > 0 && (
             <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
               {t("gabinet.payments.overpaymentNote", {
                 defaultValue:
@@ -2377,8 +2396,8 @@ export function AppointmentPreviewContent({
                 ) : splitMismatch ? (
                   <span>
                     {t(
-                      "gabinet.packages.splitMismatch",
-                      "Musi się zgadzać z ceną",
+                      "gabinet.packages.splitUnderpaid",
+                      "Kwota jest niższa niż cena",
                     )}
                   </span>
                 ) : null}

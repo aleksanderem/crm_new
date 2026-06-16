@@ -608,21 +608,17 @@ function GabinetCalendarPage() {
       indicatorLookupIds.patientIds,
     );
 
-  // For each patient with credit > 0, identify the appointment ID of their
-  // earliest non-cancelled, not-fully-paid visit in the visible range — that
-  // tile gets the "Saldo +X" badge. Only one appointment per patient is
-  // marked so the indicator unambiguously points at the next visit credit
-  // can be applied to (issue #1286).
+  // For each patient with credit > 0, mark every non-cancelled, not-fully-paid
+  // visit in the visible range with the "Saldo +X" badge. Originally only the
+  // earliest visit was flagged (#1286), but staff reported (#1857) that the
+  // indicator must remain on every upcoming visit until the credit is actually
+  // consumed — otherwise a patient with overpayment from one service had no
+  // visible reminder on subsequent visits booked for other services.
   const creditByAppointmentId = useMemo(() => {
     const result = new Map<string, number>();
     if (!rawAppointments || !patientCreditBalances || patientCreditBalances.size === 0) {
       return result;
     }
-    // Group candidate appointments per patient, sorted by (date, startTime).
-    const earliest = new Map<
-      string,
-      { id: string; date: string; startTime: string }
-    >();
     for (const a of rawAppointments) {
       if (a.status === "cancelled" || a.status === "no_show") continue;
       const balance = patientCreditBalances.get(a.patientId);
@@ -632,27 +628,13 @@ function GabinetCalendarPage() {
       if (price <= 0) continue;
       const paid = appointmentPaymentTotals?.get(a._id) ?? 0;
       if (paid >= price) continue; // already settled
-      const current = earliest.get(a.patientId);
-      if (
-        !current ||
-        a.date < current.date ||
-        (a.date === current.date && a.startTime < current.startTime)
-      ) {
-        earliest.set(a.patientId, {
-          id: a._id,
-          date: a.date,
-          startTime: a.startTime,
-        });
-      }
-    }
-    for (const [pid, info] of earliest) {
-      result.set(info.id, patientCreditBalances.get(pid) ?? 0);
+      result.set(a._id, balance);
     }
     return result;
   }, [rawAppointments, patientCreditBalances, treatmentMap, appointmentPaymentTotals]);
 
   // Dates carrying at least one credit-flagged appointment — feeds the month
-  // view's day-level "Saldo" dot (issue #1286).
+  // view's day-level "Saldo" dot (issues #1286, #1857).
   const creditDates = useMemo(() => {
     const set = new Set<string>();
     if (!rawAppointments || creditByAppointmentId.size === 0) return set;
@@ -776,11 +758,11 @@ function GabinetCalendarPage() {
           }
         }
 
-        // Patient credit indicator — flags the patient's next unpaid visit
-        // when they have an available credit balance from carry-forward
-        // overpayments (issue #1286, ledger from #1059). Shown alongside the
-        // unpaid/partial badge so staff know credit is sitting ready to be
-        // applied at settle time.
+        // Patient credit indicator — flags every unpaid visit while the
+        // patient has carry-forward credit available (issue #1857, originally
+        // only the next visit per #1286; ledger from #1059). Shown alongside
+        // the unpaid/partial badge so staff know credit is sitting ready to
+        // be applied at settle time, on whichever visit they settle next.
         const creditBalance = creditByAppointmentId.get(a._id);
         if (creditBalance && creditBalance > 0) {
           // Round to whole units for the compact pill so the badge stays

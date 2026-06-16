@@ -2841,7 +2841,7 @@
       "endTime": "Godzina zakończenia",
       "notes": "Notatki",
       "notesPlaceholder": "Dodatkowe uwagi do wizyty...",
-      "recurring": "Wizyty pakietowe",
+      "recurring": "Wizyty cykliczne",
       "recurringPreview": "Daty i godziny wizyt",
       "recurringPreviewSelectSlot": "Wybierz datę i godzinę pierwszej wizyty, aby zobaczyć podgląd.",
       "recurringPreviewHint": "Każdą datę i godzinę możesz dostosować niezależnie od cyklu.",

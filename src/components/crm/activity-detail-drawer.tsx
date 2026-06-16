@@ -26,6 +26,7 @@ import {
 } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import { getActivityIcon } from "@/lib/activity-icon-registry";
+import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 
 interface ActivityData {
   _id: string;
@@ -272,12 +273,10 @@ export function ActivityDetailDrawer({
                     value={editDueDate}
                     onChange={(e) => setEditDueDate(e.target.value)}
                   />
-                  <Input
-                    type="time"
-                    step={300}
+                  <TimePicker5Min
                     className="w-auto"
                     value={editDueTime}
-                    onChange={(e) => setEditDueTime(e.target.value)}
+                    onChange={setEditDueTime}
                   />
                 </div>
               </div>
@@ -291,12 +290,10 @@ export function ActivityDetailDrawer({
                     value={editEndDate}
                     onChange={(e) => setEditEndDate(e.target.value)}
                   />
-                  <Input
-                    type="time"
-                    step={300}
+                  <TimePicker5Min
                     className="w-auto"
                     value={editEndTime}
-                    onChange={(e) => setEditEndTime(e.target.value)}
+                    onChange={setEditEndTime}
                   />
                 </div>
               </div>

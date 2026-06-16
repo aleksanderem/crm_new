@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { AlertTriangle } from "lucide-react";
 import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
+import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 
 type LeaveType = "vacation" | "sick" | "personal";
 
@@ -225,21 +226,17 @@ export function LeaveForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>{t("schedule.startTime")}</Label>
-            <Input
-              type="time"
-              step={300}
+            <TimePicker5Min
               value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
+              onChange={setStartTime}
             />
           </div>
 
           <div className="space-y-1.5">
             <Label>{t("schedule.endTime")}</Label>
-            <Input
-              type="time"
-              step={300}
+            <TimePicker5Min
               value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
+              onChange={setEndTime}
             />
           </div>
         </div>

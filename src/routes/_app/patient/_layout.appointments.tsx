@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { Id } from "@cvx/_generated/dataModel";
 import { PlateText } from "@/components/plate-text";
 import { formatActionError } from "@/lib/format-action-error";
+import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 
 export const Route = createFileRoute("/_app/patient/_layout/appointments")({
   component: PatientAppointments,
@@ -256,12 +257,10 @@ function PatientAppointments() {
                 <Label htmlFor="reschedule-time">
                   {t("patientPortal.appointments.rescheduleTime")}
                 </Label>
-                <Input
+                <TimePicker5Min
                   id="reschedule-time"
-                  type="time"
-                  step={300}
                   value={requestedTime}
-                  onChange={(e) => setRequestedTime(e.target.value)}
+                  onChange={setRequestedTime}
                 />
               </div>
               <div className="space-y-1.5">

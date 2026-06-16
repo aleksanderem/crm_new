@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Clock, Pencil, Plus, Trash2 } from "@/lib/ez-icons";
 import { formatActionError } from "@/lib/format-action-error";
+import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 
 export interface FlexibleClinicHours {
   dayOfWeek: number;
@@ -638,50 +639,42 @@ export function FlexibleScheduleEditor({
                         updateDay(h.dayOfWeek, "isWorking", checked as boolean)
                       }
                     />
-                    <Input
-                      type="time"
-                      step={900}
+                    <TimePicker5Min
+                      stepMinutes={15}
                       className="h-7 w-22"
                       value={h.startTime}
-                      onChange={(e) =>
-                        updateDay(h.dayOfWeek, "startTime", e.target.value)
+                      onChange={(v) =>
+                        updateDay(h.dayOfWeek, "startTime", v)
                       }
                       disabled={!h.isWorking}
                     />
-                    <Input
-                      type="time"
-                      step={900}
+                    <TimePicker5Min
+                      stepMinutes={15}
                       className="h-7 w-22"
                       value={h.endTime}
-                      onChange={(e) =>
-                        updateDay(h.dayOfWeek, "endTime", e.target.value)
+                      onChange={(v) =>
+                        updateDay(h.dayOfWeek, "endTime", v)
                       }
                       disabled={!h.isWorking}
                     />
                     {hasBreak ? (
                       <div className="flex items-center gap-1">
-                        <Input
-                          type="time"
-                          step={900}
+                        <TimePicker5Min
+                          stepMinutes={15}
                           className="h-7 w-22"
                           value={h.breakStart}
-                          onChange={(e) =>
-                            updateDay(
-                              h.dayOfWeek,
-                              "breakStart",
-                              e.target.value,
-                            )
+                          onChange={(v) =>
+                            updateDay(h.dayOfWeek, "breakStart", v)
                           }
                           disabled={!h.isWorking}
                         />
                         <span className="text-xs text-muted-foreground">–</span>
-                        <Input
-                          type="time"
-                          step={900}
+                        <TimePicker5Min
+                          stepMinutes={15}
                           className="h-7 w-22"
                           value={h.breakEnd}
-                          onChange={(e) =>
-                            updateDay(h.dayOfWeek, "breakEnd", e.target.value)
+                          onChange={(v) =>
+                            updateDay(h.dayOfWeek, "breakEnd", v)
                           }
                           disabled={!h.isWorking}
                         />

@@ -31,6 +31,7 @@ import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatActionError } from "@/lib/format-action-error";
 import { cn } from "@/lib/utils";
+import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 
 interface EventDialogProps {
   organizationId: Id<"organizations">;
@@ -323,12 +324,10 @@ export function EventDialog({
                   defaultValue: "Godzina rozpoczęcia",
                 })}
               </Label>
-              <Input
+              <TimePicker5Min
                 id="event-start"
-                type="time"
                 value={startTime}
-                onChange={(e) => handleStartTimeChange(e.target.value)}
-                step={300}
+                onChange={handleStartTimeChange}
               />
             </div>
             <div className="space-y-1.5">
@@ -337,12 +336,10 @@ export function EventDialog({
                   defaultValue: "Godzina zakończenia",
                 })}
               </Label>
-              <Input
+              <TimePicker5Min
                 id="event-end"
-                type="time"
                 value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                step={300}
+                onChange={setEndTime}
               />
             </div>
           </div>

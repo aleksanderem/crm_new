@@ -33,6 +33,7 @@ import { getActivityIcon } from "@/lib/activity-icon-registry";
 import { CustomFieldFormSection } from "@/components/custom-fields/custom-field-form-section";
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
+import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 import type { Id } from "@cvx/_generated/dataModel";
 import type { CustomFieldType } from "@cvx/schema";
 
@@ -308,12 +309,10 @@ export function ActivityForm({
             onChange={(e) => setStartDate(e.target.value)}
           />
           <div className="relative flex items-center">
-            <Input
-              type="time"
-              step={300}
+            <TimePicker5Min
               className="w-auto pr-8"
               value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
+              onChange={setStartTime}
             />
             {startTime && (
               <button

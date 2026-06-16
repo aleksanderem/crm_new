@@ -11,6 +11,7 @@ import {
 import { Inplace } from "@/components/ui/inplace";
 import { Check, X } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
+import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 
 export type EditableCellType = "text" | "number" | "select" | "date" | "time" | "datetime" | "boolean";
 
@@ -58,7 +59,7 @@ export function EditableCell({
       handleSave(!value);
       return;
     }
-    if (config.type === "select") {
+    if (config.type === "select" || config.type === "time") {
       selectRef.current?.focus();
     } else {
       inputRef.current?.focus();
@@ -109,8 +110,8 @@ export function EditableCell({
 
   const handleBlur = (e: FocusEvent) => {
     // Select dropdown renders in a portal outside the container,
-    // so we skip blur-to-save for select type entirely (it auto-saves on selection).
-    if (config.type === "select") return;
+    // so we skip blur-to-save for select/time types entirely (they auto-save on selection).
+    if (config.type === "select" || config.type === "time") return;
     const related = e.relatedTarget as HTMLElement;
     if (!related || !e.currentTarget.contains(related)) {
       handleSave();
@@ -189,7 +190,13 @@ export function EditableCell({
         );
       case "time":
         return (
-          <Input ref={inputRef} type="time" step={300} value={editValue ?? ""} onChange={(e) => setEditValue(e.target.value)} {...inputProps} />
+          <TimePicker5Min
+            ref={selectRef}
+            value={editValue ?? ""}
+            onChange={(v) => { setEditValue(v); handleSave(v); }}
+            disabled={saving}
+            className="h-8"
+          />
         );
       case "datetime":
         return (
@@ -231,7 +238,7 @@ export function EditableCell({
       <Inplace.Content>
         <div className="inline-flex items-center gap-1" onBlur={handleBlur}>
           {getEditContent()}
-          {config.type !== "select" && (
+          {config.type !== "select" && config.type !== "time" && (
             <>
               <button
                 type="button"

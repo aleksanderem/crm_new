@@ -6,8 +6,8 @@ import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 import { Plus, Trash2 } from "@/lib/ez-icons";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -173,39 +173,31 @@ function SchedulingSettings() {
               checked={h.isOpen}
               onCheckedChange={(checked) => updateDay(h.dayOfWeek, "isOpen", checked as boolean)}
             />
-            <Input
-              type="time"
-              step={300}
+            <TimePicker5Min
               className="h-8 w-24"
               value={h.startTime}
-              onChange={(e) => updateDay(h.dayOfWeek, "startTime", e.target.value)}
+              onChange={(v) => updateDay(h.dayOfWeek, "startTime", v)}
               disabled={!h.isOpen}
             />
-            <Input
-              type="time"
-              step={300}
+            <TimePicker5Min
               className="h-8 w-24"
               value={h.endTime}
-              onChange={(e) => updateDay(h.dayOfWeek, "endTime", e.target.value)}
+              onChange={(v) => updateDay(h.dayOfWeek, "endTime", v)}
               disabled={!h.isOpen}
             />
             {hasBreak ? (
               <div className="flex items-center gap-1">
-                <Input
-                  type="time"
-                  step={300}
+                <TimePicker5Min
                   className="h-8 w-24"
                   value={h.breakStart}
-                  onChange={(e) => updateDay(h.dayOfWeek, "breakStart", e.target.value)}
+                  onChange={(v) => updateDay(h.dayOfWeek, "breakStart", v)}
                   disabled={!h.isOpen}
                 />
                 <span className="text-xs text-muted-foreground">–</span>
-                <Input
-                  type="time"
-                  step={300}
+                <TimePicker5Min
                   className="h-8 w-24"
                   value={h.breakEnd}
-                  onChange={(e) => updateDay(h.dayOfWeek, "breakEnd", e.target.value)}
+                  onChange={(v) => updateDay(h.dayOfWeek, "breakEnd", v)}
                   disabled={!h.isOpen}
                 />
                 <Button

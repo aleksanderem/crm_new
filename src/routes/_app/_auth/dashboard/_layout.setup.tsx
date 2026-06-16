@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, ArrowRight, Loader2 } from "@/lib/ez-icons";
 import { Route as DashboardRoute } from "@/routes/_app/_auth/dashboard/_layout.index";
+import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 
 const STEPS = [
   "businessInfo",
@@ -339,19 +340,15 @@ function SetupWizard() {
                   </Label>
                   {schedule[day]?.enabled && (
                     <>
-                      <Input
-                        type="time"
-                        step={300}
+                      <TimePicker5Min
                         value={schedule[day]?.start || ""}
-                        onChange={(e) => updateSchedule(day, "start", e.target.value)}
+                        onChange={(v) => updateSchedule(day, "start", v)}
                         className="w-32"
                       />
                       <span className="text-muted-foreground">-</span>
-                      <Input
-                        type="time"
-                        step={300}
+                      <TimePicker5Min
                         value={schedule[day]?.end || ""}
-                        onChange={(e) => updateSchedule(day, "end", e.target.value)}
+                        onChange={(v) => updateSchedule(day, "end", v)}
                         className="w-32"
                       />
                     </>

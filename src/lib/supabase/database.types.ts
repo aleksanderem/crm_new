@@ -2802,6 +2802,7 @@ export interface Database {
           skills: string[] | null;
           years_of_experience: number | null;
           certifications: unknown | null;
+          assigned_items: unknown | null;
           base_salary: number | null;
           commission_percent: number | null;
           bank_account: string | null;
@@ -2838,6 +2839,7 @@ export interface Database {
           skills?: string[] | null;
           years_of_experience?: number | null;
           certifications?: unknown | null;
+          assigned_items?: unknown | null;
           base_salary?: number | null;
           commission_percent?: number | null;
           bank_account?: string | null;
@@ -2874,6 +2876,7 @@ export interface Database {
           skills?: string[] | null;
           years_of_experience?: number | null;
           certifications?: unknown | null;
+          assigned_items?: unknown | null;
           base_salary?: number | null;
           commission_percent?: number | null;
           bank_account?: string | null;

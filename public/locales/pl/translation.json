@@ -2729,6 +2729,7 @@
         "activities": "Aktywności",
         "detailedData": "Dane szczegółowe",
         "schedule": "Grafik",
+        "assignedItems": "Materiały",
         "noPatients": "Brak obsługiwanych klientów."
       },
       "agenda": {
@@ -2755,6 +2756,22 @@
         "noResults": "Brak klientów pasujących do filtrów.",
         "visits": "{{count}} wizyt",
         "lastVisit": "Ostatnia:"
+      },
+      "assignedItems": {
+        "heldTitle": "Wydane materiały",
+        "returnedTitle": "Zwrócone",
+        "add": "Dodaj materiał",
+        "itemName": "Materiał",
+        "itemNamePlaceholder": "np. Klucze do gabinetu, fartuch, karta dostępu",
+        "quantity": "Ilość",
+        "issuedDate": "Data wydania",
+        "issued": "Wydano",
+        "returned": "Zwrócono",
+        "notes": "Uwagi",
+        "notesPlaceholder": "np. numer seryjny, kolor, szafka 12",
+        "markReturned": "Oznacz jako zwrócony",
+        "markActive": "Cofnij zwrot",
+        "empty": "Pracownik nie ma obecnie wydanych materiałów."
       },
       "detailedData": {
         "personalData": "Dane osobowe",

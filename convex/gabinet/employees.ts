@@ -543,6 +543,20 @@ export const update = action({
         v.null(),
       ),
     ),
+    assignedItems: v.optional(
+      v.union(
+        v.array(
+          v.object({
+            name: v.string(),
+            quantity: v.optional(v.number()),
+            issuedDate: v.optional(v.string()),
+            returnedDate: v.optional(v.string()),
+            notes: v.optional(v.string()),
+          }),
+        ),
+        v.null(),
+      ),
+    ),
     baseSalary: v.optional(v.union(v.number(), v.null())),
     commissionPercent: v.optional(v.union(v.number(), v.null())),
     bankAccount: v.optional(v.union(v.string(), v.null())),

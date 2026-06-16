@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChangeEmployeeModal } from "@/components/gabinet/change-employee-modal";
+import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 import { DocumentationTab } from "@/components/gabinet/documentation-tab";
 import { TreatmentPicker } from "@/components/gabinet/appointment-shared/treatment-picker";
 import { RichTextEditor, plateJsonToText } from "@/components/gabinet/rich-text-editor";
@@ -1487,11 +1488,9 @@ function AppointmentDetail() {
                   <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                     {t("common.from", "Od")}
                   </Label>
-                  <Input
-                    type="time"
-                    step={300}
+                  <TimePicker5Min
                     value={editStartTime}
-                    onChange={(e) => setEditStartTime(snapTimeTo5Min(e.target.value))}
+                    onChange={(v) => setEditStartTime(snapTimeTo5Min(v))}
                     className="h-9 w-[110px]"
                   />
                 </div>
@@ -1499,11 +1498,9 @@ function AppointmentDetail() {
                   <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                     {t("common.to", "Do")}
                   </Label>
-                  <Input
-                    type="time"
-                    step={300}
+                  <TimePicker5Min
                     value={editEndTime}
-                    onChange={(e) => setEditEndTime(snapTimeTo5Min(e.target.value))}
+                    onChange={(v) => setEditEndTime(snapTimeTo5Min(v))}
                     className="h-9 w-[110px]"
                   />
                 </div>

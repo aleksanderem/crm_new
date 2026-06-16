@@ -50,6 +50,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
+import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 import { ChangeEmployeeModal } from "@/components/gabinet/change-employee-modal";
 import { DocumentGateDialog } from "@/components/documents/document-gate-dialog";
 import { useAppointmentDocumentCounts } from "@/components/documents/appointment-document-checklist";
@@ -1534,11 +1535,9 @@ export function AppointmentPreviewContent({
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
               {t("common.from", "Od")}
             </Label>
-            <Input
-              type="time"
-              step={300}
+            <TimePicker5Min
               value={startTime}
-              onChange={(e) => handleStartTimeChange(e.target.value)}
+              onChange={handleStartTimeChange}
               className="h-8 w-[88px] text-sm"
             />
           </div>
@@ -1546,11 +1545,9 @@ export function AppointmentPreviewContent({
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
               {t("common.to", "Do")}
             </Label>
-            <Input
-              type="time"
-              step={300}
+            <TimePicker5Min
               value={endTime}
-              onChange={(e) => setEndTime(snapTimeTo5Min(e.target.value))}
+              onChange={(v) => setEndTime(snapTimeTo5Min(v))}
               className="h-8 w-[88px] text-sm"
             />
           </div>

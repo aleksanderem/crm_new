@@ -1519,7 +1519,16 @@ export function AppointmentPreviewContent({
           </TooltipProvider>
         </div>
 
-        <div className="grid grid-cols-[1fr_auto_auto] items-end gap-1.5">
+        {/* On phones the popover is only ~360px wide so DATA + OD + DO in one
+            row crams the date input into ~140px. Worse, iOS Safari renders
+            `<input type="date">` taller than the Select-based TimePicker5Min,
+            and the previous `items-end` aligned the bottoms so OD/DO labels
+            ended up at a different vertical position than DATA — the "krzywo"
+            (crooked) layout reported in #1824. Stack vertically below `sm` so
+            the date gets a full-width row and OD/DO share the next row; on
+            tablets and up restore the horizontal grid but with `items-start`
+            so labels stay aligned even when input heights differ. */}
+        <div className="flex flex-col gap-3 sm:grid sm:grid-cols-[1fr_auto_auto] sm:items-start sm:gap-1.5">
           <div className="space-y-1">
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
               {t("common.date")}
@@ -1528,28 +1537,30 @@ export function AppointmentPreviewContent({
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="h-8 text-sm"
+              className="h-8 w-full text-sm"
             />
           </div>
-          <div className="space-y-1">
-            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              {t("common.from", "Od")}
-            </Label>
-            <TimePicker5Min
-              value={startTime}
-              onChange={handleStartTimeChange}
-              className="h-8 w-[88px] text-sm"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              {t("common.to", "Do")}
-            </Label>
-            <TimePicker5Min
-              value={endTime}
-              onChange={(v) => setEndTime(snapTimeTo5Min(v))}
-              className="h-8 w-[88px] text-sm"
-            />
+          <div className="grid grid-cols-2 gap-3 sm:contents">
+            <div className="space-y-1">
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                {t("common.from", "Od")}
+              </Label>
+              <TimePicker5Min
+                value={startTime}
+                onChange={handleStartTimeChange}
+                className="h-8 w-full text-sm sm:w-[88px]"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                {t("common.to", "Do")}
+              </Label>
+              <TimePicker5Min
+                value={endTime}
+                onChange={(v) => setEndTime(snapTimeTo5Min(v))}
+                className="h-8 w-full text-sm sm:w-[88px]"
+              />
+            </div>
           </div>
         </div>
 

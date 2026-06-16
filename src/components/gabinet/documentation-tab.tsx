@@ -34,6 +34,8 @@ import {
   StickyNote,
   ChevronLeft,
   ChevronRight,
+  Plus,
+  Trash2,
 } from "@/lib/ez-icons";
 import { XIcon, ColumnsIcon, ImageOffIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -62,6 +64,11 @@ interface TreatmentParamValue {
   name: string;
   type: string;
   value: string | number | boolean;
+  // Set when this entry is an ad-hoc parameter added on the appointment itself
+  // (not defined on the treatment template). Custom entries render editable
+  // name + unit fields and can be removed.
+  isCustom?: boolean;
+  unit?: string;
 }
 
 interface Photo {
@@ -114,11 +121,16 @@ export function DocumentationTab({
     if (appointment.treatmentParameterValues) {
       try {
         const parsed = JSON.parse(appointment.treatmentParameterValues);
+        const templateNames = new Set(
+          (treatmentParameters ?? []).map((d) => d.name),
+        );
         // Backward compatibility: old format had {name, value, unit} without type
-        const normalized = parsed.map((p: any) => ({
+        const normalized: TreatmentParamValue[] = parsed.map((p: any) => ({
           name: p.name,
           type: p.type ?? "text",
           value: p.value ?? "",
+          isCustom: p.isCustom ?? !templateNames.has(p.name),
+          unit: typeof p.unit === "string" ? p.unit : undefined,
         }));
         setParamValues(normalized);
         return;
@@ -135,6 +147,8 @@ export function DocumentationTab({
           value: def.type === "checkbox" ? false : def.type === "number" ? "" : "",
         })),
       );
+    } else {
+      setParamValues([]);
     }
   }, [appointment.treatmentParameterValues, treatmentParameters]);
 
@@ -144,6 +158,29 @@ export function DocumentationTab({
       next[index] = { ...next[index], value };
       return next;
     });
+  };
+
+  const handleCustomFieldChange = (
+    index: number,
+    field: "name" | "unit",
+    value: string,
+  ) => {
+    setParamValues((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const handleAddCustomParam = () => {
+    setParamValues((prev) => [
+      ...prev,
+      { name: "", type: "text", value: "", isCustom: true, unit: "" },
+    ]);
+  };
+
+  const handleRemoveParam = (index: number) => {
+    setParamValues((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSaveParams = async () => {
@@ -346,115 +383,187 @@ export function DocumentationTab({
   return (
     <div className="space-y-4">
       {/* Treatment Parameters */}
-      {paramValues.length > 0 && (
-        <Card>
-          <CardHeader className="px-6 py-3 border-b">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Stethoscope className="h-4 w-4" variant="stroke" />
-              {t("gabinet.documentation.parameters", "Parametry zabiegowe")}
-            </CardTitle>
-            <CardDescription className="text-xs">
-              {t(
-                "gabinet.documentation.parametersDesc",
-                "Uzupełnij wartości parametrów zabiegu dla tej wizyty.",
-              )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-6 py-4">
-            <div className="space-y-4">
-              {paramValues.map((param, i) => {
-                const def = treatmentParameters?.find((d) => d.name === param.name);
-                const paramType = def?.type ?? param.type ?? "text";
-                return (
-                  <div key={param.name} className="space-y-1.5">
+      <Card>
+        <CardHeader className="px-6 py-3 border-b">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Stethoscope className="h-4 w-4" variant="stroke" />
+            {t("gabinet.documentation.parameters", "Parametry zabiegowe")}
+          </CardTitle>
+          <CardDescription className="text-xs">
+            {t(
+              "gabinet.documentation.parametersDesc",
+              "Uzupełnij wartości parametrów zabiegu dla tej wizyty.",
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-6 py-4">
+          <div className="space-y-4">
+            {paramValues.length === 0 && (
+              <p className="text-sm text-muted-foreground italic">
+                {t(
+                  "gabinet.documentation.parametersEmpty",
+                  "Brak parametrów dla tego zabiegu. Dodaj parametr poniżej lub zdefiniuj domyślne parametry w ustawieniach zabiegu.",
+                )}
+              </p>
+            )}
+            {paramValues.map((param, i) => {
+              const def = !param.isCustom
+                ? treatmentParameters?.find((d) => d.name === param.name)
+                : undefined;
+              const paramType = param.isCustom
+                ? "text"
+                : (def?.type ?? param.type ?? "text");
+              const unit = param.isCustom ? param.unit : def?.unit;
+              return (
+                <div key={`${i}-${param.name}`} className="space-y-1.5">
+                  {param.isCustom ? (
+                    <div className="flex items-start gap-2">
+                      <div className="grid flex-1 gap-2 sm:grid-cols-[1fr_8rem]">
+                        <Input
+                          value={param.name}
+                          onChange={(e) =>
+                            handleCustomFieldChange(i, "name", e.target.value)
+                          }
+                          placeholder={t(
+                            "gabinet.documentation.paramNamePlaceholder",
+                            "Nazwa parametru (np. Energia)",
+                          )}
+                          aria-label={t(
+                            "gabinet.documentation.paramName",
+                            "Nazwa parametru",
+                          )}
+                        />
+                        <Input
+                          value={param.unit ?? ""}
+                          onChange={(e) =>
+                            handleCustomFieldChange(i, "unit", e.target.value)
+                          }
+                          placeholder={t(
+                            "gabinet.documentation.paramUnitPlaceholder",
+                            "Jednostka (np. J, W)",
+                          )}
+                          aria-label={t(
+                            "gabinet.documentation.paramUnit",
+                            "Jednostka",
+                          )}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 shrink-0 text-destructive"
+                        onClick={() => handleRemoveParam(i)}
+                        aria-label={t("common.delete", "Usuń")}
+                      >
+                        <Trash2 className="h-4 w-4" variant="stroke" />
+                      </Button>
+                    </div>
+                  ) : (
                     <Label className="text-sm">
                       {param.name}
-                      {def?.unit && (
+                      {unit && (
                         <span className="ml-1 text-muted-foreground font-normal">
-                          ({def.unit})
+                          ({unit})
                         </span>
                       )}
                       {def?.isRequired && <span className="text-destructive"> *</span>}
                     </Label>
-                    {def?.description && (
-                      <p className="text-xs text-muted-foreground">{def.description}</p>
-                    )}
-                    {paramType === "text" && (
-                      <Input
-                        value={String(param.value ?? "")}
-                        onChange={(e) => handleParamChange(i, e.target.value)}
-                        placeholder="—"
+                  )}
+                  {def?.description && (
+                    <p className="text-xs text-muted-foreground">{def.description}</p>
+                  )}
+                  {paramType === "text" && (
+                    <Input
+                      value={String(param.value ?? "")}
+                      onChange={(e) => handleParamChange(i, e.target.value)}
+                      placeholder={
+                        param.isCustom
+                          ? t(
+                              "gabinet.documentation.paramValuePlaceholder",
+                              "Wartość",
+                            )
+                          : "—"
+                      }
+                    />
+                  )}
+                  {paramType === "number" && (
+                    <Input
+                      type="number"
+                      value={String(param.value ?? "")}
+                      onChange={(e) => handleParamChange(i, e.target.value)}
+                      placeholder="—"
+                      className="w-40"
+                    />
+                  )}
+                  {paramType === "checkbox" && (
+                    <label className="-mx-2 flex min-h-11 select-none items-center gap-3 rounded-md px-2 py-2.5 cursor-pointer transition-colors hover:bg-accent/40 active:bg-accent">
+                      <Checkbox
+                        checked={param.value === true || param.value === "true"}
+                        onCheckedChange={(checked) => handleParamChange(i, !!checked)}
                       />
-                    )}
-                    {paramType === "number" && (
-                      <Input
-                        type="number"
-                        value={String(param.value ?? "")}
-                        onChange={(e) => handleParamChange(i, e.target.value)}
-                        placeholder="—"
-                        className="w-40"
-                      />
-                    )}
-                    {paramType === "checkbox" && (
-                      <label className="-mx-2 flex min-h-11 select-none items-center gap-3 rounded-md px-2 py-2.5 cursor-pointer transition-colors hover:bg-accent/40 active:bg-accent">
-                        <Checkbox
-                          checked={param.value === true || param.value === "true"}
-                          onCheckedChange={(checked) => handleParamChange(i, !!checked)}
-                        />
-                        <span className="text-sm text-muted-foreground">
-                          {def?.options?.[0] ?? t("common.yes", "Tak")}
-                        </span>
-                      </label>
-                    )}
-                    {paramType === "radio" && def?.options && (
-                      <RadioGroup
-                        value={String(param.value ?? "")}
-                        onValueChange={(val) => handleParamChange(i, val)}
-                        className="flex flex-col gap-2 pt-1"
-                      >
+                      <span className="text-sm text-muted-foreground">
+                        {def?.options?.[0] ?? t("common.yes", "Tak")}
+                      </span>
+                    </label>
+                  )}
+                  {paramType === "radio" && def?.options && (
+                    <RadioGroup
+                      value={String(param.value ?? "")}
+                      onValueChange={(val) => handleParamChange(i, val)}
+                      className="flex flex-col gap-2 pt-1"
+                    >
+                      {def.options.map((opt) => (
+                        <div key={opt} className="flex items-center gap-2">
+                          <RadioGroupItem value={opt} id={`${param.name}-${opt}`} />
+                          <Label htmlFor={`${param.name}-${opt}`} className="text-sm font-normal cursor-pointer">
+                            {opt}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  )}
+                  {paramType === "select" && def?.options && (
+                    <Select
+                      value={String(param.value ?? "")}
+                      onValueChange={(val) => handleParamChange(i, val)}
+                    >
+                      <SelectTrigger className="w-60">
+                        <SelectValue placeholder="—" />
+                      </SelectTrigger>
+                      <SelectContent>
                         {def.options.map((opt) => (
-                          <div key={opt} className="flex items-center gap-2">
-                            <RadioGroupItem value={opt} id={`${param.name}-${opt}`} />
-                            <Label htmlFor={`${param.name}-${opt}`} className="text-sm font-normal cursor-pointer">
-                              {opt}
-                            </Label>
-                          </div>
+                          <SelectItem key={opt} value={opt}>
+                            {opt}
+                          </SelectItem>
                         ))}
-                      </RadioGroup>
-                    )}
-                    {paramType === "select" && def?.options && (
-                      <Select
-                        value={String(param.value ?? "")}
-                        onValueChange={(val) => handleParamChange(i, val)}
-                      >
-                        <SelectTrigger className="w-60">
-                          <SelectValue placeholder="—" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {def.options.map((opt) => (
-                            <SelectItem key={opt} value={opt}>
-                              {opt}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                );
-              })}
-              <div className="flex justify-end pt-1">
-                <Button
-                  size="sm"
-                  onClick={handleSaveParams}
-                  disabled={isSavingParams}
-                >
-                  {isSavingParams ? t("common.saving") : t("common.save")}
-                </Button>
-              </div>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              );
+            })}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddCustomParam}
+              >
+                <Plus className="mr-1.5 h-4 w-4" variant="stroke" />
+                {t("gabinet.documentation.addParam", "Dodaj parametr")}
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveParams}
+                disabled={isSavingParams || paramValues.length === 0}
+              >
+                {isSavingParams ? t("common.saving") : t("common.save")}
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Interview Notes */}
       <Card>

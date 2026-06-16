@@ -2805,6 +2805,7 @@ export interface Database {
           base_salary: number | null;
           commission_percent: number | null;
           bank_account: string | null;
+          show_in_calendar: boolean;
           tag_ids: string[] | null;
           category_id: string | null;
           created_by: string;
@@ -2840,6 +2841,7 @@ export interface Database {
           base_salary?: number | null;
           commission_percent?: number | null;
           bank_account?: string | null;
+          show_in_calendar?: boolean;
           tag_ids?: string[] | null;
           category_id?: string | null;
           created_by: string;
@@ -2875,6 +2877,7 @@ export interface Database {
           base_salary?: number | null;
           commission_percent?: number | null;
           bank_account?: string | null;
+          show_in_calendar?: boolean;
           tag_ids?: string[] | null;
           category_id?: string | null;
           created_by?: string;

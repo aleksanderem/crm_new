@@ -2689,6 +2689,8 @@
       "license": "Numer licencji",
       "licensePlaceholder": "np. 123456",
       "color": "Kolor w kalendarzu",
+      "showInCalendar": "Pokazuj w kalendarzu",
+      "showInCalendarHint": "Jeśli wyłączone, pracownik nie pojawi się jako kolumna w widoku dziennym kalendarza.",
       "qualifiedTreatments": "Kwalifikacje zabiegowe",
       "noTreatments": "Brak zdefiniowanych zabiegów",
       "selectedTreatments": "Wybrano {{count}} zabiegów",

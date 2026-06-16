@@ -41,6 +41,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { PlateText, plateJsonToText } from "@/components/plate-text";
 import {
@@ -1299,6 +1300,9 @@ function EditEmployeeDrawer({
   const [licenseNumber, setLicenseNumber] = useState(employee.licenseNumber ?? "");
   const [hireDate, setHireDate] = useState(employee.hireDate ?? "");
   const [color, setColor] = useState(employee.color ?? "#3b82f6");
+  const [showInCalendar, setShowInCalendar] = useState<boolean>(
+    employee.showInCalendar ?? true,
+  );
   const [notes, setNotes] = useState(employee.notes ?? "");
 
   // Re-sync form state when drawer opens
@@ -1312,6 +1316,7 @@ function EditEmployeeDrawer({
       setLicenseNumber(employee.licenseNumber ?? "");
       setHireDate(employee.hireDate ?? "");
       setColor(employee.color ?? "#3b82f6");
+      setShowInCalendar(employee.showInCalendar ?? true);
       setNotes(employee.notes ?? "");
     }
   }, [open, employee]);
@@ -1345,6 +1350,7 @@ function EditEmployeeDrawer({
         licenseNumber: licenseNumber || null,
         hireDate: hireDate || null,
         color: color || null,
+        showInCalendar,
         notes: notes || null,
       });
       toast.success(t("common.saved"));
@@ -1453,6 +1459,24 @@ function EditEmployeeDrawer({
             value={color}
             onChange={(e) => setColor(e.target.value)}
           />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <Checkbox
+              className="mt-0.5 h-5 w-5"
+              checked={showInCalendar}
+              onCheckedChange={(checked) => setShowInCalendar(checked === true)}
+            />
+            <span className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium leading-none">
+                {t("gabinet.employees.showInCalendar")}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {t("gabinet.employees.showInCalendarHint")}
+              </span>
+            </span>
+          </label>
         </div>
 
         <div className="space-y-1.5">

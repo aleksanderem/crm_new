@@ -2670,6 +2670,8 @@
       "license": "License Number",
       "licensePlaceholder": "e.g. 123456",
       "color": "Calendar Color",
+      "showInCalendar": "Show in calendar",
+      "showInCalendarHint": "If disabled, this employee won't appear as a column in the day calendar view.",
       "qualifiedTreatments": "Qualified Treatments",
       "noTreatments": "No treatments defined yet",
       "selectedTreatments": "{{count}} treatments selected",

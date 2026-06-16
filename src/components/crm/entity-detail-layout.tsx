@@ -16,9 +16,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Shared tab trigger class for consistent styling across entity detail views
+// Shared tab trigger class for consistent styling across entity detail views.
+// `shrink-0` keeps each tab at its natural width so the row stays scrollable on narrow viewports.
 export const tabTriggerClass =
-  "relative rounded-none border-b-2 border-transparent px-4 pb-3 pt-2 font-medium text-muted-foreground transition-none data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none";
+  "relative shrink-0 rounded-none border-b-2 border-transparent px-4 pb-3 pt-2 font-medium text-muted-foreground transition-none data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none";
 
 export interface DetailField {
   label: string;
@@ -334,22 +335,24 @@ export function EntityDetailLayout({
     <Tabs defaultValue={activeTab ? undefined : defaultTabValue} value={activeTab} onValueChange={onTabChange} className="flex flex-col md:flex-1 md:min-h-0">
       <div className="shrink-0 border-b px-4 pt-2">
         {beforeTabs}
-        <TabsList className="h-9 bg-transparent p-0">
-          {tabs.map((tab) => (
-            <TabsTrigger
-              key={tab.label}
-              value={tab.label}
-              className={tabTriggerClass}
-            >
-              {tab.label}
-              {tab.count !== undefined && (
-                <span className="ml-1.5 text-xs text-muted-foreground">
-                  {tab.count}
-                </span>
-              )}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="-mx-4 overflow-x-auto px-4 scrollbar-none">
+          <TabsList className="h-9 w-max bg-transparent p-0">
+            {tabs.map((tab) => (
+              <TabsTrigger
+                key={tab.label}
+                value={tab.label}
+                className={tabTriggerClass}
+              >
+                {tab.label}
+                {tab.count !== undefined && (
+                  <span className="ml-1.5 text-xs text-muted-foreground">
+                    {tab.count}
+                  </span>
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
         {timelineFilter && (
           <div className="pb-2 pt-1">{timelineFilter}</div>
         )}

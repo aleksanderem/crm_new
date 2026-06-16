@@ -1462,63 +1462,6 @@ export function AppointmentPreviewContent({
 
       {/* Edit fields */}
       <div className="space-y-3">
-        <div className="space-y-1">
-          <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            {t("gabinet.appointmentDetail.changeStatus")}
-          </Label>
-          <TooltipProvider delayDuration={200}>
-            <div
-              role="radiogroup"
-              aria-label={t("gabinet.appointmentDetail.changeStatus")}
-              className="flex flex-wrap items-center gap-1"
-            >
-              {STATUS_ORDER.map((s) => {
-                const Icon = STATUS_ICONS[s];
-                const isCurrent = s === initialStatus;
-                const isAvailable =
-                  !isCurrent && availableTransitions.includes(s);
-                const isDisabled =
-                  !isCurrent && (!isAvailable || savingStatus);
-                const label = t(`gabinet.appointments.statuses.${s}`);
-                return (
-                  <Tooltip key={s}>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        role="radio"
-                        aria-checked={isCurrent}
-                        aria-label={label}
-                        disabled={isDisabled}
-                        onClick={() => {
-                          if (!isAvailable) return;
-                          handleStatusChange(s);
-                        }}
-                        className={cn(
-                          // Bumped contrast so the icons read clearly on the
-                          // dark popover surface (#1738): foreground text and
-                          // a stronger border, plus the colour-coded active
-                          // ring is unchanged.
-                          "inline-flex size-9 items-center justify-center rounded-md border border-border bg-background text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                          isCurrent && STATUS_ACTIVE_CLASSES[s],
-                          isCurrent && "cursor-default",
-                          isAvailable && STATUS_HOVER_CLASSES[s],
-                          isAvailable && "cursor-pointer hover:bg-accent",
-                          isDisabled && !isCurrent && "cursor-not-allowed opacity-40",
-                        )}
-                      >
-                        <Icon className="size-4" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-xs">
-                      {label}
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              })}
-            </div>
-          </TooltipProvider>
-        </div>
-
         {/* On phones the popover is only ~360px wide so DATA + OD + DO in one
             row crams the date input into ~140px. Worse, iOS Safari renders
             `<input type="date">` taller than the Select-based TimePicker5Min,
@@ -1611,6 +1554,69 @@ export function AppointmentPreviewContent({
             placeholder={t("gabinet.appointments.internalNotesPlaceholder")}
             className="min-h-[104px] text-sm"
           />
+        </div>
+
+        {/* Status change is demoted to the bottom of the edit block (issue
+            #1825). On phones the popover is tall enough that staff scroll past
+            DATE / TIME / TAGS / NOTES before reaching this, which matches the
+            actual usage frequency — most edits to a freshly opened preview
+            target the schedule and notes, not the status. The current status
+            is still visible as a Badge near the top of the popover. */}
+        <div className="space-y-1">
+          <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            {t("gabinet.appointmentDetail.changeStatus")}
+          </Label>
+          <TooltipProvider delayDuration={200}>
+            <div
+              role="radiogroup"
+              aria-label={t("gabinet.appointmentDetail.changeStatus")}
+              className="flex flex-wrap items-center gap-1"
+            >
+              {STATUS_ORDER.map((s) => {
+                const Icon = STATUS_ICONS[s];
+                const isCurrent = s === initialStatus;
+                const isAvailable =
+                  !isCurrent && availableTransitions.includes(s);
+                const isDisabled =
+                  !isCurrent && (!isAvailable || savingStatus);
+                const label = t(`gabinet.appointments.statuses.${s}`);
+                return (
+                  <Tooltip key={s}>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={isCurrent}
+                        aria-label={label}
+                        disabled={isDisabled}
+                        onClick={() => {
+                          if (!isAvailable) return;
+                          handleStatusChange(s);
+                        }}
+                        className={cn(
+                          // Bumped contrast so the icons read clearly on the
+                          // dark popover surface (#1738): foreground text and
+                          // a stronger border, plus the colour-coded active
+                          // ring is unchanged.
+                          "inline-flex size-9 items-center justify-center rounded-md border border-border bg-background text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          isCurrent && STATUS_ACTIVE_CLASSES[s],
+                          isCurrent && "cursor-default",
+                          isAvailable && STATUS_HOVER_CLASSES[s],
+                          isAvailable && "cursor-pointer hover:bg-accent",
+                          isDisabled && !isCurrent && "cursor-not-allowed opacity-40",
+                        )}
+                      >
+                        <Icon className="size-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">
+                      {label}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </div>
+          </TooltipProvider>
         </div>
       </div>
 

@@ -1221,11 +1221,21 @@ function AppointmentDetail() {
   const getReplies = (noteId: string) =>
     notes.filter((n) => n.parentNoteId === noteId);
 
-  // Calculate payment summary
+  // Calculate payment summary. Credit applied from the patient's overpayment
+  // balance (issue #1059) counts toward the paid total alongside `amount` —
+  // a visit settled purely from credit lands as `amount=0, creditApplied=price`
+  // (#1856), so without summing creditApplied the outstanding would stay at
+  // the full visit price even after settlement.
   const treatmentPrice = treatment?.price ?? 0;
   const totalPaid = payments
     .filter((p: Record<string, unknown>) => p.status === "completed")
-    .reduce((sum: number, p: Record<string, unknown>) => sum + (p.amount as number), 0);
+    .reduce(
+      (sum: number, p: Record<string, unknown>) =>
+        sum +
+        ((p.amount as number | null) ?? 0) +
+        ((p.creditApplied as number | null) ?? 0),
+      0,
+    );
   const outstanding = treatmentPrice - totalPaid;
 
   const availableTransitions = VALID_TRANSITIONS[appointment.status] ?? [];

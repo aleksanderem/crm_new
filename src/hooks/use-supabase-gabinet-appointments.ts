@@ -436,6 +436,11 @@ export function useSupabaseGabinetAppointmentRecurringPositions(
  * pending payments are auto-created at booking time and must not be treated
  * as actual receipts (mirrors `appointment-preview-content.tsx` logic).
  *
+ * Credit applied from the patient's overpayment balance (`credit_applied`,
+ * issue #1059) counts toward the paid total — a visit settled purely from
+ * credit lands as `amount=0, credit_applied=price` (#1856), and must light
+ * up the green "✓" indicator, not the red "!".
+ *
  * Returned map keys are appointment IDs; values are the total in PLN.
  */
 export function useSupabaseGabinetAppointmentPaymentTotals(
@@ -461,7 +466,7 @@ export function useSupabaseGabinetAppointmentPaymentTotals(
 
       const { data, error } = await client
         .from("payments")
-        .select("appointment_id, amount")
+        .select("appointment_id, amount, credit_applied")
         .eq("organization_id", organizationId)
         .eq("status", "completed")
         .in("appointment_id", stableIds);
@@ -471,10 +476,13 @@ export function useSupabaseGabinetAppointmentPaymentTotals(
       for (const row of (data ?? []) as {
         appointment_id: string | null;
         amount: number;
+        credit_applied: number | null;
       }[]) {
         if (!row.appointment_id) continue;
         const current = result.get(row.appointment_id) ?? 0;
-        result.set(row.appointment_id, current + (Number(row.amount) || 0));
+        const contribution =
+          (Number(row.amount) || 0) + (Number(row.credit_applied) || 0);
+        result.set(row.appointment_id, current + contribution);
       }
       return result;
     },

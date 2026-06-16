@@ -626,13 +626,23 @@ function PatientDetail() {
             ? treatmentsData?.find((tr) => tr._id === apt.treatmentId)?.price ??
               0
             : 0;
+        // Credit applied to prior payments on this visit (issue #1059) counts
+        // toward the paid total — without it, a visit already fully settled
+        // from credit would look unpaid and any new cash payment would skip
+        // the creditEarned overpayment routing (#1856).
         const paidForVisit = (patientPayments ?? [])
           .filter(
             (p) =>
               p.appointmentId === addPaymentAppointmentId &&
               p.status === "completed",
           )
-          .reduce((sum, p) => sum + (p.amount ?? 0), 0);
+          .reduce(
+            (sum, p) =>
+              sum +
+              (p.amount ?? 0) +
+              ((p as { creditApplied?: number | null }).creditApplied ?? 0),
+            0,
+          );
         const outstanding = Math.max(0, treatmentPrice - paidForVisit);
         if (amount > outstanding + 0.005) {
           creditEarned = Math.round((amount - outstanding) * 100) / 100;

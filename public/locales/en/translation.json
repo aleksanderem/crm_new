@@ -2318,7 +2318,9 @@
       "photos": {
         "empty": "No appointment photos yet. Before/after photos from treatments will appear here.",
         "openAppointment": "Open appointment",
-        "noTreatment": "Appointment"
+        "noTreatment": "Appointment",
+        "compare": "Compare photos",
+        "compareTitle": "Before / after photo comparison"
       },
       "byDay": "Clients by Day",
       "bySource": "Clients by Source",

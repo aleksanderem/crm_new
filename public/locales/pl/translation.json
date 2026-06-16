@@ -2333,7 +2333,9 @@
       "photos": {
         "empty": "Brak zdjęć z wizyt. Zdjęcia przed/po zabiegach pojawią się tutaj.",
         "openAppointment": "Otwórz wizytę",
-        "noTreatment": "Wizyta"
+        "noTreatment": "Wizyta",
+        "compare": "Porównaj zdjęcia",
+        "compareTitle": "Porównanie zdjęć przed i po"
       },
       "byDay": "Klienci wg dnia",
       "bySource": "Klienci wg źródła",

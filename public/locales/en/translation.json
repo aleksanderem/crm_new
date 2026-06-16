@@ -1844,6 +1844,23 @@
       "employee": "employee",
       "lead": "lead"
     },
+    "actionFallback": {
+      "created": "Created",
+      "updated": "Updated",
+      "deleted": "Deleted",
+      "note_added": "Note added",
+      "stage_changed": "Stage changed",
+      "assigned": "Assigned",
+      "relationship_added": "Relationship added",
+      "relationship_removed": "Relationship removed",
+      "document_uploaded": "Document uploaded",
+      "status_changed": "Status changed",
+      "email_sent": "Email sent",
+      "email_received": "Email received",
+      "sms_sent": "SMS sent",
+      "sms_received": "SMS received",
+      "package_assigned": "Package assigned"
+    },
     "descriptions": {
       "updatedAppointment": "Updated appointment",
       "rescheduledAppointment": "Rescheduled appointment from {{fromDate}} {{fromTime}} to {{toDate}} {{toTime}}",

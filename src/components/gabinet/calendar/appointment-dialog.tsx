@@ -51,6 +51,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
+import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 import { PlateText } from "@/components/plate-text";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { Separator } from "@/components/ui/separator";
@@ -1545,23 +1546,19 @@ export function AppointmentDialog({
                                         )}
                                       />
                                     )}
-                                    <input
-                                      type="time"
-                                      step={300}
+                                    <TimePicker5Min
                                       value={occ.startTime}
                                       disabled={occ.index === 0}
-                                      onChange={(e) =>
+                                      onChange={(v) =>
                                         setRecurringOverrides((prev) => ({
                                           ...prev,
                                           [occ.index]: {
                                             ...prev[occ.index],
-                                            startTime: snapTimeTo5Min(
-                                              e.target.value,
-                                            ),
+                                            startTime: snapTimeTo5Min(v),
                                           },
                                         }))
                                       }
-                                      className="h-7 w-[88px] rounded-md border border-input bg-background px-2 text-xs tabular-nums focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-70"
+                                      className="h-7 w-[88px] px-2 text-xs"
                                       aria-label={t(
                                         "gabinet.appointments.calendarDialog.time",
                                       )}

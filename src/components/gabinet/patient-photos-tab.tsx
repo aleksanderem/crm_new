@@ -26,6 +26,7 @@ import {
   ChevronRight,
   Loader2,
 } from "@/lib/ez-icons";
+import { ColumnsIcon, ImageOffIcon } from "lucide-react";
 
 interface AppointmentPhoto {
   storageId: Id<"_storage">;
@@ -114,7 +115,28 @@ export function PatientPhotosTab({
     [groups],
   );
 
+  // For the comparison view: chronological lists of all "before" and "after"
+  // photos across every appointment. Sorted oldest → newest so the first
+  // photo on each side is the earliest one for the patient (typical starting
+  // point when comparing progress).
+  const beforeEntries = useMemo(
+    () =>
+      flatPhotos
+        .filter((f) => f.photo.type === "before")
+        .sort((a, b) => a.photo.uploadedAt - b.photo.uploadedAt),
+    [flatPhotos],
+  );
+  const afterEntries = useMemo(
+    () =>
+      flatPhotos
+        .filter((f) => f.photo.type === "after")
+        .sort((a, b) => a.photo.uploadedAt - b.photo.uploadedAt),
+    [flatPhotos],
+  );
+  const canCompare = beforeEntries.length > 0 && afterEntries.length > 0;
+
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const [compareOpen, setCompareOpen] = useState(false);
 
   const closePreview = useCallback(() => setPreviewIndex(null), []);
 
@@ -170,6 +192,18 @@ export function PatientPhotosTab({
 
   return (
     <div className="space-y-4">
+      {canCompare && (
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCompareOpen(true)}
+          >
+            <ColumnsIcon className="mr-1.5 size-4" />
+            {t("gabinet.patients.photos.compare", "Porównaj zdjęcia")}
+          </Button>
+        </div>
+      )}
       {groups.map((group) => {
         const beforePhotos = group.photos.filter((p) => p.type === "before");
         const afterPhotos = group.photos.filter((p) => p.type === "after");
@@ -308,6 +342,15 @@ export function PatientPhotosTab({
           )}
         </DialogContent>
       </Dialog>
+
+      <ComparisonDialog
+        open={compareOpen}
+        onOpenChange={setCompareOpen}
+        beforeEntries={beforeEntries}
+        afterEntries={afterEntries}
+        urlMap={urlMap}
+        treatments={treatments}
+      />
     </div>
   );
 }
@@ -376,6 +419,179 @@ function PhotoColumn({
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+type CompareEntry = {
+  group: AppointmentWithPhotos;
+  photo: AppointmentPhoto;
+};
+
+function ComparisonDialog({
+  open,
+  onOpenChange,
+  beforeEntries,
+  afterEntries,
+  urlMap,
+  treatments,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  beforeEntries: CompareEntry[];
+  afterEntries: CompareEntry[];
+  urlMap: Map<string, string | null>;
+  treatments: { _id: string; name: string }[] | undefined;
+}) {
+  const { t } = useTranslation();
+  const [beforeIdx, setBeforeIdx] = useState(0);
+  const [afterIdx, setAfterIdx] = useState(afterEntries.length - 1);
+
+  useEffect(() => {
+    if (!open) return;
+    setBeforeIdx(0);
+    setAfterIdx(Math.max(0, afterEntries.length - 1));
+  }, [open, afterEntries.length]);
+
+  const safeBeforeIdx = Math.min(beforeIdx, Math.max(0, beforeEntries.length - 1));
+  const safeAfterIdx = Math.min(afterIdx, Math.max(0, afterEntries.length - 1));
+  const beforeEntry = beforeEntries[safeBeforeIdx];
+  const afterEntry = afterEntries[safeAfterIdx];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[95dvh] w-[95vw] max-w-[95vw] flex-col gap-3 bg-background p-4 sm:max-w-6xl">
+        <DialogTitle className="text-base">
+          {t("gabinet.patients.photos.compareTitle", "Porównanie zdjęć przed i po")}
+        </DialogTitle>
+        <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
+          <ComparisonPane
+            label={t("gabinet.documentation.before", "Przed")}
+            colorClass="border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+            entries={beforeEntries}
+            index={safeBeforeIdx}
+            onIndexChange={setBeforeIdx}
+            urlMap={urlMap}
+            treatments={treatments}
+            entry={beforeEntry}
+          />
+          <ComparisonPane
+            label={t("gabinet.documentation.after", "Po")}
+            colorClass="border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+            entries={afterEntries}
+            index={safeAfterIdx}
+            onIndexChange={setAfterIdx}
+            urlMap={urlMap}
+            treatments={treatments}
+            entry={afterEntry}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ComparisonPane({
+  label,
+  colorClass,
+  entries,
+  index,
+  onIndexChange,
+  urlMap,
+  treatments,
+  entry,
+}: {
+  label: string;
+  colorClass: string;
+  entries: CompareEntry[];
+  index: number;
+  onIndexChange: (next: number) => void;
+  urlMap: Map<string, string | null>;
+  treatments: { _id: string; name: string }[] | undefined;
+  entry: CompareEntry | undefined;
+}) {
+  const { t } = useTranslation();
+  const url = entry ? urlMap.get(entry.photo.storageId) : undefined;
+  const treatmentName = entry
+    ? treatments?.find((tr) => tr._id === entry.group.appointment.treatmentId)?.name
+    : undefined;
+  const showNav = entries.length > 1;
+
+  const goPrev = () => {
+    if (entries.length === 0) return;
+    onIndexChange((index - 1 + entries.length) % entries.length);
+  };
+  const goNext = () => {
+    if (entries.length === 0) return;
+    onIndexChange((index + 1) % entries.length);
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <Badge variant="outline" className={colorClass}>
+          {label}
+        </Badge>
+        {showNav && (
+          <span className="text-muted-foreground tabular-nums text-xs">
+            {index + 1} / {entries.length}
+          </span>
+        )}
+      </div>
+      <div className="bg-muted relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md">
+        {entry && url ? (
+          <img
+            src={url}
+            alt=""
+            className="max-h-[70dvh] w-full object-contain"
+          />
+        ) : entry ? (
+          <Loader2
+            size={24}
+            variant="stroke"
+            className="animate-spin text-muted-foreground"
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-1 text-xs text-muted-foreground">
+            <ImageOffIcon className="size-6" />
+            <span>{t("gabinet.documentation.noPhoto", "Brak zdjęcia")}</span>
+          </div>
+        )}
+        {showNav && (
+          <>
+            <button
+              type="button"
+              onClick={goPrev}
+              aria-label={t("common.previous", "Poprzednie")}
+              className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white hover:bg-black/60"
+            >
+              <ChevronLeft size={20} variant="stroke" />
+            </button>
+            <button
+              type="button"
+              onClick={goNext}
+              aria-label={t("common.next", "Następne")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white hover:bg-black/60"
+            >
+              <ChevronRight size={20} variant="stroke" />
+            </button>
+          </>
+        )}
+      </div>
+      <div className="text-xs text-muted-foreground">
+        {entry ? (
+          <>
+            {treatmentName ? (
+              <span className="font-medium text-foreground">{treatmentName} · </span>
+            ) : null}
+            <span>
+              {entry.group.appointment.date} · {entry.group.appointment.startTime}
+            </span>
+          </>
+        ) : (
+          "—"
+        )}
+      </div>
     </div>
   );
 }

@@ -415,7 +415,7 @@ export function DocumentationTab({
                 : (def?.type ?? param.type ?? "text");
               const unit = param.isCustom ? param.unit : def?.unit;
               return (
-                <div key={`${i}-${param.name}`} className="space-y-1.5">
+                <div key={i} className="space-y-1.5">
                   {param.isCustom ? (
                     <div className="flex items-start gap-2">
                       <div className="grid flex-1 gap-2 sm:grid-cols-[1fr_8rem]">

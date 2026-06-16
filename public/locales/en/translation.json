@@ -2427,6 +2427,13 @@
         "active": "Active",
         "inactive": "Inactive"
       },
+      "groupByEquipment": "Group by equipment",
+      "groupCount_one": "{{count}} treatment",
+      "groupCount_other": "{{count}} treatments",
+      "groups": {
+        "noEquipment": "No equipment",
+        "unknownEquipment": "Unknown equipment"
+      },
       "aftercare": "Aftercare",
       "treatment": "Treatment",
       "nudgeFilter": {

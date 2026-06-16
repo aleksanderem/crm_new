@@ -79,6 +79,12 @@ export function TreatmentPicker({
 
   return (
     <Popover
+      // `modal` stacks the popover's own `react-remove-scroll` lock on top of
+      // the parent Dialog's lock. Without it, the Dialog's lock blocks wheel
+      // events on the portaled popover content, so touchpad/wheel scrolling
+      // through a long treatment list does nothing while the scrollbar drag
+      // still works (issue #1850).
+      modal
       open={open}
       onOpenChange={(o) => {
         onOpenChange(o);

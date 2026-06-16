@@ -3564,6 +3564,12 @@
       "transferTo": "Transfer to",
       "notes": "Notes",
       "noEquipment": "No equipment",
+      "parameterUnits": "Parameter units",
+      "parameterUnit": "Parameter unit",
+      "parameterUnitPlaceholder": "e.g. J, W, ms",
+      "parameterUnitsHint": "Units offered when adding treatment parameters during a visit.",
+      "parameterUnitsEmpty": "No units defined.",
+      "addParameterUnit": "Add unit",
       "statuses": {
         "available": "Available",
         "in_use": "In use",

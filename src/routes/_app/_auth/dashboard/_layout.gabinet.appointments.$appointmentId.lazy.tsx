@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
@@ -9,6 +9,7 @@ import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatPhoneNumber } from "@/lib/phone";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
+import { useSupabaseGabinetEquipmentList } from "@/hooks/use-supabase-gabinet-equipment";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -496,6 +497,28 @@ function AppointmentDetail() {
       entityId: appointmentId,
     }),
   );
+
+  // Equipment list used to surface parameter units on the Documentation tab —
+  // when the appointment's treatment lists required equipment, the editor
+  // pre-fills the unit field with that equipment's catalog. See #1847.
+  const { data: orgEquipment } = useSupabaseGabinetEquipmentList(organizationId);
+  const equipmentParameterUnits = useMemo(() => {
+    const requiredIds =
+      (detail?.treatment?.requiredEquipmentIds as string[] | undefined) ?? [];
+    if (requiredIds.length === 0 || !orgEquipment) return [];
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const eq of orgEquipment) {
+      if (!requiredIds.includes(eq._id)) continue;
+      for (const u of eq.parameterUnits ?? []) {
+        const trimmed = u.trim();
+        if (!trimmed || seen.has(trimmed)) continue;
+        seen.add(trimmed);
+        out.push(trimmed);
+      }
+    }
+    return out;
+  }, [detail?.treatment?.requiredEquipmentIds, orgEquipment]);
 
   // Initialize internal notes from appointment data
   useEffect(() => {
@@ -2543,6 +2566,7 @@ function AppointmentDetail() {
           appointmentId={appointment._id}
           appointment={appointment}
           treatmentParameters={treatment?.parameters as any}
+          equipmentParameterUnits={equipmentParameterUnits}
           onChanged={async () => {
             await invalidateAppointmentCaches();
             await refetch();

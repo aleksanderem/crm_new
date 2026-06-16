@@ -35,6 +35,7 @@ import {
   History,
   ArrowRight,
   MapPin,
+  Trash2,
 } from "@/lib/ez-icons";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -55,6 +56,73 @@ type LocationItem = {
   _id: string;
   name: string;
 };
+
+function ParameterUnitsEditor({
+  value,
+  onChange,
+  idPrefix,
+}: {
+  value: string[];
+  onChange: (next: string[]) => void;
+  idPrefix: string;
+}) {
+  const { t } = useTranslation();
+
+  const handleUnitChange = (index: number, next: string) => {
+    const copy = [...value];
+    copy[index] = next;
+    onChange(copy);
+  };
+
+  const handleRemove = (index: number) => {
+    onChange(value.filter((_, i) => i !== index));
+  };
+
+  const handleAdd = () => {
+    onChange([...value, ""]);
+  };
+
+  return (
+    <div className="space-y-2">
+      {value.length === 0 && (
+        <p className="text-xs text-muted-foreground italic">
+          {t("gabinet.equipment.parameterUnitsEmpty")}
+        </p>
+      )}
+      {value.map((unit, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <Input
+            id={`${idPrefix}-${i}`}
+            value={unit}
+            onChange={(e) => handleUnitChange(i, e.target.value)}
+            placeholder={t("gabinet.equipment.parameterUnitPlaceholder")}
+            className="flex-1"
+            aria-label={t("gabinet.equipment.parameterUnit")}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 shrink-0 text-destructive"
+            onClick={() => handleRemove(i)}
+            aria-label={t("common.delete")}
+          >
+            <Trash2 className="h-4 w-4" variant="stroke" />
+          </Button>
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={handleAdd}
+      >
+        <Plus className="mr-1.5 h-4 w-4" variant="stroke" />
+        {t("gabinet.equipment.addParameterUnit")}
+      </Button>
+    </div>
+  );
+}
 
 function StatusBadge({
   status,
@@ -160,6 +228,9 @@ function EquipmentCard({
   const [editStatus, setEditStatus] = useState<EquipmentStatus>(
     item.status as EquipmentStatus,
   );
+  const [editParameterUnits, setEditParameterUnits] = useState<string[]>(
+    item.parameterUnits ?? [],
+  );
   const [saving, setSaving] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -205,6 +276,7 @@ function EquipmentCard({
         description: editDescription.trim() || null,
         serialNumber: editSerial.trim() || null,
         status: editStatus,
+        parameterUnits: editParameterUnits,
       });
       toast.success(t("common.saved"));
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEquipment.list(organizationId) });
@@ -368,6 +440,17 @@ function EquipmentCard({
                   rows={2}
                 />
               </div>
+              <div className="space-y-1.5 col-span-2">
+                <Label>{t("gabinet.equipment.parameterUnits")}</Label>
+                <p className="text-xs text-muted-foreground">
+                  {t("gabinet.equipment.parameterUnitsHint")}
+                </p>
+                <ParameterUnitsEditor
+                  value={editParameterUnits}
+                  onChange={setEditParameterUnits}
+                  idPrefix={`eq-units-${item._id}`}
+                />
+              </div>
             </div>
 
             <div className="flex items-center justify-between pt-2">
@@ -501,6 +584,7 @@ function EquipmentSettingsPage() {
   const [newSerial, setNewSerial] = useState("");
   const [newStatus, setNewStatus] = useState<EquipmentStatus>("available");
   const [newLocationId, setNewLocationId] = useState<string>("");
+  const [newParameterUnits, setNewParameterUnits] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
 
   const queryClient = useQueryClient();
@@ -537,6 +621,7 @@ function EquipmentSettingsPage() {
         serialNumber: newSerial.trim() || null,
         status: newStatus,
         currentLocationId: newLocationId || null,
+        parameterUnits: newParameterUnits,
       });
       toast.success(t("gabinet.equipment.addEquipment"));
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEquipment.list(organizationId) });
@@ -546,6 +631,7 @@ function EquipmentSettingsPage() {
       setNewSerial("");
       setNewStatus("available");
       setNewLocationId("");
+      setNewParameterUnits([]);
     } catch (e) {
       toast.error(
         formatActionError(e, t, {
@@ -660,6 +746,17 @@ function EquipmentSettingsPage() {
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
                 rows={2}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t("gabinet.equipment.parameterUnits")}</Label>
+              <p className="text-xs text-muted-foreground">
+                {t("gabinet.equipment.parameterUnitsHint")}
+              </p>
+              <ParameterUnitsEditor
+                value={newParameterUnits}
+                onChange={setNewParameterUnits}
+                idPrefix="eq-units-new"
               />
             </div>
             <div className="flex justify-end gap-2">

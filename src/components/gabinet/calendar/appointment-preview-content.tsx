@@ -290,17 +290,7 @@ export function AppointmentPreviewContent({
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
 
-  const snapTimeTo5Min = (value: string): string => {
-    if (!value) return value;
-    const [h, m] = value.split(":").map(Number);
-    if (!Number.isFinite(h) || !Number.isFinite(m)) return value;
-    const total = Math.min(Math.max(h * 60 + m, 0), 24 * 60 - 1);
-    const snapped = Math.min(Math.round(total / 5) * 5, 24 * 60 - 1);
-    return `${String(Math.floor(snapped / 60)).padStart(2, "0")}:${String(snapped % 60).padStart(2, "0")}`;
-  };
-
-  const handleStartTimeChange = (rawStart: string) => {
-    const newStart = snapTimeTo5Min(rawStart);
+  const handleStartTimeChange = (newStart: string) => {
     setStartTime(newStart);
     if (!newStart || !startTime || !endTime) return;
     const toMin = (s: string) => {
@@ -1500,7 +1490,7 @@ export function AppointmentPreviewContent({
               </Label>
               <TimePicker5Min
                 value={endTime}
-                onChange={(v) => setEndTime(snapTimeTo5Min(v))}
+                onChange={setEndTime}
                 className="h-8 w-full text-sm sm:w-[88px]"
               />
             </div>

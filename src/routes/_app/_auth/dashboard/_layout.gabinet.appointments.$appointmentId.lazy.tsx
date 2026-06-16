@@ -335,14 +335,6 @@ function AppointmentDetail() {
   const [editDate, setEditDate] = useState("");
   const [editStartTime, setEditStartTime] = useState("");
   const [editEndTime, setEditEndTime] = useState("");
-  const snapTimeTo5Min = (value: string): string => {
-    if (!value) return value;
-    const [h, m] = value.split(":").map(Number);
-    if (!Number.isFinite(h) || !Number.isFinite(m)) return value;
-    const total = Math.min(Math.max(h * 60 + m, 0), 24 * 60 - 1);
-    const snapped = Math.min(Math.round(total / 5) * 5, 24 * 60 - 1);
-    return `${String(Math.floor(snapped / 60)).padStart(2, "0")}:${String(snapped % 60).padStart(2, "0")}`;
-  };
   const [editLocationId, setEditLocationId] = useState("");
   const [editRoomId, setEditRoomId] = useState("");
   const [treatmentPickerOpen, setTreatmentPickerOpen] = useState(false);
@@ -1490,7 +1482,7 @@ function AppointmentDetail() {
                   </Label>
                   <TimePicker5Min
                     value={editStartTime}
-                    onChange={(v) => setEditStartTime(snapTimeTo5Min(v))}
+                    onChange={setEditStartTime}
                     className="h-9 w-[110px]"
                   />
                 </div>
@@ -1500,7 +1492,7 @@ function AppointmentDetail() {
                   </Label>
                   <TimePicker5Min
                     value={editEndTime}
-                    onChange={(v) => setEditEndTime(snapTimeTo5Min(v))}
+                    onChange={setEditEndTime}
                     className="h-9 w-[110px]"
                   />
                 </div>

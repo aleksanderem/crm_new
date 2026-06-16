@@ -1589,12 +1589,39 @@ export const _updateSideEffects = internalMutation({
 
     // scheduledActivity patches moved to the parent action (Supabase-primary).
 
+    // Build a descriptive activity entry so the appointment history surfaces
+    // *what* changed (issue #1837 — staff need to see "who moved this visit
+    // from when to when" without digging through automation logs). Date/time
+    // moves are the highest-signal change; we emit a dedicated description for
+    // them and fall back to the generic "Updated appointment" line otherwise.
+    const prevStart = args.previousStartTime.slice(0, 5);
+    const prevEnd = args.previousEndTime.slice(0, 5);
+    const nextStart = args.newStartTime.slice(0, 5);
+    const nextEnd = args.newEndTime.slice(0, 5);
+    let description = "Updated appointment";
+    if (args.dateChanged) {
+      description = `Rescheduled appointment from ${args.previousDate} ${prevStart} to ${args.newDate} ${nextStart}`;
+    }
+
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "gabinetAppointment",
       entityId: args.appointmentId,
       action: "updated",
-      description: `Updated appointment`,
+      description,
+      metadata: {
+        dateChanged: args.dateChanged,
+        employeeChanged: args.employeeChanged,
+        previousDate: args.previousDate,
+        previousStartTime: prevStart,
+        previousEndTime: prevEnd,
+        previousEmployeeId: args.previousEmployeeId,
+        newDate: args.newDate,
+        newStartTime: nextStart,
+        newEndTime: nextEnd,
+        newEmployeeId: args.newEmployeeId,
+        updatedFields: args.updatedFields,
+      },
       performedBy: actorUserId,
     });
 

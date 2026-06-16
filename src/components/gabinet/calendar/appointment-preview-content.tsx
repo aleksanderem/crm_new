@@ -65,8 +65,10 @@ import { cn } from "@/lib/utils";
 import {
   BadgeCheck,
   Calendar,
+  ChevronDown,
   CircleCheck,
   Clock,
+  History,
   Mail,
   OctagonX,
   Phone,
@@ -84,6 +86,8 @@ import {
   Plus,
   X,
 } from "lucide-react";
+import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
+import { translateActivityDescription } from "@/components/activity-timeline/translate-description";
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useDraggableDialog } from "@/hooks/use-draggable-dialog";
@@ -289,6 +293,17 @@ export function AppointmentPreviewContent({
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [changeHistoryOpen, setChangeHistoryOpen] = useState(false);
+
+  // Appointment change history (issue #1837). Activities are recorded by the
+  // backend on every update — we surface only the ones that meaningfully
+  // describe a change ("updated", "status_changed") and show who/when/what.
+  const { data: appointmentActivities } = useSupabaseActivitiesByEntity(
+    organizationId,
+    "gabinetAppointment",
+    appointmentId,
+    { enabled: changeHistoryOpen, limit: 50 },
+  );
 
   const handleStartTimeChange = (newStart: string) => {
     setStartTime(newStart);
@@ -1607,6 +1622,92 @@ export function AppointmentPreviewContent({
               })}
             </div>
           </TooltipProvider>
+        </div>
+
+        {/* Appointment change history — issue #1837. Lazy-loaded on open so
+            we don't fetch activities for every preview popover the user
+            hovers over. Reschedule/status changes carry actor + timestamp
+            from the backend logActivity call. */}
+        <div className="space-y-1">
+          <button
+            type="button"
+            onClick={() => setChangeHistoryOpen((v) => !v)}
+            aria-expanded={changeHistoryOpen}
+            className="flex w-full items-center justify-between rounded-md border bg-background px-2.5 py-2 text-left text-xs font-medium hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <History className="size-3.5 text-muted-foreground" variant="stroke" />
+              {t(
+                "gabinet.appointmentDetail.changeHistory",
+                "Wszystkie zmiany terminów",
+              )}
+            </span>
+            <ChevronDown
+              className={cn(
+                "size-3.5 text-muted-foreground transition-transform",
+                changeHistoryOpen && "rotate-180",
+              )}
+              variant="stroke"
+            />
+          </button>
+          {changeHistoryOpen && (
+            <div className="rounded-md border bg-muted/40 px-2.5 py-2">
+              {(() => {
+                const entries = (appointmentActivities ?? []).filter(
+                  (a) =>
+                    a.action === "updated" ||
+                    a.action === "status_changed" ||
+                    a.action === "created",
+                );
+                if (entries.length === 0) {
+                  return (
+                    <p className="py-2 text-center text-[11px] text-muted-foreground">
+                      {t(
+                        "gabinet.appointmentDetail.changeHistoryEmpty",
+                        "Brak zmian — od utworzenia nikt nie modyfikował tej wizyty.",
+                      )}
+                    </p>
+                  );
+                }
+                return (
+                  <ul className="space-y-1.5">
+                    {entries.map((a) => {
+                      const actor =
+                        a.performedByName ??
+                        t(
+                          "gabinet.appointmentDetail.changeHistoryUnknownActor",
+                          "Nieznany użytkownik",
+                        );
+                      const when = new Date(a.createdAt).toLocaleString(
+                        i18n.language,
+                        {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        },
+                      );
+                      const label =
+                        translateActivityDescription(a.description, t) ??
+                        a.description;
+                      return (
+                        <li
+                          key={a._id}
+                          className="rounded-md bg-background px-2 py-1.5 text-[11px] leading-tight"
+                        >
+                          <p className="font-medium text-foreground">{label}</p>
+                          <p className="mt-0.5 text-muted-foreground">
+                            {actor} · {when}
+                          </p>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                );
+              })()}
+            </div>
+          )}
         </div>
       </div>
 

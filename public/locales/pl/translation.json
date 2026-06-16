@@ -1855,6 +1855,7 @@
     },
     "descriptions": {
       "updatedAppointment": "Zaktualizowano wizytę",
+      "rescheduledAppointment": "Przeniesiono wizytę z {{fromDate}} {{fromTime}} na {{toDate}} {{toTime}}",
       "createdAppointment": "Utworzono wizytę na {{date}} o {{time}}",
       "cancelledAppointment": "Anulowano wizytę",
       "cancelledAppointmentWithReason": "Anulowano wizytę: {{reason}}",
@@ -2999,6 +3000,9 @@
       "packageNotSelected": "Wybierz pakiet, z którego chcesz zdjąć sztuki.",
       "packageQuantityMin": "Liczba sztuk musi wynosić co najmniej 1.",
       "packageQuantityExceeds": "Liczba sztuk przekracza pozostałą ilość w pakiecie.",
+      "changeHistory": "Wszystkie zmiany terminów",
+      "changeHistoryEmpty": "Brak zmian — od utworzenia nikt nie modyfikował tej wizyty.",
+      "changeHistoryUnknownActor": "Nieznany użytkownik",
       "history": {
         "unifiedDescription": "Ujednolicona historia operacyjna tej wizyty, w tym wiadomości i zdarzenia workflow.",
         "metadata": {

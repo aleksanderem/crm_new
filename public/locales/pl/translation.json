@@ -3057,6 +3057,13 @@
       }
     },
     "documentation": {
+      "parametersEmpty": "Brak parametrów dla tego zabiegu. Dodaj parametr poniżej lub zdefiniuj domyślne parametry w ustawieniach zabiegu.",
+      "addParam": "Dodaj parametr",
+      "paramName": "Nazwa parametru",
+      "paramNamePlaceholder": "Nazwa parametru (np. Energia)",
+      "paramUnit": "Jednostka",
+      "paramUnitPlaceholder": "Jednostka (np. J, W)",
+      "paramValuePlaceholder": "Wartość",
       "errors": {
         "saveParamsFailed": "Nie udało się zapisać parametrów zabiegowych.",
         "saveInterviewFailed": "Nie udało się zapisać wywiadu.",

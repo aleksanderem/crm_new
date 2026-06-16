@@ -293,6 +293,10 @@ export function createGabinetTables({
     baseSalary: v.optional(v.number()),
     commissionPercent: v.optional(v.number()),
     bankAccount: v.optional(v.string()),
+    // Whether this employee should appear as a column in the day-by-employee
+    // calendar view. Defaults to true at the DB level; optional here so legacy
+    // rows without the field don't fail validation.
+    showInCalendar: v.optional(v.boolean()),
     tagIds: v.optional(v.array(v.id("tagDefinitions"))),
     categoryId: v.optional(v.id("categoryDefinitions")),
     createdBy: v.id("users"),

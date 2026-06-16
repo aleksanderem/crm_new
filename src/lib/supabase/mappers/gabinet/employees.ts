@@ -35,6 +35,7 @@ export interface MappedGabinetEmployee {
   baseSalary?: number;
   commissionPercent?: number;
   bankAccount?: string;
+  showInCalendar?: boolean;
   tagIds?: string[];
   categoryId?: string;
   createdBy: string;

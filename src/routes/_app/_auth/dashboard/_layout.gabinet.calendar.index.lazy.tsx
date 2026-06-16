@@ -1275,7 +1275,10 @@ function GabinetCalendarPage() {
     if (!isDayByEmployeeView) return [];
     // dayOfWeek is stored as Sun=0..Sat=6 (matches Date.getDay()). Issue #1205.
     const dow = new Date(currentDate).getDay();
-    const list = employees ?? [];
+    // Hide employees flagged as not visible in the calendar (issue #1859).
+    // Older rows without the column default to true at the DB level, so
+    // anything strictly === false is the only thing to exclude.
+    const list = (employees ?? []).filter((e) => e.showInCalendar !== false);
     return list.map((emp) => {
       const name = getEmployeeName(emp);
       const initials = getEmployeeInitials(name);

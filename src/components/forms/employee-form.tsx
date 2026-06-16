@@ -69,6 +69,7 @@ export interface EmployeeFormData {
   specialization?: string;
   licenseNumber?: string;
   color?: string;
+  showInCalendar?: boolean;
   qualifiedTreatmentIds: Id<"gabinetTreatments">[];
   tagIds?: Id<"tagDefinitions">[];
   categoryId?: Id<"categoryDefinitions">;
@@ -136,6 +137,9 @@ export function EmployeeForm({
   const [specialization, setSpecialization] = useState(initialData?.specialization ?? "");
   const [licenseNumber, setLicenseNumber] = useState(initialData?.licenseNumber ?? "");
   const [color, setColor] = useState(initialData?.color ?? "#3b82f6");
+  const [showInCalendar, setShowInCalendar] = useState<boolean>(
+    initialData?.showInCalendar ?? true,
+  );
   const [selectedTreatments, setSelectedTreatments] = useState<string[]>(
     initialData?.qualifiedTreatmentIds?.map((id) => id as string) ?? []
   );
@@ -164,6 +168,7 @@ export function EmployeeForm({
       specialization: specialization || undefined,
       licenseNumber: licenseNumber || undefined,
       color: color || undefined,
+      showInCalendar,
       qualifiedTreatmentIds: isClinicalRole
         ? (selectedTreatments as Id<"gabinetTreatments">[])
         : [],
@@ -340,6 +345,25 @@ export function EmployeeForm({
             />
           ))}
         </div>
+      </div>
+
+      {/* Show in calendar */}
+      <div className="space-y-1.5">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <Checkbox
+            className="mt-0.5 h-5 w-5"
+            checked={showInCalendar}
+            onCheckedChange={(checked) => setShowInCalendar(checked === true)}
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium leading-none">
+              {t("gabinet.employees.showInCalendar")}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {t("gabinet.employees.showInCalendarHint")}
+            </span>
+          </span>
+        </label>
       </div>
 
       {/* Qualified treatments — hidden for non-clinical roles */}

@@ -114,6 +114,29 @@ export function extractFormFields(json: TipTapNode): ExtractedFormField[] {
   return fields;
 }
 
+/**
+ * A form field is "standalone" when its parent block has no other meaningful
+ * content — i.e. it's a question on its own line rather than an inline blank
+ * inside a sentence. Other form fields and <br>s don't count as content, so
+ * paragraphs with multiple yes/no fields still qualify.
+ */
+function isFieldStandalone(el: Element): boolean {
+  const parent = el.parentElement;
+  if (!parent) return false;
+  for (const node of Array.from(parent.childNodes)) {
+    if (node === el) continue;
+    if (node.nodeType === Node.TEXT_NODE) {
+      if ((node.textContent ?? "").trim()) return false;
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      const sibling = node as Element;
+      if (sibling.hasAttribute("data-form-field")) continue;
+      if (sibling.tagName === "BR") continue;
+      if ((sibling.textContent ?? "").trim()) return false;
+    }
+  }
+  return true;
+}
+
 // ---------------------------------------------------------------------------
 // HTML rendering with variable/form-field resolution (DOMParser-based)
 // ---------------------------------------------------------------------------
@@ -194,7 +217,24 @@ export function renderDocument(
           }
           el.replaceWith(wrapper);
         } else {
-          el.replaceWith(doc.createTextNode(value));
+          const label = el.getAttribute("label") || "";
+          // When the field is the only meaningful content of its parent
+          // block (a "questionnaire-style" entry — one question per line),
+          // keep the label visible alongside the answer. Without this, a
+          // template designed as label="Czy choruje na X?" / value="Nie"
+          // would render as just "Nie" with no question context. Inline
+          // fields with surrounding text keep the bare-value behavior so
+          // templates like "Imię: [field]" don't duplicate the prompt.
+          if (label.trim() && value.trim() && isFieldStandalone(el)) {
+            const wrapper = doc.createElement("span");
+            const labelEl = doc.createElement("strong");
+            labelEl.textContent = `${label}: `;
+            wrapper.appendChild(labelEl);
+            wrapper.appendChild(doc.createTextNode(value));
+            el.replaceWith(wrapper);
+          } else {
+            el.replaceWith(doc.createTextNode(value));
+          }
         }
       }
     });

@@ -677,11 +677,19 @@ export function AppointmentPreviewContent({
   };
 
   const treatmentPrice = treatment?.price ?? 0;
+  // Credit applied from the patient's overpayment balance (issue #1059) counts
+  // toward the paid total — a visit settled purely from credit lands as
+  // `amount=0, creditApplied=price` (#1856), so without summing creditApplied
+  // the visit would look unpaid (red "!") even though it's fully settled.
   const totalPaid = (detail.payments ?? [])
     .filter(
       (p) => p.status === "completed" || p.status === "pending",
     )
-    .reduce((sum, p) => sum + (p.amount ?? 0), 0);
+    .reduce(
+      (sum, p) =>
+        sum + (p.amount ?? 0) + ((p as { creditApplied?: number | null }).creditApplied ?? 0),
+      0,
+    );
   const outstanding = Math.max(0, treatmentPrice - totalPaid);
   const canMarkCompleted = availableTransitions.includes("completed");
 
@@ -690,7 +698,11 @@ export function AppointmentPreviewContent({
   // booked, so they mustn't count as actually paid. Issue #1031.
   const completedPaid = (detail.payments ?? [])
     .filter((p) => p.status === "completed")
-    .reduce((sum, p) => sum + (p.amount ?? 0), 0);
+    .reduce(
+      (sum, p) =>
+        sum + (p.amount ?? 0) + ((p as { creditApplied?: number | null }).creditApplied ?? 0),
+      0,
+    );
 
   // Drives the "already settled" affordance on the Rozlicz button (issue #1688).
   // Settle = visit closed AND nothing left to pay; otherwise the primary button

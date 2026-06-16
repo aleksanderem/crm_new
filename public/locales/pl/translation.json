@@ -2306,10 +2306,16 @@
       "tabs": {
         "overview": "Przegląd",
         "appointments": "Wizyty",
+        "photos": "Zdjęcia",
         "documents": "Dokumenty",
         "loyalty": "Lojalność",
         "credit": "Saldo",
         "activity": "Aktywność"
+      },
+      "photos": {
+        "empty": "Brak zdjęć z wizyt. Zdjęcia przed/po zabiegach pojawią się tutaj.",
+        "openAppointment": "Otwórz wizytę",
+        "noTreatment": "Wizyta"
       },
       "byDay": "Klienci wg dnia",
       "bySource": "Klienci wg źródła",

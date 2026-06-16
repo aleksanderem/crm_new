@@ -1846,6 +1846,7 @@
     },
     "descriptions": {
       "updatedAppointment": "Updated appointment",
+      "rescheduledAppointment": "Rescheduled appointment from {{fromDate}} {{fromTime}} to {{toDate}} {{toTime}}",
       "createdAppointment": "Created appointment for {{date}} at {{time}}",
       "cancelledAppointment": "Cancelled appointment",
       "cancelledAppointmentWithReason": "Cancelled appointment: {{reason}}",
@@ -2979,6 +2980,9 @@
       "packageNotSelected": "Choose the package to deduct units from.",
       "packageQuantityMin": "Unit count must be at least 1.",
       "packageQuantityExceeds": "Unit count exceeds the remaining package usage.",
+      "changeHistory": "All appointment changes",
+      "changeHistoryEmpty": "No changes recorded — nobody has modified this appointment since it was created.",
+      "changeHistoryUnknownActor": "Unknown user",
       "history": {
         "unifiedDescription": "Unified operational history for this appointment, including messages and workflow events.",
         "metadata": {

@@ -41,6 +41,18 @@ const rules: Rule[] = [
     build: (_m, t) => t("activityTimeline.descriptions.updatedAppointment", "Updated appointment"),
   },
   {
+    pattern: /^Rescheduled appointment from (\S+) (\S+) to (\S+) (\S+)$/,
+    build: (m, t) =>
+      t("activityTimeline.descriptions.rescheduledAppointment", {
+        defaultValue:
+          "Rescheduled appointment from {{fromDate}} {{fromTime}} to {{toDate}} {{toTime}}",
+        fromDate: m[1],
+        fromTime: m[2],
+        toDate: m[3],
+        toTime: m[4],
+      }),
+  },
+  {
     pattern: /^Created appointment for (.+) at (.+)$/,
     build: (m, t) =>
       t("activityTimeline.descriptions.createdAppointment", {

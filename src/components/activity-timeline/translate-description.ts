@@ -8,8 +8,9 @@
  * English copy into otherwise Polish UI. Rather than back-fill the DB, we
  * pattern-match known templates here and return the translated equivalent.
  *
- * If the input does not match any known template, it is returned unchanged so
- * free-text and not-yet-covered descriptions still render.
+ * Returns `undefined` when the input is empty or no rule matches, so callers
+ * can chain a per-action fallback (see `getActionFallbackLabel`) before
+ * showing the raw English description.
  */
 
 // Loose translator shape compatible with i18next's TFunction.
@@ -652,10 +653,28 @@ export function translateActivityDescription(
   description: string | undefined,
   t: Translator | undefined,
 ): string | undefined {
-  if (!description || !t) return description;
+  if (!description || !t) return undefined;
   for (const rule of rules) {
     const match = description.match(rule.pattern);
     if (match) return rule.build(match, t);
   }
-  return description;
+  return undefined;
+}
+
+// Localized fallback for activity rows whose stored English description does
+// not match any rule above (issue #1855). Used by the appointment change
+// history popover so unrecognised entries render a sensible per-action label
+// (e.g. "Zaktualizowano", "Zmiana statusu") instead of leaking raw English.
+// Returns undefined for unknown actions so callers can chain to the raw
+// description as a last resort.
+export function getActionFallbackLabel(
+  action: string | undefined,
+  t: Translator | undefined,
+): string | undefined {
+  if (!action || !t) return undefined;
+  const key = `activityTimeline.actionFallback.${action}`;
+  const translated = t(key, { defaultValue: "" });
+  return typeof translated === "string" && translated.length > 0
+    ? translated
+    : undefined;
 }

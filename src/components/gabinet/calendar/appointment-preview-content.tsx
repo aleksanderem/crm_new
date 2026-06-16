@@ -87,7 +87,10 @@ import {
   X,
 } from "lucide-react";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
-import { translateActivityDescription } from "@/components/activity-timeline/translate-description";
+import {
+  getActionFallbackLabel,
+  translateActivityDescription,
+} from "@/components/activity-timeline/translate-description";
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useDraggableDialog } from "@/hooks/use-draggable-dialog";
@@ -1707,8 +1710,13 @@ export function AppointmentPreviewContent({
                           minute: "2-digit",
                         },
                       );
+                      // Prefer a localized rule match; fall back to a
+                      // per-action label so unrecognised templates don't leak
+                      // raw English (#1855); raw description is the last
+                      // resort.
                       const label =
                         translateActivityDescription(a.description, t) ??
+                        getActionFallbackLabel(a.action, t) ??
                         a.description;
                       return (
                         <li

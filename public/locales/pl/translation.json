@@ -1853,6 +1853,23 @@
       "employee": "Pracownik",
       "lead": "Lead"
     },
+    "actionFallback": {
+      "created": "Utworzono",
+      "updated": "Zaktualizowano",
+      "deleted": "Usunięto",
+      "note_added": "Dodano notatkę",
+      "stage_changed": "Zmiana etapu",
+      "assigned": "Przypisano",
+      "relationship_added": "Dodano powiązanie",
+      "relationship_removed": "Usunięto powiązanie",
+      "document_uploaded": "Dodano dokument",
+      "status_changed": "Zmiana statusu",
+      "email_sent": "Wysłano email",
+      "email_received": "Odebrano email",
+      "sms_sent": "Wysłano SMS",
+      "sms_received": "Odebrano SMS",
+      "package_assigned": "Przypisano pakiet"
+    },
     "descriptions": {
       "updatedAppointment": "Zaktualizowano wizytę",
       "rescheduledAppointment": "Przeniesiono wizytę z {{fromDate}} {{fromTime}} na {{toDate}} {{toTime}}",

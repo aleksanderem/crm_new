@@ -15,6 +15,7 @@ export interface MappedGabinetEquipment {
   currentLocationId?: string;
   currentRoomId?: string;
   status: string;
+  parameterUnits?: string[];
   createdBy: string;
   createdAt: number;
   updatedAt?: number;

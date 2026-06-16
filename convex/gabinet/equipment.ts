@@ -12,6 +12,19 @@ import type {
 
 // Dual-write refs removed — Supabase is now primary for equipment writes
 
+function normalizeUnits(units: string[] | undefined): string[] | null {
+  if (!units) return null;
+  const cleaned: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of units) {
+    const trimmed = raw.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    cleaned.push(trimmed);
+  }
+  return cleaned.length > 0 ? cleaned : null;
+}
+
 export const listEquipment = action({
   args: {
     organizationId: v.id("organizations"),
@@ -85,6 +98,7 @@ export const createEquipment = action({
     currentLocationId: v.optional(v.union(v.string(), v.null())),
     currentRoomId: v.optional(v.union(v.string(), v.null())),
     status: v.optional(equipmentStatusValidator),
+    parameterUnits: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runQuery(
@@ -108,6 +122,7 @@ export const createEquipment = action({
       currentLocationId: args.currentLocationId ?? null,
       currentRoomId: args.currentRoomId ?? null,
       status: args.status ?? "available",
+      parameterUnits: normalizeUnits(args.parameterUnits),
       createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
@@ -125,6 +140,7 @@ export const updateEquipment = action({
     description: v.optional(v.union(v.string(), v.null())),
     serialNumber: v.optional(v.union(v.string(), v.null())),
     status: v.optional(equipmentStatusValidator),
+    parameterUnits: v.optional(v.union(v.array(v.string()), v.null())),
   },
   handler: async (ctx, args) => {
     await ctx.runQuery(
@@ -144,9 +160,13 @@ export const updateEquipment = action({
       throw new Error("Equipment not found");
     }
 
-    const { organizationId, equipmentId, ...updates } = args;
+    const { organizationId, equipmentId, parameterUnits, ...updates } = args;
     const now = Date.now();
-    await db.patch("gabinetEquipment", equipmentId, { ...updates, updatedAt: now });
+    const patch: Record<string, unknown> = { ...updates, updatedAt: now };
+    if (parameterUnits !== undefined) {
+      patch.parameterUnits = parameterUnits === null ? null : normalizeUnits(parameterUnits);
+    }
+    await db.patch("gabinetEquipment", equipmentId, patch);
 
     return equipmentId;
   },

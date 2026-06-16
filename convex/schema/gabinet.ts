@@ -905,6 +905,10 @@ export function createGabinetTables({
       v.literal("maintenance"),
       v.literal("retired"),
     ),
+    // Parameter units this equipment supports (e.g. ["J", "W", "ms"]). Surfaced
+    // on the appointment documentation tab so the operator can pick a matching
+    // unit when recording treatment parameters during a visit. See #1847.
+    parameterUnits: v.optional(v.array(v.string())),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),

@@ -2564,6 +2564,7 @@ export interface Database {
           current_location_id: string | null;
           current_room_id: string | null;
           status: string;
+          parameter_units: string[] | null;
           created_by: string;
           created_at: number;
           updated_at: number | null;
@@ -2577,6 +2578,7 @@ export interface Database {
           current_location_id?: string | null;
           current_room_id?: string | null;
           status: string;
+          parameter_units?: string[] | null;
           created_by: string;
           created_at: number;
           updated_at?: number | null;
@@ -2590,6 +2592,7 @@ export interface Database {
           current_location_id?: string | null;
           current_room_id?: string | null;
           status?: string;
+          parameter_units?: string[] | null;
           created_by?: string;
           created_at?: number;
           updated_at?: number | null;

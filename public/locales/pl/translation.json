@@ -3584,6 +3584,12 @@
       "transferTo": "Przenieś do",
       "notes": "Notatki",
       "noEquipment": "Brak sprzętu",
+      "parameterUnits": "Jednostki parametrów",
+      "parameterUnit": "Jednostka parametru",
+      "parameterUnitPlaceholder": "np. J, W, ms",
+      "parameterUnitsHint": "Lista jednostek do wyboru przy dodawaniu parametrów zabiegu w trakcie wizyty.",
+      "parameterUnitsEmpty": "Brak zdefiniowanych jednostek.",
+      "addParameterUnit": "Dodaj jednostkę",
       "statuses": {
         "available": "Dostępny",
         "in_use": "W użyciu",

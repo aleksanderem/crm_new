@@ -96,6 +96,9 @@ interface DocumentationTabProps {
     photos?: Photo[];
   };
   treatmentParameters?: TreatmentParamDefinition[];
+  // Unit suggestions surfaced when adding a custom parameter — typically
+  // derived from the equipment required by the treatment. See #1847.
+  equipmentParameterUnits?: string[];
   onChanged?: () => void | Promise<void>;
 }
 
@@ -108,6 +111,7 @@ export function DocumentationTab({
   appointmentId,
   appointment,
   treatmentParameters,
+  equipmentParameterUnits,
   onChanged,
 }: DocumentationTabProps) {
   const { t } = useTranslation();
@@ -175,9 +179,27 @@ export function DocumentationTab({
   const handleAddCustomParam = () => {
     setParamValues((prev) => [
       ...prev,
-      { name: "", type: "text", value: "", isCustom: true, unit: "" },
+      {
+        name: "",
+        type: "text",
+        value: "",
+        isCustom: true,
+        unit: equipmentParameterUnits?.[0] ?? "",
+      },
     ]);
   };
+
+  const suggestedUnits = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const u of equipmentParameterUnits ?? []) {
+      const trimmed = u.trim();
+      if (!trimmed || seen.has(trimmed)) continue;
+      seen.add(trimmed);
+      out.push(trimmed);
+    }
+    return out;
+  }, [equipmentParameterUnits]);
 
   const handleRemoveParam = (index: number) => {
     setParamValues((prev) => prev.filter((_, i) => i !== index));
@@ -446,7 +468,19 @@ export function DocumentationTab({
                             "gabinet.documentation.paramUnit",
                             "Jednostka",
                           )}
+                          list={
+                            suggestedUnits.length > 0
+                              ? `param-unit-suggestions-${i}`
+                              : undefined
+                          }
                         />
+                        {suggestedUnits.length > 0 && (
+                          <datalist id={`param-unit-suggestions-${i}`}>
+                            {suggestedUnits.map((u) => (
+                              <option key={u} value={u} />
+                            ))}
+                          </datalist>
+                        )}
                       </div>
                       <Button
                         type="button"

@@ -22,6 +22,7 @@ import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogTitle,
   DialogDescription,
@@ -72,6 +73,7 @@ import {
   UserPlus,
   MapPin,
   Building2,
+  X,
 } from "@/lib/ez-icons";
 import { CalendarSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -1008,6 +1010,11 @@ export function AppointmentDialog({
           isDragging && "cursor-grabbing select-none",
         )}
         overlayClassName="bg-black/40"
+        // The default top-right X is invisible on iOS Safari because the
+        // drag bar's `backdrop-blur-sm` creates a stacking context that
+        // hides the close button behind it (#1830). We render an explicit
+        // close button inside the drag bar instead.
+        hideClose
       >
         <DialogTitle className="sr-only">
           {t("gabinet.appointments.createAppointment")}
@@ -1021,16 +1028,32 @@ export function AppointmentDialog({
             which dominated the dialog header. The pointer handler lives on
             DialogContent so a click anywhere on the dialog body initiates a
             drag (#1459); this bar still triggers it via event bubbling and
-            keeps the discoverability cue added in #1281. */}
+            keeps the discoverability cue added in #1281.
+
+            The close (X) button is rendered here instead of relying on
+            DialogContent's default top-right X: the drag bar's
+            `backdrop-blur-sm` creates a stacking context that hid the
+            default close on iOS Safari, leaving mobile users with no
+            visible way to dismiss the dialog (#1830). */}
         <div
           className={cn(
-            "flex items-center justify-center border-b border-border/60 bg-background/90 py-2 select-none touch-none transition-colors backdrop-blur-sm hover:bg-muted/40",
+            "relative flex items-center justify-center border-b border-border/60 bg-background/90 py-2 select-none touch-none transition-colors backdrop-blur-sm hover:bg-muted/40",
             isDragging ? "cursor-grabbing" : "cursor-grab",
           )}
           title={t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}
           aria-label={t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}
         >
           <div className="h-1 w-9 rounded-full bg-foreground/25" />
+          <DialogClose
+            aria-label={t("common.close")}
+            className={cn(
+              "absolute right-1 top-1/2 -translate-y-1/2 inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors",
+              "hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
+              isDragging && "pointer-events-none",
+            )}
+          >
+            <X className="size-4" />
+          </DialogClose>
         </div>
 
         {/* "Utwórz zdarzenie zamiast wizyty" — lets the user pivot from the

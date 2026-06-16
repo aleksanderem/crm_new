@@ -1104,6 +1104,11 @@ export function AppointmentDialog({
                     </button>
                   </div>
                   <Popover
+                    // `modal` stacks the popover's own `react-remove-scroll`
+                    // lock on top of the parent Dialog's lock so touchpad /
+                    // wheel scrolling works on the portaled patient list
+                    // (issue #1861, same root cause as #1850).
+                    modal
                     open={patientOpen}
                     onOpenChange={(o) => {
                       setPatientOpen(o);

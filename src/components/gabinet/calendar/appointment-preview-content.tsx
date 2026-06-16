@@ -1609,12 +1609,16 @@ export function AppointmentPreviewContent({
           popover matches the same scale (issue #1738 follow-up: previously
           this row mixed h-8/h-9 and a TagsPicker md trigger). "Przeprowadź
           zabieg" stays full-width on its own row because it's a primary
-          shortcut into a different surface. */}
-      <div className="flex flex-wrap items-center justify-end gap-1.5">
+          shortcut into a different surface. On phones the popover sits flush
+          against the viewport edges so right-aligned buttons in a flex-wrap
+          row could get clipped (issue #1823); stack vertically below `sm` so
+          every action stays fully visible. */}
+      <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
         <Button
           asChild
           variant="ghost"
           size="sm"
+          className="w-full sm:w-auto"
         >
           <Link
             to="/dashboard/gabinet/appointments/$appointmentId"
@@ -1629,6 +1633,7 @@ export function AppointmentPreviewContent({
           size="sm"
           onClick={handleSave}
           disabled={!dirty || saving || settleSubmitting}
+          className="w-full sm:w-auto"
         >
           {saving
             ? t("common.saving")
@@ -1639,6 +1644,7 @@ export function AppointmentPreviewContent({
           variant={isSettled ? "outline" : "default"}
           onClick={handleOpenSettleDialog}
           disabled={saving || settleSubmitting || isSettled}
+          className="w-full sm:w-auto"
         >
           {saving ? (
             t("common.saving")

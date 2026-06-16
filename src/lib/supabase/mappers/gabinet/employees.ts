@@ -32,6 +32,13 @@ export interface MappedGabinetEmployee {
   skills?: string[];
   yearsOfExperience?: number;
   certifications?: Array<{ name: string; dateObtained?: string; expiryDate?: string }>;
+  assignedItems?: Array<{
+    name: string;
+    quantity?: number;
+    issuedDate?: string;
+    returnedDate?: string;
+    notes?: string;
+  }>;
   baseSalary?: number;
   commissionPercent?: number;
   bankAccount?: string;

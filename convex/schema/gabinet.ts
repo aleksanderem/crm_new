@@ -290,6 +290,17 @@ export function createGabinetTables({
         }),
       ),
     ),
+    assignedItems: v.optional(
+      v.array(
+        v.object({
+          name: v.string(),
+          quantity: v.optional(v.number()),
+          issuedDate: v.optional(v.string()),
+          returnedDate: v.optional(v.string()),
+          notes: v.optional(v.string()),
+        }),
+      ),
+    ),
     baseSalary: v.optional(v.number()),
     commissionPercent: v.optional(v.number()),
     bankAccount: v.optional(v.string()),

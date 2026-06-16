@@ -2708,6 +2708,7 @@
         "activities": "Activities",
         "detailedData": "Detailed Data",
         "schedule": "Schedule",
+        "assignedItems": "Materials",
         "noPatients": "No clients seen yet."
       },
       "agenda": {
@@ -2734,6 +2735,22 @@
         "noResults": "No clients match the current filters.",
         "visits": "{{count}} visits",
         "lastVisit": "Last:"
+      },
+      "assignedItems": {
+        "heldTitle": "Issued items",
+        "returnedTitle": "Returned",
+        "add": "Add item",
+        "itemName": "Item",
+        "itemNamePlaceholder": "e.g. office keys, uniform, access card",
+        "quantity": "Quantity",
+        "issuedDate": "Issue date",
+        "issued": "Issued",
+        "returned": "Returned",
+        "notes": "Notes",
+        "notesPlaceholder": "e.g. serial number, color, locker 12",
+        "markReturned": "Mark as returned",
+        "markActive": "Undo return",
+        "empty": "No items currently issued to this employee."
       },
       "detailedData": {
         "personalData": "Personal Data",

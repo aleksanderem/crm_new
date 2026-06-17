@@ -255,6 +255,14 @@ const TableRow = <T extends object>({ columns, children, className, highlightSel
         >
             {selectionBehavior === "toggle" && (
                 <AriaCell
+                    // Stop pointer/click events from bubbling to the row so React Aria's
+                    // row onAction (navigation) never fires from a click inside the
+                    // checkbox cell — even when the click lands in the empty area around
+                    // the visible checkbox. The Checkbox label still receives the click
+                    // first because it's a child of this cell (issue #1882).
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onPointerUp={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
                     className={cx(
                         "relative py-2 pr-0 pl-2",
                         // Right separator via ::before so we don't clash with the parent's

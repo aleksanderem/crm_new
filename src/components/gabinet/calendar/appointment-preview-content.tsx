@@ -1221,12 +1221,13 @@ export function AppointmentPreviewContent({
 
   return (
     <>
-    {/* Title bar — sticky modal-style header with patient name + close (#1738
-        follow-up). The bar is the drag affordance for touch users: pressing
-        the empty space starts the popover reposition (replaces the standalone
-        grab strip that broke the header rhythm). The drag handler skips
-        interactive children (Link, close button) so clicks still land on
-        them — same pattern as the body-wide drag handler in
+    {/* Title bar — sticky modal-style header with a visible drag handle pill,
+        patient name, and close button (issue #1886). The whole bar is the drag
+        affordance: the iOS-style grip pill at the top centers a clear visual
+        cue, and a distinct `bg-muted/60` background separates the header from
+        the popover body so the drag area is recognisable at a glance. The
+        drag handler still skips interactive children (Link, close button) so
+        clicks land on them — same pattern as the body-wide drag handler in
         draggable-appointment.tsx (#1476). */}
     <div
       role={titleDragHandler ? "button" : undefined}
@@ -1244,35 +1245,43 @@ export function AppointmentPreviewContent({
         titleDragHandler(e);
       }}
       className={cn(
-        "sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur-sm",
+        "sticky top-0 z-10 border-b border-border/60 bg-muted/60 backdrop-blur-sm",
         titleDragHandler && (isPreviewDragging ? "cursor-grabbing select-none touch-none" : "cursor-grab select-none touch-none"),
       )}
     >
-      <div className="min-w-0 flex-1">
-        {patient?._id ? (
-          <Link
-            to="/dashboard/gabinet/patients/$patientId"
-            params={{ patientId: patient._id }}
-            onClick={onClose}
-            className="block truncate text-base font-semibold leading-tight hover:underline focus:underline focus:outline-none"
-          >
-            {patientFullName}
-          </Link>
-        ) : (
-          <p className="truncate text-base font-semibold leading-tight">
-            {patientFullName}
-          </p>
-        )}
+      <div className="flex justify-center pt-1.5">
+        <div
+          className="h-1 w-10 rounded-full bg-muted-foreground/50"
+          aria-hidden="true"
+        />
       </div>
-      <button
-        type="button"
-        onClick={onClose}
-        disabled={saving}
-        aria-label={t("gabinet.appointmentDetail.close", "Zamknij")}
-        className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-      >
-        <X className="size-4" />
-      </button>
+      <div className="flex items-center justify-between gap-2 px-4 pt-1 pb-2">
+        <div className="min-w-0 flex-1">
+          {patient?._id ? (
+            <Link
+              to="/dashboard/gabinet/patients/$patientId"
+              params={{ patientId: patient._id }}
+              onClick={onClose}
+              className="block truncate text-base font-semibold leading-tight hover:underline focus:underline focus:outline-none"
+            >
+              {patientFullName}
+            </Link>
+          ) : (
+            <p className="truncate text-base font-semibold leading-tight">
+              {patientFullName}
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={saving}
+          aria-label={t("gabinet.appointmentDetail.close", "Zamknij")}
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
     </div>
 
     <div className="space-y-4 px-4 py-4">

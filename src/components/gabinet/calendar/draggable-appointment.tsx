@@ -1,5 +1,6 @@
 import { useDraggable } from "@dnd-kit/core";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
   Popover,
@@ -356,6 +357,21 @@ export function DraggableAppointment({
   return (
     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
       <PopoverAnchor asChild>{card}</PopoverAnchor>
+      {/* Backdrop overlay (issue #1886): Radix Popover has no built-in
+          overlay, so the preview previously visually merged with the calendar
+          grid underneath. A portaled dimmer sits between the calendar and
+          the popover content (z-40 vs the popover's z-50) so the preview
+          stands out. Clicking the overlay falls through to Radix's outside-
+          click detection and closes the popover. */}
+      {popoverOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            aria-hidden="true"
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px] animate-in fade-in-0 duration-150"
+          />,
+          document.body,
+        )}
       <PopoverContent
         ref={previewContentRef}
         // Touch scrolling is left on so users on small phones can reach all the
@@ -403,14 +419,11 @@ export function DraggableAppointment({
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* No dedicated drag bar (issue #1738 follow-up): the previous strip
-            broke the header rhythm and floated over the popover edge. The
-            touch drag handler is wired into the title row inside
-            AppointmentPreviewContent (`titleDragHandler`), where it
-            piggy-backs on the title bar so touch users can still reposition
-            the popover (#1626) without an extra visual element. Desktop mouse
-            users keep drag-from-anywhere via the body handler on
-            PopoverContent (#1476). */}
+        {/* Drag affordance lives inside AppointmentPreviewContent's title bar
+            (issue #1886): a visible grip pill plus a distinct background make
+            the bar obviously draggable for both mouse and touch users. The
+            body-wide handler on PopoverContent below (#1476) is still active
+            so desktop users can also drag-from-anywhere on the popup body. */}
         <AppointmentPreviewContent
           appointmentId={_id}
           onClose={() => setPopoverOpen(false)}

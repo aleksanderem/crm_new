@@ -10,15 +10,50 @@ const LOG_DIR = "/home/claude-bot/logs";
 const POLL_INTERVAL_MS = 3000;
 const JOB_TIMEOUT_MS = 60 * 60 * 1000; // 30 min hard cap
 
+// Per-user pickup throttle. Issues filed by these GitHub logins are
+// processed at most once per THROTTLE_INTERVAL_MS — i.e. after a job
+// from a throttled user starts/finishes, the next one from the same
+// user stays in `status = 'pending'` until the interval passes.
+// Other users are unaffected. Configured via env (comma-separated) so
+// the list can be tuned without redeploying the daemon.
+const THROTTLED_LOGINS = (process.env.THROTTLED_LOGINS ??
+  "aslocka,gabrysiaagleba-pixel")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const THROTTLE_INTERVAL_MS = parseInt(
+  process.env.THROTTLE_INTERVAL_MS ?? String(60 * 60 * 1000),
+  10,
+);
+
 fs.mkdirSync(LOG_DIR, { recursive: true });
 
 const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
 
+// Picks the oldest pending job whose `trigger_login` is either NOT in the
+// throttled list, or is in the list but no other job from that same user
+// has started or finished within THROTTLE_INTERVAL_MS. Skipped throttled
+// jobs stay pending and are picked once the cooldown has elapsed.
+const claimNextStmt = db.prepare(`
+  SELECT * FROM jobs
+  WHERE status = 'pending'
+    AND (
+      trigger_login IS NULL
+      OR trigger_login NOT IN (${THROTTLED_LOGINS.map(() => "?").join(",") || "''"})
+      OR NOT EXISTS (
+        SELECT 1 FROM jobs busy
+        WHERE busy.trigger_login = jobs.trigger_login
+          AND busy.status IN ('running', 'done', 'failed')
+          AND COALESCE(busy.finished_at, busy.started_at, 0) > ?
+      )
+    )
+  ORDER BY created_at ASC
+  LIMIT 1
+`);
 const claimNext = db.transaction(() => {
-  const job = db.prepare(
-    `SELECT * FROM jobs WHERE status = 'pending' ORDER BY created_at ASC LIMIT 1`
-  ).get();
+  const cutoff = Date.now() - THROTTLE_INTERVAL_MS;
+  const job = claimNextStmt.get(...THROTTLED_LOGINS, cutoff);
   if (!job) return null;
   db.prepare(
     `UPDATE jobs SET status = 'running', started_at = ? WHERE id = ?`

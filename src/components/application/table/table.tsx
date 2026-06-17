@@ -156,9 +156,10 @@ const TableHeader = <T extends object>({ columns, children, bordered = true, cla
                         // Narrow on mobile so the selection cell doesn't eat ~25% of the
                         // row width as an accidental-toggle hit area (issue #1772 — finger
                         // taps meant to open a row landed on the wide checkbox cell on iOS).
-                        // Desktop widened +50px (issue #1882) so the cell-wide toggle hit
-                        // area (Checkbox label uses `absolute inset-0`) is comfortably large.
-                        size === "sm" ? "w-12 md:w-[146px] md:pl-3" : "w-14 md:w-[162px] md:pl-4",
+                        // Desktop widened +150px total (issue #1882) so the cell-wide
+                        // toggle hit area (Checkbox label uses `absolute inset-0`) is
+                        // comfortably large.
+                        size === "sm" ? "w-12 md:w-[246px] md:pl-3" : "w-14 md:w-[262px] md:pl-4",
                     )}
                 >
                     {selectionMode === "multiple" && (
@@ -271,9 +272,10 @@ const TableRow = <T extends object>({ columns, children, className, highlightSel
                         // Narrow on mobile so the selection cell doesn't eat ~25% of the
                         // row width as an accidental-toggle hit area (issue #1772 — finger
                         // taps meant to open a row landed on the wide checkbox cell on iOS).
-                        // Desktop widened +50px (issue #1882) so the cell-wide toggle hit
-                        // area (Checkbox label uses `absolute inset-0`) is comfortably large.
-                        size === "sm" ? "w-12 md:w-[146px] md:pl-3" : "w-14 md:w-[162px] md:pl-4",
+                        // Desktop widened +150px total (issue #1882) so the cell-wide
+                        // toggle hit area (Checkbox label uses `absolute inset-0`) is
+                        // comfortably large.
+                        size === "sm" ? "w-12 md:w-[246px] md:pl-3" : "w-14 md:w-[262px] md:pl-4",
                     )}
                 >
                     <Checkbox

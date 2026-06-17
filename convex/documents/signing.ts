@@ -5,6 +5,7 @@ import type { Id } from "../_generated/dataModel";
 import { createSupabaseDb, type SupabaseDb } from "../_helpers/supabaseDb";
 import { getValidAccessToken } from "../google/_helpers";
 import { Resend } from "resend";
+import { sendViaResend, sendViaMailgun } from "../email/providers";
 import { RESEND_API_KEY, RESEND_FROM, SITE_URL, DEV_INTERCEPT_EMAILS } from "@cvx/env";
 
 async function markSent(db: SupabaseDb, documentId: string): Promise<void> {
@@ -252,6 +253,89 @@ export const sendSigningEmailInternal = internalAction({
       console.log("[signing] DEV_INTERCEPT: Email stored to devEmails instead of sending →", args.recipientEmail);
       await markSent(db, args.documentId);
       return;
+    }
+
+    // --- Provider preference order (issue: maile szły z osobistego Gmaila
+    //     mimo skonfigurowanego mail_providera typu "Karta") ---
+    //
+    //   1. `mail_providers.isDefault = true` for the org — the dedicated
+    //      transactional sender the user configured in /admin/email-config.
+    //      Used to be ignored entirely; signing went straight to Gmail OAuth.
+    //   2. Gmail OAuth fallback — only when no default mail provider exists.
+    //   3. Env-level Resend last-ditch fallback.
+    const defaultProvider: {
+      _id: string;
+      providerType: string;
+      fromEmail: string;
+      fromName: string;
+      replyToEmail?: string | null;
+      apiConfig?: { apiKey?: string; domain?: string; region?: string } | null;
+      status: string;
+    } | null = await ctx.runAction(
+      internal.mailProviders._getActiveDefaultForOrg,
+      { organizationId: data.organizationId as Id<"organizations"> },
+    );
+
+    if (defaultProvider && (defaultProvider.providerType === "resend" || defaultProvider.providerType === "mailgun")) {
+      const apiKey = defaultProvider.apiConfig?.apiKey;
+      const providerFrom = defaultProvider.fromName
+        ? `${defaultProvider.fromName} <${defaultProvider.fromEmail}>`
+        : defaultProvider.fromEmail;
+      try {
+        if (defaultProvider.providerType === "resend") {
+          if (!apiKey) throw new Error("Default Resend provider has no apiKey");
+          await sendViaResend(
+            {
+              to: args.recipientEmail,
+              subject,
+              html,
+              from: providerFrom,
+              replyTo: defaultProvider.replyToEmail ?? undefined,
+            },
+            { apiKey },
+          );
+        } else {
+          const domain = defaultProvider.apiConfig?.domain;
+          const region = (defaultProvider.apiConfig?.region ?? "us") as "us" | "eu";
+          if (!apiKey || !domain) throw new Error("Default Mailgun provider missing apiKey/domain");
+          await sendViaMailgun(
+            {
+              to: args.recipientEmail,
+              subject,
+              html,
+              from: providerFrom,
+              replyTo: defaultProvider.replyToEmail ?? undefined,
+            },
+            { apiKey, domain, region },
+          );
+        }
+        console.log(
+          `[signing] Signing email sent via ${defaultProvider.providerType} provider "${defaultProvider.fromEmail}" to`,
+          args.recipientEmail,
+        );
+        await ctx.runMutation(internal.emailSendLog.record, {
+          ...logBase,
+          provider: defaultProvider.providerType as "resend" | "mailgun",
+          status: "sent",
+          fromEmail: providerFrom,
+        });
+        await markSent(db, args.documentId);
+        return;
+      } catch (providerErr) {
+        const msg = providerErr instanceof Error ? providerErr.message : String(providerErr);
+        console.error(
+          `[signing] ${defaultProvider.providerType} provider send failed, falling back:`,
+          msg,
+        );
+        await ctx.runMutation(internal.emailSendLog.record, {
+          ...logBase,
+          provider: defaultProvider.providerType as "resend" | "mailgun",
+          status: "failed",
+          fromEmail: providerFrom,
+          errorMessage: msg.slice(0, 500),
+        });
+        // fall through to Gmail OAuth / env Resend
+      }
     }
 
     // Try sending via Gmail OAuth (tenant's configured connection)

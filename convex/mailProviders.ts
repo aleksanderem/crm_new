@@ -1,4 +1,4 @@
-import { query, action } from "./_generated/server";
+import { query, action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
@@ -333,5 +333,33 @@ export const testConnection = action({
     }
 
     return { ...result, providerId: args.providerId };
+  },
+});
+
+/**
+ * No-auth internal helper for system actions (signing emails etc.) that need
+ * the org's default mail provider without going through the
+ * `query`/verifyOrgAccess path. Returns the active default, or null.
+ * Reads from Supabase since mail_providers is the source of truth there now.
+ */
+export const _getActiveDefaultForOrg = internalAction({
+  args: { organizationId: v.id("organizations") },
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    const rows = (await db
+      .query("mailProviders")
+      .eq("organizationId", String(args.organizationId))
+      .eq("isDefault", true)
+      .collect()) as Array<{
+      _id: string;
+      providerType: string;
+      fromEmail: string;
+      fromName: string;
+      replyToEmail?: string | null;
+      apiConfig?: { apiKey?: string; domain?: string; region?: string } | null;
+      status: string;
+    }>;
+    const active = rows.find((r) => r.status === "active");
+    return active ?? null;
   },
 });

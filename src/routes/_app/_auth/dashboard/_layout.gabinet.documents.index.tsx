@@ -49,7 +49,7 @@ import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 import { useSupabaseFormDocumentsList } from "@/hooks/use-supabase-form-documents";
-import { useSavedViews } from "@/hooks/use-saved-views";
+import { useSavedViews, applyFilterConditions } from "@/hooks/use-saved-views";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 
 // ---------------------------------------------------------------------------
@@ -114,7 +114,7 @@ function GabinetDocumentsPage() {
   const [searchValue, setSearchValue] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [docToDelete, setDocToDelete] = useState<string | null>(null);
-  const [, setActiveFilters] = useState<FilterCondition[]>([]);
+  const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
 
   // --- System views ---
@@ -256,26 +256,41 @@ function GabinetDocumentsPage() {
   const filteredDocuments = useMemo(() => {
     if (!documents) return [];
 
-    // Apply view-based filtering
-    let viewFiltered = documents;
+    // Decorate rows with derived fields used by manual filters (e.g. category)
+    let data = documents.map((doc) => ({
+      ...doc,
+      category: templateMap.get(doc.templateId)?.category ?? null,
+    }));
+
+    // Apply system-view (status-based) filtering
     switch (activeViewId) {
       case "draft":
-        viewFiltered = documents.filter((d) => d.status === "draft");
+        data = data.filter((d) => d.status === "draft");
         break;
       case "pending_signature":
-        viewFiltered = documents.filter((d) => d.status === "pending_signature");
+        data = data.filter((d) => d.status === "pending_signature");
         break;
       case "signed":
-        viewFiltered = documents.filter((d) => d.status === "signed");
+        data = data.filter((d) => d.status === "signed");
         break;
       default:
-        // "all" - no filtering
         break;
     }
 
-    // Apply filters from saved views or manual filters
-    return applyFilters(viewFiltered);
-  }, [documents, activeViewId, applyFilters]);
+    // Apply saved-view filters
+    data = applyFilters(data) as typeof data;
+
+    // Apply manual filter conditions from the filter bar
+    data = applyFilterConditions(data, activeFilters) as typeof data;
+
+    // Apply free-text search on title
+    if (searchValue.trim()) {
+      const q = searchValue.trim().toLowerCase();
+      data = data.filter((d) => d.title.toLowerCase().includes(q));
+    }
+
+    return data;
+  }, [documents, activeViewId, applyFilters, activeFilters, searchValue, templateMap]);
 
   // --- Selected document for viewer ---
   const selectedDoc = useMemo(() => {

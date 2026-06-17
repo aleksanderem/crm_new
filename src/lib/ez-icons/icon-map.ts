@@ -45,7 +45,7 @@ export const ICON_MAP: Record<string, string> = {
   Eye: "eye",
   FileCheck: "file-validation",
   FileSignature: "signature",
-  FilePlus: "file-add-02",
+  FilePlus: "file-add",
   FileText: "file-01",
   Filter: "filter",
   Flag: "flag-01",

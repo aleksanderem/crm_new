@@ -604,12 +604,12 @@ export function DocumentationTab({
         <CardHeader className="px-6 py-3 border-b">
           <CardTitle className="text-sm flex items-center gap-2">
             <MessageSquare className="h-4 w-4" variant="stroke" />
-            {t("gabinet.documentation.interview", "Wywiad")}
+            {t("gabinet.documentation.interview", "Beauty plan")}
           </CardTitle>
           <CardDescription className="text-xs">
             {t(
               "gabinet.documentation.interviewDesc",
-              "Notatki z wywiadu z pacjentem przed zabiegiem.",
+              "Plan zabiegowy dla pacjenta.",
             )}
           </CardDescription>
         </CardHeader>
@@ -619,7 +619,7 @@ export function DocumentationTab({
             onChange={setInterview}
             placeholder={t(
               "gabinet.documentation.interviewPlaceholder",
-              "Opisz wywiad z pacjentem...",
+              "Opisz beauty plan dla pacjenta...",
             )}
           />
           <div className="flex justify-end pt-3">

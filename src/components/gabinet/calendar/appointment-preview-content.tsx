@@ -1831,7 +1831,7 @@ export function AppointmentPreviewContent({
           onClick={onClose}
         >
           <Sparkles className="mr-1.5 size-3.5" />
-          {t("gabinet.appointmentDetail.performTreatment", "Przeprowadź zabieg")}
+          {t("gabinet.appointmentDetail.performTreatment", "Przeprowadź wizytę")}
         </Link>
       </Button>
     </div>

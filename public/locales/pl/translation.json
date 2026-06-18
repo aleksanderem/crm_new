@@ -3042,7 +3042,7 @@
       "saveChanges": "Zapisz zmiany",
       "closeAndSettle": "Rozlicz wizytę",
       "settled": "Rozliczono",
-      "performTreatment": "Przeprowadź zabieg",
+      "performTreatment": "Przeprowadź wizytę",
       "settleDesc": "Zarejestruj płatność i opcjonalnie zamknij wizytę jako zakończoną.",
       "settleMarkCompleted": "Oznacz wizytę jako zakończoną",
       "settleNothingToDo": "Wpisz kwotę lub zaznacz zamknięcie wizyty.",

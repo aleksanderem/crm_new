@@ -2309,11 +2309,17 @@
       "tabs": {
         "overview": "Overview",
         "appointments": "Appointments",
+        "beautyPlan": "Beauty plan",
         "photos": "Photos",
         "documents": "Documents",
         "loyalty": "Loyalty",
         "credit": "Credit",
         "activity": "Activity"
+      },
+      "beautyPlan": {
+        "title": "Beauty plan history",
+        "description": "Treatment plans proposed during visits — most recent first.",
+        "empty": "No beauty plans yet. Plans added in the \"Visit notes\" tab will appear here."
       },
       "photos": {
         "empty": "No appointment photos yet. Before/after photos from treatments will appear here.",

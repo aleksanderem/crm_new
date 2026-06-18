@@ -68,6 +68,7 @@ import {
   Pencil,
   WalletIcon,
   RefreshCw,
+  Sparkles,
 } from "@/lib/ez-icons";
 
 import { useTranslation } from "react-i18next";
@@ -758,6 +759,14 @@ function PatientDetail() {
       patient?.emergencyContactPhone,
   );
 
+  // Issue #1894: Beauty plan history — chronological list of `interviewNotes`
+  // entered on past appointments. Each entry shows what was proposed and when.
+  const beautyPlanEntries = (patientAppointments ?? [])
+    .filter((apt) => plateJsonToText(apt.interviewNotes).trim().length > 0)
+    .sort((a, b) =>
+      (b.date + b.startTime).localeCompare(a.date + a.startTime),
+    );
+
   const renderAppointmentRow = (apt: MappedGabinetAppointment) => {
     const treatmentName = treatmentsData?.find(
       (tr) => tr._id === apt.treatmentId,
@@ -1065,6 +1074,82 @@ function PatientDetail() {
                     </div>
                   );
                 })}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      label: t("gabinet.patients.tabs.beautyPlan", "Beauty plan"),
+      count: beautyPlanEntries.length,
+      content: (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Sparkles
+                className="h-4 w-4 text-muted-foreground"
+                variant="stroke"
+              />
+              {t("gabinet.patients.beautyPlan.title", "Historia beauty plan")}
+            </h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {t(
+              "gabinet.patients.beautyPlan.description",
+              "Plany zabiegowe zaproponowane podczas wizyt — najnowsze na górze.",
+            )}
+          </p>
+          {beautyPlanEntries.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Sparkles className="h-10 w-10 text-muted-foreground/40 mb-3" />
+              <p className="text-sm text-muted-foreground">
+                {t(
+                  "gabinet.patients.beautyPlan.empty",
+                  "Brak beauty plan. Plany dodane w zakładce „Notatki z wizyty” pojawią się tutaj.",
+                )}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {beautyPlanEntries.map((apt) => {
+                const treatmentName = treatmentsData?.find(
+                  (tr) => tr._id === apt.treatmentId,
+                )?.name;
+                const planText = plateJsonToText(apt.interviewNotes).trim();
+                return (
+                  <Card
+                    key={apt._id}
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() =>
+                      navigate({
+                        to: "/dashboard/gabinet/appointments/$appointmentId",
+                        params: { appointmentId: apt._id },
+                        search: { tab: "documentation" },
+                      })
+                    }
+                  >
+                    <CardContent className="pt-4 pb-4 space-y-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Calendar
+                            className="h-4 w-4 text-muted-foreground shrink-0"
+                            variant="stroke"
+                          />
+                          <p className="text-sm font-medium truncate">
+                            {treatmentName ?? t("common.unknown")}
+                          </p>
+                        </div>
+                        <p className="text-xs text-muted-foreground tabular-nums shrink-0">
+                          {apt.date} · {apt.startTime}
+                        </p>
+                      </div>
+                      <p className="text-sm whitespace-pre-wrap text-foreground">
+                        {planText}
+                      </p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>

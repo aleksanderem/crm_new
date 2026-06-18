@@ -2324,11 +2324,17 @@
       "tabs": {
         "overview": "Przegląd",
         "appointments": "Wizyty",
+        "beautyPlan": "Beauty plan",
         "photos": "Zdjęcia",
         "documents": "Dokumenty",
         "loyalty": "Lojalność",
         "credit": "Saldo",
         "activity": "Aktywność"
+      },
+      "beautyPlan": {
+        "title": "Historia beauty plan",
+        "description": "Plany zabiegowe zaproponowane podczas wizyt — najnowsze na górze.",
+        "empty": "Brak beauty plan. Plany dodane w zakładce „Notatki z wizyty” pojawią się tutaj."
       },
       "photos": {
         "empty": "Brak zdjęć z wizyt. Zdjęcia przed/po zabiegach pojawią się tutaj.",

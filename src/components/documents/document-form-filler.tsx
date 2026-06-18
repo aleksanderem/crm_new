@@ -76,6 +76,15 @@ export function DocumentFormFiller({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="flex gap-2">
+        <Button type="submit" className="flex-1">
+          {submitLabel ?? t("documentEditor.generate", "Generuj dokument")}
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          {t("common.cancel", "Anuluj")}
+        </Button>
+      </div>
+
       <p className="text-sm text-muted-foreground">
         {t(
           "documentEditor.fillFields",

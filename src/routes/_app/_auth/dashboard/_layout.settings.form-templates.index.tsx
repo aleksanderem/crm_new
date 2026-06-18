@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation, useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -509,12 +509,23 @@ export function FormTemplatesListPage() {
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderParent, setNewFolderParent] = useState("");
 
+  const queryClient = useQueryClient();
+  const templatesQueryKey = useMemo(
+    () => ["documents.templates.list", organizationId] as const,
+    [organizationId],
+  );
+
   const listTemplatesAction = useAction(api.documents.templates.list);
   const { data: templates, isPending } = useQuery({
-    queryKey: ["documents.templates.list", organizationId],
+    queryKey: templatesQueryKey,
     queryFn: () => listTemplatesAction({ organizationId }),
     enabled: !!organizationId,
   });
+
+  const invalidateTemplates = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: templatesQueryKey }),
+    [queryClient, templatesQueryKey],
+  );
 
   const updateTemplate = useAction(api.documents.templates.update);
   const createTemplate = useAction(api.documents.templates.create);
@@ -536,6 +547,7 @@ export function FormTemplatesListPage() {
           templateId: template._id,
           isActive: active,
         });
+        await invalidateTemplates();
         toast.success(
           active
             ? t("settings.formTemplates.activated")
@@ -545,7 +557,7 @@ export function FormTemplatesListPage() {
         toast.error(t("settings.formTemplates.toggleError"));
       }
     },
-    [organizationId, updateTemplate, t],
+    [organizationId, updateTemplate, invalidateTemplates, t],
   );
 
   const handleDuplicate = useCallback(
@@ -555,12 +567,13 @@ export function FormTemplatesListPage() {
           organizationId,
           templateId: template._id,
         });
+        await invalidateTemplates();
         toast.success(t("settings.formTemplates.duplicated"));
       } catch {
         toast.error(t("settings.formTemplates.duplicateError"));
       }
     },
-    [organizationId, duplicateTemplate, t],
+    [organizationId, duplicateTemplate, invalidateTemplates, t],
   );
 
   const handleDeleteConfirm = useCallback(async () => {
@@ -570,13 +583,14 @@ export function FormTemplatesListPage() {
         organizationId,
         templateId: deletingTemplate._id,
       });
+      await invalidateTemplates();
       toast.success(t("settings.formTemplates.deleted"));
     } catch {
       toast.error(t("settings.formTemplates.deleteError"));
     } finally {
       setDeletingTemplate(null);
     }
-  }, [deletingTemplate, organizationId, removeTemplate, t]);
+  }, [deletingTemplate, organizationId, removeTemplate, invalidateTemplates, t]);
 
   const handleMoveTemplate = useCallback(
     async (
@@ -589,6 +603,7 @@ export function FormTemplatesListPage() {
           templateId,
           folderPath: newFolderPath ?? "",
         });
+        await invalidateTemplates();
         toast.success(
           t("settings.formTemplates.moved", "Przeniesiono szablon"),
         );
@@ -598,7 +613,7 @@ export function FormTemplatesListPage() {
         );
       }
     },
-    [organizationId, updateTemplate, t],
+    [organizationId, updateTemplate, invalidateTemplates, t],
   );
 
   const handleRenameFolder = useCallback(
@@ -622,6 +637,7 @@ export function FormTemplatesListPage() {
             }),
           ),
         );
+        await invalidateTemplates();
         toast.success(
           t("settings.formTemplates.folderRenamed", "Zmieniono nazwę folderu"),
         );
@@ -634,7 +650,7 @@ export function FormTemplatesListPage() {
         );
       }
     },
-    [allTemplates, organizationId, updateTemplate, t],
+    [allTemplates, organizationId, updateTemplate, invalidateTemplates, t],
   );
 
   const handleDeleteFolder = useCallback(
@@ -663,6 +679,7 @@ export function FormTemplatesListPage() {
             }),
           ),
         );
+        await invalidateTemplates();
         toast.success(
           t("settings.formTemplates.folderDeleted", "Usunięto folder"),
         );
@@ -675,7 +692,7 @@ export function FormTemplatesListPage() {
         );
       }
     },
-    [allTemplates, organizationId, updateTemplate, t],
+    [allTemplates, organizationId, updateTemplate, invalidateTemplates, t],
   );
 
   const handleCreateFolder = useCallback(async () => {
@@ -697,6 +714,7 @@ export function FormTemplatesListPage() {
         entityTypes: ["patient"],
         requiresSignature: false,
       });
+      await invalidateTemplates();
       toast.success(
         t("settings.formTemplates.folderCreated", "Utworzono folder z nowym szablonem"),
       );
@@ -709,7 +727,14 @@ export function FormTemplatesListPage() {
       setNewFolderName("");
       setNewFolderParent("");
     }
-  }, [newFolderName, newFolderParent, organizationId, createTemplate, t]);
+  }, [
+    newFolderName,
+    newFolderParent,
+    organizationId,
+    createTemplate,
+    invalidateTemplates,
+    t,
+  ]);
 
   const uniqueFolders = useMemo(
     () =>
@@ -766,6 +791,7 @@ export function FormTemplatesListPage() {
                   onClick={async () => {
                     try {
                       const result = await seedTemplates({ organizationId });
+                      await invalidateTemplates();
                       toast.success(t("settings.formTemplates.seedSuccess", { count: result.count }));
                     } catch (e) {
                       toast.error(
@@ -780,6 +806,7 @@ export function FormTemplatesListPage() {
                   onClick={async () => {
                     try {
                       const result = await migrateFolders({ organizationId });
+                      await invalidateTemplates();
                       toast.success(
                         t("settings.formTemplates.migrateSuccess", { count: result.patched }),
                       );

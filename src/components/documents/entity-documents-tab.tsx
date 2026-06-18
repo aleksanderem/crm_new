@@ -28,6 +28,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/layout/empty-state";
 import {
@@ -38,6 +48,7 @@ import {
   Send,
   CircleCheck,
   GripVertical,
+  Trash2,
 } from "@/lib/ez-icons";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { cn } from "@/lib/utils";
@@ -100,9 +111,12 @@ export function EntityDocumentsTab({
     useState<Id<"formDocuments"> | null>(null);
   const [sendingDocId, setSendingDocId] = useState<string | null>(null);
   const [sendSuccessDocId, setSendSuccessDocId] = useState<string | null>(null);
+  const [deletingDocId, setDeletingDocId] = useState<Id<"formDocuments"> | null>(null);
+  const [docToDelete, setDocToDelete] = useState<Id<"formDocuments"> | null>(null);
 
   const resendSigningEmail = useAction(api.documents.documents.resendSigningEmail);
   const reorderByEntity = useAction(api.documents.documents.reorderByEntity);
+  const removeDocument = useAction(api.documents.documents.remove);
 
   const handleSend = useCallback(
     async (e: React.MouseEvent, docId: Id<"formDocuments">) => {
@@ -204,6 +218,34 @@ export function EntityDocumentsTab({
   const handleDocumentCreated = useCallback(() => {
     refetch();
   }, [refetch]);
+
+  const handleDeleteClick = useCallback(
+    (e: React.MouseEvent, docId: Id<"formDocuments">) => {
+      e.stopPropagation();
+      setDocToDelete(docId);
+    },
+    [],
+  );
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!docToDelete) return;
+    const docId = docToDelete;
+    setDeletingDocId(docId);
+    setDocToDelete(null);
+    try {
+      await removeDocument({ organizationId, documentId: docId });
+      toast.success(t("documents.deleted", "Dokument usunięty"));
+      refetch();
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : t("documents.deleteFailed", "Nie udało się usunąć dokumentu"),
+      );
+    } finally {
+      setDeletingDocId(null);
+    }
+  }, [docToDelete, removeDocument, organizationId, refetch, t]);
 
   // --- Viewing document ---
 
@@ -353,8 +395,10 @@ export function EntityDocumentsTab({
                   locale={i18n.language === "en" ? "en-US" : "pl-PL"}
                   sendingDocId={sendingDocId}
                   sendSuccessDocId={sendSuccessDocId}
+                  deletingDocId={deletingDocId}
                   onOpen={() => setViewingDocId(doc._id)}
                   onSend={handleSend}
+                  onDelete={handleDeleteClick}
                 />
               ))}
             </div>
@@ -475,6 +519,37 @@ export function EntityDocumentsTab({
           </ScrollShadow>
         </SheetContent>
       </Sheet>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog
+        open={!!docToDelete}
+        onOpenChange={(open) => !open && setDocToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("documents.deleteDialogTitle", "Usuń dokument")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                "documents.deleteDialogDescription",
+                "Czy na pewno chcesz usunąć ten dokument? Tej operacji nie można cofnąć.",
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {t("common.cancel", "Anuluj")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("common.delete", "Usuń")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -488,8 +563,10 @@ interface SortableDocumentRowProps {
   locale: string;
   sendingDocId: string | null;
   sendSuccessDocId: string | null;
+  deletingDocId: Id<"formDocuments"> | null;
   onOpen: () => void;
   onSend: (e: React.MouseEvent, docId: Id<"formDocuments">) => void;
+  onDelete: (e: React.MouseEvent, docId: Id<"formDocuments">) => void;
 }
 
 function SortableDocumentRow({
@@ -497,8 +574,10 @@ function SortableDocumentRow({
   locale,
   sendingDocId,
   sendSuccessDocId,
+  deletingDocId,
   onOpen,
   onSend,
+  onDelete,
 }: SortableDocumentRowProps) {
   const { t } = useTranslation();
   const {
@@ -583,6 +662,21 @@ function SortableDocumentRow({
           <Eye className="h-4 w-4 text-muted-foreground" />
         </div>
       </button>
+
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
+        disabled={deletingDocId === doc._id}
+        aria-label={t("common.delete", "Usuń")}
+        onClick={(e) => onDelete(e, doc._id)}
+      >
+        {deletingDocId === doc._id ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Trash2 className="h-3.5 w-3.5" variant="stroke" />
+        )}
+      </Button>
     </div>
   );
 }

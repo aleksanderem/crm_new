@@ -751,10 +751,25 @@
     "beforeAppointment": "Before appointment",
     "duringAppointment": "During appointment",
     "afterAppointment": "After appointment",
+    "fill": "Fill in",
     "requiredDocs": {
       "beforeStart": "Before appointment",
       "duringVisit": "During appointment",
-      "afterCompletion": "After appointment"
+      "afterCompletion": "After appointment",
+      "title": "Required documents for this treatment",
+      "description": "These documents will be generated automatically when an appointment is created",
+      "empty": "No required documents. Click below to add one.",
+      "unknown": "Unknown template",
+      "add": "Add required document",
+      "addFromTemplate": "Add documents from template",
+      "addTitle": "Add required document",
+      "addDescription": "Choose a document template and specify when it should be filled in.",
+      "searchPlaceholder": "Search template...",
+      "noTemplates": "No templates available",
+      "timing": "When document is required",
+      "toggleTiming": "Click to change timing",
+      "added": "Required document added",
+      "removed": "Required document removed"
     },
     "gate": {
       "timingBefore": "Before appointment",
@@ -762,7 +777,12 @@
       "timingAfter": "After appointment",
       "beforeDescription": "The following documents should be filled in before the appointment starts:",
       "duringDescription": "The following documents should be filled in before the appointment ends:",
-      "afterDescription": "The following documents should be filled in after the appointment ends:"
+      "afterDescription": "The following documents should be filled in after the appointment ends:",
+      "title": "Incomplete documents",
+      "progress": "Filled in {{completed}} of {{total}} required documents",
+      "allComplete": "All documents are filled in.",
+      "proceedAnyway": "I know, continue without documents",
+      "fillDocuments": "Fill in documents"
     }
   },
   "products": {

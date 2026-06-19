@@ -348,14 +348,26 @@ function TemplateCard({
   const CategoryIcon = CATEGORY_ICONS[data.category ?? ""] ?? FileText;
   const fieldCount = countFormFields(data.formJson);
 
+  // Rendered as a <div> rather than <button> because the outer TreeItem
+  // wrapper is already a <button>. Nested buttons are invalid HTML and on
+  // iOS Safari the inner button's tap can be swallowed by the outer one —
+  // the dialog gets stuck on the picker step (#1907).
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={(e) => {
         e.stopPropagation();
         onClick();
       }}
-      className="w-full text-left rounded-lg border p-3 transition-colors hover:bg-accent hover:border-accent-foreground/20 cursor-pointer group"
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          e.stopPropagation();
+          onClick();
+        }
+      }}
+      className="w-full text-left rounded-lg border p-3 transition-colors hover:bg-accent hover:border-accent-foreground/20 cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <div className="flex items-start gap-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted group-hover:bg-background transition-colors">
@@ -388,7 +400,7 @@ function TemplateCard({
           )}
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 

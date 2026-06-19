@@ -66,6 +66,8 @@
     "price": "Price",
     "processing": "Processing...",
     "stats": "Stats",
+    "showStats": "Show statistics",
+    "hideStats": "Hide statistics",
     "time": "Time",
     "titleRequired": "Title is required",
     "phoneTooShort": "Phone number must be at least 9 digits.",

@@ -66,6 +66,8 @@
     "price": "Cena",
     "processing": "Przetwarzanie...",
     "stats": "Statystyki",
+    "showStats": "Pokaż statystyki",
+    "hideStats": "Ukryj statystyki",
     "time": "Godzina",
     "titleRequired": "Tytuł jest wymagany",
     "phoneTooShort": "Numer telefonu musi mieć co najmniej 9 cyfr.",

@@ -136,7 +136,11 @@ export function createGabinetTables({
     // Treatment detail: required form templates with timing
     requiredFormTemplates: v.optional(v.array(v.object({
       templateId: v.id("formTemplates"),
-      timing: v.union(v.literal("before_start"), v.literal("after_completion")),
+      timing: v.union(
+        v.literal("before_start"),
+        v.literal("during_visit"),
+        v.literal("after_completion"),
+      ),
     }))),
     shortDescription: v.optional(v.string()),
     image: v.optional(v.id("_storage")),

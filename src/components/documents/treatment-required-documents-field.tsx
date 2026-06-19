@@ -39,9 +39,14 @@ function extractPlainText(desc: string): string {
   }
 }
 
+export type RequiredFormTemplateTiming =
+  | "before_start"
+  | "during_visit"
+  | "after_completion";
+
 export interface RequiredFormTemplateValue {
   templateId: Id<"formTemplates">;
-  timing: "before_start" | "after_completion";
+  timing: RequiredFormTemplateTiming;
 }
 
 interface FormTemplate {
@@ -67,9 +72,8 @@ export function TreatmentRequiredDocumentsField({
   const [search, setSearch] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] =
     useState<Id<"formTemplates"> | null>(null);
-  const [selectedTiming, setSelectedTiming] = useState<
-    "before_start" | "after_completion"
-  >("before_start");
+  const [selectedTiming, setSelectedTiming] =
+    useState<RequiredFormTemplateTiming>("before_start");
 
   const listTemplatesByEntityType = useAction(api.documents.templates.listByEntityType);
   const { data: allTemplatesRaw, isLoading: templatesLoading } = useQuery({
@@ -112,7 +116,7 @@ export function TreatmentRequiredDocumentsField({
 
   const handleTimingChange = (
     templateId: Id<"formTemplates">,
-    newTiming: "before_start" | "after_completion",
+    newTiming: RequiredFormTemplateTiming,
   ) => {
     onChange(
       value.map((r) =>
@@ -265,12 +269,15 @@ export function TreatmentRequiredDocumentsField({
 
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                {t("documents.requiredDocs.timing", "Wypełnia:")}
+                {t(
+                  "documents.requiredDocs.timing",
+                  "Moment wymagania dokumentu",
+                )}
               </label>
               <Select
                 value={selectedTiming}
                 onValueChange={(v) =>
-                  setSelectedTiming(v as "before_start" | "after_completion")
+                  setSelectedTiming(v as RequiredFormTemplateTiming)
                 }
               >
                 <SelectTrigger>
@@ -281,6 +288,12 @@ export function TreatmentRequiredDocumentsField({
                     {t(
                       "documents.requiredDocs.beforeStart",
                       "Przed wizytą",
+                    )}
+                  </SelectItem>
+                  <SelectItem value="during_visit">
+                    {t(
+                      "documents.requiredDocs.duringVisit",
+                      "W trakcie wizyty",
                     )}
                   </SelectItem>
                   <SelectItem value="after_completion">
@@ -320,23 +333,53 @@ export function TreatmentRequiredDocumentsField({
   );
 }
 
+const TIMING_ORDER: RequiredFormTemplateTiming[] = [
+  "before_start",
+  "during_visit",
+  "after_completion",
+];
+
+const TIMING_STYLES: Record<RequiredFormTemplateTiming, string> = {
+  before_start:
+    "bg-green-100 text-green-800 border-green-200 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
+  during_visit:
+    "bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
+  after_completion:
+    "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800",
+};
+
+function timingLabel(
+  timing: RequiredFormTemplateTiming,
+  t: (key: string, fallback?: string) => string,
+): string {
+  switch (timing) {
+    case "before_start":
+      return t("documents.requiredDocs.beforeStart", "Przed wizytą");
+    case "during_visit":
+      return t("documents.requiredDocs.duringVisit", "W trakcie wizyty");
+    case "after_completion":
+      return t("documents.requiredDocs.afterCompletion", "Po wizycie");
+  }
+}
+
 function TimingBadge({
   timing,
   onTimingChange,
   t,
 }: {
-  timing: "before_start" | "after_completion";
-  onTimingChange: (newTiming: "before_start" | "after_completion") => void;
+  timing: RequiredFormTemplateTiming;
+  onTimingChange: (newTiming: RequiredFormTemplateTiming) => void;
   t: (key: string, fallback?: string) => string;
 }) {
-  const isBefore = timing === "before_start";
+  const nextTiming = (current: RequiredFormTemplateTiming) => {
+    const idx = TIMING_ORDER.indexOf(current);
+    return TIMING_ORDER[(idx + 1) % TIMING_ORDER.length];
+  };
 
   return (
     <button
       type="button"
-      onClick={() =>
-        onTimingChange(isBefore ? "after_completion" : "before_start")
-      }
+      onClick={() => onTimingChange(nextTiming(timing))}
       className="cursor-pointer"
       title={t(
         "documents.requiredDocs.toggleTiming",
@@ -344,17 +387,10 @@ function TimingBadge({
       )}
     >
       <Badge
-        className={cn(
-          "text-xs select-none",
-          isBefore
-            ? "bg-green-100 text-green-800 border-green-200 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
-            : "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800",
-        )}
+        className={cn("text-xs select-none", TIMING_STYLES[timing])}
         variant="outline"
       >
-        {isBefore
-          ? t("documents.requiredDocs.beforeStart", "Przed wizytą")
-          : t("documents.requiredDocs.afterCompletion", "Po wizycie")}
+        {timingLabel(timing, t)}
       </Badge>
     </button>
   );

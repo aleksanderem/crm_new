@@ -17,12 +17,13 @@ export type DocumentGateResult = {
  * gate have been completed/signed. Used to gate appointment status transitions.
  *
  * - "before_start" gate: checked when transitioning to in_progress
- * - "after_completion" gate: checked when transitioning to completed
+ * - "during_visit" gate: checked when transitioning to completed
+ * - "after_completion" docs are generated AT completion (no gate)
  */
 export async function checkDocumentGate(
   ctx: QueryCtx,
   appointmentId: Id<"gabinetAppointments">,
-  timing: "before_start" | "after_completion",
+  timing: "before_start" | "during_visit" | "after_completion",
 ): Promise<DocumentGateResult> {
   // Query formDocuments linked to this appointment
   const docs = await ctx.db

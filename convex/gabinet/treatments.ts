@@ -108,7 +108,11 @@ export const create = action({
     packageId: v.optional(v.union(v.string(), v.null())),
     requiredFormTemplates: v.optional(v.array(v.object({
       templateId: v.string(),
-      timing: v.union(v.literal("before_start"), v.literal("after_completion")),
+      timing: v.union(
+        v.literal("before_start"),
+        v.literal("during_visit"),
+        v.literal("after_completion"),
+      ),
     }))),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),
@@ -245,7 +249,11 @@ export const update = action({
     packageId: v.optional(v.union(v.string(), v.null())),
     requiredFormTemplates: v.optional(v.array(v.object({
       templateId: v.string(),
-      timing: v.union(v.literal("before_start"), v.literal("after_completion")),
+      timing: v.union(
+        v.literal("before_start"),
+        v.literal("during_visit"),
+        v.literal("after_completion"),
+      ),
     }))),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),
@@ -877,7 +885,7 @@ export const getRequiredFormTemplates = action({
   },
   handler: async (ctx, args): Promise<Array<{
     templateId: string;
-    timing: "before_start" | "after_completion";
+    timing: "before_start" | "during_visit" | "after_completion";
     templateName: string;
     templateCategory: string;
     requiresSignature: boolean;
@@ -902,7 +910,7 @@ export const getRequiredFormTemplates = action({
 
     const entries = (treatment.requiredFormTemplates as Array<{
       templateId: string;
-      timing: "before_start" | "after_completion";
+      timing: "before_start" | "during_visit" | "after_completion";
     }> | null) ?? [];
     if (entries.length === 0) return [];
 
@@ -936,7 +944,11 @@ export const setRequiredFormTemplates = action({
     treatmentId: v.string(),
     requiredFormTemplates: v.array(v.object({
       templateId: v.string(),
-      timing: v.union(v.literal("before_start"), v.literal("after_completion")),
+      timing: v.union(
+        v.literal("before_start"),
+        v.literal("during_visit"),
+        v.literal("after_completion"),
+      ),
     })),
   },
   handler: async (ctx, args) => {

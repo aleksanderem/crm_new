@@ -339,6 +339,11 @@ export function AppointmentPreviewContent({
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [gateDialogOpen, setGateDialogOpen] = useState(false);
+  const [gateTiming, setGateTiming] = useState<
+    "before_start" | "during_visit"
+  >("before_start");
+  const [gateTargetStatus, setGateTargetStatus] =
+    useState<AppointmentStatus>("in_progress");
   const [changeEmployeeOpen, setChangeEmployeeOpen] = useState(false);
 
   const [settleDialogOpen, setSettleDialogOpen] = useState(false);
@@ -560,6 +565,14 @@ export function AppointmentPreviewContent({
     }
 
     if (newStatus === "in_progress" && docCounts.missingBefore > 0) {
+      setGateTiming("before_start");
+      setGateTargetStatus("in_progress");
+      setGateDialogOpen(true);
+      return;
+    }
+    if (newStatus === "completed" && docCounts.missingDuring > 0) {
+      setGateTiming("during_visit");
+      setGateTargetStatus("completed");
       setGateDialogOpen(true);
       return;
     }
@@ -1893,9 +1906,9 @@ export function AppointmentPreviewContent({
       onOpenChange={setGateDialogOpen}
       appointmentId={appointmentId}
       organizationId={organizationId}
-      timing="before_start"
-      targetStatus="in_progress"
-      onProceed={() => performStatusChange("in_progress")}
+      timing={gateTiming}
+      targetStatus={gateTargetStatus}
+      onProceed={() => performStatusChange(gateTargetStatus)}
       onFillDocument={() => setGateDialogOpen(false)}
     />
 

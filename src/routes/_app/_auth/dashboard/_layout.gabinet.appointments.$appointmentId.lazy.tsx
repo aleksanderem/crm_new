@@ -374,7 +374,9 @@ function AppointmentDetail() {
 
   // Document gate state
   const [gateDialogOpen, setGateDialogOpen] = useState(false);
-  const [gateTiming, setGateTiming] = useState<"before_start" | "after_completion">("before_start");
+  const [gateTiming, setGateTiming] = useState<
+    "before_start" | "during_visit" | "after_completion"
+  >("before_start");
   const [gateTargetStatus, setGateTargetStatus] = useState<string>("");
 
   // After-completion documents dialog (shown after appointment is completed)
@@ -904,8 +906,14 @@ function AppointmentDetail() {
       setGateDialogOpen(true);
       return;
     }
-    // Note: no gate for "completed" — after_completion docs are generated
-    // on completion, then the employee fills them post-completion.
+    // Document gate: during_visit docs must be filled before completion.
+    // (after_completion docs are auto-generated on completion and filled after.)
+    if (newStatus === "completed" && docCounts.missingDuring > 0) {
+      setGateTiming("during_visit");
+      setGateTargetStatus(newStatus);
+      setGateDialogOpen(true);
+      return;
+    }
 
     await performStatusChange(newStatus);
   };
@@ -1308,7 +1316,7 @@ function AppointmentDetail() {
   // Helper: document badge count for status transitions
   const getDocBadgeCount = (status: string): number => {
     if (status === "in_progress") return docCounts.missingBefore;
-    // No badge for "completed" — after_completion docs are generated post-completion
+    if (status === "completed") return docCounts.missingDuring;
     return 0;
   };
 

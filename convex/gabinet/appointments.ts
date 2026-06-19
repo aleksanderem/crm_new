@@ -835,7 +835,11 @@ export const _getAvailableSlotsQuery = internalQuery({
 export const _checkDocumentGateQuery = internalQuery({
   args: {
     appointmentId: v.string(),
-    timing: v.union(v.literal("before_start"), v.literal("after_completion")),
+    timing: v.union(
+      v.literal("before_start"),
+      v.literal("during_visit"),
+      v.literal("after_completion"),
+    ),
   },
   handler: async (ctx, args) => {
     return await checkDocumentGate(ctx, args.appointmentId as Id<"gabinetAppointments">, args.timing);
@@ -925,6 +929,10 @@ export const _createSideEffects = internalMutation({
     });
 
     // --- 3. Auto-generate appointment documents ---
+    // "before_start" docs go straight to the patient for signing before the
+    // visit. "during_visit" docs are generated upfront so they appear in the
+    // checklist immediately, but emails are deferred — the employee fills /
+    // sends them during the visit itself.
     await autoGenerateAppointmentDocuments(ctx, {
       organizationId: args.organizationId,
       appointmentId: args.appointmentId as Id<"gabinetAppointments">,
@@ -932,6 +940,15 @@ export const _createSideEffects = internalMutation({
       patientId: args.patientId as Id<"gabinetPatients">,
       createdBy: createdByUserId,
       timing: "before_start",
+    });
+    await autoGenerateAppointmentDocuments(ctx, {
+      organizationId: args.organizationId,
+      appointmentId: args.appointmentId as Id<"gabinetAppointments">,
+      treatmentId: args.treatmentId as Id<"gabinetTreatments">,
+      patientId: args.patientId as Id<"gabinetPatients">,
+      createdBy: createdByUserId,
+      timing: "during_visit",
+      deferEmails: true,
     });
 
     // --- 4. Calendar events for recurring appointments already written to Supabase by the action ---
@@ -1762,6 +1779,17 @@ export const updateStatus = action({
             `DOCUMENT_GATE:before_start:${JSON.stringify(gate)}|Nie można rozpocząć wizyty — brakuje wymaganych dokumentów: ${missingNames}`,
           );
         }
+      } else if (args.status === "completed") {
+        const gate = await ctx.runQuery(
+          internal.gabinet.appointments._checkDocumentGateQuery,
+          { appointmentId: args.appointmentId, timing: "during_visit" },
+        ) as { canProceed: boolean; missing: Array<{ title: string }> };
+        if (!gate.canProceed) {
+          const missingNames = gate.missing.map((d) => d.title).join(", ");
+          throw new Error(
+            `DOCUMENT_GATE:during_visit:${JSON.stringify(gate)}|Nie można zakończyć wizyty — brakuje wymaganych dokumentów: ${missingNames}`,
+          );
+        }
       }
     }
 
@@ -1926,7 +1954,11 @@ export const getDocumentGateStatus = query({
   args: {
     organizationId: v.id("organizations"),
     appointmentId: v.string(),
-    timing: v.union(v.literal("before_start"), v.literal("after_completion")),
+    timing: v.union(
+      v.literal("before_start"),
+      v.literal("during_visit"),
+      v.literal("after_completion"),
+    ),
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);

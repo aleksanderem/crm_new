@@ -41,7 +41,7 @@ export async function autoGenerateAppointmentDocuments(
     patientId: Id<"gabinetPatients">;
     createdBy: Id<"users">;
     /** When set, only generate documents matching this timing. */
-    timing?: "before_start" | "after_completion";
+    timing?: "before_start" | "during_visit" | "after_completion";
     /** When true, skip sending signing emails (employee fills first). */
     deferEmails?: boolean;
   },
@@ -57,7 +57,10 @@ export async function autoGenerateAppointmentDocuments(
   if (!treatment) return [];
 
   let requiredTemplates = (treatment.requiredFormTemplates as
-    | Array<{ templateId: string; timing?: "before_start" | "after_completion" }>
+    | Array<{
+        templateId: string;
+        timing?: "before_start" | "during_visit" | "after_completion";
+      }>
     | undefined) ?? [];
   if (requiredTemplates.length === 0) return [];
 

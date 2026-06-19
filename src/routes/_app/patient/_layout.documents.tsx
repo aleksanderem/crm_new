@@ -87,16 +87,20 @@ function PatientDocuments() {
             {items.map((doc) => (
               <div
                 key={doc._id}
-                className="flex items-center justify-between px-4 py-3"
+                className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">{doc.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {doc.templateName}
-                  </p>
+                <div className="flex items-start gap-2 min-w-0 sm:flex-1 sm:items-center">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{doc.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {doc.templateName}
+                    </p>
+                  </div>
+                  <div className="shrink-0 self-start sm:self-auto">
+                    <DocumentStatusBadge status={doc.status as any} />
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <DocumentStatusBadge status={doc.status as any} />
+                <div className="flex items-center justify-end gap-1 sm:gap-2 sm:shrink-0">
                   <Button
                     variant="ghost"
                     size="sm"

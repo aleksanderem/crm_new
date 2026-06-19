@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import type { FormDocumentStatus } from "@/components/documents/document-status-badge";
 import { DocumentViewer } from "@/components/documents/document-viewer";
-import { renderDocument } from "@/components/documents/document-renderer";
+import { TemplateFallbackViewer } from "@/components/documents/template-fallback-viewer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -590,12 +590,12 @@ function DocumentsPage() {
                   for (const [k, v] of Object.entries(parsed)) {
                     if (v != null) scopeFlat[k] = String(v);
                   }
-                  const html = renderDocument(selectedTemplate.contentJson, scopeFlat);
                   return (
                     <div className="mt-6">
-                      <DocumentViewer
+                      <TemplateFallbackViewer
                         title={selectedDoc.title}
-                        html={html}
+                        contentJson={selectedTemplate.contentJson}
+                        scopeData={scopeFlat}
                         signatureData={selectedDoc.signatureData}
                         signedAt={selectedDoc.signedAt}
                       />

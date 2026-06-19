@@ -4,6 +4,7 @@ import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { EntityType, ScopeData } from "./scopeResolver";
 import { resolveScopeSupabase } from "./scopeResolver_supabase";
+import { resolveComponentsInContent } from "./resolveComponents";
 import { Id } from "../_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for document writes
@@ -77,11 +78,14 @@ export const previewDocumentData = action({
       }
     }
 
-    // Content resolution was previously done via ctx.db reads. Since we're
-    // in an action now and resolveComponentsInContent expects QueryCtx, we
-    // pass the template contentJson through as-is. Component resolution can
-    // happen at render time instead.
-    const resolvedContentJson = (template.contentJson as string) ?? "";
+    // Resolve componentBlock nodes so the editor JSON returned here already
+    // has each component's actual content inlined. Without this, the client
+    // calls generateHTML over `componentBlock` nodes whose renderHTML emits
+    // the literal placeholder "[Komponent: <id>]" — that placeholder then
+    // gets baked into responseData.html and into every generated document
+    // (#1915).
+    const resolvedContentJson =
+      (await resolveComponentsInContent(db, template.contentJson as string)) ?? "";
 
     return {
       prefilledData,

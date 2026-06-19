@@ -56,7 +56,7 @@ import { useTranslation } from "react-i18next";
 import { DocumentStatusBadge } from "./document-status-badge";
 import { GenerateDocumentDialog } from "./generate-document-dialog";
 import { DocumentViewer } from "./document-viewer";
-import { renderDocument } from "./document-renderer";
+import { TemplateFallbackViewer } from "./template-fallback-viewer";
 import { flattenScopeData } from "@/lib/document-variables";
 
 // ---------------------------------------------------------------------------
@@ -479,29 +479,22 @@ export function EntityDocumentsTab({
                       viewingTemplate.templateType === "document" &&
                       viewingTemplate.contentJson
                     ) {
-                      try {
-                        const scopeFlat: Record<string, string> = {};
-                        for (const [k, v] of Object.entries(
-                          mergedResponseData,
-                        )) {
-                          if (v != null) scopeFlat[k] = String(v);
-                        }
-                        const html = renderDocument(
-                          viewingTemplate.contentJson,
-                          scopeFlat,
-                        );
-                        return (
-                          <DocumentViewer
-                            title={viewingDoc.title}
-                            html={html}
-                            signatureData={viewingDoc.signatureData}
-                            signedByName={viewingDoc.signedByName}
-                            signedAt={viewingDoc.signedAt}
-                          />
-                        );
-                      } catch {
-                        // contentJson invalid — fall through to empty state
+                      const scopeFlat: Record<string, string> = {};
+                      for (const [k, v] of Object.entries(
+                        mergedResponseData,
+                      )) {
+                        if (v != null) scopeFlat[k] = String(v);
                       }
+                      return (
+                        <TemplateFallbackViewer
+                          title={viewingDoc.title}
+                          contentJson={viewingTemplate.contentJson}
+                          scopeData={scopeFlat}
+                          signatureData={viewingDoc.signatureData}
+                          signedByName={viewingDoc.signedByName}
+                          signedAt={viewingDoc.signedAt}
+                        />
+                      );
                     }
 
                     // Fallback: no viewable content

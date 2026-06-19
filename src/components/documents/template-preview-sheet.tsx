@@ -29,6 +29,7 @@ import {
   renderDocument,
   type ExtractedFormField,
 } from "@/components/documents/document-renderer";
+import { useResolvedContentJson } from "@/hooks/use-resolved-content-json";
 import { flattenScopeData, VARIABLE_REGISTRY } from "@/lib/document-variables";
 import type { VariableField } from "@/lib/document-variables";
 import type { EntityType } from "@/components/documents/template-settings-sheet";
@@ -387,11 +388,15 @@ export function TemplatePreviewSheet({
     return flattenScopeData(scopeData as Record<string, Record<string, unknown>>);
   }, [scopeData]);
 
+  // Inline componentBlock nodes before rendering — without this, generateHTML
+  // calls componentBlock.renderHTML which emits "[Komponent: <id>]" (#1915).
+  const { resolvedContentJson } = useResolvedContentJson(contentJson);
+
   // Detect missing variables
   const missingVars = useMemo(() => {
-    if (!contentJson || !flatScope) return [];
+    if (!resolvedContentJson || !flatScope) return [];
     try {
-      const json = JSON.parse(contentJson);
+      const json = JSON.parse(resolvedContentJson);
       const paths = extractVariablePaths(json);
       return paths.filter((path) => {
         if (path.startsWith("system.") || path.startsWith("organization.")) return false;
@@ -401,18 +406,18 @@ export function TemplatePreviewSheet({
     } catch {
       return [];
     }
-  }, [contentJson, flatScope]);
+  }, [resolvedContentJson, flatScope]);
 
   const renderedHtml = useMemo(() => {
-    if (!flatScope || !contentJson) return null;
+    if (!flatScope || !resolvedContentJson) return null;
     try {
-      return renderDocument(contentJson, flatScope, undefined, {
+      return renderDocument(resolvedContentJson, flatScope, undefined, {
         highlightMissing: true,
       });
     } catch {
       return null;
     }
-  }, [contentJson, flatScope]);
+  }, [resolvedContentJson, flatScope]);
 
   const { employeeFields, clientFields } = useMemo(() => {
     if (!contentJson) return { employeeFields: [], clientFields: [] };

@@ -762,6 +762,10 @@ function TreatmentsIndex() {
                   color: editingTreatment.color ?? undefined,
                   treatmentCount: editingTreatment.treatmentCount ?? undefined,
                   packageId: editingTreatment.packageId ?? null,
+                  requiredFormTemplates:
+                    (editingTreatment.requiredFormTemplates as
+                      | TreatmentFormData["requiredFormTemplates"]
+                      | undefined) ?? undefined,
                 }
               : undefined
           }

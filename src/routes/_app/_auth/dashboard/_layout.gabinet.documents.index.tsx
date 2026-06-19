@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import { DocumentViewer } from "@/components/documents/document-viewer";
 import { DocumentFormFiller } from "@/components/documents/document-form-filler";
+import { TemplateFallbackViewer } from "@/components/documents/template-fallback-viewer";
 import {
   extractFormFields,
   renderDocument,
@@ -150,6 +151,9 @@ function GabinetDocumentsPage() {
   const resendSigningEmail = useAction(api.documents.documents.resendSigningEmail);
   const removeDocument = useAction(api.documents.documents.remove);
   const updateResponseData = useAction(api.documents.documents.updateResponseData);
+  const resolveContentJsonAction = useAction(
+    api.documents.components.resolveContentJson,
+  );
 
   // --- Edit mode state ---
   const [isEditing, setIsEditing] = useState(false);
@@ -378,8 +382,14 @@ function GabinetDocumentsPage() {
       setSavingEdit(true);
       try {
         const mergedFieldValues = { ...existingFormFieldValues, ...fieldValues };
+        // Resolve componentBlock nodes before generateHTML so the persisted
+        // HTML doesn't contain "[Komponent: <id>]" placeholders (#1915).
+        const resolvedContentJson = await resolveContentJsonAction({
+          organizationId,
+          contentJson: selectedTemplate.contentJson,
+        });
         const renderedHtml = renderDocument(
-          selectedTemplate.contentJson,
+          resolvedContentJson,
           existingScopeData,
           mergedFieldValues,
         );
@@ -418,6 +428,7 @@ function GabinetDocumentsPage() {
       existingFormFieldValues,
       existingScopeData,
       updateResponseData,
+      resolveContentJsonAction,
       organizationId,
       queryClient,
       t,
@@ -872,15 +883,12 @@ function GabinetDocumentsPage() {
                     for (const [k, v] of Object.entries(parsed)) {
                       if (v != null) scopeFlat[k] = String(v);
                     }
-                    const html = renderDocument(
-                      selectedTemplate.contentJson,
-                      scopeFlat,
-                    );
                     return (
                       <div className="mt-6">
-                        <DocumentViewer
+                        <TemplateFallbackViewer
                           title={selectedDoc.title}
-                          html={html}
+                          contentJson={selectedTemplate.contentJson}
+                          scopeData={scopeFlat}
                           signatureData={selectedDoc.signatureData}
                           signedAt={selectedDoc.signedAt}
                         />

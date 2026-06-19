@@ -127,6 +127,9 @@ export function AfterCompletionDocumentsDialog({
     enabled: !!activeDoc?.templateId,
   });
   const activeTemplate = activeTemplateRaw as unknown as FormTemplate | undefined;
+  const resolveContentJsonAction = useAction(
+    api.documents.components.resolveContentJson,
+  );
 
   // Parse scope data from the document's responseData
   const scopeData = useMemo(() => {
@@ -183,10 +186,19 @@ export function AfterCompletionDocumentsDialog({
       if (!activeDoc || !activeTemplate) return;
       setSubmitting(true);
       try {
-        // Render the document with scope data + employee field values
-        const html = activeTemplate.contentJson
-          ? renderDocument(activeTemplate.contentJson, scopeData, fieldValues)
-          : `<div class="document"><h1>${activeDoc.title}</h1></div>`;
+        // Render the document with scope data + employee field values.
+        // Resolve componentBlock nodes before generateHTML so the persisted
+        // HTML doesn't contain "[Komponent: <id>]" placeholders (#1915).
+        let html: string;
+        if (activeTemplate.contentJson) {
+          const resolved = await resolveContentJsonAction({
+            organizationId,
+            contentJson: activeTemplate.contentJson,
+          });
+          html = renderDocument(resolved, scopeData, fieldValues);
+        } else {
+          html = `<div class="document"><h1>${activeDoc.title}</h1></div>`;
+        }
 
         await submitEmployeeFormFields({
           organizationId,
@@ -228,6 +240,7 @@ export function AfterCompletionDocumentsDialog({
       activeTemplate,
       scopeData,
       submitEmployeeFormFields,
+      resolveContentJsonAction,
       organizationId,
       t,
       afterDocs,
@@ -241,10 +254,19 @@ export function AfterCompletionDocumentsDialog({
     if (!activeDoc || !activeTemplate) return;
     setSubmitting(true);
     try {
-      // Render HTML from TipTap contentJson if available; otherwise use a minimal wrapper
-      const html = activeTemplate.contentJson
-        ? renderDocument(activeTemplate.contentJson, scopeData)
-        : `<div class="document"><h1>${activeDoc.title}</h1></div>`;
+      // Render HTML from TipTap contentJson if available; otherwise use a minimal wrapper.
+      // Resolve componentBlock nodes before generateHTML so the persisted HTML
+      // doesn't contain "[Komponent: <id>]" placeholders (#1915).
+      let html: string;
+      if (activeTemplate.contentJson) {
+        const resolved = await resolveContentJsonAction({
+          organizationId,
+          contentJson: activeTemplate.contentJson,
+        });
+        html = renderDocument(resolved, scopeData);
+      } else {
+        html = `<div class="document"><h1>${activeDoc.title}</h1></div>`;
+      }
       await submitEmployeeFormFields({
         organizationId,
         documentId: activeDoc._id as Id<"formDocuments">,
@@ -282,6 +304,7 @@ export function AfterCompletionDocumentsDialog({
     activeTemplate,
     scopeData,
     submitEmployeeFormFields,
+    resolveContentJsonAction,
     organizationId,
     t,
     afterDocs,

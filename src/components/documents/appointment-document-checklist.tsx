@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { DocumentStatusBadge } from "./document-status-badge";
 import { DocumentViewer } from "./document-viewer";
-import { renderDocument } from "./document-renderer";
+import { TemplateFallbackViewer } from "./template-fallback-viewer";
 import { GenerateDocumentDialog } from "./generate-document-dialog";
 
 // ---------------------------------------------------------------------------
@@ -341,11 +341,11 @@ export function AppointmentDocumentChecklist({
                       for (const [k, v] of Object.entries(rd)) {
                         if (v != null) scope[k] = String(v);
                       }
-                      const html = renderDocument(viewingTemplate.contentJson, scope);
                       return (
-                        <DocumentViewer
+                        <TemplateFallbackViewer
                           title={viewingDoc.title}
-                          html={html}
+                          contentJson={viewingTemplate.contentJson}
+                          scopeData={scope}
                           signatureData={viewingDoc.signatureData}
                           signedByName={viewingDoc.signedByName}
                           signedAt={viewingDoc.signedAt}

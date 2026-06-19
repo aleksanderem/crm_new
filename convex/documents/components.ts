@@ -2,6 +2,7 @@ import { action, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { resolveComponentsInContent } from "./resolveComponents";
 import {
   componentCategoryValidator,
 } from "../schema/documents";
@@ -105,6 +106,30 @@ export const getContent = action({
       protected: Boolean(comp.protected),
       positionConstraint: (comp.positionConstraint as string | null) ?? null,
     };
+  },
+});
+
+/**
+ * Resolve componentBlock nodes inside an arbitrary TipTap contentJson string.
+ * Returns the contentJson with each componentBlock replaced by the referenced
+ * component's actual nodes. Used by render-time contexts that hold contentJson
+ * in memory (template editor preview, document viewer fallback) and need
+ * resolved content before calling generateHTML — otherwise componentBlock's
+ * renderHTML emits the literal placeholder "[Komponent: <id>]" (#1915).
+ */
+export const resolveContentJson = action({
+  args: {
+    organizationId: v.id("organizations"),
+    contentJson: v.string(),
+  },
+  handler: async (ctx, args): Promise<string> => {
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const db = createSupabaseDb();
+    const resolved = await resolveComponentsInContent(db, args.contentJson);
+    return resolved ?? args.contentJson;
   },
 });
 

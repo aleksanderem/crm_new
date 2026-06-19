@@ -1708,7 +1708,7 @@ function PatientDetail() {
           { label: t("common.delete"), onClick: handleDelete, variant: "destructive" as const },
         ]}
         fields={detailFields}
-        expandedFieldCount={4}
+        expandedFieldCount={3}
         sidebarExtra={sidebarExtra}
         tabs={tabs}
       />

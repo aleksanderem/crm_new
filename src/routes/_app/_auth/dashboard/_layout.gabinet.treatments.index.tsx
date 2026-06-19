@@ -40,6 +40,7 @@ import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { formatTreatmentError } from "@/lib/format-action-error";
+import { reportError } from "@/lib/error-reporter";
 
 // shadcn/studio statistics blocks
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -461,6 +462,21 @@ function TreatmentsIndex() {
         setTagIds([]);
         setCategoryId(undefined);
       } catch (e) {
+        // Capture client-side so /admin/errors gets the failing payload.
+        // ArgumentValidationError is thrown by the Convex wrapper before the
+        // server handler runs, so the server-side logError in treatments.ts
+        // never fires for validator failures (#1949).
+        void reportError(e, {
+          scope: "gabinet.treatments",
+          fnName: editingTreatment ? "update" : "create",
+          argsJson: JSON.stringify({
+            ...formData,
+            treatmentId: editingTreatment?._id,
+            tagIds,
+            categoryId: categoryId ?? null,
+          }),
+          organizationId,
+        });
         toast.error(
           formatTreatmentError(e, t, {
             key: editingTreatment

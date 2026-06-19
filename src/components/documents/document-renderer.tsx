@@ -64,7 +64,7 @@ export interface ExtractedFormField {
 // wrong" with no recovery path (#1907).
 // ---------------------------------------------------------------------------
 
-const renderExtensions = [
+export const renderExtensions = [
   StarterKit,
   Underline,
   HorizontalRule,

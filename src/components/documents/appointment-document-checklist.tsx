@@ -50,12 +50,14 @@ type FormDocumentStatus =
   | "expired"
   | "voided";
 
+type FormDocumentTiming = "before_start" | "during_visit" | "after_completion";
+
 interface FormDocument {
   _id: Id<"formDocuments">;
   title: string;
   status: FormDocumentStatus;
   templateId: Id<"formTemplates">;
-  timing?: "before_start" | "after_completion";
+  timing?: FormDocumentTiming;
   signedAt?: number;
   responseData?: string;
   signingToken?: string;
@@ -177,12 +179,18 @@ export function AppointmentDocumentChecklist({
 
   // Split by timing
   const beforeDocs = allDocs.filter((d) => d.timing === "before_start");
+  const duringDocs = allDocs.filter((d) => d.timing === "during_visit");
   const afterDocs = allDocs.filter((d) => d.timing === "after_completion");
   const untimed = allDocs.filter(
-    (d) => !d.timing || (d.timing !== "before_start" && d.timing !== "after_completion"),
+    (d) =>
+      !d.timing ||
+      (d.timing !== "before_start" &&
+        d.timing !== "during_visit" &&
+        d.timing !== "after_completion"),
   );
 
-  const hasRequiredDocs = beforeDocs.length > 0 || afterDocs.length > 0;
+  const hasRequiredDocs =
+    beforeDocs.length > 0 || duringDocs.length > 0 || afterDocs.length > 0;
 
   // --- Empty state ---
   if (!hasRequiredDocs && untimed.length === 0) {
@@ -226,6 +234,17 @@ export function AppointmentDocumentChecklist({
           <DocumentSection
             title={t("documents.beforeAppointment", "Przed wizytą")}
             documents={beforeDocs}
+            organizationId={organizationId}
+            onDocumentClick={handleDocClick}
+            t={t as (key: string, fallback?: string) => string}
+          />
+        )}
+
+        {/* During appointment section */}
+        {duringDocs.length > 0 && (
+          <DocumentSection
+            title={t("documents.duringAppointment", "W trakcie wizyty")}
+            documents={duringDocs}
             organizationId={organizationId}
             onDocumentClick={handleDocClick}
             t={t as (key: string, fallback?: string) => string}
@@ -548,16 +567,13 @@ export function useAppointmentDocumentCounts(
   const allDocs = (documents ?? []) as unknown as FormDocument[];
 
   const beforeDocs = allDocs.filter((d) => d.timing === "before_start");
+  const duringDocs = allDocs.filter((d) => d.timing === "during_visit");
   const afterDocs = allDocs.filter((d) => d.timing === "after_completion");
 
-  const missingBefore = beforeDocs.filter(
-    (d) => !isDocumentCompleted(d.status),
-  ).length;
-  const missingAfter = afterDocs.filter(
-    (d) => !isDocumentCompleted(d.status),
-  ).length;
-
   const missingBeforeDocs = beforeDocs.filter(
+    (d) => !isDocumentCompleted(d.status),
+  );
+  const missingDuringDocs = duringDocs.filter(
     (d) => !isDocumentCompleted(d.status),
   );
   const missingAfterDocs = afterDocs.filter(
@@ -565,13 +581,17 @@ export function useAppointmentDocumentCounts(
   );
 
   return {
-    missingBefore,
-    missingAfter,
+    missingBefore: missingBeforeDocs.length,
+    missingDuring: missingDuringDocs.length,
+    missingAfter: missingAfterDocs.length,
     missingBeforeDocs,
+    missingDuringDocs,
     missingAfterDocs,
     totalBefore: beforeDocs.length,
+    totalDuring: duringDocs.length,
     totalAfter: afterDocs.length,
     hasBefore: beforeDocs.length > 0,
+    hasDuring: duringDocs.length > 0,
     hasAfter: afterDocs.length > 0,
   };
 }

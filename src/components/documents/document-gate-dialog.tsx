@@ -36,12 +36,14 @@ interface MissingDocument {
   status: FormDocumentStatus;
 }
 
+type GateTiming = "before_start" | "during_visit" | "after_completion";
+
 interface DocumentGateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   appointmentId: string;
   organizationId: Id<"organizations">;
-  timing: "before_start" | "after_completion";
+  timing: GateTiming;
   targetStatus: string;
   onProceed: () => void;
   onFillDocument: (documentId: string) => void;
@@ -80,7 +82,7 @@ export function DocumentGateDialog({
     _id: Id<"formDocuments">;
     title: string;
     status: FormDocumentStatus;
-    timing?: "before_start" | "after_completion";
+    timing?: GateTiming;
   }>;
 
   const missingDocs: MissingDocument[] = allDocs.filter(
@@ -98,7 +100,25 @@ export function DocumentGateDialog({
   const timingLabel =
     timing === "before_start"
       ? t("documents.gate.timingBefore", "Przed wizytą")
-      : t("documents.gate.timingAfter", "Po wizycie");
+      : timing === "during_visit"
+        ? t("documents.gate.timingDuring", "W trakcie wizyty")
+        : t("documents.gate.timingAfter", "Po wizycie");
+
+  const gateDescription =
+    timing === "before_start"
+      ? t(
+          "documents.gate.beforeDescription",
+          "Nastepujace dokumenty powinny byc wypelnione przed rozpoczeciem wizyty:",
+        )
+      : timing === "during_visit"
+        ? t(
+            "documents.gate.duringDescription",
+            "Nastepujace dokumenty powinny byc wypelnione przed zakonczeniem wizyty:",
+          )
+        : t(
+            "documents.gate.afterDescription",
+            "Nastepujace dokumenty powinny byc wypelnione po zakonczeniu wizyty:",
+          );
 
   const drag = useDraggableDialog(open);
 
@@ -124,15 +144,7 @@ export function DocumentGateDialog({
                   {t("documents.gate.title", "Niekompletne dokumenty")}
                 </DialogTitle>
                 <DialogDescription className="text-amber-800 dark:text-amber-300/80">
-                  {timing === "before_start"
-                    ? t(
-                        "documents.gate.beforeDescription",
-                        "Nastepujace dokumenty powinny byc wypelnione przed rozpoczeciem wizyty:",
-                      )
-                    : t(
-                        "documents.gate.afterDescription",
-                        "Nastepujace dokumenty powinny byc wypelnione przed zakonczeniem wizyty:",
-                      )}
+                  {gateDescription}
                 </DialogDescription>
               </DialogHeader>
             </div>

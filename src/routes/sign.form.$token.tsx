@@ -414,18 +414,24 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Render HTML for no-form-fields case or when form is already filled
-  const preRenderedHtml = useMemo(() => {
-    if (renderedHtml) return renderedHtml;
-    if (formFields.length === 0 && template.contentJson) {
-      try {
-        return renderDocument(template.contentJson, prefilledData);
-      } catch {
-        return undefined;
-      }
+  // Document preview rendered from the template + scope + any employee-filled
+  // values. Used as the displayed HTML when the form has no client fields and
+  // as the in-context preview shown above the form during the fill step so the
+  // client can read the full document (e.g. a RODO consent clause) instead of
+  // signing blind. Unfilled client form fields render as styled `[Label]`
+  // placeholders (see FormFieldNode.renderHTML). See #1917.
+  const previewHtml = useMemo(() => {
+    if (!template.contentJson) return undefined;
+    try {
+      return renderDocument(
+        template.contentJson,
+        prefilledData,
+        existingFormFieldValues,
+      );
+    } catch {
+      return undefined;
     }
-    return undefined;
-  }, [renderedHtml, formFields.length, template.contentJson, prefilledData]);
+  }, [template.contentJson, prefilledData, existingFormFieldValues]);
 
   const handleFormComplete = useCallback(
     async (fieldValues: Record<string, string>) => {
@@ -462,7 +468,7 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
   if (step === "done") return <SuccessState />;
 
   const signingMethod = template.signatureConfig?.method ?? "click";
-  const displayHtml = renderedHtml ?? preRenderedHtml;
+  const displayHtml = renderedHtml ?? previewHtml;
 
   return (
     <div className="space-y-6">
@@ -491,35 +497,47 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
 
       {/* Step 1: Form fill (only for draft documents with form fields) */}
       {step === "fill" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <ClipboardList className="h-5 w-5" />
-              {t("documents.signing.formTitle", "Formularz")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {submitting && (
-              <div className="flex items-center justify-center gap-2 py-8">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span className="text-sm text-muted-foreground">
-                  {t("common.saving", "Zapisywanie...")}
-                </span>
-              </div>
-            )}
-            {!submitting && (
-              <DocumentFormFiller
-                formFields={formFields}
-                filledByFilter="client"
-                onComplete={handleFormComplete}
-                onCancel={() => {
-                  // No cancel action on public page — just a no-op
-                }}
-              />
-            )}
-            {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-          </CardContent>
-        </Card>
+        <>
+          {previewHtml && (
+            <Card>
+              <CardContent className="pt-6">
+                <div
+                  className="prose prose-sm max-w-none rounded-lg border bg-white p-6 text-gray-900 [&_*]:!text-gray-900 [&_a]:!text-blue-700 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-300 [&_td]:p-2 [&_th]:border [&_th]:border-gray-300 [&_th]:bg-gray-100 [&_th]:p-2"
+                  dangerouslySetInnerHTML={{ __html: previewHtml }}
+                />
+              </CardContent>
+            </Card>
+          )}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <ClipboardList className="h-5 w-5" />
+                {t("documents.signing.formTitle", "Formularz")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {submitting && (
+                <div className="flex items-center justify-center gap-2 py-8">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="text-sm text-muted-foreground">
+                    {t("common.saving", "Zapisywanie...")}
+                  </span>
+                </div>
+              )}
+              {!submitting && (
+                <DocumentFormFiller
+                  formFields={formFields}
+                  filledByFilter="client"
+                  onComplete={handleFormComplete}
+                  onCancel={() => {
+                    // No cancel action on public page — just a no-op
+                  }}
+                />
+              )}
+              {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {/* Step 2: Document preview + signature */}

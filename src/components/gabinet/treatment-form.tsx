@@ -31,6 +31,10 @@ import {
 import { Check, ChevronsUpDown, Plus } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import { formatActionError } from "@/lib/format-action-error";
+import {
+  TreatmentRequiredDocumentsField,
+  type RequiredFormTemplateValue,
+} from "@/components/documents/treatment-required-documents-field";
 import type { Id } from "@cvx/_generated/dataModel";
 
 export interface TreatmentFormData {
@@ -50,6 +54,7 @@ export interface TreatmentFormData {
   color?: string | null;
   treatmentCount?: number;
   packageId?: string | null;
+  requiredFormTemplates?: RequiredFormTemplateValue[];
 }
 
 interface TreatmentFormProps {
@@ -104,12 +109,10 @@ export function TreatmentForm({
     initialData?.requiredEquipmentIds ?? []
   );
   const [equipmentOpen, setEquipmentOpen] = useState(false);
-  const [preparationInstructions, setPreparationInstructions] = useState(
-    initialData?.preparationInstructions ?? ""
-  );
-  const [aftercareInstructions, setAftercareInstructions] = useState(
-    initialData?.aftercareInstructions ?? ""
-  );
+  const [notes, setNotes] = useState(initialData?.description ?? "");
+  const [requiredFormTemplates, setRequiredFormTemplates] = useState<
+    RequiredFormTemplateValue[]
+  >(initialData?.requiredFormTemplates ?? []);
   const [requiresApproval, setRequiresApproval] = useState(initialData?.requiresApproval ?? false);
   const initialTreatmentCount = initialData?.treatmentCount;
   const initialPackageId = initialData?.packageId ?? null;
@@ -195,7 +198,7 @@ export function TreatmentForm({
 
     onSubmit({
       name,
-      description: initialData?.description ?? null,
+      description: notes || null,
       duration: parseInt(duration) || 30,
       price: parseFloat(price.replace(",", ".")) || 0,
       currency: currency || undefined,
@@ -203,11 +206,12 @@ export function TreatmentForm({
       taxExempt: isExempt ? true : false,
       requiredEquipmentIds: selectedEquipmentIds.length > 0 ? selectedEquipmentIds : undefined,
       contraindications: initialData?.contraindications ?? null,
-      preparationInstructions: preparationInstructions || null,
-      aftercareInstructions: aftercareInstructions || null,
+      preparationInstructions: initialData?.preparationInstructions ?? null,
+      aftercareInstructions: initialData?.aftercareInstructions ?? null,
       requiresApproval: requiresApproval || undefined,
       color: initialData?.color ?? null,
       packageId: isPackage && selectedPackageId ? selectedPackageId : null,
+      requiredFormTemplates,
     });
   };
 
@@ -487,18 +491,20 @@ export function TreatmentForm({
 
       <div className="space-y-4 border-t pt-4">
         <div className="space-y-1.5">
-          <Label>{t("gabinet.treatments.preparationInstructions")}</Label>
-          <RichTextEditor
-            value={preparationInstructions}
-            onChange={(v) => setPreparationInstructions(v ?? "")}
-            minHeight="80px"
+          <Label>
+            {t("gabinet.treatments.requiredDocuments", "Wymagane dokumenty")}
+          </Label>
+          <TreatmentRequiredDocumentsField
+            organizationId={organizationId}
+            value={requiredFormTemplates}
+            onChange={setRequiredFormTemplates}
           />
         </div>
         <div className="space-y-1.5">
-          <Label>{t("gabinet.treatments.aftercareInstructions")}</Label>
+          <Label>{t("gabinet.treatments.notes", "Uwagi / Notatki")}</Label>
           <RichTextEditor
-            value={aftercareInstructions}
-            onChange={(v) => setAftercareInstructions(v ?? "")}
+            value={notes}
+            onChange={(v) => setNotes(v ?? "")}
             minHeight="80px"
           />
         </div>

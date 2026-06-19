@@ -2413,6 +2413,8 @@
       "contraindications": "Contraindications",
       "preparationInstructions": "Preparation Instructions",
       "aftercareInstructions": "Aftercare Instructions",
+      "requiredDocuments": "Required Documents",
+      "notes": "Notes",
       "requiresApproval": "Requires Approval",
       "treatmentCount": "Sessions per course",
       "treatmentCountHint": "Number of sessions in a course (e.g. 20). Auto-creates a package on first booking.",

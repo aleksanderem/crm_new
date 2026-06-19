@@ -1280,6 +1280,10 @@ function TreatmentDetail() {
               color: treatment.color ?? undefined,
               treatmentCount: treatment.treatmentCount ?? undefined,
               packageId: treatment.packageId ?? null,
+              requiredFormTemplates:
+                (treatment.requiredFormTemplates as
+                  | TreatmentFormData["requiredFormTemplates"]
+                  | undefined) ?? undefined,
             }}
             onSubmit={handleEditSubmit}
             onCancel={() => setEditPanelOpen(false)}

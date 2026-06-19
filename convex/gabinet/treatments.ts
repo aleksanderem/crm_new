@@ -106,6 +106,10 @@ export const create = action({
     sortOrder: v.optional(v.number()),
     treatmentCount: v.optional(v.number()),
     packageId: v.optional(v.union(v.string(), v.null())),
+    requiredFormTemplates: v.optional(v.array(v.object({
+      templateId: v.string(),
+      timing: v.union(v.literal("before_start"), v.literal("after_completion")),
+    }))),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),
   },
@@ -147,6 +151,7 @@ export const create = action({
       sortOrder: args.sortOrder ?? null,
       treatmentCount: args.treatmentCount ?? null,
       packageId: args.packageId ?? null,
+      requiredFormTemplates: args.requiredFormTemplates ?? null,
       tagIds: args.tagIds ?? null,
       categoryId: args.categoryId ?? null,
       createdBy: String(authResult.userId),

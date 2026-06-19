@@ -224,7 +224,7 @@ export function AppointmentDocumentChecklist({
         {/* Before appointment section */}
         {beforeDocs.length > 0 && (
           <DocumentSection
-            title={t("documents.beforeAppointment", "Przed wizyta")}
+            title={t("documents.beforeAppointment", "Przed wizytą")}
             documents={beforeDocs}
             organizationId={organizationId}
             onDocumentClick={handleDocClick}

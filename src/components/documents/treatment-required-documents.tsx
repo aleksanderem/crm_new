@@ -364,7 +364,7 @@ export function TreatmentRequiredDocuments({
             {/* Timing selector */}
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                {t("documents.requiredDocs.timing", "Moment wypelnienia")}
+                {t("documents.requiredDocs.timing", "Wypełnia:")}
               </label>
               <Select
                 value={selectedTiming}
@@ -379,7 +379,7 @@ export function TreatmentRequiredDocuments({
                   <SelectItem value="before_start">
                     {t(
                       "documents.requiredDocs.beforeStart",
-                      "Przed wizyta",
+                      "Przed wizytą",
                     )}
                   </SelectItem>
                   <SelectItem value="after_completion">
@@ -452,7 +452,7 @@ function TimingBadge({
         variant="outline"
       >
         {isBefore
-          ? t("documents.requiredDocs.beforeStart", "Przed wizyta")
+          ? t("documents.requiredDocs.beforeStart", "Przed wizytą")
           : t("documents.requiredDocs.afterCompletion", "Po wizycie")}
       </Badge>
     </button>

@@ -97,7 +97,7 @@ export function DocumentGateDialog({
 
   const timingLabel =
     timing === "before_start"
-      ? t("documents.gate.timingBefore", "Przed wizyta")
+      ? t("documents.gate.timingBefore", "Przed wizytą")
       : t("documents.gate.timingAfter", "Po wizycie");
 
   const drag = useDraggableDialog(open);

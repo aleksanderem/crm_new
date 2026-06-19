@@ -56,6 +56,40 @@ describe("extractFieldValidationDetail", () => {
   it("returns null for unrelated messages", () => {
     expect(extractFieldValidationDetail("Some other error")).toBeNull();
   });
+
+  it("extracts field from Convex 'Validator error: Missing required field' (issue #1941)", () => {
+    const detail = extractFieldValidationDetail(
+      "Validator error: Missing required field `name` in object",
+    );
+    expect(detail?.rawField).toBe("name");
+    expect(detail?.fieldLabel).toBe("Nazwa");
+    expect(detail?.reason).toBe("to pole jest wymagane");
+  });
+
+  it("extracts field from Convex 'Validator error: Unexpected field'", () => {
+    const detail = extractFieldValidationDetail(
+      "Validator error: Unexpected field `categoryId` in object",
+    );
+    expect(detail?.rawField).toBe("categoryId");
+    expect(detail?.fieldLabel).toBe("Kategoria");
+    expect(detail?.reason).toBe("nieoczekiwane pole");
+  });
+
+  it("extracts field from Convex 'Validator error: ... at path X.Y'", () => {
+    const detail = extractFieldValidationDetail(
+      "Validator error: Expected `string`, got `null` at path 'price'",
+    );
+    expect(detail?.rawField).toBe("price");
+    expect(detail?.fieldLabel).toBe("Cena");
+  });
+
+  it("reports type-mismatch when no field name is present in Validator error", () => {
+    const detail = extractFieldValidationDetail(
+      "Validator error: Expected `string`, got `null`",
+    );
+    expect(detail?.fieldLabel).toContain("string");
+    expect(detail?.reason).toContain("null");
+  });
 });
 
 describe("formatTreatmentError", () => {
@@ -87,5 +121,20 @@ describe("formatTreatmentError", () => {
       defaultValue: "Nie udało się utworzyć zabiegu.",
     });
     expect(msg).toBe("Nie udało się utworzyć zabiegu.");
+  });
+
+  it("surfaces field when Convex throws 'Validator error: Missing required field' (issue #1941)", () => {
+    const err = new Error(
+      "[CONVEX A(gabinet/treatments:create)] [Request ID: xx] Server Error\n" +
+        "Uncaught ArgumentValidationError: Validator error: Missing required field `duration` in object\n" +
+        "    at validateValidator\n" +
+        "  Called by client",
+    );
+    const msg = formatTreatmentError(err, t, {
+      key: "gabinet.treatments.errors.createFailed",
+      defaultValue: "Nie udało się utworzyć zabiegu.",
+    });
+    expect(msg).toContain("Czas trwania");
+    expect(msg).toContain("to pole jest wymagane");
   });
 });

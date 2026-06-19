@@ -114,64 +114,90 @@ export const create = action({
     categoryId: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
-    // --- Auth + permissions (via internal queries) ---
-    const authResult = await ctx.runQuery(
-      internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: args.organizationId },
-    );
-    await ctx.runQuery(internal._helpers.authAction.checkPermission, {
-      organizationId: args.organizationId,
-      feature: "gabinet_treatments",
-      action: "create",
-    }).then((perm: { allowed: boolean; scope: string }) => {
-      if (!perm.allowed) throw new Error("Permission denied");
-    });
-
-    const now = Date.now();
-    const db = createSupabaseDb();
-
-    // --- INSERT treatment directly to Supabase ---
-    const treatmentId = await db.insert("gabinetTreatments", {
-      organizationId: String(args.organizationId),
-      name: args.name,
-      description: args.description ?? null,
-      duration: args.duration,
-      price: args.price,
-      currency: args.currency ?? null,
-      taxRate: args.taxExempt ? null : args.taxRate ?? null,
-      taxExempt: args.taxExempt ?? null,
-      requiredEquipment: args.requiredEquipment ?? null,
-      requiredEquipmentIds: args.requiredEquipmentIds ?? null,
-      contraindications: args.contraindications ?? null,
-      preparationInstructions: args.preparationInstructions ?? null,
-      aftercareInstructions: args.aftercareInstructions ?? null,
-      isActive: true,
-      requiresApproval: args.requiresApproval ?? null,
-      color: args.color ?? null,
-      sortOrder: args.sortOrder ?? null,
-      treatmentCount: args.treatmentCount ?? null,
-      packageId: args.packageId ?? null,
-      requiredFormTemplates: args.requiredFormTemplates ?? null,
-      tagIds: args.tagIds ?? null,
-      categoryId: args.categoryId ?? null,
-      createdBy: String(authResult.userId),
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // --- Delegate post-write side effects ---
     try {
-      await ctx.runMutation(internal.gabinet.treatments._createSideEffects, {
-        treatmentId,
+      // --- Auth + permissions (via internal queries) ---
+      const authResult = await ctx.runQuery(
+        internal._helpers.authAction.verifyOrgAccess,
+        { organizationId: args.organizationId },
+      );
+      await ctx.runQuery(internal._helpers.authAction.checkPermission, {
         organizationId: args.organizationId,
-        name: args.name,
-        createdBy: String(authResult.userId),
+        feature: "gabinet_treatments",
+        action: "create",
+      }).then((perm: { allowed: boolean; scope: string }) => {
+        if (!perm.allowed) throw new Error("Permission denied");
       });
-    } catch (e) {
-      console.error("[treatments.create] Side effects FAILED for treatment", treatmentId, ":", e);
-    }
 
-    return treatmentId;
+      const now = Date.now();
+      const db = createSupabaseDb();
+
+      // --- INSERT treatment directly to Supabase ---
+      const treatmentId = await db.insert("gabinetTreatments", {
+        organizationId: String(args.organizationId),
+        name: args.name,
+        description: args.description ?? null,
+        duration: args.duration,
+        price: args.price,
+        currency: args.currency ?? null,
+        taxRate: args.taxExempt ? null : args.taxRate ?? null,
+        taxExempt: args.taxExempt ?? null,
+        requiredEquipment: args.requiredEquipment ?? null,
+        requiredEquipmentIds: args.requiredEquipmentIds ?? null,
+        contraindications: args.contraindications ?? null,
+        preparationInstructions: args.preparationInstructions ?? null,
+        aftercareInstructions: args.aftercareInstructions ?? null,
+        isActive: true,
+        requiresApproval: args.requiresApproval ?? null,
+        color: args.color ?? null,
+        sortOrder: args.sortOrder ?? null,
+        treatmentCount: args.treatmentCount ?? null,
+        packageId: args.packageId ?? null,
+        requiredFormTemplates: args.requiredFormTemplates ?? null,
+        tagIds: args.tagIds ?? null,
+        categoryId: args.categoryId ?? null,
+        createdBy: String(authResult.userId),
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      // --- Delegate post-write side effects ---
+      try {
+        await ctx.runMutation(internal.gabinet.treatments._createSideEffects, {
+          treatmentId,
+          organizationId: args.organizationId,
+          name: args.name,
+          createdBy: String(authResult.userId),
+        });
+      } catch (e) {
+        console.error("[treatments.create] Side effects FAILED for treatment", treatmentId, ":", e);
+      }
+
+      return treatmentId;
+    } catch (err) {
+      // Persist failures to errorLogs so #1941-style "nieprawidłowe dane"
+      // reports can be debugged from /admin/errors without round-tripping
+      // through the user. Logging is swallow-safe.
+      await logError(ctx, err, {
+        scope: "gabinet.treatments",
+        fnName: "create",
+        argsJson: JSON.stringify({
+          organizationId: args.organizationId,
+          name: args.name,
+          duration: args.duration,
+          price: args.price,
+          currency: args.currency,
+          taxRate: args.taxRate,
+          taxExempt: args.taxExempt,
+          requiredEquipmentIds: args.requiredEquipmentIds,
+          packageId: args.packageId,
+          requiredFormTemplatesCount: args.requiredFormTemplates?.length,
+          tagIdsCount: args.tagIds?.length,
+          categoryId: args.categoryId,
+        }),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 
@@ -225,55 +251,73 @@ export const update = action({
     categoryId: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
-    // --- Auth + permissions (via internal queries) ---
-    const authResult = await ctx.runQuery(
-      internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: args.organizationId },
-    );
-    const perm = await ctx.runQuery(
-      internal._helpers.authAction.checkPermission,
-      {
-        organizationId: args.organizationId,
-        feature: "gabinet_treatments",
-        action: "edit",
-      },
-    ) as { allowed: boolean; scope: string };
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const db = createSupabaseDb();
-
-    // --- Read treatment from Supabase ---
-    const treatment = await db.get("gabinetTreatments", args.treatmentId);
-    if (!treatment || String(treatment.organizationId) !== String(args.organizationId)) {
-      throw new Error("Treatment not found");
-    }
-    if (perm.scope === "own" && String(treatment.createdBy) !== String(authResult.userId)) {
-      throw new Error("Permission denied: you can only edit your own records");
-    }
-
-    // --- Build updates and PATCH to Supabase ---
-    const { organizationId, treatmentId, ...updates } = args;
-    // ZW (VAT-exempt) is now tracked via the dedicated taxExempt flag; ensure
-    // taxRate is cleared whenever the caller marks the treatment exempt.
-    const patchPayload: Record<string, unknown> = { ...updates, updatedAt: Date.now() };
-    if (updates.taxExempt === true) {
-      patchPayload.taxRate = null;
-    }
-    await db.patch("gabinetTreatments", treatmentId, patchPayload);
-
-    // --- Delegate post-write side effects ---
     try {
-      await ctx.runMutation(internal.gabinet.treatments._updateSideEffects, {
-        treatmentId,
-        organizationId,
-        treatmentName: (treatment.name as string) ?? "",
-        updatedBy: String(authResult.userId),
-      });
-    } catch (e) {
-      console.error("[treatments.update] Side effects FAILED for treatment", treatmentId, ":", e);
-    }
+      // --- Auth + permissions (via internal queries) ---
+      const authResult = await ctx.runQuery(
+        internal._helpers.authAction.verifyOrgAccess,
+        { organizationId: args.organizationId },
+      );
+      const perm = await ctx.runQuery(
+        internal._helpers.authAction.checkPermission,
+        {
+          organizationId: args.organizationId,
+          feature: "gabinet_treatments",
+          action: "edit",
+        },
+      ) as { allowed: boolean; scope: string };
+      if (!perm.allowed) throw new Error("Permission denied");
 
-    return treatmentId;
+      const db = createSupabaseDb();
+
+      // --- Read treatment from Supabase ---
+      const treatment = await db.get("gabinetTreatments", args.treatmentId);
+      if (!treatment || String(treatment.organizationId) !== String(args.organizationId)) {
+        throw new Error("Treatment not found");
+      }
+      if (perm.scope === "own" && String(treatment.createdBy) !== String(authResult.userId)) {
+        throw new Error("Permission denied: you can only edit your own records");
+      }
+
+      // --- Build updates and PATCH to Supabase ---
+      const { organizationId, treatmentId, ...updates } = args;
+      // ZW (VAT-exempt) is now tracked via the dedicated taxExempt flag; ensure
+      // taxRate is cleared whenever the caller marks the treatment exempt.
+      const patchPayload: Record<string, unknown> = { ...updates, updatedAt: Date.now() };
+      if (updates.taxExempt === true) {
+        patchPayload.taxRate = null;
+      }
+      await db.patch("gabinetTreatments", treatmentId, patchPayload);
+
+      // --- Delegate post-write side effects ---
+      try {
+        await ctx.runMutation(internal.gabinet.treatments._updateSideEffects, {
+          treatmentId,
+          organizationId,
+          treatmentName: (treatment.name as string) ?? "",
+          updatedBy: String(authResult.userId),
+        });
+      } catch (e) {
+        console.error("[treatments.update] Side effects FAILED for treatment", treatmentId, ":", e);
+      }
+
+      return treatmentId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.treatments",
+        fnName: "update",
+        argsJson: JSON.stringify({
+          organizationId: args.organizationId,
+          treatmentId: args.treatmentId,
+          updatedFields: Object.keys(args).filter(
+            (k) => k !== "organizationId" && k !== "treatmentId",
+          ),
+          requiredFormTemplatesCount: args.requiredFormTemplates?.length,
+          tagIdsCount: args.tagIds?.length,
+        }),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 

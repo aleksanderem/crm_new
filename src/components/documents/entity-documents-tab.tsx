@@ -600,76 +600,83 @@ function SortableDocumentRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center gap-2 px-2 py-3 bg-card transition-colors hover:bg-accent",
+        // Card-like stacked layout on mobile (icon+name+status on top, actions below)
+        // collapses to the original single-row layout from sm: upward (#1933).
+        "flex flex-col gap-2 px-2 py-3 bg-card transition-colors hover:bg-accent",
+        "sm:flex-row sm:items-center sm:gap-2",
         isDragging && "opacity-50 z-10",
       )}
     >
-      <button
-        ref={setActivatorNodeRef}
-        type="button"
-        aria-label={t("documents.dragToReorder", "Przeciągnij, aby zmienić kolejność")}
-        className="flex h-8 w-6 shrink-0 items-center justify-center text-muted-foreground/60 hover:text-muted-foreground cursor-grab active:cursor-grabbing touch-none"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="h-4 w-4" variant="stroke" />
-      </button>
+      <div className="flex items-start gap-2 min-w-0 sm:flex-1 sm:items-center">
+        <button
+          ref={setActivatorNodeRef}
+          type="button"
+          aria-label={t("documents.dragToReorder", "Przeciągnij, aby zmienić kolejność")}
+          className="flex h-8 w-6 shrink-0 items-center justify-center text-muted-foreground/60 hover:text-muted-foreground cursor-grab active:cursor-grabbing touch-none"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4" variant="stroke" />
+        </button>
 
-      <button
-        type="button"
-        onClick={onOpen}
-        className="flex flex-1 items-center justify-between gap-3 min-w-0 text-left"
-      >
-        <div className="flex items-center gap-3 min-w-0">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="flex flex-1 items-center gap-3 min-w-0 text-left"
+        >
           <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-medium truncate">{doc.title}</p>
             <p className="text-xs text-muted-foreground">
               {new Date(doc.createdAt).toLocaleDateString(locale)}
             </p>
           </div>
-        </div>
+        </button>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="shrink-0 self-start sm:self-auto">
           <DocumentStatusBadge status={doc.status} />
-          {canSend && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 px-2"
-              disabled={sendingDocId === doc._id}
-              onClick={(e) => onSend(e, doc._id)}
-            >
-              {sendingDocId === doc._id ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-              ) : sendSuccessDocId === doc._id ? (
-                <CircleCheck className="h-3.5 w-3.5 text-green-600 mr-1" />
-              ) : (
-                <Send className="h-3.5 w-3.5 mr-1" variant="stroke" />
-              )}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-end gap-1 pl-8 sm:pl-0 sm:gap-2 sm:shrink-0">
+        {canSend && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 px-2"
+            disabled={sendingDocId === doc._id}
+            onClick={(e) => onSend(e, doc._id)}
+          >
+            {sendingDocId === doc._id ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin sm:mr-1" />
+            ) : sendSuccessDocId === doc._id ? (
+              <CircleCheck className="h-3.5 w-3.5 text-green-600 sm:mr-1" />
+            ) : (
+              <Send className="h-3.5 w-3.5 sm:mr-1" variant="stroke" />
+            )}
+            <span className="max-sm:sr-only">
               {sendSuccessDocId === doc._id
                 ? t("documents.emailSentShort", "Wysłano")
                 : t("documents.send", "Wyślij")}
-            </Button>
-          )}
-          <Eye className="h-4 w-4 text-muted-foreground" />
-        </div>
-      </button>
-
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
-        disabled={deletingDocId === doc._id}
-        aria-label={t("common.delete", "Usuń")}
-        onClick={(e) => onDelete(e, doc._id)}
-      >
-        {deletingDocId === doc._id ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <Trash2 className="h-3.5 w-3.5" variant="stroke" />
+            </span>
+          </Button>
         )}
-      </Button>
+        <Eye className="hidden sm:block h-4 w-4 text-muted-foreground" />
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
+          disabled={deletingDocId === doc._id}
+          aria-label={t("common.delete", "Usuń")}
+          onClick={(e) => onDelete(e, doc._id)}
+        >
+          {deletingDocId === doc._id ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Trash2 className="h-3.5 w-3.5" variant="stroke" />
+          )}
+        </Button>
+      </div>
     </div>
   );
 }

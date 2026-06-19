@@ -349,17 +349,17 @@ function PatientDetail() {
     const fields: DetailField[] = [];
     if (patient.email) fields.push({ label: t("common.email"), value: patient.email, fieldKey: "email" });
     if (patient.phone) fields.push({ label: t("common.phone"), value: formatPhoneNumber(patient.phone), fieldKey: "phone" });
-    if (patient.dateOfBirth) fields.push({ label: t("gabinet.patients.dateOfBirth"), value: formatBirthDate(patient.dateOfBirth), fieldKey: "dob" });
     if (patient.gender) fields.push({ label: t("gabinet.patients.gender"), value: t(`gabinet.patients.genderOptions.${patient.gender}`), fieldKey: "gender" });
     if (patient.pesel) fields.push({ label: t("gabinet.patients.pesel"), value: patient.pesel, fieldKey: "pesel" });
-    if (patient.bloodType) fields.push({ label: t("gabinet.patients.bloodType"), value: <Badge variant="outline" className="text-[10px]">{patient.bloodType}</Badge>, fieldKey: "bloodType" });
-    if (patient.allergies) fields.push({ label: t("gabinet.patients.allergies"), value: patient.allergies, fieldKey: "allergies" });
     if (patient.address) {
       const patientAddr = patient.address as { street?: string; postalCode?: string; city?: string };
       const addr = [patientAddr.street, patientAddr.postalCode, patientAddr.city].filter(Boolean).join(", ");
       if (addr) fields.push({ label: t("gabinet.patients.address"), value: addr, fieldKey: "address" });
     }
     if (patient.referralSource) fields.push({ label: t("gabinet.patients.referralSource"), value: displayReferralSource(patient.referralSource, t), fieldKey: "referral" });
+    if (patient.dateOfBirth) fields.push({ label: t("gabinet.patients.dateOfBirth"), value: formatBirthDate(patient.dateOfBirth), fieldKey: "dob" });
+    if (patient.bloodType) fields.push({ label: t("gabinet.patients.bloodType"), value: <Badge variant="outline" className="text-[10px]">{patient.bloodType}</Badge>, fieldKey: "bloodType" });
+    if (patient.allergies) fields.push({ label: t("gabinet.patients.allergies"), value: patient.allergies, fieldKey: "allergies" });
     return fields;
   })();
 
@@ -1708,7 +1708,7 @@ function PatientDetail() {
           { label: t("common.delete"), onClick: handleDelete, variant: "destructive" as const },
         ]}
         fields={detailFields}
-        expandedFieldCount={5}
+        expandedFieldCount={4}
         sidebarExtra={sidebarExtra}
         tabs={tabs}
       />

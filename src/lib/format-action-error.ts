@@ -139,6 +139,61 @@ export function extractFieldValidationDetail(
     };
   }
 
+  // Convex validator (server-side) errors carry no "for argument 'X'" prefix —
+  // their shape is `Validator error: <reason>` with optional path info like
+  // `at path '<arg>.<field>[<idx>].<subfield>'`. Without this branch the
+  // broad `Validator error` pattern still matches in TREATMENT_ERROR_MAP /
+  // GENERIC_ERROR_MAP, but no field detail is extracted, so the user sees
+  // the generic "nieprawidłowe dane" fallback (issue #1941).
+  const validatorAtPath = msg.match(
+    /Validator error:[^]*?at path ['"`]?([A-Za-z_][A-Za-z0-9_]*)(?:[.[][^'"`]*)?['"`]?/i,
+  );
+  if (validatorAtPath) {
+    const rawField = validatorAtPath[1];
+    return {
+      rawField,
+      fieldLabel: humanFieldLabel(rawField),
+      reason: "nieprawidłowa wartość",
+    };
+  }
+
+  const validatorMissing = msg.match(
+    /Validator error: Missing required field ['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]/i,
+  );
+  if (validatorMissing) {
+    const rawField = validatorMissing[1];
+    return {
+      rawField,
+      fieldLabel: humanFieldLabel(rawField),
+      reason: "to pole jest wymagane",
+    };
+  }
+
+  const validatorUnexpected = msg.match(
+    /Validator error: Unexpected field ['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]/i,
+  );
+  if (validatorUnexpected) {
+    const rawField = validatorUnexpected[1];
+    return {
+      rawField,
+      fieldLabel: humanFieldLabel(rawField),
+      reason: "nieoczekiwane pole",
+    };
+  }
+
+  // Generic `Validator error: Expected X, got Y` — no field name available,
+  // so report the type mismatch.
+  const validatorExpected = msg.match(
+    /Validator error: Expected ['"`]?([A-Za-z_][A-Za-z0-9_]*)['"`]?,? got ['"`]?([^'"`,\n]+?)['"`]?(?:\s|$|,)/i,
+  );
+  if (validatorExpected) {
+    return {
+      rawField: "validator",
+      fieldLabel: `oczekiwano: ${validatorExpected[1]}`,
+      reason: `otrzymano: ${validatorExpected[2]}`,
+    };
+  }
+
   return null;
 }
 
@@ -302,7 +357,7 @@ const TREATMENT_ERROR_MAP: Array<{
   },
   {
     test: (m) =>
-      /argumentvalidationerror|value does not match validator|invalid input syntax|violates .* constraint|column .* does not exist|null value in column/i.test(
+      /argumentvalidationerror|value does not match validator|validator error|invalid input syntax|violates .* constraint|column .* does not exist|null value in column/i.test(
         m,
       ),
     key: "gabinet.treatments.errors.invalidArguments",
@@ -361,7 +416,7 @@ const GENERIC_ERROR_MAP: Array<{
   },
   {
     test: (m) =>
-      /argumentvalidationerror|value does not match validator|invalid input syntax|violates .* constraint|column .* does not exist|null value in column/i.test(
+      /argumentvalidationerror|value does not match validator|validator error|invalid input syntax|violates .* constraint|column .* does not exist|null value in column/i.test(
         m,
       ),
     key: "common.errors.invalidArguments",

@@ -752,10 +752,25 @@
     "beforeAppointment": "Przed wizytą",
     "duringAppointment": "W trakcie wizyty",
     "afterAppointment": "Po wizycie",
+    "fill": "Wypełnij",
     "requiredDocs": {
       "beforeStart": "Przed wizytą",
       "duringVisit": "W trakcie wizyty",
-      "afterCompletion": "Po wizycie"
+      "afterCompletion": "Po wizycie",
+      "title": "Wymagane dokumenty dla tego zabiegu",
+      "description": "Te dokumenty zostaną automatycznie wygenerowane przy tworzeniu wizyty",
+      "empty": "Brak wymaganych dokumentów. Kliknij poniżej, aby dodać.",
+      "unknown": "Nieznany szablon",
+      "add": "Dodaj wymagany dokument",
+      "addFromTemplate": "Dodaj dokumenty z szablonu",
+      "addTitle": "Dodaj wymagany dokument",
+      "addDescription": "Wybierz szablon dokumentu i określ, kiedy powinien zostać wypełniony.",
+      "searchPlaceholder": "Szukaj szablonu...",
+      "noTemplates": "Brak dostępnych szablonów",
+      "timing": "Moment wymagania dokumentu",
+      "toggleTiming": "Kliknij, aby zmienić moment",
+      "added": "Dodano wymagany dokument",
+      "removed": "Usunięto wymagany dokument"
     },
     "gate": {
       "timingBefore": "Przed wizytą",
@@ -763,7 +778,12 @@
       "timingAfter": "Po wizycie",
       "beforeDescription": "Następujące dokumenty powinny być wypełnione przed rozpoczęciem wizyty:",
       "duringDescription": "Następujące dokumenty powinny być wypełnione przed zakończeniem wizyty:",
-      "afterDescription": "Następujące dokumenty powinny być wypełnione po zakończeniu wizyty:"
+      "afterDescription": "Następujące dokumenty powinny być wypełnione po zakończeniu wizyty:",
+      "title": "Niekompletne dokumenty",
+      "progress": "Wypełniono {{completed}} z {{total}} wymaganych dokumentów",
+      "allComplete": "Wszystkie dokumenty są wypełnione.",
+      "proceedAnyway": "Wiem, kontynuuj bez dokumentów",
+      "fillDocuments": "Wypełnij dokumenty"
     }
   },
   "products": {

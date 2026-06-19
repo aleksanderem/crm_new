@@ -65,6 +65,31 @@ import {
 import { useTranslation } from "react-i18next";
 
 // ---------------------------------------------------------------------------
+// Extensions list — MUST stay in sync with the renderer's extension list in
+// document-renderer.tsx. Drift is guarded by document-extensions.test.ts.
+// ---------------------------------------------------------------------------
+
+export const editorExtensions = [
+  StarterKit,
+  Underline,
+  HorizontalRule,
+  TextAlign.configure({ types: ["heading", "paragraph"] }),
+  Table.configure({ resizable: true }),
+  TableRow,
+  TableHeader,
+  TableCell,
+  Image.configure({ inline: false, allowBase64: true }),
+  PageBreakNode,
+  FormFieldNode,
+  HtmlBlockNode,
+  ComponentBlockNode,
+  ColumnLayoutNode,
+  ColumnNode,
+  VariableMentionAt,
+  VariableMentionCurly,
+];
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -103,25 +128,7 @@ export const DocumentTemplateEditor = forwardRef<
   }, [entityTypes]);
 
   const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Underline,
-      HorizontalRule,
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
-      Table.configure({ resizable: true }),
-      TableRow,
-      TableHeader,
-      TableCell,
-      Image.configure({ inline: false, allowBase64: true }),
-      PageBreakNode,
-      FormFieldNode,
-      HtmlBlockNode,
-      ComponentBlockNode,
-      ColumnLayoutNode,
-      ColumnNode,
-      VariableMentionAt,
-      VariableMentionCurly,
-    ],
+    extensions: editorExtensions,
     content: value ? JSON.parse(value) : undefined,
     onUpdate: ({ editor: e }) => {
       onChangeRef.current(JSON.stringify(e.getJSON()));

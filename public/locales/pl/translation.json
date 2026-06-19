@@ -2665,7 +2665,7 @@
         "shortDescription": "Krótki opis",
         "active": "Aktywny",
         "inactive": "Nieaktywny",
-        "inherited": "Odziedziczone",
+        "inherited": "Domyślne",
         "overridden": "Własna wartość",
         "inheritFromParent": "Dziedzicz z zabiegu",
         "useCustomValue": "Użyj własnej wartości",

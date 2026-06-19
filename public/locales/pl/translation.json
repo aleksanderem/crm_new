@@ -748,7 +748,23 @@
     "stepOf": "Krok {{current}} z {{total}}",
     "searchTemplate": "Szukaj szablonu...",
     "noTemplatesDesc": "Dodaj szablony dokumentów w ustawieniach, aby móc generować dokumenty.",
-    "goToSettings": "Przejdź do ustawień"
+    "goToSettings": "Przejdź do ustawień",
+    "beforeAppointment": "Przed wizytą",
+    "duringAppointment": "W trakcie wizyty",
+    "afterAppointment": "Po wizycie",
+    "requiredDocs": {
+      "beforeStart": "Przed wizytą",
+      "duringVisit": "W trakcie wizyty",
+      "afterCompletion": "Po wizycie"
+    },
+    "gate": {
+      "timingBefore": "Przed wizytą",
+      "timingDuring": "W trakcie wizyty",
+      "timingAfter": "Po wizycie",
+      "beforeDescription": "Następujące dokumenty powinny być wypełnione przed rozpoczęciem wizyty:",
+      "duringDescription": "Następujące dokumenty powinny być wypełnione przed zakończeniem wizyty:",
+      "afterDescription": "Następujące dokumenty powinny być wypełnione po zakończeniu wizyty:"
+    }
   },
   "products": {
     "title": "Produkty",

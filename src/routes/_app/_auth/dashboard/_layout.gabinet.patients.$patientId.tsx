@@ -825,7 +825,10 @@ function PatientDetail() {
     {
       label: t("gabinet.patients.tabs.overview"),
       content: (
-        <div className="space-y-6">
+        // Issue #1931: on mobile, push the Status/Dodano/Pochodzenie tiles to
+        // the very bottom so the primary patient sections (upcoming, history,
+        // medical info) come first. Desktop layout is unchanged via md:order-none.
+        <div className="flex flex-col space-y-6">
           <Card>
             <CardContent className="pt-6 space-y-4">
               <h3 className="text-sm font-semibold flex items-center gap-2">
@@ -847,7 +850,7 @@ function PatientDetail() {
             </CardContent>
           </Card>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="order-last grid gap-4 sm:grid-cols-3 md:order-none">
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">

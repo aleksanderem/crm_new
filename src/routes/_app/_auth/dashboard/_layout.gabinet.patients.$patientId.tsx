@@ -69,7 +69,9 @@ import {
   WalletIcon,
   RefreshCw,
   Sparkles,
+  ChevronDown,
 } from "@/lib/ez-icons";
+import { cn } from "@/lib/utils";
 
 import { useTranslation } from "react-i18next";
 import { usePermission } from "@/hooks/use-permission";
@@ -112,6 +114,10 @@ function PatientDetail() {
 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Issue #1928: collapse the "Last appointments" overview card by default on
+  // mobile so other sections (medical info, status tiles) aren't pushed below
+  // the fold. On desktop (md+) the section stays expanded — see JSX below.
+  const [lastAppointmentsExpanded, setLastAppointmentsExpanded] = useState(false);
 
   // Tag and category definitions for the edit drawer PatientForm
   // (kept in sync with the patients list create-form props).
@@ -904,22 +910,50 @@ function PatientDetail() {
 
           <Card>
             <CardContent className="pt-6 space-y-4">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setLastAppointmentsExpanded((v) => !v)}
+                aria-expanded={lastAppointmentsExpanded}
+                className="flex w-full items-center justify-between gap-2 text-left md:hidden"
+              >
+                <span className="text-sm font-semibold flex items-center gap-2">
+                  <Calendar
+                    className="h-4 w-4 text-muted-foreground"
+                    variant="stroke"
+                  />
+                  {t("gabinet.patients.lastAppointments")}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                    lastAppointmentsExpanded && "rotate-180",
+                  )}
+                  variant="stroke"
+                />
+              </button>
+              <h3 className="hidden text-sm font-semibold md:flex items-center gap-2">
                 <Calendar
                   className="h-4 w-4 text-muted-foreground"
                   variant="stroke"
                 />
                 {t("gabinet.patients.lastAppointments")}
               </h3>
-              {pastAppointments.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  {t("gabinet.patients.noHistoryDesc")}
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {pastAppointments.map(renderAppointmentRow)}
-                </div>
-              )}
+              <div
+                className={cn(
+                  "space-y-4",
+                  !lastAppointmentsExpanded && "hidden md:block",
+                )}
+              >
+                {pastAppointments.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    {t("gabinet.patients.noHistoryDesc")}
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {pastAppointments.map(renderAppointmentRow)}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 

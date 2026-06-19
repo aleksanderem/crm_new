@@ -18,8 +18,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 // Shared tab trigger class for consistent styling across entity detail views.
 // `shrink-0` keeps each tab at its natural width so the row stays scrollable on narrow viewports.
+// On mobile the active tab also gets a tinted background + bolder font so it doesn't blend
+// into the content list below (issue #1926).
 export const tabTriggerClass =
-  "relative shrink-0 rounded-none border-b-2 border-transparent px-4 pb-3 pt-2 font-medium text-muted-foreground transition-none data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none";
+  "relative shrink-0 rounded-none border-b-2 border-transparent px-4 pb-3 pt-2 font-medium text-muted-foreground transition-none data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none max-md:data-[state=active]:bg-primary/10 max-md:data-[state=active]:rounded-t-md max-md:data-[state=active]:font-semibold";
 
 export interface DetailField {
   label: string;

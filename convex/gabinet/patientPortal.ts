@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import { validatePortalSessionSupabase } from "../_helpers/portalSession";
 import { createNotificationDirect } from "../notifications";
+import { logError } from "../_helpers/logged";
 import {
   getAvailableSlotsSupabase,
   checkEmployeeQualificationSupabase,
@@ -64,12 +65,26 @@ export const updateMyProfile = action({
     emergencyContactName: v.optional(v.string()),
     emergencyContactPhone: v.optional(v.string()),
   },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
+    try {
     const db = createSupabaseDb();
     const { patientId } = await validatePortalSessionSupabase(db, args.tokenHash);
 
     const { tokenHash, ...updates } = args;
     await db.patch("gabinetPatients", patientId, { ...updates, updatedAt: Date.now() });
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.patientPortal",
+        fnName: "updateMyProfile",
+        argsJson: JSON.stringify({
+          // Do not log the session token; only log which fields the caller
+          // tried to change.
+          updatedFields: Object.keys(args).filter((k) => k !== "tokenHash"),
+          hasAddress: !!args.address,
+        }),
+      });
+      throw err;
+    }
   },
 });
 

@@ -4,6 +4,7 @@ import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { logActivity } from "../_helpers/activities";
+import { logError } from "../_helpers/logged";
 import type { GabinetPatientRow, SupabasePaginationResult } from "../_helpers/supabaseRows";
 import { Id } from "../_generated/dataModel";
 
@@ -235,6 +236,7 @@ export const create = action({
     categoryId: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
+    try {
     // --- Auth + permissions (via internal queries) ---
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
@@ -299,6 +301,29 @@ export const create = action({
     }
 
     return patientId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.patients",
+        fnName: "create",
+        argsJson: JSON.stringify({
+          organizationId: args.organizationId,
+          contactId: args.contactId,
+          firstName: args.firstName,
+          lastName: args.lastName,
+          email: args.email,
+          phone: args.phone,
+          pesel: args.pesel,
+          dateOfBirth: args.dateOfBirth,
+          gender: args.gender,
+          hasAddress: !!args.address,
+          tagsCount: args.tags?.length,
+          tagIdsCount: args.tagIds?.length,
+          categoryId: args.categoryId,
+        }),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 
@@ -383,6 +408,7 @@ export const update = action({
     categoryId: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
+    try {
     // --- Auth + permissions (via internal queries) ---
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
@@ -427,6 +453,23 @@ export const update = action({
     }
 
     return patientId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.patients",
+        fnName: "update",
+        argsJson: JSON.stringify({
+          organizationId: args.organizationId,
+          patientId: args.patientId,
+          updatedFields: Object.keys(args).filter(
+            (k) => k !== "organizationId" && k !== "patientId",
+          ),
+          tagsCount: args.tags?.length,
+          tagIdsCount: args.tagIds?.length,
+        }),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 

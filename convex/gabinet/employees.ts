@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { internal } from "../_generated/api";
 import { logActivity } from "../_helpers/activities";
+import { logError } from "../_helpers/logged";
 import { gabinetEmployeeRoleValidator } from "../schema";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import type { GabinetEmployeeRow, SupabasePaginationResult } from "../_helpers/supabaseRows";
@@ -181,6 +182,7 @@ export const create = action({
     categoryId: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
+    try {
     // --- Auth + permissions (via internal queries) ---
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
@@ -257,6 +259,28 @@ export const create = action({
     }
 
     return employeeId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.employees",
+        fnName: "create",
+        argsJson: JSON.stringify({
+          organizationId: args.organizationId,
+          userId: args.userId,
+          firstName: args.firstName,
+          lastName: args.lastName,
+          role: args.role,
+          specialization: args.specialization,
+          qualifiedTreatmentIdsCount: args.qualifiedTreatmentIds?.length,
+          licenseNumber: args.licenseNumber,
+          hireDate: args.hireDate,
+          showInCalendar: args.showInCalendar,
+          tagIdsCount: args.tagIds?.length,
+          categoryId: args.categoryId,
+        }),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 
@@ -565,6 +589,7 @@ export const update = action({
     categoryId: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
+    try {
     // --- Auth + permissions (via internal queries) ---
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
@@ -643,6 +668,27 @@ export const update = action({
     }
 
     return employeeId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.employees",
+        fnName: "update",
+        argsJson: JSON.stringify({
+          organizationId: args.organizationId,
+          employeeId: args.employeeId,
+          updatedFields: Object.keys(args).filter(
+            (k) => k !== "organizationId" && k !== "employeeId",
+          ),
+          role: args.role,
+          qualifiedTreatmentIdsCount: args.qualifiedTreatmentIds?.length,
+          tagIdsCount: args.tagIds?.length,
+          certificationsCount: args.certifications?.length,
+          assignedItemsCount: args.assignedItems?.length,
+          skillsCount: args.skills?.length,
+        }),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 

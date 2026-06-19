@@ -1226,6 +1226,7 @@ export const createVariant = action({
     sortOrder: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    try {
     // --- Auth + permissions (via internal queries) ---
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
@@ -1274,6 +1275,22 @@ export const createVariant = action({
     }
 
     return variantId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.treatments",
+        fnName: "createVariant",
+        argsJson: JSON.stringify({
+          organizationId: args.organizationId,
+          treatmentId: args.treatmentId,
+          name: args.name,
+          price: args.price,
+          duration: args.duration,
+          isActive: args.isActive,
+        }),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 
@@ -1297,6 +1314,7 @@ export const updateVariant = action({
     clearImage: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    try {
     // --- Auth + permissions (via internal queries) ---
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
@@ -1356,6 +1374,21 @@ export const updateVariant = action({
     }
 
     return args.variantId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.treatments",
+        fnName: "updateVariant",
+        argsJson: JSON.stringify({
+          organizationId: args.organizationId,
+          variantId: args.variantId,
+          updatedFields: Object.keys(args).filter(
+            (k) => k !== "organizationId" && k !== "variantId",
+          ),
+        }),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 

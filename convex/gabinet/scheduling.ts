@@ -2,6 +2,7 @@ import { action } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { logError } from "../_helpers/logged";
 import { gabinetLeaveTypeValidator, gabinetLeaveStatusValidator } from "../schema";
 import { getAvailableSlotsSupabase } from "./_availability_supabase";
 import type {
@@ -458,6 +459,7 @@ export const createLeave = action({
     reason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    try {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -482,6 +484,15 @@ export const createLeave = action({
     });
 
     return leaveId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.scheduling",
+        fnName: "createLeave",
+        argsJson: JSON.stringify(args),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 

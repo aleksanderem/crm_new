@@ -4,6 +4,7 @@ import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { logActivity } from "../_helpers/activities";
+import { logError } from "../_helpers/logged";
 import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
 import { Id } from "../_generated/dataModel";
 import type {
@@ -126,6 +127,7 @@ export const create = action({
     loyaltyPointsAwarded: v.optional(v.union(v.number(), v.null())),
   },
   handler: async (ctx, args) => {
+    try {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -167,6 +169,24 @@ export const create = action({
     }
 
     return packageId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.packages",
+        fnName: "create",
+        argsJson: JSON.stringify({
+          organizationId: args.organizationId,
+          name: args.name,
+          treatmentsCount: args.treatments?.length,
+          totalPrice: args.totalPrice,
+          currency: args.currency,
+          discountPercent: args.discountPercent,
+          validityDays: args.validityDays,
+          loyaltyPointsAwarded: args.loyaltyPointsAwarded,
+        }),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 
@@ -207,6 +227,7 @@ export const update = action({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    try {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -229,6 +250,22 @@ export const update = action({
     await db.patch("gabinetTreatmentPackages", packageId, { ...updates, updatedAt: Date.now() });
 
     return packageId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.packages",
+        fnName: "update",
+        argsJson: JSON.stringify({
+          organizationId: args.organizationId,
+          packageId: args.packageId,
+          updatedFields: Object.keys(args).filter(
+            (k) => k !== "organizationId" && k !== "packageId",
+          ),
+          treatmentsCount: args.treatments?.length,
+        }),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 

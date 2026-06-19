@@ -2,6 +2,7 @@ import { action } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { logError } from "../_helpers/logged";
 import type {
   GabinetLocationRow,
   GabinetRoomRow,
@@ -66,6 +67,7 @@ export const createLocation = action({
     color: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
+    try {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -93,6 +95,21 @@ export const createLocation = action({
     });
 
     return locationId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.locations",
+        fnName: "createLocation",
+        argsJson: JSON.stringify({
+          organizationId: args.organizationId,
+          name: args.name,
+          hasAddress: !!args.address,
+          phone: args.phone,
+          email: args.email,
+        }),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 
@@ -116,6 +133,7 @@ export const updateLocation = action({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    try {
     await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -138,6 +156,21 @@ export const updateLocation = action({
     await db.patch("gabinetLocations", locationId, { ...updates, updatedAt: now });
 
     return locationId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.locations",
+        fnName: "updateLocation",
+        argsJson: JSON.stringify({
+          organizationId: args.organizationId,
+          locationId: args.locationId,
+          updatedFields: Object.keys(args).filter(
+            (k) => k !== "organizationId" && k !== "locationId",
+          ),
+        }),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 
@@ -215,6 +248,7 @@ export const createRoom = action({
     floor: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
+    try {
     await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -244,6 +278,20 @@ export const createRoom = action({
     });
 
     return roomId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.locations",
+        fnName: "createRoom",
+        argsJson: JSON.stringify({
+          organizationId: args.organizationId,
+          locationId: args.locationId,
+          name: args.name,
+          floor: args.floor,
+        }),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 
@@ -257,6 +305,7 @@ export const updateRoom = action({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    try {
     await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -278,6 +327,21 @@ export const updateRoom = action({
     await db.patch("gabinetRooms", roomId, updates);
 
     return roomId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.locations",
+        fnName: "updateRoom",
+        argsJson: JSON.stringify({
+          organizationId: args.organizationId,
+          roomId: args.roomId,
+          updatedFields: Object.keys(args).filter(
+            (k) => k !== "organizationId" && k !== "roomId",
+          ),
+        }),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 

@@ -671,7 +671,11 @@
     },
     "views": {
       "all": "Wszystkie dokumenty",
-      "my": "Moje dokumenty"
+      "my": "Moje dokumenty",
+      "draft": "Szkice",
+      "pending": "Do podpisu",
+      "signed": "Podpisane",
+      "completed": "Zakończone"
     },
     "categories": {
       "proposal": "Oferta",
@@ -710,7 +714,10 @@
       "signButton": "Podpisz dokument",
       "openPad": "Złóż podpis odręczny",
       "signing": "Podpisywanie...",
-      "errorGeneric": "Wystąpił nieoczekiwany błąd"
+      "errorGeneric": "Wystąpił nieoczekiwany błąd",
+      "formTitle": "Formularz",
+      "fillPrompt": "Uzupełnij wymagane pola, a następnie przejdź do podpisu.",
+      "renderError": "Nie udało się wyrenderować dokumentu. Skontaktuj się z gabinetem."
     },
     "document": "Dokument",
     "generate": "Generuj",
@@ -784,6 +791,47 @@
       "allComplete": "Wszystkie dokumenty są wypełnione.",
       "proceedAnyway": "Wiem, kontynuuj bez dokumentów",
       "fillDocuments": "Wypełnij dokumenty"
+    },
+    "requiresSignature": "Wymaga podpisu",
+    "fieldCount": "{{count}} pól do wypełnienia",
+    "noTemplatesSearch": "Nie znaleziono szablonów",
+    "noTemplatesSearchDesc": "Spróbuj zmienić frazę wyszukiwania.",
+    "noContentAvailable": "Brak treści dokumentu do wyświetlenia.",
+    "signatureAlt": "Podpis",
+    "otherDocuments": "Inne dokumenty",
+    "generateAdditional": "Wygeneruj dodatkowy dokument",
+    "emailSent": "Wysłano e-mail do klienta",
+    "emailSentShort": "Wysłano",
+    "sendFailed": "Nie udało się wysłać e-maila",
+    "documentsCompleted": "dokumentów",
+    "preview": "Podgląd",
+    "resendEmail": "Wyślij ponownie",
+    "reorderFailed": "Nie udało się zmienić kolejności",
+    "deleted": "Dokument usunięty",
+    "deleteFailed": "Nie udało się usunąć dokumentu",
+    "deleteDialogTitle": "Usuń dokument",
+    "deleteDialogDescription": "Czy na pewno chcesz usunąć ten dokument? Tej operacji nie można cofnąć.",
+    "confirmBulkDelete": "Usunąć zaznaczone dokumenty ({{count}})? Tej operacji nie można cofnąć.",
+    "templateNotFound": "Szablon dokumentu nie jest dostępny.",
+    "noDocumentsDesc": "Nie ma jeszcze żadnych dokumentów. Wygeneruj pierwszy z szablonu.",
+    "noRequiredDocuments": "Brak wymaganych dokumentów",
+    "noRequiredDocumentsDesc": "Zabieg nie ma przypisanych szablonów dokumentów. Możesz wygenerować dokument ręcznie.",
+    "fillFormDesc": "Wypełnij formularz i zatwierdź, aby wygenerować dokument.",
+    "errors": {
+      "pdfExportFailed": "Nie udało się wygenerować pliku PDF."
+    },
+    "afterCompletion": {
+      "title": "Dokumenty po wizycie",
+      "description": "Wypełnij poniższe dokumenty. Po wypełnieniu każdy zostanie automatycznie wysłany do klienta do podpisu.",
+      "allDone": "Wszystkie dokumenty zostały wypełnione i wysłane do klienta.",
+      "allSent": "Wszystkie dokumenty zostały wysłane do klienta.",
+      "noEmployeeFields": "Ten dokument nie wymaga wypełnienia pól przez pracownika. Kliknij przycisk poniżej, aby wysłać go do klienta do podpisu.",
+      "sendToClient": "Wyślij do klienta",
+      "sentBadge": "Wysłano",
+      "pending": "Do wypełnienia",
+      "filled": "Dokument wypełniony i wysłany do klienta do podpisu.",
+      "sent": "Dokument wysłany do klienta do podpisu.",
+      "later": "Wypełnię później"
     }
   },
   "products": {

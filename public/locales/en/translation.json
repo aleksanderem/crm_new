@@ -670,7 +670,11 @@
     },
     "views": {
       "all": "All Documents",
-      "my": "My Documents"
+      "my": "My Documents",
+      "draft": "Drafts",
+      "pending": "Pending Signature",
+      "signed": "Signed",
+      "completed": "Completed"
     },
     "categories": {
       "proposal": "Proposal",
@@ -709,7 +713,10 @@
       "signButton": "Sign document",
       "openPad": "Draw signature",
       "signing": "Signing...",
-      "errorGeneric": "An unexpected error occurred"
+      "errorGeneric": "An unexpected error occurred",
+      "formTitle": "Form",
+      "fillPrompt": "Fill in the required fields, then proceed to sign.",
+      "renderError": "Could not render the document. Please contact the clinic."
     },
     "document": "Document",
     "generate": "Generate",
@@ -783,6 +790,47 @@
       "allComplete": "All documents are filled in.",
       "proceedAnyway": "I know, continue without documents",
       "fillDocuments": "Fill in documents"
+    },
+    "requiresSignature": "Requires signature",
+    "fieldCount": "{{count}} fields to fill",
+    "noTemplatesSearch": "No templates found",
+    "noTemplatesSearchDesc": "Try changing your search.",
+    "noContentAvailable": "No document content to display.",
+    "signatureAlt": "Signature",
+    "otherDocuments": "Other documents",
+    "generateAdditional": "Generate additional document",
+    "emailSent": "Email sent to client",
+    "emailSentShort": "Sent",
+    "sendFailed": "Failed to send email",
+    "documentsCompleted": "documents",
+    "preview": "Preview",
+    "resendEmail": "Resend",
+    "reorderFailed": "Failed to reorder",
+    "deleted": "Document deleted",
+    "deleteFailed": "Failed to delete document",
+    "deleteDialogTitle": "Delete document",
+    "deleteDialogDescription": "Are you sure you want to delete this document? This action cannot be undone.",
+    "confirmBulkDelete": "Delete the selected documents ({{count}})? This action cannot be undone.",
+    "templateNotFound": "Document template is not available.",
+    "noDocumentsDesc": "There are no documents yet. Generate one from a template.",
+    "noRequiredDocuments": "No required documents",
+    "noRequiredDocumentsDesc": "This treatment has no assigned document templates. You can generate a document manually.",
+    "fillFormDesc": "Fill in the form and confirm to generate the document.",
+    "errors": {
+      "pdfExportFailed": "Failed to generate the PDF file."
+    },
+    "afterCompletion": {
+      "title": "Post-appointment documents",
+      "description": "Fill in the documents below. Once completed, each will be automatically sent to the client for signing.",
+      "allDone": "All documents have been filled in and sent to the client.",
+      "allSent": "All documents have been sent to the client.",
+      "noEmployeeFields": "This document does not require any fields to be filled in by staff. Click the button below to send it to the client for signing.",
+      "sendToClient": "Send to client",
+      "sentBadge": "Sent",
+      "pending": "To fill in",
+      "filled": "Document filled in and sent to the client for signing.",
+      "sent": "Document sent to the client for signing.",
+      "later": "Fill in later"
     }
   },
   "products": {

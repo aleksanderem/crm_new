@@ -17,7 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useMemo, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ReactNode } from "react";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
@@ -31,6 +32,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  ChevronDown,
+  ChevronUp,
 } from "@/lib/ez-icons";
 
 // shadcn/studio statistics blocks
@@ -73,6 +76,7 @@ function GabinetDashboard() {
   const { organizationId } = useOrganization();
   const today = new Date().toISOString().split("T")[0];
   const todayScheduleRef = useRef<HTMLDivElement | null>(null);
+  const [showStatsMobile, setShowStatsMobile] = useState(false);
 
   useSidebarDispatch("viewTodaySchedule", () => {
     todayScheduleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -265,8 +269,27 @@ function GabinetDashboard() {
         description={t("gabinet.dashboard.description")}
       />
 
+      {/* Mobile-only toggle: collapse KPI cards by default on small screens */}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setShowStatsMobile((s) => !s)}
+        aria-expanded={showStatsMobile}
+        className="md:hidden w-full justify-between"
+      >
+        {showStatsMobile ? t("common.hideStats") : t("common.showStats")}
+        {showStatsMobile ? (
+          <ChevronUp className="size-4" />
+        ) : (
+          <ChevronDown className="size-4" />
+        )}
+      </Button>
+
       {/* KPI Statistics Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div
+        className={`${showStatsMobile ? "grid" : "hidden md:grid"} gap-4 sm:grid-cols-2 xl:grid-cols-4`}
+      >
         <Link to="/dashboard/gabinet/calendar" className="block">
           <StatisticsOrderCard
             title={t("gabinet.dashboard.todayAppointments")}

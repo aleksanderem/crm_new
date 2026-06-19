@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useConvexMutation } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
@@ -10,6 +10,7 @@ import { CrmPipelineChart } from "@/components/dashboard/crm-pipeline-chart";
 import { UpcomingActivities } from "@/components/dashboard/upcoming-activities";
 import { TopPerformers } from "@/components/dashboard/top-performers";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import type { ChartConfig } from "@/components/ui/chart";
 import { useDateRange } from "@/components/crm/date-range-context";
 
@@ -49,6 +50,8 @@ import {
   Trophy,
   DollarSign,
   CheckCircle,
+  ChevronDown,
+  ChevronUp,
 } from "@/lib/ez-icons";
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout/")({
@@ -140,6 +143,7 @@ function DashboardIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const { timeRange } = useDateRange();
+  const [showStatsMobile, setShowStatsMobile] = useState(false);
 
   // --- Auto-seed defaults for existing orgs ---
   const { data: sources } = useSupabaseSourcesList(organizationId);
@@ -339,15 +343,36 @@ function DashboardIndex() {
         description={t("dashboard.subtitle")}
       />
 
+      {/* Mobile-only toggle: collapse KPI cards by default on small screens */}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setShowStatsMobile((s) => !s)}
+        aria-expanded={showStatsMobile}
+        className="md:hidden w-full justify-between"
+      >
+        {showStatsMobile ? t("common.hideStats") : t("common.showStats")}
+        {showStatsMobile ? (
+          <ChevronUp className="size-4" />
+        ) : (
+          <ChevronDown className="size-4" />
+        )}
+      </Button>
+
       {/* KPI Statistics Cards */}
       {statsLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+        <div
+          className={`${showStatsMobile ? "grid" : "hidden md:grid"} gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5`}
+        >
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-52 w-full rounded-lg" />
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+        <div
+          className={`${showStatsMobile ? "grid" : "hidden md:grid"} gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5`}
+        >
           <StatisticsOrderCard
             title={t("dashboard.totalContacts")}
             description="Total"

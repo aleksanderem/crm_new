@@ -2648,7 +2648,7 @@
         "shortDescription": "Short description",
         "active": "Active",
         "inactive": "Inactive",
-        "inherited": "Inherited",
+        "inherited": "Default",
         "overridden": "Custom",
         "inheritFromParent": "Inherit from parent",
         "useCustomValue": "Use custom value",

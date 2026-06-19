@@ -752,11 +752,11 @@ function PatientDetail() {
     .filter((apt) => apt.date < today)
     .sort((a, b) => (b.date + b.startTime).localeCompare(a.date + a.startTime))
     .slice(0, 3);
+  // Allergies and bloodType are already shown in the Details sidebar (which is
+  // stacked above the tabs on mobile) — see #1927. Keep the "medical info" card
+  // dedicated to emergency contact so the same data isn't presented twice.
   const hasMedicalInfo = Boolean(
-    patient?.allergies ||
-      patient?.bloodType ||
-      patient?.emergencyContactName ||
-      patient?.emergencyContactPhone,
+    patient?.emergencyContactName || patient?.emergencyContactPhone,
   );
 
   // Issue #1894: Beauty plan history — chronological list of `interviewNotes`
@@ -938,26 +938,6 @@ function PatientDetail() {
                 </p>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {patient?.allergies && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        {t("gabinet.patients.allergies")}
-                      </p>
-                      <p className="text-sm font-medium">{patient.allergies}</p>
-                    </div>
-                  )}
-                  {patient?.bloodType && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        {t("gabinet.patients.bloodType")}
-                      </p>
-                      <p className="text-sm font-medium">
-                        <Badge variant="outline" className="text-[10px]">
-                          {patient.bloodType}
-                        </Badge>
-                      </p>
-                    </div>
-                  )}
                   {(patient?.emergencyContactName ||
                     patient?.emergencyContactPhone) && (
                     <div className="sm:col-span-2">

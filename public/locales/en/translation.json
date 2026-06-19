@@ -747,7 +747,23 @@
     "stepOf": "Step {{current}} of {{total}}",
     "searchTemplate": "Search template...",
     "noTemplatesDesc": "Add document templates in settings to generate documents.",
-    "goToSettings": "Go to settings"
+    "goToSettings": "Go to settings",
+    "beforeAppointment": "Before appointment",
+    "duringAppointment": "During appointment",
+    "afterAppointment": "After appointment",
+    "requiredDocs": {
+      "beforeStart": "Before appointment",
+      "duringVisit": "During appointment",
+      "afterCompletion": "After appointment"
+    },
+    "gate": {
+      "timingBefore": "Before appointment",
+      "timingDuring": "During appointment",
+      "timingAfter": "After appointment",
+      "beforeDescription": "The following documents should be filled in before the appointment starts:",
+      "duringDescription": "The following documents should be filled in before the appointment ends:",
+      "afterDescription": "The following documents should be filled in after the appointment ends:"
+    }
   },
   "products": {
     "title": "Products",

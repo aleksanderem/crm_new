@@ -3217,6 +3217,8 @@
       "patientPackages": "Packages",
       "addOrSell": "Add / Sell",
       "noPatientPackages": "No packages purchased",
+      "showMore": "Show {{count}} more packages",
+      "collapse": "Collapse",
       "expires": "Expires",
       "status": {
         "active": "Active",

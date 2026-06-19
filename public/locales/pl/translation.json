@@ -3239,6 +3239,8 @@
       "patientPackages": "Pakiety",
       "addOrSell": "Dodaj/Sprzedaj",
       "noPatientPackages": "Brak zakupionych pakietów",
+      "showMore": "Pokaż jeszcze {{count}} pakietów",
+      "collapse": "Zwiń",
       "expires": "Wygasa",
       "status": {
         "active": "Aktywny",

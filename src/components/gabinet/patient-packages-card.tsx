@@ -57,10 +57,13 @@ const statusColors: Record<string, "default" | "secondary" | "destructive" | "ou
   cancelled: "outline",
 };
 
+const COLLAPSED_PACKAGE_LIMIT = 2;
+
 export function PatientPackagesCard({ patientId, organizationId }: PatientPackagesCardProps) {
   const { t } = useTranslation();
   const [purchaseOpen, setPurchaseOpen] = useState(false);
   const [detailUsageId, setDetailUsageId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   const getPatientPackagesAction = useAction(api.gabinet.packages.getPatientPackages);
   const { data: usages } = useQuery({
@@ -159,7 +162,7 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
             </div>
           ) : (
             <div className="space-y-3">
-              {items.map((usage) => {
+              {(expanded ? items : items.slice(0, COLLAPSED_PACKAGE_LIMIT)).map((usage) => {
                 const pkg = packageMap.get(usage.packageId);
                 const pkgName = pkg?.name ?? t("common.unknown");
 
@@ -225,6 +228,21 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
                   </div>
                 );
               })}
+
+              {items.length > COLLAPSED_PACKAGE_LIMIT && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full h-8 text-xs"
+                  onClick={() => setExpanded((v) => !v)}
+                >
+                  {expanded
+                    ? t("gabinet.packages.collapse", "Zwiń")
+                    : t("gabinet.packages.showMore", "Pokaż jeszcze {{count}} pakietów", {
+                        count: items.length - COLLAPSED_PACKAGE_LIMIT,
+                      })}
+                </Button>
+              )}
             </div>
           )}
         </CardContent>

@@ -425,7 +425,8 @@ function DocumentsPage() {
           !window.confirm(
             t(
               "documents.confirmBulkDelete",
-              `Usunąć zaznaczone dokumenty (${selectedRows.length})? Tej operacji nie można cofnąć.`,
+              "Usunąć zaznaczone dokumenty ({{count}})? Tej operacji nie można cofnąć.",
+              { count: selectedRows.length },
             ),
           )
         ) {

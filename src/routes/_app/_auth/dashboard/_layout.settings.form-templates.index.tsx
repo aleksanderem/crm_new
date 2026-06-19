@@ -414,18 +414,29 @@ function TemplateTree({
                 <div className="flex items-center gap-2 min-w-0 basis-full sm:basis-0 sm:flex-1">
                   <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
                   <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <button
-                    type="button"
-                    className="flex-1 min-w-0 text-left"
+                  {/* Rendered as a <div> rather than <button> because the outer
+                      TreeItem wrapper is already a <button>. Nested buttons are
+                      invalid HTML (#1910, same pattern as #1907). */}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    className="flex-1 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
                     onClick={(e) => {
                       e.stopPropagation();
                       onEditTemplate(tpl._id);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onEditTemplate(tpl._id);
+                      }
                     }}
                   >
                     <span className="text-sm font-medium truncate block">
                       {tpl.name}
                     </span>
-                  </button>
+                  </div>
                 </div>
                 <Badge variant="outline" className="text-[10px] shrink-0">
                   {t(`settings.formTemplates.categories.${tpl.category}`)}

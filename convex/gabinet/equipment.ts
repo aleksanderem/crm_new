@@ -4,6 +4,7 @@ import { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { verifyOrgAccess } from "../_helpers/auth";
+import { logError } from "../_helpers/logged";
 import type {
   GabinetEquipmentRow,
   GabinetLocationRow,
@@ -101,6 +102,7 @@ export const createEquipment = action({
     parameterUnits: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
+    try {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -129,6 +131,23 @@ export const createEquipment = action({
     });
 
     return equipmentId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.equipment",
+        fnName: "createEquipment",
+        argsJson: JSON.stringify({
+          organizationId: args.organizationId,
+          name: args.name,
+          serialNumber: args.serialNumber,
+          currentLocationId: args.currentLocationId,
+          currentRoomId: args.currentRoomId,
+          status: args.status,
+          parameterUnitsCount: args.parameterUnits?.length,
+        }),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 
@@ -143,6 +162,7 @@ export const updateEquipment = action({
     parameterUnits: v.optional(v.union(v.array(v.string()), v.null())),
   },
   handler: async (ctx, args) => {
+    try {
     await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -169,6 +189,21 @@ export const updateEquipment = action({
     await db.patch("gabinetEquipment", equipmentId, patch);
 
     return equipmentId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.equipment",
+        fnName: "updateEquipment",
+        argsJson: JSON.stringify({
+          organizationId: args.organizationId,
+          equipmentId: args.equipmentId,
+          updatedFields: Object.keys(args).filter(
+            (k) => k !== "organizationId" && k !== "equipmentId",
+          ),
+        }),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 

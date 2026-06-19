@@ -2,6 +2,7 @@ import { action } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { logError } from "../_helpers/logged";
 import type { GabinetLeaveTypeRow } from "../_helpers/supabaseRows";
 
 // Dual-write refs removed — Supabase is now primary for leaveType writes
@@ -54,6 +55,7 @@ export const create = action({
     requiresApproval: v.boolean(),
   },
   handler: async (ctx, args) => {
+    try {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -78,6 +80,15 @@ export const create = action({
     });
 
     return leaveTypeId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.leaveTypes",
+        fnName: "create",
+        argsJson: JSON.stringify(args),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 
@@ -93,6 +104,7 @@ export const update = action({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    try {
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -122,6 +134,15 @@ export const update = action({
     await db.patch("gabinetLeaveTypes", leaveTypeId, patch);
 
     return leaveTypeId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.leaveTypes",
+        fnName: "update",
+        argsJson: JSON.stringify(args),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 

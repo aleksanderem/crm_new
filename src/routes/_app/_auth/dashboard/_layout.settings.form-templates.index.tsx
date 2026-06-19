@@ -11,7 +11,6 @@ import { EmptyState } from "@/components/layout/empty-state";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -351,14 +350,18 @@ function TemplateTree({
                   {data.folderFullPath && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 shrink-0 sm:opacity-0 sm:group-hover/folder:opacity-100 sm:transition-opacity"
+                        {/* Rendered as a <div> rather than <Button> because
+                            the outer TreeItem wrapper is already a <button>.
+                            Nested buttons are invalid HTML (#1912, same
+                            pattern as #1907, #1910). */}
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:opacity-0 sm:group-hover/folder:opacity-100 sm:transition-opacity"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <Menu className="h-3.5 w-3.5" />
-                        </Button>
+                        </div>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
@@ -444,23 +447,49 @@ function TemplateTree({
                 <span className="text-[10px] text-muted-foreground shrink-0">
                   v{tpl.version}
                 </span>
-                <Switch
-                  checked={tpl.isActive}
-                  onCheckedChange={(checked) => onToggleActive(tpl, checked)}
-                  onClick={(e) => e.stopPropagation()}
-                  className="shrink-0"
+                {/* Rendered as a <div role="switch"> rather than the Radix
+                    Switch component because Switch renders as
+                    <button role="switch"> and the outer TreeItem wrapper is
+                    already a <button>. Nested buttons are invalid HTML
+                    (#1912, same pattern as #1907, #1910). */}
+                <div
+                  role="switch"
+                  tabIndex={0}
+                  aria-checked={tpl.isActive}
                   aria-label={t("settings.formTemplates.toggleActive")}
-                />
+                  data-state={tpl.isActive ? "checked" : "unchecked"}
+                  className="peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleActive(tpl, !tpl.isActive);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === " " || e.key === "Enter") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onToggleActive(tpl, !tpl.isActive);
+                    }
+                  }}
+                >
+                  <span
+                    data-state={tpl.isActive ? "checked" : "unchecked"}
+                    className="pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-4 data-[state=unchecked]:translate-x-0"
+                  />
+                </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 shrink-0 sm:opacity-0 sm:group-hover/tpl:opacity-100 sm:transition-opacity"
+                    {/* Rendered as a <div> rather than <Button> because the
+                        outer TreeItem wrapper is already a <button>. Nested
+                        buttons are invalid HTML (#1912, same pattern as
+                        #1907, #1910). */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:opacity-0 sm:group-hover/tpl:opacity-100 sm:transition-opacity"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Menu className="h-3.5 w-3.5" />
-                    </Button>
+                    </div>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem

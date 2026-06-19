@@ -528,6 +528,11 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
                 <DocumentFormFiller
                   formFields={formFields}
                   filledByFilter="client"
+                  hideTopAction
+                  submitLabel={t(
+                    "documents.signing.signButton",
+                    "Podpisz dokument",
+                  )}
                   onComplete={handleFormComplete}
                   onCancel={() => {
                     // No cancel action on public page — just a no-op

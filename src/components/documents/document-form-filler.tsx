@@ -23,6 +23,7 @@ interface DocumentFormFillerProps {
   filledByFilter?: "employee" | "client";
   initialValues?: Record<string, string>;
   submitLabel?: string;
+  hideTopAction?: boolean;
   onComplete: (fieldValues: Record<string, string>) => void;
   onCancel: () => void;
 }
@@ -36,6 +37,7 @@ export function DocumentFormFiller({
   filledByFilter,
   initialValues,
   submitLabel,
+  hideTopAction = false,
   onComplete,
   onCancel,
 }: DocumentFormFillerProps) {
@@ -76,14 +78,16 @@ export function DocumentFormFiller({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="flex gap-2">
-        <Button type="submit" className="flex-1">
-          {submitLabel ?? t("documentEditor.generate", "Generuj dokument")}
-        </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          {t("common.cancel", "Anuluj")}
-        </Button>
-      </div>
+      {!hideTopAction && (
+        <div className="flex gap-2">
+          <Button type="submit" className="flex-1">
+            {submitLabel ?? t("documentEditor.generate", "Generuj dokument")}
+          </Button>
+          <Button type="button" variant="outline" onClick={onCancel}>
+            {t("common.cancel", "Anuluj")}
+          </Button>
+        </div>
+      )}
 
       <p className="text-sm text-muted-foreground">
         {t(

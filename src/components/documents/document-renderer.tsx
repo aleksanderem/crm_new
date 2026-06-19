@@ -13,6 +13,11 @@ import Image from "@tiptap/extension-image";
 import { PageBreakNode } from "@/components/documents/page-break-node";
 import { FormFieldNode } from "@/components/documents/form-field-node";
 import { HtmlBlockNode } from "@/components/documents/html-block-node";
+import { ComponentBlockNode } from "@/components/documents/component-block-node";
+import {
+  ColumnLayoutNode,
+  ColumnNode,
+} from "@/components/documents/column-layout-node";
 import {
   VariableMentionAt,
   VariableMentionCurly,
@@ -52,7 +57,11 @@ export interface ExtractedFormField {
 }
 
 // ---------------------------------------------------------------------------
-// Extensions list (same as the editor, needed for generateHTML)
+// Extensions list — MUST stay in sync with the editor's extension list in
+// document-template-editor.tsx. A node type present in saved template JSON
+// but missing from this list throws "Unknown node type: <name>" inside
+// generateHTML, which the route error boundary surfaces as "Something went
+// wrong" with no recovery path (#1907).
 // ---------------------------------------------------------------------------
 
 const renderExtensions = [
@@ -68,6 +77,9 @@ const renderExtensions = [
   PageBreakNode,
   FormFieldNode,
   HtmlBlockNode,
+  ComponentBlockNode,
+  ColumnLayoutNode,
+  ColumnNode,
   VariableMentionAt,
   VariableMentionCurly,
 ];

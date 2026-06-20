@@ -776,7 +776,7 @@
       "addDescription": "Wybierz szablon dokumentu i określ, kiedy powinien zostać wypełniony.",
       "searchPlaceholder": "Szukaj szablonu...",
       "noTemplates": "Brak dostępnych szablonów",
-      "timing": "Moment wymagania dokumentu",
+      "timing": "Moment wypełnienia",
       "toggleTiming": "Kliknij, aby zmienić moment",
       "added": "Dodano wymagany dokument",
       "removed": "Usunięto wymagany dokument"

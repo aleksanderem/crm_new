@@ -775,7 +775,7 @@
       "addDescription": "Choose a document template and specify when it should be filled in.",
       "searchPlaceholder": "Search template...",
       "noTemplates": "No templates available",
-      "timing": "When document is required",
+      "timing": "When to fill in",
       "toggleTiming": "Click to change timing",
       "added": "Required document added",
       "removed": "Required document removed"

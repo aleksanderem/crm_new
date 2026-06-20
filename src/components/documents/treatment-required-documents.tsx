@@ -370,7 +370,7 @@ export function TreatmentRequiredDocuments({
               <label className="text-sm font-medium">
                 {t(
                   "documents.requiredDocs.timing",
-                  "Moment wymagania dokumentu",
+                  "Moment wypełnienia",
                 )}
               </label>
               <Select

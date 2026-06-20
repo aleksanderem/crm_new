@@ -137,4 +137,23 @@ describe("formatTreatmentError", () => {
     expect(msg).toContain("Czas trwania");
     expect(msg).toContain("to pole jest wymagane");
   });
+
+  it("surfaces field when Convex emits 'at path' on a follow-up line (issue #1966)", () => {
+    // Real Convex server-side validator errors put the `at path '...'` detail
+    // on a *separate* line from the headline. The pre-fix cleanConvexMessage
+    // dropped everything after the first line, so extractFieldValidationDetail
+    // could never see the path and the user got the generic fallback.
+    const err = new Error(
+      "[CONVEX A(gabinet/treatments:create)] [Request ID: xx] Server Error\n" +
+        "Uncaught ArgumentValidationError: Validator error: Expected `string`, got `null`\n" +
+        "    at path 'price'\n" +
+        "    at handler (../convex/gabinet/treatments.ts:42:13)\n" +
+        "  Called by client",
+    );
+    const msg = formatTreatmentError(err, t, {
+      key: "gabinet.treatments.errors.createFailed",
+      defaultValue: "Nie udało się utworzyć zabiegu.",
+    });
+    expect(msg).toContain("Cena");
+  });
 });

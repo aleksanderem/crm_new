@@ -2,6 +2,7 @@ import type { TFunction } from "i18next";
 import { describe, expect, it } from "vitest";
 import {
   extractFieldValidationDetail,
+  extractTreatmentFieldError,
   formatTreatmentError,
 } from "./format-action-error";
 
@@ -136,6 +137,33 @@ describe("formatTreatmentError", () => {
     });
     expect(msg).toContain("Czas trwania");
     expect(msg).toContain("to pole jest wymagane");
+  });
+
+  it("maps snake_case Postgres column to camelCase form field (issue #1972)", () => {
+    const err = new Error(
+      'supabaseDb.insert(gabinetTreatments): null value in column "tax_rate" of relation "gabinet_treatments" violates not-null constraint',
+    );
+    expect(extractTreatmentFieldError(err)).toEqual({
+      field: "taxRate",
+      reason: "to pole jest wymagane",
+    });
+  });
+
+  it("maps Convex camelCase argument to form field (issue #1972)", () => {
+    const err = new Error(
+      "[CONVEX A(gabinet/treatments:create)] [Request ID: xx] Server Error\n" +
+        "Uncaught ArgumentValidationError: Validator error: Expected `string`, got `null`\n" +
+        "    at path 'price'\n" +
+        "  Called by client",
+    );
+    expect(extractTreatmentFieldError(err)).toEqual({
+      field: "price",
+      reason: "nieprawidłowa wartość",
+    });
+  });
+
+  it("returns null for non-field errors so route falls back to toast only (issue #1972)", () => {
+    expect(extractTreatmentFieldError(new Error("Permission denied"))).toBeNull();
   });
 
   it("surfaces field when Convex emits 'at path' on a follow-up line (issue #1966)", () => {

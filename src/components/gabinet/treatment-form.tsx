@@ -65,6 +65,10 @@ interface TreatmentFormProps {
   isSubmitting?: boolean;
   categorySelector?: React.ReactNode;
   children?: React.ReactNode;
+  // Server-rejection messages keyed by TreatmentFormData field name. Lets the
+  // route surface "Cena — to pole jest wymagane" next to the bad input
+  // instead of only as a toast (#1972).
+  fieldErrors?: Partial<Record<keyof TreatmentFormData, string>>;
 }
 
 // VAT-exempt ("zwolniony") is tracked as a separate boolean (taxExempt) on the
@@ -96,6 +100,7 @@ export function TreatmentForm({
   isSubmitting = false,
   categorySelector,
   children,
+  fieldErrors,
 }: TreatmentFormProps) {
   const { t } = useTranslation();
   const [name, setName] = useState(initialData?.name ?? "");
@@ -215,6 +220,18 @@ export function TreatmentForm({
     });
   };
 
+  const fieldErr = (key: keyof TreatmentFormData) => fieldErrors?.[key];
+  const errorClass = "border-destructive focus-visible:ring-destructive";
+  const renderFieldError = (key: keyof TreatmentFormData) => {
+    const msg = fieldErr(key);
+    if (!msg) return null;
+    return (
+      <p className="text-xs text-destructive" role="alert">
+        {msg}
+      </p>
+    );
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -226,7 +243,10 @@ export function TreatmentForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
+            aria-invalid={!!fieldErr("name")}
+            className={fieldErr("name") ? errorClass : undefined}
           />
+          {renderFieldError("name")}
         </div>
         <div className="space-y-1.5">
           <Label>
@@ -241,7 +261,10 @@ export function TreatmentForm({
             onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
             placeholder="30"
             required
+            aria-invalid={!!fieldErr("duration")}
+            className={fieldErr("duration") ? errorClass : undefined}
           />
+          {renderFieldError("duration")}
         </div>
         <div className="space-y-1.5">
           <Label>
@@ -259,7 +282,10 @@ export function TreatmentForm({
             }}
             placeholder="0.00"
             required
+            aria-invalid={!!fieldErr("price")}
+            className={fieldErr("price") ? errorClass : undefined}
           />
+          {renderFieldError("price")}
         </div>
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.currency")}</Label>
@@ -267,12 +293,18 @@ export function TreatmentForm({
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
             placeholder="PLN"
+            aria-invalid={!!fieldErr("currency")}
+            className={fieldErr("currency") ? errorClass : undefined}
           />
+          {renderFieldError("currency")}
         </div>
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.taxRate")}</Label>
           <Select value={taxRate} onValueChange={setTaxRate}>
-            <SelectTrigger>
+            <SelectTrigger
+              aria-invalid={!!fieldErr("taxRate")}
+              className={fieldErr("taxRate") ? errorClass : undefined}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -283,6 +315,7 @@ export function TreatmentForm({
               ))}
             </SelectContent>
           </Select>
+          {renderFieldError("taxRate")}
         </div>
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.package", "Pakiet")}</Label>
@@ -310,7 +343,10 @@ export function TreatmentForm({
               value={selectedPackageId}
               onValueChange={setSelectedPackageId}
             >
-              <SelectTrigger>
+              <SelectTrigger
+                aria-invalid={!!fieldErr("packageId")}
+                className={fieldErr("packageId") ? errorClass : undefined}
+              >
                 <SelectValue
                   placeholder={t(
                     "gabinet.treatments.selectPackagePlaceholder",
@@ -335,6 +371,7 @@ export function TreatmentForm({
                 )}
               </SelectContent>
             </Select>
+            {renderFieldError("packageId")}
             <p className="text-xs text-muted-foreground">
               {t(
                 "gabinet.treatments.linkedPackageHint",
@@ -482,6 +519,7 @@ export function TreatmentForm({
               )}
             </PopoverContent>
           </Popover>
+          {renderFieldError("requiredEquipmentIds")}
           {hasLegacyEquipment && (
             <p className="text-xs text-muted-foreground">
               {t("gabinet.treatments.legacyEquipment", "Legacy (text):")} {legacyEquipment.join(", ")}

@@ -39,7 +39,7 @@ import { CategoriesManagerSlideout } from "@/components/categories-tags/categori
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
-import { formatTreatmentError } from "@/lib/format-action-error";
+import { formatTreatmentError, extractTreatmentFieldError } from "@/lib/format-action-error";
 import { reportError } from "@/lib/error-reporter";
 
 // shadcn/studio statistics blocks
@@ -132,6 +132,9 @@ function TreatmentsIndex() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<keyof TreatmentFormData, string>>
+  >({});
 
   const systemViews = useMemo(
     (): SavedView[] => [
@@ -428,6 +431,7 @@ function TreatmentsIndex() {
     setEditingTreatment(null);
     setTagIds([]);
     setCategoryId(undefined);
+    setFieldErrors({});
     setPanelOpen(true);
   };
 
@@ -435,12 +439,14 @@ function TreatmentsIndex() {
     setEditingTreatment(treatment);
     setTagIds((treatment.tagIds as Id<"tagDefinitions">[]) ?? []);
     setCategoryId(treatment.categoryId as Id<"categoryDefinitions"> | undefined);
+    setFieldErrors({});
     setPanelOpen(true);
   };
 
   const handleSubmit = useCallback(
     async (formData: TreatmentFormData) => {
       setIsSubmitting(true);
+      setFieldErrors({});
       try {
         if (editingTreatment) {
           await updateTreatment({
@@ -478,6 +484,12 @@ function TreatmentsIndex() {
           }),
           organizationId,
         });
+        const fieldError = extractTreatmentFieldError(e);
+        if (fieldError) {
+          setFieldErrors({
+            [fieldError.field as keyof TreatmentFormData]: fieldError.reason,
+          });
+        }
         toast.error(
           formatTreatmentError(e, t, {
             key: editingTreatment
@@ -809,6 +821,7 @@ function TreatmentsIndex() {
             setEditingTreatment(null);
           }}
           isSubmitting={isSubmitting}
+          fieldErrors={fieldErrors}
           categorySelector={
             <CategoryPicker
               categories={categories}

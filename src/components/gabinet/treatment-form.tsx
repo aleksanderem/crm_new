@@ -234,6 +234,7 @@ export function TreatmentForm({
           </Label>
           <Input
             type="number"
+            inputMode="numeric"
             min="1"
             value={duration}
             onChange={(e) => setDuration(e.target.value)}

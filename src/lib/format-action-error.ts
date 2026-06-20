@@ -229,11 +229,28 @@ function cleanConvexMessage(raw: string): string {
   msg = msg.replace(/^\s*Server Error\s*\n?/i, "");
 
   // Convex wraps the thrown reason as "Uncaught Error: <msg>" (or similar).
+  // Capture the headline plus up to 5 follow-up lines so multi-line validator
+  // detail like `at path 'foo.bar'` survives for extractFieldValidationDetail
+  // — without it the path matcher can never fire and the user falls back to
+  // the generic "nieprawidłowe dane" toast (issue #1966).
   const uncaught = msg.match(
-    /Uncaught\s+(?:Error|ConvexError|ArgumentValidationError|TypeError)\s*:\s*([^\n]+)/i,
+    /Uncaught\s+(?:Error|ConvexError|ArgumentValidationError|TypeError)\s*:\s*([^\n]+(?:\n[^\n]*){0,5})/i,
   );
   if (uncaught) {
-    return uncaught[1].trim();
+    return uncaught[1]
+      .split(/\r?\n/)
+      .filter((line) => {
+        const trimmed = line.trim();
+        if (!trimmed) return false;
+        if (/^Called by client\s*$/i.test(trimmed)) return false;
+        // Drop stack frames ("at fn (file:N:N)" or bare "at fn") but keep
+        // validator detail lines like "at path 'foo.bar'".
+        if (/^at\s+path\b/i.test(trimmed)) return true;
+        if (/^at\s+\S/i.test(trimmed)) return false;
+        return true;
+      })
+      .join("\n")
+      .trim();
   }
 
   // Strip stack trace lines and any "Called by client" suffix.

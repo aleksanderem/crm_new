@@ -4,6 +4,7 @@ import eslint from "@eslint/js";
 import tseslint from "typescript-eslint";
 import globals from "globals";
 import noProviderAndConsumerHook from "./eslint-rules/no-provider-and-consumer-hook.js";
+import noUntranslatedLiteral from "./eslint-rules/no-untranslated-literal.js";
 
 // Sanitize globals keys (some versions have trailing whitespace)
 const browserGlobals = Object.fromEntries(
@@ -35,6 +36,7 @@ export default tseslint.config(
       local: {
         rules: {
           "no-provider-and-consumer-hook": noProviderAndConsumerHook,
+          "no-untranslated-literal": noUntranslatedLiteral,
         },
       },
     },
@@ -49,6 +51,23 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/ban-ts-comment": "off",
       "local/no-provider-and-consumer-hook": "error",
+    },
+  },
+  // i18n hygiene: report bare English literals in user-facing positions.
+  // Scoped to shared UI primitives (the SidePanel/CommandInput class from
+  // #1975 / #1982) — these components render on every screen so a hardcoded
+  // default leaks an English string into PL workspaces. Severity is `warn`
+  // so it surfaces in PR review without blocking existing accumulated debt.
+  // To expand scope later: add more globs to `files` or raise severity.
+  {
+    files: [
+      "src/components/ui/**/*.{ts,tsx}",
+      "src/components/crm/side-panel.tsx",
+      "src/components/data-table/**/*.{ts,tsx}",
+      "src/components/shared/**/*.{ts,tsx}",
+    ],
+    rules: {
+      "local/no-untranslated-literal": "warn",
     },
   },
   // Convex backend files need Node.js globals

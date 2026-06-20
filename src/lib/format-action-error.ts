@@ -415,6 +415,67 @@ export function formatTreatmentError(
   return t(fallback.key, { defaultValue: fallback.defaultValue });
 }
 
+// Map raw column / argument names from extractFieldValidationDetail to the
+// camelCase form-state keys used inside TreatmentForm. Lets the route surface
+// inline errors next to the offending input (#1972 — generic toast hid which
+// field was wrong, especially on mobile where the toast can be missed).
+const TREATMENT_FIELD_ALIASES: Record<string, string> = {
+  // Snake-case (Postgres column names)
+  name: "name",
+  duration: "duration",
+  price: "price",
+  currency: "currency",
+  tax_rate: "taxRate",
+  tax_exempt: "taxRate",
+  required_equipment: "requiredEquipmentIds",
+  required_equipment_ids: "requiredEquipmentIds",
+  package_id: "packageId",
+  category_id: "categoryId",
+  tag_ids: "tagIds",
+  description: "description",
+  contraindications: "contraindications",
+  preparation_instructions: "preparationInstructions",
+  aftercare_instructions: "aftercareInstructions",
+  requires_approval: "requiresApproval",
+  color: "color",
+  treatment_count: "treatmentCount",
+  required_form_templates: "requiredFormTemplates",
+  // Convex camelCase variants (argument validators name these directly)
+  taxRate: "taxRate",
+  taxExempt: "taxRate",
+  requiredEquipment: "requiredEquipmentIds",
+  requiredEquipmentIds: "requiredEquipmentIds",
+  packageId: "packageId",
+  categoryId: "categoryId",
+  tagIds: "tagIds",
+  preparationInstructions: "preparationInstructions",
+  aftercareInstructions: "aftercareInstructions",
+  requiresApproval: "requiresApproval",
+  treatmentCount: "treatmentCount",
+  requiredFormTemplates: "requiredFormTemplates",
+};
+
+// Return the treatment-form input key (camelCase) blamed by the action error
+// together with the short Polish reason from extractFieldValidationDetail,
+// or null when the error cannot be tied to a specific input. Callers use the
+// field key to highlight the right control inline and the reason as the
+// per-field error message (#1972).
+export interface TreatmentFieldError {
+  field: string;
+  reason: string;
+}
+
+export function extractTreatmentFieldError(
+  err: unknown,
+): TreatmentFieldError | null {
+  const inner = extractActionErrorMessage(err);
+  const detail = extractFieldValidationDetail(inner);
+  if (!detail) return null;
+  const field = TREATMENT_FIELD_ALIASES[detail.rawField];
+  if (!field) return null;
+  return { field, reason: detail.reason };
+}
+
 const GENERIC_ERROR_MAP: Array<{
   test: (msg: string) => boolean;
   key: string;

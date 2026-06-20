@@ -1,4 +1,4 @@
-import { Table } from "@tanstack/react-table";
+import { Column, RowData, Table } from "@tanstack/react-table";
 import { Settings2 } from "@/lib/ez-icons";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData extends RowData, TValue> {
+    label?: string;
+  }
+}
+
 interface DataTableViewOptionsProps<TData> {
   table: Table<TData>;
+}
+
+function getColumnLabel<TData>(col: Column<TData, unknown>): string {
+  const metaLabel = col.columnDef.meta?.label;
+  if (metaLabel) return metaLabel;
+  const header = col.columnDef.header;
+  if (typeof header === "string" && header.length > 0) return header;
+  return col.id;
 }
 
 export function DataTableViewOptions<TData>({
@@ -44,7 +59,7 @@ export function DataTableViewOptions<TData>({
               checked={col.getIsVisible()}
               onCheckedChange={(value) => col.toggleVisibility(!!value)}
             >
-              {col.id}
+              {getColumnLabel(col)}
             </DropdownMenuCheckboxItem>
           ))}
       </DropdownMenuContent>

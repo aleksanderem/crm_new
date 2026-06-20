@@ -596,21 +596,21 @@ function PackagesIndex() {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>{t("gabinet.packages.totalPrice")}</Label>
-              <Input type="number" value={totalPrice} onChange={(e) => setTotalPrice(e.target.value)} />
+              <Input type="number" inputMode="decimal" value={totalPrice} onChange={(e) => setTotalPrice(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label>{t("gabinet.packages.validityDays")}</Label>
-              <Input type="number" value={validityDays} onChange={(e) => setValidityDays(e.target.value)} />
+              <Input type="number" inputMode="numeric" value={validityDays} onChange={(e) => setValidityDays(e.target.value)} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>{t("gabinet.packages.discountPercent")}</Label>
-              <Input type="number" value={discountPercent} onChange={(e) => setDiscountPercent(e.target.value)} />
+              <Input type="number" inputMode="numeric" value={discountPercent} onChange={(e) => setDiscountPercent(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label>{t("gabinet.packages.loyaltyPoints")}</Label>
-              <Input type="number" value={loyaltyPoints} onChange={(e) => setLoyaltyPoints(e.target.value)} />
+              <Input type="number" inputMode="numeric" value={loyaltyPoints} onChange={(e) => setLoyaltyPoints(e.target.value)} />
             </div>
           </div>
 

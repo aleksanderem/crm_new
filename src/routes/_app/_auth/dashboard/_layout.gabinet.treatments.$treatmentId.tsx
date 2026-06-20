@@ -1415,6 +1415,7 @@ function TreatmentDetail() {
               {variantForm.overrideDuration ? (
                 <Input
                   type="number"
+                  inputMode="numeric"
                   value={variantForm.duration}
                   onChange={(e) =>
                     setVariantForm((prev) => ({ ...prev, duration: e.target.value }))

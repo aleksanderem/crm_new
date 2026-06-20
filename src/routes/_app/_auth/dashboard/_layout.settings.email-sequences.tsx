@@ -714,6 +714,7 @@ function StepRow({
           <Input
             id={`step-delay-${step._id}`}
             type="number"
+            inputMode="numeric"
             min={0}
             className="h-8 w-20 text-xs"
             value={delayHours}

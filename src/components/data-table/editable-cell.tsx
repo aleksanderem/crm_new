@@ -181,7 +181,7 @@ export function EditableCell({
         );
       case "number":
         return (
-          <Input ref={inputRef} type="number" value={editValue ?? ""} onChange={(e) => setEditValue(e.target.valueAsNumber || "")}
+          <Input ref={inputRef} type="number" inputMode="decimal" value={editValue ?? ""} onChange={(e) => setEditValue(e.target.valueAsNumber || "")}
             min={config.min} max={config.max} step={config.step} placeholder={config.placeholder} {...inputProps} />
         );
       case "date":

@@ -2108,6 +2108,7 @@ export function AppointmentPreviewContent({
                     </Label>
                     <Input
                       type="number"
+                      inputMode="numeric"
                       min={1}
                       max={
                         selectedPackageEntry

@@ -177,6 +177,7 @@ export function PackageForm({
           <Label>{t("gabinet.packages.validityDays")}</Label>
           <Input
             type="number"
+            inputMode="numeric"
             min="1"
             value={validityDays}
             onChange={(e) => setValidityDays(e.target.value)}
@@ -187,6 +188,7 @@ export function PackageForm({
           <Label>{t("gabinet.packages.discountPercent")}</Label>
           <Input
             type="number"
+            inputMode="numeric"
             min="0"
             max="100"
             value={discountPercent}
@@ -198,6 +200,7 @@ export function PackageForm({
           <Label>{t("gabinet.packages.loyaltyPoints")}</Label>
           <Input
             type="number"
+            inputMode="numeric"
             min="0"
             value={loyaltyPoints}
             onChange={(e) => setLoyaltyPoints(e.target.value)}
@@ -260,6 +263,7 @@ export function PackageForm({
                 </Label>
                 <Input
                   type="number"
+                  inputMode="numeric"
                   min="1"
                   value={st.quantity}
                   onChange={(e) =>

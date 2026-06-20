@@ -296,6 +296,7 @@ function SetupWizard() {
                     placeholder={t("onboarding.price")}
                     className="w-24"
                     type="number"
+                    inputMode="decimal"
                   />
                   <Input
                     aria-label={t("onboarding.duration")}
@@ -304,6 +305,7 @@ function SetupWizard() {
                     placeholder={t("onboarding.duration")}
                     className="w-20"
                     type="number"
+                    inputMode="numeric"
                   />
                   {treatments.length > 1 && (
                     <Button

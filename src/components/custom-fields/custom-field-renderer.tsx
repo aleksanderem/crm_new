@@ -88,6 +88,7 @@ export function CustomFieldRenderer({
           </Label>
           <Input
             type="number"
+            inputMode="decimal"
             value={(value as number) ?? ""}
             onChange={(e) =>
               onChange(e.target.value ? Number(e.target.value) : null)

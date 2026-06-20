@@ -151,6 +151,7 @@ export function LeadProductsDialogBody({
           <Input
             id="lead-product-quantity"
             type="number"
+            inputMode="numeric"
             min="1"
             step="1"
             value={quantity}

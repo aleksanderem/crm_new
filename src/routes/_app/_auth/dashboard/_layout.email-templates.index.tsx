@@ -601,6 +601,7 @@ function EventBindingsTab() {
               <Label>{t("emailTemplates.priority")}</Label>
               <Input
                 type="number"
+                inputMode="numeric"
                 value={editPriority}
                 onChange={(e) => setEditPriority(e.target.value)}
                 min={0}

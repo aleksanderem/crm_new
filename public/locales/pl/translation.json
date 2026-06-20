@@ -390,6 +390,7 @@
     "recordCount_one": "{{count}} rekord",
     "clearSelection": "Wyczyść zaznaczenie",
     "selectedRecords": "{{count}} rekordów zaznaczono",
+    "nSelected": "{{count}} zaznaczono",
     "confirmBulk": "Czy na pewno chcesz {{action}} {{count}} rekordów? Tej operacji nie można cofnąć."
   },
   "views": {

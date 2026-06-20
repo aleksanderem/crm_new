@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Column } from "@tanstack/react-table";
+import { useTranslation } from "react-i18next";
 import { Check, PlusCircle } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ export function DataTableFacetedFilter<TData, TValue>({
   title,
   options,
 }: DataTableFacetedFilterProps<TData, TValue>) {
+  const { t } = useTranslation();
   const facets = column?.getFacetedUniqueValues();
   const selectedValues = new Set(column?.getFilterValue() as string[]);
   const [open, setOpen] = React.useState(false);
@@ -56,7 +58,7 @@ export function DataTableFacetedFilter<TData, TValue>({
                     variant="secondary"
                     className="rounded-sm px-1 font-normal"
                   >
-                    {selectedValues.size} selected
+                    {t('table.nSelected', { count: selectedValues.size, defaultValue: '{{count}} zaznaczono' })}
                   </Badge>
                 ) : (
                   options
@@ -87,10 +89,10 @@ export function DataTableFacetedFilter<TData, TValue>({
           <CommandInput
             placeholder={title}
             onClose={() => setOpen(false)}
-            closeLabel="Close"
+            closeLabel={t('common.close')}
           />
           <CommandList className="flex-1 min-h-0">
-            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandEmpty>{t('common.noResults')}</CommandEmpty>
             <CommandGroup>
               {options.map((option) => {
                 const isSelected = selectedValues.has(option.value);
@@ -137,7 +139,7 @@ export function DataTableFacetedFilter<TData, TValue>({
                     onSelect={() => column?.setFilterValue(undefined)}
                     className="justify-center text-center"
                   >
-                    Clear filters
+                    {t('common.clearFilters')}
                   </CommandItem>
                 </CommandGroup>
               </>

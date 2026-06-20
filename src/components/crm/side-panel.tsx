@@ -68,12 +68,13 @@ export function SidePanel({
   description,
   children,
   onSubmit,
-  submitLabel = "Create",
+  submitLabel,
   isSubmitting = false,
   className,
 }: SidePanelProps) {
   const { t } = useTranslation();
   const keyboardSafeStyle = useKeyboardSafeSheetStyle(open);
+  const resolvedSubmitLabel = submitLabel ?? t('common.create');
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -104,7 +105,7 @@ export function SidePanel({
               {isSubmitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              {submitLabel}
+              {resolvedSubmitLabel}
             </Button>
           </SheetFooter>
         )}

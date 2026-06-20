@@ -35,7 +35,7 @@ interface DataTableToolbarProps<TData> {
 export function DataTableToolbar<TData>({
   table,
   searchKey,
-  searchPlaceholder = "Search...",
+  searchPlaceholder,
   filterableColumns = [],
   showViewOptions = false,
   actions,
@@ -43,6 +43,7 @@ export function DataTableToolbar<TData>({
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation();
   const isFiltered = table.getState().columnFilters.length > 0;
+  const resolvedSearchPlaceholder = searchPlaceholder ?? `${t('common.search')}...`;
 
   return (
     <div className="flex items-center justify-between">
@@ -51,7 +52,7 @@ export function DataTableToolbar<TData>({
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-5 w-5 text-muted-foreground" variant="stroke" />
             <Input
-              placeholder={searchPlaceholder}
+              placeholder={resolvedSearchPlaceholder}
               value={
                 (table.getColumn(searchKey)?.getFilterValue() as string) ?? ""
               }

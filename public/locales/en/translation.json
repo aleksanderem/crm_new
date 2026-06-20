@@ -390,6 +390,7 @@
     "recordCount_one": "{{count}} record",
     "clearSelection": "Clear selection",
     "selectedRecords": "{{count}} records selected",
+    "nSelected": "{{count}} selected",
     "confirmBulk": "Are you sure you want to {{action}} {{count}} records? This action cannot be undone."
   },
   "views": {

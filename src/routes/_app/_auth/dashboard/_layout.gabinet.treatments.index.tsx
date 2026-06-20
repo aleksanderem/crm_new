@@ -24,7 +24,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Plus, Pencil, Trash2, Power, X, LayoutDashboard } from "@/lib/ez-icons";
+import { Plus, Pencil, Trash2, Power, X, LayoutDashboard, ChevronDown, ChevronUp } from "@/lib/ez-icons";
 import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
 import { Id } from "@cvx/_generated/dataModel";
 import type { MappedGabinetTreatment } from "@/lib/supabase/mappers/gabinet/treatments";
@@ -88,6 +88,7 @@ function TreatmentsIndex() {
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
   const [filterSlideoutOpen, setFilterSlideoutOpen] = useState(false);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor | undefined>(undefined);
+  const [showStatsMobile, setShowStatsMobile] = useState(false);
 
   useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
   useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
@@ -612,8 +613,25 @@ function TreatmentsIndex() {
         onFiltersChange={setActiveFilters}
       />
 
+      {/* Mobile-only toggle: collapse KPI cards by default on small screens */}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setShowStatsMobile((s) => !s)}
+        aria-expanded={showStatsMobile}
+        className="md:hidden w-full justify-between"
+      >
+        {showStatsMobile ? t("common.hideStats") : t("common.showStats")}
+        {showStatsMobile ? (
+          <ChevronUp className="size-4" />
+        ) : (
+          <ChevronDown className="size-4" />
+        )}
+      </Button>
+
       {/* KPI Statistics Cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className={`${showStatsMobile ? "grid" : "hidden md:grid"} gap-4 sm:grid-cols-3`}>
         <StatisticsOrderCard
           title={t("gabinet.treatments.totalTreatments", "Zabiegi")}
           description={t("gabinet.treatments.inCatalog", "W katalogu")}

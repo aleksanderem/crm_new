@@ -87,7 +87,24 @@
     },
     "previous": "Poprzedni",
     "next": "Następny",
-    "select": "Wybierz"
+    "select": "Wybierz",
+    "command": "Polecenia",
+    "sidebar": "Pasek boczny",
+    "sidebarMobileDescription": "Wyświetla mobilny pasek boczny.",
+    "toggleSidebar": "Przełącz pasek boczny",
+    "indent": "Zwiększ wcięcie",
+    "outdent": "Zmniejsz wcięcie",
+    "todo": "Lista zadań",
+    "listStyles": {
+      "default": "Domyślny",
+      "circle": "Okrąg",
+      "square": "Kwadrat",
+      "decimal": "Dziesiętne (1, 2, 3)",
+      "lowerAlpha": "Małe litery (a, b, c)",
+      "upperAlpha": "Wielkie litery (A, B, C)",
+      "lowerRoman": "Małe rzymskie (i, ii, iii)",
+      "upperRoman": "Wielkie rzymskie (I, II, III)"
+    }
   },
   "nav": {
     "deals": "Transakcje",
@@ -380,7 +397,8 @@
     "perPage": "{{count}} na stronę",
     "pageSize": "Rozmiar strony",
     "pageLabel": "Strona",
-    "ofTotal": "z {{total}}"
+    "ofTotal": "z {{total}}",
+    "morePages": "Więcej stron"
   },
   "table": {
     "columns": "Kolumny",

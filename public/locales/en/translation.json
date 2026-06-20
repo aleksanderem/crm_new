@@ -87,7 +87,24 @@
     },
     "previous": "Previous",
     "next": "Next",
-    "select": "Select"
+    "select": "Select",
+    "command": "Command",
+    "sidebar": "Sidebar",
+    "sidebarMobileDescription": "Displays the mobile sidebar.",
+    "toggleSidebar": "Toggle Sidebar",
+    "indent": "Indent",
+    "outdent": "Outdent",
+    "todo": "Todo",
+    "listStyles": {
+      "default": "Default",
+      "circle": "Circle",
+      "square": "Square",
+      "decimal": "Decimal (1, 2, 3)",
+      "lowerAlpha": "Lower Alpha (a, b, c)",
+      "upperAlpha": "Upper Alpha (A, B, C)",
+      "lowerRoman": "Lower Roman (i, ii, iii)",
+      "upperRoman": "Upper Roman (I, II, III)"
+    }
   },
   "nav": {
     "deals": "Deals",
@@ -380,7 +397,8 @@
     "perPage": "{{count}} per page",
     "pageSize": "Page Size",
     "pageLabel": "Page",
-    "ofTotal": "of {{total}}"
+    "ofTotal": "of {{total}}",
+    "morePages": "More pages"
   },
   "table": {
     "columns": "Columns",

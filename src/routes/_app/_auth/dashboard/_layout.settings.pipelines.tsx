@@ -401,6 +401,7 @@ function StageActions({
               <Label className="text-xs">{t("stageActions.dueInDays")}</Label>
               <Input
                 type="number"
+                inputMode="numeric"
                 min={0}
                 value={dueInDays}
                 onChange={(e) => setDueInDays(Number(e.target.value))}

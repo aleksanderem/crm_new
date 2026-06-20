@@ -353,6 +353,7 @@ export function ActivityForm({
             })}
             <Input
               type="number"
+              inputMode="numeric"
               min={5}
               step={5}
               className="w-20 h-8 text-xs"
@@ -384,6 +385,7 @@ export function ActivityForm({
               </button>
               <Input
                 type="number"
+                inputMode="numeric"
                 className="w-24 pl-7"
                 value={reminderValue}
                 onChange={(e) => setReminderValue(e.target.value)}

@@ -282,6 +282,7 @@ function LeaveTypeDialog({
             <Label>{t("gabinet.leaveTypes.annualQuota")}</Label>
             <Input
               type="number"
+              inputMode="numeric"
               min={0}
               value={quota}
               onChange={(e) => setQuota(e.target.value)}

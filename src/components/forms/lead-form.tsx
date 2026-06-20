@@ -176,6 +176,7 @@ export function LeadForm({
           <Label>{t('leadForm.value')}</Label>
           <Input
             type="number"
+            inputMode="decimal"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="0"

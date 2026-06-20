@@ -524,6 +524,7 @@ export function DocumentationTab({
                   {paramType === "number" && (
                     <Input
                       type="number"
+                      inputMode="decimal"
                       value={String(param.value ?? "")}
                       onChange={(e) => handleParamChange(i, e.target.value)}
                       placeholder="—"

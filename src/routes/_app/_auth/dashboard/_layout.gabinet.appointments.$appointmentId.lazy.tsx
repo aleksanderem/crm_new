@@ -2956,6 +2956,7 @@ function AppointmentDetail() {
                   </div>
                   <Input
                     type="number"
+                    inputMode="numeric"
                     className="w-20"
                     min={0}
                     max={item.remaining}

@@ -2187,6 +2187,7 @@ function DetailedDataTab({
                   <Label>{t("gabinet.employees.detailedData.yearsOfExperience")}</Label>
                   <Input
                     type="number"
+                    inputMode="numeric"
                     min={0}
                     value={formData.yearsOfExperience}
                     onChange={(e) => setFormData({ ...formData, yearsOfExperience: e.target.value })}
@@ -2391,6 +2392,7 @@ function DetailedDataTab({
                   <Label>{t("gabinet.employees.detailedData.baseSalary")}</Label>
                   <Input
                     type="number"
+                    inputMode="decimal"
                     min={0}
                     step={0.01}
                     value={formData.baseSalary}
@@ -2402,6 +2404,7 @@ function DetailedDataTab({
                   <Label>{t("gabinet.employees.detailedData.commissionPercent")}</Label>
                   <Input
                     type="number"
+                    inputMode="decimal"
                     min={0}
                     max={100}
                     step={0.1}
@@ -2657,6 +2660,7 @@ function AssignedItemsTab({
                   </Label>
                   <Input
                     type="number"
+                    inputMode="numeric"
                     min={1}
                     value={newQuantity}
                     onChange={(e) => setNewQuantity(e.target.value)}

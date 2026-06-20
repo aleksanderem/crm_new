@@ -94,6 +94,7 @@ function ReminderSettings() {
             <Input
               id="hoursBefore"
               type="number"
+              inputMode="numeric"
               className="w-32"
               min={1}
               max={168}

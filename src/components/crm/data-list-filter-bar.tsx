@@ -17,7 +17,6 @@ import { Input } from "@untitled/base/input/input";
 import { Dropdown } from "@untitled/base/dropdown/dropdown";
 import { Select, type SelectItemType } from "@untitled/base/select/select";
 import { SlideoutMenu } from "@untitled/app/slideout-menus/slideout-menu";
-import { CountBadge, type FilterRow } from "@untitled/app/filter-bar/filter-dropdown-menu";
 import { FeaturedIcon } from "@untitled/foundations/featured-icon/featured-icon";
 import { CheckboxBase } from "@untitled/base/checkbox/checkbox";
 import {
@@ -31,8 +30,26 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Label } from "@/components/ui/label";
 import { Input as ShadcnInput } from "@/components/ui/input";
 import { Button as ShadcnButton } from "@/components/ui/button";
+import { cx } from "@/lib/utils/cx";
 import type { FieldDef, FilterCondition, FilterConfig, SavedView } from "./types";
 
+interface FilterRow {
+  id: string;
+  field: string;
+  operator: string;
+  value: string;
+}
+
+const CountBadge = ({ count, className }: { count: number; className?: string }) => (
+  <span
+    className={cx(
+      "inline-flex items-center rounded-md border border-border-primary bg-bg-primary px-1.5 py-0.5 text-xs leading-[18px] font-medium text-fg-secondary shadow-xs",
+      className,
+    )}
+  >
+    {count}
+  </span>
+);
 
 const OPERATORS_BY_TYPE: Record<
   FieldDef["type"],

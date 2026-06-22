@@ -150,7 +150,7 @@ export function InlineDocumentForm({
 // Per-field interactive control (rendered via portal into the marker span)
 // ---------------------------------------------------------------------------
 
-function InlineFieldControl({
+export function InlineFieldControl({
   field,
   value,
   onChange,

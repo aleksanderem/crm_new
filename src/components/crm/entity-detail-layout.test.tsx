@@ -1,5 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) => {
+      if (key === "common.actions") return "Akcje";
+      return key;
+    },
+  }),
+}));
+
 import { EntityDetailLayout } from "./entity-detail-layout";
 
 function countLabel(markup: string, label: string) {

@@ -48,6 +48,11 @@ vi.mock("@/components/ui/sidebar", () => ({
   SidebarMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   SidebarMenuButton: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   SidebarMenuItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  useSidebar: () => ({ isMobile: false, setOpenMobile: vi.fn() }),
+}));
+
+vi.mock("convex/react", () => ({
+  useAction: () => vi.fn(),
 }));
 
 vi.mock("@/components/layout/sidebar-context", () => ({

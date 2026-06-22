@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -44,6 +45,9 @@ import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { formatActionError } from "@/lib/format-action-error";
 
 type ProductsNudgeFilter = "unused";
+
+const PRODUCT_SECTIONS = ["sale", "treatment", "disposable"] as const;
+type ProductSection = (typeof PRODUCT_SECTIONS)[number];
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/products/"
@@ -111,6 +115,7 @@ function ProductsPage() {
   const {
     views, activeViewId, onViewChange, onCreateView, onDeleteView, applyFilters,
   } = useSavedViews({ organizationId, entityType: "product", systemViews });
+  const [activeSection, setActiveSection] = useState<ProductSection | "all">("all");
   const [panelOpen, setPanelOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
@@ -163,6 +168,7 @@ function ProductsPage() {
   const [trackStock, setTrackStock] = useState(false);
   const [stockUnit, setStockUnit] = useState("");
   const [initialStock, setInitialStock] = useState("");
+  const [productSection, setProductSection] = useState<ProductSection | "">("");
 
   const { data: allProducts = [], isLoading } = useSupabaseProductsList(organizationId);
   const { data: usedProductIds } = useSupabaseUsedProductIds(organizationId, {
@@ -178,6 +184,9 @@ function ProductsPage() {
     if (nudgeFilter === "unused" && usedProductIds) {
       data = data.filter((p) => !usedProductIds.has(p._id));
     }
+    if (activeSection !== "all") {
+      data = data.filter((p) => p.productSection === activeSection);
+    }
     data = applyFilters(data);
     data = applyFilterConditions(data, activeFilters);
     if (searchValue.trim()) {
@@ -188,7 +197,7 @@ function ProductsPage() {
       );
     }
     return data;
-  }, [activeViewId, allProducts, applyFilters, activeFilters, searchValue, nudgeFilter, usedProductIds]);
+  }, [activeViewId, allProducts, applyFilters, activeFilters, searchValue, nudgeFilter, usedProductIds, activeSection]);
 
   const createProduct = useAction(api.products.create);
   const updateProduct = useAction(api.products.update);
@@ -207,6 +216,7 @@ function ProductsPage() {
     setTrackStock(false);
     setStockUnit("");
     setInitialStock("");
+    setProductSection(activeSection !== "all" ? activeSection : "");
     setEditingProduct(null);
   };
 
@@ -228,6 +238,7 @@ function ProductsPage() {
     setTrackStock(!!product.trackStock);
     setStockUnit(product.stockUnit ?? "");
     setInitialStock("");
+    setProductSection((product.productSection as ProductSection | undefined) ?? "");
     setPanelOpen(true);
   };
 
@@ -249,6 +260,7 @@ function ProductsPage() {
       const parsed = parseFloat(initialStock.replace(",", "."));
       return Number.isFinite(parsed) ? parsed : null;
     })();
+    const normalizedSection = productSection || null;
     try {
       if (editingProduct) {
         await updateProduct({
@@ -264,6 +276,7 @@ function ProductsPage() {
           categoryId: categoryId ?? null,
           trackStock,
           stockUnit: normalizedStockUnit,
+          productSection: normalizedSection,
         });
       } else {
         await createProduct({
@@ -280,6 +293,7 @@ function ProductsPage() {
           trackStock,
           stockUnit: normalizedStockUnit,
           initialStock: normalizedInitialStock,
+          productSection: normalizedSection,
         });
       }
       setPanelOpen(false);
@@ -349,6 +363,14 @@ function ProductsPage() {
       sortable: true,
     },
     {
+      id: "productSection",
+      label: t("products.sections.label", { defaultValue: "Sekcja" }),
+      render: (item) => {
+        if (!item.productSection) return "\u2014";
+        return t(`products.sections.${item.productSection}`, { defaultValue: item.productSection });
+      },
+    },
+    {
       id: "isActive",
       label: t('common.active'),
       render: (item) => item.isActive ? "\u2713" : "\u2014",
@@ -400,6 +422,19 @@ function ProductsPage() {
           </Button>
         }
       />
+
+      <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as ProductSection | "all")}>
+        <TabsList>
+          <TabsTrigger value="all">
+            {t("products.sections.all", { defaultValue: "Wszystkie" })}
+          </TabsTrigger>
+          {PRODUCT_SECTIONS.map((section) => (
+            <TabsTrigger key={section} value={section}>
+              {t(`products.sections.${section}`)}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {nudgeFilter === "unused" && (
         <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
@@ -505,6 +540,23 @@ function ProductsPage() {
               onChange={(e) => setSku(e.target.value)}
               placeholder="PRD-XXXXXX"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t("products.sections.label", { defaultValue: "Sekcja" })}</Label>
+            <Select value={productSection} onValueChange={(v) => setProductSection(v as ProductSection | "")}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("products.sections.placeholder", { defaultValue: "Wybierz sekcję" })} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">{t("products.sections.none", { defaultValue: "Bez sekcji" })}</SelectItem>
+                {PRODUCT_SECTIONS.map((section) => (
+                  <SelectItem key={section} value={section}>
+                    {t(`products.sections.${section}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid gap-4 grid-cols-2">

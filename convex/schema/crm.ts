@@ -312,6 +312,8 @@ export function createCrmTables({
     // history but no balance is maintained.
     trackStock: v.optional(v.boolean()),
     stockUnit: v.optional(v.string()),
+    // Organisational section (#2049): "sale" | "treatment" | "disposable"
+    productSection: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

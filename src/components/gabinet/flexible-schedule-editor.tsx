@@ -609,7 +609,8 @@ export function FlexibleScheduleEditor({
               </div>
             </div>
 
-            <div className="rounded-lg border">
+            <div className="overflow-x-auto">
+            <div className="rounded-lg border min-w-[600px]">
               <div className="grid grid-cols-[180px_50px_1fr_1fr_2fr_1fr] gap-2 border-b bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground">
                 <span>{t("gabinet.scheduling.day")}</span>
                 <span>{t("gabinet.scheduling.open")}</span>
@@ -740,6 +741,7 @@ export function FlexibleScheduleEditor({
                   </div>
                 );
               })}
+            </div>
             </div>
 
             {periodFrom && periodTo && (

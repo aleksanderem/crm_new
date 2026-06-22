@@ -254,3 +254,37 @@ export function renderDocument(
 
   return doc.body.innerHTML;
 }
+
+/**
+ * Prepare document HTML for inline interactive form rendering.
+ *
+ * Resolves variables and employee-filled fields (same as renderDocument), then
+ * replaces each client-filled form-field placeholder span with an empty marker
+ * element that InlineDocumentForm targets via React portals. This keeps the
+ * checkboxes positioned exactly where they were placed in the editor rather
+ * than pulling them out into a separate "Formularz" card.
+ */
+export function prepareDocumentForInlineForm(
+  contentJson: string,
+  scopeData: Record<string, string>,
+  employeeFieldValues: Record<string, string>,
+): string {
+  // Resolve variables + employee fields; client field spans survive intact
+  const html = renderDocument(contentJson, scopeData, employeeFieldValues);
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+
+  // Replace surviving client-filled field spans with portal marker elements
+  doc.querySelectorAll("[data-form-field][data-filled-by='client']").forEach(
+    (el) => {
+      const fieldId = el.getAttribute("data-form-field");
+      if (!fieldId) return;
+      const marker = doc.createElement("span");
+      marker.id = `ff_portal_${CSS.escape(fieldId)}`;
+      el.replaceWith(marker);
+    },
+  );
+
+  return doc.body.innerHTML;
+}

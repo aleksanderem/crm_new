@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SignaturePad } from "@/components/documents/signature-pad";
-import { DocumentFormFiller } from "@/components/documents/document-form-filler";
+import { InlineDocumentForm } from "@/components/documents/inline-document-form";
 import {
   extractFormFields,
   renderDocument,
@@ -19,7 +19,6 @@ import {
   ShieldCheck,
   AlertTriangle,
   Loader2,
-  ClipboardList,
 } from "@/lib/ez-icons";
 
 // ---------------------------------------------------------------------------
@@ -414,6 +413,23 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Client form field values managed on this page (checkboxes, text inputs, etc.)
+  const [formValues, setFormValues] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    for (const field of formFields) {
+      const existing = existingFormFieldValues[field.fieldId];
+      init[field.fieldId] =
+        existing ?? (field.fieldType === "checkbox" ? "false" : "");
+    }
+    return init;
+  });
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const handleValueChange = useCallback((fieldId: string, value: string) => {
+    setFormValues((prev) => ({ ...prev, [fieldId]: value }));
+    setValidationError(null);
+  }, []);
+
   // Document preview rendered from the template + scope + any employee-filled
   // values. Used as the displayed HTML when the form has no client fields and
   // as the in-context preview shown above the form during the fill step so the
@@ -465,6 +481,36 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
     [template.contentJson, prefilledData, existingFormFieldValues, submitFormFields, token],
   );
 
+  const handleSubmitFormValues = useCallback(async () => {
+    // Validate required client fields before proceeding to signature step.
+    // Checkboxes require value === "true"; other field types require non-empty.
+    for (const field of formFields) {
+      if (!field.required) continue;
+      const val = formValues[field.fieldId];
+      if (field.fieldType === "checkbox") {
+        if (val !== "true") {
+          setValidationError(
+            t(
+              "documents.signing.requiredConsents",
+              "Zaznacz wszystkie wymagane zgody przed podpisaniem dokumentu.",
+            ),
+          );
+          return;
+        }
+      } else if (!val?.trim()) {
+        setValidationError(
+          t(
+            "documents.signing.requiredFields",
+            "Uzupełnij wszystkie wymagane pola przed podpisaniem dokumentu.",
+          ),
+        );
+        return;
+      }
+    }
+    setValidationError(null);
+    await handleFormComplete(formValues);
+  }, [formFields, formValues, handleFormComplete, t]);
+
   if (step === "done") return <SuccessState />;
 
   const signingMethod = template.signatureConfig?.method ?? "click";
@@ -495,51 +541,46 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
         </CardHeader>
       </Card>
 
-      {/* Step 1: Form fill (only for draft documents with form fields) */}
+      {/* Step 1: Form fill — checkboxes and inputs rendered inline within the
+          document, exactly where they were placed in the editor. */}
       {step === "fill" && (
         <>
-          {previewHtml && (
-            <Card>
-              <CardContent className="pt-6">
-                <div
-                  className="prose prose-sm max-w-none rounded-lg border bg-white p-6 text-gray-900 [&_*]:!text-gray-900 [&_a]:!text-blue-700 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-300 [&_td]:p-2 [&_th]:border [&_th]:border-gray-300 [&_th]:bg-gray-100 [&_th]:p-2"
-                  dangerouslySetInnerHTML={{ __html: previewHtml }}
-                />
-              </CardContent>
-            </Card>
-          )}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <ClipboardList className="h-5 w-5" />
-                {t("documents.signing.formTitle", "Formularz")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {submitting && (
-                <div className="flex items-center justify-center gap-2 py-8">
-                  <Loader2 className="h-5 w-5 animate-spin" />
+            <CardContent className="pt-6">
+              <div className="rounded-lg border bg-white p-6">
+                <InlineDocumentForm
+                  contentJson={template.contentJson!}
+                  scopeData={prefilledData}
+                  existingFieldValues={existingFormFieldValues}
+                  formFields={formFields}
+                  values={formValues}
+                  onValueChange={handleValueChange}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="py-4 space-y-3">
+              {validationError && (
+                <p className="text-sm text-destructive">{validationError}</p>
+              )}
+              {submitting ? (
+                <div className="flex items-center gap-2 py-2">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">
                     {t("common.saving", "Zapisywanie...")}
                   </span>
                 </div>
+              ) : (
+                <Button
+                  onClick={() => void handleSubmitFormValues()}
+                  className="w-full"
+                >
+                  {t("documents.signing.signButton", "Podpisz dokument")}
+                </Button>
               )}
-              {!submitting && (
-                <DocumentFormFiller
-                  formFields={formFields}
-                  filledByFilter="client"
-                  hideTopAction
-                  submitLabel={t(
-                    "documents.signing.signButton",
-                    "Podpisz dokument",
-                  )}
-                  onComplete={handleFormComplete}
-                  onCancel={() => {
-                    // No cancel action on public page — just a no-op
-                  }}
-                />
-              )}
-              {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+              {error && <p className="text-sm text-destructive">{error}</p>}
             </CardContent>
           </Card>
         </>

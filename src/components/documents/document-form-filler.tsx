@@ -67,9 +67,14 @@ export function DocumentFormFiller({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Validate required visible fields
+    // Validate required visible fields. Checkboxes require an explicit "true"
+    // value — checking !value.trim() would wrongly pass for "false" (unchecked).
     for (const field of visibleFields) {
-      if (field.required && !values[field.fieldId]?.trim()) {
+      if (!field.required) continue;
+      const val = values[field.fieldId];
+      if (field.fieldType === "checkbox") {
+        if (val !== "true") return;
+      } else if (!val?.trim()) {
         return;
       }
     }

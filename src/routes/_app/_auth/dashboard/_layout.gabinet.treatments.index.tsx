@@ -263,6 +263,7 @@ function TreatmentsIndex() {
         label: t("gabinet.treatments.name"),
         sortable: true,
         isRowHeader: true,
+        className: "min-w-[200px]",
         render: (item) => (
           <div className="flex items-center gap-2 pl-2 md:pl-0">
             <span
@@ -290,6 +291,7 @@ function TreatmentsIndex() {
         id: "isPackage",
         label: t("gabinet.treatments.type", "Typ"),
         sortable: true,
+        className: "min-w-[120px]",
         render: (item) => {
           const linkedPackageName = item.packageId
             ? packageNameById.get(item.packageId)
@@ -343,6 +345,7 @@ function TreatmentsIndex() {
         id: "category",
         label: t("gabinet.treatments.category"),
         sortable: true,
+        className: "min-w-[140px]",
         render: (item) => getCategoryLabel(item) ?? "—",
         getSortValue: (item) => getCategoryLabel(item) ?? "",
       },
@@ -350,6 +353,7 @@ function TreatmentsIndex() {
         id: "duration",
         label: t("gabinet.treatments.duration"),
         sortable: true,
+        className: "min-w-[100px]",
         render: (item) => `${item.duration} min`,
         getSortValue: (item) => item.duration,
       },
@@ -357,6 +361,7 @@ function TreatmentsIndex() {
         id: "price",
         label: t("gabinet.treatments.price"),
         sortable: true,
+        className: "min-w-[120px]",
         render: (item) => formatCurrency(item.price, item.currency ?? undefined),
         getSortValue: (item) => item.price,
       },

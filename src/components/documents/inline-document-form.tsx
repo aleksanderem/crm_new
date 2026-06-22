@@ -166,6 +166,13 @@ function InlineFieldControl({
   // Checkboxes are excluded — they always show their label inline.
   const showLabel = isStandalone && !!field.label && field.fieldType !== "checkbox";
 
+  // For non-standalone required fields (inline inside a sentence), show a red
+  // asterisk after the control — the label is not shown, so without this the
+  // client has no indication the field is required until validation fires.
+  const inlineRequiredMarker = !isStandalone && field.required && field.fieldType !== "checkbox" ? (
+    <span style={{ color: "#ef4444", marginLeft: "2px" }}>*</span>
+  ) : null;
+
   const labelNode = showLabel ? (
     <span
       style={{
@@ -240,6 +247,7 @@ function InlineFieldControl({
             background: "#fff",
           }}
         />
+        {inlineRequiredMarker}
       </span>
     );
   }
@@ -274,6 +282,7 @@ function InlineFieldControl({
             </option>
           ))}
         </select>
+        {inlineRequiredMarker}
       </span>
     );
   }
@@ -299,6 +308,7 @@ function InlineFieldControl({
           minWidth: "140px",
         }}
       />
+      {inlineRequiredMarker}
     </span>
   );
 }

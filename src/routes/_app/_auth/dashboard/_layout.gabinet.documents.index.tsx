@@ -479,6 +479,7 @@ function GabinetDocumentsPage() {
       {
         id: "title",
         label: t("gabinet.formDocuments.colTitle", "Tytuł"),
+        className: "min-w-[200px]",
         render: (item) => (
           <div className="font-medium">{item.title}</div>
         ),
@@ -486,6 +487,7 @@ function GabinetDocumentsPage() {
       {
         id: "category",
         label: t("gabinet.formDocuments.colCategory", "Kategoria"),
+        className: "min-w-[120px]",
         render: (item) => (
           <Badge variant="secondary" className="text-xs">
             {getCategoryLabel(item.templateId)}
@@ -495,6 +497,7 @@ function GabinetDocumentsPage() {
       {
         id: "entityType",
         label: t("gabinet.formDocuments.colEntityType", "Typ"),
+        className: "min-w-[100px]",
         render: (item) => (
           <span className="text-sm text-muted-foreground">
             {getEntityTypeLabel(item.entityType)}
@@ -504,6 +507,7 @@ function GabinetDocumentsPage() {
       {
         id: "status",
         label: t("gabinet.formDocuments.colStatus", "Status"),
+        className: "min-w-[140px]",
         render: (item) => (
           <DocumentStatusBadge status={item.status as any} />
         ),
@@ -511,6 +515,7 @@ function GabinetDocumentsPage() {
       {
         id: "createdAt",
         label: t("gabinet.formDocuments.colCreatedAt", "Data utworzenia"),
+        className: "min-w-[130px]",
         render: (item) => (
           <span className="text-sm text-muted-foreground">
             {formatDate(item.createdAt)}
@@ -520,6 +525,7 @@ function GabinetDocumentsPage() {
       {
         id: "createdBy",
         label: t("gabinet.formDocuments.colCreatedBy", "Utworzony przez"),
+        className: "min-w-[130px]",
         render: (item) => (
           <span className="text-sm text-muted-foreground">
             {getUserName(item.createdBy)}

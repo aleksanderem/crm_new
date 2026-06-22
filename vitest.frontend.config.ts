@@ -15,6 +15,6 @@ export default defineConfig({
   },
   test: {
     root: __dirname,
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
   },
 });

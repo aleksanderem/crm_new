@@ -117,7 +117,7 @@
     "contacts": "Contacts",
     "companies": "Companies",
     "insights": "Insights",
-    "products": "Products",
+    "products": "Products / Warehouse",
     "calls": "Calls",
     "gabinet": {
       "_": "Cabinet",
@@ -270,7 +270,7 @@
     "templates": "Templates",
     "usagesThisMonth": "Uses/month",
     "topTemplate": "Top Template",
-    "products": "Products",
+    "products": "Products / Warehouse",
     "inDeals": "In Deals",
     "topSeller": "Top Seller",
     "newThisMonth": "New/month",
@@ -855,7 +855,7 @@
     }
   },
   "products": {
-    "title": "Products",
+    "title": "Products / Warehouse",
     "description": "Manage your product catalog.",
     "addProduct": "Add Product",
     "newProduct": "New Product",

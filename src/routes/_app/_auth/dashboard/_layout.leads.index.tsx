@@ -539,7 +539,7 @@ function LeadsIndex() {
         title={t("deals.title")}
         description={t("deals.description")}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {pipelines && pipelines.length > 0 && (
               <Select
                 value={activePipeline?._id ?? ""}

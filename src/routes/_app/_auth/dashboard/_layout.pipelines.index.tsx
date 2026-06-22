@@ -118,7 +118,7 @@ function PipelinesIndex() {
         title={t('pipelines.title')}
         description={t('pipelines.description')}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {pipelines && pipelines.length > 1 && (
               <div className="flex gap-1">
                 {pipelines.map((p) => (

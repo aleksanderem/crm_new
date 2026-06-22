@@ -117,7 +117,7 @@
     "contacts": "Kontakty",
     "companies": "Firmy",
     "insights": "Statystyki",
-    "products": "Produkty",
+    "products": "Produkty / Magazyn",
     "calls": "Połączenia",
     "gabinet": {
       "_": "Gabinet",
@@ -270,7 +270,7 @@
     "templates": "Szablony",
     "usagesThisMonth": "Użycia/mies.",
     "topTemplate": "Najczęstszy",
-    "products": "Produkty",
+    "products": "Produkty / Magazyn",
     "inDeals": "W dealach",
     "topSeller": "Top",
     "newThisMonth": "Nowe w mies.",
@@ -856,7 +856,7 @@
     }
   },
   "products": {
-    "title": "Produkty",
+    "title": "Produkty / Magazyn",
     "description": "Zarządzaj katalogiem produktów.",
     "addProduct": "Dodaj produkt",
     "newProduct": "Nowy produkt",

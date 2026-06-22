@@ -1505,8 +1505,8 @@ function AppointmentDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 px-6 py-4">
-              <div className="grid grid-cols-[1fr_auto_auto] items-end gap-2">
-                <div className="space-y-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-[1fr_auto_auto] items-end gap-2">
+                <div className="col-span-2 sm:col-span-1 space-y-1.5">
                   <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                     {t("common.date")}
                   </Label>
@@ -1795,7 +1795,7 @@ function AppointmentDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="px-6 py-4">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="text-center p-4 bg-muted/50 rounded-lg">
                   <p className="text-sm text-muted-foreground">
                     {t("gabinet.payments.treatmentPrice")}
@@ -1845,7 +1845,7 @@ function AppointmentDetail() {
 
           {/* Payments Table */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between px-6 py-3 border-b">
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 px-6 py-3 border-b">
               <div>
                 <CardTitle className="text-sm flex items-center gap-2">
                   <CreditCard className="h-4 w-4" variant="stroke" />

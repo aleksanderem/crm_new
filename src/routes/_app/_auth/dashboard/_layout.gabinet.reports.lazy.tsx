@@ -184,8 +184,8 @@ function RevenueSummaryCard({
         </div>
         <CardMenu />
       </CardHeader>
-      <CardContent className="grid grid-cols-3 gap-4 pt-4">
-        <div className="flex flex-col gap-1 border-r pr-4 last:border-r-0">
+      <CardContent className="grid grid-cols-1 gap-4 pt-4 sm:grid-cols-3">
+        <div className="flex flex-col gap-1 sm:border-r sm:pr-4">
           <span className="text-muted-foreground text-sm">
             {t("gabinet.reports.today")}
           </span>
@@ -193,7 +193,7 @@ function RevenueSummaryCard({
             {formatCurrencyPLN(dailyRevenue, currency, { fractionDigits: 0 })}
           </span>
         </div>
-        <div className="flex flex-col gap-1 border-r pr-4 last:border-r-0">
+        <div className="flex flex-col gap-1 sm:border-r sm:pr-4">
           <span className="text-muted-foreground text-sm">
             {t("gabinet.reports.thisWeek")}
           </span>

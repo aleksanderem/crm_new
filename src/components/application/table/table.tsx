@@ -255,14 +255,18 @@ const TableRow = <T extends object>({ columns, children, className, highlightSel
         >
             {selectionBehavior === "toggle" && (
                 <AriaCell
-                    // Stop pointer/click events from bubbling to the row so React Aria's
-                    // row onAction (navigation) never fires from a click inside the
-                    // checkbox cell — even when the click lands in the empty area around
-                    // the visible checkbox. The Checkbox label still receives the click
-                    // first because it's a child of this cell (issue #1882).
+                    // Stop pointer/click/touch events from bubbling to the row so React
+                    // Aria's row onAction (navigation) never fires from a tap inside the
+                    // checkbox cell. Handlers are on both the cell <td> AND the Checkbox
+                    // <label> because on iOS, position:relative on <td> does not always
+                    // create a CSS containing block — the label (absolute inset-0) can
+                    // extend outside the <td> and events from that region bubble directly
+                    // to <tr>, bypassing this cell's handlers (issue #1999).
                     onPointerDown={(e) => e.stopPropagation()}
                     onPointerUp={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onTouchEnd={(e) => e.stopPropagation()}
                     className={cx(
                         "relative py-2 pr-0 pl-2",
                         // Right separator via ::before so we don't clash with the parent's
@@ -283,6 +287,10 @@ const TableRow = <T extends object>({ columns, children, className, highlightSel
                             "absolute inset-0 !flex !items-center cursor-pointer pl-2",
                             size === "sm" ? "md:pl-3" : "md:pl-4",
                         )}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onPointerUp={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onTouchEnd={(e) => e.stopPropagation()}
                     />
                 </AriaCell>
             )}

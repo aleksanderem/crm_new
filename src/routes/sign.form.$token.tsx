@@ -36,9 +36,8 @@ export const Route = createFileRoute("/sign/form/$token")({
 function FormSigningPage() {
   const { t } = useTranslation();
   const { token } = Route.useParams();
-  const getBySigningToken = useAction(
-    api.documents.documents.getBySigningToken,
-  );
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action
+  const getBySigningToken = useAction(api.documents.documents.getBySigningToken);
   const { data, isLoading } = useQuery({
     queryKey: ["documents.documents.getBySigningToken", token],
     queryFn: () => getBySigningToken({ token }),

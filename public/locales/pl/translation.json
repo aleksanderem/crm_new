@@ -878,6 +878,15 @@
       "all": "Wszystkie produkty",
       "active": "Aktywne produkty"
     },
+    "sections": {
+      "all": "Wszystkie",
+      "sale": "Produkty do sprzedaży",
+      "treatment": "Preparaty zabiegowe",
+      "disposable": "Materiały jednorazowe",
+      "label": "Sekcja",
+      "placeholder": "Wybierz sekcję",
+      "none": "Bez sekcji"
+    },
     "form": {
       "name": "Nazwa produktu",
       "namePlaceholder": "Wpisz nazwę produktu",

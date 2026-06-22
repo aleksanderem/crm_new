@@ -877,6 +877,15 @@
       "all": "All Products",
       "active": "Active Products"
     },
+    "sections": {
+      "all": "All",
+      "sale": "For Sale",
+      "treatment": "Treatment Preparations",
+      "disposable": "Disposable Materials",
+      "label": "Section",
+      "placeholder": "Select section",
+      "none": "No section"
+    },
     "form": {
       "name": "Product Name",
       "namePlaceholder": "Enter product name",

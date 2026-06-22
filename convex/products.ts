@@ -78,6 +78,7 @@ export const create = action({
     trackStock: v.optional(v.union(v.boolean(), v.null())),
     stockUnit: v.optional(v.union(v.string(), v.null())),
     initialStock: v.optional(v.union(v.number(), v.null())),
+    productSection: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runQuery(
@@ -107,6 +108,7 @@ export const create = action({
       categoryId: args.categoryId ?? null,
       trackStock,
       stockUnit: args.stockUnit ?? null,
+      productSection: args.productSection ?? null,
       createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
@@ -179,6 +181,7 @@ export const update = action({
     categoryId: v.optional(v.union(v.string(), v.null())),
     trackStock: v.optional(v.union(v.boolean(), v.null())),
     stockUnit: v.optional(v.union(v.string(), v.null())),
+    productSection: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runQuery(

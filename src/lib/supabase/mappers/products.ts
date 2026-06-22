@@ -20,6 +20,7 @@ export interface MappedProduct {
   categoryId?: string;
   trackStock?: boolean;
   stockUnit?: string;
+  productSection?: string;
   createdBy: string;
   createdAt: number;
   updatedAt: number;

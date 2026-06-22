@@ -1349,6 +1349,7 @@ export interface Database {
           tax_exempt: boolean | null;
           track_stock: boolean | null;
           stock_unit: string | null;
+          product_section: string | null;
         };
         Insert: {
           id?: string;
@@ -1367,6 +1368,7 @@ export interface Database {
           tax_exempt?: boolean | null;
           track_stock?: boolean | null;
           stock_unit?: string | null;
+          product_section?: string | null;
         };
         Update: {
           id?: string;
@@ -1385,6 +1387,7 @@ export interface Database {
           tax_exempt?: boolean | null;
           track_stock?: boolean | null;
           stock_unit?: string | null;
+          product_section?: string | null;
         };
       };
       deal_products: {

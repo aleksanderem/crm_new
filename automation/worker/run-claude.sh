@@ -213,7 +213,7 @@ fi
 COMMENT_FILE=$(mktemp)
 FINAL_LABEL=""
 
-if [ "$COMMITS_AHEAD" -gt 0 ]; then
+if [ "$CLAUDE_EXIT" -eq 0 ] && [ "$COMMITS_AHEAD" -gt 0 ]; then
   echo "pushing branch $BRANCH"
   git push --set-upstream origin "$BRANCH" 2>&1 | tail -3
 

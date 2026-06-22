@@ -232,78 +232,80 @@ export function CrmDataTable<TData>({
       )}
 
       {paged.length > 0 ? (
-        <Table
-          aria-label="Data table"
-          selectionMode={enableBulkSelect ? "multiple" : undefined}
-          sortDescriptor={sort}
-          onSortChange={handleSortChange}
-          selectedKeys={enableBulkSelect ? selectedKeys : undefined}
-          onSelectionChange={enableBulkSelect ? setSelectedKeys : undefined}
-          onRowAction={tableRowAction}
-        >
-          <Table.Header>
-            {visibleColumns.map((col) => (
-              <Table.Head
-                key={col.id}
-                id={col.id}
-                label={col.label}
-                allowsSorting={col.sortable}
-                isRowHeader={col.isRowHeader}
-                className={col.className}
-              />
-            ))}
-            {hasActions && <Table.Head id="actions" />}
-          </Table.Header>
-          <Table.Body>
-            {paged.map((item, index) => {
-              const rowId = getRowId(item, (page - 1) * pageSize + index);
-              return (
-                <Table.Row
-                  key={rowId}
-                  id={rowId}
-                  className={onRowAction ? "cursor-pointer" : undefined}
-                >
-                  {visibleColumns.map((col) => (
-                    <Table.Cell key={col.id} className={col.className}>
-                      {col.render(item)}
-                    </Table.Cell>
-                  ))}
-                  {hasActions && (
-                    <Table.Cell className="px-4">
-                      <div className="flex justify-end">
-                        <Dropdown.Root>
-                          <Button
-                            size="sm"
-                            color="tertiary"
-                            iconLeading={<Menu01 className="size-5" />}
-                            onClick={(e: ReactMouseEvent<HTMLButtonElement>) => {
-                              e.stopPropagation();
-                            }}
-                            onPointerDown={(e: ReactPointerEvent<HTMLButtonElement>) => {
-                              // Prevent React Aria from starting selection on pointer down
-                              e.stopPropagation();
-                            }}
-                          />
-                          <Dropdown.Popover className="w-min">
-                            <Dropdown.Menu>
-                              {rowActions!(item).map((a) => (
-                                <Dropdown.Item
-                                  key={a.label}
-                                  label={a.label}
-                                  onAction={() => a.onClick(item)}
-                                />
-                              ))}
-                            </Dropdown.Menu>
-                          </Dropdown.Popover>
-                        </Dropdown.Root>
-                      </div>
-                    </Table.Cell>
-                  )}
-                </Table.Row>
-              );
-            })}
-          </Table.Body>
-        </Table>
+        <div className="overflow-x-auto">
+          <Table
+            aria-label="Data table"
+            selectionMode={enableBulkSelect ? "multiple" : undefined}
+            sortDescriptor={sort}
+            onSortChange={handleSortChange}
+            selectedKeys={enableBulkSelect ? selectedKeys : undefined}
+            onSelectionChange={enableBulkSelect ? setSelectedKeys : undefined}
+            onRowAction={tableRowAction}
+          >
+            <Table.Header>
+              {visibleColumns.map((col) => (
+                <Table.Head
+                  key={col.id}
+                  id={col.id}
+                  label={col.label}
+                  allowsSorting={col.sortable}
+                  isRowHeader={col.isRowHeader}
+                  className={col.className}
+                />
+              ))}
+              {hasActions && <Table.Head id="actions" />}
+            </Table.Header>
+            <Table.Body>
+              {paged.map((item, index) => {
+                const rowId = getRowId(item, (page - 1) * pageSize + index);
+                return (
+                  <Table.Row
+                    key={rowId}
+                    id={rowId}
+                    className={onRowAction ? "cursor-pointer" : undefined}
+                  >
+                    {visibleColumns.map((col) => (
+                      <Table.Cell key={col.id} className={col.className}>
+                        {col.render(item)}
+                      </Table.Cell>
+                    ))}
+                    {hasActions && (
+                      <Table.Cell className="px-4">
+                        <div className="flex justify-end">
+                          <Dropdown.Root>
+                            <Button
+                              size="sm"
+                              color="tertiary"
+                              iconLeading={<Menu01 className="size-5" />}
+                              onClick={(e: ReactMouseEvent<HTMLButtonElement>) => {
+                                e.stopPropagation();
+                              }}
+                              onPointerDown={(e: ReactPointerEvent<HTMLButtonElement>) => {
+                                // Prevent React Aria from starting selection on pointer down
+                                e.stopPropagation();
+                              }}
+                            />
+                            <Dropdown.Popover className="w-min">
+                              <Dropdown.Menu>
+                                {rowActions!(item).map((a) => (
+                                  <Dropdown.Item
+                                    key={a.label}
+                                    label={a.label}
+                                    onAction={() => a.onClick(item)}
+                                  />
+                                ))}
+                              </Dropdown.Menu>
+                            </Dropdown.Popover>
+                          </Dropdown.Root>
+                        </div>
+                      </Table.Cell>
+                    )}
+                  </Table.Row>
+                );
+              })}
+            </Table.Body>
+          </Table>
+        </div>
       ) : (
         <div className="flex items-center justify-center px-8 py-20">
           <EmptyState size="sm">

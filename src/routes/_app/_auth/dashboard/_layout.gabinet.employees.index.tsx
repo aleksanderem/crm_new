@@ -178,6 +178,7 @@ function EmployeesIndex() {
       label: t("gabinet.employees.employee"),
       sortable: true,
       isRowHeader: true,
+      className: "min-w-[200px]",
       render: (item) => {
         const displayName = getDisplayName(item);
         const initials = getInitials(item);
@@ -210,11 +211,13 @@ function EmployeesIndex() {
     {
       id: "role",
       label: t("gabinet.employees.role"),
+      className: "min-w-[120px]",
       render: (item) => item.role ? t(`gabinet.employees.roles.${item.role}`) : "\u2014",
     },
     {
       id: "specialization",
       label: t("gabinet.employees.specialization"),
+      className: "min-w-[140px]",
       render: (item) => item.specialization ?? "\u2014",
     },
     {

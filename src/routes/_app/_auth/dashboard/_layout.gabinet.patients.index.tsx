@@ -297,6 +297,7 @@ function PatientsIndex() {
         label: t("gabinet.patients.contact"),
         sortable: true,
         isRowHeader: true,
+        className: "min-w-[220px]",
         render: (item) => (
           <div className="flex items-center gap-3">
             <Link
@@ -325,6 +326,7 @@ function PatientsIndex() {
         id: "email",
         label: t("common.email"),
         sortable: true,
+        className: "min-w-[160px]",
         render: (item) => item.email ?? "—",
         getSortValue: (item) => item.email ?? "",
       },
@@ -332,6 +334,7 @@ function PatientsIndex() {
         id: "phone",
         label: t("common.phone"),
         sortable: true,
+        className: "min-w-[140px]",
         render: (item) =>
           item.phone ? (
             <span className="whitespace-nowrap">{formatPhoneNumber(item.phone)}</span>

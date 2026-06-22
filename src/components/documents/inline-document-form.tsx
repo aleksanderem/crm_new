@@ -24,6 +24,33 @@ interface InlineDocumentFormProps {
 interface PortalTarget {
   element: Element;
   field: ExtractedFormField;
+  isStandalone: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Standalone detection — mirrors the isFieldStandalone check in
+// document-renderer.tsx but operates on portal marker spans rather than
+// original form-field spans. A marker is "standalone" when its parent block
+// has no other meaningful text content, meaning the field label IS the
+// question (not just a blank inside a sentence).
+// ---------------------------------------------------------------------------
+
+function isMarkerStandalone(el: Element): boolean {
+  const parent = el.parentElement;
+  if (!parent) return false;
+  for (const node of Array.from(parent.childNodes)) {
+    if (node === el) continue;
+    if (node.nodeType === Node.TEXT_NODE) {
+      if ((node.textContent ?? "").trim()) return false;
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      const sibling = node as Element;
+      // Other portal markers on the same line are acceptable siblings
+      if (sibling.id?.startsWith("ff_portal_")) continue;
+      if (sibling.tagName === "BR") continue;
+      if ((sibling.textContent ?? "").trim()) return false;
+    }
+  }
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -82,7 +109,13 @@ export function InlineDocumentForm({
       const el = containerRef.current.querySelector(
         `#ff_portal_${escapedId}`,
       );
-      if (el) targets.push({ element: el, field });
+      if (el) {
+        targets.push({
+          element: el,
+          field,
+          isStandalone: isMarkerStandalone(el),
+        });
+      }
     }
     setPortals(targets);
   }, [markedHtml, formFields]);
@@ -94,7 +127,7 @@ export function InlineDocumentForm({
         className="prose prose-sm max-w-none text-gray-900 [&_*]:text-gray-900 [&_a]:!text-blue-700 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-300 [&_td]:p-2 [&_th]:border [&_th]:border-gray-300 [&_th]:bg-gray-100 [&_th]:p-2"
         dangerouslySetInnerHTML={{ __html: markedHtml }}
       />
-      {portals.map(({ element, field }) =>
+      {portals.map(({ element, field, isStandalone }) =>
         createPortal(
           <InlineFieldControl
             key={field.fieldId}
@@ -104,6 +137,7 @@ export function InlineDocumentForm({
               (field.fieldType === "checkbox" ? "false" : "")
             }
             onChange={(v) => onValueChange(field.fieldId, v)}
+            isStandalone={isStandalone}
           />,
           element,
         ),
@@ -120,11 +154,35 @@ function InlineFieldControl({
   field,
   value,
   onChange,
+  isStandalone,
 }: {
   field: ExtractedFormField;
   value: string;
   onChange: (value: string) => void;
+  isStandalone?: boolean;
 }) {
+  // Show the field label as a visible question prompt for standalone fields
+  // where the label IS the question (not just a blank inside a sentence).
+  // Checkboxes are excluded — they always show their label inline.
+  const showLabel = isStandalone && !!field.label && field.fieldType !== "checkbox";
+
+  const labelNode = showLabel ? (
+    <span
+      style={{
+        display: "block",
+        fontSize: "14px",
+        fontWeight: "500",
+        color: "#111827",
+        marginBottom: "4px",
+      }}
+    >
+      {field.label}
+      {field.required && (
+        <span style={{ color: "#ef4444", marginLeft: "4px" }}>*</span>
+      )}
+    </span>
+  ) : null;
+
   if (field.fieldType === "checkbox") {
     return (
       <label
@@ -163,23 +221,26 @@ function InlineFieldControl({
 
   if (field.fieldType === "textarea") {
     return (
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={field.placeholder || field.label}
-        required={field.required}
-        rows={3}
-        style={{
-          display: "block",
-          width: "100%",
-          border: "1px solid #d1d5db",
-          borderRadius: "4px",
-          padding: "6px 10px",
-          fontSize: "14px",
-          color: "#111827",
-          background: "#fff",
-        }}
-      />
+      <span style={{ display: "block", width: "100%" }}>
+        {labelNode}
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder || (showLabel ? "" : field.label)}
+          required={field.required}
+          rows={3}
+          style={{
+            display: "block",
+            width: "100%",
+            border: "1px solid #d1d5db",
+            borderRadius: "4px",
+            padding: "6px 10px",
+            fontSize: "14px",
+            color: "#111827",
+            background: "#fff",
+          }}
+        />
+      </span>
     );
   }
 
@@ -189,9 +250,43 @@ function InlineFieldControl({
       .map((o) => o.trim())
       .filter(Boolean);
     return (
-      <select
+      <span style={{ display: showLabel ? "block" : "inline-block" }}>
+        {labelNode}
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={field.required}
+          style={{
+            display: "inline-block",
+            border: "1px solid #d1d5db",
+            borderRadius: "4px",
+            padding: "4px 8px",
+            fontSize: "14px",
+            color: "#111827",
+            background: "#fff",
+            minWidth: "140px",
+          }}
+        >
+          <option value="">{field.placeholder || "Wybierz..."}</option>
+          {opts.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+      </span>
+    );
+  }
+
+  // text / date / default
+  return (
+    <span style={{ display: showLabel ? "block" : "inline-block" }}>
+      {labelNode}
+      <input
+        type={field.fieldType === "date" ? "date" : "text"}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        placeholder={field.placeholder || (showLabel ? "" : field.label)}
         required={field.required}
         style={{
           display: "inline-block",
@@ -203,35 +298,7 @@ function InlineFieldControl({
           background: "#fff",
           minWidth: "140px",
         }}
-      >
-        <option value="">{field.placeholder || "Wybierz..."}</option>
-        {opts.map((opt) => (
-          <option key={opt} value={opt}>
-            {opt}
-          </option>
-        ))}
-      </select>
-    );
-  }
-
-  // text / date / default
-  return (
-    <input
-      type={field.fieldType === "date" ? "date" : "text"}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={field.placeholder || field.label}
-      required={field.required}
-      style={{
-        display: "inline-block",
-        border: "1px solid #d1d5db",
-        borderRadius: "4px",
-        padding: "4px 8px",
-        fontSize: "14px",
-        color: "#111827",
-        background: "#fff",
-        minWidth: "140px",
-      }}
-    />
+      />
+    </span>
   );
 }

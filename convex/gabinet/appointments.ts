@@ -2472,14 +2472,14 @@ async function handleAppointmentCompletion(
   // paid for at purchase, so the visit clears the calendar's unpaid
   // indicator without manual settling — #1524). Otherwise insert the
   // pending cash row staff settle later.
-  if (treatment && (treatment.price ?? 0) > 0) {
+  if (treatment && effectivePrice > 0) {
     const isPackageCovered = !!args.packageUsageId;
     await supabaseDb.insert("payments", {
       organizationId: organizationIdStr,
       patientId: patientIdStr,
       appointmentId: String(args.appointmentId),
       packageUsageId: isPackageCovered ? String(args.packageUsageId) : null,
-      amount: treatment.price as number,
+      amount: effectivePrice,
       currency: "PLN",
       paymentMethod: isPackageCovered ? "package" : "cash",
       status: isPackageCovered ? "completed" : "pending",

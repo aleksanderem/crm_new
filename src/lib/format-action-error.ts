@@ -62,14 +62,25 @@ export function extractFieldValidationDetail(
     };
   }
 
-  // Postgres: column "X" of relation "..." does not exist (also raw column
-  // missing — PGRST204 is caught separately by the schemaCache matcher).
+  // Postgres: column "X" of relation "..." does not exist (double-quoted form,
+  // e.g. raw Postgres 42703 errors).
   const missingCol = msg.match(/column "([^"]+)" (?:of relation [^ ]+ )?does not exist/i);
   if (missingCol) {
     return {
       rawField: missingCol[1],
       fieldLabel: humanFieldLabel(missingCol[1]),
       reason: "kolumna nie istnieje w bazie",
+    };
+  }
+
+  // PostgREST PGRST204 schema-cache miss: "Column 'X' of table 'T' does not exist"
+  // or "Could not find column 'X' in the schema cache" — single-quoted column name.
+  const missingColPgrst = msg.match(/(?:column|find(?:\s+column)?)\s+'([^']+)'(?:\s+of\s+(?:table|relation)\s+'[^']*')?\s+(?:does not exist|in the schema cache)/i);
+  if (missingColPgrst) {
+    return {
+      rawField: missingColPgrst[1],
+      fieldLabel: humanFieldLabel(missingColPgrst[1]),
+      reason: "kolumna nie istnieje w bazie (schema cache)",
     };
   }
 
@@ -367,7 +378,10 @@ const TREATMENT_ERROR_MAP: Array<{
     fallback: "Brak uprawnień do tej operacji na zabiegu.",
   },
   {
-    test: (m) => /pgrst204|schema cache/i.test(m),
+    // PostgREST PGRST204 (schema cache not refreshed after migration) and raw
+    // Postgres 42703 (column doesn't exist in DB at all). Both are migration
+    // problems. The schemaCache message is shown first with specific guidance.
+    test: (m) => /pgrst204|schema cache|does not exist in the schema|could not find.*column/i.test(m),
     key: "gabinet.treatments.errors.schemaCache",
     fallback:
       "Brak kolumny w schemacie bazy — najpewniej nie zastosowano migracji. Uruchom `npm run migrations:apply` i odśwież stronę.",

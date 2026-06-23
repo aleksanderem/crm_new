@@ -136,15 +136,19 @@ export const create = action({
       const db = createSupabaseDb();
 
       // --- INSERT treatment directly to Supabase ---
-      const treatmentId = await db.insert("gabinetTreatments", {
+      // Only include taxExempt when true — omitting it avoids a "column does
+      // not exist" failure on environments where migration 00005 hasn't been
+      // applied yet (null and false are semantically equivalent: not exempt).
+      // Only include packageId when non-null — same reasoning for migration
+      // 00010.
+      const insertRow: Record<string, unknown> = {
         organizationId: String(args.organizationId),
         name: args.name,
         description: args.description ?? null,
         duration: args.duration,
         price: args.price,
         currency: args.currency ?? null,
-        taxRate: args.taxExempt ? null : args.taxRate ?? null,
-        taxExempt: args.taxExempt ?? null,
+        taxRate: args.taxExempt === true ? null : args.taxRate ?? null,
         requiredEquipment: args.requiredEquipment ?? null,
         requiredEquipmentIds: args.requiredEquipmentIds ?? null,
         contraindications: args.contraindications ?? null,
@@ -155,14 +159,17 @@ export const create = action({
         color: args.color ?? null,
         sortOrder: args.sortOrder ?? null,
         treatmentCount: args.treatmentCount ?? null,
-        packageId: args.packageId ?? null,
         requiredFormTemplates: args.requiredFormTemplates ?? null,
         tagIds: args.tagIds ?? null,
         categoryId: args.categoryId ?? null,
         createdBy: String(authResult.userId),
         createdAt: now,
         updatedAt: now,
-      });
+      };
+      if (args.taxExempt === true) insertRow.taxExempt = true;
+      if (args.packageId != null) insertRow.packageId = args.packageId;
+
+      const treatmentId = await db.insert("gabinetTreatments", insertRow);
 
       // --- Delegate post-write side effects ---
       try {

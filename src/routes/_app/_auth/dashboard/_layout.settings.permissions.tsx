@@ -40,6 +40,8 @@ const FEATURES = [
   { key: "gabinet_treatments", labelKey: "permissions.features.gabinet_treatments", label: "Gabinet: Treatments" },
   { key: "gabinet_packages", labelKey: "permissions.features.gabinet_packages", label: "Gabinet: Packages" },
   { key: "gabinet_employees", labelKey: "permissions.features.gabinet_employees", label: "Gabinet: Employees" },
+  { key: "gabinet_payments", labelKey: "permissions.features.gabinet_payments", label: "Gabinet: Payments" },
+  { key: "gabinet_reports", labelKey: "permissions.features.gabinet_reports", label: "Gabinet: Reports" },
   { key: "settings", labelKey: "permissions.features.settings", label: "Settings" },
   { key: "team", labelKey: "permissions.features.team", label: "Team" },
 ] as const;

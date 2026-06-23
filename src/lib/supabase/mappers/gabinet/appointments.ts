@@ -47,6 +47,7 @@ export interface MappedGabinetAppointment {
   categoryId?: string;
   requiresCompletion?: boolean;
   priceAtBooking?: number;
+  contraindicationAlertsReviewed?: boolean;
   createdBy: string;
   createdAt: number;
   updatedAt: number;

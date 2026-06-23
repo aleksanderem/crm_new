@@ -1458,7 +1458,7 @@ function AppointmentDetail() {
                         {t("gabinet.treatments.contraindications")}
                       </span>
                     </div>
-                    {(appointment as Record<string, unknown>).contraindicationAlertsReviewed ? (
+                    {appointment.contraindicationAlertsReviewed ? (
                       <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                         <CheckCircle className="h-3.5 w-3.5" variant="stroke" />
                         <span>{t("gabinet.appointmentDetail.contraindicationDiscussed", "Omówiono")}</span>

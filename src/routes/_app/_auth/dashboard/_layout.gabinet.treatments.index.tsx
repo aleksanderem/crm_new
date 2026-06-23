@@ -535,33 +535,33 @@ function TreatmentsIndex() {
               icon: <Pencil className="h-4 w-4" variant="stroke" />,
               onClick: () => openEditPanel(row),
             },
+            {
+              label: row.isActive ? t("common.inactive") : t("common.active"),
+              icon: <Power className="h-4 w-4" variant="stroke" />,
+              onClick: async () => {
+                // Soft toggle by removing (deactivate) or updating
+                if (row.isActive) {
+                  await removeTreatment({ organizationId, treatmentId: row._id as Id<"gabinetTreatments"> });
+                } else {
+                  await updateTreatment({
+                    organizationId,
+                    treatmentId: row._id as Id<"gabinetTreatments">,
+                    name: row.name,
+                  });
+                }
+              },
+            },
+            {
+              label: t("common.delete"),
+              icon: <Trash2 className="h-4 w-4" variant="stroke" />,
+              onClick: async () => {
+                if (window.confirm(t("gabinet.treatments.confirmDelete"))) {
+                  await removeTreatment({ organizationId, treatmentId: row._id as Id<"gabinetTreatments"> });
+                }
+              },
+            },
           ]
         : []),
-      {
-        label: row.isActive ? t("common.inactive") : t("common.active"),
-        icon: <Power className="h-4 w-4" variant="stroke" />,
-        onClick: async () => {
-          // Soft toggle by removing (deactivate) or updating
-          if (row.isActive) {
-            await removeTreatment({ organizationId, treatmentId: row._id as Id<"gabinetTreatments"> });
-          } else {
-            await updateTreatment({
-              organizationId,
-              treatmentId: row._id as Id<"gabinetTreatments">,
-              name: row.name,
-            });
-          }
-        },
-      },
-      {
-        label: t("common.delete"),
-        icon: <Trash2 className="h-4 w-4" variant="stroke" />,
-        onClick: async () => {
-          if (window.confirm(t("gabinet.treatments.confirmDelete"))) {
-            await removeTreatment({ organizationId, treatmentId: row._id as Id<"gabinetTreatments"> });
-          }
-        },
-      },
     ],
     [t, removeTreatment, updateTreatment, organizationId, canEdit],
   );

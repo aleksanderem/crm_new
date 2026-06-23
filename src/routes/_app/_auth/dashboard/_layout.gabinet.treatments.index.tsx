@@ -84,6 +84,7 @@ function TreatmentsIndex() {
   const removeTreatment = useAction(api.gabinet.treatments.remove);
 
   const { allowed: canEdit } = usePermission("gabinet_treatments", "edit");
+  const { allowed: canDelete } = usePermission("gabinet_treatments", "delete");
 
   const { tags } = useTagDefinitions(organizationId);
   const { categories } = useCategoryDefinitions(organizationId, "gabinetTreatment");
@@ -551,6 +552,10 @@ function TreatmentsIndex() {
                 }
               },
             },
+          ]
+        : []),
+      ...(canDelete
+        ? [
             {
               label: t("common.delete"),
               icon: <Trash2 className="h-4 w-4" variant="stroke" />,
@@ -563,7 +568,7 @@ function TreatmentsIndex() {
           ]
         : []),
     ],
-    [t, removeTreatment, updateTreatment, organizationId, canEdit],
+    [t, removeTreatment, updateTreatment, organizationId, canEdit, canDelete],
   );
 
   return (

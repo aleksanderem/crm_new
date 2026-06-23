@@ -469,11 +469,11 @@ function StatusDistributionChart({
               </Avatar>
               <div className="flex flex-col gap-0.5">
                 <span className="font-medium capitalize">
-                  {item.status.replace("_", " ")}
+                  {t(`gabinet.reports.statuses.${item.status}`, item.status.replace("_", " "))}
                 </span>
                 <span className="text-muted-foreground text-sm">
                   {total > 0
-                    ? `${Math.round((item.count / total) * 100)}% of total`
+                    ? `${Math.round((item.count / total) * 100)}% ${t("gabinet.reports.ofTotal")}`
                     : "0%"}
                 </span>
               </div>

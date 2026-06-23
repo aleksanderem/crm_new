@@ -3559,7 +3559,8 @@
         "cancelled": "Anulowane",
         "no_show": "Nieobecność"
       },
-      "periodTotal": "Cały okres"
+      "periodTotal": "Cały okres",
+      "ofTotal": "ogółem"
     },
     "bodyChart": {
       "description": "Zaznacz obszary ciała powiązane z wizytą",

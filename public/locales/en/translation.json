@@ -3537,7 +3537,8 @@
         "cancelled": "Cancelled",
         "no_show": "No Show"
       },
-      "periodTotal": "Period total"
+      "periodTotal": "Period total",
+      "ofTotal": "of total"
     },
     "bodyChart": {
       "description": "Mark body areas related to the appointment",

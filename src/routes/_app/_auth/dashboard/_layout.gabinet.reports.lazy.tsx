@@ -488,10 +488,6 @@ function StatusDistributionChart({
 
 /* ─── Daily Volume (bar chart) ─── */
 
-const dailyChartConfig = {
-  count: { label: "Appointments" },
-} satisfies ChartConfig;
-
 function DailyVolumeChart({
   data,
   rangeLabel,
@@ -500,6 +496,10 @@ function DailyVolumeChart({
   rangeLabel: string;
 }) {
   const { t } = useTranslation();
+
+  const dailyChartConfig = {
+    count: { label: t("gabinet.reports.appointments") },
+  } satisfies ChartConfig;
 
   const chartData = useMemo(
     () =>

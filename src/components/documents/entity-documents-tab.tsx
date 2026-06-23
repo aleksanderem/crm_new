@@ -661,7 +661,15 @@ function SortableDocumentRow({
             </span>
           </Button>
         )}
-        <Eye className="hidden sm:block h-4 w-4 text-muted-foreground" />
+        <Button
+          size="sm"
+          variant="ghost"
+          className="hidden sm:flex h-7 w-7 p-0 text-muted-foreground shrink-0"
+          aria-label={t("documents.view", "Podgląd")}
+          onClick={(e) => { e.stopPropagation(); onOpen(); }}
+        >
+          <Eye className="h-4 w-4" variant="stroke" />
+        </Button>
         <Button
           size="sm"
           variant="ghost"

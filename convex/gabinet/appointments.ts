@@ -246,6 +246,7 @@ async function applyAppointmentStatusChange(
         packageUsageId: args.appointment.packageUsageId as
           | Id<"gabinetPackageUsage">
           | undefined,
+        priceAtBooking: args.appointment.priceAtBooking as number | undefined,
         userId: args.actorUserId,
       });
     }
@@ -2359,6 +2360,7 @@ async function handleAppointmentCompletion(
     patientId: Id<"gabinetPatients">;
     treatmentId: Id<"gabinetTreatments">;
     packageUsageId?: Id<"gabinetPackageUsage">;
+    priceAtBooking?: number;
     userId: Id<"users">;
   },
 ) {
@@ -2410,9 +2412,13 @@ async function handleAppointmentCompletion(
     }
   }
 
-  // 2. Award loyalty points (1 point per PLN of treatment price)
-  if (treatment && (treatment.price ?? 0) > 0) {
-    const points = Math.floor(treatment.price as number);
+  // 2. Award loyalty points (1 point per PLN of treatment price at booking)
+  // Use priceAtBooking so points are consistent with the price the patient
+  // was quoted, not the current treatment price (which may have changed).
+  // Fall back to treatment.price for appointments pre-dating priceAtBooking.
+  const effectivePrice = args.priceAtBooking ?? (treatment?.price as number | undefined) ?? 0;
+  if (effectivePrice > 0) {
+    const points = Math.floor(effectivePrice);
     if (points > 0) {
       const loyalty = await supabaseDb
         .query("gabinetLoyaltyPoints")
@@ -2451,7 +2457,7 @@ async function handleAppointmentCompletion(
         patientId: patientIdStr,
         type: "earn",
         points,
-        reason: `Appointment completed: ${treatment.name ?? "Treatment"}`,
+        reason: `Appointment completed: ${treatment?.name ?? "Treatment"}`,
         referenceType: "appointment",
         referenceId: String(args.appointmentId),
         balanceAfter: newBalance,

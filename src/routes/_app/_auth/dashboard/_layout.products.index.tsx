@@ -482,35 +482,22 @@ function ProductsPage() {
       getSortValue: (item) => item.name,
     },
     {
+      id: "productSection",
+      label: t("products.sections.label", { defaultValue: "Sekcja" }),
+      render: (item) => {
+        if (!item.productSection) return "—";
+        return t(`products.sections.${item.productSection}`, { defaultValue: item.productSection });
+      },
+    },
+    {
       id: "sku",
       label: t('products.sku'),
       render: (item) => item.sku ?? "—",
     },
     {
-      id: "catalogNumber",
-      label: t("products.catalogNumber", { defaultValue: "Nr katalogowy" }),
-      render: (item) => item.catalogNumber ?? "—",
-    },
-    {
       id: "manufacturer",
       label: t("products.manufacturer", { defaultValue: "Producent" }),
       render: (item) => item.manufacturer ?? "—",
-    },
-    {
-      id: "unitPrice",
-      label: t('products.unitPrice'),
-      sortable: true,
-      render: (item) => formatCurrency(item.unitPrice),
-      getSortValue: (item) => item.unitPrice,
-    },
-    {
-      id: "taxRate",
-      label: t('products.taxRate'),
-      render: (item) => {
-        if (item.taxExempt) return "ZW";
-        if (item.taxRate == null) return "—";
-        return `${item.taxRate}%`;
-      },
     },
     {
       id: "stock",
@@ -547,11 +534,24 @@ function ProductsPage() {
       sortable: true,
     },
     {
-      id: "productSection",
-      label: t("products.sections.label", { defaultValue: "Sekcja" }),
+      id: "catalogNumber",
+      label: t("products.catalogNumber", { defaultValue: "Nr katalogowy" }),
+      render: (item) => item.catalogNumber ?? "—",
+    },
+    {
+      id: "unitPrice",
+      label: t('products.unitPrice'),
+      sortable: true,
+      render: (item) => formatCurrency(item.unitPrice),
+      getSortValue: (item) => item.unitPrice,
+    },
+    {
+      id: "taxRate",
+      label: t('products.taxRate'),
       render: (item) => {
-        if (!item.productSection) return "—";
-        return t(`products.sections.${item.productSection}`, { defaultValue: item.productSection });
+        if (item.taxExempt) return "ZW";
+        if (item.taxRate == null) return "—";
+        return `${item.taxRate}%`;
       },
     },
     {

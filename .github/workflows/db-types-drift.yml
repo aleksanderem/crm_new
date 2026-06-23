@@ -1,0 +1,38 @@
+name: DB Types Drift
+
+# Ensures src/lib/supabase/database.types.ts and database.columns.ts stay in
+# sync with supabase/migrations/. Regenerates both files from the migration
+# files and fails if git sees any diff — catching the 9-migration drift found
+# in #2162. See #2167.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  db-types-drift:
+    name: Verify database.types.ts is up-to-date
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Regenerate DB types from migrations
+        run: node scripts/gen-db-types.mjs
+
+      - name: Fail if generated files differ from committed
+        run: |
+          if ! git diff --exit-code src/lib/supabase/database.types.ts src/lib/supabase/database.columns.ts; then
+            echo ""
+            echo "::error::database.types.ts or database.columns.ts is out of sync with supabase/migrations/."
+            echo "::error::Run 'node scripts/gen-db-types.mjs' locally and commit the result."
+            exit 1
+          fi
+          echo "OK: generated types match committed files."

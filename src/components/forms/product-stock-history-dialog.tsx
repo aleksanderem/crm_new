@@ -131,7 +131,7 @@ export function ProductStockHistoryDialog({
         <DialogHeader>
           <DialogTitle>
             {t("products.stock.history.title", {
-              defaultValue: "Historia przyjęć",
+              defaultValue: "Historia operacji",
             })}
           </DialogTitle>
           <DialogDescription>{product.name}</DialogDescription>

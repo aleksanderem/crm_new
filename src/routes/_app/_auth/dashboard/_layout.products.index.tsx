@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useAction } from "convex/react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { api } from "@cvx/_generated/api";
@@ -194,6 +196,7 @@ function ProductsPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { nudge: nudgeFilter } = useSearch({ from: Route.id });
   const systemViews: SavedView[] = useMemo(() => [
     { id: "all", name: t('products.views.all'), isSystem: true, isDefault: true },
@@ -458,6 +461,12 @@ function ProductsPage() {
           stockNote: stockNote.trim() || null,
         });
       }
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.products.list(organizationId) });
+      toast.success(
+        editingProduct
+          ? t("products.success.updated", { defaultValue: "Produkt zaktualizowany." })
+          : t("products.success.created", { defaultValue: "Produkt dodany." }),
+      );
       setPanelOpen(false);
       resetForm();
     } catch (e) {
@@ -588,12 +597,36 @@ function ProductsPage() {
       {
         label: row.isActive ? t('products.deactivate') : t('products.activate'),
         icon: <Power className="h-4 w-4" variant="stroke" />,
-        onClick: () => toggleActive({ organizationId, productId: row._id }),
+        onClick: async () => {
+          try {
+            await toggleActive({ organizationId, productId: row._id });
+            void queryClient.invalidateQueries({ queryKey: supabaseKeys.products.list(organizationId) });
+          } catch (e) {
+            toast.error(
+              formatActionError(e, t, {
+                key: "products.errors.toggleFailed",
+                defaultValue: "Nie udało się zmienić stanu aktywności.",
+              }),
+            );
+          }
+        },
       },
       {
         label: t('common.delete'),
         icon: <Trash2 className="h-4 w-4" variant="stroke" />,
-        onClick: () => removeProduct({ organizationId, productId: row._id }),
+        onClick: async () => {
+          try {
+            await removeProduct({ organizationId, productId: row._id });
+            void queryClient.invalidateQueries({ queryKey: supabaseKeys.products.list(organizationId) });
+          } catch (e) {
+            toast.error(
+              formatActionError(e, t, {
+                key: "products.errors.deleteFailed",
+                defaultValue: "Nie udało się usunąć produktu.",
+              }),
+            );
+          }
+        },
       },
     );
     return actions;

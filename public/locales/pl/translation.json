@@ -864,7 +864,7 @@
     "editProduct": "Edytuj produkt",
     "createDescription": "Dodaj nowy produkt do katalogu.",
     "updateDescription": "Aktualizuj szczegóły produktu.",
-    "searchPlaceholder": "Szukaj produktów...",
+    "searchPlaceholder": "Szukaj nazwy, SKU, producenta, notatki...",
     "productName": "Nazwa produktu",
     "productDescription": "Opis produktu...",
     "sku": "SKU",

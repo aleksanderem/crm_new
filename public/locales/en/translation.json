@@ -863,7 +863,7 @@
     "editProduct": "Edit Product",
     "createDescription": "Add a new product to your catalog.",
     "updateDescription": "Update product details.",
-    "searchPlaceholder": "Search products...",
+    "searchPlaceholder": "Search name, SKU, manufacturer, notes...",
     "productName": "Product name",
     "productDescription": "Product description...",
     "sku": "SKU",

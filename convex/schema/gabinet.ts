@@ -417,6 +417,7 @@ export function createGabinetTables({
     categoryId: v.optional(v.id("categoryDefinitions")),
     requiresCompletion: v.optional(v.boolean()),
     contraindicationAlertsReviewed: v.optional(v.boolean()),
+    priceAtBooking: v.optional(v.number()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

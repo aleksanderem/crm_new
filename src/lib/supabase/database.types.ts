@@ -3303,6 +3303,7 @@ export interface Database {
           tag_ids: string[] | null;
           category_id: string | null;
           requires_completion: boolean | null;
+          price_at_booking: number | null;
           created_by: string;
           created_at: number;
           updated_at: number;
@@ -3347,6 +3348,7 @@ export interface Database {
           tag_ids?: string[] | null;
           category_id?: string | null;
           requires_completion?: boolean | null;
+          price_at_booking?: number | null;
           created_by: string;
           created_at: number;
           updated_at: number;
@@ -3391,6 +3393,7 @@ export interface Database {
           tag_ids?: string[] | null;
           category_id?: string | null;
           requires_completion?: boolean | null;
+          price_at_booking?: number | null;
           created_by?: string;
           created_at?: number;
           updated_at?: number;

@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import type { ExtractedFormField } from "@/components/documents/document-renderer";
 
 // ---------------------------------------------------------------------------
@@ -161,6 +162,30 @@ export function DocumentFormFiller({
               onChange={(e) => setValue(field.fieldId, e.target.value)}
               required={field.required}
             />
+          )}
+
+          {field.fieldType === "button_select" && (
+            <div className="flex flex-wrap gap-2">
+              {field.options
+                .split(",")
+                .map((opt) => opt.trim())
+                .filter(Boolean)
+                .map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setValue(field.fieldId, opt)}
+                    className={cn(
+                      "min-h-[44px] rounded-lg border-2 px-5 py-2.5 text-sm font-medium transition-colors",
+                      values[field.fieldId] === opt
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-background text-foreground hover:border-primary/50",
+                    )}
+                  >
+                    {opt}
+                  </button>
+                ))}
+            </div>
           )}
 
           {field.fieldType === "checkbox" && (

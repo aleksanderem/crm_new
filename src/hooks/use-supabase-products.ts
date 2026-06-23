@@ -35,6 +35,7 @@ import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { useSupabase } from "@/components/supabase-provider";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { mapProductFromSupabase, type MappedProduct } from "@/lib/supabase/mappers";
+import type { Database } from "@/lib/supabase/database.types";
 
 // ---------------------------------------------------------------------------
 // Products List
@@ -215,8 +216,11 @@ export function useSupabaseProductStockMovements(
 
       if (error) throw error;
 
-      return (data ?? []).map((row) => {
-        const user = (row as unknown as { users?: { id?: string; name?: string | null; email?: string | null } | null }).users;
+      type StockMovementRow = Database["public"]["Tables"]["product_stock_movements"]["Row"] & {
+        users: { id: string; name?: string | null; email?: string | null } | null;
+      };
+      return ((data ?? []) as StockMovementRow[]).map((row) => {
+        const user = row.users;
         return {
           _id: row.id,
           organizationId: row.organization_id,

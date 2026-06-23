@@ -3809,6 +3809,30 @@
         "saveFailed": "Could not save the equipment.",
         "transferFailed": "Could not transfer the equipment."
       }
+    },
+    "roles": {
+      "title": "Role Permissions",
+      "description": "Configure what each gabinet role can view, create, edit and delete. These permissions apply in addition to the user's organization role.",
+      "feature": "Feature",
+      "system": "system",
+      "saved": "Permissions saved",
+      "saveError": "Failed to save permissions",
+      "resetToDefault": "Reset to default permissions",
+      "resetCustom": "Permissions cleared",
+      "resetButton": "Reset to defaults",
+      "clearButton": "Clear permissions",
+      "resetError": "Failed to reset permissions",
+      "noRoles": "No roles found.",
+      "features": {
+        "patients": "Patients",
+        "appointments": "Appointments",
+        "treatments": "Treatments",
+        "packages": "Packages",
+        "employees": "Employees",
+        "payments": "Payments",
+        "reports": "Reports",
+        "settings": "Settings"
+      }
     }
   },
   "customFields": {

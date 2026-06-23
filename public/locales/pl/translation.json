@@ -3831,6 +3831,30 @@
         "saveFailed": "Nie udało się zapisać sprzętu.",
         "transferFailed": "Nie udało się przenieść sprzętu."
       }
+    },
+    "roles": {
+      "title": "Uprawnienia ról",
+      "description": "Skonfiguruj co każda rola gabinetowa może przeglądać, tworzyć, edytować i usuwać. Uprawnienia te są stosowane oprócz uprawnień roli organizacyjnej użytkownika.",
+      "feature": "Funkcja",
+      "system": "systemowa",
+      "saved": "Uprawnienia zapisane",
+      "saveError": "Nie udało się zapisać uprawnień",
+      "resetToDefault": "Przywrócono domyślne uprawnienia",
+      "resetCustom": "Uprawnienia wyczyszczone",
+      "resetButton": "Przywróć domyślne",
+      "clearButton": "Wyczyść uprawnienia",
+      "resetError": "Nie udało się zresetować uprawnień",
+      "noRoles": "Nie znaleziono ról.",
+      "features": {
+        "patients": "Pacjenci",
+        "appointments": "Wizyty",
+        "treatments": "Zabiegi",
+        "packages": "Pakiety",
+        "employees": "Pracownicy",
+        "payments": "Płatności",
+        "reports": "Raporty",
+        "settings": "Ustawienia"
+      }
     }
   },
   "customFields": {

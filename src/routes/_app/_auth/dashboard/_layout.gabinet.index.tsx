@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { PermissionGate } from "@/hooks/use-permission";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
@@ -50,7 +51,11 @@ import TotalOrdersCard from "@/components/shadcn-studio/blocks/chart-total-order
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/"
 )({
-  component: GabinetDashboard,
+  component: () => (
+    <PermissionGate feature="gabinet_dashboard" action="view">
+      <GabinetDashboard />
+    </PermissionGate>
+  ),
 });
 
 const statusColors: Record<string, string> = {

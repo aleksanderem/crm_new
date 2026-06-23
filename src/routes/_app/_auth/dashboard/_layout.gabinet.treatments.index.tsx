@@ -577,10 +577,12 @@ function TreatmentsIndex() {
                 defaultValue: "Grupuj wg sprzętu",
               })}
             </Button>
-            <Button onClick={openCreatePanel}>
-              <Plus className="mr-2 h-4 w-4" variant="stroke" />
-              {t("gabinet.treatments.addTreatment")}
-            </Button>
+            <PermissionGate feature="gabinet_treatments" action="create">
+              <Button onClick={openCreatePanel}>
+                <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                {t("gabinet.treatments.addTreatment")}
+              </Button>
+            </PermissionGate>
           </div>
         }
       />

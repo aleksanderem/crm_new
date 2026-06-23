@@ -11,6 +11,7 @@ import {
   type PermissionResult,
   type FeaturePermissions,
 } from "./permissionTypes";
+import { defaultGabinetScope, maxScope } from "./gabinetRolePermissions";
 
 export type { Feature, Action, Scope, PermissionResult, FeaturePermissions };
 
@@ -169,7 +170,7 @@ export async function getEffectivePermissions(
   ctx: QueryCtx | MutationCtx,
   orgId: Id<"organizations">,
 ): Promise<FeaturePermissions> {
-  const { membership } = await verifyOrgAccess(ctx, orgId);
+  const { membership, user } = await verifyOrgAccess(ctx, orgId);
   const role = membership.role as OrgRole;
 
   if (role === "owner" || role === "admin") {
@@ -181,13 +182,9 @@ export async function getEffectivePermissions(
     .withIndex("by_orgAndRole", (q) => q.eq("organizationId", orgId).eq("role", role))
     .unique();
 
-  if (!override) {
-    return DEFAULT_PERMISSIONS[role];
-  }
-
-  // Merge: override takes precedence, defaults fill gaps
+  // Build org-role base permissions (override fills gaps with defaults)
   const defaults = DEFAULT_PERMISSIONS[role];
-  const overridePerms = override.permissions as Partial<FeaturePermissions>;
+  const overridePerms = override ? (override.permissions as Partial<FeaturePermissions>) : undefined;
   const merged = {} as FeaturePermissions;
 
   for (const feature of ALL_FEATURES) {
@@ -201,6 +198,37 @@ export async function getEffectivePermissions(
       merged[feature] = mergedActions;
     } else {
       merged[feature] = { ...defaultActions };
+    }
+  }
+
+  // MAX-merge gabinet-role permissions for gabinet_* features, mirroring the
+  // logic in authAction.checkPermission so frontend gates match backend enforcement.
+  const gabinetMembership = await ctx.db
+    .query("gabinetMemberships")
+    .withIndex("by_orgAndUser", (q) =>
+      q.eq("organizationId", orgId).eq("userId", user._id),
+    )
+    .unique();
+
+  if (gabinetMembership && gabinetMembership.isActive) {
+    const gRole = gabinetMembership.gabinetRole;
+    const gOverride = await ctx.db
+      .query("gabinetRolePermissions")
+      .withIndex("by_orgAndRole", (q) =>
+        q.eq("organizationId", orgId).eq("gabinetRole", gRole),
+      )
+      .unique();
+    const gPerms = gOverride ? (gOverride.permissions as Partial<FeaturePermissions>) : undefined;
+
+    for (const feature of ALL_FEATURES) {
+      if (!feature.startsWith("gabinet_")) continue;
+      const mergedActions = { ...merged[feature] };
+      for (const action of ACTIONS) {
+        const gabinetScope: Scope = gPerms?.[feature as Feature]?.[action]
+          ?? defaultGabinetScope(gRole, feature as Feature, action);
+        mergedActions[action] = maxScope(mergedActions[action], gabinetScope);
+      }
+      merged[feature] = mergedActions;
     }
   }
 

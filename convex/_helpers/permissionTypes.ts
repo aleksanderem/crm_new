@@ -13,6 +13,7 @@ export const FEATURES = [
   "email",
   "products",
   "pipelines",
+  "gabinet_dashboard",
   "gabinet_patients",
   "gabinet_appointments",
   "gabinet_treatments",

@@ -438,7 +438,7 @@ function StatusDistributionChart({
                             y={(viewBox.cy || 0) + 14}
                             className="fill-muted-foreground text-sm"
                           >
-                            Top {top.length}
+                            {t("gabinet.reports.topN", { count: top.length })}
                           </tspan>
                         </text>
                       );

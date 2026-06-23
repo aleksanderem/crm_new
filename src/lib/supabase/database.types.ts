@@ -3304,6 +3304,7 @@ export interface Database {
           category_id: string | null;
           requires_completion: boolean | null;
           price_at_booking: number | null;
+          contraindication_alerts_reviewed: boolean | null;
           created_by: string;
           created_at: number;
           updated_at: number;
@@ -3349,6 +3350,7 @@ export interface Database {
           category_id?: string | null;
           requires_completion?: boolean | null;
           price_at_booking?: number | null;
+          contraindication_alerts_reviewed?: boolean | null;
           created_by: string;
           created_at: number;
           updated_at: number;
@@ -3394,6 +3396,7 @@ export interface Database {
           category_id?: string | null;
           requires_completion?: boolean | null;
           price_at_booking?: number | null;
+          contraindication_alerts_reviewed?: boolean | null;
           created_by?: string;
           created_at?: number;
           updated_at?: number;

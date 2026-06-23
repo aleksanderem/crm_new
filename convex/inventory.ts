@@ -18,6 +18,7 @@ type ProductRow = SupabaseRow<"products">;
 
 const REASON_VALIDATOR = v.union(
   v.literal("initial"),
+  v.literal("warehouse_receive"),
   v.literal("manual_adjust"),
   v.literal("appointment_use"),
   v.literal("appointment_return"),

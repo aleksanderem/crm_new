@@ -29,10 +29,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle } from "@/lib/ez-icons";
+import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
 import { ProductStockAdjustDialog } from "@/components/forms/product-stock-adjust-dialog";
+import { ProductStockHistoryDialog } from "@/components/forms/product-stock-history-dialog";
 import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
 import { Id } from "@cvx/_generated/dataModel";
 import type { MappedProduct } from "@/lib/supabase/mappers/products";
@@ -242,6 +243,7 @@ function ProductsPage() {
   useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [stockAdjustProduct, setStockAdjustProduct] = useState<Product | null>(null);
+  const [stockHistoryProduct, setStockHistoryProduct] = useState<Product | null>(null);
 
   // Form state
   const [name, setName] = useState("");
@@ -558,9 +560,14 @@ function ProductsPage() {
     ];
     if (row.trackStock) {
       actions.push({
-        label: t('products.stock.adjust.action', { defaultValue: 'Przyjmij / wydaj towar' }),
+        label: t("products.stock.receive.action", { defaultValue: "Przyjęcie magazynowe" }),
         icon: <Package className="h-4 w-4" variant="stroke" />,
         onClick: () => setStockAdjustProduct(row),
+      });
+      actions.push({
+        label: t("products.stock.history.action", { defaultValue: "Historia operacji" }),
+        icon: <History className="h-4 w-4" variant="stroke" />,
+        onClick: () => setStockHistoryProduct(row),
       });
     }
     actions.push(
@@ -981,6 +988,15 @@ function ProductsPage() {
         }}
         organizationId={organizationId}
         product={stockAdjustProduct}
+      />
+
+      <ProductStockHistoryDialog
+        open={!!stockHistoryProduct}
+        onOpenChange={(open) => {
+          if (!open) setStockHistoryProduct(null);
+        }}
+        organizationId={organizationId}
+        product={stockHistoryProduct}
       />
 
       <TagsManagerSlideout

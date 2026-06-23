@@ -348,6 +348,7 @@ export function createCrmTables({
     balanceAfter: v.optional(v.number()),
     reason: v.union(
       v.literal("initial"),
+      v.literal("warehouse_receive"),
       v.literal("manual_adjust"),
       v.literal("appointment_use"),
       v.literal("appointment_return"),

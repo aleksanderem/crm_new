@@ -423,7 +423,6 @@ function DocumentSection({
         await resendSigningEmail({ organizationId, documentId: docId });
         setResendSuccess(docId);
         toast.success(t("documents.emailSent", "Wysłano e-mail do klienta"));
-        setTimeout(() => setResendSuccess(null), 3000);
       } catch (err) {
         // Surface the real reason — previously this was a silent `catch {}`
         // so users on the appointment > Dokumenty tab saw the send button

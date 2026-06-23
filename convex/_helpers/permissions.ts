@@ -49,6 +49,16 @@ DEFAULT_PERMISSIONS.viewer.gabinet_payments = {
   view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
 };
 
+// --- Per-feature overrides for gabinet_reports ---
+// owner/admin: all (default). member: view only (reports are read-only).
+// viewer: no access by default — financial summaries are sensitive.
+DEFAULT_PERMISSIONS.member.gabinet_reports = {
+  view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
+};
+DEFAULT_PERMISSIONS.viewer.gabinet_reports = {
+  view: "none", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
+};
+
 // --- Per-feature overrides for document_templates ---
 // owner/admin: all actions allowed (approve/sign not applicable to templates)
 // member: view only (no create/edit/delete)

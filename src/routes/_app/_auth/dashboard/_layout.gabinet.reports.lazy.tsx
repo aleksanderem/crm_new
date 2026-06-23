@@ -6,6 +6,7 @@ import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-t
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { useOrganization } from "@/components/org-context";
+import { usePermission } from "@/hooks/use-permission";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { PageHeader } from "@/components/layout/page-header";
 import { SidePanel } from "@/components/crm/side-panel";
@@ -789,6 +790,26 @@ function TopTreatmentsByRevenue({
 function GabinetReports() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const { allowed: canViewReports, loading: permLoading } = usePermission("gabinet_reports", "view");
+
+  if (permLoading) {
+    return (
+      <div className="flex flex-col gap-6 p-6">
+        <Skeleton className="h-10 w-64" />
+      </div>
+    );
+  }
+
+  if (!canViewReports) {
+    return (
+      <div className="flex flex-col gap-6 p-6">
+        <PageHeader
+          title={t("gabinet.reports.title")}
+          description={t("common.noPermission", "You don't have permission to view this page.")}
+        />
+      </div>
+    );
+  }
   const [dateRange, setDateRange] = useState<DateRangeKey>("30d");
   const [dateFilterPanelOpen, setDateFilterPanelOpen] = useState(false);
   const todayIso = new Date().toISOString().split("T")[0];

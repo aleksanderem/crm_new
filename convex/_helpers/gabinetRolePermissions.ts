@@ -66,6 +66,7 @@ function buildGabinet(
     "gabinet_packages",
     "gabinet_employees",
     "gabinet_payments",
+    "gabinet_reports",
     "gabinet_settings",
     "settings",
     "team",
@@ -137,6 +138,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_packages: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_employees: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_payments: { view: "all", create: "all", edit: "all", delete: "all", refund: "all" },
+    gabinet_reports: { view: "all" },
     gabinet_settings: { view: "all", create: "all", edit: "all", delete: "all" },
   }),
   other: buildGabinet({

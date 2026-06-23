@@ -344,7 +344,7 @@ function StatusDistributionChart({
     const items = top.map((item, i) => {
       const key = slugify(item.status);
       config[key] = {
-        label: item.status.replace("_", " "),
+        label: t(`gabinet.reports.statuses.${item.status}`, item.status.replace("_", " ")),
         color: DONUT_COLORS[i % DONUT_COLORS.length],
       };
       return { category: key, count: item.count, fill: `var(--color-${key})` };

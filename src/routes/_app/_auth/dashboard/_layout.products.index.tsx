@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History } from "@/lib/ez-icons";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
 import { ProductStockAdjustDialog } from "@/components/forms/product-stock-adjust-dialog";
@@ -260,6 +261,7 @@ function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [stockAdjustProduct, setStockAdjustProduct] = useState<Product | null>(null);
   const [stockHistoryProduct, setStockHistoryProduct] = useState<Product | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
 
   // Form state
   const [name, setName] = useState("");
@@ -481,6 +483,24 @@ function ProductsPage() {
     }
   };
 
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    try {
+      await removeProduct({ organizationId, productId: deleteTarget.id });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.products.list(organizationId) });
+      toast.success(t("products.success.deleted", { defaultValue: "Produkt usunięty." }));
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "products.errors.deleteFailed",
+          defaultValue: "Nie udało się usunąć produktu.",
+        }),
+      );
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
+
   const columns: CrmColumn<Product>[] = [
     {
       id: "name",
@@ -614,19 +634,7 @@ function ProductsPage() {
       {
         label: t('common.delete'),
         icon: <Trash2 className="h-4 w-4" variant="stroke" />,
-        onClick: async () => {
-          try {
-            await removeProduct({ organizationId, productId: row._id });
-            void queryClient.invalidateQueries({ queryKey: supabaseKeys.products.list(organizationId) });
-          } catch (e) {
-            toast.error(
-              formatActionError(e, t, {
-                key: "products.errors.deleteFailed",
-                defaultValue: "Nie udało się usunąć produktu.",
-              }),
-            );
-          }
-        },
+        onClick: () => setDeleteTarget({ id: row._id, label: row.name }),
       },
     );
     return actions;
@@ -1059,6 +1067,26 @@ function ProductsPage() {
         entityType="product"
         categories={categories}
       />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("common.confirmDelete")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("common.confirmDeleteDescription", { name: deleteTarget?.label })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

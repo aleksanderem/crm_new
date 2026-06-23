@@ -78,6 +78,7 @@
     "continue": "Continue",
     "selectAll": "Select all",
     "deselectAll": "Deselect all",
+    "custom": "Custom",
     "errors": {
       "permissionDenied": "You don't have permission to perform this action.",
       "invalidArguments": "Invalid data. Please check the form and try again.",
@@ -3520,7 +3521,16 @@
       "dateRange": "Date range",
       "last7days": "Last 7 days",
       "last90days": "Last 90 days",
-      "lastYear": "Last year"
+      "lastYear": "Last year",
+      "statuses": {
+        "pending_confirmation": "Pending",
+        "scheduled": "Scheduled",
+        "confirmed": "Confirmed",
+        "in_progress": "In Progress",
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "no_show": "No Show"
+      }
     },
     "bodyChart": {
       "description": "Mark body areas related to the appointment",

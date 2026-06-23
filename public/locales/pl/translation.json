@@ -78,6 +78,7 @@
     "continue": "Dalej",
     "selectAll": "Zaznacz wszystkie",
     "deselectAll": "Odznacz wszystkie",
+    "custom": "Własny zakres",
     "errors": {
       "permissionDenied": "Brak uprawnień do tej operacji.",
       "invalidArguments": "Nieprawidłowe dane. Sprawdź formularz i spróbuj ponownie.",
@@ -3542,7 +3543,16 @@
       "dateRange": "Zakres dat",
       "last7days": "Ostatnie 7 dni",
       "last90days": "Ostatnie 90 dni",
-      "lastYear": "Ostatni rok"
+      "lastYear": "Ostatni rok",
+      "statuses": {
+        "pending_confirmation": "Oczekujące",
+        "scheduled": "Zaplanowane",
+        "confirmed": "Potwierdzone",
+        "in_progress": "W trakcie",
+        "completed": "Zakończone",
+        "cancelled": "Anulowane",
+        "no_show": "Nieobecność"
+      }
     },
     "bodyChart": {
       "description": "Zaznacz obszary ciała powiązane z wizytą",

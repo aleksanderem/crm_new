@@ -45,7 +45,7 @@ export const list = action({
       let all = (await q.collect()) as GabinetEmployeeRow[];
       let filtered = args.activeOnly ? all.filter((e) => e.isActive) : all;
       if (perm.scope === "own") {
-        filtered = filtered.filter((e) => String(e.createdBy) === userIdStr);
+        filtered = filtered.filter((e) => String(e.userId) === userIdStr);
       }
       return filtered;
     }
@@ -57,7 +57,7 @@ export const list = action({
         .eq("isActive", true)
         .collect()) as GabinetEmployeeRow[];
       if (perm.scope === "own") {
-        results = results.filter((e) => String(e.createdBy) === userIdStr);
+        results = results.filter((e) => String(e.userId) === userIdStr);
       }
       return results;
     }
@@ -68,7 +68,7 @@ export const list = action({
       .order("createdAt", false)
       .collect()) as GabinetEmployeeRow[];
     if (perm.scope === "own") {
-      page = page.filter((e) => String(e.createdBy) === userIdStr);
+      page = page.filter((e) => String(e.userId) === userIdStr);
     }
     return { page, isDone: true, continueCursor: "" };
   },
@@ -101,7 +101,7 @@ export const listAll = action({
     }
     let results = (await q.collect()) as GabinetEmployeeRow[];
     if (perm.scope === "own") {
-      results = results.filter((e) => String(e.createdBy) === userIdStr);
+      results = results.filter((e) => String(e.userId) === userIdStr);
     }
     return results;
   },
@@ -129,7 +129,7 @@ export const getById = action({
     if (!emp || String(emp.organizationId) !== String(args.organizationId)) {
       throw new Error("Employee not found");
     }
-    if (perm.scope === "own" && String(emp.createdBy) !== String(authResult.userId)) {
+    if (perm.scope === "own" && String(emp.userId) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only view your own records");
     }
     return emp;
@@ -616,7 +616,7 @@ export const update = action({
     if (!emp || String(emp.organizationId) !== String(args.organizationId)) {
       throw new Error("Employee not found");
     }
-    if (perm.scope === "own" && String(emp.createdBy) !== String(authResult.userId)) {
+    if (perm.scope === "own" && String(emp.userId) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only edit your own records");
     }
 
@@ -744,7 +744,7 @@ export const remove = action({
     if (!emp || String(emp.organizationId) !== String(args.organizationId)) {
       throw new Error("Employee not found");
     }
-    if (perm.scope === "own" && String(emp.createdBy) !== String(authResult.userId)) {
+    if (perm.scope === "own" && String(emp.userId) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only delete your own records");
     }
 

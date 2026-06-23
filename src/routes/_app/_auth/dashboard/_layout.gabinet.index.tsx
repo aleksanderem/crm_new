@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ReactNode } from "react";
@@ -48,11 +49,34 @@ import TotalIncomeCard from "@/components/shadcn-studio/blocks/chart-total-incom
 import EarningReportCard from "@/components/shadcn-studio/blocks/chart-earning-report";
 import TotalOrdersCard from "@/components/shadcn-studio/blocks/chart-total-orders";
 
+function GabinetDashboardSkeleton() {
+  return (
+    <div className="flex flex-col gap-6 p-6">
+      <Skeleton className="h-10 w-72" />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Skeleton className="h-32" />
+        <Skeleton className="h-32" />
+        <Skeleton className="h-32" />
+        <Skeleton className="h-32" />
+      </div>
+      <Skeleton className="h-64" />
+      <div className="grid gap-6 md:grid-cols-2">
+        <Skeleton className="h-48" />
+        <Skeleton className="h-48" />
+      </div>
+    </div>
+  );
+}
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/"
 )({
   component: () => (
-    <PermissionGate feature="gabinet_dashboard" action="view">
+    <PermissionGate
+      feature="gabinet_dashboard"
+      action="view"
+      loadingFallback={<GabinetDashboardSkeleton />}
+    >
       <GabinetDashboard />
     </PermissionGate>
   ),

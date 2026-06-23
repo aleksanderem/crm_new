@@ -885,7 +885,7 @@ function GabinetReports() {
       const tid = a.treatmentId as string;
       const prev = map.get(tid) ?? { count: 0, revenue: 0 };
       const price = a.status === "completed"
-        ? (treatmentMap.get(tid)?.price ?? 0)
+        ? (a.priceAtBooking ?? treatmentMap.get(tid)?.price ?? 0)
         : 0;
       map.set(tid, { count: prev.count + 1, revenue: prev.revenue + price });
     }
@@ -1027,7 +1027,7 @@ function GabinetReports() {
     for (const a of appointments) {
       if (a.status !== "completed") continue;
       const tid = a.treatmentId as string;
-      const price = treatmentMap.get(tid)?.price ?? 0;
+      const price = a.priceAtBooking ?? treatmentMap.get(tid)?.price ?? 0;
       map.set(a.date, (map.get(a.date) ?? 0) + price);
     }
     return bucketizePairs(Array.from(map.entries()));

@@ -238,10 +238,12 @@ export const remove = action({
       throw new Error("Permission denied: you can only delete your own records");
     }
 
-    // Remove deal-product associations via internalMutation (needs ctx.db)
-    await ctx.runMutation(internal.products._removeDealProducts, {
-      productId: args.productId,
-    });
+    // Remove deal-product associations from Supabase before deleting the product
+    const { error: assocError } = await db.raw()
+      .from("deal_products")
+      .delete()
+      .eq("product_id", args.productId);
+    if (assocError) throw new Error(`Failed to remove deal-product associations: ${assocError.message}`);
 
     // Delete from Supabase
     await db.delete("products", args.productId);
@@ -258,19 +260,6 @@ export const remove = action({
     }
 
     return args.productId;
-  },
-});
-
-export const _removeDealProducts = internalMutation({
-  args: { productId: v.string() },
-  handler: async (ctx, args) => {
-    const dealProducts = await ctx.db
-      .query("dealProducts")
-      .withIndex("by_product", (q) => q.eq("productId", args.productId as Id<"products">))
-      .collect();
-    for (const dp of dealProducts) {
-      await ctx.db.delete(dp._id);
-    }
   },
 });
 

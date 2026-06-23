@@ -1,11 +1,8 @@
-import { query, action, internalMutation } from "./_generated/server";
+import { action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
-import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
-import { checkPermission } from "./_helpers/permissions";
 import { Id } from "./_generated/dataModel";
 import type { SupabaseRow } from "./_helpers/supabaseRows";
 import { applyMovementInternal } from "./inventory";
@@ -18,50 +15,8 @@ export interface DealProductWithProduct extends DealProductRow {
 }
 
 // Dual-write refs removed — Supabase is now primary for product writes
-
-export const list = query({
-  args: {
-    organizationId: v.id("organizations"),
-    paginationOpts: paginationOptsValidator,
-  },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "products", "view");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const result = await ctx.db
-      .query("products")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .order("desc")
-      .paginate(args.paginationOpts);
-    if (perm.scope === "own") {
-      return { ...result, page: result.page.filter((r) => r.createdBy === user._id) };
-    }
-    return result;
-  },
-});
-
-export const getById = query({
-  args: {
-    organizationId: v.id("organizations"),
-    productId: v.id("products"),
-  },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "products", "view");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const product = await ctx.db.get(args.productId);
-    if (!product || product.organizationId !== args.organizationId) {
-      throw new Error("Product not found");
-    }
-    if (perm.scope === "own" && product.createdBy !== user._id) {
-      throw new Error("Permission denied");
-    }
-
-    return product;
-  },
-});
+// list and getById were removed: they used legacy ctx.db reads and returned empty results
+// since product data lives in Supabase. Use useSupabaseProductsList hook instead.
 
 export const create = action({
   args: {

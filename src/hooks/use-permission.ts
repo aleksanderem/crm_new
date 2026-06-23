@@ -83,6 +83,25 @@ export function useRole(): {
   return { role: result.role, loading: false };
 }
 
+export function useGabinetRole(): {
+  gabinetRole: string | null;
+  isActive: boolean | null;
+  loading: boolean;
+} {
+  const { organizationId } = useOrganization();
+
+  const result = useQuery(
+    api.permissions.getMyGabinetRole,
+    organizationId ? { organizationId } : "skip"
+  );
+
+  if (result === undefined) {
+    return { gabinetRole: null, isActive: null, loading: true };
+  }
+
+  return { gabinetRole: result.gabinetRole, isActive: result.isActive, loading: false };
+}
+
 export function PermissionGate({
   feature,
   action,

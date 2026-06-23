@@ -21,6 +21,21 @@ export const getMyRole = query({
   },
 });
 
+export const getMyGabinetRole = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const membership = await ctx.db
+      .query("gabinetMemberships")
+      .withIndex("by_orgAndUser", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", user._id)
+      )
+      .unique();
+    if (!membership) return { gabinetRole: null, isActive: null };
+    return { gabinetRole: membership.gabinetRole, isActive: membership.isActive };
+  },
+});
+
 export const getOrgPermissionOverrides = query({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {

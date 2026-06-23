@@ -85,11 +85,12 @@ import { CategoriesManagerSlideout } from "@/components/categories-tags/categori
 import { EventDialog } from "@/components/gabinet/calendar/event-dialog";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatAppointmentError } from "@/lib/format-action-error";
+import { PermissionGate } from "@/hooks/use-permission";
 
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/calendar/",
 )({
-  component: GabinetCalendarPage,
+  component: () => <PermissionGate feature="gabinet_appointments" action="view"><GabinetCalendarPage /></PermissionGate>,
 });
 
 type ViewMode = "day" | "week" | "month";

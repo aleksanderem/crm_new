@@ -10,11 +10,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { PermissionGate } from "@/hooks/use-permission";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/settings/leave-balances"
 )({
-  component: LeaveBalancesPage,
+  component: () => <PermissionGate feature="gabinet_settings" action="view"><LeaveBalancesPage /></PermissionGate>,
 });
 
 function LeaveBalancesPage() {

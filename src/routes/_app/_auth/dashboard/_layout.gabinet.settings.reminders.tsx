@@ -12,11 +12,12 @@ import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { PermissionGate } from "@/hooks/use-permission";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/settings/reminders"
 )({
-  component: ReminderSettings,
+  component: () => <PermissionGate feature="gabinet_settings" action="view"><ReminderSettings /></PermissionGate>,
 });
 
 function ReminderSettings() {

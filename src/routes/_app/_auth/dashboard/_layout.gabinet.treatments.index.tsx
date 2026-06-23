@@ -41,6 +41,7 @@ import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { formatTreatmentError, extractTreatmentFieldError } from "@/lib/format-action-error";
 import { reportError } from "@/lib/error-reporter";
+import { PermissionGate } from "@/hooks/use-permission";
 
 // shadcn/studio statistics blocks
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -52,7 +53,7 @@ type TreatmentsNudgeFilter = "no-price";
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/treatments/",
 )({
-  component: TreatmentsIndex,
+  component: () => <PermissionGate feature="gabinet_treatments" action="view"><TreatmentsIndex /></PermissionGate>,
   validateSearch: (
     search: Record<string, unknown>,
   ): { nudge?: TreatmentsNudgeFilter } => {

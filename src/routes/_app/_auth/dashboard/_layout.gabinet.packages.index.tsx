@@ -55,6 +55,7 @@ import type { MappedGabinetPackageUsage } from "@/lib/supabase/mappers/gabinet/p
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
 import StatisticsProfitCard from "@/components/shadcn-studio/blocks/statistics-profit-card";
 import StatisticsImpressionCard from "@/components/shadcn-studio/blocks/statistics-impression-card";
+import { PermissionGate } from "@/hooks/use-permission";
 
 // Type alias for Convex mutation compatibility (Knowledge Pattern #9/#12)
 type TreatmentPackage = MappedGabinetTreatmentPackage;
@@ -64,7 +65,7 @@ type PackagesNudgeFilter = "expiring" | "no-usage";
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/packages/"
 )({
-  component: PackagesIndex,
+  component: () => <PermissionGate feature="gabinet_packages" action="view"><PackagesIndex /></PermissionGate>,
   validateSearch: (
     search: Record<string, unknown>,
   ): { nudge?: PackagesNudgeFilter } => {

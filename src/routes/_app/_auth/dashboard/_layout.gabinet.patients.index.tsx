@@ -37,13 +37,14 @@ import { formatPhoneNumber } from "@/lib/phone";
 import { formatBirthDate } from "@/lib/format-date";
 import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import { displayReferralSource } from "@/lib/options";
+import { PermissionGate } from "@/hooks/use-permission";
 
 type PatientNudgeFilter = "missing-contact" | "no-recent-visit" | "duplicates";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/patients/",
 )({
-  component: PatientsIndex,
+  component: () => <PermissionGate feature="gabinet_patients" action="view"><PatientsIndex /></PermissionGate>,
   validateSearch: (search: Record<string, unknown>): { nudge?: PatientNudgeFilter } => {
     const nudge =
       search.nudge === "missing-contact" ||

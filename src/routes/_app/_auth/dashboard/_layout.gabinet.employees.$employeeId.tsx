@@ -87,11 +87,12 @@ import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
 import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
+import { PermissionGate } from "@/hooks/use-permission";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/employees/$employeeId"
 )({
-  component: EmployeeDetail,
+  component: () => <PermissionGate feature="gabinet_employees" action="view"><EmployeeDetail /></PermissionGate>,
 });
 
 const ROLES = ["doctor", "nurse", "therapist", "receptionist", "admin", "other"] as const;

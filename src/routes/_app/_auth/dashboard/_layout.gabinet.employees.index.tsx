@@ -39,6 +39,7 @@ import { PlateText } from "@/components/plate-text";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { EmployeeForm } from "@/components/forms/employee-form";
 import { EventDialog } from "@/components/gabinet/calendar/event-dialog";
+import { PermissionGate } from "@/hooks/use-permission";
 import {
   FlexibleScheduleEditor,
   groupSchedulesIntoPeriods,
@@ -52,7 +53,7 @@ import StatisticsImpressionCard from "@/components/shadcn-studio/blocks/statisti
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/employees/"
 )({
-  component: EmployeesIndex,
+  component: () => <PermissionGate feature="gabinet_employees" action="view"><EmployeesIndex /></PermissionGate>,
 });
 
 

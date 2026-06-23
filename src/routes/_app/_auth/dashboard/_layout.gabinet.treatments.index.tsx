@@ -41,7 +41,7 @@ import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { formatTreatmentError, extractTreatmentFieldError } from "@/lib/format-action-error";
 import { reportError } from "@/lib/error-reporter";
-import { PermissionGate } from "@/hooks/use-permission";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
 
 // shadcn/studio statistics blocks
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -82,6 +82,8 @@ function TreatmentsIndex() {
   const createTreatment = useAction(api.gabinet.treatments.create);
   const updateTreatment = useAction(api.gabinet.treatments.update);
   const removeTreatment = useAction(api.gabinet.treatments.remove);
+
+  const { allowed: canEdit } = usePermission("gabinet_treatments", "edit");
 
   const { tags } = useTagDefinitions(organizationId);
   const { categories } = useCategoryDefinitions(organizationId, "gabinetTreatment");
@@ -526,11 +528,15 @@ function TreatmentsIndex() {
 
   const rowActions = useCallback(
     (row: Treatment) => [
-      {
-        label: t("common.edit"),
-        icon: <Pencil className="h-4 w-4" variant="stroke" />,
-        onClick: () => openEditPanel(row),
-      },
+      ...(canEdit
+        ? [
+            {
+              label: t("common.edit"),
+              icon: <Pencil className="h-4 w-4" variant="stroke" />,
+              onClick: () => openEditPanel(row),
+            },
+          ]
+        : []),
       {
         label: row.isActive ? t("common.inactive") : t("common.active"),
         icon: <Power className="h-4 w-4" variant="stroke" />,
@@ -557,7 +563,7 @@ function TreatmentsIndex() {
         },
       },
     ],
-    [t, removeTreatment, updateTreatment, organizationId],
+    [t, removeTreatment, updateTreatment, organizationId, canEdit],
   );
 
   return (

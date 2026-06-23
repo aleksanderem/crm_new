@@ -90,6 +90,15 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "auth_accounts_user_id_fk";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       auth_sessions: {
         Row: {
@@ -110,6 +119,7 @@ export interface Database {
           expires_at?: number;
           created_at?: number;
         };
+        Relationships: [];
       };
       auth_verification_codes: {
         Row: {
@@ -145,6 +155,7 @@ export interface Database {
           used_at?: number | null;
           created_at?: number;
         };
+        Relationships: [];
       };
       auth_rate_limits: {
         Row: {
@@ -171,6 +182,7 @@ export interface Database {
           window_start?: number;
           created_at?: number;
         };
+        Relationships: [];
       };
       users: {
         Row: {
@@ -227,6 +239,7 @@ export interface Database {
           created_at?: number | null;
           updated_at?: number | null;
         };
+        Relationships: [];
       };
       plans: {
         Row: {
@@ -256,6 +269,7 @@ export interface Database {
           seat_limit?: number;
           prices?: unknown;
         };
+        Relationships: [];
       };
       subscriptions: {
         Row: {
@@ -297,6 +311,22 @@ export interface Database {
           current_period_end?: number;
           cancel_at_period_end?: boolean;
         };
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey";
+            columns: ["plan_id"];
+            isOneToOne: false;
+            referencedRelation: "plans";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       platform_products: {
         Row: {
@@ -332,6 +362,7 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [];
       };
       organizations: {
         Row: {
@@ -367,6 +398,15 @@ export interface Database {
           updated_at?: number;
           onboarding_completed?: boolean | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "organizations_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       product_subscriptions: {
         Row: {
@@ -405,6 +445,15 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "product_subscriptions_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       team_memberships: {
         Row: {
@@ -431,6 +480,29 @@ export interface Database {
           invited_by?: string | null;
           joined_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "team_memberships_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "team_memberships_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "team_memberships_invited_by_fkey";
+            columns: ["invited_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       org_settings: {
         Row: {
@@ -475,6 +547,15 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "org_settings_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       org_permissions: {
         Row: {
@@ -501,6 +582,22 @@ export interface Database {
           updated_by?: string;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "org_permissions_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "org_permissions_updated_by_fkey";
+            columns: ["updated_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       invitations: {
         Row: {
@@ -542,6 +639,22 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "invitations_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "invitations_invited_by_fkey";
+            columns: ["invited_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       resource_invites: {
         Row: {
@@ -586,6 +699,29 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "resource_invites_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "resource_invites_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "resource_invites_invited_by_fkey";
+            columns: ["invited_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       notifications: {
         Row: {
@@ -624,6 +760,22 @@ export interface Database {
           created_at?: number;
           metadata?: unknown | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "notifications_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "notifications_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       audit_log: {
         Row: {
@@ -659,6 +811,22 @@ export interface Database {
           ip_address?: string | null;
           created_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "audit_log_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       recently_viewed: {
         Row: {
@@ -688,6 +856,22 @@ export interface Database {
           entity_label?: string;
           viewed_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "recently_viewed_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "recently_viewed_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       tag_definitions: {
         Row: {
@@ -720,6 +904,15 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "tag_definitions_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       category_definitions: {
         Row: {
@@ -761,6 +954,22 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "category_definitions_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "category_definitions_parent_id_fkey";
+            columns: ["parent_id"];
+            isOneToOne: false;
+            referencedRelation: "category_definitions";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       contacts: {
         Row: {
@@ -817,6 +1026,29 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "contacts_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "contacts_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "category_definitions";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "contacts_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       companies: {
         Row: {
@@ -873,6 +1105,29 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "companies_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "companies_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "category_definitions";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "companies_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       pipelines: {
         Row: {
@@ -908,6 +1163,22 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "pipelines_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "pipelines_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       pipeline_stages: {
         Row: {
@@ -946,6 +1217,22 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_stages_pipeline_id_fkey";
+            columns: ["pipeline_id"];
+            isOneToOne: false;
+            referencedRelation: "pipelines";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "pipeline_stages_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       pipeline_stage_actions: {
         Row: {
@@ -975,6 +1262,22 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_stage_actions_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "pipeline_stage_actions_stage_id_fkey";
+            columns: ["stage_id"];
+            isOneToOne: false;
+            referencedRelation: "pipeline_stages";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       leads: {
         Row: {
@@ -1052,6 +1355,50 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "leads_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "leads_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "leads_assigned_to_fkey";
+            columns: ["assigned_to"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "leads_pipeline_stage_id_fkey";
+            columns: ["pipeline_stage_id"];
+            isOneToOne: false;
+            referencedRelation: "pipeline_stages";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "leads_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "category_definitions";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "leads_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       documents: {
         Row: {
@@ -1117,6 +1464,29 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "documents_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "documents_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "category_definitions";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "documents_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       activity_type_definitions: {
         Row: {
@@ -1155,6 +1525,15 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "activity_type_definitions_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       custom_field_definitions: {
         Row: {
@@ -1202,6 +1581,15 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "custom_field_definitions_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       custom_field_values: {
         Row: {
@@ -1234,6 +1622,22 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "custom_field_values_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "custom_field_values_field_definition_id_fkey";
+            columns: ["field_definition_id"];
+            isOneToOne: false;
+            referencedRelation: "custom_field_definitions";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       object_relationships: {
         Row: {
@@ -1269,6 +1673,22 @@ export interface Database {
           created_by?: string;
           created_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "object_relationships_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "object_relationships_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       activities: {
         Row: {
@@ -1304,6 +1724,22 @@ export interface Database {
           performed_by?: string;
           created_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "activities_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "activities_performed_by_fkey";
+            columns: ["performed_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       notes: {
         Row: {
@@ -1342,6 +1778,29 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "notes_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "notes_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "notes_parent_note_id_fkey";
+            columns: ["parent_note_id"];
+            isOneToOne: false;
+            referencedRelation: "notes";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       products: {
         Row: {
@@ -1413,6 +1872,29 @@ export interface Database {
           catalog_number?: string | null;
           stock_note?: string | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "products_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "products_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "category_definitions";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "products_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       deal_products: {
         Row: {
@@ -1445,6 +1927,29 @@ export interface Database {
           discount?: number | null;
           created_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "deal_products_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "deal_products_deal_id_fkey";
+            columns: ["deal_id"];
+            isOneToOne: false;
+            referencedRelation: "leads";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "deal_products_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       calls: {
         Row: {
@@ -1486,6 +1991,29 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "calls_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "calls_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "category_definitions";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "calls_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       lost_reasons: {
         Row: {
@@ -1518,6 +2046,22 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "lost_reasons_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "lost_reasons_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       sources: {
         Row: {
@@ -1550,6 +2094,22 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "sources_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "sources_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       saved_views: {
         Row: {
@@ -1603,6 +2163,22 @@ export interface Database {
           updated_at?: number;
           selected_id?: string | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "saved_views_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "saved_views_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       email_templates: {
         Row: {
@@ -1668,6 +2244,22 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "email_templates_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "email_templates_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       email_layouts: {
         Row: {
@@ -1712,6 +2304,22 @@ export interface Database {
           updated_by?: string;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "email_layouts_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "email_layouts_updated_by_fkey";
+            columns: ["updated_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       email_accounts: {
         Row: {
@@ -1741,6 +2349,15 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "email_accounts_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       mail_providers: {
         Row: {
@@ -1809,6 +2426,22 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "mail_providers_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "mail_providers_connected_by_fkey";
+            columns: ["connected_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       emails: {
         Row: {
@@ -1910,6 +2543,78 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "emails_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "emails_contact_id_fkey";
+            columns: ["contact_id"];
+            isOneToOne: false;
+            referencedRelation: "contacts";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "emails_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "emails_lead_id_fkey";
+            columns: ["lead_id"];
+            isOneToOne: false;
+            referencedRelation: "leads";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "emails_mail_provider_id_fkey";
+            columns: ["mail_provider_id"];
+            isOneToOne: false;
+            referencedRelation: "mail_providers";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "emails_sent_by_fkey";
+            columns: ["sent_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "emails_template_id_fkey";
+            columns: ["template_id"];
+            isOneToOne: false;
+            referencedRelation: "email_templates";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "emails_patient_id_fk";
+            columns: ["patient_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_patients";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "emails_appointment_id_fk";
+            columns: ["appointment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_appointments";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "emails_employee_id_fk";
+            columns: ["employee_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_employees";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       email_event_types: {
         Row: {
@@ -1948,6 +2653,15 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "email_event_types_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       email_event_bindings: {
         Row: {
@@ -1986,6 +2700,29 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "email_event_bindings_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "email_event_bindings_template_id_fkey";
+            columns: ["template_id"];
+            isOneToOne: false;
+            referencedRelation: "email_templates";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "email_event_bindings_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       email_event_log: {
         Row: {
@@ -2051,6 +2788,36 @@ export interface Database {
           processed_at?: number | null;
           created_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "email_event_log_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "email_event_log_binding_id_fkey";
+            columns: ["binding_id"];
+            isOneToOne: false;
+            referencedRelation: "email_event_bindings";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "email_event_log_template_id_fkey";
+            columns: ["template_id"];
+            isOneToOne: false;
+            referencedRelation: "email_templates";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "email_event_log_triggered_by_fkey";
+            columns: ["triggered_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       email_sequences: {
         Row: {
@@ -2080,6 +2847,15 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "email_sequences_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       email_sequence_steps: {
         Row: {
@@ -2112,6 +2888,29 @@ export interface Database {
           condition_json?: string | null;
           created_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "email_sequence_steps_sequence_id_fkey";
+            columns: ["sequence_id"];
+            isOneToOne: false;
+            referencedRelation: "email_sequences";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "email_sequence_steps_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "email_sequence_steps_template_id_fkey";
+            columns: ["template_id"];
+            isOneToOne: false;
+            referencedRelation: "email_templates";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       email_sequence_enrollments: {
         Row: {
@@ -2153,6 +2952,22 @@ export interface Database {
           completed_at?: number | null;
           cancelled_at?: number | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "email_sequence_enrollments_sequence_id_fkey";
+            columns: ["sequence_id"];
+            isOneToOne: false;
+            referencedRelation: "email_sequences";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "email_sequence_enrollments_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       email_brand_config: {
         Row: {
@@ -2212,6 +3027,29 @@ export interface Database {
           updated_by?: string;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "email_brand_config_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "email_brand_config_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "email_brand_config_updated_by_fkey";
+            columns: ["updated_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       oauth_connections: {
         Row: {
@@ -2265,6 +3103,29 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "oauth_connections_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "oauth_connections_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "oauth_connections_connected_by_fkey";
+            columns: ["connected_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       google_calendar_sync_configs: {
         Row: {
@@ -2318,6 +3179,29 @@ export interface Database {
           sync_status?: string | null;
           sync_error?: string | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "google_calendar_sync_configs_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "google_calendar_sync_configs_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "google_calendar_sync_configs_connection_id_fkey";
+            columns: ["connection_id"];
+            isOneToOne: false;
+            referencedRelation: "oauth_connections";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       scheduled_activities: {
         Row: {
@@ -2410,6 +3294,50 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_activities_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "scheduled_activities_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "scheduled_activities_sync_config_id_fkey";
+            columns: ["sync_config_id"];
+            isOneToOne: false;
+            referencedRelation: "google_calendar_sync_configs";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "scheduled_activities_resource_id_fkey";
+            columns: ["resource_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "scheduled_activities_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "category_definitions";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "scheduled_activities_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       payments: {
         Row: {
@@ -2469,6 +3397,43 @@ export interface Database {
           credit_applied?: number | null;
           kind?: string | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "payments_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "payments_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "payments_patient_id_fk";
+            columns: ["patient_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_patients";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "payments_appointment_id_fk";
+            columns: ["appointment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_appointments";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "payments_package_usage_id_fk";
+            columns: ["package_usage_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_package_usage";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       org_sms_config: {
         Row: {
@@ -2507,6 +3472,15 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "org_sms_config_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_locations: {
         Row: {
@@ -2548,6 +3522,22 @@ export interface Database {
           created_at?: number;
           updated_at?: number | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_locations_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_locations_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_rooms: {
         Row: {
@@ -2580,6 +3570,22 @@ export interface Database {
           is_active?: boolean;
           created_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_rooms_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_rooms_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_locations";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_equipment: {
         Row: {
@@ -2624,6 +3630,36 @@ export interface Database {
           updated_at?: number | null;
           parameter_units?: string[] | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_equipment_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_equipment_current_location_id_fkey";
+            columns: ["current_location_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_locations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_equipment_current_room_id_fkey";
+            columns: ["current_room_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_rooms";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_equipment_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_equipment_transfers: {
         Row: {
@@ -2659,6 +3695,50 @@ export interface Database {
           transferred_at?: number;
           notes?: string | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_equipment_transfers_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_equipment_transfers_equipment_id_fkey";
+            columns: ["equipment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_equipment";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_equipment_transfers_from_location_id_fkey";
+            columns: ["from_location_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_locations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_equipment_transfers_to_location_id_fkey";
+            columns: ["to_location_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_locations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_equipment_transfers_to_room_id_fkey";
+            columns: ["to_room_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_rooms";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_equipment_transfers_transferred_by_fkey";
+            columns: ["transferred_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_treatments: {
         Row: {
@@ -2760,6 +3840,36 @@ export interface Database {
           tax_exempt?: boolean | null;
           package_id?: string | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_treatments_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_treatments_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "category_definitions";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_treatments_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_treatments_package_id_fkey";
+            columns: ["package_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatment_packages";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_treatment_variants: {
         Row: {
@@ -2801,6 +3911,22 @@ export interface Database {
           is_active?: boolean | null;
           sort_order?: number | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_treatment_variants_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_treatment_variants_treatment_id_fkey";
+            columns: ["treatment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatments";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_employees: {
         Row: {
@@ -2914,6 +4040,36 @@ export interface Database {
           show_in_calendar?: boolean;
           assigned_items?: unknown | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_employees_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_employees_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_employees_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "category_definitions";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_employees_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_leave_types: {
         Row: {
@@ -2955,6 +4111,22 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_leave_types_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_leave_types_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_leave_balances: {
         Row: {
@@ -2990,6 +4162,29 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_leave_balances_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_leave_balances_employee_id_fkey";
+            columns: ["employee_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_employees";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_leave_balances_leave_type_id_fkey";
+            columns: ["leave_type_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_leave_types";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_working_hours: {
         Row: {
@@ -3034,6 +4229,29 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_working_hours_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_working_hours_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_locations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_working_hours_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_employee_schedules: {
         Row: {
@@ -3087,6 +4305,36 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_employee_schedules_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_employee_schedules_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_employee_schedules_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_locations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_employee_schedules_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_leaves: {
         Row: {
@@ -3143,6 +4391,43 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_leaves_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_leaves_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_leaves_leave_type_id_fkey";
+            columns: ["leave_type_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_leave_types";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_leaves_approved_by_fkey";
+            columns: ["approved_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_leaves_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_overtime: {
         Row: {
@@ -3187,6 +4472,36 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_overtime_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_overtime_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_overtime_approved_by_fkey";
+            columns: ["approved_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_overtime_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_patients: {
         Row: {
@@ -3273,6 +4588,43 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_patients_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_patients_contact_id_fkey";
+            columns: ["contact_id"];
+            isOneToOne: false;
+            referencedRelation: "contacts";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_patients_referred_by_patient_id_fkey";
+            columns: ["referred_by_patient_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_patients";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_patients_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "category_definitions";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_patients_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_appointments: {
         Row: {
@@ -3413,6 +4765,92 @@ export interface Database {
           contraindication_alerts_reviewed?: boolean | null;
           price_at_booking?: number | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_appointments_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_appointments_patient_id_fkey";
+            columns: ["patient_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_patients";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_appointments_treatment_id_fkey";
+            columns: ["treatment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatments";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_appointments_employee_id_fkey";
+            columns: ["employee_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_appointments_scheduled_activity_id_fkey";
+            columns: ["scheduled_activity_id"];
+            isOneToOne: false;
+            referencedRelation: "scheduled_activities";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_appointments_cancelled_by_fkey";
+            columns: ["cancelled_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_appointments_booked_by_patient_id_fkey";
+            columns: ["booked_by_patient_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_patients";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_appointments_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_locations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_appointments_room_id_fkey";
+            columns: ["room_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_rooms";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_appointments_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "category_definitions";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_appointments_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_appointments_package_usage_id_fk";
+            columns: ["package_usage_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_package_usage";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_treatment_packages: {
         Row: {
@@ -3466,6 +4904,29 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_treatment_packages_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_treatment_packages_auto_generated_for_treatment_id_fkey";
+            columns: ["auto_generated_for_treatment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatments";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_treatment_packages_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_package_usage: {
         Row: {
@@ -3513,6 +4974,36 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_package_usage_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_package_usage_patient_id_fkey";
+            columns: ["patient_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_patients";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_package_usage_package_id_fkey";
+            columns: ["package_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatment_packages";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_package_usage_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_loyalty_points: {
         Row: {
@@ -3548,6 +5039,22 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_loyalty_points_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_loyalty_points_patient_id_fkey";
+            columns: ["patient_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_patients";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_loyalty_transactions: {
         Row: {
@@ -3589,6 +5096,29 @@ export interface Database {
           created_by?: string;
           created_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_loyalty_transactions_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_loyalty_transactions_patient_id_fkey";
+            columns: ["patient_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_patients";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_loyalty_transactions_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_document_templates: {
         Row: {
@@ -3630,6 +5160,22 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_document_templates_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_document_templates_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_documents: {
         Row: {
@@ -3701,6 +5247,57 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_documents_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_documents_patient_id_fkey";
+            columns: ["patient_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_patients";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_documents_appointment_id_fkey";
+            columns: ["appointment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_appointments";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_documents_template_id_fkey";
+            columns: ["template_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_document_templates";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_documents_signed_by_employee_fkey";
+            columns: ["signed_by_employee"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_documents_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "category_definitions";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_documents_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       gabinet_portal_sessions: {
         Row: {
@@ -3751,6 +5348,22 @@ export interface Database {
           verify_fail_count?: number | null;
           locked_until?: number | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_portal_sessions_patient_id_fkey";
+            columns: ["patient_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_patients";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "gabinet_portal_sessions_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       appointment_reminders: {
         Row: {
@@ -3786,6 +5399,22 @@ export interface Database {
           scheduled_function_id?: string | null;
           created_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "appointment_reminders_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "appointment_reminders_appointment_id_fkey";
+            columns: ["appointment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_appointments";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       appointment_workflow_history: {
         Row: {
@@ -3848,6 +5477,29 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "appointment_workflow_history_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "appointment_workflow_history_appointment_id_fkey";
+            columns: ["appointment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_appointments";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "appointment_workflow_history_email_event_log_id_fkey";
+            columns: ["email_event_log_id"];
+            isOneToOne: false;
+            referencedRelation: "email_event_log";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       appointment_sms_events: {
         Row: {
@@ -3922,6 +5574,36 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "appointment_sms_events_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "appointment_sms_events_appointment_id_fkey";
+            columns: ["appointment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_appointments";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "appointment_sms_events_patient_id_fkey";
+            columns: ["patient_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_patients";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "appointment_sms_events_reply_to_event_id_fkey";
+            columns: ["reply_to_event_id"];
+            isOneToOne: false;
+            referencedRelation: "appointment_sms_events";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       document_templates: {
         Row: {
@@ -3981,6 +5663,29 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "document_templates_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "document_templates_parent_template_id_fkey";
+            columns: ["parent_template_id"];
+            isOneToOne: false;
+            referencedRelation: "document_templates";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "document_templates_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       document_template_fields: {
         Row: {
@@ -4031,6 +5736,15 @@ export interface Database {
           help_text?: string | null;
           width?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "document_template_fields_template_id_fkey";
+            columns: ["template_id"];
+            isOneToOne: false;
+            referencedRelation: "document_templates";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       document_instances: {
         Row: {
@@ -4123,6 +5837,50 @@ export interface Database {
           approved_by?: string | null;
           approved_at?: number | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "document_instances_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "document_instances_template_id_fkey";
+            columns: ["template_id"];
+            isOneToOne: false;
+            referencedRelation: "document_templates";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "document_instances_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "document_instances_assigned_reviewer_id_fkey";
+            columns: ["assigned_reviewer_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "document_instances_reviewed_by_fkey";
+            columns: ["reviewed_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "document_instances_approved_by_fkey";
+            columns: ["approved_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       signature_requests: {
         Row: {
@@ -4182,6 +5940,29 @@ export interface Database {
           signed_at?: number | null;
           created_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "signature_requests_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "signature_requests_instance_id_fkey";
+            columns: ["instance_id"];
+            isOneToOne: false;
+            referencedRelation: "document_instances";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "signature_requests_signer_user_id_fkey";
+            columns: ["signer_user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       form_templates: {
         Row: {
@@ -4253,6 +6034,22 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "form_templates_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "form_templates_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       form_documents: {
         Row: {
@@ -4342,6 +6139,29 @@ export interface Database {
           updated_at?: number;
           sort_order?: number | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "form_documents_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "form_documents_template_id_fkey";
+            columns: ["template_id"];
+            isOneToOne: false;
+            referencedRelation: "form_templates";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "form_documents_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       automation_rules: {
         Row: {
@@ -4398,6 +6218,22 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "automation_rules_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "automation_rules_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       automation_runs: {
         Row: {
@@ -4457,6 +6293,29 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "automation_runs_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "automation_runs_rule_id_fkey";
+            columns: ["rule_id"];
+            isOneToOne: false;
+            referencedRelation: "automation_rules";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "automation_runs_actor_user_id_fkey";
+            columns: ["actor_user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       automation_run_steps: {
         Row: {
@@ -4528,6 +6387,43 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "automation_run_steps_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "automation_run_steps_run_id_fkey";
+            columns: ["run_id"];
+            isOneToOne: false;
+            referencedRelation: "automation_runs";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "automation_run_steps_rule_id_fkey";
+            columns: ["rule_id"];
+            isOneToOne: false;
+            referencedRelation: "automation_rules";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "automation_run_steps_email_event_log_id_fkey";
+            columns: ["email_event_log_id"];
+            isOneToOne: false;
+            referencedRelation: "email_event_log";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "automation_run_steps_appointment_sms_event_id_fkey";
+            columns: ["appointment_sms_event_id"];
+            isOneToOne: false;
+            referencedRelation: "appointment_sms_events";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       document_components: {
         Row: {
@@ -4578,6 +6474,22 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "document_components_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "document_components_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       product_stock_levels: {
         Row: {
@@ -4604,6 +6516,29 @@ export interface Database {
           quantity?: number;
           updated_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "product_stock_levels_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "product_stock_levels_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "product_stock_levels_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_locations";
+            referencedColumns: ["id"];
+          };
+        ];
       };
       product_stock_movements: {
         Row: {
@@ -4648,6 +6583,36 @@ export interface Database {
           performed_by?: string;
           created_at?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "product_stock_movements_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "product_stock_movements_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "product_stock_movements_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_locations";
+            referencedColumns: ["id"];
+          };
+          {
+            foreignKeyName: "product_stock_movements_performed_by_fkey";
+            columns: ["performed_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          };
+        ];
       };
     };
     Views: Record<string, never>;

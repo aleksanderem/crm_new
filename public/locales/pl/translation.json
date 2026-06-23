@@ -3856,7 +3856,8 @@
         "employees": "Pracownicy",
         "payments": "Płatności",
         "reports": "Raporty",
-        "settings": "Ustawienia"
+        "settings": "Ustawienia",
+        "dashboard": "Pulpit"
       }
     }
   },

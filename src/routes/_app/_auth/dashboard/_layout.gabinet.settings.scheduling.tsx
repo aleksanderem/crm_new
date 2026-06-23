@@ -13,11 +13,12 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
+import { PermissionGate } from "@/hooks/use-permission";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/settings/scheduling"
 )({
-  component: SchedulingSettings,
+  component: () => <PermissionGate feature="gabinet_settings" action="view"><SchedulingSettings /></PermissionGate>,
 });
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];

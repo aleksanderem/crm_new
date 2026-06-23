@@ -106,6 +106,7 @@ import { Id } from "@cvx/_generated/dataModel";
 import type { AppointmentFullDetailNote } from "@cvx/gabinet/appointments";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
+import { PermissionGate } from "@/hooks/use-permission";
 import { toast } from "sonner";
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
@@ -114,7 +115,7 @@ import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId",
 )({
-  component: AppointmentDetail,
+  component: () => <PermissionGate feature="gabinet_appointments" action="view"><AppointmentDetail /></PermissionGate>,
 });
 
 // All statuses can transition to any other status. Lets staff correct mistakes

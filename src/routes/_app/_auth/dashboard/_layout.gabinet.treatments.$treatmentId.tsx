@@ -65,11 +65,12 @@ import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { formatTreatmentError } from "@/lib/format-action-error";
+import { PermissionGate } from "@/hooks/use-permission";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/treatments/$treatmentId",
 )({
-  component: TreatmentDetail,
+  component: () => <PermissionGate feature="gabinet_treatments" action="view"><TreatmentDetail /></PermissionGate>,
 });
 
 function formatCurrency(amount: number, currency?: string): string {

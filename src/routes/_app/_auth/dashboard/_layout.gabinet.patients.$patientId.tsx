@@ -74,7 +74,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { useTranslation } from "react-i18next";
-import { usePermission } from "@/hooks/use-permission";
+import { usePermission, PermissionGate } from "@/hooks/use-permission";
 import { PatientPackagesCard } from "@/components/gabinet/patient-packages-card";
 import { PatientTreatmentsCard } from "@/components/gabinet/patient-treatments-card";
 import { PatientPhotosTab } from "@/components/gabinet/patient-photos-tab";
@@ -88,7 +88,7 @@ import { formatBirthDate } from "@/lib/format-date";
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/patients/$patientId",
 )({
-  component: PatientDetail,
+  component: () => <PermissionGate feature="gabinet_patients" action="view"><PatientDetail /></PermissionGate>,
 });
 
 function PatientDetail() {

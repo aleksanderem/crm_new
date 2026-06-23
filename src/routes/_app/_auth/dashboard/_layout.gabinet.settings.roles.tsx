@@ -20,11 +20,12 @@ import { Badge } from "@/components/ui/badge";
 import { RotateCcw } from "@/lib/ez-icons";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
+import { PermissionGate } from "@/hooks/use-permission";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/settings/roles"
 )({
-  component: GabinetRolesSettingsPage,
+  component: () => <PermissionGate feature="gabinet_settings" action="view"><GabinetRolesSettingsPage /></PermissionGate>,
 });
 
 type Scope = "none" | "own" | "all";

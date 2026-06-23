@@ -60,11 +60,12 @@ import type { MappedGabinetEmployee } from "@/lib/supabase/mappers/gabinet/emplo
 import type { MappedGabinetEmployeeSchedule } from "@/lib/supabase/mappers/gabinet/employee-schedules";
 import type { MappedGabinetWorkingHours } from "@/lib/supabase/mappers/gabinet/working-hours";
 import type { MappedGabinetLeave } from "@/lib/supabase/mappers/gabinet/leaves";
+import { PermissionGate } from "@/hooks/use-permission";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/settings/timetable"
 )({
-  component: TimetablePage,
+  component: () => <PermissionGate feature="gabinet_settings" action="view"><TimetablePage /></PermissionGate>,
 });
 
 const DAY_NAMES_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];

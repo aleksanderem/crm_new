@@ -3276,6 +3276,7 @@
       "discountPercent": "Discount %",
       "loyaltyPoints": "Loyalty Points",
       "treatments": "Treatments",
+      "treatmentsInPackage": "Treatments in package",
       "treatment": "Treatment",
       "quantity": "Quantity",
       "noTreatments": "Click Add to add treatments to the package",

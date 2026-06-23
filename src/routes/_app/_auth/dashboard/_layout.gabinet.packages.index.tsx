@@ -231,9 +231,10 @@ function PackagesIndex() {
   }, []);
 
   const addTreatment = () => {
-    if (treatments && treatments.length > 0) {
-      setSelectedTreatments((prev) => [...prev, { treatmentId: treatments[0]._id, quantity: 1 }]);
-    }
+    setSelectedTreatments((prev) => [
+      ...prev,
+      { treatmentId: treatments?.[0]?._id ?? "", quantity: 1 },
+    ]);
   };
 
   const removeTreatment = (index: number) => {
@@ -248,6 +249,7 @@ function PackagesIndex() {
 
   const handleSubmit = async () => {
     if (!name || !totalPrice || selectedTreatments.length === 0) return;
+    if (selectedTreatments.some((t) => !t.treatmentId || t.quantity < 1)) return;
     setSubmitting(true);
     try {
       const treatmentsList = selectedTreatments.map((t) => ({
@@ -616,11 +618,16 @@ function PackagesIndex() {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>{t("gabinet.packages.treatments")}</Label>
+              <Label>{t("gabinet.packages.treatmentsInPackage")}</Label>
               <Button type="button" variant="outline" size="sm" onClick={addTreatment}>
                 <Plus className="mr-1 h-4 w-4" variant="stroke" /> {t("common.add")}
               </Button>
             </div>
+            {selectedTreatments.length === 0 && (
+              <p className="text-sm text-muted-foreground py-1">
+                {t("gabinet.packages.noTreatments")}
+              </p>
+            )}
             {selectedTreatments.map((st, i) => (
               <div key={i} className="rounded-md border p-3">
                 <div className="flex items-end gap-2">
@@ -630,12 +637,18 @@ function PackagesIndex() {
                     </Label>
                     <Select value={st.treatmentId} onValueChange={(val) => updateTreatment(i, "treatmentId", val)}>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder={t("gabinet.packages.treatment")} />
                       </SelectTrigger>
                       <SelectContent>
-                        {(treatments ?? []).map((tr) => (
-                          <SelectItem key={tr._id} value={tr._id}>{tr.name}</SelectItem>
-                        ))}
+                        {(treatments ?? []).length === 0 ? (
+                          <SelectItem value="__none__" disabled>
+                            {t("gabinet.packages.noTreatmentsAvailable")}
+                          </SelectItem>
+                        ) : (
+                          (treatments ?? []).map((tr) => (
+                            <SelectItem key={tr._id} value={tr._id}>{tr.name}</SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>

@@ -88,6 +88,7 @@ interface FormDocument {
   signatureData?: string;
   signedByName?: string;
   signingToken?: string;
+  signingEmailSentAt?: number;
 }
 
 interface FormTemplate {
@@ -118,29 +119,6 @@ export function EntityDocumentsTab({
   const reorderByEntity = useAction(api.documents.documents.reorderByEntity);
   const removeDocument = useAction(api.documents.documents.remove);
 
-  const handleSend = useCallback(
-    async (e: React.MouseEvent, docId: Id<"formDocuments">) => {
-      e.stopPropagation();
-      setSendingDocId(docId);
-      setSendSuccessDocId(null);
-      try {
-        await resendSigningEmail({ organizationId, documentId: docId });
-        setSendSuccessDocId(docId);
-        toast.success(t("documents.emailSent", "Wysłano e-mail do klienta"));
-        setTimeout(() => setSendSuccessDocId(null), 3000);
-      } catch (err) {
-        toast.error(
-          err instanceof Error
-            ? err.message
-            : t("documents.sendFailed", "Nie udało się wysłać e-maila"),
-        );
-      } finally {
-        setSendingDocId(null);
-      }
-    },
-    [resendSigningEmail, organizationId, t],
-  );
-
   // --- Document list ---
 
   const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
@@ -159,6 +137,29 @@ export function EntityDocumentsTab({
     enabled: !!organizationId && !!entityType && !!entityId,
   });
   const documents = documentsRaw as unknown as FormDocument[] | undefined;
+
+  const handleSend = useCallback(
+    async (e: React.MouseEvent, docId: Id<"formDocuments">) => {
+      e.stopPropagation();
+      setSendingDocId(docId);
+      setSendSuccessDocId(null);
+      try {
+        await resendSigningEmail({ organizationId, documentId: docId });
+        setSendSuccessDocId(docId);
+        toast.success(t("documents.emailSent", "Wysłano e-mail do klienta"));
+        void refetch();
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : t("documents.sendFailed", "Nie udało się wysłać e-maila"),
+        );
+      } finally {
+        setSendingDocId(null);
+      }
+    },
+    [resendSigningEmail, organizationId, t, refetch],
+  );
 
   // Local ordering so drag-and-drop is responsive while the server persists.
   // Resynced whenever the server-side list changes (creation, deletion).
@@ -649,7 +650,7 @@ function SortableDocumentRow({
           >
             {sendingDocId === doc._id ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin sm:mr-1" />
-            ) : sendSuccessDocId === doc._id ? (
+            ) : (sendSuccessDocId === doc._id || doc.signingEmailSentAt) ? (
               <CircleCheck className="h-3.5 w-3.5 text-green-600 sm:mr-1" />
             ) : (
               <Send className="h-3.5 w-3.5 sm:mr-1" variant="stroke" />
@@ -657,7 +658,9 @@ function SortableDocumentRow({
             <span className="max-sm:sr-only">
               {sendSuccessDocId === doc._id
                 ? t("documents.emailSentShort", "Wysłano")
-                : t("documents.send", "Wyślij")}
+                : doc.signingEmailSentAt
+                  ? t("documents.resend", "Wyślij ponownie")
+                  : t("documents.send", "Wyślij")}
             </span>
           </Button>
         )}

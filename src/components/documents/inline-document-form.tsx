@@ -287,6 +287,54 @@ export function InlineFieldControl({
     );
   }
 
+  if (field.fieldType === "button_select") {
+    const opts = field.options
+      .split(",")
+      .map((o) => o.trim())
+      .filter(Boolean);
+    return (
+      <span style={{ display: "block", width: "100%" }}>
+        {labelNode}
+        <span
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "8px",
+          }}
+        >
+          {opts.map((opt) => {
+            const selected = value === opt;
+            return (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => onChange(opt)}
+                style={{
+                  padding: "10px 20px",
+                  border: selected ? "2px solid #7C6AE8" : "2px solid #d1d5db",
+                  borderRadius: "8px",
+                  background: selected ? "#ede9ff" : "#fff",
+                  color: selected ? "#4C3D9E" : "#111827",
+                  fontSize: "14px",
+                  fontWeight: selected ? "600" : "400",
+                  cursor: "pointer",
+                  minHeight: "44px",
+                  minWidth: "80px",
+                  transition: "border-color 0.15s, background 0.15s",
+                  lineHeight: "1.4",
+                  textAlign: "center",
+                  wordBreak: "break-word",
+                }}
+              >
+                {opt}
+              </button>
+            );
+          })}
+        </span>
+      </span>
+    );
+  }
+
   // text / date / default
   return (
     <span style={{ display: showLabel ? "block" : "inline-block" }}>

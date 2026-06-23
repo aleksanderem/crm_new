@@ -29,6 +29,7 @@ import {
   List,
   Calendar,
   CheckSquare,
+  LayoutGrid,
   Users,
 } from "lucide-react";
 
@@ -36,7 +37,7 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
-export type FormFieldType = "text" | "textarea" | "select" | "date" | "checkbox";
+export type FormFieldType = "text" | "textarea" | "select" | "button_select" | "date" | "checkbox";
 export type FilledBy = "employee" | "client";
 
 export interface FormFieldAttrs {
@@ -57,6 +58,7 @@ const FIELD_TYPE_ICONS: Record<FormFieldType, typeof Type> = {
   text: Type,
   textarea: AlignLeft,
   select: List,
+  button_select: LayoutGrid,
   date: Calendar,
   checkbox: CheckSquare,
 };
@@ -115,20 +117,21 @@ function FormFieldConfig({
             <SelectItem value="text">Text</SelectItem>
             <SelectItem value="textarea">Textarea</SelectItem>
             <SelectItem value="select">{t("common.select")}</SelectItem>
+            <SelectItem value="button_select">Przyciski (Tak/Nie)</SelectItem>
             <SelectItem value="date">Date</SelectItem>
             <SelectItem value="checkbox">Checkbox</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {attrs.fieldType === "select" && (
+      {(attrs.fieldType === "select" || attrs.fieldType === "button_select") && (
         <div className="space-y-1">
           <Label className="text-xs">Options (comma-separated)</Label>
           <Input
             value={attrs.options}
             onChange={(e) => onChange({ options: e.target.value })}
             className="h-8 text-sm"
-            placeholder="Option A, Option B, Option C"
+            placeholder="Nie, Tak, Tak — wymaga omówienia"
           />
         </div>
       )}

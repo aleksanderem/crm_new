@@ -46,7 +46,13 @@ export const list = action({
         return fn.includes(term) || ln.includes(term) || em.includes(term) || ph.includes(term);
       }).slice(0, 50);
       if (perm.scope === "own") {
-        results = results.filter((r) => String(r.createdBy) === userIdStr);
+        const ownAppts = (await db
+          .query("gabinetAppointments")
+          .eq("organizationId", orgIdStr)
+          .eq("employeeId", userIdStr)
+          .collect()) as Array<{ patientId: unknown }>;
+        const ownPatientIds = new Set(ownAppts.map((a) => String(a.patientId)));
+        results = results.filter((r) => ownPatientIds.has(String(r._id)));
       }
       return { page: results, isDone: true, continueCursor: "" };
     }
@@ -57,7 +63,13 @@ export const list = action({
       .order("createdAt", false)
       .collect()) as GabinetPatientRow[];
     if (perm.scope === "own") {
-      page = page.filter((r) => String(r.createdBy) === userIdStr);
+      const ownAppts = (await db
+        .query("gabinetAppointments")
+        .eq("organizationId", orgIdStr)
+        .eq("employeeId", userIdStr)
+        .collect()) as Array<{ patientId: unknown }>;
+      const ownPatientIds = new Set(ownAppts.map((a) => String(a.patientId)));
+      page = page.filter((r) => ownPatientIds.has(String(r._id)));
     }
     return { page, isDone: true, continueCursor: "" };
   },
@@ -136,8 +148,14 @@ export const getById = action({
     if (!patient || String(patient.organizationId) !== String(args.organizationId)) {
       throw new Error("Patient not found");
     }
-    if (perm.scope === "own" && String(patient.createdBy) !== String(authResult.userId)) {
-      throw new Error("Permission denied: you can only view your own records");
+    if (perm.scope === "own") {
+      const hasAppt = await db
+        .query("gabinetAppointments")
+        .eq("organizationId", String(args.organizationId))
+        .eq("employeeId", String(authResult.userId))
+        .eq("patientId", args.patientId)
+        .first();
+      if (!hasAppt) throw new Error("Permission denied: you can only view your own records");
     }
 
     return patient;
@@ -431,8 +449,14 @@ export const update = action({
     if (!patient || String(patient.organizationId) !== String(args.organizationId)) {
       throw new Error("Patient not found");
     }
-    if (perm.scope === "own" && String(patient.createdBy) !== String(authResult.userId)) {
-      throw new Error("Permission denied: you can only edit your own records");
+    if (perm.scope === "own") {
+      const hasAppt = await db
+        .query("gabinetAppointments")
+        .eq("organizationId", String(args.organizationId))
+        .eq("employeeId", String(authResult.userId))
+        .eq("patientId", args.patientId)
+        .first();
+      if (!hasAppt) throw new Error("Permission denied: you can only edit your own records");
     }
 
     // --- Build updates and PATCH to Supabase ---
@@ -523,8 +547,14 @@ export const remove = action({
     if (!patient || String(patient.organizationId) !== String(args.organizationId)) {
       throw new Error("Patient not found");
     }
-    if (perm.scope === "own" && String(patient.createdBy) !== String(authResult.userId)) {
-      throw new Error("Permission denied: you can only delete your own records");
+    if (perm.scope === "own") {
+      const hasAppt = await db
+        .query("gabinetAppointments")
+        .eq("organizationId", String(args.organizationId))
+        .eq("employeeId", String(authResult.userId))
+        .eq("patientId", args.patientId)
+        .first();
+      if (!hasAppt) throw new Error("Permission denied: you can only delete your own records");
     }
 
     // --- Soft-delete: PATCH isActive=false in Supabase ---
@@ -663,7 +693,11 @@ export const merge = action({
     }
     if (perm.scope === "own") {
       const userIdStr = String(authResult.userId);
-      if (String(target.createdBy) !== userIdStr || String(source.createdBy) !== userIdStr) {
+      const [hasTargetAppt, hasSourceAppt] = await Promise.all([
+        db.query("gabinetAppointments").eq("organizationId", orgIdStr).eq("employeeId", userIdStr).eq("patientId", args.targetPatientId).first(),
+        db.query("gabinetAppointments").eq("organizationId", orgIdStr).eq("employeeId", userIdStr).eq("patientId", args.sourcePatientId).first(),
+      ]);
+      if (!hasTargetAppt || !hasSourceAppt) {
         throw new Error("Permission denied: you can only merge your own records");
       }
     }
@@ -920,7 +954,13 @@ export const getByContact = action({
       .collect()) as GabinetPatientRow[];
 
     if (perm.scope === "own") {
-      results = results.filter((r) => String(r.createdBy) === String(authResult.userId));
+      const ownAppts = (await db
+        .query("gabinetAppointments")
+        .eq("organizationId", String(args.organizationId))
+        .eq("employeeId", String(authResult.userId))
+        .collect()) as Array<{ patientId: unknown }>;
+      const ownPatientIds = new Set(ownAppts.map((a) => String(a.patientId)));
+      results = results.filter((r) => ownPatientIds.has(String(r._id)));
     }
     return results;
   },

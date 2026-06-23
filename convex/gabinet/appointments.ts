@@ -398,7 +398,7 @@ export const list = action({
       .order("createdAt", false)
       .collect()) as GabinetAppointmentRow[];
     if (perm.scope === "own") {
-      page = page.filter((r) => String(r.createdBy) === userIdStr);
+      page = page.filter((r) => String(r.employeeId) === userIdStr);
     }
     return { page, isDone: true, continueCursor: "" };
   },
@@ -426,7 +426,7 @@ export const getById = action({
     if (!appt || String(appt.organizationId) !== String(args.organizationId)) {
       throw new Error("Appointment not found");
     }
-    if (perm.scope === "own" && String(appt.createdBy) !== String(authResult.userId)) {
+    if (perm.scope === "own" && String(appt.employeeId) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only view your own records");
     }
     return appt;
@@ -457,7 +457,7 @@ export const listByDate = action({
       .eq("date", args.date)
       .collect()) as GabinetAppointmentRow[];
     if (perm.scope === "own") {
-      results = results.filter((r) => String(r.createdBy) === String(authResult.userId));
+      results = results.filter((r) => String(r.employeeId) === String(authResult.userId));
     }
     return results;
   },
@@ -493,7 +493,7 @@ export const listByDateRange = action({
     }
     let results = (await builder.collect()) as GabinetAppointmentRow[];
     if (perm.scope === "own") {
-      results = results.filter((r) => String(r.createdBy) === String(authResult.userId));
+      results = results.filter((r) => String(r.employeeId) === String(authResult.userId));
     }
     return results;
   },
@@ -523,7 +523,7 @@ export const listByPatient = action({
       .eq("patientId", args.patientId)
       .collect()) as GabinetAppointmentRow[];
     if (perm.scope === "own") {
-      results = results.filter((r) => String(r.createdBy) === String(authResult.userId));
+      results = results.filter((r) => String(r.employeeId) === String(authResult.userId));
     }
     return results;
   },
@@ -553,7 +553,7 @@ export const listByEmployee = action({
       .eq("employeeId", args.employeeId)
       .collect()) as GabinetAppointmentRow[];
     if (perm.scope === "own") {
-      results = results.filter((r) => String(r.createdBy) === String(authResult.userId));
+      results = results.filter((r) => String(r.employeeId) === String(authResult.userId));
     }
     return results;
   },
@@ -583,7 +583,7 @@ export const listPatientsForEmployee = action({
       .eq("employeeId", args.employeeId)
       .collect()) as GabinetAppointmentRow[];
     if (perm.scope === "own") {
-      appointments = appointments.filter((r) => String(r.createdBy) === String(authResult.userId));
+      appointments = appointments.filter((r) => String(r.employeeId) === String(authResult.userId));
     }
 
     const uniquePatientIds = [...new Set(appointments.map((a) => String(a.patientId)))];
@@ -635,7 +635,7 @@ export const listPatientsWithStatsForEmployee = action({
       .collect()) as GabinetAppointmentRow[];
 
     if (perm.scope === "own") {
-      appointments = appointments.filter((r) => String(r.createdBy) === String(authResult.userId));
+      appointments = appointments.filter((r) => String(r.employeeId) === String(authResult.userId));
     }
 
     // Group by patient
@@ -1458,7 +1458,7 @@ export const update = action({
     if (!appt || String(appt.organizationId) !== String(args.organizationId)) {
       throw new Error("Appointment not found");
     }
-    if (perm.scope === "own" && String(appt.createdBy) !== String(authResult.userId)) {
+    if (perm.scope === "own" && String(appt.employeeId) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only edit your own records");
     }
 
@@ -1758,7 +1758,7 @@ export const updateStatus = action({
     if (!appt || String(appt.organizationId) !== String(args.organizationId)) {
       throw new Error("Appointment not found");
     }
-    if (perm.scope === "own" && String(appt.createdBy) !== String(authResult.userId)) {
+    if (perm.scope === "own" && String(appt.employeeId) !== String(authResult.userId)) {
       throw new Error("Permission denied: you can only edit your own records");
     }
 
@@ -2103,7 +2103,7 @@ export const cancel = action({
     if (!appt || String(appt.organizationId) !== String(args.organizationId)) {
       throw new Error("Appointment not found");
     }
-    if (perm.scope === "own" && String(appt.createdBy) !== String(authResult.userId)) {
+    if (perm.scope === "own" && String(appt.employeeId) !== String(authResult.userId)) {
       throw new Error(
         "Permission denied: you can only delete your own records",
       );
@@ -2635,7 +2635,7 @@ export const getFullDetail = action({
     }
     if (
       perm.scope === "own" &&
-      String(appointmentRaw.createdBy) !== String(authResult.userId)
+      String(appointmentRaw.employeeId) !== String(authResult.userId)
     ) {
       throw new Error("Permission denied: you can only view your own records");
     }

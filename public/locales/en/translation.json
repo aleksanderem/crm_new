@@ -2938,6 +2938,7 @@
         "nurse": "Assistant",
         "therapist": "Therapist",
         "receptionist": "Receptionist",
+        "manager": "Manager",
         "admin": "Administrator",
         "other": "Other"
       },

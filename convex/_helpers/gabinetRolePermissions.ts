@@ -20,6 +20,7 @@ export type SystemGabinetRole =
   | "nurse"
   | "therapist"
   | "receptionist"
+  | "manager"
   | "admin"
   | "other";
 
@@ -28,6 +29,7 @@ export const SYSTEM_GABINET_ROLES: readonly SystemGabinetRole[] = [
   "nurse",
   "therapist",
   "receptionist",
+  "manager",
   "admin",
   "other",
 ];
@@ -131,6 +133,19 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_payments: { view: "all", create: "all", edit: "all" },
     gabinet_settings: {},
   }),
+  // Manager: operational access without financial-admin powers.
+  // Can manage catalog (treatments/packages) and view reports — unlike receptionist.
+  // Cannot delete core records, issue refunds, or change gabinet settings — unlike admin.
+  manager: buildGabinet({
+    gabinet_patients: { view: "all", create: "all", edit: "all" },
+    gabinet_appointments: { view: "all", create: "all", edit: "all", delete: "all" },
+    gabinet_treatments: { view: "all", create: "all", edit: "all" },
+    gabinet_packages: { view: "all", create: "all", edit: "all" },
+    gabinet_employees: { view: "all" },
+    gabinet_payments: { view: "all", create: "all", edit: "all" },
+    gabinet_reports: { view: "all" },
+    gabinet_settings: {},
+  }),
   admin: buildGabinet({
     gabinet_patients: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_appointments: { view: "all", create: "all", edit: "all", delete: "all" },
@@ -160,6 +175,7 @@ export const SYSTEM_GABINET_ROLE_LABELS: Record<
   nurse: { pl: "Pielęgniarka", en: "Nurse", color: "#22c55e", isClinical: true },
   therapist: { pl: "Terapeuta", en: "Therapist", color: "#8b5cf6", isClinical: true },
   receptionist: { pl: "Recepcjonista", en: "Receptionist", color: "#f59e0b", isClinical: false },
+  manager: { pl: "Menadżer", en: "Manager", color: "#0ea5e9", isClinical: false },
   admin: { pl: "Administrator", en: "Admin", color: "#ef4444", isClinical: false },
   other: { pl: "Inny", en: "Other", color: "#6b7280", isClinical: false },
 };

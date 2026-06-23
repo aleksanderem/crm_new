@@ -53,8 +53,9 @@ const migrationFiles = readdirSync(MIGRATIONS_DIR)
 const enums = new Map();
 
 /**
- * @typedef {{ name: string, tsType: string, nullable: boolean, hasDefault: boolean, isPk: boolean, isGenerated: boolean }} Col
- * @typedef {{ tableName: string, columns: Col[] }} Table
+ * @typedef {{ name: string, tsType: string, nullable: boolean, hasDefault: boolean, isPk: boolean, isGenerated: boolean, fk?: { referencedTable: string, referencedColumn: string } }} Col
+ * @typedef {{ foreignKeyName: string, columns: string[], isOneToOne: boolean, referencedRelation: string, referencedColumns: string[] }} Relationship
+ * @typedef {{ tableName: string, columns: Col[], relationships: Relationship[] }} Table
  */
 
 /** Tables keyed by name to allow incremental updates from ALTER TABLE. */
@@ -113,7 +114,8 @@ function parseColumnLine(rawLine) {
 
   const colName = colMatch[1];
   const rawType = colMatch[2].trim().toUpperCase();
-  const rest = (colMatch[3] || "").toUpperCase();
+  const restRaw = colMatch[3] || "";
+  const rest = restRaw.toUpperCase();
 
   if (rest.includes("GENERATED ALWAYS")) return null;
 
@@ -124,7 +126,12 @@ function parseColumnLine(rawLine) {
   const nullable = isPk ? false : !rest.includes("NOT NULL");
   const hasDefault = rest.includes("DEFAULT") || rest.includes("GENERATED");
 
-  return { name: colName, tsType, nullable, hasDefault, isPk, isGenerated: false };
+  // Extract inline REFERENCES clause (preserve original case for table/column names)
+  let fk;
+  const refMatch = restRaw.match(/REFERENCES\s+"?(\w+)"?\s*\(\s*"?(\w+)"?\s*\)/i);
+  if (refMatch) fk = { referencedTable: refMatch[1], referencedColumn: refMatch[2] };
+
+  return { name: colName, tsType, nullable, hasDefault, isPk, isGenerated: false, fk };
 }
 
 /**
@@ -193,7 +200,17 @@ function applyMigration(sql) {
 
     // IF NOT EXISTS semantics: keep the existing definition if already known.
     if (!tables.has(tableName)) {
-      tables.set(tableName, { tableName, columns });
+      /** @type {Relationship[]} */
+      const relationships = columns
+        .filter((c) => c.fk)
+        .map((c) => ({
+          foreignKeyName: `${tableName}_${c.name}_fkey`,
+          columns: [c.name],
+          isOneToOne: false,
+          referencedRelation: /** @type {NonNullable<typeof c.fk>} */ (c.fk).referencedTable,
+          referencedColumns: [/** @type {NonNullable<typeof c.fk>} */ (c.fk).referencedColumn],
+        }));
+      tables.set(tableName, { tableName, columns, relationships });
     }
   }
 
@@ -212,6 +229,15 @@ function applyMigration(sql) {
       const col = parseColumnLine(a[1].trim());
       if (col && !table.columns.some((c) => c.name === col.name)) {
         table.columns.push(col);
+        if (col.fk) {
+          table.relationships.push({
+            foreignKeyName: `${tableName}_${col.name}_fkey`,
+            columns: [col.name],
+            isOneToOne: false,
+            referencedRelation: col.fk.referencedTable,
+            referencedColumns: [col.fk.referencedColumn],
+          });
+        }
       }
     }
 
@@ -220,6 +246,30 @@ function applyMigration(sql) {
       const colName = a[1];
       const col = table.columns.find((c) => c.name === colName);
       if (col) col.nullable = true;
+    }
+  }
+
+  // ─── ALTER TABLE <name> ADD CONSTRAINT <name> FOREIGN KEY (<cols>) REFERENCES <table>(<cols>) ──
+  // Handles deferred FK additions where the referenced table didn't exist yet at CREATE TABLE time.
+  const addFkRe =
+    /ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?"?(\w+)"?\s+ADD\s+CONSTRAINT\s+"?(\w+)"?\s+FOREIGN\s+KEY\s*\(([^)]+)\)\s+REFERENCES\s+"?(\w+)"?\s*\(([^)]+)\)/gi;
+  for (const m of sql.matchAll(addFkRe)) {
+    const tableName = m[1];
+    const constraintName = m[2];
+    const fkCols = m[3].split(",").map((s) => s.trim().replace(/^"|"$/g, ""));
+    const refTable = m[4];
+    const refCols = m[5].split(",").map((s) => s.trim().replace(/^"|"$/g, ""));
+    const table = tables.get(tableName);
+    if (!table) continue;
+    // Avoid duplicates (idempotent re-runs)
+    if (!table.relationships.some((r) => r.foreignKeyName === constraintName)) {
+      table.relationships.push({
+        foreignKeyName: constraintName,
+        columns: fkCols,
+        isOneToOne: false,
+        referencedRelation: refTable,
+        referencedColumns: refCols,
+      });
     }
   }
 
@@ -295,6 +345,23 @@ for (const table of tablesList) {
     lines.push(`          ${col.name}?: ${col.tsType}${nullSuffix};`);
   }
   lines.push(`        };`);
+
+  // ── Relationships ──
+  if (table.relationships.length === 0) {
+    lines.push(`        Relationships: [];`);
+  } else {
+    lines.push(`        Relationships: [`);
+    for (const rel of table.relationships) {
+      lines.push(`          {`);
+      lines.push(`            foreignKeyName: "${rel.foreignKeyName}";`);
+      lines.push(`            columns: [${rel.columns.map((c) => `"${c}"`).join(", ")}];`);
+      lines.push(`            isOneToOne: ${rel.isOneToOne};`);
+      lines.push(`            referencedRelation: "${rel.referencedRelation}";`);
+      lines.push(`            referencedColumns: [${rel.referencedColumns.map((c) => `"${c}"`).join(", ")}];`);
+      lines.push(`          };`);
+    }
+    lines.push(`        ];`);
+  }
 
   lines.push(`      };`);
 }

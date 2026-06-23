@@ -70,6 +70,7 @@ export const gabinetManifest: ModuleManifest = {
     { labelKey: "gabinet.reminders.title", to: "/dashboard/gabinet/settings/reminders" },
     { labelKey: "gabinet.locations.title", to: "/dashboard/gabinet/settings/locations" },
     { labelKey: "gabinet.equipment.title", to: "/dashboard/gabinet/settings/equipment" },
+    { labelKey: "gabinet.roles.title", to: "/dashboard/gabinet/settings/roles" },
   ],
   pageContexts: [
     {

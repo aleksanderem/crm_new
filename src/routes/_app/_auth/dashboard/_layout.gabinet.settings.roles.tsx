@@ -32,6 +32,11 @@ type Scope = "none" | "own" | "all";
 
 const GABINET_FEATURES = [
   {
+    key: "gabinet_dashboard",
+    labelKey: "gabinet.roles.features.dashboard",
+    actions: ["view"] as const,
+  },
+  {
     key: "gabinet_patients",
     labelKey: "gabinet.roles.features.patients",
     actions: ["view", "create", "edit", "delete"] as const,
@@ -75,7 +80,7 @@ const GABINET_FEATURES = [
 
 const ALL_FEATURES = [
   "leads", "contacts", "companies", "documents", "activities", "calls", "email",
-  "products", "pipelines", "gabinet_patients", "gabinet_appointments",
+  "products", "pipelines", "gabinet_dashboard", "gabinet_patients", "gabinet_appointments",
   "gabinet_treatments", "gabinet_packages", "gabinet_employees", "gabinet_payments",
   "gabinet_reports", "gabinet_settings", "settings", "team", "document_templates",
   "document_instances", "tagDefinitions", "categoryDefinitions",

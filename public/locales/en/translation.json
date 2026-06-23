@@ -3834,7 +3834,8 @@
         "employees": "Employees",
         "payments": "Payments",
         "reports": "Reports",
-        "settings": "Settings"
+        "settings": "Settings",
+        "dashboard": "Dashboard"
       }
     }
   },

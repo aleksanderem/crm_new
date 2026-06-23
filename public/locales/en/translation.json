@@ -879,9 +879,9 @@
     },
     "sections": {
       "all": "All",
-      "sale": "For Sale",
-      "treatment": "Treatment Preparations",
-      "disposable": "Disposable Materials",
+      "sale": "Products",
+      "treatment": "Preparations",
+      "disposable": "Materials",
       "label": "Section",
       "placeholder": "Select section",
       "none": "No section"

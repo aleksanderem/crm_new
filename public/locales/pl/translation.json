@@ -880,9 +880,9 @@
     },
     "sections": {
       "all": "Wszystkie",
-      "sale": "Produkty do sprzedaży",
-      "treatment": "Preparaty zabiegowe",
-      "disposable": "Materiały jednorazowe",
+      "sale": "Produkty",
+      "treatment": "Preparaty",
+      "disposable": "Materiały",
       "label": "Sekcja",
       "placeholder": "Wybierz sekcję",
       "none": "Bez sekcji"

@@ -3538,7 +3538,8 @@
         "no_show": "No Show"
       },
       "periodTotal": "Period total",
-      "ofTotal": "of total"
+      "ofTotal": "of total",
+      "topN": "Top {{count}}"
     },
     "bodyChart": {
       "description": "Mark body areas related to the appointment",

@@ -159,14 +159,14 @@ function CardMenu() {
 /* ─── Revenue Summary Card ─── */
 
 function RevenueSummaryCard({
-  dailyRevenue,
-  weeklyRevenue,
-  monthlyRevenue,
+  lastDayRevenue,
+  last7Revenue,
+  totalRevenue,
   currency,
 }: {
-  dailyRevenue: number;
-  weeklyRevenue: number;
-  monthlyRevenue: number;
+  lastDayRevenue: number;
+  last7Revenue: number;
+  totalRevenue: number;
   currency: string;
 }) {
   const { t } = useTranslation();
@@ -187,26 +187,26 @@ function RevenueSummaryCard({
       <CardContent className="grid grid-cols-1 gap-4 pt-4 sm:grid-cols-3">
         <div className="flex flex-col gap-1 sm:border-r sm:pr-4">
           <span className="text-muted-foreground text-sm">
-            {t("gabinet.reports.today")}
+            {t("gabinet.reports.lastDay")}
           </span>
           <span className="text-xl font-semibold">
-            {formatCurrencyPLN(dailyRevenue, currency, { fractionDigits: 0 })}
+            {formatCurrencyPLN(lastDayRevenue, currency, { fractionDigits: 0 })}
           </span>
         </div>
         <div className="flex flex-col gap-1 sm:border-r sm:pr-4">
           <span className="text-muted-foreground text-sm">
-            {t("gabinet.reports.thisWeek")}
+            {t("gabinet.reports.last7days")}
           </span>
           <span className="text-xl font-semibold">
-            {formatCurrencyPLN(weeklyRevenue, currency, { fractionDigits: 0 })}
+            {formatCurrencyPLN(last7Revenue, currency, { fractionDigits: 0 })}
           </span>
         </div>
         <div className="flex flex-col gap-1">
           <span className="text-muted-foreground text-sm">
-            {t("gabinet.reports.thisMonth")}
+            {t("gabinet.reports.periodTotal")}
           </span>
           <span className="text-xl font-semibold">
-            {formatCurrencyPLN(monthlyRevenue, currency, { fractionDigits: 0 })}
+            {formatCurrencyPLN(totalRevenue, currency, { fractionDigits: 0 })}
           </span>
         </div>
       </CardContent>
@@ -953,24 +953,18 @@ function GabinetReports() {
       .sort((a, b) => b.count - a.count);
   }, [appointments, employeeMap]);
 
-  // Revenue: daily, weekly, monthly (from completed appointments × treatment price)
-  const today = new Date().toISOString().split("T")[0];
-  const weekStart = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() - d.getDay());
+  // Revenue: relative to the selected date range (endDate = last day of range)
+  const sevenDaysBeforeEnd = useMemo(() => {
+    const d = new Date(endDate);
+    d.setDate(d.getDate() - 6);
     return d.toISOString().split("T")[0];
-  })();
-  const monthStart = (() => {
-    const d = new Date();
-    d.setDate(1);
-    return d.toISOString().split("T")[0];
-  })();
+  }, [endDate]);
 
-  const { dailyRevenue, weeklyRevenue, monthlyRevenue, defaultCurrency } =
+  const { totalRevenue, last7Revenue, lastDayRevenue, defaultCurrency } =
     useMemo(() => {
-      let daily = 0,
-        weekly = 0,
-        monthly = 0;
+      let total = 0,
+        last7 = 0,
+        lastDay = 0;
       let currency = "PLN";
       if (appointments) {
         for (const a of appointments) {
@@ -980,18 +974,18 @@ function GabinetReports() {
           if (!tr) continue;
           const price = tr.price;
           currency = tr.currency;
-          if (a.date === today) daily += price;
-          if (a.date >= weekStart) weekly += price;
-          if (a.date >= monthStart) monthly += price;
+          total += price;
+          if (a.date >= sevenDaysBeforeEnd) last7 += price;
+          if (a.date === endDate) lastDay += price;
         }
       }
       return {
-        dailyRevenue: daily,
-        weeklyRevenue: weekly,
-        monthlyRevenue: monthly,
+        totalRevenue: total,
+        last7Revenue: last7,
+        lastDayRevenue: lastDay,
         defaultCurrency: currency,
       };
-    }, [appointments, treatmentMap, today, weekStart, monthStart]);
+    }, [appointments, treatmentMap, sevenDaysBeforeEnd, endDate]);
 
   const totalAppointments = appointments?.length ?? 0;
   const completedCount =
@@ -1052,9 +1046,9 @@ function GabinetReports() {
     rows.push({ section: "summary", metric: "cancelled", value: cancelledCount, revenue: "" });
     rows.push({ section: "summary", metric: "totalPatients", value: totalPatients, revenue: "" });
     rows.push({ section: "summary", metric: "completionRate", value: completionRate, revenue: "" });
-    rows.push({ section: "revenue", metric: "today", value: dailyRevenue, revenue: "" });
-    rows.push({ section: "revenue", metric: "week", value: weeklyRevenue, revenue: "" });
-    rows.push({ section: "revenue", metric: "month", value: monthlyRevenue, revenue: "" });
+    rows.push({ section: "revenue", metric: "lastDay", value: lastDayRevenue, revenue: "" });
+    rows.push({ section: "revenue", metric: "last7days", value: last7Revenue, revenue: "" });
+    rows.push({ section: "revenue", metric: "total", value: totalRevenue, revenue: "" });
     for (const tr of treatmentStats) {
       rows.push({ section: "treatment", metric: tr.name, value: tr.count, revenue: tr.revenue });
     }
@@ -1089,9 +1083,9 @@ function GabinetReports() {
     cancelledCount,
     totalPatients,
     completionRate,
-    dailyRevenue,
-    weeklyRevenue,
-    monthlyRevenue,
+    lastDayRevenue,
+    last7Revenue,
+    totalRevenue,
     treatmentStats,
     statusStats,
     dailyStats,
@@ -1191,9 +1185,9 @@ function GabinetReports() {
       {/* Revenue Summary */}
       <div ref={revenueSectionRef} className="scroll-mt-6">
         <RevenueSummaryCard
-          dailyRevenue={dailyRevenue}
-          weeklyRevenue={weeklyRevenue}
-          monthlyRevenue={monthlyRevenue}
+          lastDayRevenue={lastDayRevenue}
+          last7Revenue={last7Revenue}
+          totalRevenue={totalRevenue}
           currency={defaultCurrency}
         />
       </div>

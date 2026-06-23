@@ -1350,6 +1350,10 @@ export interface Database {
           track_stock: boolean | null;
           stock_unit: string | null;
           product_section: string | null;
+          min_stock: number | null;
+          manufacturer: string | null;
+          catalog_number: string | null;
+          stock_note: string | null;
         };
         Insert: {
           id?: string;
@@ -1369,6 +1373,10 @@ export interface Database {
           track_stock?: boolean | null;
           stock_unit?: string | null;
           product_section?: string | null;
+          min_stock?: number | null;
+          manufacturer?: string | null;
+          catalog_number?: string | null;
+          stock_note?: string | null;
         };
         Update: {
           id?: string;
@@ -1388,6 +1396,10 @@ export interface Database {
           track_stock?: boolean | null;
           stock_unit?: string | null;
           product_section?: string | null;
+          min_stock?: number | null;
+          manufacturer?: string | null;
+          catalog_number?: string | null;
+          stock_note?: string | null;
         };
       };
       deal_products: {

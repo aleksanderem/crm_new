@@ -1430,6 +1430,7 @@ export const update = action({
     ),
     tagIds: v.optional(v.union(v.array(v.string()), v.null())),
     categoryId: v.optional(v.union(v.string(), v.null())),
+    contraindicationAlertsReviewed: v.optional(v.union(v.boolean(), v.null())),
   },
   handler: async (ctx, args) => {
     try {

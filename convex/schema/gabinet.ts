@@ -416,6 +416,7 @@ export function createGabinetTables({
     tagIds: v.optional(v.array(v.id("tagDefinitions"))),
     categoryId: v.optional(v.id("categoryDefinitions")),
     requiresCompletion: v.optional(v.boolean()),
+    contraindicationAlertsReviewed: v.optional(v.boolean()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

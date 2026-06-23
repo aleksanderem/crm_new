@@ -3193,6 +3193,9 @@
           "workflowSms": "SMS workflow wizyty"
         }
       },
+      "markContraindicationAsDiscussed": "Oznacz jako omówione",
+      "contraindicationDiscussed": "Omówiono",
+      "contraindicationMarked": "Oznaczono jako omówione",
       "cancelAppointment": "Anuluj wizytę",
       "cancelConfirm": "Czy na pewno chcesz anulować tę wizytę?",
       "cancelReason": "Powód anulowania",

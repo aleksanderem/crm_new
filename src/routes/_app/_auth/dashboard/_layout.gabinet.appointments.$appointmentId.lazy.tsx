@@ -87,6 +87,7 @@ import {
   Info,
   Sparkles,
   ShieldAlert,
+  CheckCircle,
   Heart,
   Plus,
   Eye,
@@ -1450,11 +1451,40 @@ function AppointmentDetail() {
               )}
               {treatment?.contraindications && (
                 <div className="pt-2 p-3 bg-destructive/10 rounded-lg">
-                  <div className="flex items-center gap-2 text-destructive mb-1">
-                    <ShieldAlert className="h-4 w-4" variant="stroke" />
-                    <span className="text-sm font-medium">
-                      {t("gabinet.treatments.contraindications")}
-                    </span>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-2 text-destructive">
+                      <ShieldAlert className="h-4 w-4" variant="stroke" />
+                      <span className="text-sm font-medium">
+                        {t("gabinet.treatments.contraindications")}
+                      </span>
+                    </div>
+                    {(appointment as Record<string, unknown>).contraindicationAlertsReviewed ? (
+                      <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                        <CheckCircle className="h-3.5 w-3.5" variant="stroke" />
+                        <span>{t("gabinet.appointmentDetail.contraindicationDiscussed", "Omówiono")}</span>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs text-destructive hover:text-destructive"
+                        onClick={async () => {
+                          try {
+                            await updateAppointment({
+                              organizationId,
+                              appointmentId: appointment._id,
+                              contraindicationAlertsReviewed: true,
+                            });
+                            await refetch();
+                            toast.success(t("gabinet.appointmentDetail.contraindicationMarked", "Oznaczono jako omówione"));
+                          } catch {
+                            toast.error(t("common.errorOccurred", "Wystąpił błąd"));
+                          }
+                        }}
+                      >
+                        {t("gabinet.appointmentDetail.markContraindicationAsDiscussed", "Oznacz jako omówione")}
+                      </Button>
+                    )}
                   </div>
                   <p className="text-sm">{plateJsonToText(treatment.contraindications)}</p>
                 </div>

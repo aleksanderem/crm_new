@@ -110,6 +110,7 @@ import { Route as AppAuthDashboardLayoutGabinetSettingsLeavesRouteImport } from 
 import { Route as AppAuthDashboardLayoutGabinetSettingsLeaveTypesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.leave-types'
 import { Route as AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.leave-balances'
 import { Route as AppAuthDashboardLayoutGabinetSettingsEquipmentRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.equipment'
+import { Route as AppAuthDashboardLayoutGabinetSettingsRolesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.roles'
 import { Route as AppAuthDashboardLayoutGabinetPatientsPatientIdRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.patients.$patientId'
 import { Route as AppAuthDashboardLayoutGabinetEmployeesEmployeeIdRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.employees.$employeeId'
 import { Route as AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId'
@@ -713,6 +714,12 @@ const AppAuthDashboardLayoutGabinetSettingsEquipmentRoute =
     path: '/gabinet/settings/equipment',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
+const AppAuthDashboardLayoutGabinetSettingsRolesRoute =
+  AppAuthDashboardLayoutGabinetSettingsRolesRouteImport.update({
+    id: '/gabinet/settings/roles',
+    path: '/gabinet/settings/roles',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
 const AppAuthDashboardLayoutGabinetPatientsPatientIdRoute =
   AppAuthDashboardLayoutGabinetPatientsPatientIdRouteImport.update({
     id: '/gabinet/patients/$patientId',
@@ -820,6 +827,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/gabinet/settings/leaves': typeof AppAuthDashboardLayoutGabinetSettingsLeavesRoute
   '/dashboard/gabinet/settings/locations': typeof AppAuthDashboardLayoutGabinetSettingsLocationsRoute
   '/dashboard/gabinet/settings/reminders': typeof AppAuthDashboardLayoutGabinetSettingsRemindersRoute
+  '/dashboard/gabinet/settings/roles': typeof AppAuthDashboardLayoutGabinetSettingsRolesRoute
   '/dashboard/gabinet/settings/scheduling': typeof AppAuthDashboardLayoutGabinetSettingsSchedulingRoute
   '/dashboard/gabinet/settings/timetable': typeof AppAuthDashboardLayoutGabinetSettingsTimetableRoute
   '/dashboard/gabinet/treatments/$treatmentId': typeof AppAuthDashboardLayoutGabinetTreatmentsTreatmentIdRoute
@@ -915,6 +923,7 @@ export interface FileRoutesByTo {
   '/dashboard/gabinet/settings/leaves': typeof AppAuthDashboardLayoutGabinetSettingsLeavesRoute
   '/dashboard/gabinet/settings/locations': typeof AppAuthDashboardLayoutGabinetSettingsLocationsRoute
   '/dashboard/gabinet/settings/reminders': typeof AppAuthDashboardLayoutGabinetSettingsRemindersRoute
+  '/dashboard/gabinet/settings/roles': typeof AppAuthDashboardLayoutGabinetSettingsRolesRoute
   '/dashboard/gabinet/settings/scheduling': typeof AppAuthDashboardLayoutGabinetSettingsSchedulingRoute
   '/dashboard/gabinet/settings/timetable': typeof AppAuthDashboardLayoutGabinetSettingsTimetableRoute
   '/dashboard/gabinet/treatments/$treatmentId': typeof AppAuthDashboardLayoutGabinetTreatmentsTreatmentIdRoute
@@ -1022,6 +1031,7 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/gabinet/settings/leaves': typeof AppAuthDashboardLayoutGabinetSettingsLeavesRoute
   '/_app/_auth/dashboard/_layout/gabinet/settings/locations': typeof AppAuthDashboardLayoutGabinetSettingsLocationsRoute
   '/_app/_auth/dashboard/_layout/gabinet/settings/reminders': typeof AppAuthDashboardLayoutGabinetSettingsRemindersRoute
+  '/_app/_auth/dashboard/_layout/gabinet/settings/roles': typeof AppAuthDashboardLayoutGabinetSettingsRolesRoute
   '/_app/_auth/dashboard/_layout/gabinet/settings/scheduling': typeof AppAuthDashboardLayoutGabinetSettingsSchedulingRoute
   '/_app/_auth/dashboard/_layout/gabinet/settings/timetable': typeof AppAuthDashboardLayoutGabinetSettingsTimetableRoute
   '/_app/_auth/dashboard/_layout/gabinet/treatments/$treatmentId': typeof AppAuthDashboardLayoutGabinetTreatmentsTreatmentIdRoute
@@ -1128,6 +1138,7 @@ export interface FileRouteTypes {
     | '/dashboard/gabinet/settings/leaves'
     | '/dashboard/gabinet/settings/locations'
     | '/dashboard/gabinet/settings/reminders'
+    | '/dashboard/gabinet/settings/roles'
     | '/dashboard/gabinet/settings/scheduling'
     | '/dashboard/gabinet/settings/timetable'
     | '/dashboard/gabinet/treatments/$treatmentId'
@@ -1223,6 +1234,7 @@ export interface FileRouteTypes {
     | '/dashboard/gabinet/settings/leaves'
     | '/dashboard/gabinet/settings/locations'
     | '/dashboard/gabinet/settings/reminders'
+    | '/dashboard/gabinet/settings/roles'
     | '/dashboard/gabinet/settings/scheduling'
     | '/dashboard/gabinet/settings/timetable'
     | '/dashboard/gabinet/treatments/$treatmentId'
@@ -1329,6 +1341,7 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/gabinet/settings/leaves'
     | '/_app/_auth/dashboard/_layout/gabinet/settings/locations'
     | '/_app/_auth/dashboard/_layout/gabinet/settings/reminders'
+    | '/_app/_auth/dashboard/_layout/gabinet/settings/roles'
     | '/_app/_auth/dashboard/_layout/gabinet/settings/scheduling'
     | '/_app/_auth/dashboard/_layout/gabinet/settings/timetable'
     | '/_app/_auth/dashboard/_layout/gabinet/treatments/$treatmentId'
@@ -2067,6 +2080,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutGabinetSettingsEquipmentRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
+    '/_app/_auth/dashboard/_layout/gabinet/settings/roles': {
+      id: '/_app/_auth/dashboard/_layout/gabinet/settings/roles'
+      path: '/gabinet/settings/roles'
+      fullPath: '/dashboard/gabinet/settings/roles'
+      preLoaderRoute: typeof AppAuthDashboardLayoutGabinetSettingsRolesRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
     '/_app/_auth/dashboard/_layout/gabinet/patients/$patientId': {
       id: '/_app/_auth/dashboard/_layout/gabinet/patients/$patientId'
       path: '/gabinet/patients/$patientId'
@@ -2316,6 +2336,7 @@ interface AppAuthDashboardLayoutRouteChildren {
   AppAuthDashboardLayoutGabinetSettingsLeavesRoute: typeof AppAuthDashboardLayoutGabinetSettingsLeavesRoute
   AppAuthDashboardLayoutGabinetSettingsLocationsRoute: typeof AppAuthDashboardLayoutGabinetSettingsLocationsRoute
   AppAuthDashboardLayoutGabinetSettingsRemindersRoute: typeof AppAuthDashboardLayoutGabinetSettingsRemindersRoute
+  AppAuthDashboardLayoutGabinetSettingsRolesRoute: typeof AppAuthDashboardLayoutGabinetSettingsRolesRoute
   AppAuthDashboardLayoutGabinetSettingsSchedulingRoute: typeof AppAuthDashboardLayoutGabinetSettingsSchedulingRoute
   AppAuthDashboardLayoutGabinetSettingsTimetableRoute: typeof AppAuthDashboardLayoutGabinetSettingsTimetableRoute
   AppAuthDashboardLayoutGabinetTreatmentsTreatmentIdRoute: typeof AppAuthDashboardLayoutGabinetTreatmentsTreatmentIdRoute
@@ -2395,6 +2416,8 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
       AppAuthDashboardLayoutGabinetSettingsLocationsRoute,
     AppAuthDashboardLayoutGabinetSettingsRemindersRoute:
       AppAuthDashboardLayoutGabinetSettingsRemindersRoute,
+    AppAuthDashboardLayoutGabinetSettingsRolesRoute:
+      AppAuthDashboardLayoutGabinetSettingsRolesRoute,
     AppAuthDashboardLayoutGabinetSettingsSchedulingRoute:
       AppAuthDashboardLayoutGabinetSettingsSchedulingRoute,
     AppAuthDashboardLayoutGabinetSettingsTimetableRoute:

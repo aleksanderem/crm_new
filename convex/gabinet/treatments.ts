@@ -294,12 +294,19 @@ export const update = action({
       }
 
       // --- Build updates and PATCH to Supabase ---
-      const { organizationId, treatmentId, ...updates } = args;
-      // ZW (VAT-exempt) is now tracked via the dedicated taxExempt flag; ensure
-      // taxRate is cleared whenever the caller marks the treatment exempt.
+      const { organizationId, treatmentId, taxExempt, packageId, ...updates } = args;
+      // Only include taxExempt when true — omitting it avoids a "column does
+      // not exist" failure on environments where migration 00005 hasn't been
+      // applied yet (null and false are semantically equivalent: not exempt).
+      // Only include packageId when non-null — same reasoning for migration
+      // 00010.
       const patchPayload: Record<string, unknown> = { ...updates, updatedAt: Date.now() };
-      if (updates.taxExempt === true) {
+      if (taxExempt === true) {
+        patchPayload.taxExempt = true;
         patchPayload.taxRate = null;
+      }
+      if (packageId != null) {
+        patchPayload.packageId = packageId;
       }
       await db.patch("gabinetTreatments", treatmentId, patchPayload);
 

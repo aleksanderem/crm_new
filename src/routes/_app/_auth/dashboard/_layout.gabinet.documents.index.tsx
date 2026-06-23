@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { PermissionGate } from "@/hooks/use-permission";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
@@ -60,7 +61,11 @@ import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/documents/",
 )({
-  component: GabinetDocumentsPage,
+  component: () => (
+    <PermissionGate feature="document_instances" action="view">
+      <GabinetDocumentsPage />
+    </PermissionGate>
+  ),
 });
 
 // ---------------------------------------------------------------------------

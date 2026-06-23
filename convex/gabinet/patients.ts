@@ -92,7 +92,7 @@ export const listCustomReferralSources = action({
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args): Promise<string[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    const authResult = await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
@@ -103,10 +103,22 @@ export const listCustomReferralSources = action({
     if (!perm.allowed) return [];
 
     const db = createSupabaseDb();
-    const patients = (await db
+    const orgIdStr = String(args.organizationId);
+    let patients = (await db
       .query("gabinetPatients")
-      .eq("organizationId", String(args.organizationId))
+      .eq("organizationId", orgIdStr)
       .collect()) as GabinetPatientRow[];
+
+    if (perm.scope === "own") {
+      const userIdStr = String(authResult.userId);
+      const ownAppts = (await db
+        .query("gabinetAppointments")
+        .eq("organizationId", orgIdStr)
+        .eq("employeeId", userIdStr)
+        .collect()) as Array<{ patientId: unknown }>;
+      const ownPatientIds = new Set(ownAppts.map((a) => String(a.patientId)));
+      patients = patients.filter((r) => ownPatientIds.has(String(r._id)));
+    }
 
     const seen = new Set<string>();
     const custom: string[] = [];

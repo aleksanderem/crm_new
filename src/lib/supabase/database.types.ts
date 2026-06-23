@@ -18,6 +18,15 @@
  *   • 00011_entity_type_gabinet_event.sql
  *   • 00012_app_schema_version_rpc.sql
  *   • 00013_product_inventory_foundation.sql
+ *   • 00014_notifications_metadata.sql
+ *   • 00015_gabinet_equipment_parameter_units.sql
+ *   • 00016_gabinet_employees_show_in_calendar.sql
+ *   • 00017_gabinet_employees_assigned_items.sql
+ *   • 00018_form_documents_timing_during_visit.sql
+ *   • 00019_products_section.sql
+ *   • 00020_products_inventory_fields.sql
+ *   • 00021_gabinet_appointments_contraindication_alerts_reviewed.sql
+ *   • 00022_gabinet_appointments_price_at_booking.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -589,6 +598,7 @@ export interface Database {
           link: string | null;
           is_read: boolean;
           created_at: number;
+          metadata: unknown | null;
         };
         Insert: {
           id?: string;
@@ -600,6 +610,7 @@ export interface Database {
           link?: string | null;
           is_read?: boolean;
           created_at: number;
+          metadata?: unknown | null;
         };
         Update: {
           id?: string;
@@ -611,6 +622,7 @@ export interface Database {
           link?: string | null;
           is_read?: boolean;
           created_at?: number;
+          metadata?: unknown | null;
         };
       };
       audit_log: {
@@ -2579,10 +2591,10 @@ export interface Database {
           current_location_id: string | null;
           current_room_id: string | null;
           status: string;
-          parameter_units: string[] | null;
           created_by: string;
           created_at: number;
           updated_at: number | null;
+          parameter_units: string[] | null;
         };
         Insert: {
           id?: string;
@@ -2593,10 +2605,10 @@ export interface Database {
           current_location_id?: string | null;
           current_room_id?: string | null;
           status: string;
-          parameter_units?: string[] | null;
           created_by: string;
           created_at: number;
           updated_at?: number | null;
+          parameter_units?: string[] | null;
         };
         Update: {
           id?: string;
@@ -2607,10 +2619,10 @@ export interface Database {
           current_location_id?: string | null;
           current_room_id?: string | null;
           status?: string;
-          parameter_units?: string[] | null;
           created_by?: string;
           created_at?: number;
           updated_at?: number | null;
+          parameter_units?: string[] | null;
         };
       };
       gabinet_equipment_transfers: {
@@ -2817,16 +2829,16 @@ export interface Database {
           skills: string[] | null;
           years_of_experience: number | null;
           certifications: unknown | null;
-          assigned_items: unknown | null;
           base_salary: number | null;
           commission_percent: number | null;
           bank_account: string | null;
-          show_in_calendar: boolean;
           tag_ids: string[] | null;
           category_id: string | null;
           created_by: string;
           created_at: number;
           updated_at: number;
+          show_in_calendar: boolean;
+          assigned_items: unknown | null;
         };
         Insert: {
           id?: string;
@@ -2854,16 +2866,16 @@ export interface Database {
           skills?: string[] | null;
           years_of_experience?: number | null;
           certifications?: unknown | null;
-          assigned_items?: unknown | null;
           base_salary?: number | null;
           commission_percent?: number | null;
           bank_account?: string | null;
-          show_in_calendar?: boolean;
           tag_ids?: string[] | null;
           category_id?: string | null;
           created_by: string;
           created_at: number;
           updated_at: number;
+          show_in_calendar?: boolean;
+          assigned_items?: unknown | null;
         };
         Update: {
           id?: string;
@@ -2891,16 +2903,16 @@ export interface Database {
           skills?: string[] | null;
           years_of_experience?: number | null;
           certifications?: unknown | null;
-          assigned_items?: unknown | null;
           base_salary?: number | null;
           commission_percent?: number | null;
           bank_account?: string | null;
-          show_in_calendar?: boolean;
           tag_ids?: string[] | null;
           category_id?: string | null;
           created_by?: string;
           created_at?: number;
           updated_at?: number;
+          show_in_calendar?: boolean;
+          assigned_items?: unknown | null;
         };
       };
       gabinet_leave_types: {
@@ -3303,11 +3315,11 @@ export interface Database {
           tag_ids: string[] | null;
           category_id: string | null;
           requires_completion: boolean | null;
-          price_at_booking: number | null;
-          contraindication_alerts_reviewed: boolean | null;
           created_by: string;
           created_at: number;
           updated_at: number;
+          contraindication_alerts_reviewed: boolean | null;
+          price_at_booking: number | null;
         };
         Insert: {
           id?: string;
@@ -3349,11 +3361,11 @@ export interface Database {
           tag_ids?: string[] | null;
           category_id?: string | null;
           requires_completion?: boolean | null;
-          price_at_booking?: number | null;
-          contraindication_alerts_reviewed?: boolean | null;
           created_by: string;
           created_at: number;
           updated_at: number;
+          contraindication_alerts_reviewed?: boolean | null;
+          price_at_booking?: number | null;
         };
         Update: {
           id?: string;
@@ -3395,11 +3407,11 @@ export interface Database {
           tag_ids?: string[] | null;
           category_id?: string | null;
           requires_completion?: boolean | null;
-          price_at_booking?: number | null;
-          contraindication_alerts_reviewed?: boolean | null;
           created_by?: string;
           created_at?: number;
           updated_at?: number;
+          contraindication_alerts_reviewed?: boolean | null;
+          price_at_booking?: number | null;
         };
       };
       gabinet_treatment_packages: {

@@ -203,7 +203,20 @@ function ProductsPage() {
   const {
     views, activeViewId, onViewChange, onCreateView, onDeleteView, applyFilters,
   } = useSavedViews({ organizationId, entityType: "product", systemViews });
-  const [activeSection, setActiveSection] = useState<ProductSection | "all">("all");
+  const [activeSection, setActiveSection] = useState<ProductSection | "all">(() => {
+    try {
+      const stored = localStorage.getItem("products:section");
+      if (stored === "all" || (PRODUCT_SECTIONS as readonly string[]).includes(stored ?? "")) {
+        return stored as ProductSection | "all";
+      }
+    } catch { /* ignore */ }
+    return "all";
+  });
+
+  const handleSectionChange = (section: ProductSection | "all") => {
+    setActiveSection(section);
+    try { localStorage.setItem("products:section", section); } catch { /* ignore */ }
+  };
   const [panelOpen, setPanelOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
@@ -320,7 +333,8 @@ function ProductsPage() {
         p.name.toLowerCase().includes(q) ||
         p.sku?.toLowerCase().includes(q) ||
         p.manufacturer?.toLowerCase().includes(q) ||
-        p.catalogNumber?.toLowerCase().includes(q)
+        p.catalogNumber?.toLowerCase().includes(q) ||
+        p.stockNote?.toLowerCase().includes(q)
       );
     }
     return data;
@@ -607,17 +621,17 @@ function ProductsPage() {
         <StatCard
           label={t("products.sections.sale")}
           value={inventoryStats.bySale}
-          onClick={() => setActiveSection("sale")}
+          onClick={() => handleSectionChange("sale")}
         />
         <StatCard
           label={t("products.sections.treatment")}
           value={inventoryStats.byTreatment}
-          onClick={() => setActiveSection("treatment")}
+          onClick={() => handleSectionChange("treatment")}
         />
         <StatCard
           label={t("products.sections.disposable")}
           value={inventoryStats.byDisposable}
-          onClick={() => setActiveSection("disposable")}
+          onClick={() => handleSectionChange("disposable")}
         />
         <StatCard
           label={t("products.stats.belowMin", { defaultValue: "Poniżej min. stanu" })}
@@ -629,7 +643,7 @@ function ProductsPage() {
         />
       </div>
 
-      <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as ProductSection | "all")}>
+      <Tabs value={activeSection} onValueChange={(v) => handleSectionChange(v as ProductSection | "all")}>
         <TabsList>
           <TabsTrigger value="all">
             {t("products.sections.all", { defaultValue: "Wszystkie" })}

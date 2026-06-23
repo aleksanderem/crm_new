@@ -455,11 +455,12 @@ export function EntityDetailLayout({
               >
                 {showAllFields ? (
                   <>
-                    Show less <ChevronUp className="ml-1 h-3 w-3" />
+                    {t("detail.sidebar.showLess")}{" "}
+                    <ChevronUp className="ml-1 h-3 w-3" />
                   </>
                 ) : (
                   <>
-                    {hiddenCount} more fields{" "}
+                    {t("detail.sidebar.showMore", { count: hiddenCount })}{" "}
                     <ChevronDown className="ml-1 h-3 w-3" />
                   </>
                 )}

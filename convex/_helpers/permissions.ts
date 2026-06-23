@@ -113,7 +113,7 @@ export async function checkPermission(
   feature: Feature,
   action: Action,
 ): Promise<PermissionResult> {
-  const { membership } = await verifyOrgAccess(ctx, orgId);
+  const { user, membership } = await verifyOrgAccess(ctx, orgId);
   const role = membership.role as OrgRole;
 
   if (role === "owner" || role === "admin") {
@@ -126,15 +126,41 @@ export async function checkPermission(
     .withIndex("by_orgAndRole", (q) => q.eq("organizationId", orgId).eq("role", role))
     .unique();
 
-  let scope: Scope;
+  let orgScope: Scope;
   if (override) {
     const perms = override.permissions as FeaturePermissions;
-    scope = perms?.[feature]?.[action] ?? DEFAULT_PERMISSIONS[role][feature][action];
+    orgScope = perms?.[feature]?.[action] ?? DEFAULT_PERMISSIONS[role][feature][action];
   } else {
-    scope = DEFAULT_PERMISSIONS[role][feature][action];
+    orgScope = DEFAULT_PERMISSIONS[role][feature][action];
   }
 
-  return { allowed: scope !== "none", scope };
+  // MAX-merge gabinet-role permissions for gabinet_* features, mirroring
+  // authAction.checkPermission so mutation/query enforcement matches action enforcement.
+  let effectiveScope: Scope = orgScope;
+  if (feature.startsWith("gabinet_")) {
+    const gabinetMembership = await ctx.db
+      .query("gabinetMemberships")
+      .withIndex("by_orgAndUser", (q) =>
+        q.eq("organizationId", orgId).eq("userId", user._id),
+      )
+      .unique();
+    if (gabinetMembership && gabinetMembership.isActive) {
+      const gRole = gabinetMembership.gabinetRole;
+      const gOverride = await ctx.db
+        .query("gabinetRolePermissions")
+        .withIndex("by_orgAndRole", (q) =>
+          q.eq("organizationId", orgId).eq("gabinetRole", gRole),
+        )
+        .unique();
+      const gabinetScope: Scope = gOverride
+        ? ((gOverride.permissions as Record<string, Record<string, string>>)?.[feature]?.[action]
+            ?? defaultGabinetScope(gRole, feature, action)) as Scope
+        : defaultGabinetScope(gRole, feature, action);
+      effectiveScope = maxScope(orgScope, gabinetScope);
+    }
+  }
+
+  return { allowed: effectiveScope !== "none", scope: effectiveScope };
 }
 
 // --- checkResourceAccess ---

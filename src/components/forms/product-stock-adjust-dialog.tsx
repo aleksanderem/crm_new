@@ -56,6 +56,7 @@ type AdjustStockArgs = {
   setTo?: number;
   reason?:
     | "initial"
+    | "warehouse_receive"
     | "manual_adjust"
     | "appointment_use"
     | "appointment_return"
@@ -144,7 +145,7 @@ export function ProductStockAdjustDialog({
             ? null
             : (locationId as Id<"gabinetLocations">),
         delta,
-        reason: "manual_adjust",
+        reason: mode === "receive" ? "warehouse_receive" : "manual_adjust",
         note: note.trim() || null,
       });
       void queryClient.invalidateQueries({

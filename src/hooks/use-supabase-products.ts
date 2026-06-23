@@ -2,6 +2,34 @@
  * React Query hooks for fetching products from Supabase (PostgreSQL).
  */
 
+export type StockMovementReason =
+  | "initial"
+  | "warehouse_receive"
+  | "manual_adjust"
+  | "appointment_use"
+  | "appointment_return"
+  | "deal_close"
+  | "deal_reopen"
+  | "transfer_in"
+  | "transfer_out"
+  | "other";
+
+export interface MappedStockMovement {
+  _id: string;
+  organizationId: string;
+  productId: string;
+  locationId: string | null;
+  delta: number;
+  balanceAfter: number | null;
+  reason: StockMovementReason;
+  sourceType: string | null;
+  sourceId: string | null;
+  note: string | null;
+  performedBy: string;
+  performedByName?: string;
+  createdAt: number;
+}
+
 import { useMemo } from "react";
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { useSupabase } from "@/components/supabase-provider";
@@ -149,4 +177,63 @@ export function useSupabaseProductStockTotals(
   }, [query.data]);
 
   return { ...query, totalsByProductId };
+}
+
+// ---------------------------------------------------------------------------
+// Product Stock Movements (#2056 — warehouse receiving MVP)
+//
+// Fetches the movement history for a single product, ordered newest-first.
+// Joins the users table so performer names are available without a second query.
+// ---------------------------------------------------------------------------
+
+export function useSupabaseProductStockMovements(
+  organizationId: string,
+  productId: string | null,
+  options: { enabled?: boolean; limit?: number } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true, limit = 100 } = options;
+
+  return useQuery<MappedStockMovement[], Error>({
+    queryKey: [
+      ...supabaseKeys.productStockMovements.list(organizationId),
+      productId ?? "",
+    ],
+    queryFn: async (): Promise<MappedStockMovement[]> => {
+      if (!client || !productId) return [];
+
+      const { data, error } = await client
+        .from("product_stock_movements")
+        .select(
+          `id, organization_id, product_id, location_id, delta, balance_after, reason, source_type, source_id, note, performed_by, created_at,
+           users:users!product_stock_movements_performed_by_fkey (id, name, email)`,
+        )
+        .eq("organization_id", organizationId)
+        .eq("product_id", productId)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+
+      return (data ?? []).map((row) => {
+        const user = (row as unknown as { users?: { id?: string; name?: string | null; email?: string | null } | null }).users;
+        return {
+          _id: row.id,
+          organizationId: row.organization_id,
+          productId: row.product_id,
+          locationId: row.location_id,
+          delta: Number(row.delta),
+          balanceAfter: row.balance_after != null ? Number(row.balance_after) : null,
+          reason: row.reason as StockMovementReason,
+          sourceType: row.source_type,
+          sourceId: row.source_id,
+          note: row.note,
+          performedBy: row.performed_by,
+          performedByName: user?.name ?? user?.email ?? undefined,
+          createdAt: Number(row.created_at),
+        };
+      });
+    },
+    enabled: enabled && isReady && !!organizationId && !!productId,
+  });
 }

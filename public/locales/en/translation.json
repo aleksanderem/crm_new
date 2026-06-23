@@ -3516,6 +3516,7 @@
       "revenue": "Revenue",
       "estimatedFromCompletedAppointments": "Estimated from completed appointments",
       "today": "Today",
+      "lastDay": "Last day",
       "thisWeek": "This Week",
       "thisMonth": "This Month",
       "topTreatmentsByRevenue": "Top Treatments by Revenue",
@@ -3534,7 +3535,8 @@
         "completed": "Completed",
         "cancelled": "Cancelled",
         "no_show": "No Show"
-      }
+      },
+      "periodTotal": "Period total"
     },
     "bodyChart": {
       "description": "Mark body areas related to the appointment",

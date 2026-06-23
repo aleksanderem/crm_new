@@ -3538,6 +3538,7 @@
       "revenue": "Przychody",
       "estimatedFromCompletedAppointments": "Szacowane na podstawie zakończonych wizyt",
       "today": "Dziś",
+      "lastDay": "Ostatni dzień",
       "thisWeek": "Ten tydzień",
       "thisMonth": "Ten miesiąc",
       "topTreatmentsByRevenue": "Top zabiegi wg przychodu",
@@ -3556,7 +3557,8 @@
         "completed": "Zakończone",
         "cancelled": "Anulowane",
         "no_show": "Nieobecność"
-      }
+      },
+      "periodTotal": "Cały okres"
     },
     "bodyChart": {
       "description": "Zaznacz obszary ciała powiązane z wizytą",

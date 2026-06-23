@@ -264,6 +264,10 @@ function PatientDetail() {
     "gabinet_payments",
     "create",
   );
+  const { allowed: canViewPayments } = usePermission(
+    "gabinet_payments",
+    "view",
+  );
 
   const getPaymentForLabel = (payment: {
     appointmentId?: string;
@@ -1187,7 +1191,7 @@ function PatientDetail() {
         />
       ),
     },
-    {
+    ...(canViewPayments ? [{
       // Issue #1690: one merged tab — wpłaty, saldo, naliczenia, zwroty in
       // a single chronological table with a "Typ" column.
       label: t("gabinet.payments.payments"),
@@ -1523,7 +1527,7 @@ function PatientDetail() {
           </div>
         );
       })(),
-    },
+    }] : []),
     {
       label: t("gabinet.patients.tabs.documents"),
       count: patientDocuments?.length ?? 0,

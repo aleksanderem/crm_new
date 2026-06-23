@@ -19,7 +19,9 @@ import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -27,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package } from "@/lib/ez-icons";
+import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
 import { ProductStockAdjustDialog } from "@/components/forms/product-stock-adjust-dialog";
@@ -43,8 +45,9 @@ import { CategoriesManagerSlideout } from "@/components/categories-tags/categori
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { formatActionError } from "@/lib/format-action-error";
+import { cn } from "@/lib/utils";
 
-type ProductsNudgeFilter = "unused";
+type ProductsNudgeFilter = "unused" | "low_stock";
 
 const PRODUCT_SECTIONS = ["sale", "treatment", "disposable"] as const;
 type ProductSection = (typeof PRODUCT_SECTIONS)[number];
@@ -57,7 +60,7 @@ export const Route = createFileRoute(
     search: Record<string, unknown>,
   ): { nudge?: ProductsNudgeFilter } => {
     const nudge =
-      search.nudge === "unused"
+      search.nudge === "unused" || search.nudge === "low_stock"
         ? (search.nudge as ProductsNudgeFilter)
         : undefined;
     return { nudge };
@@ -102,6 +105,90 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
+// Returns the stock status for a product given its current total and min stock
+type StockStatus = "ok" | "low" | "out" | "untracked";
+
+function getStockStatus(
+  trackStock: boolean | undefined,
+  total: number,
+  minStock: number | undefined,
+): StockStatus {
+  if (!trackStock) return "untracked";
+  if (total <= 0) return "out";
+  if (minStock != null && minStock > 0 && total < minStock) return "low";
+  return "ok";
+}
+
+function StockBadge({ status, total, unit, minStock }: {
+  status: StockStatus;
+  total: number;
+  unit?: string;
+  minStock?: number;
+}) {
+  const { t } = useTranslation();
+  const unitStr = unit?.trim() ? ` ${unit.trim()}` : "";
+
+  if (status === "untracked") return <span className="text-muted-foreground">—</span>;
+
+  const valueStr = `${total}${unitStr}`;
+
+  if (status === "out") {
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <span className="text-destructive font-medium">{valueStr}</span>
+        <Badge variant="destructive" className="text-xs px-1.5 py-0">
+          {t("products.stock.status.out", { defaultValue: "Brak" })}
+        </Badge>
+      </span>
+    );
+  }
+
+  if (status === "low") {
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <span className="text-amber-600 dark:text-amber-400 font-medium">{valueStr}</span>
+        <Badge className="text-xs px-1.5 py-0 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800">
+          {t("products.stock.status.low", { defaultValue: "Niski" })}
+          {minStock != null ? ` / min ${minStock}${unitStr}` : ""}
+        </Badge>
+      </span>
+    );
+  }
+
+  // ok
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="text-emerald-600 dark:text-emerald-400 font-medium">{valueStr}</span>
+    </span>
+  );
+}
+
+// Small stats card used in the inventory summary widget
+function StatCard({ label, value, highlight, onClick }: {
+  label: string;
+  value: number;
+  highlight?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex flex-col gap-0.5 rounded-lg border px-4 py-3 text-left transition-colors",
+        onClick ? "cursor-pointer hover:bg-muted/50" : "cursor-default",
+        highlight ? "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30" : "bg-card",
+      )}
+    >
+      <span className={cn(
+        "text-xl font-semibold tabular-nums",
+        highlight ? "text-amber-700 dark:text-amber-300" : "",
+      )}>{value}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
+    </button>
+  );
+}
+
 function ProductsPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
@@ -141,6 +228,7 @@ function ProductsPage() {
     { id: "createdAt", label: t('common.created'), type: "date" },
     { id: "tagIds", label: t('common.tags', { defaultValue: "Tagi" }), type: "multiSelect" as const, options: tags.map(tag => ({ label: tag.name, value: tag._id })) },
     { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
+    { id: "manufacturer", label: t("products.manufacturer", { defaultValue: "Producent" }), type: "text" },
   ], [t, tags, categories]);
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
@@ -169,12 +257,41 @@ function ProductsPage() {
   const [stockUnit, setStockUnit] = useState("");
   const [initialStock, setInitialStock] = useState("");
   const [productSection, setProductSection] = useState<ProductSection | "">("");
+  // New warehouse fields (#2052)
+  const [minStock, setMinStock] = useState("");
+  const [manufacturer, setManufacturer] = useState("");
+  const [catalogNumber, setCatalogNumber] = useState("");
+  const [stockNote, setStockNote] = useState("");
 
   const { data: allProducts = [], isLoading } = useSupabaseProductsList(organizationId);
   const { data: usedProductIds } = useSupabaseUsedProductIds(organizationId, {
     enabled: nudgeFilter === "unused",
   });
   const { totalsByProductId } = useSupabaseProductStockTotals(organizationId);
+
+  // Compute per-product stock status for filtering and display
+  const productStockStatus = useMemo(() => {
+    const map = new Map<string, StockStatus>();
+    for (const p of allProducts) {
+      const summary = totalsByProductId.get(p._id);
+      const total = summary?.total ?? 0;
+      map.set(p._id, getStockStatus(p.trackStock, total, p.minStock));
+    }
+    return map;
+  }, [allProducts, totalsByProductId]);
+
+  // Inventory summary stats
+  const inventoryStats = useMemo(() => {
+    const total = allProducts.length;
+    const bySale = allProducts.filter(p => p.productSection === "sale").length;
+    const byTreatment = allProducts.filter(p => p.productSection === "treatment").length;
+    const byDisposable = allProducts.filter(p => p.productSection === "disposable").length;
+    const belowMin = allProducts.filter(p => {
+      const status = productStockStatus.get(p._id);
+      return status === "low" || status === "out";
+    }).length;
+    return { total, bySale, byTreatment, byDisposable, belowMin };
+  }, [allProducts, productStockStatus]);
 
   const products = useMemo(() => {
     let data = allProducts;
@@ -183,6 +300,12 @@ function ProductsPage() {
     }
     if (nudgeFilter === "unused" && usedProductIds) {
       data = data.filter((p) => !usedProductIds.has(p._id));
+    }
+    if (nudgeFilter === "low_stock") {
+      data = data.filter((p) => {
+        const status = productStockStatus.get(p._id);
+        return status === "low" || status === "out";
+      });
     }
     if (activeSection !== "all") {
       data = data.filter((p) => p.productSection === activeSection);
@@ -193,11 +316,13 @@ function ProductsPage() {
       const q = searchValue.trim().toLowerCase();
       data = data.filter((p) =>
         p.name.toLowerCase().includes(q) ||
-        p.sku?.toLowerCase().includes(q)
+        p.sku?.toLowerCase().includes(q) ||
+        p.manufacturer?.toLowerCase().includes(q) ||
+        p.catalogNumber?.toLowerCase().includes(q)
       );
     }
     return data;
-  }, [activeViewId, allProducts, applyFilters, activeFilters, searchValue, nudgeFilter, usedProductIds, activeSection]);
+  }, [activeViewId, allProducts, applyFilters, activeFilters, searchValue, nudgeFilter, usedProductIds, activeSection, productStockStatus]);
 
   const createProduct = useAction(api.products.create);
   const updateProduct = useAction(api.products.update);
@@ -217,6 +342,10 @@ function ProductsPage() {
     setStockUnit("");
     setInitialStock("");
     setProductSection(activeSection !== "all" ? activeSection : "");
+    setMinStock("");
+    setManufacturer("");
+    setCatalogNumber("");
+    setStockNote("");
     setEditingProduct(null);
   };
 
@@ -239,6 +368,10 @@ function ProductsPage() {
     setStockUnit(product.stockUnit ?? "");
     setInitialStock("");
     setProductSection((product.productSection as ProductSection | undefined) ?? "");
+    setMinStock(product.minStock != null ? String(product.minStock) : "");
+    setManufacturer(product.manufacturer ?? "");
+    setCatalogNumber(product.catalogNumber ?? "");
+    setStockNote(product.stockNote ?? "");
     setPanelOpen(true);
   };
 
@@ -260,6 +393,11 @@ function ProductsPage() {
       const parsed = parseFloat(initialStock.replace(",", "."));
       return Number.isFinite(parsed) ? parsed : null;
     })();
+    const normalizedMinStock = (() => {
+      if (!minStock.trim()) return null;
+      const parsed = parseFloat(minStock.replace(",", "."));
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+    })();
     const normalizedSection = productSection || null;
     try {
       if (editingProduct) {
@@ -277,6 +415,10 @@ function ProductsPage() {
           trackStock,
           stockUnit: normalizedStockUnit,
           productSection: normalizedSection,
+          minStock: normalizedMinStock,
+          manufacturer: manufacturer.trim() || null,
+          catalogNumber: catalogNumber.trim() || null,
+          stockNote: stockNote.trim() || null,
         });
       } else {
         await createProduct({
@@ -294,6 +436,10 @@ function ProductsPage() {
           stockUnit: normalizedStockUnit,
           initialStock: normalizedInitialStock,
           productSection: normalizedSection,
+          minStock: normalizedMinStock,
+          manufacturer: manufacturer.trim() || null,
+          catalogNumber: catalogNumber.trim() || null,
+          stockNote: stockNote.trim() || null,
         });
       }
       setPanelOpen(false);
@@ -322,7 +468,17 @@ function ProductsPage() {
     {
       id: "sku",
       label: t('products.sku'),
-      render: (item) => item.sku ?? "\u2014",
+      render: (item) => item.sku ?? "—",
+    },
+    {
+      id: "catalogNumber",
+      label: t("products.catalogNumber", { defaultValue: "Nr katalogowy" }),
+      render: (item) => item.catalogNumber ?? "—",
+    },
+    {
+      id: "manufacturer",
+      label: t("products.manufacturer", { defaultValue: "Producent" }),
+      render: (item) => item.manufacturer ?? "—",
     },
     {
       id: "unitPrice",
@@ -336,7 +492,7 @@ function ProductsPage() {
       label: t('products.taxRate'),
       render: (item) => {
         if (item.taxExempt) return "ZW";
-        if (item.taxRate == null) return "\u2014";
+        if (item.taxRate == null) return "—";
         return `${item.taxRate}%`;
       },
     },
@@ -344,16 +500,17 @@ function ProductsPage() {
       id: "stock",
       label: t('products.stock.column', { defaultValue: "Stan" }),
       render: (item) => {
-        if (!item.trackStock) return "\u2014";
+        if (!item.trackStock) return <span className="text-muted-foreground">—</span>;
         const summary = totalsByProductId.get(item._id);
         const total = summary?.total ?? 0;
-        const unit = item.stockUnit?.trim();
-        const negative = total < 0;
+        const status = productStockStatus.get(item._id) ?? "untracked";
         return (
-          <span className={negative ? "text-destructive font-medium" : undefined}>
-            {total}
-            {unit ? ` ${unit}` : ""}
-          </span>
+          <StockBadge
+            status={status}
+            total={total}
+            unit={item.stockUnit}
+            minStock={item.minStock}
+          />
         );
       },
       getSortValue: (item) => {
@@ -363,17 +520,28 @@ function ProductsPage() {
       sortable: true,
     },
     {
+      id: "minStock",
+      label: t("products.stock.minLabel", { defaultValue: "Min. stan" }),
+      render: (item) => {
+        if (!item.trackStock || item.minStock == null) return "—";
+        const unit = item.stockUnit?.trim();
+        return `${item.minStock}${unit ? ` ${unit}` : ""}`;
+      },
+      getSortValue: (item) => item.minStock ?? -Infinity,
+      sortable: true,
+    },
+    {
       id: "productSection",
       label: t("products.sections.label", { defaultValue: "Sekcja" }),
       render: (item) => {
-        if (!item.productSection) return "\u2014";
+        if (!item.productSection) return "—";
         return t(`products.sections.${item.productSection}`, { defaultValue: item.productSection });
       },
     },
     {
       id: "isActive",
       label: t('common.active'),
-      render: (item) => item.isActive ? "\u2713" : "\u2014",
+      render: (item) => item.isActive ? "✓" : "—",
     },
   ];
 
@@ -423,6 +591,37 @@ function ProductsPage() {
         }
       />
 
+      {/* Inventory stats widget */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        <StatCard
+          label={t("products.stats.total", { defaultValue: "Wszystkie pozycje" })}
+          value={inventoryStats.total}
+        />
+        <StatCard
+          label={t("products.sections.sale")}
+          value={inventoryStats.bySale}
+          onClick={() => setActiveSection("sale")}
+        />
+        <StatCard
+          label={t("products.sections.treatment")}
+          value={inventoryStats.byTreatment}
+          onClick={() => setActiveSection("treatment")}
+        />
+        <StatCard
+          label={t("products.sections.disposable")}
+          value={inventoryStats.byDisposable}
+          onClick={() => setActiveSection("disposable")}
+        />
+        <StatCard
+          label={t("products.stats.belowMin", { defaultValue: "Poniżej min. stanu" })}
+          value={inventoryStats.belowMin}
+          highlight={inventoryStats.belowMin > 0}
+          onClick={inventoryStats.belowMin > 0
+            ? () => navigate({ to: "/dashboard/products", search: { nudge: "low_stock" } })
+            : undefined}
+        />
+      </div>
+
       <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as ProductSection | "all")}>
         <TabsList>
           <TabsTrigger value="all">
@@ -442,6 +641,32 @@ function ProductsPage() {
             {t("products.nudgeFilter.unused", {
               defaultValue:
                 "Pokazywane są produkty nieużywane w żadnej transakcji.",
+            })}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            onClick={() =>
+              navigate({
+                to: "/dashboard/products",
+                search: { nudge: undefined },
+              })
+            }
+          >
+            <X className="h-3.5 w-3.5" variant="stroke" />
+            {t("common.clearFilters")}
+          </Button>
+        </div>
+      )}
+
+      {nudgeFilter === "low_stock" && (
+        <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          <span className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0" variant="stroke" />
+            {t("products.nudgeFilter.lowStock", {
+              defaultValue:
+                "Pokazywane są pozycje poniżej minimalnego stanu magazynowego.",
             })}
           </span>
           <Button
@@ -605,6 +830,27 @@ function ProductsPage() {
             </div>
           )}
 
+          {/* Manufacturer & catalog number */}
+          <div className="grid gap-3 grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>{t("products.manufacturer", { defaultValue: "Producent" })}</Label>
+              <Input
+                value={manufacturer}
+                onChange={(e) => setManufacturer(e.target.value)}
+                placeholder={t("products.manufacturerPlaceholder", { defaultValue: "Nazwa producenta" })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t("products.catalogNumber", { defaultValue: "Nr katalogowy" })}</Label>
+              <Input
+                value={catalogNumber}
+                onChange={(e) => setCatalogNumber(e.target.value)}
+                placeholder={t("products.catalogNumberPlaceholder", { defaultValue: "np. CAT-12345" })}
+              />
+            </div>
+          </div>
+
+          {/* Stock tracking */}
           <div className="space-y-3 rounded-md border bg-muted/30 px-3 py-3">
             <div className="flex items-start gap-2">
               <Checkbox
@@ -629,18 +875,37 @@ function ProductsPage() {
             </div>
 
             {trackStock && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>
-                    {t("products.stock.unitLabel", { defaultValue: "Jednostka" })}
-                  </Label>
-                  <Input
-                    value={stockUnit}
-                    onChange={(e) => setStockUnit(e.target.value)}
-                    placeholder={t("products.stock.unitPlaceholder", {
-                      defaultValue: "szt., ml, g…",
-                    })}
-                  />
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>
+                      {t("products.stock.unitLabel", { defaultValue: "Jednostka" })}
+                    </Label>
+                    <Input
+                      value={stockUnit}
+                      onChange={(e) => setStockUnit(e.target.value)}
+                      placeholder={t("products.stock.unitPlaceholder", {
+                        defaultValue: "szt., ml, g…",
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>
+                      {t("products.stock.minLabel", { defaultValue: "Min. stan" })}
+                    </Label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={minStock}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                          setMinStock(v);
+                        }
+                      }}
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
                 {!editingProduct && (
                   <div className="space-y-1.5">
@@ -665,6 +930,19 @@ function ProductsPage() {
                 )}
               </div>
             )}
+          </div>
+
+          {/* Warehouse note */}
+          <div className="space-y-1.5">
+            <Label>{t("products.stock.noteLabel", { defaultValue: "Notatka magazynowa" })}</Label>
+            <Textarea
+              value={stockNote}
+              onChange={(e) => setStockNote(e.target.value)}
+              placeholder={t("products.stock.notePlaceholder", {
+                defaultValue: "Warunki przechowywania, uwagi dla magazyniera…",
+              })}
+              rows={2}
+            />
           </div>
 
           <div className="space-y-1.5">

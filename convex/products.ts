@@ -79,6 +79,10 @@ export const create = action({
     stockUnit: v.optional(v.union(v.string(), v.null())),
     initialStock: v.optional(v.union(v.number(), v.null())),
     productSection: v.optional(v.union(v.string(), v.null())),
+    minStock: v.optional(v.union(v.number(), v.null())),
+    manufacturer: v.optional(v.union(v.string(), v.null())),
+    catalogNumber: v.optional(v.union(v.string(), v.null())),
+    stockNote: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runQuery(
@@ -109,6 +113,10 @@ export const create = action({
       trackStock,
       stockUnit: args.stockUnit ?? null,
       productSection: args.productSection ?? null,
+      minStock: args.minStock ?? null,
+      manufacturer: args.manufacturer ?? null,
+      catalogNumber: args.catalogNumber ?? null,
+      stockNote: args.stockNote ?? null,
       createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
@@ -182,6 +190,10 @@ export const update = action({
     trackStock: v.optional(v.union(v.boolean(), v.null())),
     stockUnit: v.optional(v.union(v.string(), v.null())),
     productSection: v.optional(v.union(v.string(), v.null())),
+    minStock: v.optional(v.union(v.number(), v.null())),
+    manufacturer: v.optional(v.union(v.string(), v.null())),
+    catalogNumber: v.optional(v.union(v.string(), v.null())),
+    stockNote: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runQuery(

@@ -21,6 +21,10 @@ export interface MappedProduct {
   trackStock?: boolean;
   stockUnit?: string;
   productSection?: string;
+  minStock?: number;
+  manufacturer?: string;
+  catalogNumber?: string;
+  stockNote?: string;
   createdBy: string;
   createdAt: number;
   updatedAt: number;

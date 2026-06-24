@@ -35,7 +35,7 @@ describe("products.create — happy path (#2185)", () => {
     expect(typeof row?.updatedAt).toBe("number");
   });
 
-  test("does not write migration-added columns when they are not set (defensive pattern)", async () => {
+  test("optional migration-added columns default correctly when not supplied", async () => {
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
@@ -55,11 +55,13 @@ describe("products.create — happy path (#2185)", () => {
       | Record<string, unknown>
       | null;
     expect(row).not.toBeNull();
-    // Migration-added columns must be absent from the row when not supplied.
-    // Unconditionally including them caused PG 42703 on environments missing
-    // migrations 00006/00013/00019/00020 (issue #2185).
+    // taxExempt only written when explicitly true (migration 00006).
     expect(row?.taxExempt).toBeUndefined();
-    expect(row?.trackStock).toBeUndefined();
+    // trackStock is written explicitly (false by default) so the DB column
+    // stores the user's intent. On pre-00013 environments the try/catch probe
+    // strips it and retries without it (issue #2185, #2206).
+    expect(row?.trackStock).toBe(false);
+    // The remaining migration-added columns are omitted when not supplied.
     expect(row?.stockUnit).toBeUndefined();
     expect(row?.productSection).toBeUndefined();
     expect(row?.minStock).toBeUndefined();

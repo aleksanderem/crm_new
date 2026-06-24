@@ -353,14 +353,7 @@ export const refundCredit = action({
     }
 
     const now = Date.now();
-    // Build INSERT defensively — migration 00008 columns (kind, creditEarned)
-    // may not exist on pre-00008 environments. Unlike `create` where kind=NULL
-    // defaults to "payment", here kind="credit_refund" is semantically required
-    // so we use try/catch: attempt the full INSERT and fall back to base columns
-    // on a 42703 "column does not exist" error. The fallback is unreachable in
-    // practice because computePatientCreditBalance returns 0 on pre-00008 envs,
-    // causing the balance check above to throw before we reach this INSERT.
-    const baseRow: Record<string, unknown> = {
+    const paymentId = await db.insert("payments", {
       organizationId: String(args.organizationId),
       patientId: args.patientId,
       appointmentId: null,
@@ -374,22 +367,9 @@ export const refundCredit = action({
       createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
-    };
-    let paymentId: string;
-    try {
-      paymentId = await db.insert("payments", {
-        ...baseRow,
-        kind: "credit_refund",
-        creditEarned: -args.amount,
-      });
-    } catch (e: unknown) {
-      const msg = (e as { message?: string })?.message ?? "";
-      if (/code=42703/.test(msg) || /column .* does not exist/i.test(msg)) {
-        paymentId = await db.insert("payments", baseRow);
-      } else {
-        throw e;
-      }
-    }
+      kind: "credit_refund",
+      creditEarned: -args.amount,
+    });
 
     try {
       await ctx.runMutation(internal.payments._refundCreditSideEffects, {
@@ -1215,8 +1195,7 @@ export const approveRefundAuth = action({
 
     const paymentMethod = args.paymentMethod ?? "cash";
     const now = Date.now();
-    // Same defensive try/catch pattern as refundCredit above — see that comment.
-    const baseRow: Record<string, unknown> = {
+    const paymentId = await db.insert("payments", {
       organizationId: String(args.organizationId),
       patientId: meta.patientId,
       appointmentId: null,
@@ -1230,22 +1209,9 @@ export const approveRefundAuth = action({
       createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
-    };
-    let paymentId: string;
-    try {
-      paymentId = await db.insert("payments", {
-        ...baseRow,
-        kind: "credit_refund",
-        creditEarned: -meta.amount,
-      });
-    } catch (e: unknown) {
-      const msg = (e as { message?: string })?.message ?? "";
-      if (/code=42703/.test(msg) || /column .* does not exist/i.test(msg)) {
-        paymentId = await db.insert("payments", baseRow);
-      } else {
-        throw e;
-      }
-    }
+      kind: "credit_refund",
+      creditEarned: -meta.amount,
+    });
 
     await ctx.runMutation(internal.payments._resolveRefundAuthSideEffects, {
       organizationId: args.organizationId,

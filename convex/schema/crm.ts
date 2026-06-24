@@ -314,6 +314,11 @@ export function createCrmTables({
     stockUnit: v.optional(v.string()),
     // Organisational section (#2049): "sale" | "treatment" | "disposable"
     productSection: v.optional(v.string()),
+    // Inventory/warehouse fields (#2052, migration 00020)
+    minStock: v.optional(v.number()),
+    manufacturer: v.optional(v.string()),
+    catalogNumber: v.optional(v.string()),
+    stockNote: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

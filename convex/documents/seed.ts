@@ -1,4 +1,5 @@
-import { mutation, internalMutation, type MutationCtx } from "../_generated/server";
+import { mutation, internalMutation, internalQuery, internalAction, type MutationCtx } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v, type GenericId } from "convex/values";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { buildSystemComponents } from "./components";
@@ -174,6 +175,43 @@ export const migrateFormFieldFilledByInternal = internalMutation({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
     return await _migrateFilledByHandler(ctx, args.organizationId);
+  },
+});
+
+/**
+ * Internal: list IDs of all organizations that have completed gabinet onboarding.
+ * Used by the backfill cron to find orgs that need the filledBy migration.
+ */
+export const _listOnboardedOrgIds = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const orgs = await ctx.db.query("organizations").collect();
+    return orgs
+      .filter((o) => o.onboardingCompleted === true)
+      .map((o) => o._id);
+  },
+});
+
+/**
+ * Backfill `filledBy` on form-field nodes for ALL onboarded organizations.
+ * Runs as a daily cron so existing orgs (that completed setup before the
+ * filledBy feature was introduced) get migrated automatically.
+ * New orgs are already covered by the `completeSetup` action.
+ * Safe to run multiple times — idempotent.
+ */
+export const backfillFilledByAllOrgs = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const orgIds = await ctx.runQuery(internal.documents.seed._listOnboardedOrgIds, {});
+    let totalPatched = 0;
+    for (const orgId of orgIds) {
+      const { patched } = await ctx.runMutation(
+        internal.documents.seed.migrateFormFieldFilledByInternal,
+        { organizationId: orgId },
+      );
+      totalPatched += patched;
+    }
+    return { totalPatched, orgsProcessed: orgIds.length };
   },
 });
 

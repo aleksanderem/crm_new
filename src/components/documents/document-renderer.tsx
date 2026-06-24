@@ -117,7 +117,7 @@ export function extractFormFields(json: TipTapNode): ExtractedFormField[] {
         options: (node.attrs.options as string) || "",
         required: (node.attrs.required as boolean) || false,
         placeholder: (node.attrs.placeholder as string) || "",
-        filledBy: (node.attrs.filledBy as string) || "employee",
+        filledBy: (node.attrs.filledBy as string) || "client",
       });
     }
     if (node.content) node.content.forEach(walk);

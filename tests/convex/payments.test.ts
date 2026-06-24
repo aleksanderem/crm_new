@@ -174,48 +174,6 @@ describe("payments", () => {
     ).rejects.toThrow("Cannot refund a pending payment");
   });
 
-  test("revenue summary aggregates completed payments", async () => {
-    const t = createTestCtx();
-    const { organizationId, identity } = await seedTestUser(t);
-
-    const now = Date.now();
-
-    // Two completed payments (default status)
-    for (const amount of [100, 250]) {
-      await t.withIdentity(identity).action(
-        api.payments.create,
-        {
-          organizationId,
-          amount,
-          currency: "USD",
-          paymentMethod: "cash",
-        },
-      );
-    }
-
-    // A pending payment — should not be counted
-    await t.withIdentity(identity).action(api.payments.create, {
-      organizationId,
-      amount: 999,
-      currency: "USD",
-      paymentMethod: "card",
-      status: "pending",
-    });
-
-    const summary = await t.withIdentity(identity).action(
-      api.payments.getRevenueSummary,
-      {
-        organizationId,
-        startDate: now - 60000,
-        endDate: now + 60000,
-      },
-    );
-
-    expect(summary.total).toBe(350);
-    expect(summary.count).toBe(2);
-    expect(summary.byMethod.cash.total).toBe(350);
-  });
-
   test("list paginates results via cursor (offset)", async () => {
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);

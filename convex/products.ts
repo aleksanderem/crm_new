@@ -98,9 +98,22 @@ export const create = action({
     } catch (e: unknown) {
       const msg = (e as { message?: string })?.message ?? "";
       if (/code=42703/.test(msg) || /column .* does not exist/i.test(msg)) {
+        // Strip ALL migration-added columns so the insert succeeds on
+        // environments where one or more migrations haven't been applied yet.
+        // The original fallback only removed 00013 columns (trackStock/stockUnit),
+        // causing a second 42703 failure when the user filled in warehouse fields
+        // from migrations 00019 (productSection) or 00020 (manufacturer etc.).
         const fallbackRow = { ...insertRow };
-        delete fallbackRow.trackStock;
-        delete fallbackRow.stockUnit;
+        delete fallbackRow.taxExempt;      // 00006
+        delete fallbackRow.trackStock;     // 00013
+        delete fallbackRow.stockUnit;      // 00013
+        delete fallbackRow.productSection; // 00019
+        delete fallbackRow.minStock;       // 00020
+        delete fallbackRow.manufacturer;   // 00020
+        delete fallbackRow.catalogNumber;  // 00020
+        delete fallbackRow.stockNote;      // 00020
+        // On pre-00006 environments tax_rate is NOT NULL; ensure it's not null.
+        if (fallbackRow.taxRate == null) fallbackRow.taxRate = 0;
         productId = await db.insert("products", fallbackRow);
       } else {
         throw e;

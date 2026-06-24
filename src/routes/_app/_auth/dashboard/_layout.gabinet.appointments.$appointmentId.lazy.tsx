@@ -1244,6 +1244,11 @@ function AppointmentDetail() {
   // (#1856), so without summing creditApplied the outstanding would stay at
   // the full visit price even after settlement.
   const treatmentPrice = treatment?.price ?? 0;
+  // gratis / barter always settle at the full treatment price and the amount
+  // is locked (no manual edit) — the method just records that no cash changed
+  // hands (gratis) or it was exchanged in kind (barter).
+  const isFixedAmountMethod =
+    paymentMethod === "gratis" || paymentMethod === "barter";
   const totalPaid = payments
     .filter((p: Record<string, unknown>) => p.status === "completed")
     .reduce(
@@ -2860,7 +2865,10 @@ function AppointmentDetail() {
               <Input
                 type="text"
                 inputMode="decimal"
-                value={paymentAmount}
+                value={
+                  isFixedAmountMethod ? treatmentPrice.toFixed(2) : paymentAmount
+                }
+                disabled={isFixedAmountMethod}
                 onChange={(e) => {
                   const v = e.target.value;
                   if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
@@ -2869,6 +2877,11 @@ function AppointmentDetail() {
                 }}
                 placeholder={outstanding > 0 ? outstanding.toFixed(2) : "0.00"}
               />
+              {isFixedAmountMethod && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t("gabinet.payments.amountLockedToTreatment")}
+                </p>
+              )}
               {outstanding > 0 && (
                 <p className="text-xs text-muted-foreground mt-1">
                   {t("gabinet.payments.outstanding")}: {formatCurrencyPLN(outstanding)}
@@ -2917,7 +2930,15 @@ function AppointmentDetail() {
             )}
             <div>
               <Label>{t("gabinet.payments.method")}</Label>
-              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+              <Select
+                value={paymentMethod}
+                onValueChange={(v) => {
+                  setPaymentMethod(v);
+                  if (v === "gratis" || v === "barter") {
+                    setPaymentAmount(treatmentPrice.toFixed(2));
+                  }
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

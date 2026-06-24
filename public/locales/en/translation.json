@@ -3628,6 +3628,7 @@
       "addPayment": "Add payment",
       "addPaymentDesc": "Add payment linked to appointment",
       "amount": "Amount",
+      "amountLockedToTreatment": "Amount set from the treatment price",
       "amountRequired": "Amount is required",
       "create": "Create payment",
       "created": "Payment created",

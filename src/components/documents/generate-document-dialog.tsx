@@ -141,8 +141,8 @@ function DocumentTemplateFormStep({
 }) {
   const json = JSON.parse(contentJson);
   const allFormFields = extractFormFields(json);
-  const employeeFields = allFormFields.filter((f) => (f.filledBy || "employee") === "employee");
-  const clientFields = allFormFields.filter((f) => f.filledBy === "client");
+  const employeeFields = allFormFields.filter((f) => (f.filledBy || "client") === "employee");
+  const clientFields = allFormFields.filter((f) => (f.filledBy || "client") === "client");
   const hasClientFields = clientFields.length > 0;
 
   if (employeeFields.length === 0) {

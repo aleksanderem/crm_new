@@ -116,50 +116,64 @@ const EMPLOYEE_FILLED_FIELD_IDS = new Set<string>([
   "protocol_next_visit",
 ]);
 
+async function _migrateFilledByHandler(
+  ctx: MutationCtx,
+  organizationId: GenericId<"organizations">,
+) {
+  const all = await ctx.db
+    .query("formTemplates")
+    .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
+    .collect();
+
+  let patched = 0;
+  for (const t of all) {
+    if (!t.contentJson) continue;
+    let json: unknown;
+    try {
+      json = JSON.parse(t.contentJson);
+    } catch {
+      continue;
+    }
+
+    let changed = false;
+    const walk = (node: unknown) => {
+      if (!node || typeof node !== "object") return;
+      const n = node as { type?: string; attrs?: Record<string, unknown>; content?: unknown[] };
+      if (n.type === "formField" && n.attrs) {
+        const fieldId = typeof n.attrs.fieldId === "string" ? n.attrs.fieldId : "";
+        const expected = EMPLOYEE_FILLED_FIELD_IDS.has(fieldId) ? "employee" : "client";
+        if (n.attrs.filledBy !== expected) {
+          n.attrs.filledBy = expected;
+          changed = true;
+        }
+      }
+      if (Array.isArray(n.content)) n.content.forEach(walk);
+    };
+    walk(json);
+
+    if (changed) {
+      await ctx.db.patch(t._id, {
+        contentJson: JSON.stringify(json),
+        updatedAt: Date.now(),
+      });
+      patched++;
+    }
+  }
+  return { patched, total: all.length };
+}
+
 export const migrateFormFieldFilledBy = mutation({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
-    const all = await ctx.db
-      .query("formTemplates")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
+    return await _migrateFilledByHandler(ctx, args.organizationId);
+  },
+});
 
-    let patched = 0;
-    for (const t of all) {
-      if (!t.contentJson) continue;
-      let json: unknown;
-      try {
-        json = JSON.parse(t.contentJson);
-      } catch {
-        continue;
-      }
-
-      let changed = false;
-      const walk = (node: unknown) => {
-        if (!node || typeof node !== "object") return;
-        const n = node as { type?: string; attrs?: Record<string, unknown>; content?: unknown[] };
-        if (n.type === "formField" && n.attrs) {
-          const fieldId = typeof n.attrs.fieldId === "string" ? n.attrs.fieldId : "";
-          const expected = EMPLOYEE_FILLED_FIELD_IDS.has(fieldId) ? "employee" : "client";
-          if (n.attrs.filledBy !== expected) {
-            n.attrs.filledBy = expected;
-            changed = true;
-          }
-        }
-        if (Array.isArray(n.content)) n.content.forEach(walk);
-      };
-      walk(json);
-
-      if (changed) {
-        await ctx.db.patch(t._id, {
-          contentJson: JSON.stringify(json),
-          updatedAt: Date.now(),
-        });
-        patched++;
-      }
-    }
-    return { patched, total: all.length };
+export const migrateFormFieldFilledByInternal = internalMutation({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    return await _migrateFilledByHandler(ctx, args.organizationId);
   },
 });
 

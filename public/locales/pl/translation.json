@@ -4322,7 +4322,22 @@
       "clientForm": "Formularz klienta"
     },
     "previewNoFields": "Brak pól formularza dla tego widoku",
-    "previewSelectEntity": "Wybierz typ encji i podaj ID, aby zobaczyć podgląd"
+    "previewSelectEntity": "Wybierz typ encji i podaj ID, aby zobaczyć podgląd",
+    "formField": {
+      "labelLabel": "Etykieta",
+      "labelPlaceholder": "Etykieta pola...",
+      "fieldIdLabel": "ID pola",
+      "typeLabel": "Typ pola",
+      "typeText": "Tekst",
+      "typeTextarea": "Pole tekstowe",
+      "typeDate": "Data",
+      "typeCheckbox": "Pole wyboru",
+      "optionsLabel": "Opcje (oddzielone przecinkiem)",
+      "placeholderLabel": "Tekst pomocniczy",
+      "placeholderPlaceholder": "Wpisz wartość...",
+      "done": "Gotowe",
+      "fieldFallback": "Pole"
+    }
   },
   "documentEditor": {
     "fillFields": "Uzupełnij pola formularza przed wygenerowaniem dokumentu.",
@@ -4566,7 +4581,9 @@
       "insertSection1": "Wstaw sekcję 1-kolumnową",
       "insertLayout2": "Wstaw układ 2-kolumnowy",
       "insertLayout3": "Wstaw układ 3-kolumnowy",
-      "insertLayout4": "Wstaw układ 4-kolumnowy"
+      "insertLayout4": "Wstaw układ 4-kolumnowy",
+      "insertFormField": "Wstaw pole formularza",
+      "formFieldLabel": "Pole formularza"
     },
     "htmlBlock": {
       "linkEntityField": "Powiąż z polem encji",

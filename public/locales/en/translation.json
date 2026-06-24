@@ -4296,7 +4296,22 @@
       "clientForm": "Client form"
     },
     "previewNoFields": "No form fields for this view",
-    "previewSelectEntity": "Select entity type and provide ID to see preview"
+    "previewSelectEntity": "Select entity type and provide ID to see preview",
+    "formField": {
+      "labelLabel": "Label",
+      "labelPlaceholder": "Field label...",
+      "fieldIdLabel": "Field ID",
+      "typeLabel": "Type",
+      "typeText": "Text",
+      "typeTextarea": "Textarea",
+      "typeDate": "Date",
+      "typeCheckbox": "Checkbox",
+      "optionsLabel": "Options (comma-separated)",
+      "placeholderLabel": "Placeholder",
+      "placeholderPlaceholder": "Enter value...",
+      "done": "Done",
+      "fieldFallback": "Field"
+    }
   },
   "documentEditor": {
     "fillFields": "Fill in the form fields before generating the document.",
@@ -4540,7 +4555,9 @@
       "insertSection1": "Insert 1-column section",
       "insertLayout2": "Insert 2-column layout",
       "insertLayout3": "Insert 3-column layout",
-      "insertLayout4": "Insert 4-column layout"
+      "insertLayout4": "Insert 4-column layout",
+      "insertFormField": "Insert form field",
+      "formFieldLabel": "Form field"
     },
     "htmlBlock": {
       "linkEntityField": "Link to entity field",

@@ -385,10 +385,10 @@ export const DocumentTemplateEditor = forwardRef<
           variant="ghost"
           className="h-8 px-2 text-xs text-muted-foreground"
           onClick={() => doInsertFormField()}
-          title="Insert form field"
+          title={t("documentsEditor.toolbar.insertFormField")}
         >
           <FormInput className="mr-1 h-4 w-4" />
-          Form field
+          {t("documentsEditor.toolbar.formFieldLabel")}
         </Button>
         <Button
           type="button"

@@ -85,17 +85,17 @@ function FormFieldConfig({
   return (
     <div className="grid gap-3">
       <div className="space-y-1">
-        <Label className="text-xs">Label</Label>
+        <Label className="text-xs">{t("formEditor.formField.labelLabel")}</Label>
         <Input
           value={attrs.label}
           onChange={(e) => onChange({ label: e.target.value })}
           className="h-8 text-sm"
-          placeholder="Field label..."
+          placeholder={t("formEditor.formField.labelPlaceholder")}
         />
       </div>
 
       <div className="space-y-1">
-        <Label className="text-xs">Field ID</Label>
+        <Label className="text-xs">{t("formEditor.formField.fieldIdLabel")}</Label>
         <Input
           value={attrs.fieldId}
           onChange={(e) => onChange({ fieldId: e.target.value })}
@@ -105,7 +105,7 @@ function FormFieldConfig({
       </div>
 
       <div className="space-y-1">
-        <Label className="text-xs">Type</Label>
+        <Label className="text-xs">{t("formEditor.formField.typeLabel")}</Label>
         <Select
           value={attrs.fieldType}
           onValueChange={(v) => onChange({ fieldType: v as FormFieldType })}
@@ -114,19 +114,19 @@ function FormFieldConfig({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="text">Text</SelectItem>
-            <SelectItem value="textarea">Textarea</SelectItem>
+            <SelectItem value="text">{t("formEditor.formField.typeText")}</SelectItem>
+            <SelectItem value="textarea">{t("formEditor.formField.typeTextarea")}</SelectItem>
             <SelectItem value="select">{t("common.select")}</SelectItem>
             <SelectItem value="button_select">Przyciski (Tak/Nie)</SelectItem>
-            <SelectItem value="date">Date</SelectItem>
-            <SelectItem value="checkbox">Checkbox</SelectItem>
+            <SelectItem value="date">{t("formEditor.formField.typeDate")}</SelectItem>
+            <SelectItem value="checkbox">{t("formEditor.formField.typeCheckbox")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {(attrs.fieldType === "select" || attrs.fieldType === "button_select") && (
         <div className="space-y-1">
-          <Label className="text-xs">Options (comma-separated)</Label>
+          <Label className="text-xs">{t("formEditor.formField.optionsLabel")}</Label>
           <Input
             value={attrs.options}
             onChange={(e) => onChange({ options: e.target.value })}
@@ -137,12 +137,12 @@ function FormFieldConfig({
       )}
 
       <div className="space-y-1">
-        <Label className="text-xs">Placeholder</Label>
+        <Label className="text-xs">{t("formEditor.formField.placeholderLabel")}</Label>
         <Input
           value={attrs.placeholder}
           onChange={(e) => onChange({ placeholder: e.target.value })}
           className="h-8 text-sm"
-          placeholder="Enter value..."
+          placeholder={t("formEditor.formField.placeholderPlaceholder")}
         />
       </div>
 
@@ -177,7 +177,7 @@ function FormFieldConfig({
       </div>
 
       <Button size="sm" variant="outline" onClick={onClose} className="w-full">
-        Done
+        {t("formEditor.formField.done")}
       </Button>
     </div>
   );
@@ -188,6 +188,7 @@ function FormFieldConfig({
 // ---------------------------------------------------------------------------
 
 function FormFieldNodeView({ node, updateAttributes, selected }: ReactNodeViewProps) {
+  const { t } = useTranslation();
   const [configOpen, setConfigOpen] = useState(false);
   const attrs = node.attrs as FormFieldAttrs;
   const isClient = attrs.filledBy === "client";
@@ -206,7 +207,7 @@ function FormFieldNodeView({ node, updateAttributes, selected }: ReactNodeViewPr
             )}
           >
             <FormFieldIcon type={attrs.fieldType} />
-            {attrs.label || attrs.fieldId || "Field"}
+            {attrs.label || attrs.fieldId || t("formEditor.formField.fieldFallback")}
             {attrs.required && <span className="text-red-500">*</span>}
             {isClient && <Users className="h-3 w-3 ml-0.5 opacity-60" />}
           </span>

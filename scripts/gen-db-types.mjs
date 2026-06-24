@@ -358,7 +358,7 @@ for (const table of tablesList) {
       lines.push(`            isOneToOne: ${rel.isOneToOne};`);
       lines.push(`            referencedRelation: "${rel.referencedRelation}";`);
       lines.push(`            referencedColumns: [${rel.referencedColumns.map((c) => `"${c}"`).join(", ")}];`);
-      lines.push(`          };`);
+      lines.push(`          },`);
     }
     lines.push(`        ];`);
   }

@@ -3643,6 +3643,8 @@
         "cash": "Cash",
         "other": "Other",
         "package": "Series/Package",
+        "gratis": "Gratis",
+        "barter": "Barter",
         "transfer": "Transfer"
       },
       "noPayments": "No payments",

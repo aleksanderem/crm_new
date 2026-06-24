@@ -3665,6 +3665,8 @@
         "cash": "Gotówka",
         "other": "Inna",
         "package": "Seria/Karnet",
+        "gratis": "Gratis",
+        "barter": "Barter",
         "transfer": "Przelew"
       },
       "noPayments": "Brak płatności",

@@ -20,6 +20,8 @@ const paymentMethodValidator = v.union(
   v.literal("card"),
   v.literal("transfer"),
   v.literal("package"),
+  v.literal("gratis"),
+  v.literal("barter"),
   v.literal("other"),
 );
 
@@ -1310,8 +1312,11 @@ export const _claimRefundAuthRequest = internalMutation({
   handler: async (ctx, args) => {
     const siblings = await ctx.db
       .query("notifications")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .filter((q) => q.eq(q.field("type"), "refund_authorization_requested"))
+      .withIndex("by_orgAndType", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("type", "refund_authorization_requested"),
+      )
       .collect();
 
     const matching = siblings.filter((n) => {

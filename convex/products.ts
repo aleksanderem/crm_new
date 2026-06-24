@@ -77,8 +77,12 @@ export const create = action({
     };
     // migration 00006
     if (args.taxExempt === true) insertRow.taxExempt = true;
-    // migration 00013
-    if (trackStock) insertRow.trackStock = true;
+    // migration 00013 — write the explicit value (including false) so the DB stores
+    // what the user passed rather than the NULL column default. Guard with try/catch:
+    // on pre-00013 environments Postgres returns 42703 "column does not exist"; we
+    // catch it and retry without the migration-added columns (same defensive pattern
+    // as payments.create for migration-00008 columns).
+    insertRow.trackStock = trackStock;
     if (args.stockUnit != null) insertRow.stockUnit = args.stockUnit;
     // migration 00019
     if (args.productSection != null) insertRow.productSection = args.productSection;
@@ -88,7 +92,20 @@ export const create = action({
     if (args.catalogNumber != null) insertRow.catalogNumber = args.catalogNumber;
     if (args.stockNote != null) insertRow.stockNote = args.stockNote;
 
-    const productId = await db.insert("products", insertRow);
+    let productId: string;
+    try {
+      productId = await db.insert("products", insertRow);
+    } catch (e: unknown) {
+      const msg = (e as { message?: string })?.message ?? "";
+      if (/code=42703/.test(msg) || /column .* does not exist/i.test(msg)) {
+        const fallbackRow = { ...insertRow };
+        delete fallbackRow.trackStock;
+        delete fallbackRow.stockUnit;
+        productId = await db.insert("products", fallbackRow);
+      } else {
+        throw e;
+      }
+    }
 
     // Seed an initial stock movement when the product opts into tracking with
     // a non-zero starting balance. We do this even if trackStock=false but the

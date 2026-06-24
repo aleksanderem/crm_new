@@ -105,6 +105,12 @@ export const completeSetup = action({
       internal.gabinet.onboarding._completeSetupSideEffects,
       { organizationId: args.organizationId },
     );
+
+    // Backfill filledBy on any existing formField templates that pre-date
+    // the filledBy feature. Idempotent — no-op when values are already correct.
+    await ctx.runMutation(internal.documents.seed.migrateFormFieldFilledByInternal, {
+      organizationId: args.organizationId,
+    });
   },
 });
 

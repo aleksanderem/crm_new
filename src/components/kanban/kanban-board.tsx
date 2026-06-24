@@ -6,7 +6,8 @@ import {
   DragStartEvent,
   closestCorners,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   useDroppable,
@@ -99,7 +100,11 @@ export function KanbanBoard({
   const [overDropZone, setOverDropZone] = useState<string | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 10 } }),
+    // Touch: require a 250 ms press-hold before drag starts; if the finger
+    // moves more than 5 px during that window the drag is aborted and native
+    // scroll takes over, preventing accidental card activation on swipe.
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
     useSensor(KeyboardSensor)
   );
 

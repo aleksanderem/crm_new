@@ -1208,11 +1208,12 @@ export const create = action({
       roomId: args.roomId ?? null,
       tagIds: args.tagIds ?? null,
       categoryId: args.categoryId ?? null,
-      priceAtBooking: (treatment?.price as number | undefined) ?? null,
       createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     };
+    const priceAtBooking = (treatment?.price as number | undefined) ?? null;
+    if (priceAtBooking != null) baseRow.priceAtBooking = priceAtBooking;
 
     console.info("[create] inserting appointment to Supabase...");
     const firstId = await db.insert("gabinetAppointments", {
@@ -1517,6 +1518,7 @@ export const update = action({
       appointmentId,
       status,
       cancellationReason,
+      contraindicationAlertsReviewed,
       ...updates
     } = args;
 
@@ -1525,6 +1527,9 @@ export const update = action({
       ...updates,
       updatedAt: now,
     };
+    if (contraindicationAlertsReviewed !== undefined) {
+      patch.contraindicationAlertsReviewed = contraindicationAlertsReviewed;
+    }
 
     // Handle status change with cancellation support
     if (status) {

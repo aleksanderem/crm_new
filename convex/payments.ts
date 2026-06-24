@@ -179,7 +179,7 @@ export const create = action({
       }
     }
 
-    const paymentId = await db.insert("payments", {
+    const insertRow: Record<string, unknown> = {
       organizationId: String(args.organizationId),
       patientId: args.patientId ?? null,
       appointmentId: args.appointmentId ?? null,
@@ -190,13 +190,14 @@ export const create = action({
       status,
       paidAt: status === "completed" ? now : null,
       notes: args.notes ?? null,
-      creditEarned,
-      creditApplied,
       kind: "payment",
       createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
-    });
+    };
+    if (creditEarned != null) insertRow.creditEarned = creditEarned;
+    if (creditApplied != null) insertRow.creditApplied = creditApplied;
+    const paymentId = await db.insert("payments", insertRow);
 
     // Side effects (audit log) via internal mutation
     try {
@@ -360,7 +361,6 @@ export const refundCredit = action({
       paidAt: now,
       notes: args.notes ?? null,
       creditEarned: -args.amount,
-      creditApplied: null,
       kind: "credit_refund",
       createdBy: String(authResult.userId),
       createdAt: now,

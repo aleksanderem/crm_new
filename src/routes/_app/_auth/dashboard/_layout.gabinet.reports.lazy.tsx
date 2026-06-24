@@ -975,7 +975,7 @@ function GabinetReports() {
           const tid = a.treatmentId as string;
           const tr = treatmentMap.get(tid);
           if (!tr) continue;
-          const price = tr.price;
+          const price = (a.priceAtBooking as number | undefined) ?? tr.price;
           currency = tr.currency;
           total += price;
           if (a.date >= sevenDaysBeforeEnd) last7 += price;

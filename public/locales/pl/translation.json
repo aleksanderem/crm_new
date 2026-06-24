@@ -3526,7 +3526,7 @@
     },
     "reports": {
       "title": "Raporty Gabinetu",
-      "description": "Analizuj wydajność kliniki",
+      "description": "Analizuj wydajność kliniki i szacunkowy obrót z wizyt",
       "totalAppointments": "Wizyty ogółem",
       "completed": "Zakończone",
       "cancelled": "Anulowane",

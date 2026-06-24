@@ -185,10 +185,37 @@ export const update = action({
     }
 
     const { organizationId, productId, ...updates } = args;
-    const patchPayload: Record<string, unknown> = { ...updates, updatedAt: Date.now() };
+
+    // Build patch payload defensively — only include migration-added columns when
+    // they carry a non-null value so that environments missing those migrations
+    // don't get a Postgres 42703 "column does not exist" error (same pattern as create).
+    const patchPayload: Record<string, unknown> = { updatedAt: Date.now() };
+
+    // Base columns (migration 00001)
+    if (updates.name !== undefined) patchPayload.name = updates.name;
+    if (updates.sku !== undefined) patchPayload.sku = updates.sku;
+    if (updates.unitPrice !== undefined) patchPayload.unitPrice = updates.unitPrice;
+    if (updates.description !== undefined) patchPayload.description = updates.description;
+    if (updates.tagIds !== undefined) patchPayload.tagIds = updates.tagIds;
+    if (updates.categoryId !== undefined) patchPayload.categoryId = updates.categoryId;
+    if (updates.taxRate !== undefined && updates.taxExempt !== true) patchPayload.taxRate = updates.taxRate;
+
+    // migration 00006
     if (updates.taxExempt === true) {
+      patchPayload.taxExempt = true;
       patchPayload.taxRate = null;
     }
+    // migration 00013
+    if (updates.trackStock != null) patchPayload.trackStock = updates.trackStock;
+    if (updates.stockUnit != null) patchPayload.stockUnit = updates.stockUnit;
+    // migration 00019
+    if (updates.productSection != null) patchPayload.productSection = updates.productSection;
+    // migration 00020
+    if (updates.minStock != null) patchPayload.minStock = updates.minStock;
+    if (updates.manufacturer != null) patchPayload.manufacturer = updates.manufacturer;
+    if (updates.catalogNumber != null) patchPayload.catalogNumber = updates.catalogNumber;
+    if (updates.stockNote != null) patchPayload.stockNote = updates.stockNote;
+
     await db.patch("products", productId, patchPayload);
 
     try {

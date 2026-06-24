@@ -3504,7 +3504,7 @@
     },
     "reports": {
       "title": "Gabinet Reports",
-      "description": "Analyze your clinic performance",
+      "description": "Analyze clinic performance and estimated revenue from appointments",
       "totalAppointments": "Total Appointments",
       "completed": "Completed",
       "cancelled": "Cancelled",

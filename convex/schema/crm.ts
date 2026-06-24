@@ -465,6 +465,8 @@ export function createCrmTables({
       v.literal("card"),
       v.literal("transfer"),
       v.literal("package"),
+      v.literal("gratis"),
+      v.literal("barter"),
       v.literal("other"),
     ),
     status: v.union(
@@ -667,7 +669,8 @@ export function createCrmTables({
   })
     .index("by_user", ["userId", "createdAt"])
     .index("by_userAndRead", ["userId", "isRead", "createdAt"])
-    .index("by_org", ["organizationId"]),
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndType", ["organizationId", "type"]),
 
   // --- Audit Log ---
 

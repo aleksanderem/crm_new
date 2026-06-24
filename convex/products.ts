@@ -54,28 +54,41 @@ export const create = action({
     const db = createSupabaseDb();
 
     const trackStock = args.trackStock ?? false;
-    const productId = await db.insert("products", {
+
+    // Build the insert row with only the base fields (present in 00001) plus
+    // fields from later migrations included only when they carry a meaningful
+    // value. Unconditionally writing null for columns added by migrations
+    // 00006/00013/00019/00020 causes a "column does not exist" (Postgres 42703)
+    // failure on environments where those migrations have not been applied yet —
+    // the same pattern that was fixed for gabinet treatments in #2061.
+    const insertRow: Record<string, unknown> = {
       organizationId: String(args.organizationId),
       name: args.name,
       sku: args.sku,
       unitPrice: args.unitPrice,
-      taxRate: args.taxExempt ? null : args.taxRate ?? null,
-      taxExempt: args.taxExempt ?? null,
+      taxRate: args.taxExempt === true ? null : args.taxRate ?? null,
       isActive: args.isActive,
       description: args.description ?? null,
       tagIds: args.tagIds ?? null,
       categoryId: args.categoryId ?? null,
-      trackStock,
-      stockUnit: args.stockUnit ?? null,
-      productSection: args.productSection ?? null,
-      minStock: args.minStock ?? null,
-      manufacturer: args.manufacturer ?? null,
-      catalogNumber: args.catalogNumber ?? null,
-      stockNote: args.stockNote ?? null,
       createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
-    });
+    };
+    // migration 00006
+    if (args.taxExempt === true) insertRow.taxExempt = true;
+    // migration 00013
+    if (trackStock) insertRow.trackStock = true;
+    if (args.stockUnit != null) insertRow.stockUnit = args.stockUnit;
+    // migration 00019
+    if (args.productSection != null) insertRow.productSection = args.productSection;
+    // migration 00020
+    if (args.minStock != null) insertRow.minStock = args.minStock;
+    if (args.manufacturer != null) insertRow.manufacturer = args.manufacturer;
+    if (args.catalogNumber != null) insertRow.catalogNumber = args.catalogNumber;
+    if (args.stockNote != null) insertRow.stockNote = args.stockNote;
+
+    const productId = await db.insert("products", insertRow);
 
     // Seed an initial stock movement when the product opts into tracking with
     // a non-zero starting balance. We do this even if trackStock=false but the

@@ -3650,6 +3650,7 @@
       "addPayment": "Dodaj płatność",
       "addPaymentDesc": "Dodaj płatność powiązaną z wizytą",
       "amount": "Kwota",
+      "amountLockedToTreatment": "Kwota ustalona na podstawie ceny zabiegu",
       "amountRequired": "Kwota jest wymagana",
       "create": "Utwórz płatność",
       "created": "Płatność utworzona",

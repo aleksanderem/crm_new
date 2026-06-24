@@ -186,9 +186,14 @@ export const update = action({
 
     const { organizationId, productId, ...updates } = args;
 
-    // Build patch payload defensively — only include migration-added columns when
-    // they carry a non-null value so that environments missing those migrations
-    // don't get a Postgres 42703 "column does not exist" error (same pattern as create).
+    // Build patch payload defensively — migration-added columns (00006/00013/00019/00020)
+    // must not be written on environments where the migration hasn't run yet, because
+    // Postgres returns 42703 "column does not exist". We use the fetched product row as
+    // a column-existence probe: supabase-js includes every DB column in SELECT *, so a
+    // key present in `product` (even with a null value) means the column exists and is
+    // safe to write. A key absent from `product` means the migration hasn't been applied
+    // and we must skip that field entirely — even for null (clear) operations.
+    const productRecord = product as Record<string, unknown>;
     const patchPayload: Record<string, unknown> = { updatedAt: Date.now() };
 
     // Base columns (migration 00001)
@@ -204,17 +209,33 @@ export const update = action({
     if (updates.taxExempt === true) {
       patchPayload.taxExempt = true;
       patchPayload.taxRate = null;
+    } else if (updates.taxExempt === false && "taxExempt" in productRecord) {
+      patchPayload.taxExempt = false;
     }
     // migration 00013
-    if (updates.trackStock != null) patchPayload.trackStock = updates.trackStock;
-    if (updates.stockUnit != null) patchPayload.stockUnit = updates.stockUnit;
+    if (updates.trackStock !== undefined && (updates.trackStock != null || "trackStock" in productRecord)) {
+      patchPayload.trackStock = updates.trackStock;
+    }
+    if (updates.stockUnit !== undefined && (updates.stockUnit != null || "stockUnit" in productRecord)) {
+      patchPayload.stockUnit = updates.stockUnit;
+    }
     // migration 00019
-    if (updates.productSection != null) patchPayload.productSection = updates.productSection;
+    if (updates.productSection !== undefined && (updates.productSection != null || "productSection" in productRecord)) {
+      patchPayload.productSection = updates.productSection;
+    }
     // migration 00020
-    if (updates.minStock != null) patchPayload.minStock = updates.minStock;
-    if (updates.manufacturer != null) patchPayload.manufacturer = updates.manufacturer;
-    if (updates.catalogNumber != null) patchPayload.catalogNumber = updates.catalogNumber;
-    if (updates.stockNote != null) patchPayload.stockNote = updates.stockNote;
+    if (updates.minStock !== undefined && (updates.minStock != null || "minStock" in productRecord)) {
+      patchPayload.minStock = updates.minStock;
+    }
+    if (updates.manufacturer !== undefined && (updates.manufacturer != null || "manufacturer" in productRecord)) {
+      patchPayload.manufacturer = updates.manufacturer;
+    }
+    if (updates.catalogNumber !== undefined && (updates.catalogNumber != null || "catalogNumber" in productRecord)) {
+      patchPayload.catalogNumber = updates.catalogNumber;
+    }
+    if (updates.stockNote !== undefined && (updates.stockNote != null || "stockNote" in productRecord)) {
+      patchPayload.stockNote = updates.stockNote;
+    }
 
     await db.patch("products", productId, patchPayload);
 

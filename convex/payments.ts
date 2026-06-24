@@ -566,6 +566,10 @@ export const splitMarkPaid = action({
       updatedAt: now,
     });
 
+    // Build INSERT defensively — migration 00008 columns (kind, creditEarned,
+    // creditApplied) may not exist on pre-00008 environments. A split payment
+    // never earns/applies credit, so both are null and we omit them entirely.
+    // kind=NULL is treated as "payment" by the DB check constraint.
     const newPaymentId = await db.insert("payments", {
       organizationId: String(args.organizationId),
       patientId: (payment.patientId as string | null) ?? null,
@@ -577,9 +581,6 @@ export const splitMarkPaid = action({
       status: "completed",
       paidAt: now,
       notes: appendSplit(args.secondMethod),
-      kind: "payment",
-      creditEarned: null,
-      creditApplied: null,
       createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,

@@ -55,12 +55,6 @@ export const create = action({
 
     const trackStock = args.trackStock ?? false;
 
-    // Build the insert row with only the base fields (present in 00001) plus
-    // fields from later migrations included only when they carry a meaningful
-    // value. Unconditionally writing null for columns added by migrations
-    // 00006/00013/00019/00020 causes a "column does not exist" (Postgres 42703)
-    // failure on environments where those migrations have not been applied yet —
-    // the same pattern that was fixed for gabinet treatments in #2061.
     const insertRow: Record<string, unknown> = {
       organizationId: String(args.organizationId),
       name: args.name,
@@ -77,11 +71,7 @@ export const create = action({
     };
     // migration 00006
     if (args.taxExempt === true) insertRow.taxExempt = true;
-    // migration 00013 — write the explicit value (including false) so the DB stores
-    // what the user passed rather than the NULL column default. Guard with try/catch:
-    // on pre-00013 environments Postgres returns 42703 "column does not exist"; we
-    // catch it and retry without the migration-added columns (same defensive pattern
-    // as payments.create for migration-00008 columns).
+    // migration 00013
     insertRow.trackStock = trackStock;
     if (args.stockUnit != null) insertRow.stockUnit = args.stockUnit;
     // migration 00019
@@ -92,33 +82,7 @@ export const create = action({
     if (args.catalogNumber != null) insertRow.catalogNumber = args.catalogNumber;
     if (args.stockNote != null) insertRow.stockNote = args.stockNote;
 
-    let productId: string;
-    try {
-      productId = await db.insert("products", insertRow);
-    } catch (e: unknown) {
-      const msg = (e as { message?: string })?.message ?? "";
-      if (/code=42703/.test(msg) || /column .* does not exist/i.test(msg)) {
-        // Strip ALL migration-added columns so the insert succeeds on
-        // environments where one or more migrations haven't been applied yet.
-        // The original fallback only removed 00013 columns (trackStock/stockUnit),
-        // causing a second 42703 failure when the user filled in warehouse fields
-        // from migrations 00019 (productSection) or 00020 (manufacturer etc.).
-        const fallbackRow = { ...insertRow };
-        delete fallbackRow.taxExempt;      // 00006
-        delete fallbackRow.trackStock;     // 00013
-        delete fallbackRow.stockUnit;      // 00013
-        delete fallbackRow.productSection; // 00019
-        delete fallbackRow.minStock;       // 00020
-        delete fallbackRow.manufacturer;   // 00020
-        delete fallbackRow.catalogNumber;  // 00020
-        delete fallbackRow.stockNote;      // 00020
-        // On pre-00006 environments tax_rate is NOT NULL; ensure it's not null.
-        if (fallbackRow.taxRate == null) fallbackRow.taxRate = 0;
-        productId = await db.insert("products", fallbackRow);
-      } else {
-        throw e;
-      }
-    }
+    const productId = await db.insert("products", insertRow);
 
     // Seed an initial stock movement when the product opts into tracking with
     // a non-zero starting balance. We do this even if trackStock=false but the

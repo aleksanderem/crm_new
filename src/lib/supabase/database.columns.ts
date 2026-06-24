@@ -27,6 +27,7 @@
  *   • 00020_products_inventory_fields.sql
  *   • 00021_gabinet_appointments_contraindication_alerts_reviewed.sql
  *   • 00022_gabinet_appointments_price_at_booking.sql
+ *   • 00023_payment_method_gratis_barter.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  */

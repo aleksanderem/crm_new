@@ -295,17 +295,17 @@ export const update = action({
 
       // --- Build updates and PATCH to Supabase ---
       const { organizationId, treatmentId, taxExempt, packageId, ...updates } = args;
-      // Only include taxExempt when true — omitting it avoids a "column does
-      // not exist" failure on environments where migration 00005 hasn't been
-      // applied yet (null and false are semantically equivalent: not exempt).
-      // Only include packageId when non-null — same reasoning for migration
-      // 00010.
+      // taxExempt and packageId were added by migrations 00005 and 00010.
+      // Use the "field in record" probe so null/false can clear the field once
+      // the column exists, while keeping pre-migration environments safe.
       const patchPayload: Record<string, unknown> = { ...updates, updatedAt: Date.now() };
       if (taxExempt === true) {
         patchPayload.taxExempt = true;
         patchPayload.taxRate = null;
+      } else if (taxExempt === false && "taxExempt" in treatment) {
+        patchPayload.taxExempt = false;
       }
-      if (packageId != null) {
+      if (packageId !== undefined && (packageId != null || "packageId" in treatment)) {
         patchPayload.packageId = packageId;
       }
       await db.patch("gabinetTreatments", treatmentId, patchPayload);

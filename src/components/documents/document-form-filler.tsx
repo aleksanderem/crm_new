@@ -24,7 +24,6 @@ interface DocumentFormFillerProps {
   filledByFilter?: "employee" | "client";
   initialValues?: Record<string, string>;
   submitLabel?: string;
-  hideTopAction?: boolean;
   onComplete: (fieldValues: Record<string, string>) => void;
   onCancel: () => void;
 }
@@ -33,12 +32,13 @@ interface DocumentFormFillerProps {
 // Component
 // ---------------------------------------------------------------------------
 
+const LONG_FORM_THRESHOLD = 3;
+
 export function DocumentFormFiller({
   formFields,
   filledByFilter,
   initialValues,
   submitLabel,
-  hideTopAction = false,
   onComplete,
   onCancel,
 }: DocumentFormFillerProps) {
@@ -82,9 +82,11 @@ export function DocumentFormFiller({
     onComplete(values);
   };
 
+  const showTopAction = visibleFields.length > LONG_FORM_THRESHOLD;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {!hideTopAction && (
+      {showTopAction && (
         <div className="flex gap-2">
           <Button type="submit" className="flex-1">
             {submitLabel ?? t("documentEditor.generate", "Generuj dokument")}

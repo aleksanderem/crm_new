@@ -3539,7 +3539,8 @@
       },
       "periodTotal": "Period total",
       "ofTotal": "of total",
-      "topN": "Top {{count}}"
+      "topN": "Top {{count}}",
+      "collectedFromPayments": "Based on recorded payments"
     },
     "bodyChart": {
       "description": "Mark body areas related to the appointment",

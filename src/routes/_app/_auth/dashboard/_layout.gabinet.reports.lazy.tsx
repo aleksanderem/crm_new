@@ -2,7 +2,10 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import Papa from "papaparse";
 import { toast } from "sonner";
 import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
-import { useSupabaseGratisBarterAppointmentIds } from "@/hooks/use-supabase-payments";
+import {
+  useSupabaseGratisBarterAppointmentIds,
+  useSupabasePaymentsRevenueByDateRange,
+} from "@/hooks/use-supabase-payments";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
@@ -165,51 +168,90 @@ function RevenueSummaryCard({
   last7Revenue,
   totalRevenue,
   currency,
+  actualLastDay,
+  actualLast7,
+  actualTotal,
 }: {
   lastDayRevenue: number;
   last7Revenue: number;
   totalRevenue: number;
   currency: string;
+  actualLastDay: number;
+  actualLast7: number;
+  actualTotal: number;
 }) {
   const { t } = useTranslation();
 
   return (
     <Card>
       <CardHeader className="flex justify-between border-b">
-        <div className="flex flex-col gap-1">
-          <span className="text-lg font-semibold">
-            {t("gabinet.reports.revenue")}
-          </span>
-          <span className="text-muted-foreground text-sm">
-            {t("gabinet.reports.estimatedFromCompletedAppointments")}
-          </span>
-        </div>
+        <span className="text-lg font-semibold">
+          {t("gabinet.reports.revenue")}
+        </span>
         <CardMenu />
       </CardHeader>
-      <CardContent className="grid grid-cols-1 gap-4 pt-4 sm:grid-cols-3">
-        <div className="flex flex-col gap-1 sm:border-r sm:pr-4">
-          <span className="text-muted-foreground text-sm">
-            {t("gabinet.reports.lastDay")}
-          </span>
-          <span className="text-xl font-semibold">
-            {formatCurrencyPLN(lastDayRevenue, currency, { fractionDigits: 0 })}
-          </span>
+      <CardContent className="flex flex-col gap-4 pt-4">
+        <div>
+          <p className="text-muted-foreground mb-3 text-xs font-medium">
+            {t("gabinet.reports.estimatedFromCompletedAppointments")}
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="flex flex-col gap-1 sm:border-r sm:pr-4">
+              <span className="text-muted-foreground text-sm">
+                {t("gabinet.reports.lastDay")}
+              </span>
+              <span className="text-xl font-semibold">
+                {formatCurrencyPLN(lastDayRevenue, currency, { fractionDigits: 0 })}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1 sm:border-r sm:pr-4">
+              <span className="text-muted-foreground text-sm">
+                {t("gabinet.reports.last7days")}
+              </span>
+              <span className="text-xl font-semibold">
+                {formatCurrencyPLN(last7Revenue, currency, { fractionDigits: 0 })}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-muted-foreground text-sm">
+                {t("gabinet.reports.periodTotal")}
+              </span>
+              <span className="text-xl font-semibold">
+                {formatCurrencyPLN(totalRevenue, currency, { fractionDigits: 0 })}
+              </span>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-1 sm:border-r sm:pr-4">
-          <span className="text-muted-foreground text-sm">
-            {t("gabinet.reports.last7days")}
-          </span>
-          <span className="text-xl font-semibold">
-            {formatCurrencyPLN(last7Revenue, currency, { fractionDigits: 0 })}
-          </span>
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-muted-foreground text-sm">
-            {t("gabinet.reports.periodTotal")}
-          </span>
-          <span className="text-xl font-semibold">
-            {formatCurrencyPLN(totalRevenue, currency, { fractionDigits: 0 })}
-          </span>
+        <div className="border-t pt-4">
+          <p className="text-muted-foreground mb-3 text-xs font-medium">
+            {t("gabinet.reports.collectedFromPayments")}
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="flex flex-col gap-1 sm:border-r sm:pr-4">
+              <span className="text-muted-foreground text-sm">
+                {t("gabinet.reports.lastDay")}
+              </span>
+              <span className="text-xl font-semibold">
+                {formatCurrencyPLN(actualLastDay, currency, { fractionDigits: 0 })}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1 sm:border-r sm:pr-4">
+              <span className="text-muted-foreground text-sm">
+                {t("gabinet.reports.last7days")}
+              </span>
+              <span className="text-xl font-semibold">
+                {formatCurrencyPLN(actualLast7, currency, { fractionDigits: 0 })}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-muted-foreground text-sm">
+                {t("gabinet.reports.periodTotal")}
+              </span>
+              <span className="text-xl font-semibold">
+                {formatCurrencyPLN(actualTotal, currency, { fractionDigits: 0 })}
+              </span>
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -866,8 +908,11 @@ function GabinetReports() {
   const { data: gratisBarterIds, isLoading: loadingGratisBarter } =
     useSupabaseGratisBarterAppointmentIds(organizationId, completedAppointmentIds);
 
+  const { data: actualPayments, isLoading: loadingActualPayments } =
+    useSupabasePaymentsRevenueByDateRange(organizationId, startDate, endDate);
+
   const isLoading =
-    loadingAppointments || loadingTreatments || loadingPatients || loadingEmployees || loadingGratisBarter;
+    loadingAppointments || loadingTreatments || loadingPatients || loadingEmployees || loadingGratisBarter || loadingActualPayments;
 
   // Treatment map: id → { name, price, currency }
   const treatmentMap = useMemo(() => {
@@ -1002,6 +1047,20 @@ function GabinetReports() {
       };
     }, [appointments, treatmentMap, sevenDaysBeforeEnd, endDate, gratisBarterIds]);
 
+  const { actualTotal, actualLast7, actualLastDay } = useMemo(() => {
+    let total = 0, last7 = 0, lastDay = 0;
+    if (actualPayments) {
+      const sevenDaysBeforeEndTs = new Date(sevenDaysBeforeEnd + "T00:00:00.000Z").getTime();
+      const endDayStartTs = new Date(endDate + "T00:00:00.000Z").getTime();
+      for (const p of actualPayments) {
+        total += p.amount;
+        if (p.paidAt >= sevenDaysBeforeEndTs) last7 += p.amount;
+        if (p.paidAt >= endDayStartTs) lastDay += p.amount;
+      }
+    }
+    return { actualTotal: total, actualLast7: last7, actualLastDay: lastDay };
+  }, [actualPayments, sevenDaysBeforeEnd, endDate]);
+
   const totalAppointments = appointments?.length ?? 0;
   const completedCount =
     appointments?.filter((a) => a.status === "completed").length ?? 0;
@@ -1062,9 +1121,12 @@ function GabinetReports() {
     rows.push({ section: "summary", metric: "cancelled", value: cancelledCount, revenue: "" });
     rows.push({ section: "summary", metric: "totalPatients", value: totalPatients, revenue: "" });
     rows.push({ section: "summary", metric: "completionRate", value: completionRate, revenue: "" });
-    rows.push({ section: "revenue", metric: "lastDay", value: lastDayRevenue, revenue: "" });
-    rows.push({ section: "revenue", metric: "last7days", value: last7Revenue, revenue: "" });
-    rows.push({ section: "revenue", metric: "total", value: totalRevenue, revenue: "" });
+    rows.push({ section: "revenue_estimated", metric: "lastDay", value: lastDayRevenue, revenue: "" });
+    rows.push({ section: "revenue_estimated", metric: "last7days", value: last7Revenue, revenue: "" });
+    rows.push({ section: "revenue_estimated", metric: "total", value: totalRevenue, revenue: "" });
+    rows.push({ section: "revenue_actual", metric: "lastDay", value: actualLastDay, revenue: "" });
+    rows.push({ section: "revenue_actual", metric: "last7days", value: actualLast7, revenue: "" });
+    rows.push({ section: "revenue_actual", metric: "total", value: actualTotal, revenue: "" });
     for (const tr of treatmentStats) {
       rows.push({ section: "treatment", metric: tr.name, value: tr.count, revenue: tr.revenue });
     }
@@ -1102,6 +1164,9 @@ function GabinetReports() {
     lastDayRevenue,
     last7Revenue,
     totalRevenue,
+    actualLastDay,
+    actualLast7,
+    actualTotal,
     treatmentStats,
     statusStats,
     dailyStats,
@@ -1224,6 +1289,9 @@ function GabinetReports() {
           last7Revenue={last7Revenue}
           totalRevenue={totalRevenue}
           currency={defaultCurrency}
+          actualLastDay={actualLastDay}
+          actualLast7={actualLast7}
+          actualTotal={actualTotal}
         />
       </div>
 

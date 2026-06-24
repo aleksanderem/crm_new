@@ -3561,7 +3561,8 @@
       },
       "periodTotal": "Cały okres",
       "ofTotal": "ogółem",
-      "topN": "Top {{count}}"
+      "topN": "Top {{count}}",
+      "collectedFromPayments": "Na podstawie płatności"
     },
     "bodyChart": {
       "description": "Zaznacz obszary ciała powiązane z wizytą",

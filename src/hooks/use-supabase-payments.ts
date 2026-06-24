@@ -128,6 +128,67 @@ export function useSupabaseGabinetPatientCreditBalances(
 }
 
 // ---------------------------------------------------------------------------
+// Payments Revenue by Date Range (for reports)
+// ---------------------------------------------------------------------------
+
+export interface PaymentRevenueSummary {
+  amount: number;
+  paidAt: number;
+  currency: string;
+}
+
+/**
+ * Returns completed non-gratis/barter payments within a date range, used by
+ * the gabinet reports page to show actual collected revenue alongside the
+ * appointment-based estimate. Only payments with a non-null `paid_at` are
+ * included; `paid_at` timestamps are compared as milliseconds UTC.
+ */
+export function useSupabasePaymentsRevenueByDateRange(
+  organizationId: string,
+  startDate: string, // YYYY-MM-DD
+  endDate: string,   // YYYY-MM-DD
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  return useQuery<PaymentRevenueSummary[], Error>({
+    queryKey: [
+      ...supabaseKeys.payments.list(organizationId),
+      "revenueByDateRange",
+      startDate,
+      endDate,
+    ],
+    queryFn: async (): Promise<PaymentRevenueSummary[]> => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      const startTs = new Date(startDate + "T00:00:00.000Z").getTime();
+      const endTs = new Date(endDate + "T23:59:59.999Z").getTime();
+
+      const { data, error } = await client
+        .from("payments")
+        .select("amount, paid_at, currency")
+        .eq("organization_id", organizationId)
+        .eq("status", "completed")
+        .neq("payment_method", "gratis")
+        .neq("payment_method", "barter")
+        .not("paid_at", "is", null)
+        .gte("paid_at", startTs)
+        .lte("paid_at", endTs);
+
+      if (error) throw error;
+
+      return (data ?? []).map((row) => ({
+        amount: Number(row.amount),
+        paidAt: Number(row.paid_at ?? 0),
+        currency: (row.currency as string) ?? "PLN",
+      }));
+    },
+    enabled: enabled && isReady && !!organizationId && !!startDate && !!endDate,
+  } satisfies UseQueryOptions<PaymentRevenueSummary[], Error>);
+}
+
+// ---------------------------------------------------------------------------
 // Payments by Patient
 // ---------------------------------------------------------------------------
 

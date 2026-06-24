@@ -2,6 +2,7 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import Papa from "papaparse";
 import { toast } from "sonner";
 import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
+import { useSupabaseGratisBarterAppointmentIds } from "@/hooks/use-supabase-payments";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
@@ -855,8 +856,18 @@ function GabinetReports() {
   const { data: employees, isLoading: loadingEmployees } =
     useSupabaseGabinetEmployeesList(organizationId, { activeOnly: true });
 
+  const completedAppointmentIds = useMemo(() => {
+    if (!appointments) return [];
+    return appointments
+      .filter((a) => a.status === "completed")
+      .map((a) => a._id);
+  }, [appointments]);
+
+  const { data: gratisBarterIds, isLoading: loadingGratisBarter } =
+    useSupabaseGratisBarterAppointmentIds(organizationId, completedAppointmentIds);
+
   const isLoading =
-    loadingAppointments || loadingTreatments || loadingPatients || loadingEmployees;
+    loadingAppointments || loadingTreatments || loadingPatients || loadingEmployees || loadingGratisBarter;
 
   // Treatment map: id → { name, price, currency }
   const treatmentMap = useMemo(() => {
@@ -880,14 +891,14 @@ function GabinetReports() {
     );
   }, [employees]);
 
-  // Treatment stats: count + estimated revenue (completed only)
+  // Treatment stats: count + estimated revenue (completed only, gratis/barter excluded from revenue)
   const treatmentStats = useMemo(() => {
     if (!appointments) return [];
     const map = new Map<string, { count: number; revenue: number }>();
     for (const a of appointments) {
       const tid = a.treatmentId as string;
       const prev = map.get(tid) ?? { count: 0, revenue: 0 };
-      const price = a.status === "completed"
+      const price = a.status === "completed" && !gratisBarterIds?.has(a._id)
         ? (a.priceAtBooking ?? treatmentMap.get(tid)?.price ?? 0)
         : 0;
       map.set(tid, { count: prev.count + 1, revenue: prev.revenue + price });
@@ -900,7 +911,7 @@ function GabinetReports() {
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
-  }, [appointments, treatmentMap]);
+  }, [appointments, treatmentMap, gratisBarterIds]);
 
   const topByRevenue = useMemo(
     () =>
@@ -972,6 +983,7 @@ function GabinetReports() {
       if (appointments) {
         for (const a of appointments) {
           if (a.status !== "completed") continue;
+          if (gratisBarterIds?.has(a._id)) continue;
           const tid = a.treatmentId as string;
           const tr = treatmentMap.get(tid);
           if (!tr) continue;
@@ -988,7 +1000,7 @@ function GabinetReports() {
         lastDayRevenue: lastDay,
         defaultCurrency: currency,
       };
-    }, [appointments, treatmentMap, sevenDaysBeforeEnd, endDate]);
+    }, [appointments, treatmentMap, sevenDaysBeforeEnd, endDate, gratisBarterIds]);
 
   const totalAppointments = appointments?.length ?? 0;
   const completedCount =
@@ -1029,12 +1041,13 @@ function GabinetReports() {
     const map = new Map<string, number>();
     for (const a of appointments) {
       if (a.status !== "completed") continue;
+      if (gratisBarterIds?.has(a._id)) continue;
       const tid = a.treatmentId as string;
       const price = a.priceAtBooking ?? treatmentMap.get(tid)?.price ?? 0;
       map.set(a.date, (map.get(a.date) ?? 0) + price);
     }
     return bucketizePairs(Array.from(map.entries()));
-  }, [appointments, treatmentMap]);
+  }, [appointments, treatmentMap, gratisBarterIds]);
 
   const handleExportReport = useCallback(() => {
     type Row = {

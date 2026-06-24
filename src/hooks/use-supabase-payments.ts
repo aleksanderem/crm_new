@@ -11,6 +11,56 @@ import {
 } from "@/lib/supabase/mappers/payments";
 
 // ---------------------------------------------------------------------------
+// Gratis/Barter Appointment ID Set (for turnover exclusion)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the set of appointment IDs in `appointmentIds` that have at least
+ * one completed payment with payment_method in ('gratis', 'barter').
+ * Used by the reports page to exclude those appointments from turnover totals
+ * (migration 00023 deferred this application-layer rule to here).
+ */
+export function useSupabaseGratisBarterAppointmentIds(
+  organizationId: string,
+  appointmentIds: string[],
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  const stableIds = [...appointmentIds].sort();
+
+  return useQuery<Set<string>, Error>({
+    queryKey: [
+      ...supabaseKeys.payments.list(organizationId),
+      "gratisBarterAppointmentIds",
+      stableIds.join(","),
+    ],
+    queryFn: async (): Promise<Set<string>> => {
+      const result = new Set<string>();
+      if (!client) throw new Error("Supabase client not ready");
+      if (stableIds.length === 0) return result;
+
+      const { data, error } = await client
+        .from("payments")
+        .select("appointment_id")
+        .eq("organization_id", organizationId)
+        .eq("status", "completed")
+        .in("payment_method", ["gratis", "barter"])
+        .in("appointment_id", stableIds);
+
+      if (error) throw error;
+
+      for (const row of (data ?? []) as { appointment_id: string | null }[]) {
+        if (row.appointment_id) result.add(row.appointment_id);
+      }
+      return result;
+    },
+    enabled: enabled && isReady && !!organizationId && stableIds.length > 0,
+  } satisfies UseQueryOptions<Set<string>, Error>);
+}
+
+// ---------------------------------------------------------------------------
 // Patient Credit Balances (bulk)
 // ---------------------------------------------------------------------------
 

@@ -1517,6 +1517,7 @@ export const update = action({
       appointmentId,
       status,
       cancellationReason,
+      contraindicationAlertsReviewed,
       ...updates
     } = args;
 
@@ -1525,6 +1526,16 @@ export const update = action({
       ...updates,
       updatedAt: now,
     };
+
+    // contraindicationAlertsReviewed was added by migration 00021.
+    // Use the "field in record" probe so it is only included in the patch when
+    // the column exists, keeping pre-migration environments safe.
+    if (
+      contraindicationAlertsReviewed !== undefined &&
+      "contraindicationAlertsReviewed" in appt
+    ) {
+      patch.contraindicationAlertsReviewed = contraindicationAlertsReviewed;
+    }
 
     // Handle status change with cancellation support
     if (status) {

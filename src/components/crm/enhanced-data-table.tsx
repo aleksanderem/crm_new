@@ -26,6 +26,8 @@ export interface CrmColumn<TData> {
   isRowHeader?: boolean;
   /** Extra className on <Table.Head> and <Table.Cell>. */
   className?: string;
+  /** Extra className on the label <span> inside <Table.Head>. Use to allow long headers to wrap (e.g. whitespace-normal leading-tight). */
+  headerClassName?: string;
   /** Render cell content for this column. */
   render: (item: TData) => ReactNode;
   /** Value used for sorting. Required if `sortable` is true. */
@@ -251,6 +253,7 @@ export function CrmDataTable<TData>({
                   allowsSorting={col.sortable}
                   isRowHeader={col.isRowHeader}
                   className={col.className}
+                  labelClassName={col.headerClassName}
                 />
               ))}
               {hasActions && <Table.Head id="actions" />}

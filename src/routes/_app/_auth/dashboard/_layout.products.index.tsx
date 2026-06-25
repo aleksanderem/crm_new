@@ -433,6 +433,7 @@ function ProductsPage() {
     {
       id: "minStock",
       label: t("products.stock.minLabel", { defaultValue: "Min. stan" }),
+      headerClassName: "whitespace-normal leading-tight",
       render: (item) => {
         if (!item.trackStock || item.minStock == null) return "—";
         const unit = item.stockUnit?.trim();
@@ -444,18 +445,21 @@ function ProductsPage() {
     {
       id: "catalogNumber",
       label: t("products.catalogNumber", { defaultValue: "Nr katalogowy" }),
+      headerClassName: "whitespace-normal leading-tight",
       render: (item) => item.catalogNumber ?? "—",
     },
     {
       id: "unitPrice",
       label: t('products.unitPrice'),
+      headerClassName: "whitespace-normal leading-tight",
       sortable: true,
       render: (item) => formatCurrency(item.unitPrice),
       getSortValue: (item) => item.unitPrice,
     },
     {
       id: "taxRate",
-      label: t('products.taxRate'),
+      label: t("products.taxRateShort", { defaultValue: "Stawka VAT (%)" }),
+      headerClassName: "whitespace-normal leading-tight",
       render: (item) => {
         if (item.taxExempt) return "ZW";
         if (item.taxRate == null) return "—";

@@ -768,7 +768,7 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
           return null;
       }
     },
-    [firstOrg, isCreating, createContact, createCompany, createLead, createPatient, createTreatment, createPackage, createEmployee, createActivity, createLeave, createInvitation, createProduct, createCall, user, queryClient]
+    [firstOrg, isCreating, createContact, createCompany, createLead, createPatient, createTreatment, createPackage, createEmployee, createActivity, createLeave, createInvitation, createProduct, createCall, user, queryClient, orgTags, contactCategories, patientCategories, productCategories, contactCustomFieldDefs]
   );
 
   const pathname = useRouterState({ select: (s) => s.location.pathname });

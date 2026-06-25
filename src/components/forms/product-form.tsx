@@ -183,14 +183,11 @@ export function ProductForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label>
-            {t("products.form.sku")} <span className="text-destructive">*</span>
-          </Label>
+          <Label>{t("products.form.sku")}</Label>
           <Input
             value={sku}
             onChange={(e) => setSku(e.target.value)}
             placeholder={t("products.form.skuPlaceholder")}
-            required
           />
         </div>
         <div className="space-y-3 sm:col-span-2">
@@ -214,13 +211,13 @@ export function ProductForm({
           </div>
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <Label>{t("products.sections.label", { defaultValue: "Sekcja" })}</Label>
+          <Label>{t("products.sections.label", { defaultValue: "Rodzaj produktu" })}</Label>
           <Select value={productSection || "none"} onValueChange={(v) => setProductSection(v === "none" ? "" : v as ProductSection)}>
             <SelectTrigger>
-              <SelectValue placeholder={t("products.sections.placeholder", { defaultValue: "Wybierz sekcję" })} />
+              <SelectValue placeholder={t("products.sections.placeholder", { defaultValue: "Wybierz rodzaj produktu" })} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">{t("products.sections.none", { defaultValue: "Bez sekcji" })}</SelectItem>
+              <SelectItem value="none">{t("products.sections.none", { defaultValue: "Brak" })}</SelectItem>
               {PRODUCT_SECTIONS.map((section) => (
                 <SelectItem key={section} value={section}>
                   {t(`products.sections.${section}`)}

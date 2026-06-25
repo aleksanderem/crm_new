@@ -391,7 +391,7 @@ function ProductsPage() {
     },
     {
       id: "productSection",
-      label: t("products.sections.label", { defaultValue: "Sekcja" }),
+      label: t("products.sections.label", { defaultValue: "Rodzaj produktu" }),
       render: (item) => {
         if (!item.productSection) return "—";
         return t(`products.sections.${item.productSection}`, { defaultValue: item.productSection });

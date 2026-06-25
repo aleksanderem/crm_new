@@ -831,12 +831,12 @@ function ProductsPage() {
 
           <div className="space-y-1.5">
             <Label>{t("products.sections.label", { defaultValue: "Sekcja" })}</Label>
-            <Select value={productSection} onValueChange={(v) => setProductSection(v as ProductSection | "")}>
+            <Select value={productSection || "none"} onValueChange={(v) => setProductSection(v === "none" ? "" : v as ProductSection)}>
               <SelectTrigger>
                 <SelectValue placeholder={t("products.sections.placeholder", { defaultValue: "Wybierz sekcję" })} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">{t("products.sections.none", { defaultValue: "Bez sekcji" })}</SelectItem>
+                <SelectItem value="none">{t("products.sections.none", { defaultValue: "Bez sekcji" })}</SelectItem>
                 {PRODUCT_SECTIONS.map((section) => (
                   <SelectItem key={section} value={section}>
                     {t(`products.sections.${section}`)}

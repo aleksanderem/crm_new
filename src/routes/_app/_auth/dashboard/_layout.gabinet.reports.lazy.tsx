@@ -17,7 +17,7 @@ import { SidePanel } from "@/components/crm/side-panel";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { Input } from "@/components/ui/input";
 import { Label as FieldLabel } from "@/components/ui/label";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EllipsisVerticalIcon } from "@/lib/ez-icons";
 import {
@@ -315,10 +315,10 @@ function TreatmentPopularityChart({
         </div>
         <CardMenu />
       </CardHeader>
-      <CardContent className="flex flex-1">
+      <CardContent className="flex flex-1 overflow-x-auto">
         <ChartContainer
           config={treatmentChartConfig}
-          className="min-h-80 w-full"
+          className="min-h-80 w-full min-w-[400px]"
         >
           <BarChart
             accessibilityLayer
@@ -349,6 +349,9 @@ function TreatmentPopularityChart({
               axisLine={false}
               fontSize={14}
               width={160}
+              tickFormatter={(v: string) =>
+                v.length > 20 ? `${v.slice(0, 18)}…` : v
+              }
             />
             <ChartTooltip
               cursor={false}
@@ -582,8 +585,8 @@ function DailyVolumeChart({
         </div>
         <CardMenu />
       </CardHeader>
-      <CardContent>
-        <ChartContainer config={dailyChartConfig} className="h-45 w-full">
+      <CardContent className="overflow-x-auto">
+        <ChartContainer config={dailyChartConfig} className="h-45 w-full min-w-[300px]">
           <BarChart
             accessibilityLayer
             data={chartData}
@@ -724,7 +727,8 @@ function EmployeeUtilizationChart({
           })}
         </div>
 
-        <ChartContainer config={utilizationConfig} className="mt-6 h-45 w-full">
+        <div className="overflow-x-auto">
+        <ChartContainer config={utilizationConfig} className="mt-6 h-45 w-full min-w-[300px]">
           <BarChart
             accessibilityLayer
             data={chartData}
@@ -745,6 +749,7 @@ function EmployeeUtilizationChart({
             <Bar dataKey="completedCount" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ChartContainer>
+        </div>
       </CardContent>
     </Card>
   );
@@ -1178,9 +1183,28 @@ function GabinetReports() {
 
   useSidebarDispatch("exportReport", handleExportReport);
 
+  // Restore scroll position after focus return (screenshot, app switch, etc.)
+  useEffect(() => {
+    const STORAGE_KEY = "gabinet-reports-scroll-y";
+    const onScroll = () =>
+      sessionStorage.setItem(STORAGE_KEY, String(window.scrollY));
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        if (saved !== null) window.scrollTo({ top: parseInt(saved, 10) });
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
+
   if (permLoading) {
     return (
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
         <Skeleton className="h-10 w-64" />
       </div>
     );
@@ -1188,7 +1212,7 @@ function GabinetReports() {
 
   if (!canViewReports) {
     return (
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
         <PageHeader
           title={t("gabinet.reports.title")}
           description={t("common.noPermission", "You don't have permission to view this page.")}
@@ -1199,7 +1223,7 @@ function GabinetReports() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
         <Skeleton className="h-10 w-64" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -1216,7 +1240,7 @@ function GabinetReports() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <PageHeader
           title={t("gabinet.reports.title")}

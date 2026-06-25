@@ -883,9 +883,9 @@
       "sale": "Sales Products",
       "treatment": "Treatment Preparations",
       "disposable": "Disposable Materials",
-      "label": "Section",
-      "placeholder": "Select section",
-      "none": "No section"
+      "label": "Product type",
+      "placeholder": "Select product type",
+      "none": "None"
     },
     "form": {
       "name": "Product Name",

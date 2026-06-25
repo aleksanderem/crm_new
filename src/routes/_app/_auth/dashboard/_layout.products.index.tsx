@@ -18,7 +18,6 @@ import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { SidePanel } from "@/components/crm/side-panel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History } from "@/lib/ez-icons";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useCsvExport } from "@/components/csv/csv-export-button";
@@ -123,10 +122,11 @@ function StockBadge({ status, total, unit, minStock }: {
 }
 
 // Small stats card used in the inventory summary widget
-function StatCard({ label, value, highlight, onClick }: {
+function StatCard({ label, value, highlight, active, onClick }: {
   label: string;
   value: number;
   highlight?: boolean;
+  active?: boolean;
   onClick?: () => void;
 }) {
   return (
@@ -136,12 +136,16 @@ function StatCard({ label, value, highlight, onClick }: {
       className={cn(
         "flex flex-col gap-0.5 rounded-lg border px-4 py-3 text-left transition-colors",
         onClick ? "cursor-pointer hover:bg-muted/50" : "cursor-default",
-        highlight ? "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30" : "bg-card",
+        active
+          ? "border-primary ring-1 ring-primary bg-primary/5"
+          : highlight
+            ? "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30"
+            : "bg-card",
       )}
     >
       <span className={cn(
         "text-xl font-semibold tabular-nums",
-        highlight ? "text-amber-700 dark:text-amber-300" : "",
+        active ? "text-primary" : highlight ? "text-amber-700 dark:text-amber-300" : "",
       )}>{value}</span>
       <span className="text-xs text-muted-foreground">{label}</span>
     </button>
@@ -541,46 +545,37 @@ function ProductsPage() {
         <StatCard
           label={t("products.stats.total", { defaultValue: "Wszystkie pozycje" })}
           value={inventoryStats.total}
+          active={activeSection === "all" && !nudgeFilter}
+          onClick={() => handleSectionChange("all")}
         />
         <StatCard
           label={t("products.sections.sale")}
           value={inventoryStats.bySale}
+          active={activeSection === "sale" && !nudgeFilter}
           onClick={() => handleSectionChange("sale")}
         />
         <StatCard
           label={t("products.sections.treatment")}
           value={inventoryStats.byTreatment}
+          active={activeSection === "treatment" && !nudgeFilter}
           onClick={() => handleSectionChange("treatment")}
         />
         <StatCard
           label={t("products.sections.disposable")}
           value={inventoryStats.byDisposable}
+          active={activeSection === "disposable" && !nudgeFilter}
           onClick={() => handleSectionChange("disposable")}
         />
         <StatCard
           label={t("products.stats.belowMin", { defaultValue: "Poniżej min. stanu" })}
           value={inventoryStats.belowMin}
           highlight={inventoryStats.belowMin > 0}
+          active={nudgeFilter === "low_stock"}
           onClick={inventoryStats.belowMin > 0
             ? () => navigate({ to: "/dashboard/products", search: { nudge: "low_stock" } })
             : undefined}
         />
       </div>
-
-      <Tabs value={activeSection} onValueChange={(v) => handleSectionChange(v as ProductSection | "all")}>
-        <div className="overflow-x-auto">
-          <TabsList>
-            <TabsTrigger value="all">
-              {t("products.sections.all", { defaultValue: "Wszystkie" })}
-            </TabsTrigger>
-            {PRODUCT_SECTIONS.map((section) => (
-              <TabsTrigger key={section} value={section}>
-                {t(`products.sections.${section}`)}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
-      </Tabs>
 
       {nudgeFilter === "unused" && (
         <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">

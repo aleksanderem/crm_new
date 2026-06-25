@@ -213,7 +213,7 @@ export function ProductForm({
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("products.sections.label", { defaultValue: "Rodzaj produktu" })}</Label>
           <Select value={productSection || "none"} onValueChange={(v) => setProductSection(v === "none" ? "" : v as ProductSection)}>
-            <SelectTrigger>
+            <SelectTrigger className={!productSection ? "border-purple-300 bg-purple-50/50 dark:border-purple-700 dark:bg-purple-950/20" : ""}>
               <SelectValue placeholder={t("products.sections.placeholder", { defaultValue: "Wybierz rodzaj produktu" })} />
             </SelectTrigger>
             <SelectContent>
@@ -225,6 +225,11 @@ export function ProductForm({
               ))}
             </SelectContent>
           </Select>
+          {!productSection && (
+            <p className="text-xs text-purple-600 dark:text-purple-400">
+              {t("products.sections.hint", { defaultValue: "Wybierz rodzaj produktu, aby poprawnie organizować magazyn." })}
+            </p>
+          )}
         </div>
         <div className="space-y-1.5">
           <Label>

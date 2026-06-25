@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import {
   Type,
   AlignLeft,
@@ -117,7 +118,7 @@ function FormFieldConfig({
             <SelectItem value="text">{t("formEditor.formField.typeText")}</SelectItem>
             <SelectItem value="textarea">{t("formEditor.formField.typeTextarea")}</SelectItem>
             <SelectItem value="select">{t("common.select")}</SelectItem>
-            <SelectItem value="button_select">Przyciski (Tak/Nie)</SelectItem>
+            <SelectItem value="button_select">{t("formEditor.formField.typeButtonSelect")}</SelectItem>
             <SelectItem value="date">{t("formEditor.formField.typeDate")}</SelectItem>
             <SelectItem value="checkbox">{t("formEditor.formField.typeCheckbox")}</SelectItem>
           </SelectContent>
@@ -131,7 +132,7 @@ function FormFieldConfig({
             value={attrs.options}
             onChange={(e) => onChange({ options: e.target.value })}
             className="h-8 text-sm"
-            placeholder="Nie, Tak, Tak — wymaga omówienia"
+            placeholder={t("formEditor.formField.optionsPlaceholder")}
           />
         </div>
       )}
@@ -274,7 +275,7 @@ export const FormFieldNode = Node.create({
           : "inline-flex items-center rounded border border-dashed border-orange-300 bg-orange-50 px-2 py-0.5 text-xs text-orange-700",
         contenteditable: "false",
       }),
-      `[${HTMLAttributes.label || HTMLAttributes.fieldId || "Field"}]`,
+      `[${HTMLAttributes.label || HTMLAttributes.fieldId || i18n.t("formEditor.formField.fieldFallback")}]`,
     ];
   },
 
@@ -298,7 +299,7 @@ export function insertFormField(
     .focus()
     .insertContent({
       type: "formField",
-      attrs: { fieldId, fieldType: "text", label: "New field", filledBy: "client", ...attrs },
+      attrs: { fieldId, fieldType: "text", label: i18n.t("formEditor.formField.newFieldLabel"), filledBy: "client", ...attrs },
     })
     .run();
 }

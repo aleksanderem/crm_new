@@ -269,6 +269,14 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
     }),
     enabled: !!firstOrg,
   }) as { data: any[] | undefined };
+  const { data: productCategories } = useQuery({
+    queryKey: ["categoryDefinitions.list", firstOrg?._id ?? null, "product"],
+    queryFn: () => listCategoryDefinitionsAction({
+      organizationId: firstOrg?._id as Id<"organizations">,
+      entityType: "product" as const,
+    }),
+    enabled: !!firstOrg,
+  }) as { data: any[] | undefined };
   const { data: contactCustomFieldDefs } = useSupabaseCustomFieldDefinitions(
     (firstOrg?._id ?? "") as string,
     "contact",
@@ -697,6 +705,9 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
               }}
               onCancel={opts.onCancel}
               isSubmitting={isCreating}
+              tagDefinitions={orgTags}
+              categoryDefinitions={productCategories}
+              organizationId={orgId}
             />
           );
         case "call":

@@ -16,21 +16,9 @@ import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { SidePanel } from "@/components/crm/side-panel";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History } from "@/lib/ez-icons";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useCsvExport } from "@/components/csv/csv-export-button";
@@ -46,15 +34,11 @@ import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
-import { TagsPicker } from "@/components/categories-tags/tags-picker";
-import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { formatActionError } from "@/lib/format-action-error";
 import { cn } from "@/lib/utils";
+import { ProductForm, type ProductFormData, type ProductSection, PRODUCT_SECTIONS } from "@/components/forms/product-form";
 
 type ProductsNudgeFilter = "unused" | "low_stock";
-
-const PRODUCT_SECTIONS = ["sale", "treatment", "disposable"] as const;
-type ProductSection = (typeof PRODUCT_SECTIONS)[number];
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/products/"
@@ -72,35 +56,6 @@ export const Route = createFileRoute(
 });
 
 type Product = MappedProduct;
-
-// VAT-exempt ("zwolniony") is tracked as a separate boolean (taxExempt) on the
-// product. The "zw" option is selected when the boolean is true; otherwise the
-// numeric percentage is used.
-const TAX_RATE_OPTIONS = [
-  { value: "zw", label: "ZW" },
-  { value: "0", label: "0%" },
-  { value: "5", label: "5%" },
-  { value: "8", label: "8%" },
-  { value: "23", label: "23%" },
-];
-
-function initialTaxRateFormValue(
-  taxRate: number | undefined | null,
-  taxExempt: boolean | undefined | null,
-): string {
-  if (taxExempt) return "zw";
-  if (taxRate == null) return "23";
-  return String(taxRate);
-}
-
-function generateSku(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let result = "PRD-";
-  for (let i = 0; i < 6; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("pl-PL", {
@@ -263,26 +218,6 @@ function ProductsPage() {
   const [stockHistoryProduct, setStockHistoryProduct] = useState<Product | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
 
-  // Form state
-  const [name, setName] = useState("");
-  const [sku, setSku] = useState("");
-  const [unitPrice, setUnitPrice] = useState("");
-  const [taxRate, setTaxRate] = useState("23");
-  const [isActive, setIsActive] = useState(true);
-  const [description, setDescription] = useState("");
-  const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
-  const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
-  // Inventory (#1700 PR-A)
-  const [trackStock, setTrackStock] = useState(false);
-  const [stockUnit, setStockUnit] = useState("");
-  const [initialStock, setInitialStock] = useState("");
-  const [productSection, setProductSection] = useState<ProductSection | "">("");
-  // New warehouse fields (#2052)
-  const [minStock, setMinStock] = useState("");
-  const [manufacturer, setManufacturer] = useState("");
-  const [catalogNumber, setCatalogNumber] = useState("");
-  const [stockNote, setStockNote] = useState("");
-
   const { data: allProducts = [], isLoading } = useSupabaseProductsList(organizationId);
   const { data: usedProductIds } = useSupabaseUsedProductIds(organizationId, {
     enabled: nudgeFilter === "unused",
@@ -350,117 +285,61 @@ function ProductsPage() {
   const removeProduct = useAction(api.products.remove);
   const toggleActive = useAction(api.products.toggleActive);
 
-  const resetForm = () => {
-    setName("");
-    setSku(generateSku());
-    setUnitPrice("");
-    setTaxRate("23");
-    setIsActive(true);
-    setDescription("");
-    setTagIds([]);
-    setCategoryId(undefined);
-    setTrackStock(false);
-    setStockUnit("");
-    setInitialStock("");
-    setProductSection(activeSection !== "all" ? activeSection : "");
-    setMinStock("");
-    setManufacturer("");
-    setCatalogNumber("");
-    setStockNote("");
-    setEditingProduct(null);
-  };
-
   const openCreatePanel = () => {
-    resetForm();
+    setEditingProduct(null);
     setPanelOpen(true);
   };
 
   const openEditPanel = (product: Product) => {
     setEditingProduct(product);
-    setName(product.name);
-    setSku(product.sku);
-    setUnitPrice(String(product.unitPrice));
-    setTaxRate(initialTaxRateFormValue(product.taxRate, product.taxExempt));
-    setIsActive(product.isActive);
-    setDescription(product.description ?? "");
-    setTagIds((product.tagIds as Id<"tagDefinitions">[]) ?? []);
-    setCategoryId(product.categoryId as Id<"categoryDefinitions"> | undefined);
-    setTrackStock(!!product.trackStock);
-    setStockUnit(product.stockUnit ?? "");
-    setInitialStock("");
-    setProductSection((product.productSection as ProductSection | undefined) ?? "");
-    setMinStock(product.minStock != null ? String(product.minStock) : "");
-    setManufacturer(product.manufacturer ?? "");
-    setCatalogNumber(product.catalogNumber ?? "");
-    setStockNote(product.stockNote ?? "");
     setPanelOpen(true);
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!name.trim() || !sku.trim() || !unitPrice) return;
+  const handleProductFormSubmit = async (data: ProductFormData) => {
     setIsSubmitting(true);
-    const isExempt = taxRate === "zw";
-    const numericTaxRate = !isExempt
-      ? Number.isFinite(parseFloat(taxRate))
-        ? parseFloat(taxRate)
-        : null
-      : null;
-    const normalizedUnitPrice = unitPrice.replace(",", ".");
-    const normalizedStockUnit = stockUnit.trim() || null;
-    const normalizedInitialStock = (() => {
-      if (!initialStock.trim()) return null;
-      const parsed = parseFloat(initialStock.replace(",", "."));
-      return Number.isFinite(parsed) ? parsed : null;
-    })();
-    const normalizedMinStock = (() => {
-      if (!minStock.trim()) return null;
-      const parsed = parseFloat(minStock.replace(",", "."));
-      return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
-    })();
-    const normalizedSection = productSection || null;
     try {
       if (editingProduct) {
         await updateProduct({
           organizationId,
           productId: editingProduct._id,
-          name: name.trim(),
-          sku: sku.trim(),
-          unitPrice: parseFloat(normalizedUnitPrice),
-          taxRate: numericTaxRate,
-          taxExempt: isExempt,
-          description: description.trim() || null,
-          tagIds,
-          categoryId: categoryId ?? null,
-          trackStock,
-          stockUnit: normalizedStockUnit,
-          productSection: normalizedSection,
-          minStock: normalizedMinStock,
-          manufacturer: manufacturer.trim() || null,
-          catalogNumber: catalogNumber.trim() || null,
-          stockNote: stockNote.trim() || null,
+          name: data.name.trim(),
+          sku: data.sku.trim(),
+          unitPrice: data.unitPrice,
+          taxRate: data.taxRate,
+          taxExempt: data.taxExempt,
+          description: data.description,
+          tagIds: data.tagIds,
+          categoryId: data.categoryId,
+          trackStock: data.trackStock,
+          stockUnit: data.stockUnit,
+          productSection: data.productSection,
+          minStock: data.minStock,
+          manufacturer: data.manufacturer,
+          catalogNumber: data.catalogNumber,
+          stockNote: data.stockNote,
         });
       } else {
         await createProduct({
           organizationId,
-          name: name.trim(),
-          sku: sku.trim(),
-          unitPrice: parseFloat(normalizedUnitPrice),
-          taxRate: numericTaxRate,
-          taxExempt: isExempt,
-          isActive,
-          description: description.trim() || null,
-          tagIds,
-          categoryId: categoryId ?? null,
-          trackStock,
-          stockUnit: normalizedStockUnit,
-          initialStock: normalizedInitialStock,
-          productSection: normalizedSection,
-          minStock: normalizedMinStock,
-          manufacturer: manufacturer.trim() || null,
-          catalogNumber: catalogNumber.trim() || null,
-          stockNote: stockNote.trim() || null,
+          name: data.name.trim(),
+          sku: data.sku.trim(),
+          unitPrice: data.unitPrice,
+          taxRate: data.taxRate,
+          taxExempt: data.taxExempt,
+          isActive: data.isActive,
+          description: data.description,
+          tagIds: data.tagIds,
+          categoryId: data.categoryId,
+          trackStock: data.trackStock,
+          stockUnit: data.stockUnit,
+          initialStock: data.initialStock,
+          productSection: data.productSection,
+          minStock: data.minStock,
+          manufacturer: data.manufacturer,
+          catalogNumber: data.catalogNumber,
+          stockNote: data.stockNote,
         });
       }
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.products.list(organizationId) });
@@ -470,7 +349,7 @@ function ProductsPage() {
           : t("products.success.created", { defaultValue: "Produkt dodany." }),
       );
       setPanelOpen(false);
-      resetForm();
+      setEditingProduct(null);
     } catch (e) {
       toast.error(
         formatActionError(e, t, {
@@ -800,242 +679,42 @@ function ProductsPage() {
         open={panelOpen}
         onOpenChange={(open) => {
           setPanelOpen(open);
-          if (!open) resetForm();
+          if (!open) setEditingProduct(null);
         }}
         title={editingProduct ? t('products.editProduct') : t('products.newProduct')}
         description={editingProduct ? t('products.updateDescription') : t('products.createDescription')}
-        onSubmit={handleSubmit}
-        submitLabel={editingProduct ? t('common.update') : t('common.create')}
-        isSubmitting={isSubmitting}
       >
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>
-              {t('common.name')} <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t('products.productName')}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>
-              {t('products.sku')} <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              value={sku}
-              onChange={(e) => setSku(e.target.value)}
-              placeholder="PRD-XXXXXX"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t("products.sections.label", { defaultValue: "Sekcja" })}</Label>
-            <Select value={productSection || "none"} onValueChange={(v) => setProductSection(v === "none" ? "" : v as ProductSection)}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("products.sections.placeholder", { defaultValue: "Wybierz sekcję" })} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">{t("products.sections.none", { defaultValue: "Bez sekcji" })}</SelectItem>
-                {PRODUCT_SECTIONS.map((section) => (
-                  <SelectItem key={section} value={section}>
-                    {t(`products.sections.${section}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid gap-4 grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>
-                {t('products.unitPrice')} <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                value={unitPrice}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                    setUnitPrice(v);
-                  }
-                }}
-                placeholder="0.00"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>{t('products.taxRate')}</Label>
-              <Select value={taxRate} onValueChange={setTaxRate}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TAX_RATE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {!editingProduct && (
-            <div className="flex items-center gap-2">
-              <Checkbox
-                checked={isActive}
-                onCheckedChange={(checked) => setIsActive(!!checked)}
-              />
-              <Label className="cursor-pointer">{t('common.active')}</Label>
-            </div>
-          )}
-
-          {/* Manufacturer & catalog number */}
-          <div className="grid gap-3 grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>{t("products.manufacturer", { defaultValue: "Producent" })}</Label>
-              <Input
-                value={manufacturer}
-                onChange={(e) => setManufacturer(e.target.value)}
-                placeholder={t("products.manufacturerPlaceholder", { defaultValue: "Nazwa producenta" })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t("products.catalogNumber", { defaultValue: "Nr katalogowy" })}</Label>
-              <Input
-                value={catalogNumber}
-                onChange={(e) => setCatalogNumber(e.target.value)}
-                placeholder={t("products.catalogNumberPlaceholder", { defaultValue: "np. CAT-12345" })}
-              />
-            </div>
-          </div>
-
-          {/* Stock tracking */}
-          <div className="space-y-3 rounded-md border bg-muted/30 px-3 py-3">
-            <div className="flex items-start gap-2">
-              <Checkbox
-                id="product-track-stock"
-                checked={trackStock}
-                onCheckedChange={(checked) => setTrackStock(!!checked)}
-                className="mt-0.5"
-              />
-              <div className="space-y-1">
-                <Label htmlFor="product-track-stock" className="cursor-pointer">
-                  {t("products.stock.trackToggle", {
-                    defaultValue: "Śledź stan magazynowy",
-                  })}
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  {t("products.stock.trackHelp", {
-                    defaultValue:
-                      "Każda zmiana stanu zapisuje się w historii ruchów. Jeśli wyłączone, historia może być nadal prowadzona ręcznie, ale stan nie jest pilnowany.",
-                  })}
-                </p>
-              </div>
-            </div>
-
-            {trackStock && (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>
-                      {t("products.stock.unitLabel", { defaultValue: "Jednostka" })}
-                    </Label>
-                    <Input
-                      value={stockUnit}
-                      onChange={(e) => setStockUnit(e.target.value)}
-                      placeholder={t("products.stock.unitPlaceholder", {
-                        defaultValue: "szt., ml, g…",
-                      })}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>
-                      {t("products.stock.minLabel", { defaultValue: "Min. stan" })}
-                    </Label>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      value={minStock}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                          setMinStock(v);
-                        }
-                      }}
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-                {!editingProduct && (
-                  <div className="space-y-1.5">
-                    <Label>
-                      {t("products.stock.initialLabel", {
-                        defaultValue: "Stan początkowy",
-                      })}
-                    </Label>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      value={initialStock}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        if (v === "" || /^-?[0-9]*[.,]?[0-9]*$/.test(v)) {
-                          setInitialStock(v);
-                        }
-                      }}
-                      placeholder="0"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Warehouse note */}
-          <div className="space-y-1.5">
-            <Label>{t("products.stock.noteLabel", { defaultValue: "Notatka magazynowa" })}</Label>
-            <Textarea
-              value={stockNote}
-              onChange={(e) => setStockNote(e.target.value)}
-              placeholder={t("products.stock.notePlaceholder", {
-                defaultValue: "Warunki przechowywania, uwagi dla magazyniera…",
-              })}
-              rows={2}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t('common.description')}</Label>
-            <RichTextEditor
-              value={description}
-              onChange={(val) => setDescription(val ?? "")}
-              placeholder={t('products.productDescription')}
-              minHeight="80px"
-            />
-          </div>
-
-          {tags.length > 0 && (
-            <div className="space-y-1.5">
-              <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
-              <TagsPicker tags={tags} selectedIds={tagIds} onChange={setTagIds} />
-            </div>
-          )}
-          <div className="space-y-1.5">
-            <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
-            <CategoryPicker
-              categories={categories}
-              selectedId={categoryId}
-              onChange={setCategoryId}
-              organizationId={organizationId}
-              entityType="product"
-            />
-          </div>
-        </div>
+        <ProductForm
+          key={`${panelOpen}-${editingProduct?._id ?? "new"}`}
+          initialData={editingProduct ? {
+            name: editingProduct.name,
+            sku: editingProduct.sku,
+            description: editingProduct.description,
+            unitPrice: editingProduct.unitPrice,
+            taxRate: editingProduct.taxRate,
+            taxExempt: editingProduct.taxExempt ?? false,
+            isActive: editingProduct.isActive,
+            tagIds: (editingProduct.tagIds as Id<"tagDefinitions">[]) ?? [],
+            categoryId: (editingProduct.categoryId as Id<"categoryDefinitions">) ?? null,
+            productSection: (editingProduct.productSection as ProductSection) ?? null,
+            trackStock: !!editingProduct.trackStock,
+            stockUnit: editingProduct.stockUnit ?? null,
+            minStock: editingProduct.minStock ?? null,
+            manufacturer: editingProduct.manufacturer ?? null,
+            catalogNumber: editingProduct.catalogNumber ?? null,
+            stockNote: editingProduct.stockNote ?? null,
+          } : undefined}
+          defaultSection={!editingProduct && activeSection !== "all" ? activeSection : null}
+          onSubmit={handleProductFormSubmit}
+          onCancel={() => {
+            setPanelOpen(false);
+            setEditingProduct(null);
+          }}
+          isSubmitting={isSubmitting}
+          tagDefinitions={tags}
+          categoryDefinitions={categories}
+          organizationId={organizationId}
+        />
       </SidePanel>
 
       <ProductStockAdjustDialog

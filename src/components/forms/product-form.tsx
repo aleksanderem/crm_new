@@ -18,6 +18,15 @@ import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import type { Id } from "@cvx/_generated/dataModel";
 
+export function generateSku(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let result = "PRD-";
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 // VAT-exempt ("zwolniony") is tracked as a separate boolean (taxExempt) on the
 // product. The "zw" option is selected when the boolean is true; otherwise the
 // numeric percentage is used. Mirrors the gabinet treatment form.
@@ -51,8 +60,8 @@ interface CategoryDef {
   color?: string;
 }
 
-const PRODUCT_SECTIONS = ["sale", "treatment", "disposable"] as const;
-type ProductSection = (typeof PRODUCT_SECTIONS)[number];
+export const PRODUCT_SECTIONS = ["sale", "treatment", "disposable"] as const;
+export type ProductSection = (typeof PRODUCT_SECTIONS)[number];
 
 export interface ProductFormData {
   name: string;
@@ -76,6 +85,8 @@ export interface ProductFormData {
 
 interface ProductFormProps {
   initialData?: Partial<ProductFormData>;
+  /** Pre-selects a product section in create mode when initialData is absent. */
+  defaultSection?: ProductSection | null;
   onSubmit: (data: ProductFormData) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
@@ -86,6 +97,7 @@ interface ProductFormProps {
 
 export function ProductForm({
   initialData,
+  defaultSection,
   onSubmit,
   onCancel,
   isSubmitting = false,
@@ -97,7 +109,7 @@ export function ProductForm({
   const isCreate = !initialData;
   const [name, setName] = useState(initialData?.name ?? "");
   const [description, setDescription] = useState(initialData?.description ?? "");
-  const [sku, setSku] = useState(initialData?.sku ?? "");
+  const [sku, setSku] = useState(initialData?.sku ?? generateSku());
   const [unitPrice, setUnitPrice] = useState(String(initialData?.unitPrice ?? ""));
   const [taxRate, setTaxRate] = useState(
     initialTaxRateFormValue(initialData?.taxRate, initialData?.taxExempt),
@@ -105,7 +117,7 @@ export function ProductForm({
   const [isActive, setIsActive] = useState(initialData?.isActive ?? true);
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId ?? undefined);
-  const [productSection, setProductSection] = useState<ProductSection | "">(initialData?.productSection ?? "");
+  const [productSection, setProductSection] = useState<ProductSection | "">(initialData?.productSection ?? defaultSection ?? "");
   const [trackStock, setTrackStock] = useState(initialData?.trackStock ?? false);
   const [stockUnit, setStockUnit] = useState(initialData?.stockUnit ?? "");
   const [initialStock, setInitialStock] = useState("");

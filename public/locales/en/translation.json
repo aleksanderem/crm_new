@@ -4307,11 +4307,14 @@
       "typeTextarea": "Textarea",
       "typeDate": "Date",
       "typeCheckbox": "Checkbox",
+      "typeButtonSelect": "Buttons (Yes/No)",
       "optionsLabel": "Options (comma-separated)",
+      "optionsPlaceholder": "No, Yes, Yes — requires discussion",
       "placeholderLabel": "Placeholder",
       "placeholderPlaceholder": "Enter value...",
       "done": "Done",
-      "fieldFallback": "Field"
+      "fieldFallback": "Field",
+      "newFieldLabel": "New field"
     }
   },
   "documentEditor": {

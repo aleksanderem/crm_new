@@ -4333,11 +4333,14 @@
       "typeTextarea": "Pole tekstowe",
       "typeDate": "Data",
       "typeCheckbox": "Pole wyboru",
+      "typeButtonSelect": "Przyciski (Tak/Nie)",
       "optionsLabel": "Opcje (oddzielone przecinkiem)",
+      "optionsPlaceholder": "Nie, Tak, Tak — wymaga omówienia",
       "placeholderLabel": "Tekst pomocniczy",
       "placeholderPlaceholder": "Wpisz wartość...",
       "done": "Gotowe",
-      "fieldFallback": "Pole"
+      "fieldFallback": "Pole",
+      "newFieldLabel": "Nowe pole"
     }
   },
   "documentEditor": {

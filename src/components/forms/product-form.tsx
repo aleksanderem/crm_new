@@ -49,6 +49,9 @@ interface CategoryDef {
   color?: string;
 }
 
+const PRODUCT_SECTIONS = ["sale", "treatment", "disposable"] as const;
+type ProductSection = (typeof PRODUCT_SECTIONS)[number];
+
 export interface ProductFormData {
   name: string;
   description?: string | null;
@@ -59,6 +62,7 @@ export interface ProductFormData {
   isActive: boolean;
   tagIds?: Id<"tagDefinitions">[];
   categoryId?: Id<"categoryDefinitions"> | null;
+  productSection?: ProductSection | null;
 }
 
 interface ProductFormProps {
@@ -91,6 +95,7 @@ export function ProductForm({
   const [isActive, setIsActive] = useState(initialData?.isActive ?? true);
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId ?? undefined);
+  const [productSection, setProductSection] = useState<ProductSection | "">(initialData?.productSection ?? "");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,6 +115,7 @@ export function ProductForm({
       isActive,
       tagIds: tagIds.length > 0 ? tagIds : undefined,
       categoryId: categoryId || null,
+      productSection: productSection || null,
     });
   };
 
@@ -137,6 +143,22 @@ export function ProductForm({
             placeholder={t("products.form.skuPlaceholder")}
             required
           />
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>{t("products.sections.label", { defaultValue: "Sekcja" })}</Label>
+          <Select value={productSection || "none"} onValueChange={(v) => setProductSection(v === "none" ? "" : v as ProductSection)}>
+            <SelectTrigger>
+              <SelectValue placeholder={t("products.sections.placeholder", { defaultValue: "Wybierz sekcję" })} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">{t("products.sections.none", { defaultValue: "Bez sekcji" })}</SelectItem>
+              {PRODUCT_SECTIONS.map((section) => (
+                <SelectItem key={section} value={section}>
+                  {t(`products.sections.${section}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1.5">
           <Label>

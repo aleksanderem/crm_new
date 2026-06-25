@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -63,6 +65,13 @@ export interface ProductFormData {
   tagIds?: Id<"tagDefinitions">[];
   categoryId?: Id<"categoryDefinitions"> | null;
   productSection?: ProductSection | null;
+  trackStock?: boolean;
+  stockUnit?: string | null;
+  initialStock?: number | null;
+  minStock?: number | null;
+  manufacturer?: string | null;
+  catalogNumber?: string | null;
+  stockNote?: string | null;
 }
 
 interface ProductFormProps {
@@ -85,10 +94,11 @@ export function ProductForm({
   organizationId,
 }: ProductFormProps) {
   const { t } = useTranslation();
+  const isCreate = !initialData;
   const [name, setName] = useState(initialData?.name ?? "");
   const [description, setDescription] = useState(initialData?.description ?? "");
   const [sku, setSku] = useState(initialData?.sku ?? "");
-  const [unitPrice, setUnitPrice] = useState(initialData?.unitPrice ?? 0);
+  const [unitPrice, setUnitPrice] = useState(String(initialData?.unitPrice ?? ""));
   const [taxRate, setTaxRate] = useState(
     initialTaxRateFormValue(initialData?.taxRate, initialData?.taxExempt),
   );
@@ -96,6 +106,15 @@ export function ProductForm({
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId ?? undefined);
   const [productSection, setProductSection] = useState<ProductSection | "">(initialData?.productSection ?? "");
+  const [trackStock, setTrackStock] = useState(initialData?.trackStock ?? false);
+  const [stockUnit, setStockUnit] = useState(initialData?.stockUnit ?? "");
+  const [initialStock, setInitialStock] = useState("");
+  const [minStock, setMinStock] = useState(
+    initialData?.minStock != null ? String(initialData.minStock) : "",
+  );
+  const [manufacturer, setManufacturer] = useState(initialData?.manufacturer ?? "");
+  const [catalogNumber, setCatalogNumber] = useState(initialData?.catalogNumber ?? "");
+  const [stockNote, setStockNote] = useState(initialData?.stockNote ?? "");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,17 +124,35 @@ export function ProductForm({
         ? parseFloat(taxRate)
         : null
       : null;
+    const normalizedUnitPrice = unitPrice.replace(",", ".");
+    const normalizedInitialStock = (() => {
+      if (!initialStock.trim()) return null;
+      const parsed = parseFloat(initialStock.replace(",", "."));
+      return Number.isFinite(parsed) ? parsed : null;
+    })();
+    const normalizedMinStock = (() => {
+      if (!minStock.trim()) return null;
+      const parsed = parseFloat(minStock.replace(",", "."));
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+    })();
     onSubmit({
       name,
       description: description || null,
       sku,
-      unitPrice,
+      unitPrice: parseFloat(normalizedUnitPrice) || 0,
       taxRate: numericTaxRate,
       taxExempt: isExempt,
       isActive,
       tagIds: tagIds.length > 0 ? tagIds : undefined,
       categoryId: categoryId || null,
       productSection: productSection || null,
+      trackStock,
+      stockUnit: stockUnit.trim() || null,
+      initialStock: normalizedInitialStock,
+      minStock: normalizedMinStock,
+      manufacturer: manufacturer.trim() || null,
+      catalogNumber: catalogNumber.trim() || null,
+      stockNote: stockNote.trim() || null,
     });
   };
 
@@ -144,6 +181,26 @@ export function ProductForm({
             required
           />
         </div>
+        <div className="space-y-3 sm:col-span-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>{t("products.manufacturer", { defaultValue: "Producent" })}</Label>
+              <Input
+                value={manufacturer}
+                onChange={(e) => setManufacturer(e.target.value)}
+                placeholder={t("products.manufacturerPlaceholder", { defaultValue: "Nazwa producenta" })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t("products.catalogNumber", { defaultValue: "Nr katalogowy" })}</Label>
+              <Input
+                value={catalogNumber}
+                onChange={(e) => setCatalogNumber(e.target.value)}
+                placeholder={t("products.catalogNumberPlaceholder", { defaultValue: "np. CAT-12345" })}
+              />
+            </div>
+          </div>
+        </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("products.sections.label", { defaultValue: "Sekcja" })}</Label>
           <Select value={productSection || "none"} onValueChange={(v) => setProductSection(v === "none" ? "" : v as ProductSection)}>
@@ -165,12 +222,15 @@ export function ProductForm({
             {t("products.form.unitPrice")} <span className="text-destructive">*</span>
           </Label>
           <Input
-            type="number"
+            type="text"
             inputMode="decimal"
-            min={0}
-            step={0.01}
             value={unitPrice}
-            onChange={(e) => setUnitPrice(parseFloat(e.target.value) || 0)}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) setUnitPrice(v);
+            }}
+            placeholder="0.00"
+            required
           />
         </div>
         <div className="space-y-1.5">
@@ -192,6 +252,91 @@ export function ProductForm({
           <Switch checked={isActive} onCheckedChange={setIsActive} />
           <Label>{t("products.form.isActive")}</Label>
         </div>
+        {/* Stock tracking */}
+        <div className="space-y-3 rounded-md border bg-muted/30 px-3 py-3 sm:col-span-2">
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id="product-form-track-stock"
+              checked={trackStock}
+              onCheckedChange={(checked) => setTrackStock(!!checked)}
+              className="mt-0.5"
+            />
+            <div className="space-y-1">
+              <Label htmlFor="product-form-track-stock" className="cursor-pointer">
+                {t("products.stock.trackToggle", { defaultValue: "Śledź stan magazynowy" })}
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {t("products.stock.trackHelp", {
+                  defaultValue:
+                    "Każda zmiana stanu zapisuje się w historii ruchów.",
+                })}
+              </p>
+            </div>
+          </div>
+
+          {trackStock && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>
+                    {t("products.stock.unitLabel", { defaultValue: "Jednostka" })}
+                  </Label>
+                  <Input
+                    value={stockUnit}
+                    onChange={(e) => setStockUnit(e.target.value)}
+                    placeholder={t("products.stock.unitPlaceholder", { defaultValue: "szt., ml, g…" })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>
+                    {t("products.stock.minLabel", { defaultValue: "Min. stan" })}
+                  </Label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={minStock}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) setMinStock(v);
+                    }}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              {isCreate && (
+                <div className="space-y-1.5">
+                  <Label>
+                    {t("products.stock.initialLabel", { defaultValue: "Stan początkowy" })}
+                  </Label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={initialStock}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "" || /^-?[0-9]*[.,]?[0-9]*$/.test(v)) setInitialStock(v);
+                    }}
+                    placeholder="0"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Warehouse note */}
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>{t("products.stock.noteLabel", { defaultValue: "Notatka magazynowa" })}</Label>
+          <Textarea
+            value={stockNote}
+            onChange={(e) => setStockNote(e.target.value)}
+            placeholder={t("products.stock.notePlaceholder", {
+              defaultValue: "Warunki przechowywania, uwagi dla magazyniera…",
+            })}
+            rows={2}
+          />
+        </div>
+
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("products.form.description")}</Label>
           <RichTextEditor

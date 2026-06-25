@@ -685,16 +685,18 @@ function ProductsPage() {
       </div>
 
       <Tabs value={activeSection} onValueChange={(v) => handleSectionChange(v as ProductSection | "all")}>
-        <TabsList>
-          <TabsTrigger value="all">
-            {t("products.sections.all", { defaultValue: "Wszystkie" })}
-          </TabsTrigger>
-          {PRODUCT_SECTIONS.map((section) => (
-            <TabsTrigger key={section} value={section}>
-              {t(`products.sections.${section}`)}
+        <div className="overflow-x-auto">
+          <TabsList>
+            <TabsTrigger value="all">
+              {t("products.sections.all", { defaultValue: "Wszystkie" })}
             </TabsTrigger>
-          ))}
-        </TabsList>
+            {PRODUCT_SECTIONS.map((section) => (
+              <TabsTrigger key={section} value={section}>
+                {t(`products.sections.${section}`)}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
       </Tabs>
 
       {nudgeFilter === "unused" && (

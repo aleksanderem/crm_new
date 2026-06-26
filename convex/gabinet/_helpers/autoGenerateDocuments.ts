@@ -98,6 +98,20 @@ export async function autoGenerateAppointmentDocuments(
 
   for (const entry of requiredTemplates) {
     try {
+      // Skip if a document for this template+appointment already exists
+      const existing = await supabaseDb
+        .query("formDocuments")
+        .eq("templateId", String(entry.templateId))
+        .eq("entityType", "appointment")
+        .eq("entityId", args.appointmentId as string)
+        .first();
+      if (existing) {
+        createdDocIds.push(
+          (existing as Record<string, unknown>)._id as Id<"formDocuments">,
+        );
+        continue;
+      }
+
       const template = await supabaseDb.get(
         "formTemplates",
         String(entry.templateId),

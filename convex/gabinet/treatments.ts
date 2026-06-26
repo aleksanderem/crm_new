@@ -113,6 +113,7 @@ export const create = action({
         v.literal("during_visit"),
         v.literal("after_completion"),
       ),
+      isOneTime: v.optional(v.boolean()),
     }))),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),
@@ -277,6 +278,7 @@ export const update = action({
         v.literal("during_visit"),
         v.literal("after_completion"),
       ),
+      isOneTime: v.optional(v.boolean()),
     }))),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),
@@ -1178,6 +1180,7 @@ export const getRequiredFormTemplates = action({
     const entries = (treatment.requiredFormTemplates as Array<{
       templateId: string;
       timing: "before_start" | "during_visit" | "after_completion";
+      isOneTime?: boolean;
     }> | null) ?? [];
     if (entries.length === 0) return [];
 
@@ -1195,6 +1198,7 @@ export const getRequiredFormTemplates = action({
         return {
           templateId: String(entry.templateId),
           timing: entry.timing,
+          isOneTime: entry.isOneTime ?? false,
           templateName: (template.name as string | null) ?? "",
           templateCategory: (template.category as string | null) ?? "",
           requiresSignature: (template.requiresSignature as boolean | null) ?? false,
@@ -1216,6 +1220,7 @@ export const setRequiredFormTemplates = action({
         v.literal("during_visit"),
         v.literal("after_completion"),
       ),
+      isOneTime: v.optional(v.boolean()),
     })),
   },
   handler: async (ctx, args) => {

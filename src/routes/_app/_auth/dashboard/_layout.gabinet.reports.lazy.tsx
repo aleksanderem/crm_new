@@ -274,6 +274,7 @@ const PAYMENT_METHOD_COLORS: Record<string, string> = {
   cash: "var(--chart-1)",
   card: "var(--chart-2)",
   transfer: "var(--chart-3)",
+  package: "var(--chart-4)",
   other: "var(--chart-5)",
 };
 
@@ -1174,10 +1175,10 @@ function GabinetReports() {
     return { actualTotal: total, actualLast7: last7, actualLastDay: lastDay };
   }, [actualPayments, sevenDaysBeforeEnd, endDate]);
 
-  // Maps raw payment_method values to display categories (cash/card/transfer/other)
+  // Maps raw payment_method values to display categories (cash/card/transfer/package/other)
   const paymentMethodBreakdown = useMemo(() => {
     const categoryOf = (method: string | undefined): string => {
-      if (method === "cash" || method === "card" || method === "transfer")
+      if (method === "cash" || method === "card" || method === "transfer" || method === "package")
         return method;
       return "other";
     };
@@ -1187,7 +1188,7 @@ function GabinetReports() {
       const prev = map.get(cat) ?? { total: 0, count: 0 };
       map.set(cat, { total: prev.total + p.amount, count: prev.count + 1 });
     }
-    return (["cash", "card", "transfer", "other"] as const).map((key) => ({
+    return (["cash", "card", "transfer", "package", "other"] as const).map((key) => ({
       method: key,
       total: map.get(key)?.total ?? 0,
       count: map.get(key)?.count ?? 0,

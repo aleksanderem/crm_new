@@ -525,7 +525,10 @@ export function TreatmentForm({
                           <CommandItem
                             key={eq._id}
                             value={eq.name}
-                            onSelect={() => toggleEquipment(eq._id as Id<"gabinetEquipment">)}
+                            onSelect={() => {
+                              toggleEquipment(eq._id as Id<"gabinetEquipment">);
+                              setEquipmentOpen(false);
+                            }}
                           >
                             <div
                               className={cn(

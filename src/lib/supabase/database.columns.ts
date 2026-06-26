@@ -126,7 +126,8 @@ export type TableName =
   | "automation_run_steps"
   | "document_components"
   | "product_stock_levels"
-  | "product_stock_movements";
+  | "product_stock_movements"
+  | "gabinet_treatment_products";
 
 /**
  * Column names per table, as a runtime-checkable Set.
@@ -226,4 +227,5 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   document_components: new Set(["id", "organization_id", "scope", "created_by", "name", "description", "category", "content_json", "protected", "position_constraint", "version", "is_active", "created_at", "updated_at"]),
   product_stock_levels: new Set(["id", "organization_id", "product_id", "location_id", "quantity", "updated_at"]),
   product_stock_movements: new Set(["id", "organization_id", "product_id", "location_id", "delta", "balance_after", "reason", "source_type", "source_id", "note", "performed_by", "created_at"]),
+  gabinet_treatment_products: new Set(["id", "organization_id", "treatment_id", "product_id", "product_section", "quantity", "unit", "created_at", "updated_at"]),
 };

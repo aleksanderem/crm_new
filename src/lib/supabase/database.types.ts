@@ -3929,6 +3929,64 @@ export interface Database {
           },
         ];
       };
+      gabinet_treatment_products: {
+        Row: {
+          id: string;
+          organization_id: string;
+          treatment_id: string;
+          product_id: string;
+          product_section: string;
+          quantity: number;
+          unit: string | null;
+          created_at: number;
+          updated_at: number;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          treatment_id: string;
+          product_id: string;
+          product_section: string;
+          quantity: number;
+          unit?: string | null;
+          created_at: number;
+          updated_at: number;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          treatment_id?: string;
+          product_id?: string;
+          product_section?: string;
+          quantity?: number;
+          unit?: string | null;
+          created_at?: number;
+          updated_at?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_treatment_products_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_treatment_products_treatment_id_fkey";
+            columns: ["treatment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_treatment_products_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       gabinet_employees: {
         Row: {
           id: string;
@@ -6720,6 +6778,9 @@ export type GabinetTreatmentUpdate = Database["public"]["Tables"]["gabinet_treat
 export type GabinetTreatmentVariantRow = Database["public"]["Tables"]["gabinet_treatment_variants"]["Row"];
 export type GabinetTreatmentVariantInsert = Database["public"]["Tables"]["gabinet_treatment_variants"]["Insert"];
 export type GabinetTreatmentVariantUpdate = Database["public"]["Tables"]["gabinet_treatment_variants"]["Update"];
+export type GabinetTreatmentProductRow = Database["public"]["Tables"]["gabinet_treatment_products"]["Row"];
+export type GabinetTreatmentProductInsert = Database["public"]["Tables"]["gabinet_treatment_products"]["Insert"];
+export type GabinetTreatmentProductUpdate = Database["public"]["Tables"]["gabinet_treatment_products"]["Update"];
 export type GabinetEmployeeRow = Database["public"]["Tables"]["gabinet_employees"]["Row"];
 export type GabinetEmployeeInsert = Database["public"]["Tables"]["gabinet_employees"]["Insert"];
 export type GabinetEmployeeUpdate = Database["public"]["Tables"]["gabinet_employees"]["Update"];

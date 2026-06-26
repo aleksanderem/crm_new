@@ -168,6 +168,25 @@ export function createGabinetTables({
     .index("by_treatment", ["treatmentId"])
     .index("by_org", ["organizationId"]),
 
+  // Junction table: treatment definition → warehouse product (#2318).
+  // Records which products (preparations and disposables) are standardly
+  // consumed during one visit of this treatment, and in what quantity.
+  // product_section mirrors products.productSection: "treatment" | "disposable".
+  // unit is a snapshot of products.stockUnit at link time.
+  gabinetTreatmentProducts: defineTable({
+    organizationId: v.id("organizations"),
+    treatmentId: v.id("gabinetTreatments"),
+    productId: v.id("products"),
+    productSection: v.string(), // "treatment" | "disposable"
+    quantity: v.number(),
+    unit: v.optional(v.string()), // snapshot of products.stockUnit
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_treatment", ["treatmentId"])
+    .index("by_product", ["productId"]),
+
   // --- Gabinet: Employee Scheduling (Phase 2) ---
 
   gabinetWorkingHours: defineTable({

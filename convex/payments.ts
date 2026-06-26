@@ -12,6 +12,7 @@ import { paginationOptsValidator } from "convex/server";
 import { logAudit } from "./auditLog";
 import { logActivity } from "./_helpers/activities";
 import { createNotificationDirect } from "./notifications";
+import { formatCurrencyPLN } from "./_helpers/formatCurrency";
 import { sendEmail } from "@cvx/email";
 import { AUTH_RESEND_KEY, SITE_URL } from "@cvx/env";
 
@@ -933,7 +934,7 @@ export const _requestRefundAuthSideEffects = internalMutation({
       (m) => m.role === "owner" || m.role === "admin",
     );
 
-    const message = `${args.requesterName} prosi o autoryzację zwrotu ${args.amount.toFixed(2)} zł z salda klienta ${args.patientLabel}${args.notes ? ` (${args.notes})` : ""}.`;
+    const message = `${args.requesterName} prosi o autoryzację zwrotu ${formatCurrencyPLN(args.amount, "zł")} z salda klienta ${args.patientLabel}${args.notes ? ` (${args.notes})` : ""}.`;
     const link = `/dashboard/gabinet/patients/${args.patientId}?tab=payments`;
 
     // Shared requestId so approve/reject can find sibling notifications across
@@ -1026,7 +1027,7 @@ export const _sendRefundAuthEmails = internalAction({
 
     const path = `/dashboard/gabinet/patients/${args.patientId}?tab=payments`;
     const deepLink = SITE_URL ? `${SITE_URL}${path}` : path;
-    const amountLabel = `${args.amount.toFixed(2)} zł`;
+    const amountLabel = formatCurrencyPLN(args.amount, "zł");
     const subject = `Prośba o autoryzację zwrotu ${amountLabel} — ${orgName}`;
     const notesLine = args.notes
       ? `<p style="margin: 0 0 16px; color: #444;">Uwagi: ${escapeHtml(args.notes)}</p>`
@@ -1373,7 +1374,7 @@ export const _resolveRefundAuthSideEffects = internalMutation({
     // Tell the requester what happened so they don't keep refreshing the
     // patient page wondering whether their request landed.
     const requesterUserId = args.requesterId as Id<"users">;
-    const amountLabel = `${args.amount.toFixed(2)} zł`;
+    const amountLabel = formatCurrencyPLN(args.amount, "zł");
     const title =
       args.decision === "approved"
         ? "Zwrot zatwierdzony"

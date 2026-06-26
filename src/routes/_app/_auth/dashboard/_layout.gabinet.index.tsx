@@ -28,6 +28,7 @@ import { useTranslation } from "react-i18next";
 import type { ReactNode } from "react";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
+import { formatCurrencyPLN } from "@/lib/format-currency";
 
 import {
   CalendarCheck,
@@ -420,10 +421,10 @@ function GabinetDashboard() {
           <StatisticsImpressionCard
             title={t("gabinet.dashboard.dailyRevenue", "Przychód dziś")}
             description={t("gabinet.dashboard.fromAppointments", "z wizyt")}
-            value={`${todayRevenue.toFixed(2)} zł`}
+            value={formatCurrencyPLN(todayRevenue, "zł")}
             changePercentage={
               weeklyRevenue
-                ? `${weeklyRevenueTotal.toFixed(2)} zł ${t("gabinet.dashboard.thisWeekShort", "w tym tyg.")}`
+                ? `${formatCurrencyPLN(weeklyRevenueTotal, "zł")} ${t("gabinet.dashboard.thisWeekShort", "w tym tyg.")}`
                 : ""
             }
             chartData={revenueChartData.length > 0 ? revenueChartData : undefined}
@@ -543,11 +544,11 @@ function GabinetDashboard() {
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-sm font-semibold text-destructive">
-                          {remaining.toFixed(2)} zł
+                          {formatCurrencyPLN(remaining, "zł")}
                         </p>
                         {paid > 0 && (
                           <p className="text-muted-foreground text-xs">
-                            {t("gabinet.dashboard.paidPartial", "zapł.")} {paid.toFixed(2)} zł
+                            {t("gabinet.dashboard.paidPartial", "zapł.")} {formatCurrencyPLN(paid, "zł")}
                           </p>
                         )}
                       </div>

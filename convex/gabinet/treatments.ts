@@ -116,6 +116,12 @@ export const create = action({
     }))),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),
+    products: v.optional(v.array(v.object({
+      productId: v.string(),
+      productSection: v.union(v.literal("treatment"), v.literal("disposable")),
+      quantity: v.number(),
+      unit: v.optional(v.string()),
+    }))),
   },
   handler: async (ctx, args) => {
     try {
@@ -170,6 +176,16 @@ export const create = action({
       if (args.packageId != null) insertRow.packageId = args.packageId;
 
       const treatmentId = await db.insert("gabinetTreatments", insertRow);
+
+      // --- Optional: save treatment product ingredients ---
+      if (args.products && args.products.length > 0) {
+        await saveTreatmentProductLinks(
+          db,
+          String(args.organizationId),
+          treatmentId,
+          args.products,
+        );
+      }
 
       // --- Delegate post-write side effects ---
       try {
@@ -264,6 +280,12 @@ export const update = action({
     }))),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),
+    products: v.optional(v.array(v.object({
+      productId: v.string(),
+      productSection: v.union(v.literal("treatment"), v.literal("disposable")),
+      quantity: v.number(),
+      unit: v.optional(v.string()),
+    }))),
   },
   handler: async (ctx, args) => {
     try {
@@ -309,6 +331,17 @@ export const update = action({
         patchPayload.packageId = packageId;
       }
       await db.patch("gabinetTreatments", treatmentId, patchPayload);
+
+      // --- Optional: replace treatment product ingredients ---
+      // Only when `products` was explicitly passed (even if empty = clear all).
+      if (args.products !== undefined) {
+        await saveTreatmentProductLinks(
+          db,
+          String(organizationId),
+          treatmentId,
+          args.products,
+        );
+      }
 
       // --- Delegate post-write side effects ---
       try {
@@ -436,6 +469,220 @@ export const _removeSideEffects = internalMutation({
       description: `Deleted treatment "${args.treatmentName}"`,
       performedBy: deletedByUserId,
     });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Treatment Products (Inventory recipe — preparaty + materiały jednorazowe)
+// ---------------------------------------------------------------------------
+
+const ALLOWED_PRODUCT_SECTIONS = new Set(["treatment", "disposable"]);
+
+/**
+ * Validates and replaces all product associations for a treatment.
+ * Runs entirely within a Supabase transaction scope via the service-role
+ * client — delete existing rows, then insert the new list.
+ * Called by create, update, and the standalone setTreatmentProducts action.
+ */
+async function saveTreatmentProductLinks(
+  db: ReturnType<typeof createSupabaseDb>,
+  organizationId: string,
+  treatmentId: string,
+  products: Array<{
+    productId: string;
+    productSection: string;
+    quantity: number;
+    unit?: string;
+  }>,
+): Promise<void> {
+  // Validate all items up-front before any writes.
+  const productIds = products.map((p) => p.productId);
+  const fetchedProducts = productIds.length > 0
+    ? await db.getMany("products", productIds)
+    : [];
+  const productById = new Map(fetchedProducts.map((p) => [String(p._id), p]));
+
+  const resolved: Array<{
+    productId: string;
+    productSection: string;
+    quantity: number;
+    unit: string | null;
+  }> = [];
+
+  for (const item of products) {
+    if (!ALLOWED_PRODUCT_SECTIONS.has(item.productSection)) {
+      throw new Error(
+        `Invalid productSection "${item.productSection}" for product ${item.productId}: must be "treatment" or "disposable"`,
+      );
+    }
+    if (item.quantity <= 0) {
+      throw new Error(
+        `Quantity for product ${item.productId} must be a positive number`,
+      );
+    }
+    const product = productById.get(item.productId);
+    if (!product || String(product.organizationId) !== organizationId) {
+      throw new Error(
+        `Product ${item.productId} not found or does not belong to this organization`,
+      );
+    }
+    if (String(product.productSection) === "sale") {
+      throw new Error(
+        `Product ${item.productId} has section "sale" and cannot be used as a treatment ingredient`,
+      );
+    }
+    resolved.push({
+      productId: item.productId,
+      productSection: item.productSection,
+      quantity: item.quantity,
+      unit: item.unit ?? (product.stockUnit as string | null | undefined) ?? null,
+    });
+  }
+
+  // Replace: delete existing links, then insert new ones.
+  const { error: delError } = await db.raw()
+    .from("gabinet_treatment_products")
+    .delete()
+    .eq("treatment_id", treatmentId);
+  if (delError) {
+    throw new Error(`Failed to clear existing treatment products: ${delError.message}`);
+  }
+
+  const now = Date.now();
+  for (const p of resolved) {
+    const row: Record<string, unknown> = {
+      organizationId,
+      treatmentId,
+      productId: p.productId,
+      productSection: p.productSection,
+      quantity: p.quantity,
+      createdAt: now,
+      updatedAt: now,
+    };
+    if (p.unit != null) row.unit = p.unit;
+    await db.insert("gabinetTreatmentProducts", row);
+  }
+}
+
+/** Returns the products (ingredients) assigned to a treatment definition. */
+export const getTreatmentProducts = action({
+  args: {
+    organizationId: v.id("organizations"),
+    treatmentId: v.string(),
+  },
+  handler: async (ctx, args): Promise<Array<{
+    _id: string;
+    productId: string;
+    productName: string;
+    productSection: string;
+    quantity: number;
+    unit: string | null;
+    stockUnit: string | null;
+  }>> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_treatments",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+
+    const links = await db
+      .query("gabinetTreatmentProducts")
+      .eq("organizationId", String(args.organizationId))
+      .eq("treatmentId", args.treatmentId)
+      .collect();
+
+    if (links.length === 0) return [];
+
+    const productIds = links.map((l) => String(l.productId));
+    const products = await db.getMany("products", productIds);
+    const productById = new Map(products.map((p) => [String(p._id), p]));
+
+    return links.map((link) => {
+      const product = productById.get(String(link.productId));
+      return {
+        _id: String(link._id),
+        productId: String(link.productId),
+        productName: (product?.name as string | null) ?? "",
+        productSection: String(link.productSection),
+        quantity: link.quantity as number,
+        unit: (link.unit as string | null | undefined) ?? null,
+        stockUnit: (product?.stockUnit as string | null | undefined) ?? null,
+      };
+    });
+  },
+});
+
+/** Replaces all product associations for a treatment (standalone action). */
+export const setTreatmentProducts = action({
+  args: {
+    organizationId: v.id("organizations"),
+    treatmentId: v.string(),
+    products: v.array(v.object({
+      productId: v.string(),
+      productSection: v.union(v.literal("treatment"), v.literal("disposable")),
+      quantity: v.number(),
+      unit: v.optional(v.string()),
+    })),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const authResult = await ctx.runQuery(
+        internal._helpers.authAction.verifyOrgAccess,
+        { organizationId: args.organizationId },
+      );
+      await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+        organizationId: args.organizationId,
+        feature: "gabinet_treatments",
+        action: "edit",
+      }).then((perm: { allowed: boolean; scope: string }) => {
+        if (!perm.allowed) throw new Error("Permission denied");
+      });
+
+      const db = createSupabaseDb();
+
+      const treatment = await db.get("gabinetTreatments", args.treatmentId);
+      if (!treatment || String(treatment.organizationId) !== String(args.organizationId)) {
+        throw new Error("Treatment not found");
+      }
+
+      await saveTreatmentProductLinks(
+        db,
+        String(args.organizationId),
+        args.treatmentId,
+        args.products,
+      );
+
+      try {
+        await ctx.runMutation(internal.gabinet.treatments._updateSideEffects, {
+          treatmentId: args.treatmentId,
+          organizationId: args.organizationId,
+          treatmentName: (treatment.name as string) ?? "",
+          updatedBy: String(authResult.userId),
+        });
+      } catch (e) {
+        console.error("[treatments.setTreatmentProducts] Side effects FAILED:", e);
+      }
+
+      return args.treatmentId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.treatments",
+        fnName: "setTreatmentProducts",
+        argsJson: JSON.stringify({
+          organizationId: args.organizationId,
+          treatmentId: args.treatmentId,
+          productCount: args.products.length,
+        }),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
   },
 });
 

@@ -9,6 +9,7 @@ export type SupabaseRow<T extends TableNames> = Omit<Doc<T>, "_creationTime">;
 export type FormDocumentRow = SupabaseRow<"formDocuments">;
 export type FormTemplateRow = SupabaseRow<"formTemplates">;
 export type GabinetTreatmentRow = SupabaseRow<"gabinetTreatments">;
+export type GabinetTreatmentProductRow = SupabaseRow<"gabinetTreatmentProducts">;
 export type GabinetPatientRow = SupabaseRow<"gabinetPatients">;
 export type GabinetAppointmentRow = SupabaseRow<"gabinetAppointments">;
 export type GabinetEmployeeRow = SupabaseRow<"gabinetEmployees">;

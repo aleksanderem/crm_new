@@ -14,6 +14,7 @@ import {
   useSupabaseGabinetMonthlyAppointments,
   useSupabaseGabinetAppointmentStatusDistribution,
   useSupabaseGabinetTopTreatments,
+  useSupabaseGabinetWeeklyRevenue,
 } from "@/hooks/use-supabase-gabinet-dashboard";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -136,6 +137,7 @@ function GabinetDashboard() {
   const { data: weeklyAppointments } = useSupabaseGabinetWeeklyAppointments(organizationId);
   const { data: monthlyPatients } = useSupabaseGabinetMonthlyNewPatients(organizationId);
   const { data: weeklyCompleted } = useSupabaseGabinetWeeklyCompletedTreatments(organizationId);
+  const { data: weeklyRevenue } = useSupabaseGabinetWeeklyRevenue(organizationId);
 
   // --- Chart block data (Supabase-backed) ---
   const { data: monthlyAppointments } = useSupabaseGabinetMonthlyAppointments(organizationId);
@@ -233,6 +235,19 @@ function GabinetDashboard() {
   const todayCount = enrichedAppointments.length;
   const completedTodayCount = enrichedAppointments.filter((a) => a.status === "completed").length;
 
+  const todayRevenue = useMemo(
+    () =>
+      enrichedAppointments
+        .filter((a) => a.status !== "cancelled" && a.status !== "no_show")
+        .reduce((sum, a) => sum + (a.priceAtBooking ?? 0), 0),
+    [enrichedAppointments],
+  );
+
+  const weeklyRevenueTotal = useMemo(
+    () => (weeklyRevenue ?? []).reduce((sum, d) => sum + d.revenue, 0),
+    [weeklyRevenue],
+  );
+
   // --- Build sparkline chart data for statistics cards ---
   const appointmentChartData = (weeklyAppointments ?? []).map((d) => ({
     day: d.day,
@@ -249,17 +264,10 @@ function GabinetDashboard() {
     profit: d.completed,
   }));
 
-  const leaveChartData = useMemo(() => {
-    const count = pendingLeaves.length;
-    return [
-      { month: "1", impression: Math.max(0, count - 2) },
-      { month: "2", impression: Math.max(0, count - 1) },
-      { month: "3", impression: count },
-      { month: "4", impression: Math.max(0, count + 1) },
-      { month: "5", impression: count },
-      { month: "6", impression: count },
-    ];
-  }, [pendingLeaves.length]);
+  const revenueChartData = (weeklyRevenue ?? []).map((d) => ({
+    month: d.day,
+    impression: d.revenue,
+  }));
 
   // --- TotalIncomeCard: monthly appointments area chart + summary ---
   const monthlyChartData = (monthlyAppointments ?? []).map((d) => ({
@@ -409,17 +417,17 @@ function GabinetDashboard() {
             gradientId="fillPatients"
           />
         </Link>
-        <Link to="/dashboard/gabinet/settings/leaves" className="block">
+        <Link to="/dashboard/gabinet/reports" className="block">
           <StatisticsImpressionCard
-            title={t("gabinet.dashboard.pendingLeaves")}
-            description={t("gabinet.dashboard.awaitingApproval", "Oczekujące")}
-            value={String(pendingLeaves.length)}
+            title={t("gabinet.dashboard.dailyRevenue", "Przychód dziś")}
+            description={t("gabinet.dashboard.fromAppointments", "z wizyt")}
+            value={`${todayRevenue.toFixed(2)} zł`}
             changePercentage={
-              pendingLeaves.length > 0
-                ? t("gabinet.dashboard.requiresAttention", "Wymaga uwagi")
-                : t("gabinet.dashboard.allClear", "Wszystko ok")
+              weeklyRevenue
+                ? `${weeklyRevenueTotal.toFixed(2)} zł ${t("gabinet.dashboard.thisWeekShort", "w tym tyg.")}`
+                : ""
             }
-            chartData={leaveChartData}
+            chartData={revenueChartData.length > 0 ? revenueChartData : undefined}
           />
         </Link>
       </div>

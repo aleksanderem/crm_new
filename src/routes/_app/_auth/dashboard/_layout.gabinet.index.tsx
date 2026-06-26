@@ -379,8 +379,45 @@ function GabinetDashboard() {
         description={t("gabinet.dashboard.description")}
       />
 
+      {/* Quick actions — shown first on mobile via DOM order; restored to position 5 on md+ */}
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 md:order-5">
+        <Link
+          to="/dashboard/gabinet/calendar"
+          className="flex items-center gap-2 rounded-lg border p-3 text-sm font-medium hover:bg-muted/50 transition-colors"
+        >
+          <Calendar className="size-4 shrink-0 text-muted-foreground" />
+          {t("gabinet.dashboard.goToCalendar")}
+        </Link>
+        <Button asChild variant="outline" className="justify-start gap-2 h-auto py-3 px-3">
+          <Link to="/dashboard/gabinet/calendar" search={{ action: "create-appointment" }}>
+            <Plus className="size-4 shrink-0 text-muted-foreground" />
+            {t("gabinet.dashboard.addAppointment", "Dodaj wizytę")}
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="justify-start gap-2 h-auto py-3 px-3">
+          <Link to="/dashboard/gabinet/patients">
+            <UserPlus className="size-4 shrink-0 text-muted-foreground" />
+            {t("gabinet.dashboard.addPatient", "Dodaj klienta")}
+          </Link>
+        </Button>
+        <Link
+          to="/dashboard/gabinet/packages"
+          className="flex items-center gap-2 rounded-lg border p-3 text-sm font-medium hover:bg-muted/50 transition-colors"
+        >
+          <Package className="size-4 shrink-0 text-muted-foreground" />
+          {t("gabinet.dashboard.goToPackages")}
+        </Link>
+        <Link
+          to="/dashboard/gabinet/patients"
+          className="flex items-center gap-2 rounded-lg border p-3 text-sm font-medium hover:bg-muted/50 transition-colors"
+        >
+          <CreditCard className="size-4 shrink-0 text-muted-foreground" />
+          {t("gabinet.dashboard.goToPatients")}
+        </Link>
+      </div>
+
       {/* 1. KPI tiles — always visible, 2-column on mobile */}
-      <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 xl:grid-cols-4 md:order-2">
         <Link to="/dashboard/gabinet/calendar" className="block">
           <StatisticsOrderCard
             title={t("gabinet.dashboard.todayAppointments")}
@@ -433,7 +470,7 @@ function GabinetDashboard() {
       </div>
 
       {/* 2. Today's schedule — high priority, full-width */}
-      <div ref={todayScheduleRef} className="scroll-mt-6">
+      <div ref={todayScheduleRef} className="scroll-mt-6 md:order-3">
         <Card className="gap-0 py-0">
           <CardHeader className="flex flex-row items-center justify-between px-4 py-3">
             <div className="flex flex-col gap-0.5">
@@ -501,7 +538,7 @@ function GabinetDashboard() {
       </div>
 
       {/* 3. To-settle + Active packages — side by side on md+ */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 md:order-4">
         {/* To Settle */}
         <Card className="gap-0 py-0">
           <CardHeader className="flex flex-row items-center justify-between px-4 py-3">
@@ -606,45 +643,9 @@ function GabinetDashboard() {
         </Card>
       </div>
 
-      {/* 4. Quick actions */}
-      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-        <Link
-          to="/dashboard/gabinet/calendar"
-          className="flex items-center gap-2 rounded-lg border p-3 text-sm font-medium hover:bg-muted/50 transition-colors"
-        >
-          <Calendar className="size-4 shrink-0 text-muted-foreground" />
-          {t("gabinet.dashboard.goToCalendar")}
-        </Link>
-        <Button asChild variant="outline" className="justify-start gap-2 h-auto py-3 px-3">
-          <Link to="/dashboard/gabinet/calendar" search={{ action: "create-appointment" }}>
-            <Plus className="size-4 shrink-0 text-muted-foreground" />
-            {t("gabinet.dashboard.addAppointment", "Dodaj wizytę")}
-          </Link>
-        </Button>
-        <Button asChild variant="outline" className="justify-start gap-2 h-auto py-3 px-3">
-          <Link to="/dashboard/gabinet/patients">
-            <UserPlus className="size-4 shrink-0 text-muted-foreground" />
-            {t("gabinet.dashboard.addPatient", "Dodaj klienta")}
-          </Link>
-        </Button>
-        <Link
-          to="/dashboard/gabinet/packages"
-          className="flex items-center gap-2 rounded-lg border p-3 text-sm font-medium hover:bg-muted/50 transition-colors"
-        >
-          <Package className="size-4 shrink-0 text-muted-foreground" />
-          {t("gabinet.dashboard.goToPackages")}
-        </Link>
-        <Link
-          to="/dashboard/gabinet/patients"
-          className="flex items-center gap-2 rounded-lg border p-3 text-sm font-medium hover:bg-muted/50 transition-colors"
-        >
-          <CreditCard className="size-4 shrink-0 text-muted-foreground" />
-          {t("gabinet.dashboard.goToPatients")}
-        </Link>
-      </div>
-
-      {/* 5. Monthly Overview – TotalIncomeCard (moved lower) */}
+      {/* 5. Monthly Overview – TotalIncomeCard */}
       <TotalIncomeCard
+        className="md:order-6"
         title={t("gabinet.dashboard.monthlyOverview", "Przegląd miesięczny")}
         subtitle={t("gabinet.dashboard.last6MonthsOverview", "Ostatnie 6 miesięcy")}
         reportTitle={t("gabinet.dashboard.summary", "Podsumowanie")}
@@ -655,7 +656,7 @@ function GabinetDashboard() {
       />
 
       {/* 6. Weekly Appointments + Status Distribution */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 md:order-7">
         <EarningReportCard
           title={t("gabinet.dashboard.weeklyAppointments", "Wizyty tygodniowe")}
           subTitle={t("gabinet.dashboard.topTreatmentsSubtitle", "Najpopularniejsze zabiegi")}
@@ -678,7 +679,7 @@ function GabinetDashboard() {
       </div>
 
       {/* 7. Pending leaves — moved to bottom */}
-      <Card className="gap-0 py-0">
+      <Card className="gap-0 py-0 md:order-8">
         <CardHeader className="flex flex-row items-center justify-between px-4 py-3">
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-semibold">{t("gabinet.dashboard.pendingLeaveRequests")}</span>

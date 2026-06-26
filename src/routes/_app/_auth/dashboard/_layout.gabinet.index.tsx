@@ -231,7 +231,6 @@ function GabinetDashboard() {
 
   const pendingLeaves = (leavesData ?? []).filter((l) => l.status === "pending");
   const totalPatients = patientsData?.length ?? 0;
-  const totalTreatments = treatments?.length ?? 0;
   const todayCount = enrichedAppointments.length;
   const completedTodayCount = enrichedAppointments.filter((a) => a.status === "completed").length;
 

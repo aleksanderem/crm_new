@@ -155,6 +155,8 @@ function TreatmentDetail() {
   const updateVariantMut = useAction(api.gabinet.treatments.updateVariant);
   const deleteVariantMut = useAction(api.gabinet.treatments.deleteVariant);
   const trackView = useAction(api.recentlyViewed.track);
+  const getTreatmentProductsAction = useAction(api.gabinet.treatments.getTreatmentProducts);
+  const setTreatmentProductsAction = useAction(api.gabinet.treatments.setTreatmentProducts);
   const queryClient = useQueryClient();
 
   // Queries — treatment detail + variants from Supabase
@@ -238,6 +240,16 @@ function TreatmentDetail() {
     organizationId,
     treatmentId,
   );
+
+  const { data: existingProducts } = useQuery({
+    queryKey: ["gabinet.treatments.getTreatmentProducts", organizationId, treatmentId],
+    queryFn: () =>
+      getTreatmentProductsAction({
+        organizationId,
+        treatmentId: treatmentId as string,
+      }),
+    enabled: !!organizationId && !!treatmentId,
+  });
 
   // Enrich variants with resolved/inherited fields (previously computed server-side in Convex)
   const variants = useMemo(() => {
@@ -418,12 +430,28 @@ function TreatmentDetail() {
   const handleEditSubmit = async (formData: TreatmentFormData) => {
     setIsSubmitting(true);
     try {
+      const { products, ...treatmentData } = formData;
       await updateTreatment({
         organizationId,
         treatmentId: treatmentId as Id<"gabinetTreatments">,
-        ...formData,
+        ...treatmentData,
         categoryId: editCategoryId ?? null,
       });
+      if (products !== undefined) {
+        await setTreatmentProductsAction({
+          organizationId,
+          treatmentId: treatmentId as string,
+          products: products.map((p) => ({
+            productId: p.productId,
+            productSection: "treatment" as const,
+            quantity: p.quantity,
+            unit: p.unit ?? undefined,
+          })),
+        });
+        void queryClient.invalidateQueries({
+          queryKey: ["gabinet.treatments.getTreatmentProducts", organizationId, treatmentId],
+        });
+      }
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.detail(organizationId, treatmentId) });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(organizationId) });
       setEditPanelOpen(false);
@@ -1262,7 +1290,7 @@ function TreatmentDetail() {
           title={t("common.edit")}
         >
           <TreatmentForm
-            key={treatment._id}
+            key={`${treatment._id}-${existingProducts !== undefined ? "p" : "np"}`}
             organizationId={organizationId}
             initialData={{
               name: treatment.name,
@@ -1285,6 +1313,11 @@ function TreatmentDetail() {
                 (treatment.requiredFormTemplates as
                   | TreatmentFormData["requiredFormTemplates"]
                   | undefined) ?? undefined,
+              products: (existingProducts ?? []).map((p) => ({
+                productId: p.productId,
+                quantity: p.quantity,
+                unit: p.unit ?? p.stockUnit ?? null,
+              })),
             }}
             onSubmit={handleEditSubmit}
             onCancel={() => setEditPanelOpen(false)}

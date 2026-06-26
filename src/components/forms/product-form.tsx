@@ -30,6 +30,19 @@ export function generateSku(): string {
 // VAT-exempt ("zwolniony") is tracked as a separate boolean (taxExempt) on the
 // product. The "zw" option is selected when the boolean is true; otherwise the
 // numeric percentage is used. Mirrors the gabinet treatment form.
+const STOCK_UNIT_OPTIONS = [
+  { value: "szt.", label: "szt. (sztuka)" },
+  { value: "op.", label: "op. (opakowanie)" },
+  { value: "kpl.", label: "kpl. (komplet)" },
+  { value: "para", label: "para" },
+  { value: "ml", label: "ml (mililitr)" },
+  { value: "l", label: "l (litr)" },
+  { value: "g", label: "g (gram)" },
+  { value: "kg", label: "kg (kilogram)" },
+  { value: "m", label: "m (metr)" },
+  { value: "cm", label: "cm (centymetr)" },
+];
+
 const TAX_RATE_OPTIONS = [
   { value: "zw", label: "ZW" },
   { value: "0", label: "0%" },
@@ -299,7 +312,15 @@ export function ProductForm({
                     value={stockUnit}
                     onChange={(e) => setStockUnit(e.target.value)}
                     placeholder={t("products.stock.unitPlaceholder", { defaultValue: "szt., ml, g…" })}
+                    list="stock-unit-datalist"
                   />
+                  <datalist id="stock-unit-datalist">
+                    {STOCK_UNIT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </datalist>
                 </div>
                 <div className="space-y-1.5">
                   <Label>

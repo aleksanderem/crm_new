@@ -141,6 +141,9 @@ export function createGabinetTables({
         v.literal("during_visit"),
         v.literal("after_completion"),
       ),
+      // When true, skip generation if the patient already has a signed copy of
+      // this template (e.g. RODO, terms — signed once per patient, not per visit)
+      isOneTime: v.optional(v.boolean()),
     }))),
     shortDescription: v.optional(v.string()),
     image: v.optional(v.id("_storage")),

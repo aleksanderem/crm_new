@@ -60,6 +60,7 @@ export async function autoGenerateAppointmentDocuments(
     | Array<{
         templateId: string;
         timing?: "before_start" | "during_visit" | "after_completion";
+        isOneTime?: boolean;
       }>
     | undefined) ?? [];
   if (requiredTemplates.length === 0) return [];
@@ -98,6 +99,24 @@ export async function autoGenerateAppointmentDocuments(
 
   for (const entry of requiredTemplates) {
     try {
+      // Skip if this is a one-time document and the patient has already signed it
+      if (entry.isOneTime) {
+        const signedForPatient = await supabaseDb
+          .query("formDocuments")
+          .eq("templateId", String(entry.templateId))
+          .eq("organizationId", String(args.organizationId))
+          .eq("status", "signed")
+          .collect();
+        const alreadySigned = signedForPatient.some((doc) => {
+          const scope =
+            typeof doc.scopeEntities === "string"
+              ? (JSON.parse(doc.scopeEntities as string) as Record<string, unknown>)
+              : (doc.scopeEntities as Record<string, unknown> | null);
+          return scope?.patient === String(args.patientId);
+        });
+        if (alreadySigned) continue;
+      }
+
       // Skip if a document for this template+appointment already exists
       const existing = await supabaseDb
         .query("formDocuments")

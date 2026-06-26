@@ -23,7 +23,9 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileText, Plus, X, Search } from "@/lib/ez-icons";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { FileText, Plus, X, Search, RotateCcw } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -58,6 +60,7 @@ type RequiredFormTemplateTiming =
 interface RequiredFormTemplate {
   templateId: Id<"formTemplates">;
   timing: RequiredFormTemplateTiming;
+  isOneTime?: boolean;
 }
 
 interface TreatmentRequiredDocumentsProps {
@@ -89,6 +92,7 @@ export function TreatmentRequiredDocuments({
     useState<Id<"formTemplates"> | null>(null);
   const [selectedTiming, setSelectedTiming] =
     useState<RequiredFormTemplateTiming>("before_start");
+  const [selectedIsOneTime, setSelectedIsOneTime] = useState(false);
 
   const updateTreatment = useAction(api.gabinet.treatments.update);
 
@@ -127,7 +131,7 @@ export function TreatmentRequiredDocuments({
 
     const updated: RequiredFormTemplate[] = [
       ...requiredFormTemplates,
-      { templateId: selectedTemplateId, timing: selectedTiming },
+      { templateId: selectedTemplateId, timing: selectedTiming, isOneTime: selectedIsOneTime || undefined },
     ];
 
     try {
@@ -142,6 +146,7 @@ export function TreatmentRequiredDocuments({
       setAddDialogOpen(false);
       setSelectedTemplateId(null);
       setSearch("");
+      setSelectedIsOneTime(false);
     } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
@@ -149,6 +154,7 @@ export function TreatmentRequiredDocuments({
   }, [
     selectedTemplateId,
     selectedTiming,
+    selectedIsOneTime,
     requiredFormTemplates,
     updateTreatment,
     organizationId,
@@ -174,6 +180,25 @@ export function TreatmentRequiredDocuments({
       } catch (error) {
         const msg =
           error instanceof Error ? error.message : t("common.error");
+        toast.error(msg);
+      }
+    },
+    [requiredFormTemplates, updateTreatment, organizationId, treatmentId, t],
+  );
+
+  const handleOneTimeChange = useCallback(
+    async (templateId: Id<"formTemplates">, isOneTime: boolean) => {
+      const updated = requiredFormTemplates.map((r) =>
+        r.templateId === templateId ? { ...r, isOneTime: isOneTime || undefined } : r,
+      );
+      try {
+        await updateTreatment({
+          organizationId,
+          treatmentId,
+          requiredFormTemplates: updated,
+        });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : t("common.error");
         toast.error(msg);
       }
     },
@@ -255,6 +280,33 @@ export function TreatmentRequiredDocuments({
                         }
                         t={t as (key: string, fallback?: string) => string}
                       />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleOneTimeChange(req.templateId, !req.isOneTime)
+                        }
+                        title={
+                          req.isOneTime
+                            ? t("documents.requiredDocs.oneTimeOn", "Jednorazowy – kliknij, aby wyłączyć")
+                            : t("documents.requiredDocs.oneTimeOff", "Wymagany per-wizyta – kliknij, aby ustawić jako jednorazowy")
+                        }
+                        className="cursor-pointer"
+                      >
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-xs select-none",
+                            req.isOneTime
+                              ? "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800"
+                              : "bg-muted text-muted-foreground border-border hover:bg-accent",
+                          )}
+                        >
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          {req.isOneTime
+                            ? t("documents.requiredDocs.oneTime", "Jednorazowy")
+                            : t("documents.requiredDocs.perVisit", "Per wizyta")}
+                        </Badge>
+                      </button>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -404,6 +456,26 @@ export function TreatmentRequiredDocuments({
                 </SelectContent>
               </Select>
             </div>
+
+            {/* One-time toggle */}
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="one-time-toggle" className="text-sm font-medium cursor-pointer">
+                  {t("documents.requiredDocs.oneTimeLabel", "Dokument jednorazowy")}
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    "documents.requiredDocs.oneTimeDescription",
+                    "Podpisywany raz na pacjenta (np. RODO, regulamin). Nie generuje nowej kopii, jeśli pacjent już podpisał.",
+                  )}
+                </p>
+              </div>
+              <Switch
+                id="one-time-toggle"
+                checked={selectedIsOneTime}
+                onCheckedChange={setSelectedIsOneTime}
+              />
+            </div>
           </div>
 
           {/* Footer */}
@@ -414,6 +486,7 @@ export function TreatmentRequiredDocuments({
                 setAddDialogOpen(false);
                 setSelectedTemplateId(null);
                 setSearch("");
+                setSelectedIsOneTime(false);
               }}
             >
               {t("common.cancel", "Anuluj")}

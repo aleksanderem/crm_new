@@ -469,7 +469,21 @@ function TreatmentsIndex() {
       setIsSubmitting(true);
       setFieldErrors({});
       try {
-        const { products, ...treatmentData } = formData;
+        const { products, materials, ...treatmentData } = formData;
+        const allProductLinks = [
+          ...(products ?? []).map((p) => ({
+            productId: p.productId,
+            productSection: "treatment" as const,
+            quantity: p.quantity,
+            unit: p.unit ?? undefined,
+          })),
+          ...(materials ?? []).map((m) => ({
+            productId: m.productId,
+            productSection: "disposable" as const,
+            quantity: m.quantity,
+            unit: m.unit ?? undefined,
+          })),
+        ];
         if (editingTreatment) {
           await updateTreatment({
             organizationId,
@@ -478,18 +492,11 @@ function TreatmentsIndex() {
             tagIds,
             categoryId: categoryId ?? null,
           });
-          if (products !== undefined) {
-            await setTreatmentProductsAction({
-              organizationId,
-              treatmentId: editingTreatment._id,
-              products: products.map((p) => ({
-                productId: p.productId,
-                productSection: "treatment" as const,
-                quantity: p.quantity,
-                unit: p.unit ?? undefined,
-              })),
-            });
-          }
+          await setTreatmentProductsAction({
+            organizationId,
+            treatmentId: editingTreatment._id,
+            products: allProductLinks,
+          });
         } else {
           const newTreatmentId = await createTreatment({
             organizationId,
@@ -497,16 +504,11 @@ function TreatmentsIndex() {
             tagIds,
             categoryId,
           });
-          if (products && products.length > 0) {
+          if (allProductLinks.length > 0) {
             await setTreatmentProductsAction({
               organizationId,
               treatmentId: newTreatmentId,
-              products: products.map((p) => ({
-                productId: p.productId,
-                productSection: "treatment" as const,
-                quantity: p.quantity,
-                unit: p.unit ?? undefined,
-              })),
+              products: allProductLinks,
             });
           }
         }
@@ -868,11 +870,20 @@ function TreatmentsIndex() {
                     (editingTreatment.requiredFormTemplates as
                       | TreatmentFormData["requiredFormTemplates"]
                       | undefined) ?? undefined,
-                  products: (editingTreatmentProducts ?? []).map((p) => ({
-                    productId: p.productId,
-                    quantity: p.quantity,
-                    unit: p.unit ?? p.stockUnit ?? null,
-                  })),
+                  products: (editingTreatmentProducts ?? [])
+                    .filter((p) => p.productSection === "treatment")
+                    .map((p) => ({
+                      productId: p.productId,
+                      quantity: p.quantity,
+                      unit: p.unit ?? p.stockUnit ?? null,
+                    })),
+                  materials: (editingTreatmentProducts ?? [])
+                    .filter((p) => p.productSection === "disposable")
+                    .map((p) => ({
+                      productId: p.productId,
+                      quantity: p.quantity,
+                      unit: p.unit ?? p.stockUnit ?? null,
+                    })),
                 }
               : undefined
           }

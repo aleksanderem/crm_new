@@ -268,6 +268,102 @@ function RevenueSummaryCard({
   );
 }
 
+/* ─── Payment Methods Breakdown Card ─── */
+
+const PAYMENT_METHOD_COLORS: Record<string, string> = {
+  cash: "var(--chart-1)",
+  card: "var(--chart-2)",
+  transfer: "var(--chart-3)",
+  other: "var(--chart-5)",
+};
+
+function PaymentMethodsCard({
+  data,
+  currency,
+  rangeLabel,
+}: {
+  data: { method: string; total: number; count: number }[];
+  currency: string;
+  rangeLabel: string;
+}) {
+  const { t } = useTranslation();
+  const grandTotal = data.reduce((sum, d) => sum + d.total, 0);
+  const hasData = grandTotal > 0;
+  const activeItems = data.filter((d) => d.count > 0);
+
+  return (
+    <Card>
+      <CardHeader className="flex justify-between border-b">
+        <div className="flex flex-col gap-1">
+          <span className="text-lg font-semibold">
+            {t("gabinet.reports.paymentMethods")}
+          </span>
+          <span className="text-muted-foreground text-sm">{rangeLabel}</span>
+        </div>
+        <CardMenu />
+      </CardHeader>
+      <CardContent className="pt-4">
+        {!hasData ? (
+          <div className="flex items-center justify-center py-8">
+            <span className="text-muted-foreground text-sm">
+              {t("common.noResults")}
+            </span>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {activeItems.map((item) => {
+              const pct =
+                grandTotal > 0
+                  ? Math.round((item.total / grandTotal) * 100)
+                  : 0;
+              const color =
+                PAYMENT_METHOD_COLORS[item.method] ?? "var(--chart-4)";
+              return (
+                <div key={item.method} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className="font-medium truncate">
+                        {t(`gabinet.reports.paymentMethod.${item.method}`, item.method)}
+                      </span>
+                      <span className="text-muted-foreground text-xs shrink-0">
+                        {item.count}×
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <span className="text-muted-foreground">{pct}%</span>
+                      <span className="font-semibold">
+                        {formatCurrencyPLN(item.total, currency, {
+                          fractionDigits: 0,
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${pct}%`, backgroundColor: color }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            <div className="border-t pt-3 flex items-center justify-between text-sm font-semibold">
+              <span>{t("gabinet.reports.periodTotal")}</span>
+              <span>
+                {formatCurrencyPLN(grandTotal, currency, { fractionDigits: 0 })}
+              </span>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 /* ─── Treatment Popularity (horizontal bar) ─── */
 
 function TreatmentPopularityChart({
@@ -1078,6 +1174,26 @@ function GabinetReports() {
     return { actualTotal: total, actualLast7: last7, actualLastDay: lastDay };
   }, [actualPayments, sevenDaysBeforeEnd, endDate]);
 
+  // Maps raw payment_method values to display categories (cash/card/transfer/other)
+  const paymentMethodBreakdown = useMemo(() => {
+    const categoryOf = (method: string | undefined): string => {
+      if (method === "cash" || method === "card" || method === "transfer")
+        return method;
+      return "other";
+    };
+    const map = new Map<string, { total: number; count: number }>();
+    for (const p of actualPayments ?? []) {
+      const cat = categoryOf(p.paymentMethod);
+      const prev = map.get(cat) ?? { total: 0, count: 0 };
+      map.set(cat, { total: prev.total + p.amount, count: prev.count + 1 });
+    }
+    return (["cash", "card", "transfer", "other"] as const).map((key) => ({
+      method: key,
+      total: map.get(key)?.total ?? 0,
+      count: map.get(key)?.count ?? 0,
+    }));
+  }, [actualPayments]);
+
   const totalAppointments = appointments?.length ?? 0;
   const completedCount =
     appointments?.filter((a) => a.status === "completed").length ?? 0;
@@ -1161,6 +1277,9 @@ function GabinetReports() {
         revenue: e.completedCount,
       });
     }
+    for (const pm of paymentMethodBreakdown) {
+      rows.push({ section: "payment_method", metric: pm.method, value: pm.count, revenue: pm.total });
+    }
     const csv = Papa.unparse(rows as unknown as Record<string, unknown>[]);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -1188,6 +1307,7 @@ function GabinetReports() {
     statusStats,
     dailyStats,
     employeeStats,
+    paymentMethodBreakdown,
     startDate,
     endDate,
     t,
@@ -1332,6 +1452,13 @@ function GabinetReports() {
           actualTotal={actualTotal}
         />
       </div>
+
+      {/* Payment Methods Breakdown */}
+      <PaymentMethodsCard
+        data={paymentMethodBreakdown}
+        currency={defaultCurrency}
+        rangeLabel={rangeLabel}
+      />
 
       {/* Treatment Popularity + Status Distribution */}
       <div ref={treatmentStatsSectionRef} className="grid gap-6 lg:grid-cols-2 scroll-mt-6">

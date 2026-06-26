@@ -3563,7 +3563,14 @@
       "periodTotal": "Cały okres",
       "ofTotal": "ogółem",
       "topN": "Top {{count}}",
-      "collectedFromPayments": "Na podstawie płatności"
+      "collectedFromPayments": "Na podstawie płatności",
+      "paymentMethods": "Metody płatności",
+      "paymentMethod": {
+        "cash": "Gotówka",
+        "card": "Karta",
+        "transfer": "Przelew",
+        "other": "Inne"
+      }
     },
     "bodyChart": {
       "description": "Zaznacz obszary ciała powiązane z wizytą",

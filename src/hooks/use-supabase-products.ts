@@ -46,6 +46,7 @@ interface UseSupabaseProductsListOptions {
   limit?: number;
   search?: string;
   sortOrder?: "asc" | "desc";
+  productSection?: string;
 }
 
 export function useSupabaseProductsList(
@@ -53,10 +54,10 @@ export function useSupabaseProductsList(
   options: UseSupabaseProductsListOptions = {},
 ) {
   const { client, isReady } = useSupabase();
-  const { enabled = true, limit = 100, search, sortOrder = "desc" } = options;
+  const { enabled = true, limit = 100, search, sortOrder = "desc", productSection } = options;
 
   return useQuery<MappedProduct[], Error>({
-    queryKey: [...supabaseKeys.products.list(organizationId), search ?? ""],
+    queryKey: [...supabaseKeys.products.list(organizationId), search ?? "", productSection ?? ""],
     queryFn: async (): Promise<MappedProduct[]> => {
       if (!client) throw new Error("Supabase client not ready");
 
@@ -64,6 +65,10 @@ export function useSupabaseProductsList(
         .from("products")
         .select("*")
         .eq("organization_id", organizationId);
+
+      if (productSection) {
+        query = query.eq("product_section", productSection);
+      }
 
       if (search?.trim()) {
         query = query.textSearch("search_vector", search.trim(), {

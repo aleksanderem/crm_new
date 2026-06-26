@@ -321,6 +321,50 @@ export function useSupabaseGabinetTopTreatments(organizationId: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Weekly Revenue (sparkline — 7 days)
+// ---------------------------------------------------------------------------
+
+export function useSupabaseGabinetWeeklyRevenue(organizationId: string) {
+  const { client, isReady } = useSupabase();
+  const startDate = dateNDaysAgo(6);
+
+  return useQuery<{ day: string; revenue: number }[], Error>({
+    queryKey: [...supabaseKeys.gabinetAppointments.list(organizationId), "weekly-revenue"],
+    queryFn: async () => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      const { data, error } = await client
+        .from("gabinet_appointments")
+        .select("date, price_at_booking, status")
+        .eq("organization_id", organizationId)
+        .gte("date", startDate)
+        .not("status", "in", '("cancelled","no_show")')
+        .order("date");
+
+      if (error) throw error;
+      const rows = (data ?? []) as Pick<AppointmentRow, "date" | "price_at_booking" | "status">[];
+
+      const revenueByDate = new Map<string, number>();
+      for (const r of rows) {
+        revenueByDate.set(r.date, (revenueByDate.get(r.date) ?? 0) + (r.price_at_booking ?? 0));
+      }
+
+      const days: { day: string; revenue: number }[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split("T")[0];
+        const dayLabel = d.toLocaleDateString("pl-PL", { weekday: "short" });
+        days.push({ day: dayLabel, revenue: revenueByDate.get(dateStr) ?? 0 });
+      }
+      return days;
+    },
+    enabled: isReady && !!organizationId,
+    staleTime: 60_000,
+  } satisfies UseQueryOptions<{ day: string; revenue: number }[], Error>);
+}
+
+// ---------------------------------------------------------------------------
 // Nudges
 // ---------------------------------------------------------------------------
 

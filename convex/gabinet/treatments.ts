@@ -435,6 +435,12 @@ export const remove = action({
       updatedAt: Date.now(),
     });
 
+    // --- Hard-delete product ingredient links (orphaned by soft-delete) ---
+    await db.raw()
+      .from("gabinet_treatment_products")
+      .delete()
+      .eq("treatment_id", args.treatmentId);
+
     // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.gabinet.treatments._removeSideEffects, {

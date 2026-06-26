@@ -1588,6 +1588,40 @@ export const update = action({
       }
     }
 
+    // Sync appointment date/time pre-fill in linked formDocuments that are
+    // still editable. Terminal-state documents (signed/completed/expired/voided)
+    // retain the date that was visible at signing time — only draft and
+    // pending_signature documents get updated.
+    if (dateChanged) {
+      try {
+        const linkedDocs = await db
+          .query("formDocuments")
+          .eq("entityType", "appointment")
+          .eq("entityId", appointmentId)
+          .collect();
+        const EDITABLE_STATUSES = new Set(["draft", "pending_signature"]);
+        for (const doc of linkedDocs) {
+          const docRow = doc as Record<string, unknown>;
+          if (!EDITABLE_STATUSES.has(docRow.status as string)) continue;
+          let rd: Record<string, string> = {};
+          try {
+            rd = JSON.parse((docRow.responseData as string) ?? "{}");
+          } catch {
+            rd = {};
+          }
+          rd["appointment.date"] = newDate;
+          rd["appointment.startTime"] = newStart;
+          rd["appointment.endTime"] = newEnd;
+          await db.patch("formDocuments", docRow._id as string, {
+            responseData: JSON.stringify(rd),
+            updatedAt: now,
+          });
+        }
+      } catch (e) {
+        console.warn("[update] formDocuments date sync failed (non-fatal):", e);
+      }
+    }
+
     // --- Side effects (Convex-only: activity log, automation event) ---
     try {
       await ctx.runMutation(

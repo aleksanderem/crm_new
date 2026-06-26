@@ -3530,6 +3530,7 @@
       "last7days": "Last 7 days",
       "last90days": "Last 90 days",
       "lastYear": "Last year",
+      "allClientsInSystem": "All clients in system",
       "statuses": {
         "pending_confirmation": "Pending",
         "scheduled": "Scheduled",

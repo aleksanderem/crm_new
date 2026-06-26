@@ -3552,6 +3552,7 @@
       "last7days": "Ostatnie 7 dni",
       "last90days": "Ostatnie 90 dni",
       "lastYear": "Ostatni rok",
+      "allClientsInSystem": "Łącznie w systemie",
       "statuses": {
         "pending_confirmation": "Oczekujące",
         "scheduled": "Zaplanowane",

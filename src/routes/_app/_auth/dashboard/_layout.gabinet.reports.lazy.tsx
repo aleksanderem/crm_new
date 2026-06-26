@@ -89,13 +89,23 @@ const UTILIZATION_COLORS = [
   "var(--chart-5)",
 ];
 
-type DateRangeKey = "7d" | "30d" | "90d" | "365d" | "custom";
+type DateRangeKey = "today" | "yesterday" | "7d" | "30d" | "90d" | "365d" | "custom";
 
 function getPresetDateRange(key: Exclude<DateRangeKey, "custom">): {
   startDate: string;
   endDate: string;
 } {
   const today = new Date();
+  if (key === "today") {
+    const iso = today.toISOString().split("T")[0];
+    return { startDate: iso, endDate: iso };
+  }
+  if (key === "yesterday") {
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const iso = yesterday.toISOString().split("T")[0];
+    return { startDate: iso, endDate: iso };
+  }
   const past = new Date(today);
   const days = key === "7d" ? 7 : key === "30d" ? 30 : key === "90d" ? 90 : 365;
   past.setDate(past.getDate() - days);
@@ -862,6 +872,8 @@ function GabinetReports() {
 
   const rangeLabel = useMemo(() => {
     const labels: Record<Exclude<DateRangeKey, "custom">, string> = {
+      "today": t("gabinet.reports.today"),
+      "yesterday": t("gabinet.reports.yesterday"),
       "7d": t("gabinet.reports.last7days"),
       "30d": t("gabinet.reports.last30days"),
       "90d": t("gabinet.reports.last90days"),
@@ -1260,6 +1272,8 @@ function GabinetReports() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="today">{t("gabinet.reports.today")}</SelectItem>
+            <SelectItem value="yesterday">{t("gabinet.reports.yesterday")}</SelectItem>
             <SelectItem value="7d">{t("gabinet.reports.last7days")}</SelectItem>
             <SelectItem value="30d">{t("gabinet.reports.last30days")}</SelectItem>
             <SelectItem value="90d">{t("gabinet.reports.last90days")}</SelectItem>

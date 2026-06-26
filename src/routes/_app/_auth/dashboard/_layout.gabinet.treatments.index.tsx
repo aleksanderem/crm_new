@@ -82,6 +82,8 @@ function TreatmentsIndex() {
   const createTreatment = useAction(api.gabinet.treatments.create);
   const updateTreatment = useAction(api.gabinet.treatments.update);
   const removeTreatment = useAction(api.gabinet.treatments.remove);
+  const getTreatmentProductsAction = useAction(api.gabinet.treatments.getTreatmentProducts);
+  const setTreatmentProductsAction = useAction(api.gabinet.treatments.setTreatmentProducts);
 
   const { allowed: canEdit } = usePermission("gabinet_treatments", "edit");
   const { allowed: canDelete } = usePermission("gabinet_treatments", "delete");
@@ -189,6 +191,16 @@ function TreatmentsIndex() {
   const { data: allPackages } = useSupabaseGabinetTreatmentPackagesList(organizationId);
   const { data: allEquipment = [] } = useSupabaseGabinetEquipmentList(organizationId);
   const [groupByEquipment, setGroupByEquipment] = useState(false);
+
+  const { data: editingTreatmentProducts } = useQuery({
+    queryKey: ["gabinet.treatments.getTreatmentProducts", organizationId, editingTreatment?._id ?? ""],
+    queryFn: () =>
+      getTreatmentProductsAction({
+        organizationId,
+        treatmentId: editingTreatment!._id,
+      }),
+    enabled: !!organizationId && !!editingTreatment?._id,
+  });
 
   const packageNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -457,21 +469,46 @@ function TreatmentsIndex() {
       setIsSubmitting(true);
       setFieldErrors({});
       try {
+        const { products, ...treatmentData } = formData;
         if (editingTreatment) {
           await updateTreatment({
             organizationId,
             treatmentId: editingTreatment._id as Id<"gabinetTreatments">,
-            ...formData,
+            ...treatmentData,
             tagIds,
             categoryId: categoryId ?? null,
           });
+          if (products !== undefined) {
+            await setTreatmentProductsAction({
+              organizationId,
+              treatmentId: editingTreatment._id,
+              products: products.map((p) => ({
+                productId: p.productId,
+                productSection: "treatment" as const,
+                quantity: p.quantity,
+                unit: p.unit ?? undefined,
+              })),
+            });
+          }
         } else {
-          await createTreatment({
+          const newTreatmentId = await createTreatment({
             organizationId,
-            ...formData,
+            ...treatmentData,
             tagIds,
             categoryId,
           });
+          if (products && products.length > 0) {
+            await setTreatmentProductsAction({
+              organizationId,
+              treatmentId: newTreatmentId,
+              products: products.map((p) => ({
+                productId: p.productId,
+                productSection: "treatment" as const,
+                quantity: p.quantity,
+                unit: p.unit ?? undefined,
+              })),
+            });
+          }
         }
         setPanelOpen(false);
         setEditingTreatment(null);
@@ -513,7 +550,7 @@ function TreatmentsIndex() {
         setIsSubmitting(false);
       }
     },
-    [editingTreatment, createTreatment, updateTreatment, organizationId, tagIds, categoryId, t],
+    [editingTreatment, createTreatment, updateTreatment, setTreatmentProductsAction, organizationId, tagIds, categoryId, t],
   );
 
   const handleBulkAction = useCallback(
@@ -800,7 +837,7 @@ function TreatmentsIndex() {
         }
       >
         <TreatmentForm
-          key={editingTreatment?._id ?? "new"}
+          key={editingTreatment?._id ? `${editingTreatment._id}-${editingTreatmentProducts !== undefined ? "p" : "np"}` : "new"}
           organizationId={organizationId}
           initialData={
             editingTreatment
@@ -831,6 +868,11 @@ function TreatmentsIndex() {
                     (editingTreatment.requiredFormTemplates as
                       | TreatmentFormData["requiredFormTemplates"]
                       | undefined) ?? undefined,
+                  products: (editingTreatmentProducts ?? []).map((p) => ({
+                    productId: p.productId,
+                    quantity: p.quantity,
+                    unit: p.unit ?? p.stockUnit ?? null,
+                  })),
                 }
               : undefined
           }

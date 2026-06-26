@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useSupabaseGabinetTreatmentPackagesActive } from "@/hooks/use-supabase-gabinet-packages";
+import { useSupabaseProductsList } from "@/hooks/use-supabase-products";
 import {
   Command,
   CommandEmpty,
@@ -28,7 +29,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import { Check, ChevronsUpDown, Plus } from "@/lib/ez-icons";
+import { Check, ChevronsUpDown, Plus, Trash2 } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import { formatActionError } from "@/lib/format-action-error";
 import {
@@ -36,6 +37,12 @@ import {
   type RequiredFormTemplateValue,
 } from "@/components/documents/treatment-required-documents-field";
 import type { Id } from "@cvx/_generated/dataModel";
+
+export interface TreatmentProductLine {
+  productId: string;
+  quantity: number;
+  unit?: string | null;
+}
 
 export interface TreatmentFormData {
   name: string;
@@ -55,6 +62,7 @@ export interface TreatmentFormData {
   treatmentCount?: number;
   packageId?: string | null;
   requiredFormTemplates?: RequiredFormTemplateValue[];
+  products?: TreatmentProductLine[];
 }
 
 interface TreatmentFormProps {
@@ -129,8 +137,17 @@ export function TreatmentForm({
     initialPackageId ?? "",
   );
 
+  const [productLines, setProductLines] = useState<TreatmentProductLine[]>(
+    initialData?.products ?? [],
+  );
+  const [productPickerOpen, setProductPickerOpen] = useState<number | null>(null);
+
   const { data: packagesList } =
     useSupabaseGabinetTreatmentPackagesActive(organizationId);
+
+  const { data: treatmentProducts } = useSupabaseProductsList(organizationId, {
+    productSection: "treatment",
+  });
 
   const queryClient = useQueryClient();
   const listEquipmentAction = useAction(api.gabinet.equipment.listEquipment);
@@ -158,6 +175,25 @@ export function TreatmentForm({
 
   const getEquipmentName = (id: Id<"gabinetEquipment">) => {
     return equipmentList?.find((e) => e._id === id)?.name ?? id;
+  };
+
+  const addProductLine = () => {
+    setProductLines((prev) => [...prev, { productId: "", quantity: 1, unit: null }]);
+  };
+
+  const removeProductLine = (index: number) => {
+    setProductLines((prev) => prev.filter((_, i) => i !== index));
+    if (productPickerOpen === index) setProductPickerOpen(null);
+  };
+
+  const updateProductLine = (index: number, patch: Partial<TreatmentProductLine>) => {
+    setProductLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)));
+  };
+
+  const selectProduct = (index: number, productId: string) => {
+    const product = (treatmentProducts ?? []).find((p) => p._id === productId);
+    updateProductLine(index, { productId, unit: product?.stockUnit ?? null });
+    setProductPickerOpen(null);
   };
 
   const resetAddEquipmentForm = () => {
@@ -201,6 +237,8 @@ export function TreatmentForm({
         : undefined
       : undefined;
 
+    const validProducts = productLines.filter((p) => p.productId.trim() !== "");
+
     onSubmit({
       name,
       description: notes || null,
@@ -217,6 +255,7 @@ export function TreatmentForm({
       color: initialData?.color ?? null,
       packageId: isPackage && selectedPackageId ? selectedPackageId : null,
       requiredFormTemplates,
+      products: validProducts,
     });
   };
 
@@ -526,6 +565,149 @@ export function TreatmentForm({
             </p>
           )}
         </div>
+      </div>
+
+      {/* Preparaty do zabiegu */}
+      <div className="space-y-3 border-t pt-4">
+        <div>
+          <Label className="text-sm font-medium">
+            Preparaty do zabiegu
+          </Label>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Preparaty używane podczas jednej wizyty, np. ampułka, serum, krem znieczulający.
+          </p>
+        </div>
+
+        {productLines.length > 0 && (
+          <div className="space-y-2">
+            {productLines.map((line, index) => {
+              const selectedProduct = (treatmentProducts ?? []).find(
+                (p) => p._id === line.productId,
+              );
+              return (
+                <div
+                  key={index}
+                  className="flex flex-col gap-2 rounded-md border p-2 sm:flex-row sm:items-center"
+                >
+                  {/* Product picker */}
+                  <Popover
+                    open={productPickerOpen === index}
+                    onOpenChange={(open) =>
+                      setProductPickerOpen(open ? index : null)
+                    }
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={productPickerOpen === index}
+                        className="flex-1 justify-between font-normal min-w-0"
+                      >
+                        <span className="truncate">
+                          {selectedProduct
+                            ? selectedProduct.name
+                            : <span className="text-muted-foreground">Wybierz preparat...</span>}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-72 p-0"
+                      align="start"
+                      style={{
+                        maxHeight: "var(--radix-popover-content-available-height)",
+                      }}
+                    >
+                      <Command>
+                        <CommandInput placeholder="Szukaj preparatu..." />
+                        <CommandList>
+                          <CommandEmpty>Brak wyników.</CommandEmpty>
+                          <CommandGroup>
+                            {(treatmentProducts ?? []).map((product) => (
+                              <CommandItem
+                                key={product._id}
+                                value={product.name}
+                                onSelect={() => selectProduct(index, product._id)}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    line.productId === product._id
+                                      ? "opacity-100"
+                                      : "opacity-0",
+                                  )}
+                                />
+                                <span className="truncate">{product.name}</span>
+                                {product.stockUnit && (
+                                  <span className="ml-auto text-xs text-muted-foreground shrink-0">
+                                    {product.stockUnit}
+                                  </span>
+                                )}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+
+                  {/* Quantity + unit + remove */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="any"
+                      value={line.quantity}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (!Number.isNaN(val) && val >= 0) {
+                          updateProductLine(index, { quantity: val });
+                        }
+                      }}
+                      onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
+                      className="w-20 text-right"
+                      aria-label="Ilość"
+                    />
+                    {line.unit ? (
+                      <span className="w-10 text-sm text-muted-foreground">{line.unit}</span>
+                    ) : (
+                      <span className="w-10" />
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive shrink-0"
+                      onClick={() => removeProductLine(index)}
+                      aria-label="Usuń preparat"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {productLines.length === 0 && (
+          <p className="text-sm text-muted-foreground py-1">
+            Brak przypisanych preparatów.
+          </p>
+        )}
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addProductLine}
+          className="w-full sm:w-auto"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Dodaj preparat
+        </Button>
       </div>
 
       <div className="space-y-4 border-t pt-4">

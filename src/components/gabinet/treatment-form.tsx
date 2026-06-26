@@ -63,6 +63,7 @@ export interface TreatmentFormData {
   packageId?: string | null;
   requiredFormTemplates?: RequiredFormTemplateValue[];
   products?: TreatmentProductLine[];
+  materials?: TreatmentProductLine[];
 }
 
 interface TreatmentFormProps {
@@ -142,11 +143,20 @@ export function TreatmentForm({
   );
   const [productPickerOpen, setProductPickerOpen] = useState<number | null>(null);
 
+  const [materialLines, setMaterialLines] = useState<TreatmentProductLine[]>(
+    initialData?.materials ?? [],
+  );
+  const [materialPickerOpen, setMaterialPickerOpen] = useState<number | null>(null);
+
   const { data: packagesList } =
     useSupabaseGabinetTreatmentPackagesActive(organizationId);
 
   const { data: treatmentProducts } = useSupabaseProductsList(organizationId, {
     productSection: "treatment",
+  });
+
+  const { data: disposableProducts } = useSupabaseProductsList(organizationId, {
+    productSection: "disposable",
   });
 
   const queryClient = useQueryClient();
@@ -196,6 +206,25 @@ export function TreatmentForm({
     setProductPickerOpen(null);
   };
 
+  const addMaterialLine = () => {
+    setMaterialLines((prev) => [...prev, { productId: "", quantity: 1, unit: null }]);
+  };
+
+  const removeMaterialLine = (index: number) => {
+    setMaterialLines((prev) => prev.filter((_, i) => i !== index));
+    if (materialPickerOpen === index) setMaterialPickerOpen(null);
+  };
+
+  const updateMaterialLine = (index: number, patch: Partial<TreatmentProductLine>) => {
+    setMaterialLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)));
+  };
+
+  const selectMaterial = (index: number, productId: string) => {
+    const product = (disposableProducts ?? []).find((p) => p._id === productId);
+    updateMaterialLine(index, { productId, unit: product?.stockUnit ?? null });
+    setMaterialPickerOpen(null);
+  };
+
   const resetAddEquipmentForm = () => {
     setAddingNewEquipment(false);
     setNewEquipmentName("");
@@ -238,6 +267,7 @@ export function TreatmentForm({
       : undefined;
 
     const validProducts = productLines.filter((p) => p.productId.trim() !== "");
+    const validMaterials = materialLines.filter((m) => m.productId.trim() !== "");
 
     onSubmit({
       name,
@@ -256,6 +286,7 @@ export function TreatmentForm({
       packageId: isPackage && selectedPackageId ? selectedPackageId : null,
       requiredFormTemplates,
       products: validProducts,
+      materials: validMaterials,
     });
   };
 
@@ -656,7 +687,8 @@ export function TreatmentForm({
                   </Popover>
 
                   {/* Quantity + unit + remove */}
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-xs text-muted-foreground">Ilość:</span>
                     <Input
                       type="number"
                       inputMode="decimal"
@@ -670,13 +702,13 @@ export function TreatmentForm({
                         }
                       }}
                       onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
-                      className="w-20 text-right"
+                      className="w-16 text-right"
                       aria-label="Ilość"
                     />
                     {line.unit ? (
-                      <span className="w-10 text-sm text-muted-foreground">{line.unit}</span>
+                      <span className="text-sm text-muted-foreground min-w-[2rem]">{line.unit}</span>
                     ) : (
-                      <span className="w-10" />
+                      <span className="min-w-[2rem]" />
                     )}
                     <Button
                       type="button"
@@ -710,6 +742,150 @@ export function TreatmentForm({
         >
           <Plus className="mr-2 h-4 w-4" />
           Dodaj preparat
+        </Button>
+      </div>
+
+      {/* Materiały jednorazowe / zużywalne */}
+      <div className="space-y-3 border-t pt-4">
+        <div>
+          <Label className="text-sm font-medium">
+            Materiały jednorazowe / zużywalne
+          </Label>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Materiały zużywane podczas jednej wizyty, np. igły, gaziki, rękawiczki.
+          </p>
+        </div>
+
+        {materialLines.length > 0 && (
+          <div className="space-y-2">
+            {materialLines.map((line, index) => {
+              const selectedMaterial = (disposableProducts ?? []).find(
+                (p) => p._id === line.productId,
+              );
+              return (
+                <div
+                  key={index}
+                  className="flex flex-col gap-2 rounded-md border p-2 sm:flex-row sm:items-center"
+                >
+                  {/* Material picker */}
+                  <Popover
+                    open={materialPickerOpen === index}
+                    onOpenChange={(open) =>
+                      setMaterialPickerOpen(open ? index : null)
+                    }
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={materialPickerOpen === index}
+                        className="flex-1 justify-between font-normal min-w-0"
+                      >
+                        <span className="truncate">
+                          {selectedMaterial
+                            ? selectedMaterial.name
+                            : <span className="text-muted-foreground">Wybierz materiał...</span>}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-72 p-0"
+                      align="start"
+                      style={{
+                        maxHeight: "var(--radix-popover-content-available-height)",
+                      }}
+                    >
+                      <Command>
+                        <CommandInput placeholder="Szukaj materiału..." />
+                        <CommandList>
+                          <CommandEmpty>Brak wyników.</CommandEmpty>
+                          <CommandGroup>
+                            {(disposableProducts ?? []).map((product) => (
+                              <CommandItem
+                                key={product._id}
+                                value={product.name}
+                                onSelect={() => selectMaterial(index, product._id)}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    line.productId === product._id
+                                      ? "opacity-100"
+                                      : "opacity-0",
+                                  )}
+                                />
+                                <span className="truncate">{product.name}</span>
+                                {product.stockUnit && (
+                                  <span className="ml-auto text-xs text-muted-foreground shrink-0">
+                                    {product.stockUnit}
+                                  </span>
+                                )}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+
+                  {/* Quantity + unit + remove */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-xs text-muted-foreground">Ilość:</span>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="any"
+                      value={line.quantity}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (!Number.isNaN(val) && val >= 0) {
+                          updateMaterialLine(index, { quantity: val });
+                        }
+                      }}
+                      onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
+                      className="w-16 text-right"
+                      aria-label="Ilość"
+                    />
+                    {line.unit ? (
+                      <span className="text-sm text-muted-foreground min-w-[2rem]">{line.unit}</span>
+                    ) : (
+                      <span className="min-w-[2rem]" />
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive shrink-0"
+                      onClick={() => removeMaterialLine(index)}
+                      aria-label="Usuń materiał"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {materialLines.length === 0 && (
+          <p className="text-sm text-muted-foreground py-1">
+            Brak przypisanych materiałów.
+          </p>
+        )}
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addMaterialLine}
+          className="w-full sm:w-auto"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Dodaj materiał
         </Button>
       </div>
 

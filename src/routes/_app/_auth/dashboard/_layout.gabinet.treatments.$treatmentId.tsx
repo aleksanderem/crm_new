@@ -430,28 +430,35 @@ function TreatmentDetail() {
   const handleEditSubmit = async (formData: TreatmentFormData) => {
     setIsSubmitting(true);
     try {
-      const { products, ...treatmentData } = formData;
+      const { products, materials, ...treatmentData } = formData;
       await updateTreatment({
         organizationId,
         treatmentId: treatmentId as Id<"gabinetTreatments">,
         ...treatmentData,
         categoryId: editCategoryId ?? null,
       });
-      if (products !== undefined) {
-        await setTreatmentProductsAction({
-          organizationId,
-          treatmentId: treatmentId as string,
-          products: products.map((p) => ({
-            productId: p.productId,
-            productSection: "treatment" as const,
-            quantity: p.quantity,
-            unit: p.unit ?? undefined,
-          })),
-        });
-        void queryClient.invalidateQueries({
-          queryKey: ["gabinet.treatments.getTreatmentProducts", organizationId, treatmentId],
-        });
-      }
+      const allProductLinks = [
+        ...(products ?? []).map((p) => ({
+          productId: p.productId,
+          productSection: "treatment" as const,
+          quantity: p.quantity,
+          unit: p.unit ?? undefined,
+        })),
+        ...(materials ?? []).map((m) => ({
+          productId: m.productId,
+          productSection: "disposable" as const,
+          quantity: m.quantity,
+          unit: m.unit ?? undefined,
+        })),
+      ];
+      await setTreatmentProductsAction({
+        organizationId,
+        treatmentId: treatmentId as string,
+        products: allProductLinks,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["gabinet.treatments.getTreatmentProducts", organizationId, treatmentId],
+      });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.detail(organizationId, treatmentId) });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(organizationId) });
       setEditPanelOpen(false);
@@ -1313,11 +1320,20 @@ function TreatmentDetail() {
                 (treatment.requiredFormTemplates as
                   | TreatmentFormData["requiredFormTemplates"]
                   | undefined) ?? undefined,
-              products: (existingProducts ?? []).map((p) => ({
-                productId: p.productId,
-                quantity: p.quantity,
-                unit: p.unit ?? p.stockUnit ?? null,
-              })),
+              products: (existingProducts ?? [])
+                .filter((p) => p.productSection === "treatment")
+                .map((p) => ({
+                  productId: p.productId,
+                  quantity: p.quantity,
+                  unit: p.unit ?? p.stockUnit ?? null,
+                })),
+              materials: (existingProducts ?? [])
+                .filter((p) => p.productSection === "disposable")
+                .map((p) => ({
+                  productId: p.productId,
+                  quantity: p.quantity,
+                  unit: p.unit ?? p.stockUnit ?? null,
+                })),
             }}
             onSubmit={handleEditSubmit}
             onCancel={() => setEditPanelOpen(false)}

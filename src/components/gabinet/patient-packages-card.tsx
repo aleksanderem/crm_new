@@ -245,12 +245,12 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
                         {nextAppointment
                           ? t(
                               "gabinet.packages.nextVisit",
-                              "Next visit: {{date}}",
+                              "Następna wizyta: {{date}}",
                               {
                                 date: new Date(nextAppointment.date).toLocaleDateString("pl-PL"),
                               },
                             )
-                          : t("gabinet.packages.noNextVisit", "No next visit booked")}
+                          : t("gabinet.packages.noNextVisit", "Brak zaplanowanej kolejnej wizyty")}
                       </p>
                     )}
 

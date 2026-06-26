@@ -3541,7 +3541,14 @@
       "periodTotal": "Period total",
       "ofTotal": "of total",
       "topN": "Top {{count}}",
-      "collectedFromPayments": "Based on recorded payments"
+      "collectedFromPayments": "Based on recorded payments",
+      "paymentMethods": "Payment Methods",
+      "paymentMethod": {
+        "cash": "Cash",
+        "card": "Card",
+        "transfer": "Transfer",
+        "other": "Other"
+      }
     },
     "bodyChart": {
       "description": "Mark body areas related to the appointment",

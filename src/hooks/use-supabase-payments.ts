@@ -135,6 +135,7 @@ export interface PaymentRevenueSummary {
   amount: number;
   paidAt: number;
   currency: string;
+  paymentMethod?: string;
 }
 
 /**
@@ -167,7 +168,7 @@ export function useSupabasePaymentsRevenueByDateRange(
 
       const { data, error } = await client
         .from("payments")
-        .select("amount, paid_at, currency")
+        .select("amount, paid_at, currency, payment_method")
         .eq("organization_id", organizationId)
         .eq("status", "completed")
         .neq("payment_method", "gratis")
@@ -182,6 +183,7 @@ export function useSupabasePaymentsRevenueByDateRange(
         amount: Number(row.amount),
         paidAt: Number(row.paid_at ?? 0),
         currency: (row.currency as string) ?? "PLN",
+        paymentMethod: (row.payment_method as string | null) ?? undefined,
       }));
     },
     enabled: enabled && isReady && !!organizationId && !!startDate && !!endDate,

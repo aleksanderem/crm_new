@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PermissionGate } from "@/hooks/use-permission";
 import { useOrganization } from "@/components/org-context";
-import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
+import { useSupabaseGabinetAppointmentsByDateRange, useSupabaseGabinetAppointmentPaymentTotals, useSupabaseGabinetAppointmentPackagePositions } from "@/hooks/use-supabase-gabinet-appointments";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
+import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
+import { useSupabaseGabinetPackageUsageActive, useSupabaseGabinetTreatmentPackagesList } from "@/hooks/use-supabase-gabinet-packages";
 import {
   useSupabaseGabinetWeeklyAppointments,
   useSupabaseGabinetMonthlyNewPatients,
@@ -20,7 +22,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { ReactNode } from "react";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
@@ -34,8 +36,11 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  ChevronDown,
-  ChevronUp,
+  Calendar,
+  CreditCard,
+  Package,
+  UserPlus,
+  Plus,
 } from "@/lib/ez-icons";
 
 // shadcn/studio statistics blocks
@@ -53,11 +58,11 @@ function GabinetDashboardSkeleton() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <Skeleton className="h-10 w-72" />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Skeleton className="h-32" />
-        <Skeleton className="h-32" />
-        <Skeleton className="h-32" />
-        <Skeleton className="h-32" />
+      <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
+        <Skeleton className="h-28" />
+        <Skeleton className="h-28" />
+        <Skeleton className="h-28" />
+        <Skeleton className="h-28" />
       </div>
       <Skeleton className="h-64" />
       <div className="grid gap-6 md:grid-cols-2">
@@ -105,7 +110,6 @@ function GabinetDashboard() {
   const { organizationId } = useOrganization();
   const today = new Date().toISOString().split("T")[0];
   const todayScheduleRef = useRef<HTMLDivElement | null>(null);
-  const [showStatsMobile, setShowStatsMobile] = useState(false);
 
   useSidebarDispatch("viewTodaySchedule", () => {
     todayScheduleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -117,14 +121,16 @@ function GabinetDashboard() {
   );
 
   const { data: patientsData } = useSupabaseGabinetPatientsList(organizationId);
-
   const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId);
+  const { data: leavesData } = useSupabaseGabinetLeavesList(organizationId);
+  const { data: employeesData } = useSupabaseGabinetEmployeesList(organizationId, { activeOnly: true });
+  const { data: activePackageUsages } = useSupabaseGabinetPackageUsageActive(organizationId);
+  const { data: packagesList } = useSupabaseGabinetTreatmentPackagesList(organizationId);
+
   const treatments = useMemo(
     () => (treatmentsData ?? []).filter((tr) => tr.isActive),
     [treatmentsData],
   );
-
-  const { data: leavesData } = useSupabaseGabinetLeavesList(organizationId);
 
   // --- Sparkline data (Supabase-backed) ---
   const { data: weeklyAppointments } = useSupabaseGabinetWeeklyAppointments(organizationId);
@@ -136,7 +142,7 @@ function GabinetDashboard() {
   const { data: statusDistribution } = useSupabaseGabinetAppointmentStatusDistribution(organizationId);
   const { data: topTreatments } = useSupabaseGabinetTopTreatments(organizationId);
 
-  // --- Derived data ---
+  // --- Derived maps ---
   const patientMap = useMemo(
     () => new Map((patientsData ?? []).map((p) => [p._id, `${p.firstName} ${p.lastName}`])),
     [patientsData],
@@ -147,18 +153,85 @@ function GabinetDashboard() {
     [treatments],
   );
 
+  const employeeMap = useMemo(
+    () => new Map(
+      (employeesData ?? []).map((e) => [e._id, [e.firstName, e.lastName].filter(Boolean).join(" ")])
+    ),
+    [employeesData],
+  );
+
+  const packageNameMap = useMemo(
+    () => new Map((packagesList ?? []).map((p) => [p._id, p.name])),
+    [packagesList],
+  );
+
   const enrichedAppointments = useMemo(() => {
     return (todayAppointments ?? []).map((a) => ({
       ...a,
       patientName: patientMap.get(a.patientId) ?? t("common.unknown"),
       treatmentName: a.treatmentId ? (treatmentMap.get(a.treatmentId) ?? t("common.unknown")) : t("common.unknown"),
+      employeeName: employeeMap.get(a.employeeId) ?? undefined,
     }));
-  }, [todayAppointments, patientMap, treatmentMap, t]);
+  }, [todayAppointments, patientMap, treatmentMap, employeeMap, t]);
+
+  // --- Package positions for today's appointments ---
+  const packageUsageIdsFromToday = useMemo(
+    () => (todayAppointments ?? []).flatMap((a) => (a.packageUsageId ? [a.packageUsageId] : [])),
+    [todayAppointments],
+  );
+
+  const { data: packagePositions } = useSupabaseGabinetAppointmentPackagePositions(
+    organizationId,
+    packageUsageIdsFromToday,
+    { enabled: packageUsageIdsFromToday.length > 0 },
+  );
+
+  // --- Payment totals for today's appointments (to-settle) ---
+  const todayApptIds = useMemo(
+    () => (todayAppointments ?? []).map((a) => a._id),
+    [todayAppointments],
+  );
+
+  const { data: paymentTotals } = useSupabaseGabinetAppointmentPaymentTotals(
+    organizationId,
+    todayApptIds,
+    { enabled: todayApptIds.length > 0 },
+  );
+
+  // Appointments needing settlement: not cancelled/no_show, have a price, paid less than price
+  const toSettleAppointments = useMemo(() => {
+    if (!paymentTotals && todayApptIds.length > 0) return [];
+    return enrichedAppointments.filter((a) => {
+      if (a.status === "cancelled" || a.status === "no_show") return false;
+      const price = a.priceAtBooking ?? 0;
+      if (price <= 0) return false;
+      const paid = paymentTotals?.get(a._id) ?? 0;
+      return paid < price;
+    });
+  }, [enrichedAppointments, paymentTotals, todayApptIds.length]);
+
+  // Active package usages enriched with patient/package info
+  const enrichedActivePackages = useMemo(() => {
+    return (activePackageUsages ?? [])
+      .slice(0, 6)
+      .map((u) => {
+        const totalUsed = u.treatmentsUsed.reduce((s, e) => s + e.usedCount, 0);
+        const totalAllowed = u.treatmentsUsed.reduce((s, e) => s + e.totalCount, 0);
+        return {
+          ...u,
+          patientName: patientMap.get(u.patientId) ?? t("common.unknown"),
+          packageName: packageNameMap.get(u.packageId) ?? t("gabinet.dashboard.package", "Pakiet"),
+          totalUsed,
+          totalAllowed,
+        };
+      });
+  }, [activePackageUsages, patientMap, packageNameMap, t]);
 
   const pendingLeaves = (leavesData ?? []).filter((l) => l.status === "pending");
   const totalPatients = patientsData?.length ?? 0;
   const totalTreatments = treatments?.length ?? 0;
   const todayCount = enrichedAppointments.length;
+  const completedTodayCount = enrichedAppointments.filter((a) => a.status === "completed").length;
 
   // --- Build sparkline chart data for statistics cards ---
   const appointmentChartData = (weeklyAppointments ?? []).map((d) => ({
@@ -292,33 +365,14 @@ function GabinetDashboard() {
     : 0;
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-4 p-4 md:gap-6 md:p-6">
       <PageHeader
         title={t("gabinet.dashboard.title")}
         description={t("gabinet.dashboard.description")}
       />
 
-      {/* Mobile-only toggle: collapse KPI cards by default on small screens */}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => setShowStatsMobile((s) => !s)}
-        aria-expanded={showStatsMobile}
-        className="md:hidden w-full justify-between"
-      >
-        {showStatsMobile ? t("common.hideStats") : t("common.showStats")}
-        {showStatsMobile ? (
-          <ChevronUp className="size-4" />
-        ) : (
-          <ChevronDown className="size-4" />
-        )}
-      </Button>
-
-      {/* KPI Statistics Cards */}
-      <div
-        className={`${showStatsMobile ? "grid" : "hidden md:grid"} gap-4 sm:grid-cols-2 xl:grid-cols-4`}
-      >
+      {/* 1. KPI tiles — always visible, 2-column on mobile */}
+      <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
         <Link to="/dashboard/gabinet/calendar" className="block">
           <StatisticsOrderCard
             title={t("gabinet.dashboard.todayAppointments")}
@@ -326,6 +380,19 @@ function GabinetDashboard() {
             value={String(todayCount)}
             changePercentage={t("gabinet.dashboard.today", "Dziś")}
             chartData={appointmentChartData.length > 0 ? appointmentChartData : undefined}
+          />
+        </Link>
+        <Link to="/dashboard/gabinet/calendar" className="block">
+          <StatisticsProfitCard
+            title={t("gabinet.dashboard.completedTreatments", "Wykonane zabiegi")}
+            description={t("gabinet.dashboard.today", "Dziś")}
+            value={String(completedTodayCount)}
+            changePercentage={
+              weeklyCompleted
+                ? `${weeklyCompleted.reduce((s, d) => s + d.completed, 0)} ${t("gabinet.dashboard.thisWeekShort", "w tym tyg.")}`
+                : ""
+            }
+            chartData={completedChartData.length > 0 ? completedChartData : undefined}
           />
         </Link>
         <Link to="/dashboard/gabinet/patients" className="block">
@@ -340,19 +407,6 @@ function GabinetDashboard() {
             }
             chartData={patientChartData.length > 0 ? patientChartData : undefined}
             gradientId="fillPatients"
-          />
-        </Link>
-        <Link to="/dashboard/gabinet/treatments" className="block">
-          <StatisticsProfitCard
-            title={t("gabinet.dashboard.completedTreatments", "Wykonane zabiegi")}
-            description={t("gabinet.dashboard.thisWeek", "Ten tydzień")}
-            value={String(totalTreatments)}
-            changePercentage={
-              weeklyCompleted
-                ? `${weeklyCompleted.reduce((s, d) => s + d.completed, 0)} ${t("gabinet.dashboard.thisWeekShort", "w tym tyg.")}`
-                : ""
-            }
-            chartData={completedChartData.length > 0 ? completedChartData : undefined}
           />
         </Link>
         <Link to="/dashboard/gabinet/settings/leaves" className="block">
@@ -370,7 +424,218 @@ function GabinetDashboard() {
         </Link>
       </div>
 
-      {/* Monthly Overview – TotalIncomeCard */}
+      {/* 2. Today's schedule — high priority, full-width */}
+      <div ref={todayScheduleRef} className="scroll-mt-6">
+        <Card className="gap-0 py-0">
+          <CardHeader className="flex flex-row items-center justify-between px-4 py-3">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-semibold">{t("gabinet.dashboard.todaySchedule")}</span>
+              <span className="text-muted-foreground text-xs">
+                {todayCount} {t("gabinet.dashboard.appointmentsPlanned", "zaplanowanych")} · {completedTodayCount} {t("gabinet.dashboard.done", "wykonanych")}
+              </span>
+            </div>
+            <Link
+              to="/dashboard/gabinet/calendar"
+              className="text-primary text-xs font-medium hover:underline"
+            >
+              {t("gabinet.dashboard.goToCalendar")}
+            </Link>
+          </CardHeader>
+          <Separator />
+          <CardContent className="p-0">
+            {enrichedAppointments.length === 0 ? (
+              <div className="p-6 text-center text-sm text-muted-foreground">
+                {t("gabinet.dashboard.noAppointmentsToday")}
+              </div>
+            ) : (
+              <div className="divide-y">
+                {enrichedAppointments.map((a) => {
+                  const pkgPos = a.packageUsageId ? packagePositions?.get(a._id) : undefined;
+                  return (
+                    <div key={a._id} className="flex items-center gap-3 px-4 py-3">
+                      <Avatar className="h-8 w-8 shrink-0">
+                        <AvatarFallback className="text-[10px] font-medium">
+                          {a.patientName
+                            .split(" ")
+                            .map((w) => w[0])
+                            .join("")
+                            .slice(0, 2)
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{a.patientName}</p>
+                        <p className="text-muted-foreground truncate text-xs">
+                          {a.startTime}–{a.endTime} · {a.treatmentName}
+                          {a.employeeName ? ` · ${a.employeeName}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {pkgPos && (
+                          <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
+                            {pkgPos.position}/{pkgPos.total}
+                          </Badge>
+                        )}
+                        <Badge
+                          variant="outline"
+                          className={appointmentStatusBadgeClass(a.status)}
+                        >
+                          {t(`gabinet.appointments.statuses.${a.status}`)}
+                        </Badge>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 3. To-settle + Active packages — side by side on md+ */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* To Settle */}
+        <Card className="gap-0 py-0">
+          <CardHeader className="flex flex-row items-center justify-between px-4 py-3">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-semibold">{t("gabinet.dashboard.toSettle", "Do rozliczenia")}</span>
+              <span className="text-muted-foreground text-xs">
+                {t("gabinet.dashboard.todayUnpaid", "Dzisiejsze nieopłacone")}
+              </span>
+            </div>
+          </CardHeader>
+          <Separator />
+          <CardContent className="p-0">
+            {todayApptIds.length > 0 && !paymentTotals ? (
+              <div className="p-4 space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : toSettleAppointments.length === 0 ? (
+              <div className="p-6 text-center text-sm text-muted-foreground">
+                {t("gabinet.dashboard.noUnsettled", "Brak wizyt do rozliczenia")}
+              </div>
+            ) : (
+              <div className="divide-y">
+                {toSettleAppointments.map((a) => {
+                  const paid = paymentTotals?.get(a._id) ?? 0;
+                  const price = a.priceAtBooking ?? 0;
+                  const remaining = price - paid;
+                  return (
+                    <div key={a._id} className="flex items-center gap-3 px-4 py-3">
+                      <Avatar className="h-8 w-8 shrink-0">
+                        <AvatarFallback className="text-[10px] font-medium">
+                          {a.patientName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{a.patientName}</p>
+                        <p className="text-muted-foreground truncate text-xs">
+                          {a.startTime} · {a.treatmentName}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-semibold text-destructive">
+                          {remaining.toFixed(2)} zł
+                        </p>
+                        {paid > 0 && (
+                          <p className="text-muted-foreground text-xs">
+                            {t("gabinet.dashboard.paidPartial", "zapł.")} {paid.toFixed(2)} zł
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Active Packages */}
+        <Card className="gap-0 py-0">
+          <CardHeader className="flex flex-row items-center justify-between px-4 py-3">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-semibold">{t("gabinet.dashboard.activePackages", "Aktywne pakiety")}</span>
+              <span className="text-muted-foreground text-xs">
+                {activePackageUsages?.length ?? 0} {t("gabinet.dashboard.activeShort", "aktywnych")}
+              </span>
+            </div>
+            <Link
+              to="/dashboard/gabinet/packages"
+              className="text-primary text-xs font-medium hover:underline"
+            >
+              {t("gabinet.dashboard.viewAll", "Zobacz wszystkie")}
+            </Link>
+          </CardHeader>
+          <Separator />
+          <CardContent className="p-0">
+            {enrichedActivePackages.length === 0 ? (
+              <div className="p-6 text-center text-sm text-muted-foreground">
+                {t("gabinet.dashboard.noActivePackages", "Brak aktywnych pakietów")}
+              </div>
+            ) : (
+              <div className="divide-y">
+                {enrichedActivePackages.map((u) => (
+                  <div key={u._id} className="flex items-center gap-3 px-4 py-3">
+                    <Avatar className="h-8 w-8 shrink-0">
+                      <AvatarFallback className="bg-chart-1/10 text-chart-1 text-[10px] font-medium">
+                        {u.patientName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{u.patientName}</p>
+                      <p className="text-muted-foreground truncate text-xs">{u.packageName}</p>
+                    </div>
+                    <Badge variant="outline" className="text-xs shrink-0">
+                      {u.totalUsed}/{u.totalAllowed}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 4. Quick actions */}
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+        <Link
+          to="/dashboard/gabinet/calendar"
+          className="flex items-center gap-2 rounded-lg border p-3 text-sm font-medium hover:bg-muted/50 transition-colors"
+        >
+          <Calendar className="size-4 shrink-0 text-muted-foreground" />
+          {t("gabinet.dashboard.goToCalendar")}
+        </Link>
+        <Button asChild variant="outline" className="justify-start gap-2 h-auto py-3 px-3">
+          <Link to="/dashboard/gabinet/calendar">
+            <Plus className="size-4 shrink-0 text-muted-foreground" />
+            {t("gabinet.dashboard.addAppointment", "Dodaj wizytę")}
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="justify-start gap-2 h-auto py-3 px-3">
+          <Link to="/dashboard/gabinet/patients">
+            <UserPlus className="size-4 shrink-0 text-muted-foreground" />
+            {t("gabinet.dashboard.addPatient", "Dodaj klienta")}
+          </Link>
+        </Button>
+        <Link
+          to="/dashboard/gabinet/packages"
+          className="flex items-center gap-2 rounded-lg border p-3 text-sm font-medium hover:bg-muted/50 transition-colors"
+        >
+          <Package className="size-4 shrink-0 text-muted-foreground" />
+          {t("gabinet.dashboard.goToPackages")}
+        </Link>
+        <Link
+          to="/dashboard/gabinet/patients"
+          className="flex items-center gap-2 rounded-lg border p-3 text-sm font-medium hover:bg-muted/50 transition-colors"
+        >
+          <CreditCard className="size-4 shrink-0 text-muted-foreground" />
+          {t("gabinet.dashboard.goToPatients")}
+        </Link>
+      </div>
+
+      {/* 5. Monthly Overview – TotalIncomeCard (moved lower) */}
       <TotalIncomeCard
         title={t("gabinet.dashboard.monthlyOverview", "Przegląd miesięczny")}
         subtitle={t("gabinet.dashboard.last6MonthsOverview", "Ostatnie 6 miesięcy")}
@@ -381,7 +646,7 @@ function GabinetDashboard() {
         blurred={monthlyChartData.length < 3}
       />
 
-      {/* Weekly Appointments + Status Distribution */}
+      {/* 6. Weekly Appointments + Status Distribution */}
       <div className="grid gap-6 md:grid-cols-2">
         <EarningReportCard
           title={t("gabinet.dashboard.weeklyAppointments", "Wizyty tygodniowe")}
@@ -404,136 +669,50 @@ function GabinetDashboard() {
         />
       </div>
 
-      {/* Today's schedule + Pending leaves */}
-      <div ref={todayScheduleRef} className="grid gap-6 lg:grid-cols-2 scroll-mt-6">
-        {/* Today's schedule */}
-        <Card className="gap-0 py-0">
-          <CardHeader className="flex flex-row items-center justify-between px-4 py-3">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-semibold">{t("gabinet.dashboard.todaySchedule")}</span>
-              <span className="text-muted-foreground text-xs">
-                {todayCount} {t("gabinet.dashboard.appointmentsPlanned", "zaplanowanych")}
-              </span>
+      {/* 7. Pending leaves — moved to bottom */}
+      <Card className="gap-0 py-0">
+        <CardHeader className="flex flex-row items-center justify-between px-4 py-3">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-semibold">{t("gabinet.dashboard.pendingLeaveRequests")}</span>
+            <span className="text-muted-foreground text-xs">
+              {pendingLeaves.length} {t("gabinet.dashboard.awaitingApproval", "oczekujące")}
+            </span>
+          </div>
+          <Link
+            to="/dashboard/gabinet/settings/leaves"
+            className="text-primary text-xs font-medium hover:underline"
+          >
+            {t("gabinet.dashboard.viewAll", "Zobacz wszystkie")}
+          </Link>
+        </CardHeader>
+        <Separator />
+        <CardContent className="p-0">
+          {pendingLeaves.length === 0 ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">
+              {t("gabinet.dashboard.noPendingLeaves")}
             </div>
-            <Link
-              to="/dashboard/gabinet/calendar"
-              className="text-primary text-xs font-medium hover:underline"
-            >
-              {t("gabinet.dashboard.goToCalendar")}
-            </Link>
-          </CardHeader>
-          <Separator />
-          <CardContent className="p-0">
-            {enrichedAppointments.length === 0 ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                {t("gabinet.dashboard.noAppointmentsToday")}
-              </div>
-            ) : (
-              <div className="divide-y">
-                {enrichedAppointments.map((a) => (
-                  <div key={a._id} className="flex items-center gap-3 px-4 py-3">
-                    <Avatar className="h-8 w-8 shrink-0">
-                      <AvatarFallback className="text-[10px] font-medium">
-                        {a.patientName
-                          .split(" ")
-                          .map((w) => w[0])
-                          .join("")
-                          .slice(0, 2)
-                          .toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{a.patientName}</p>
-                      <p className="text-muted-foreground truncate text-xs">
-                        {a.startTime}–{a.endTime} · {a.treatmentName}
-                      </p>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={appointmentStatusBadgeClass(a.status)}
-                    >
-                      {t(`gabinet.appointments.statuses.${a.status}`)}
-                    </Badge>
+          ) : (
+            <div className="divide-y">
+              {pendingLeaves.map((leave) => (
+                <div key={leave._id} className="flex items-center gap-3 px-4 py-3">
+                  <Avatar className="h-8 w-8 shrink-0">
+                    <AvatarFallback className="bg-chart-4/10 text-chart-4 text-[10px] font-medium">
+                      {leave.type?.charAt(0).toUpperCase() ?? "L"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium capitalize">{leave.type}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {leave.startDate} — {leave.endDate}
+                    </p>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Pending leaves */}
-        <Card className="gap-0 py-0">
-          <CardHeader className="flex flex-row items-center justify-between px-4 py-3">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-semibold">{t("gabinet.dashboard.pendingLeaveRequests")}</span>
-              <span className="text-muted-foreground text-xs">
-                {pendingLeaves.length} {t("gabinet.dashboard.awaitingApproval", "oczekujące")}
-              </span>
+                  <Badge variant="outline">{t("gabinet.leaves.pending")}</Badge>
+                </div>
+              ))}
             </div>
-            <Link
-              to="/dashboard/gabinet/settings/leaves"
-              className="text-primary text-xs font-medium hover:underline"
-            >
-              {t("gabinet.dashboard.viewAll", "Zobacz wszystkie")}
-            </Link>
-          </CardHeader>
-          <Separator />
-          <CardContent className="p-0">
-            {pendingLeaves.length === 0 ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                {t("gabinet.dashboard.noPendingLeaves")}
-              </div>
-            ) : (
-              <div className="divide-y">
-                {pendingLeaves.map((leave) => (
-                  <div key={leave._id} className="flex items-center gap-3 px-4 py-3">
-                    <Avatar className="h-8 w-8 shrink-0">
-                      <AvatarFallback className="bg-chart-4/10 text-chart-4 text-[10px] font-medium">
-                        {leave.type?.charAt(0).toUpperCase() ?? "L"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium capitalize">{leave.type}</p>
-                      <p className="text-muted-foreground text-xs">
-                        {leave.startDate} — {leave.endDate}
-                      </p>
-                    </div>
-                    <Badge variant="outline">{t("gabinet.leaves.pending")}</Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick links */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Link
-          to="/dashboard/gabinet/calendar"
-          className="rounded-lg border p-4 text-center text-sm font-medium hover:bg-muted/50 transition-colors"
-        >
-          {t("gabinet.dashboard.goToCalendar")}
-        </Link>
-        <Link
-          to="/dashboard/gabinet/patients"
-          className="rounded-lg border p-4 text-center text-sm font-medium hover:bg-muted/50 transition-colors"
-        >
-          {t("gabinet.dashboard.goToPatients")}
-        </Link>
-        <Link
-          to="/dashboard/gabinet/packages"
-          className="rounded-lg border p-4 text-center text-sm font-medium hover:bg-muted/50 transition-colors"
-        >
-          {t("gabinet.dashboard.goToPackages")}
-        </Link>
-        <Link
-          to="/dashboard/gabinet/documents"
-          className="rounded-lg border p-4 text-center text-sm font-medium hover:bg-muted/50 transition-colors"
-        >
-          {t("gabinet.dashboard.goToDocuments")}
-        </Link>
-      </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -316,7 +316,7 @@ export const update = action({
       }
 
       // --- Build updates and PATCH to Supabase ---
-      const { organizationId, treatmentId, taxExempt, packageId, ...updates } = args;
+      const { organizationId, treatmentId, taxExempt, packageId, products, ...updates } = args;
       // taxExempt and packageId were added by migrations 00005 and 00010.
       // Use the "field in record" probe so null/false can clear the field once
       // the column exists, while keeping pre-migration environments safe.
@@ -334,12 +334,12 @@ export const update = action({
 
       // --- Optional: replace treatment product ingredients ---
       // Only when `products` was explicitly passed (even if empty = clear all).
-      if (args.products !== undefined) {
+      if (products !== undefined) {
         await saveTreatmentProductLinks(
           db,
           String(organizationId),
           treatmentId,
-          args.products,
+          products,
         );
       }
 

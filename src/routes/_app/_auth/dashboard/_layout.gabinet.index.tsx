@@ -406,7 +406,7 @@ function GabinetDashboard() {
         <Link to="/dashboard/gabinet/patients" className="block">
           <StatisticsSalesGrowthCard
             title={t("gabinet.dashboard.totalPatients")}
-            description={t("gabinet.dashboard.last6Months", "Ostatnie 6 mies.")}
+            description={t("gabinet.dashboard.allTime", "Ogółem")}
             value={String(totalPatients)}
             changePercentage={
               monthlyPatients && monthlyPatients.length > 0

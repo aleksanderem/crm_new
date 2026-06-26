@@ -3522,7 +3522,8 @@
       "goToCalendar": "Otwórz kalendarz",
       "goToPatients": "Klienci",
       "goToPackages": "Pakiety",
-      "goToDocuments": "Dokumenty"
+      "goToDocuments": "Dokumenty",
+      "allTime": "Ogółem"
     },
     "reports": {
       "title": "Raporty Gabinetu",

@@ -3500,7 +3500,8 @@
       "goToCalendar": "Open Calendar",
       "goToPatients": "View Clients",
       "goToPackages": "View Packages",
-      "goToDocuments": "View Documents"
+      "goToDocuments": "View Documents",
+      "allTime": "Total"
     },
     "reports": {
       "title": "Gabinet Reports",

@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Package, Plus, Loader2 } from "@/lib/ez-icons";
+import { Package, Plus, Loader2, Calendar } from "@/lib/ez-icons";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { PackagePurchaseDrawer } from "./package-purchase-drawer";
 import { PlateText } from "@/components/plate-text";
@@ -118,6 +118,24 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
     perTreatment.set(treatmentKey, (perTreatment.get(treatmentKey) ?? 0) + 1);
   }
 
+  // Map usageId -> earliest upcoming appointment for that package.
+  const today = new Date().toISOString().split("T")[0];
+  const nextAppointmentByUsage = new Map<string, { date: string; startTime: string }>();
+  for (const appt of patientAppointments ?? []) {
+    if (!appt.packageUsageId) continue;
+    if (!PENDING_USAGE_STATUSES.has(appt.status)) continue;
+    if (appt.date < today) continue;
+    const usageKey = String(appt.packageUsageId);
+    const existing = nextAppointmentByUsage.get(usageKey);
+    if (
+      !existing ||
+      appt.date < existing.date ||
+      (appt.date === existing.date && appt.startTime < existing.startTime)
+    ) {
+      nextAppointmentByUsage.set(usageKey, { date: appt.date, startTime: appt.startTime });
+    }
+  }
+
   // Multi-session purchases ("pakiety"): anything bundling multiple sessions —
   // either several different treatments, or a multi-session sale of one treatment.
   // Single-session usages live in PatientTreatmentsCard.
@@ -165,6 +183,7 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
               {(expanded ? items : items.slice(0, COLLAPSED_PACKAGE_LIMIT)).map((usage) => {
                 const pkg = packageMap.get(usage.packageId);
                 const pkgName = pkg?.name ?? t("common.unknown");
+                const nextAppointment = nextAppointmentByUsage.get(String(usage._id));
 
                 return (
                   <div
@@ -217,6 +236,21 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
                     {usage.expiresAt && (
                       <p className={`text-xs ${getExpiryColor(usage.expiresAt)}`}>
                         {t("gabinet.packages.expires", "Expires")}: {new Date(usage.expiresAt).toLocaleDateString("pl-PL")}
+                      </p>
+                    )}
+
+                    {usage.status === "active" && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Calendar className="h-3 w-3 shrink-0" variant="stroke" />
+                        {nextAppointment
+                          ? t(
+                              "gabinet.packages.nextVisit",
+                              "Next visit: {{date}}",
+                              {
+                                date: new Date(nextAppointment.date).toLocaleDateString("pl-PL"),
+                              },
+                            )
+                          : t("gabinet.packages.noNextVisit", "No next visit booked")}
                       </p>
                     )}
 

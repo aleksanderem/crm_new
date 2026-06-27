@@ -1824,6 +1824,151 @@ function buildRodoV2Template(c: ComponentMap): BeautyTemplate {
 }
 
 // ---------------------------------------------------------------------------
+// 17. Gotowe – Zgoda na zabieg
+// ---------------------------------------------------------------------------
+
+function buildZgodaNaZabiegTemplate(c: ComponentMap): BeautyTemplate {
+  const doc = {
+    type: "doc",
+    content: [
+      cb(c, "Nagłówek dokumentu"),
+      h2("ZGODA NA WYKONANIE ZABIEGU", true),
+      p(),
+      cb(c, "Dane pacjenta"),
+      cb(c, "Dane zabiegu"),
+      hr(),
+
+      // 1. Informacja o zabiegu
+      h3("Informacja o zabiegu"),
+      p(
+        txt(
+          "Zostałam/zostałem poinformowana/poinformowany o rodzaju, celu i ogólnym przebiegu zabiegu.",
+        ),
+      ),
+      p(),
+
+      // 2. Przeciwwskazania do zabiegu
+      h3("Przeciwwskazania do zabiegu"),
+      p(bold("Przeciwwskazania właściwe dla zabiegu: "), mention("treatment.contraindications")),
+      p(),
+      p(
+        txt(
+          "Przyjmuję do wiadomości, że występowanie niektórych przeciwwskazań może oznaczać konieczność przełożenia zabiegu, zmiany planu zabiegowego albo odmowy wykonania zabiegu ze względów bezpieczeństwa.",
+        ),
+      ),
+      p(),
+
+      // 3. Pytania kontrolne przed zabiegiem
+      hr(),
+      h3("Pytania kontrolne przed zabiegiem"),
+      p(txt("Proszę zaznaczyć, jeśli odpowiedź brzmi Tak:")),
+      p(),
+
+      p(txt("Czy jest Pani w ciąży lub podejrzewa Pani ciążę?")),
+      p(formField("zaz_pregnancy", "checkbox", "Tak — jestem w ciąży lub podejrzewam ciążę")),
+      p(),
+
+      p(txt("Czy karmi Pani piersią?")),
+      p(formField("zaz_breastfeeding", "checkbox", "Tak — karmię piersią")),
+      p(),
+
+      p(txt("Czy występuje aktywna infekcja, gorączka lub stan zapalny?")),
+      p(formField("zaz_infection", "checkbox", "Tak — aktywna infekcja, gorączka lub stan zapalny")),
+      p(formField("zaz_infection_detail", "text", "Jeśli tak — proszę podać szczegóły:", { placeholder: "Rodzaj infekcji, obszar, czas trwania..." })),
+      p(),
+
+      p(txt("Czy występuje aktywna opryszczka?")),
+      p(formField("zaz_herpes", "checkbox", "Tak — aktywna opryszczka")),
+      p(),
+
+      p(txt("Czy przyjmuje Pani/Pan antybiotyk?")),
+      p(formField("zaz_antibiotic", "checkbox", "Tak — przyjmuję antybiotyk")),
+      p(formField("zaz_antibiotic_detail", "text", "Jeśli tak — proszę podać nazwę i od kiedy:", { placeholder: "Nazwa leku, od kiedy stosowany..." })),
+      p(),
+
+      p(txt("Czy przyjmuje Pani/Pan leki światłouczulające?")),
+      p(formField("zaz_photosensitizers", "checkbox", "Tak — przyjmuję leki światłouczulające")),
+      p(formField("zaz_photosensitizers_detail", "text", "Jeśli tak — proszę podać nazwę:", { placeholder: "Nazwa leku lub preparatu..." })),
+      p(),
+
+      p(txt("Czy stosowała/stosował Pani/Pan retinoidy?")),
+      p(formField("zaz_retinoids", "checkbox", "Tak — stosuję lub stosowałam/stosowałem retinoidy")),
+      p(formField("zaz_retinoids_detail", "text", "Jeśli tak — proszę podać nazwę i kiedy ostatnio stosowane:", { placeholder: "Nazwa preparatu, data ostatniego użycia..." })),
+      p(),
+
+      p(txt("Czy występuje świeża opalenizna (słońce, solarium, samoopalacz)?")),
+      p(formField("zaz_sunburn", "checkbox", "Tak — świeża opalenizna")),
+      p(),
+
+      p(txt("Czy choruje Pani/Pan na padaczkę?")),
+      p(formField("zaz_epilepsy", "checkbox", "Tak — choruję na padaczkę")),
+      p(formField("zaz_epilepsy_detail", "text", "Jeśli tak — proszę podać szczegóły:", { placeholder: "Rodzaj napadów, stosowane leki..." })),
+      p(),
+
+      p(txt("Czy choruje Pani/Pan onkologicznie lub jest w trakcie leczenia onkologicznego?")),
+      p(formField("zaz_cancer", "checkbox", "Tak — choroba onkologiczna lub leczenie onkologiczne")),
+      p(formField("zaz_cancer_detail", "text", "Jeśli tak — proszę podać szczegóły:", { placeholder: "Rodzaj choroby, etap leczenia..." })),
+      p(),
+
+      // 4. Możliwe reakcje po zabiegu
+      hr(),
+      h3("Możliwe reakcje po zabiegu"),
+      p(
+        txt(
+          "Zostałam/zostałem poinformowana/poinformowany, że po zabiegu mogą wystąpić reakcje takie jak zaczerwienienie, tkliwość, obrzęk, podrażnienie, uczucie ciepła, suchość skóry, przejściowy dyskomfort lub inne reakcje zależne od rodzaju zabiegu i indywidualnej reakcji organizmu.",
+        ),
+      ),
+      p(),
+
+      // 5. Zalecenia po zabiegu
+      h3("Zalecenia po zabiegu"),
+      p(mention("treatment.aftercareInstructions")),
+      p(
+        txt(
+          "Zobowiązuję się do przestrzegania zaleceń pozabiegowych przekazanych przez osobę wykonującą zabieg. Przyjmuję do wiadomości, że niestosowanie się do zaleceń może mieć wpływ na efekt zabiegu, proces gojenia oraz bezpieczeństwo.",
+        ),
+      ),
+      p(),
+
+      // 6. Oświadczenie klienta
+      hr(),
+      h3("Oświadczenie klienta"),
+      p(
+        italic(
+          "Oświadczam, że zostałam/zostałem poinformowana/poinformowany o rodzaju, celu i przebiegu zabiegu, możliwych reakcjach, przeciwwskazaniach oraz zaleceniach pozabiegowych. Miałam/miałem możliwość zadania pytań i uzyskałam/uzyskałem zrozumiałe odpowiedzi.",
+        ),
+      ),
+      p(),
+      p(
+        italic(
+          "Oświadczam, że podane przeze mnie informacje są zgodne z prawdą i aktualne na dzień podpisania niniejszej zgody. Przyjmuję do wiadomości, że zatajenie lub podanie nieprawdziwych informacji dotyczących stanu zdrowia, przyjmowanych leków, ciąży, infekcji, przebytych zabiegów lub innych przeciwwskazań może mieć wpływ na bezpieczeństwo wykonania zabiegu.",
+        ),
+      ),
+      p(),
+      p(formField("zaz_consent_final", "checkbox", "Wyrażam zgodę na wykonanie wskazanego zabiegu.", { required: true })),
+      p(),
+
+      // 7. Podpis klienta
+      cb(c, "Podpis — klient"),
+    ],
+  };
+
+  return {
+    name: "Gotowe – Zgoda na zabieg",
+    description: "Gotowy formularz zgody na konkretny zabieg — informacja o zabiegu, przeciwwskazania, pytania kontrolne przed zabiegiem, możliwe reakcje, zalecenia pozabiegowe, oświadczenie klienta",
+    category: "consent",
+    folderPath: "Gabinet/Zgody",
+    templateType: "document",
+    formJson: "",
+    contentJson: JSON.stringify(doc),
+    modules: ["gabinet"],
+    entityTypes: ["patient", "treatment", "appointment"],
+    requiresSignature: true,
+    signatureConfig: { method: "draw", signerRole: "patient" },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Build all beauty document templates
 // ---------------------------------------------------------------------------
 
@@ -1832,6 +1977,7 @@ function buildBeautyDocumentTemplates(c: ComponentMap): BeautyTemplate[] {
     buildRodoConsentTemplate(c),
     buildRodoV2Template(c),
     buildGeneralHealthInterviewTemplate(c),
+    buildZgodaNaZabiegTemplate(c),
     buildCosmeticIntakeTemplate(c),
     buildGeneralCosmeticConsentTemplate(c),
     buildLaserConsentTemplate(c),

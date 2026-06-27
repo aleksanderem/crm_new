@@ -2054,69 +2054,120 @@ function buildDokumentacjaZdjieciowaTemplate(c: ComponentMap): BeautyTemplate {
 }
 
 // ---------------------------------------------------------------------------
-// 19. Gotowe – Zgoda na wykorzystanie zdjęć fragmentu zabiegowego
+// 19. Gotowe – Zgoda marketingowa na wykorzystanie zdjęć
 // ---------------------------------------------------------------------------
 
-function buildZgodaFragmentZabiegowegTemplate(c: ComponentMap): BeautyTemplate {
+function buildZgodaMarketingowaTemplate(c: ComponentMap): BeautyTemplate {
   const doc = {
     type: "doc",
     content: [
       cb(c, "Nagłówek dokumentu"),
-      h2("ZGODA NA WYKORZYSTANIE ZDJĘĆ FRAGMENTU ZABIEGOWEGO", true),
+      h2("ZGODA MARKETINGOWA NA WYKORZYSTANIE ZDJĘĆ", true),
       p(),
       cb(c, "Dane pacjenta"),
       hr(),
 
-      h3("Przedmiot zgody"),
+      h3("Cel dokumentu"),
       p(
         txt(
-          "Wyrażam zgodę na wykorzystanie zdjęć przedstawiających wyłącznie fragment zabiegowy, czyli obszar ciała lub skóry, na którym został wykonany zabieg, w celu pokazania efektów terapii, rezultatów pracy gabinetu oraz przykładów możliwych do uzyskania efektów.",
+          "Niniejszy dokument dotyczy zgody na marketingowe wykorzystanie zdjęć wykonanych w gabinecie. Jest to odrębny dokument od zgody na wewnętrzną dokumentację zdjęciową gabinetu.",
         ),
       ),
-      p(),
-
-      h3("Zakres zdjęć"),
-      p(
-        txt(
-          "Zdjęcia mogą przedstawiać między innymi obszar skóry, sylwetki, nóg, brzucha, pleców, ramion, blizny, przebarwienia, owłosienia lub innego fragmentu objętego zabiegiem.",
-        ),
-      ),
-      p(),
-
-      h3("Warunki wykorzystania"),
-      bulletList(
-        [
-          txt(
-            "Zdjęcia będą wykorzystywane bez podawania imienia, nazwiska, danych kontaktowych ani oznaczania profilu klienta.",
-          ),
-        ],
-        [
-          txt(
-            "Celem wykorzystania zdjęć jest pokazanie rzeczywistych efektów zabiegów, pomoc innym klientom w podjęciu świadomej decyzji oraz prezentacja jakości pracy gabinetu.",
-          ),
-        ],
-        [
-          txt(
-            "Zgoda dotyczy wyłącznie zdjęć fragmentu zabiegowego i nie obejmuje celowego pokazywania pełnego wizerunku klienta.",
-          ),
-        ],
-      ),
-      p(),
       p(
         italic(
-          "Niniejsza zgoda jest dobrowolna. Jej brak nie wpływa na jakość świadczonych usług.",
+          "Zgoda jest dobrowolna. Jej brak nie wpływa na jakość świadczonych usług.",
         ),
       ),
       p(),
 
       hr(),
-      h3("Oświadczenie"),
+      h3("Część I – Zgoda na zdjęcia fragmentu zabiegowego"),
+      p(
+        txt(
+          "Zdjęcia fragmentu zabiegowego przedstawiają wyłącznie obszar ciała lub skóry objęty zabiegiem (np. fragment dłoni, pleców, brzucha, nogi, obszar skóry). Zdjęcia te nie zawierają wizerunku twarzy ani elementów umożliwiających rozpoznanie osoby.",
+        ),
+      ),
+      p(),
       p(
         formField(
-          "foto_marketing_consent",
+          "foto_fragment_consent",
           "checkbox",
-          "Wyrażam zgodę na wykorzystanie zdjęć przedstawiających fragment zabiegowy w celu pokazania efektów terapii, rezultatów pracy gabinetu oraz przykładów możliwych do uzyskania efektów. Zdjęcia będą wykorzystywane bez podawania mojego imienia, nazwiska, danych kontaktowych ani oznaczania mojego profilu.",
-          { required: true },
+          "Wyrażam zgodę na wykorzystanie zdjęć przedstawiających fragment zabiegowy (obszar ciała lub skóry objęty zabiegiem) w celu pokazania efektów terapii, rezultatów pracy gabinetu oraz przykładów możliwych do uzyskania efektów. Zdjęcia będą wykorzystywane bez podawania mojego imienia, nazwiska, danych kontaktowych ani oznaczania mojego profilu.",
+          { required: false },
+        ),
+      ),
+      p(),
+
+      hr(),
+      h3("Część II – Zgoda na zdjęcia umożliwiające rozpoznanie klienta"),
+      p(
+        txt(
+          "Zdjęcia umożliwiające rozpoznanie mogą zawierać twarz, profil twarzy, charakterystyczny tatuaż, bliznę, znamię lub inny element, po którym klient może zostać rozpoznany.",
+        ),
+      ),
+      p(),
+      p(
+        txt(
+          "Zdjęcia mogą być wykorzystywane bez podawania imienia, nazwiska, danych kontaktowych ani oznaczania profilu, chyba że klient wyrazi na to osobną zgodę.",
+        ),
+      ),
+      p(),
+      p(
+        formField(
+          "foto_identifiable_consent",
+          "checkbox",
+          "Wyrażam zgodę na wykorzystanie zdjęć, na których mogę być rozpoznawalna/rozpoznawalny (np. widoczna twarz, profil twarzy, charakterystyczny tatuaż, blizna, znamię lub inny element umożliwiający rozpoznanie mojej osoby), w celu pokazania efektów zabiegu, rezultatów terapii oraz jakości pracy gabinetu. Zdjęcia będą wykorzystywane bez podawania moich danych osobowych.",
+          { required: false },
+        ),
+      ),
+      p(),
+
+      hr(),
+      h3("Zakres wykorzystania zdjęć"),
+      p(
+        txt(
+          "Proszę zaznaczyć, w jakich celach gabinet może wykorzystać zdjęcia objęte powyższymi zgodami:",
+        ),
+      ),
+      p(),
+      p(
+        formField(
+          "foto_scope_social_media",
+          "checkbox",
+          "Media społecznościowe (Facebook, Instagram i inne)",
+          { required: false },
+        ),
+      ),
+      p(
+        formField(
+          "foto_scope_website",
+          "checkbox",
+          "Strona internetowa gabinetu",
+          { required: false },
+        ),
+      ),
+      p(
+        formField(
+          "foto_scope_advertising",
+          "checkbox",
+          "Materiały reklamowe i promocyjne",
+          { required: false },
+        ),
+      ),
+      p(
+        formField(
+          "foto_scope_educational",
+          "checkbox",
+          "Materiały edukacyjne, prezentacyjne i portfolio efektów",
+          { required: false },
+        ),
+      ),
+      p(),
+
+      hr(),
+      p(
+        italic(
+          "Niniejsza zgoda dotyczy wyłącznie marketingowego wykorzystania zdjęć i nie zastępuje zgody na wykonanie oraz przechowywanie zdjęć jako dokumentacji wewnętrznej gabinetu.",
         ),
       ),
       p(),
@@ -2126,8 +2177,8 @@ function buildZgodaFragmentZabiegowegTemplate(c: ComponentMap): BeautyTemplate {
   };
 
   return {
-    name: "Gotowe – Zgoda na wykorzystanie zdjęć fragmentu zabiegowego",
-    description: "Osobna zgoda marketingowa na wykorzystanie zdjęć fragmentu zabiegowego (obszar ciała/skóry objęty zabiegiem) do pokazania efektów terapii — bez danych osobowych klienta.",
+    name: "Gotowe – Zgoda marketingowa na wykorzystanie zdjęć",
+    description: "Marketingowa zgoda na wykorzystanie zdjęć z podziałem na: (1) zdjęcia fragmentu zabiegowego (bez wizerunku twarzy) oraz (2) zdjęcia umożliwiające rozpoznanie klienta (twarz, profil, charakterystyczne cechy). Możliwość wyboru zakresu: social media, strona, materiały reklamowe, materiały edukacyjne.",
     category: "consent",
     folderPath: "Gabinet/Zgody",
     templateType: "document",
@@ -2151,7 +2202,7 @@ function buildBeautyDocumentTemplates(c: ComponentMap): BeautyTemplate[] {
     buildGeneralHealthInterviewTemplate(c),
     buildZgodaNaZabiegTemplate(c),
     buildDokumentacjaZdjieciowaTemplate(c),
-    buildZgodaFragmentZabiegowegTemplate(c),
+    buildZgodaMarketingowaTemplate(c),
     buildCosmeticIntakeTemplate(c),
     buildGeneralCosmeticConsentTemplate(c),
     buildLaserConsentTemplate(c),
@@ -2291,6 +2342,10 @@ export const renameReadyTemplates = internalMutation({
     const renames: Array<{ old: string; next: string }> = [
       { old: "+RODO V2", next: "Gotowe – RODO" },
       { old: "+WYWIAD", next: "Gotowe – Wywiad zdrowotny" },
+      {
+        old: "Gotowe – Zgoda na wykorzystanie zdjęć fragmentu zabiegowego",
+        next: "Gotowe – Zgoda marketingowa na wykorzystanie zdjęć",
+      },
     ];
     let count = 0;
     for (const { old, next } of renames) {

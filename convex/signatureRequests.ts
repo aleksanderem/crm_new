@@ -500,6 +500,26 @@ export const resend = action({
       createdAt: now,
     });
 
+    // Dispatch email/SMS notification with the new token
+    const instance = await db.get("documentInstances", String(request.instanceId));
+    try {
+      await ctx.runMutation(internal.signatureRequests._sendSigningEmails, {
+        organizationId: String(request.organizationId),
+        instanceTitle: String(instance?.title ?? ""),
+        createdTokens: JSON.stringify([{ slotId: request.slotId, token, requestId: newId }]),
+        signatures: JSON.stringify([{
+          slotId: request.slotId,
+          signerEmail: request.signerEmail,
+          signerName: request.signerName,
+          signerPhone: request.signerPhone,
+          verificationMethod: request.verificationMethod,
+        }]),
+        expiresAt,
+      });
+    } catch (e) {
+      console.error("[signatureRequests.resend] Notification side effects FAILED:", e);
+    }
+
     return { requestId: newId, token };
   },
 });

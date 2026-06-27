@@ -177,6 +177,106 @@ export const generateDocument = action({
   },
 });
 
+/**
+ * Fetch form field values from the most recent completed questionnaire
+ * for the same template + patient. Returns null when no prior response
+ * exists so callers can skip prefilling entirely.
+ */
+export const getPriorResponseData = action({
+  args: {
+    organizationId: v.id("organizations"),
+    templateId: v.string(),
+    entityType: v.string(),
+    entityId: v.string(),
+  },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ formFieldValues: Record<string, string> } | null> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
+
+    // Resolve the patient id from the entity context
+    let patientId: string | null = null;
+    if (args.entityType === "patient") {
+      patientId = args.entityId;
+    } else if (args.entityType === "appointment") {
+      const appt = await db.get("gabinetAppointments", args.entityId);
+      if (appt && String(appt.organizationId) === String(args.organizationId)) {
+        patientId = appt.patientId ? String(appt.patientId) : null;
+      }
+    }
+
+    if (!patientId) return null;
+
+    // All signed/completed docs for this template in this org
+    const allDocs = await db
+      .query("formDocuments")
+      .eq("organizationId", String(args.organizationId))
+      .eq("templateId", args.templateId)
+      .collect();
+
+    const resolvedPatientId = patientId;
+    const patientDocs = allDocs.filter((doc) => {
+      if (doc.status !== "signed" && doc.status !== "completed") return false;
+      // Direct patient-entity link
+      if (
+        doc.entityType === "patient" &&
+        String(doc.entityId) === resolvedPatientId
+      )
+        return true;
+      // Appointment-linked doc with scopeEntities.patient
+      if (doc.scopeEntities) {
+        try {
+          const scope =
+            typeof doc.scopeEntities === "string"
+              ? (JSON.parse(doc.scopeEntities as string) as Record<
+                  string,
+                  unknown
+                >)
+              : (doc.scopeEntities as Record<string, unknown>);
+          return String(scope?.patient) === resolvedPatientId;
+        } catch {
+          return false;
+        }
+      }
+      return false;
+    });
+
+    if (patientDocs.length === 0) return null;
+
+    // Most recent first
+    patientDocs.sort(
+      (a, b) => (b.createdAt as number) - (a.createdAt as number),
+    );
+    const mostRecent = patientDocs[0];
+
+    try {
+      const responseData = JSON.parse(mostRecent.responseData as string);
+      const rawValues = responseData.formFieldValues;
+      if (
+        !rawValues ||
+        typeof rawValues !== "object" ||
+        Object.keys(rawValues).length === 0
+      ) {
+        return null;
+      }
+      const formFieldValues: Record<string, string> = {};
+      for (const [k, v] of Object.entries(
+        rawValues as Record<string, unknown>,
+      )) {
+        formFieldValues[k] = String(v);
+      }
+      return { formFieldValues };
+    } catch {
+      return null;
+    }
+  },
+});
+
 // Converted from internalMutation → internalAction so it can survive
 // transient Supabase retries. postgrest-js retries failed fetches via
 // `executeWithRetry → sleep → setTimeout`, which the Convex mutation runtime

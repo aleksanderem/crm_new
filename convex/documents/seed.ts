@@ -1670,12 +1670,167 @@ function buildGeneralHealthInterviewTemplate(c: ComponentMap): BeautyTemplate {
 }
 
 // ---------------------------------------------------------------------------
+// 16. +RODO V2 — Informacja o przetwarzaniu danych osobowych (skrócona)
+// ---------------------------------------------------------------------------
+
+function buildRodoV2Template(c: ComponentMap): BeautyTemplate {
+  const doc = {
+    type: "doc",
+    content: [
+      cb(c, "Nagłówek dokumentu"),
+      h2("Informacja o przetwarzaniu danych osobowych (RODO)", true),
+      p(),
+      p(bold("Administratorem danych osobowych jest:")),
+      p(mention("organization.name")),
+      p(),
+      p(
+        txt(
+          "Dane osobowe są przetwarzane w celu obsługi rezerwacji, kontaktu w sprawie wizyty, realizacji usług, prowadzenia karty klienta, rozliczeń, spełnienia obowiązków prawnych oraz ewentualnego dochodzenia lub obrony roszczeń. Dane mogą być także przetwarzane w celach marketingowych, jeśli klient wyrazi osobną zgodę.",
+        ),
+      ),
+      p(),
+      p(
+        txt(
+          "Przetwarzane mogą być w szczególności: imię i nazwisko, numer telefonu, adres e-mail, dane dotyczące wizyt, historia wykonanych usług, dane potrzebne do rozliczeń oraz inne dane dobrowolnie podane przez klienta.",
+        ),
+      ),
+      p(),
+      p(
+        txt(
+          "Podstawą przetwarzania danych jest wykonanie usługi lub podjęcie działań przed jej wykonaniem, obowiązki prawne administratora, prawnie uzasadniony interes administratora oraz zgoda klienta tam, gdzie jest wymagana.",
+        ),
+      ),
+      p(),
+      p(
+        txt(
+          "Dane mogą być przekazywane wyłącznie w niezbędnym zakresie podmiotom wspierającym administratora, takim jak dostawca systemu CRM, hosting, poczta e-mail, SMS, operator płatności, księgowość, obsługa IT lub obsługa prawna.",
+        ),
+      ),
+      p(),
+      p(
+        txt(
+          "Dane będą przechowywane przez okres potrzebny do obsługi klienta i realizacji usług, przez okres wymagany przepisami prawa oraz przez czas potrzebny do dochodzenia lub obrony roszczeń. Dane przetwarzane na podstawie zgody będą przetwarzane do czasu jej wycofania, chyba że istnieje inna podstawa prawna dalszego przetwarzania.",
+        ),
+      ),
+      p(),
+      p(
+        txt(
+          "Klient ma prawo dostępu do danych, sprostowania danych, usunięcia danych, ograniczenia przetwarzania, wniesienia sprzeciwu, przenoszenia danych, wycofania zgody oraz wniesienia skargi do Prezesa Urzędu Ochrony Danych Osobowych.",
+        ),
+      ),
+      p(),
+      p(
+        txt(
+          "Podanie danych jest dobrowolne, ale niektóre dane są niezbędne do rezerwacji wizyty, kontaktu organizacyjnego i wykonania usługi.",
+        ),
+      ),
+      p(),
+      p(
+        txt(
+          "Dane nie będą wykorzystywane do zautomatyzowanego podejmowania decyzji, w tym profilowania, chyba że administrator poinformuje o tym osobno.",
+        ),
+      ),
+      p(),
+      p(
+        txt(
+          "Dane nie będą przekazywane poza Europejski Obszar Gospodarczy, chyba że będzie to wynikało z korzystania z określonych dostawców usług. W takim przypadku przekazanie danych będzie odbywać się zgodnie z wymaganiami RODO.",
+        ),
+      ),
+      hr(),
+      h3("Potwierdzenia wymagane"),
+      p(
+        formField(
+          "rodo2_confirm_info",
+          "checkbox",
+          "Potwierdzam, że zapoznałam/zapoznałem się z informacją dotyczącą przetwarzania moich danych osobowych.",
+          { required: true },
+        ),
+      ),
+      p(),
+      p(
+        formField(
+          "rodo2_confirm_purpose",
+          "checkbox",
+          "Przyjmuję do wiadomości, że moje dane osobowe będą przetwarzane w celu obsługi rezerwacji, kontaktu związanego z wizytą, realizacji usług, prowadzenia karty klienta oraz dokumentacji związanej z wykonanymi usługami.",
+          { required: true },
+        ),
+      ),
+      p(),
+      p(
+        formField(
+          "rodo2_confirm_contact",
+          "checkbox",
+          "Przyjmuję do wiadomości, że podane przeze mnie dane kontaktowe mogą być wykorzystywane do kontaktu organizacyjnego związanego z wizytą, np. potwierdzenia terminu, przypomnienia o wizycie, zmiany lub odwołania wizyty.",
+          { required: true },
+        ),
+      ),
+      p(),
+      p(
+        formField(
+          "rodo2_confirm_accuracy",
+          "checkbox",
+          "Potwierdzam, że podane przeze mnie dane są zgodne z prawdą i aktualne.",
+          { required: true },
+        ),
+      ),
+      p(),
+      h3("Zgody opcjonalne"),
+      p(
+        formField(
+          "rodo2_marketing_email",
+          "checkbox",
+          "Wyrażam zgodę na otrzymywanie informacji marketingowych drogą e-mail.",
+        ),
+      ),
+      p(),
+      p(
+        formField(
+          "rodo2_marketing_sms",
+          "checkbox",
+          "Wyrażam zgodę na otrzymywanie informacji marketingowych SMS.",
+        ),
+      ),
+      p(),
+      p(
+        formField(
+          "rodo2_marketing_phone",
+          "checkbox",
+          "Wyrażam zgodę na kontakt telefoniczny w celach marketingowych.",
+        ),
+      ),
+      p(),
+      p(
+        italic(
+          "Przyjmuję do wiadomości, że zgody marketingowe są dobrowolne, nie są warunkiem skorzystania z usługi i mogą zostać wycofane w dowolnym momencie.",
+        ),
+      ),
+      cb(c, "Podpis — klient"),
+    ],
+  };
+
+  return {
+    name: "+RODO V2",
+    description: "Skrócona i uproszczona informacja o przetwarzaniu danych osobowych zgodnie z RODO — klauzula informacyjna, potwierdzenia wymagane, zgody marketingowe opcjonalne",
+    category: "consent",
+    folderPath: "Gabinet/Zgody",
+    templateType: "document",
+    formJson: "",
+    contentJson: JSON.stringify(doc),
+    modules: ["gabinet"],
+    entityTypes: ["patient"],
+    requiresSignature: true,
+    signatureConfig: { method: "draw", signerRole: "patient" },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Build all beauty document templates
 // ---------------------------------------------------------------------------
 
 function buildBeautyDocumentTemplates(c: ComponentMap): BeautyTemplate[] {
   return [
     buildRodoConsentTemplate(c),
+    buildRodoV2Template(c),
     buildGeneralHealthInterviewTemplate(c),
     buildCosmeticIntakeTemplate(c),
     buildGeneralCosmeticConsentTemplate(c),

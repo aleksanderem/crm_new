@@ -1697,6 +1697,12 @@ function buildRodoV2Template(c: ComponentMap): BeautyTemplate {
       p(),
       p(
         txt(
+          "Gabinet prowadzi dokumentację wizyt i zabiegów klienta w systemie, w zakresie niezbędnym do zapewnienia ciągłości obsługi, bezpieczeństwa zabiegów, prawidłowego prowadzenia terapii oraz rozliczenia wykonanych usług.",
+        ),
+      ),
+      p(),
+      p(
+        txt(
           "Podstawą przetwarzania danych jest wykonanie usługi lub podjęcie działań przed jej wykonaniem, obowiązki prawne administratora, prawnie uzasadniony interes administratora oraz zgoda klienta tam, gdzie jest wymagana.",
         ),
       ),
@@ -1704,6 +1710,12 @@ function buildRodoV2Template(c: ComponentMap): BeautyTemplate {
       p(
         txt(
           "Dane mogą być przekazywane wyłącznie w niezbędnym zakresie podmiotom wspierającym administratora, takim jak dostawca systemu CRM, hosting, poczta e-mail, SMS, operator płatności, księgowość, obsługa IT lub obsługa prawna.",
+        ),
+      ),
+      p(),
+      p(
+        txt(
+          "Gabinet może kontaktować się z klientem SMS-em lub e-mailem w sprawach organizacyjnych dotyczących umówionej wizyty, w szczególności w celu potwierdzenia utworzenia wizyty oraz przypomnienia o zbliżającym się terminie.",
         ),
       ),
       p(),
@@ -1761,6 +1773,24 @@ function buildRodoV2Template(c: ComponentMap): BeautyTemplate {
           "rodo2_confirm_contact",
           "checkbox",
           "Przyjmuję do wiadomości, że podane przeze mnie dane kontaktowe mogą być wykorzystywane do kontaktu organizacyjnego związanego z wizytą, np. potwierdzenia terminu, przypomnienia o wizycie, zmiany lub odwołania wizyty.",
+          { required: true },
+        ),
+      ),
+      p(),
+      p(
+        formField(
+          "rodo2_confirm_records",
+          "checkbox",
+          "Rozumiem, że gabinet prowadzi dokumentację moich wizyt i zabiegów w systemie, aby zapewnić ciągłość obsługi, bezpieczeństwo zabiegów i prawidłowe prowadzenie terapii.",
+          { required: true },
+        ),
+      ),
+      p(),
+      p(
+        formField(
+          "rodo2_confirm_reminders",
+          "checkbox",
+          "Rozumiem, że gabinet może wysłać mi SMS lub e-mail z potwierdzeniem utworzenia wizyty oraz przypomnieniem o jej terminie.",
           { required: true },
         ),
       ),

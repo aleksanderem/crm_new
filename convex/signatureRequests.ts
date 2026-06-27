@@ -146,7 +146,9 @@ export const sendForSigning = action({
 
     for (const signer of args.signers) {
       if (signer.signerType === "external" && !signer.signerEmail) {
-        throw new Error(`Email required for external signer on slot ${signer.slotId}`);
+        if (signer.verificationMethod !== "sms" || !signer.signerPhone) {
+          throw new Error(`Email required for external signer on slot ${signer.slotId}`);
+        }
       }
       if (signer.verificationMethod === "sms" && !signer.signerPhone) {
         throw new Error(`Phone required for SMS verification on slot ${signer.slotId}`);
@@ -269,6 +271,17 @@ export const _sendSigningEmails = internalMutation({
         await ctx.scheduler.runAfter(0, api.signingEmails.sendSigningRequestEmail, {
           signerName: sig.signerName ?? sig.signerEmail,
           signerEmail: sig.signerEmail,
+          documentTitle: args.instanceTitle,
+          organizationName: orgName,
+          token: ct.token,
+          expiresAt: args.expiresAt,
+        });
+      }
+      if (sig?.signerPhone && sig?.verificationMethod === "sms") {
+        await ctx.scheduler.runAfter(0, internal.sms.sendSigningLinkSms, {
+          organizationId: args.organizationId as Id<"organizations">,
+          phone: sig.signerPhone,
+          signerName: sig.signerName ?? sig.signerPhone,
           documentTitle: args.instanceTitle,
           organizationName: orgName,
           token: ct.token,

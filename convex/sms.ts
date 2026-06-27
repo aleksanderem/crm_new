@@ -295,6 +295,47 @@ async function sendViaTwilio(
 }
 
 // ---------------------------------------------------------------------------
+// sendSigningLinkSms — internal action to deliver a document-signing URL via SMS
+// ---------------------------------------------------------------------------
+
+export const sendSigningLinkSms = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    phone: v.string(),
+    signerName: v.string(),
+    documentTitle: v.string(),
+    organizationName: v.string(),
+    token: v.string(),
+    expiresAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const config = await ctx.runQuery(internal.sms.getConfigInternal, {
+      organizationId: args.organizationId,
+    });
+    if (!config || !config.isActive) {
+      console.warn("[sms.sendSigningLinkSms] SMS not configured or inactive — skipping");
+      return { sent: false };
+    }
+
+    const APP_URL = process.env.APP_URL ?? "https://app.example.com";
+    const signingUrl = `${APP_URL}/sign/${args.token}`;
+    const expiryDate = new Date(args.expiresAt).toLocaleDateString("pl-PL");
+    const message = `${args.organizationName} prosi o podpisanie dokumentu „${args.documentTitle}". Link: ${signingUrl} (ważny do: ${expiryDate})`;
+
+    if (config.provider === "smsapi") {
+      await sendViaSmsapi(config.apiToken, args.phone, message, config.senderId ?? undefined);
+    } else if (config.provider === "twilio") {
+      if (!config.apiSecret || !config.fromNumber) {
+        throw new Error("Twilio requires API secret and phone number");
+      }
+      await sendViaTwilio(config.apiToken, config.apiSecret, config.fromNumber, args.phone, message);
+    }
+
+    return { sent: true };
+  },
+});
+
+// ---------------------------------------------------------------------------
 // sendAppointmentSms — internal action for appointment lifecycle SMS
 // ---------------------------------------------------------------------------
 

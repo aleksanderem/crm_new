@@ -1475,12 +1475,208 @@ function buildGuardianConsentTemplate(c: ComponentMap): BeautyTemplate {
 }
 
 // ---------------------------------------------------------------------------
+// 15. +WYWIAD — Ogólny wywiad zdrowotny
+// ---------------------------------------------------------------------------
+
+function buildGeneralHealthInterviewTemplate(c: ComponentMap): BeautyTemplate {
+  const doc = {
+    type: "doc",
+    content: [
+      cb(c, "Nagłówek dokumentu"),
+      h2("OGÓLNY WYWIAD ZDROWOTNY", true),
+      p(),
+      cb(c, "Dane pacjenta"),
+      hr(),
+      p(formField("hi_birth_date", "date", "Data urodzenia")),
+      p(),
+
+      // I. Aktualne leczenie
+      h3("I. Aktualne leczenie"),
+      p(txt("Czy aktualnie leczy się Pani/Pan z powodu jakiejś choroby lub dolegliwości?")),
+      p(formField("hi_current_treatment", "checkbox", "Tak — aktualnie leczę się")),
+      p(formField("hi_current_treatment_detail", "text", "Jeśli tak — proszę podać szczegóły:", { placeholder: "Choroba, dolegliwość..." })),
+      p(),
+
+      // II. Alergie
+      h3("II. Alergie"),
+      p(txt("Czy jest Pani/Pan uczulona/uczulony na jakiekolwiek substancje, leki, kosmetyki lub inne?")),
+      p(formField("hi_allergies", "checkbox", "Tak — mam alergie lub uczulenia")),
+      p(formField("hi_allergies_detail", "text", "Jeśli tak — proszę podać szczegóły:", { placeholder: "Rodzaj alergii, substancja wywołująca reakcję..." })),
+      p(),
+
+      // III. Układ nerwowy
+      h3("III. Układ nerwowy"),
+      p(txt("Czy zdarzyły się Pani/Panu omdlenia lub utrata przytomności?")),
+      p(formField("hi_fainting", "checkbox", "Tak — zdarzały się omdlenia lub utrata przytomności")),
+      p(),
+      p(txt("Czy choruje Pani/Pan na padaczkę?")),
+      p(formField("hi_epilepsy", "checkbox", "Tak — choruję na padaczkę")),
+      p(),
+      p(txt("Czy choruje Pani/Pan na inne choroby układu nerwowego?")),
+      p(formField("hi_neuro_disease", "checkbox", "Tak — inne choroby układu nerwowego")),
+      p(formField("hi_neuro_disease_detail", "text", "Jeśli tak — proszę podać szczegóły:", { placeholder: "Rodzaj schorzenia..." })),
+      p(),
+
+      // IV. Układ sercowo-naczyniowy i implanty
+      h3("IV. Układ sercowo-naczyniowy i implanty"),
+      p(txt("Czy ma Pani/Pan wszczepiony rozrusznik serca lub kardiowerter-defibrylator (ICD)?")),
+      p(formField("hi_pacemaker", "checkbox", "Tak — posiadam rozrusznik serca lub ICD")),
+      p(),
+      p(txt("Czy posiada Pani/Pan metalowe implanty (endoprotezy, płytki, śruby, stenty itp.)?")),
+      p(formField("hi_metal_implants", "checkbox", "Tak — posiadam metalowe implanty")),
+      p(formField("hi_metal_implants_detail", "text", "Jeśli tak — proszę podać rodzaj i lokalizację:", { placeholder: "Rodzaj implantu, obszar ciała..." })),
+      p(),
+      p(txt("Czy choruje Pani/Pan na choroby serca lub układu krążenia (choroba wieńcowa, nadciśnienie, wada zastawkowa, arytmia, niewydolność serca itp.)?")),
+      p(formField("hi_heart_disease", "checkbox", "Tak — choroby serca lub układu krążenia")),
+      p(formField("hi_heart_disease_detail", "text", "Jeśli tak — proszę podać szczegóły:", { placeholder: "Rodzaj schorzenia..." })),
+      p(),
+
+      // V. Choroby narządów wewnętrznych
+      h3("V. Choroby narządów wewnętrznych"),
+      p(txt("Czy choruje Pani/Pan na choroby płuc (astma, POChP, inne)?")),
+      p(formField("hi_lung_disease", "checkbox", "Tak — choroby płuc")),
+      p(formField("hi_lung_disease_detail", "text", "Jeśli tak — proszę podać szczegóły:", { placeholder: "Rodzaj schorzenia..." })),
+      p(),
+      p(txt("Czy choruje Pani/Pan na choroby układu pokarmowego (wrzody, choroba Crohna, celiakia, inne)?")),
+      p(formField("hi_digestive_disease", "checkbox", "Tak — choroby układu pokarmowego")),
+      p(formField("hi_digestive_disease_detail", "text", "Jeśli tak — proszę podać szczegóły:", { placeholder: "Rodzaj schorzenia..." })),
+      p(),
+      p(txt("Czy choruje Pani/Pan na choroby wątroby?")),
+      p(formField("hi_liver_disease", "checkbox", "Tak — choroby wątroby")),
+      p(formField("hi_liver_disease_detail", "text", "Jeśli tak — proszę podać szczegóły:", { placeholder: "Rodzaj schorzenia..." })),
+      p(),
+      p(txt("Czy choruje Pani/Pan na choroby układu moczowego lub nerek?")),
+      p(formField("hi_urinary_disease", "checkbox", "Tak — choroby układu moczowego lub nerek")),
+      p(formField("hi_urinary_disease_detail", "text", "Jeśli tak — proszę podać szczegóły:", { placeholder: "Rodzaj schorzenia..." })),
+      p(),
+
+      // VI. Choroby metaboliczne i hormonalne
+      h3("VI. Choroby metaboliczne i hormonalne"),
+      p(txt("Czy choruje Pani/Pan na cukrzycę lub insulinooporność?")),
+      p(formField("hi_diabetes", "checkbox", "Tak — cukrzyca lub insulinooporność")),
+      p(),
+      p(txt("Czy choruje Pani/Pan na choroby tarczycy (nadczynność, niedoczynność, inne)?")),
+      p(formField("hi_thyroid", "checkbox", "Tak — choroby tarczycy")),
+      p(formField("hi_thyroid_detail", "text", "Jeśli tak — proszę podać szczegóły:", { placeholder: "Rodzaj schorzenia..." })),
+      p(),
+      p(txt("Czy ma Pani/Pan inne zaburzenia hormonalne?")),
+      p(formField("hi_hormonal", "checkbox", "Tak — inne zaburzenia hormonalne")),
+      p(formField("hi_hormonal_detail", "text", "Jeśli tak — proszę podać szczegóły:", { placeholder: "Rodzaj zaburzenia..." })),
+      p(),
+
+      // VII. Choroby krwi i krzepnięcia
+      h3("VII. Choroby krwi i krzepnięcia"),
+      p(txt("Czy choruje Pani/Pan na choroby krwi lub zaburzenia krzepnięcia (hemofilia, trombocytopenia, choroba von Willebranda, inne)?")),
+      p(formField("hi_blood_disorders", "checkbox", "Tak — choroby krwi lub zaburzenia krzepnięcia")),
+      p(formField("hi_blood_disorders_detail", "text", "Jeśli tak — proszę podać szczegóły:", { placeholder: "Rodzaj schorzenia..." })),
+      p(),
+
+      // VIII. Choroby oczu
+      h3("VIII. Choroby oczu"),
+      p(txt("Czy choruje Pani/Pan na choroby oczu, w tym jaskrę?")),
+      p(formField("hi_eye_disease", "checkbox", "Tak — choroby oczu lub jaskra")),
+      p(),
+
+      // IX. Choroby nowotworowe
+      h3("IX. Choroby nowotworowe"),
+      p(txt("Czy choruje Pani/Pan lub chorowała/ł na choroby nowotworowe?")),
+      p(formField("hi_cancer", "checkbox", "Tak — choroba nowotworowa (w trakcie leczenia lub w remisji)")),
+      p(formField("hi_cancer_detail", "text", "Jeśli tak — proszę podać szczegóły:", { placeholder: "Rodzaj nowotworu, etap leczenia..." })),
+      p(),
+
+      // X. Choroby zakaźne
+      h3("X. Choroby zakaźne"),
+      p(txt("Proszę zaznaczyć, jeśli choruje Pani/Pan lub chorowała/ł na:")),
+      p(),
+      p(formField("hi_hepatitis", "checkbox", "WZW — wirusowe zapalenie wątroby (typ A, B lub C)")),
+      p(formField("hi_hiv", "checkbox", "HIV / AIDS")),
+      p(formField("hi_tuberculosis", "checkbox", "Gruźlica")),
+      p(formField("hi_sti", "checkbox", "Choroby weneryczne / przenoszone drogą płciową")),
+      p(),
+
+      // XI. Choroby skóry
+      h3("XI. Choroby skóry"),
+      p(txt("Czy choruje Pani/Pan na przewlekłe choroby skóry?")),
+      p(formField("hi_skin_disease", "checkbox", "Tak — choroby skóry (łuszczyca, atopowe zapalenie skóry, bielactwo, trądzik różowaty, nawracająca opryszczka, inne)")),
+      p(formField("hi_skin_disease_detail", "text", "Jeśli tak — proszę podać szczegóły:", { placeholder: "Rodzaj schorzenia..." })),
+      p(),
+
+      // XII. Przyjmowane leki i suplementy
+      h3("XII. Przyjmowane leki i suplementy"),
+      p(txt("Proszę wymienić wszystkie aktualnie przyjmowane leki (recepturowe, bez recepty oraz regularne):")),
+      p(formField("hi_medications", "textarea", "Przyjmowane leki:", { placeholder: "Nazwa leku, dawka, częstotliwość stosowania..." })),
+      p(),
+      p(txt("Proszę zaznaczyć, jeśli przyjmuje Pani/Pan poniższe:")),
+      p(formField("hi_sedatives", "checkbox", "Leki uspokajające / nasenne")),
+      p(formField("hi_antibiotics", "checkbox", "Antybiotyki (aktualnie przyjmowane)")),
+      p(formField("hi_tetracyclines", "checkbox", "Tetracykliny lub izotretynoina (Roaccutane)")),
+      p(formField("hi_anticoagulants", "checkbox", "Aspiryna / leki przeciwzakrzepowe (warfaryna, heparyna, riwaroksaban i inne)")),
+      p(),
+      p(txt("Witaminy, zioła i suplementy diety:")),
+      p(formField("hi_supplements", "textarea", "Suplementy:", { placeholder: "Np. witamina D3, omega-3, żelazo, preparaty ziołowe..." })),
+      p(),
+
+      // XIII. Gojenie się ran
+      h3("XIII. Gojenie się ran i blizny"),
+      p(txt("Czy ma Pani/Pan skłonność do nieprawidłowego gojenia się ran lub powstawania blizn (bliznowce, blizny przerostowe)?")),
+      p(formField("hi_healing", "checkbox", "Tak — skłonność do nieprawidłowego gojenia lub blizn")),
+      p(formField("hi_healing_detail", "text", "Jeśli tak — proszę podać szczegóły:", { placeholder: "Opis..." })),
+      p(),
+
+      // XIV. Zabiegi i operacje
+      h3("XIV. Zabiegi i operacje"),
+      p(txt("Czy w ciągu ostatnich 3 miesięcy miała/miał Pani/Pan wykonany jakiś zabieg kosmetyczny, chirurgiczny lub medyczny?")),
+      p(formField("hi_recent_procedures", "checkbox", "Tak — zabiegi lub operacje wykonane w ostatnim czasie")),
+      p(formField("hi_recent_procedures_detail", "text", "Jeśli tak — proszę podać szczegóły:", { placeholder: "Rodzaj zabiegu, data wykonania..." })),
+      p(),
+
+      // XV. Stan szczególny
+      h3("XV. Stan szczególny"),
+      p(txt("Proszę zaznaczyć, jeśli dotyczy Pani:")),
+      p(formField("hi_pregnancy", "checkbox", "Jestem w ciąży lub podejrzewam ciążę")),
+      p(formField("hi_breastfeeding", "checkbox", "Karmię piersią")),
+      p(formField("hi_contraception", "checkbox", "Stosuję antykoncepcję hormonalną")),
+      p(),
+
+      // XVI. Inne informacje
+      h3("XVI. Inne istotne informacje zdrowotne"),
+      p(formField("hi_other", "textarea", "Inne istotne informacje zdrowotne, które chciałaby/chciałby Pani/Pan przekazać:", { placeholder: "Wszelkie inne informacje o stanie zdrowia, które mogą być istotne dla bezpieczeństwa zabiegu..." })),
+      p(),
+
+      // Closing declaration
+      hr(),
+      p(
+        italic(
+          "Oświadczam, że podane przeze mnie informacje są zgodne z prawdą i kompletne według mojej najlepszej wiedzy. Przyjmuję do wiadomości, że zatajenie lub podanie nieprawdziwych informacji dotyczących mojego stanu zdrowia, alergii, ciąży, przyjmowanych leków, chorób, przebytych zabiegów lub innych przeciwwskazań może mieć wpływ na bezpieczeństwo wykonania zabiegu.",
+        ),
+      ),
+      cb(c, "Podpis — klient"),
+    ],
+  };
+
+  return {
+    name: "+WYWIAD",
+    description: "Ogólny wywiad zdrowotny klienta — aktualne leczenie, alergie, choroby układu sercowo-naczyniowego, metaboliczne, hormonalne, zakaźne, przyjmowane leki, stan szczególny",
+    category: "intake",
+    folderPath: "Gabinet/Przyjęcia",
+    templateType: "document",
+    formJson: "",
+    contentJson: JSON.stringify(doc),
+    modules: ["gabinet"],
+    entityTypes: ["patient", "appointment"],
+    requiresSignature: true,
+    signatureConfig: { method: "draw", signerRole: "patient" },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Build all beauty document templates
 // ---------------------------------------------------------------------------
 
 function buildBeautyDocumentTemplates(c: ComponentMap): BeautyTemplate[] {
   return [
     buildRodoConsentTemplate(c),
+    buildGeneralHealthInterviewTemplate(c),
     buildCosmeticIntakeTemplate(c),
     buildGeneralCosmeticConsentTemplate(c),
     buildLaserConsentTemplate(c),

@@ -131,11 +131,13 @@ function countFormFields(formJson: string | null | undefined): number {
 function DocumentTemplateFormStep({
   contentJson,
   prefilledData,
+  previousValues,
   onComplete,
   onCancel,
 }: {
   contentJson: string;
   prefilledData: Record<string, string>;
+  previousValues?: Record<string, string>;
   onComplete: (data: Record<string, unknown>) => void;
   onCancel: () => void;
 }) {
@@ -188,6 +190,7 @@ function DocumentTemplateFormStep({
     <DocumentFormFiller
       formFields={allFormFields}
       filledByFilter="employee"
+      initialValues={previousValues}
       onComplete={(fieldValues) => {
         const resolvedHtml = renderDocument(
           contentJson,
@@ -683,6 +686,7 @@ export function GenerateDocumentDialog({
 
   const generateDocument = useAction(api.documents.generate.generateDocument);
   const completeMissingDataMutation = useAction(api.documents.completeMissingData.completeMissingData);
+  const getPriorResponseDataAction = useAction(api.documents.generate.getPriorResponseData);
 
   // --- Reset state on close ---
 
@@ -756,6 +760,24 @@ export function GenerateDocumentDialog({
     ],
     queryFn: () =>
       previewDocumentDataAction({
+        organizationId,
+        templateId: selectedTemplateId as unknown as string,
+        entityType,
+        entityId,
+      }),
+    enabled: !!selectedTemplateId && (step === "fill_form" || step === "complete_data"),
+  });
+
+  const { data: priorResponseData } = useQuery({
+    queryKey: [
+      "documents.generate.getPriorResponseData",
+      organizationId,
+      selectedTemplateId,
+      entityType,
+      entityId,
+    ],
+    queryFn: () =>
+      getPriorResponseDataAction({
         organizationId,
         templateId: selectedTemplateId as unknown as string,
         entityType,
@@ -1073,6 +1095,7 @@ export function GenerateDocumentDialog({
                     <DocumentTemplateFormStep
                       contentJson={previewData.contentJson}
                       prefilledData={previewData.prefilledData}
+                      previousValues={priorResponseData?.formFieldValues}
                       onComplete={handleComplete}
                       onCancel={handleBack}
                     />

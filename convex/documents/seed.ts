@@ -1969,6 +1969,178 @@ function buildZgodaNaZabiegTemplate(c: ComponentMap): BeautyTemplate {
 }
 
 // ---------------------------------------------------------------------------
+// 18. Gotowe – Dokumentacja zdjęciowa do gabinetu
+// ---------------------------------------------------------------------------
+
+function buildDokumentacjaZdjieciowaTemplate(c: ComponentMap): BeautyTemplate {
+  const doc = {
+    type: "doc",
+    content: [
+      cb(c, "Nagłówek dokumentu"),
+      h2("ZGODA NA DOKUMENTACJĘ ZDJĘCIOWĄ DO DOKUMENTACJI GABINETU", true),
+      p(),
+      cb(c, "Dane pacjenta"),
+      hr(),
+
+      h3("Cel i zakres dokumentacji"),
+      p(
+        txt(
+          "Wyrażam zgodę na wykonanie i przechowywanie zdjęć dokumentujących obszar zabiegowy przed zabiegiem, w trakcie terapii oraz po zabiegu.",
+        ),
+      ),
+      p(),
+      p(
+        txt(
+          "Zdjęcia będą wykorzystywane wyłącznie jako wewnętrzna dokumentacja gabinetu, w celu:",
+        ),
+      ),
+      bulletList(
+        [txt("oceny stanu skóry lub obszaru zabiegowego,")],
+        [txt("porównania efektów przed i po zabiegu,")],
+        [txt("monitorowania postępów terapii,")],
+        [txt("dobrania odpowiedniego planu zabiegowego.")],
+      ),
+      p(),
+
+      h3("Ograniczenia wykorzystania"),
+      p(
+        txt(
+          "Zdjęcia NIE będą publikowane, udostępniane w mediach społecznościowych, wykorzystywane w materiałach reklamowych ani przekazywane osobom trzecim w celach marketingowych.",
+        ),
+      ),
+      p(),
+      p(
+        txt(
+          "Dostęp do zdjęć będą miały wyłącznie osoby upoważnione, które uczestniczą w obsłudze klienta lub wykonaniu zabiegu, w zakresie niezbędnym do prowadzenia dokumentacji, oceny efektów i zapewnienia bezpieczeństwa zabiegu.",
+        ),
+      ),
+      p(),
+
+      hr(),
+      h3("Oświadczenie"),
+      p(
+        italic(
+          "Niniejsza zgoda dotyczy wyłącznie dokumentacji wewnętrznej gabinetu i nie oznacza zgody na wykorzystanie zdjęć w celach marketingowych.",
+        ),
+      ),
+      p(),
+      p(
+        formField(
+          "foto_doc_consent",
+          "checkbox",
+          "Wyrażam zgodę na wykonanie i przechowywanie zdjęć obszaru zabiegowego jako wewnętrznej dokumentacji gabinetu, wyłącznie w celu oceny stanu przed zabiegiem, porównania efektów oraz prowadzenia dokumentacji terapii. Zdjęcia NIE będą publikowane ani wykorzystywane marketingowo.",
+          { required: true },
+        ),
+      ),
+      p(),
+
+      cb(c, "Podpis — klient"),
+    ],
+  };
+
+  return {
+    name: "Gotowe – Dokumentacja zdjęciowa do gabinetu",
+    description: "Zgoda na wykonanie i przechowywanie zdjęć wyłącznie jako wewnętrznej dokumentacji gabinetu — ocena stanu przed zabiegiem, porównanie efektów, monitorowanie postępów. Nie jest zgodą marketingową.",
+    category: "consent",
+    folderPath: "Gabinet/Zgody",
+    templateType: "document",
+    formJson: "",
+    contentJson: JSON.stringify(doc),
+    modules: ["gabinet"],
+    entityTypes: ["patient"],
+    requiresSignature: true,
+    signatureConfig: { method: "draw", signerRole: "patient" },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 19. Gotowe – Zgoda na wykorzystanie zdjęć fragmentu zabiegowego
+// ---------------------------------------------------------------------------
+
+function buildZgodaFragmentZabiegowegTemplate(c: ComponentMap): BeautyTemplate {
+  const doc = {
+    type: "doc",
+    content: [
+      cb(c, "Nagłówek dokumentu"),
+      h2("ZGODA NA WYKORZYSTANIE ZDJĘĆ FRAGMENTU ZABIEGOWEGO", true),
+      p(),
+      cb(c, "Dane pacjenta"),
+      hr(),
+
+      h3("Przedmiot zgody"),
+      p(
+        txt(
+          "Wyrażam zgodę na wykorzystanie zdjęć przedstawiających wyłącznie fragment zabiegowy, czyli obszar ciała lub skóry, na którym został wykonany zabieg, w celu pokazania efektów terapii, rezultatów pracy gabinetu oraz przykładów możliwych do uzyskania efektów.",
+        ),
+      ),
+      p(),
+
+      h3("Zakres zdjęć"),
+      p(
+        txt(
+          "Zdjęcia mogą przedstawiać między innymi obszar skóry, sylwetki, nóg, brzucha, pleców, ramion, blizny, przebarwienia, owłosienia lub innego fragmentu objętego zabiegiem.",
+        ),
+      ),
+      p(),
+
+      h3("Warunki wykorzystania"),
+      bulletList(
+        [
+          txt(
+            "Zdjęcia będą wykorzystywane bez podawania imienia, nazwiska, danych kontaktowych ani oznaczania profilu klienta.",
+          ),
+        ],
+        [
+          txt(
+            "Celem wykorzystania zdjęć jest pokazanie rzeczywistych efektów zabiegów, pomoc innym klientom w podjęciu świadomej decyzji oraz prezentacja jakości pracy gabinetu.",
+          ),
+        ],
+        [
+          txt(
+            "Zgoda dotyczy wyłącznie zdjęć fragmentu zabiegowego i nie obejmuje celowego pokazywania pełnego wizerunku klienta.",
+          ),
+        ],
+      ),
+      p(),
+      p(
+        italic(
+          "Niniejsza zgoda jest dobrowolna. Jej brak nie wpływa na jakość świadczonych usług.",
+        ),
+      ),
+      p(),
+
+      hr(),
+      h3("Oświadczenie"),
+      p(
+        formField(
+          "foto_marketing_consent",
+          "checkbox",
+          "Wyrażam zgodę na wykorzystanie zdjęć przedstawiających fragment zabiegowy w celu pokazania efektów terapii, rezultatów pracy gabinetu oraz przykładów możliwych do uzyskania efektów. Zdjęcia będą wykorzystywane bez podawania mojego imienia, nazwiska, danych kontaktowych ani oznaczania mojego profilu.",
+          { required: true },
+        ),
+      ),
+      p(),
+
+      cb(c, "Podpis — klient"),
+    ],
+  };
+
+  return {
+    name: "Gotowe – Zgoda na wykorzystanie zdjęć fragmentu zabiegowego",
+    description: "Osobna zgoda marketingowa na wykorzystanie zdjęć fragmentu zabiegowego (obszar ciała/skóry objęty zabiegiem) do pokazania efektów terapii — bez danych osobowych klienta.",
+    category: "consent",
+    folderPath: "Gabinet/Zgody",
+    templateType: "document",
+    formJson: "",
+    contentJson: JSON.stringify(doc),
+    modules: ["gabinet"],
+    entityTypes: ["patient"],
+    requiresSignature: true,
+    signatureConfig: { method: "draw", signerRole: "patient" },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Build all beauty document templates
 // ---------------------------------------------------------------------------
 
@@ -1978,6 +2150,8 @@ function buildBeautyDocumentTemplates(c: ComponentMap): BeautyTemplate[] {
     buildRodoV2Template(c),
     buildGeneralHealthInterviewTemplate(c),
     buildZgodaNaZabiegTemplate(c),
+    buildDokumentacjaZdjieciowaTemplate(c),
+    buildZgodaFragmentZabiegowegTemplate(c),
     buildCosmeticIntakeTemplate(c),
     buildGeneralCosmeticConsentTemplate(c),
     buildLaserConsentTemplate(c),

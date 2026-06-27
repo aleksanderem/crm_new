@@ -1655,7 +1655,7 @@ function buildGeneralHealthInterviewTemplate(c: ComponentMap): BeautyTemplate {
   };
 
   return {
-    name: "+WYWIAD",
+    name: "Gotowe – Wywiad zdrowotny",
     description: "Ogólny wywiad zdrowotny klienta — aktualne leczenie, alergie, choroby układu sercowo-naczyniowego, metaboliczne, hormonalne, zakaźne, przyjmowane leki, stan szczególny",
     category: "intake",
     folderPath: "Gabinet/Przyjęcia",
@@ -1809,7 +1809,7 @@ function buildRodoV2Template(c: ComponentMap): BeautyTemplate {
   };
 
   return {
-    name: "+RODO V2",
+    name: "Gotowe – RODO",
     description: "Skrócona i uproszczona informacja o przetwarzaniu danych osobowych zgodnie z RODO — klauzula informacyjna, potwierdzenia wymagane, zgody marketingowe opcjonalne",
     category: "consent",
     folderPath: "Gabinet/Zgody",
@@ -1961,6 +1961,31 @@ export const seedBeautyDocumentTemplates = mutation({
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     return await seedBeautyHandler(ctx, args.organizationId, user._id, args.force ?? false);
+  },
+});
+
+/** Rename legacy template names to the production-ready "Gotowe – …" prefix */
+export const renameReadyTemplates = internalMutation({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const renames: Array<{ old: string; next: string }> = [
+      { old: "+RODO V2", next: "Gotowe – RODO" },
+      { old: "+WYWIAD", next: "Gotowe – Wywiad zdrowotny" },
+    ];
+    let count = 0;
+    for (const { old, next } of renames) {
+      const all = await ctx.db
+        .query("formTemplates")
+        .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+        .collect();
+      for (const tmpl of all) {
+        if (tmpl.name === old) {
+          await ctx.db.patch(tmpl._id, { name: next, updatedAt: Date.now() });
+          count++;
+        }
+      }
+    }
+    return { renamed: count };
   },
 });
 

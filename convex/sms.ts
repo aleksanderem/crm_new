@@ -411,6 +411,8 @@ export const requestOtp = action({
     const organizationId = String(result.organizationId ?? "");
     const signerPhone =
       typeof result.signerPhone === "string" ? result.signerPhone : undefined;
+    const signerEmail =
+      typeof result.signerEmail === "string" ? result.signerEmail : undefined;
 
     if (verificationMethod === "sms") {
       if (!signerPhone) throw new Error("No phone number for SMS delivery");
@@ -419,8 +421,13 @@ export const requestOtp = action({
         phone: signerPhone,
         code: result.code,
       });
+    } else if (verificationMethod === "email_otp") {
+      if (!signerEmail) throw new Error("No email address for OTP delivery");
+      await ctx.runAction(api.signingEmails.sendOtpEmail, {
+        signerEmail,
+        code: result.code,
+      });
     }
-    // email_otp: TODO — will use Resend in Phase E
 
     return { sent: true, method: verificationMethod };
   },

@@ -60,6 +60,41 @@ export const sendSigningRequestEmail = action({
 });
 
 // ---------------------------------------------------------------------------
+// Send OTP code via email for email_otp verification
+// ---------------------------------------------------------------------------
+
+export const sendOtpEmail = action({
+  args: {
+    signerEmail: v.string(),
+    code: v.string(),
+  },
+  handler: async (_ctx, args): Promise<{ sent: boolean }> => {
+    if (!RESEND_API_KEY) {
+      console.warn("RESEND_API_KEY not set — skipping OTP email");
+      return { sent: false };
+    }
+
+    const resend = new Resend(RESEND_API_KEY);
+
+    await resend.emails.send({
+      from: RESEND_FROM ?? "noreply@example.com",
+      to: args.signerEmail,
+      subject: `Twój kod weryfikacyjny: ${args.code}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">Kod weryfikacyjny</h2>
+          <p>Twój jednorazowy kod do podpisania dokumentu:</p>
+          <p style="font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #111; margin: 24px 0;">${args.code}</p>
+          <p style="color: #666; font-size: 14px;">Kod jest ważny przez 10 minut. Jeśli nie próbowałeś podpisać dokumentu, zignoruj tę wiadomość.</p>
+        </div>
+      `,
+    });
+
+    return { sent: true };
+  },
+});
+
+// ---------------------------------------------------------------------------
 // Notify document author when a slot is signed
 // ---------------------------------------------------------------------------
 

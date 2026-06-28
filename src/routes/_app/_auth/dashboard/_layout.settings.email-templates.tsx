@@ -314,7 +314,7 @@ function EmailTemplatesSettings() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[900px]">
           <DialogHeader>
             <DialogTitle>
               {editingId
@@ -324,7 +324,7 @@ function EmailTemplatesSettings() {
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="space-y-1.5">
                 <Label>{t("common.name")}</Label>
                 <Input

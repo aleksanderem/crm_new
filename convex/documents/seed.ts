@@ -2376,6 +2376,7 @@ export const renameReadyTemplates = internalMutation({
         old: "Gotowe – Zgoda na wykorzystanie zdjęć fragmentu zabiegowego",
         next: "Gotowe – Zgoda marketingowa na wykorzystanie zdjęć",
       },
+      { old: "Zgoda na zabieg", next: "Gotowe – Zgoda na zabieg" },
     ];
     let count = 0;
     for (const { old, next } of renames) {

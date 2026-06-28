@@ -469,8 +469,8 @@ export function buildSystemComponents(): SystemComponent[] {
     {
       scope: "system",
       organizationId: undefined,
-      name: "Dane pacjenta",
-      description: "Blok z danymi klienta/pacjenta: imię, nazwisko, PESEL, data urodzenia, telefon, adres",
+      name: "Dane klienta",
+      description: "Blok z danymi klienta: imię, nazwisko, PESEL, data urodzenia, telefon, adres",
       category: "patient_data",
       contentJson: JSON.stringify({
         type: "doc",

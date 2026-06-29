@@ -128,7 +128,7 @@ export const getPackageNudges = action({
 
 // --- Patient nudges ---
 export const getPatientNudges = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), locationId: v.optional(v.id("gabinetLocations")) },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -175,11 +175,12 @@ export const getPatientNudges = action({
     const ninetyDaysAgoStr = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
       .toISOString()
       .split("T")[0];
-    const recentAppointments = (await db
+    let recentApptQuery = db
       .query("gabinetAppointments")
       .eq("organizationId", orgId)
-      .gte("date", ninetyDaysAgoStr)
-      .collect()) as any[];
+      .gte("date", ninetyDaysAgoStr);
+    if (args.locationId) recentApptQuery = recentApptQuery.eq("locationId", args.locationId);
+    const recentAppointments = (await recentApptQuery.collect()) as any[];
 
     const recentPatientIds = new Set(
       recentAppointments
@@ -234,7 +235,7 @@ export const getTreatmentNudges = action({
 
 // --- Get all Gabinet nudges ---
 export const getAll = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), locationId: v.optional(v.id("gabinetLocations")) },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const nudges: NudgeData[] = [];
@@ -250,6 +251,12 @@ export const getAll = action({
       .toISOString()
       .split("T")[0];
 
+    let todayApptQuery = db.query("gabinetAppointments").eq("organizationId", orgId).eq("date", todayStr);
+    if (args.locationId) todayApptQuery = todayApptQuery.eq("locationId", args.locationId);
+
+    let recentApptQuery = db.query("gabinetAppointments").eq("organizationId", orgId).gte("date", ninetyDaysAgoStr);
+    if (args.locationId) recentApptQuery = recentApptQuery.eq("locationId", args.locationId);
+
     const [
       todayAppointments,
       pendingLeaves,
@@ -259,16 +266,12 @@ export const getAll = action({
       recentAppointments,
       treatments,
     ] = await Promise.all([
-      db.query("gabinetAppointments").eq("organizationId", orgId).eq("date", todayStr).collect(),
+      todayApptQuery.collect(),
       db.query("gabinetLeaves").eq("organizationId", orgId).eq("status", "pending").collect(),
       db.query("gabinetTreatmentPackages").eq("organizationId", orgId).eq("isActive", true).collect(),
       db.query("gabinetPackageUsage").eq("organizationId", orgId).eq("status", "active").collect(),
       db.query("gabinetPatients").eq("organizationId", orgId).collect(),
-      db
-        .query("gabinetAppointments")
-        .eq("organizationId", orgId)
-        .gte("date", ninetyDaysAgoStr)
-        .collect(),
+      recentApptQuery.collect(),
       db.query("gabinetTreatments").eq("organizationId", orgId).collect(),
     ]);
 

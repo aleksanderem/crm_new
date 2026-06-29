@@ -1,5 +1,6 @@
 import { QueryCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
+import { GABINET_MODULES, type GabinetModule } from "../gabinet/_registry";
 
 /**
  * Verify that the organization has an active subscription for a specific product.
@@ -34,4 +35,21 @@ export async function verifyProductAccess(
   if (subscription.status !== "active" && subscription.status !== "trialing") {
     throw new Error(`Subscription for ${productId} is ${subscription.status}`);
   }
+}
+
+/**
+ * Verify that the organization has access to a specific gabinet sub-module.
+ * Resolves the module name to its required product ID via GABINET_MODULES and
+ * delegates to verifyProductAccess.
+ *
+ * Usage:
+ *   await checkModuleAccess(ctx, organizationId, "inventory");
+ *   await checkModuleAccess(ctx, organizationId, "patients");
+ */
+export async function checkModuleAccess(
+  ctx: QueryCtx,
+  organizationId: Id<"organizations">,
+  module: GabinetModule,
+): Promise<void> {
+  await verifyProductAccess(ctx, organizationId, GABINET_MODULES[module]);
 }

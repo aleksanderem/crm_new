@@ -310,8 +310,9 @@ export const getEmployeePermissions = query({
   },
 });
 
-/** Upsert per-employee permission overrides. Overrides are MAX-merged on top
- *  of the employee's gabinet-role permissions, so only elevation is possible. */
+/** Upsert per-employee permission overrides. For each feature/action present in
+ *  the permissions blob, that value REPLACES the role-derived scope (supports
+ *  both elevation and restriction). Missing entries inherit from the role. */
 export const setEmployeePermissions = mutation({
   args: {
     organizationId: v.id("organizations"),

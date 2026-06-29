@@ -108,7 +108,8 @@ export const checkPermission = internalQuery({
         }
         effectiveScope = maxScope(orgScope, gabinetScope);
 
-        // Layer 3: per-employee overrides (MAX-merge on top of role-level scope)
+        // Layer 3: per-employee overrides (REPLACE semantics — allows both
+        // elevation and restriction relative to the role-derived scope)
         const membershipOverride = await ctx.db
           .query("gabinetMembershipPermissions")
           .withIndex("by_orgAndUser", (q) =>
@@ -117,8 +118,10 @@ export const checkPermission = internalQuery({
           .unique();
         if (membershipOverride) {
           const mPerms = membershipOverride.permissions as Record<string, Record<string, string>>;
-          const membershipScope = (mPerms?.[feature]?.[action] ?? "none") as Scope;
-          effectiveScope = maxScope(effectiveScope, membershipScope);
+          const membershipScope = mPerms?.[feature]?.[action];
+          if (membershipScope !== undefined) {
+            effectiveScope = membershipScope as Scope;
+          }
         }
       }
     }

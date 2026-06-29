@@ -749,6 +749,7 @@ function EmployeeDetail() {
               <EmployeePermissionsTab
                 organizationId={organizationId}
                 userId={employee.userId as Id<"users">}
+                gabinetRole={employee.role}
                 t={t}
               />
             ),
@@ -2800,12 +2801,20 @@ const ALL_PERMS_FEATURES = [
 
 const ALL_PERMS_ACTIONS = ["view", "create", "edit", "delete", "approve", "sign", "refund"] as const;
 
-function buildEmpLocalPerms(raw: Record<string, Record<string, string>> | null): LocalPerms {
+function buildEmpLocalPerms(
+  raw: Record<string, Record<string, string>> | null,
+  roleDefaults?: Record<string, Record<string, string>> | null,
+): LocalPerms {
   const result: LocalPerms = {};
   for (const f of EMPLOYEE_PERMISSION_FEATURES) {
     result[f.key] = {};
     for (const action of f.actions) {
-      result[f.key]![action] = (raw?.[f.key]?.[action] as Scope) ?? "none";
+      // When no override row exists yet, pre-populate from the role-level defaults
+      // so the admin sees the current effective values rather than all-none.
+      const fallback = raw === null
+        ? ((roleDefaults?.[f.key]?.[action] as Scope) ?? "none")
+        : "none";
+      result[f.key]![action] = (raw?.[f.key]?.[action] as Scope) ?? fallback;
     }
   }
   return result;
@@ -2845,10 +2854,12 @@ function EmpScopeSelect({ value, onChange }: { value: Scope; onChange: (v: Scope
 function EmployeePermissionsTab({
   organizationId,
   userId,
+  gabinetRole,
   t,
 }: {
   organizationId: Id<"organizations">;
   userId: Id<"users">;
+  gabinetRole: string;
   t: TFunction;
 }) {
   const rawPerms = useConvexQuery(api.gabinetRoles.getEmployeePermissions, {
@@ -2856,20 +2867,30 @@ function EmployeePermissionsTab({
     userId,
   });
 
+  const rolePerms = useConvexQuery(api.gabinetRoles.getPermissions, {
+    organizationId,
+    gabinetRole,
+  });
+
   const setEmpPermissions = useMutation(api.gabinetRoles.setEmployeePermissions);
   const resetEmpPermissions = useMutation(api.gabinetRoles.resetEmployeePermissions);
 
-  const [local, setLocal] = useState<LocalPerms>(() => buildEmpLocalPerms(null));
+  const [local, setLocal] = useState<LocalPerms>(() => buildEmpLocalPerms(null, null));
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
-    if (rawPerms !== undefined) {
-      setLocal(buildEmpLocalPerms(rawPerms as Record<string, Record<string, string>> | null));
+    if (rawPerms !== undefined && rolePerms !== undefined) {
+      setLocal(
+        buildEmpLocalPerms(
+          rawPerms as Record<string, Record<string, string>> | null,
+          rolePerms as Record<string, Record<string, string>> | null,
+        ),
+      );
       setDirty(false);
     }
-  }, [rawPerms]);
+  }, [rawPerms, rolePerms]);
 
   const handleChange = useCallback((feature: string, action: string, scope: Scope) => {
     setLocal((prev) => ({
@@ -2918,7 +2939,7 @@ function EmployeePermissionsTab({
     }
   };
 
-  if (rawPerms === undefined) {
+  if (rawPerms === undefined || rolePerms === undefined) {
     return <div className="py-8 text-center text-sm text-muted-foreground">{t("common.loading", "Ładowanie…")}</div>;
   }
 
@@ -2934,7 +2955,7 @@ function EmployeePermissionsTab({
           <p className="text-xs text-muted-foreground">
             {t(
               "gabinet.employees.permissions.description",
-              "Indywidualne nadpisania uprawnień dla tego pracownika. Uprawnienia są scalane z rolą pracownika — możliwe jest tylko podwyższenie poziomu dostępu."
+              "Indywidualne nadpisania uprawnień dla tego pracownika. Zapisane wartości zastępują uprawnienia roli — możliwe jest zarówno podwyższenie jak i ograniczenie dostępu. Brak nadpisania oznacza stosowanie uprawnień roli."
             )}
           </p>
           {hasOverride && (

@@ -60,6 +60,37 @@ DEFAULT_PERMISSIONS.viewer.gabinet_reports = {
   view: "none", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
 };
 
+// --- Per-feature overrides for gabinet_financial_reports ---
+// More sensitive than general reports — revenue/financial summaries.
+// member: no access; viewer: no access. Gabinet-role max-merge grants access
+// to manager/admin gabinet roles.
+DEFAULT_PERMISSIONS.member.gabinet_financial_reports = {
+  view: "none", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
+};
+DEFAULT_PERMISSIONS.viewer.gabinet_financial_reports = {
+  view: "none", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
+};
+
+// --- Per-feature overrides for gabinet_purchase_prices ---
+// Cost/purchase prices for treatments and products — sensitive margin data.
+// member: no access; viewer: no access.
+DEFAULT_PERMISSIONS.member.gabinet_purchase_prices = {
+  view: "none", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
+};
+DEFAULT_PERMISSIONS.viewer.gabinet_purchase_prices = {
+  view: "none", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
+};
+
+// --- Per-feature overrides for gabinet_online_booking ---
+// Online booking configuration — like settings, not exposed to general members.
+// member: no access; viewer: no access.
+DEFAULT_PERMISSIONS.member.gabinet_online_booking = {
+  view: "none", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
+};
+DEFAULT_PERMISSIONS.viewer.gabinet_online_booking = {
+  view: "none", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
+};
+
 // --- Per-feature overrides for document_templates ---
 // owner/admin: all actions allowed (approve/sign not applicable to templates)
 // member: view only (no create/edit/delete)

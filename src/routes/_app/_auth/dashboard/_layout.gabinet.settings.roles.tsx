@@ -72,6 +72,31 @@ const GABINET_FEATURES = [
     actions: ["view"] as const,
   },
   {
+    key: "gabinet_financial_reports",
+    labelKey: "gabinet.roles.features.financial_reports",
+    actions: ["view"] as const,
+  },
+  {
+    key: "gabinet_purchase_prices",
+    labelKey: "gabinet.roles.features.purchase_prices",
+    actions: ["view", "create", "edit"] as const,
+  },
+  {
+    key: "gabinet_photos",
+    labelKey: "gabinet.roles.features.photos",
+    actions: ["view", "create", "edit", "delete"] as const,
+  },
+  {
+    key: "gabinet_online_booking",
+    labelKey: "gabinet.roles.features.online_booking",
+    actions: ["view", "create", "edit", "delete"] as const,
+  },
+  {
+    key: "gabinet_inventory",
+    labelKey: "gabinet.roles.features.inventory",
+    actions: ["view", "create", "edit", "delete"] as const,
+  },
+  {
     key: "gabinet_settings",
     labelKey: "gabinet.roles.features.settings",
     actions: ["view", "create", "edit", "delete"] as const,
@@ -82,8 +107,9 @@ const ALL_FEATURES = [
   "leads", "contacts", "companies", "documents", "activities", "calls", "email",
   "products", "pipelines", "gabinet_dashboard", "gabinet_patients", "gabinet_appointments",
   "gabinet_treatments", "gabinet_packages", "gabinet_employees", "gabinet_payments",
-  "gabinet_reports", "gabinet_settings", "settings", "team", "document_templates",
-  "document_instances", "tagDefinitions", "categoryDefinitions",
+  "gabinet_reports", "gabinet_financial_reports", "gabinet_purchase_prices", "gabinet_photos",
+  "gabinet_online_booking", "gabinet_inventory", "gabinet_settings", "settings", "team",
+  "document_templates", "document_instances", "tagDefinitions", "categoryDefinitions",
 ] as const;
 
 const ALL_ACTIONS = ["view", "create", "edit", "delete", "approve", "sign", "refund"] as const;

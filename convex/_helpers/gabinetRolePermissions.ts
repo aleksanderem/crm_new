@@ -70,6 +70,11 @@ function buildGabinet(
     "gabinet_employees",
     "gabinet_payments",
     "gabinet_reports",
+    "gabinet_financial_reports",
+    "gabinet_purchase_prices",
+    "gabinet_photos",
+    "gabinet_online_booking",
+    "gabinet_inventory",
     "gabinet_settings",
     "settings",
     "team",
@@ -103,6 +108,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_packages: { view: "all" },
     gabinet_employees: { view: "all" },
     gabinet_payments: { view: "all" },
+    gabinet_photos: { view: "all", create: "all", edit: "own", delete: "own" },
     gabinet_settings: {},
   }),
   therapist: buildGabinet({
@@ -112,6 +118,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_packages: { view: "all" },
     gabinet_employees: { view: "all" },
     gabinet_payments: { view: "all" },
+    gabinet_photos: { view: "all", create: "all", edit: "own", delete: "own" },
     gabinet_settings: {},
   }),
   nurse: buildGabinet({
@@ -121,6 +128,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_packages: { view: "all" },
     gabinet_employees: { view: "all" },
     gabinet_payments: { view: "all" },
+    gabinet_photos: { view: "all", create: "all", edit: "own" },
     gabinet_settings: {},
   }),
   receptionist: buildGabinet({
@@ -132,6 +140,9 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     // Recepcja może rejestrować wpłaty i edytować je, ale NIE robi zwrotów —
     // zwrot wymaga osobnej autoryzacji administratora (issue #1690).
     gabinet_payments: { view: "all", create: "all", edit: "all" },
+    gabinet_photos: { view: "all" },
+    gabinet_online_booking: { view: "all" },
+    gabinet_inventory: { view: "all" },
     gabinet_settings: {},
   }),
   // Manager: operational access without financial-admin powers.
@@ -145,6 +156,11 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_employees: { view: "all" },
     gabinet_payments: { view: "all", create: "all", edit: "all" },
     gabinet_reports: { view: "all" },
+    gabinet_financial_reports: { view: "all" },
+    gabinet_purchase_prices: { view: "all" },
+    gabinet_photos: { view: "all" },
+    gabinet_online_booking: { view: "all", edit: "all" },
+    gabinet_inventory: { view: "all", create: "all", edit: "all" },
     gabinet_settings: {},
   }),
   admin: buildGabinet({
@@ -155,6 +171,11 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_employees: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_payments: { view: "all", create: "all", edit: "all", delete: "all", refund: "all" },
     gabinet_reports: { view: "all" },
+    gabinet_financial_reports: { view: "all" },
+    gabinet_purchase_prices: { view: "all", create: "all", edit: "all" },
+    gabinet_photos: { view: "all", create: "all", edit: "all", delete: "all" },
+    gabinet_online_booking: { view: "all", create: "all", edit: "all", delete: "all" },
+    gabinet_inventory: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_settings: { view: "all", create: "all", edit: "all", delete: "all" },
   }),
   other: buildGabinet({

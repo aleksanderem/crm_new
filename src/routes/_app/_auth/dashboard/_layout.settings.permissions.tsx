@@ -42,6 +42,11 @@ const FEATURES = [
   { key: "gabinet_employees", labelKey: "permissions.features.gabinet_employees", label: "Gabinet: Employees" },
   { key: "gabinet_payments", labelKey: "permissions.features.gabinet_payments", label: "Gabinet: Payments" },
   { key: "gabinet_reports", labelKey: "permissions.features.gabinet_reports", label: "Gabinet: Reports" },
+  { key: "gabinet_financial_reports", labelKey: "permissions.features.gabinet_financial_reports", label: "Gabinet: Financial Reports" },
+  { key: "gabinet_purchase_prices", labelKey: "permissions.features.gabinet_purchase_prices", label: "Gabinet: Purchase Prices" },
+  { key: "gabinet_photos", labelKey: "permissions.features.gabinet_photos", label: "Gabinet: Patient Photos" },
+  { key: "gabinet_online_booking", labelKey: "permissions.features.gabinet_online_booking", label: "Gabinet: Online Booking" },
+  { key: "gabinet_inventory", labelKey: "permissions.features.gabinet_inventory", label: "Gabinet: Inventory" },
   { key: "settings", labelKey: "permissions.features.settings", label: "Settings" },
   { key: "team", labelKey: "permissions.features.team", label: "Team" },
 ] as const;

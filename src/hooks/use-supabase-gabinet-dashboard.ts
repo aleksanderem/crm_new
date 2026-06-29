@@ -50,21 +50,25 @@ function monthPrefix(date: Date): string {
 // Weekly Appointments (sparkline — 7 days)
 // ---------------------------------------------------------------------------
 
-export function useSupabaseGabinetWeeklyAppointments(organizationId: string) {
+export function useSupabaseGabinetWeeklyAppointments(organizationId: string, locationId?: string) {
   const { client, isReady } = useSupabase();
   const startDate = dateNDaysAgo(6);
 
   return useQuery<{ day: string; appointments: number }[], Error>({
-    queryKey: [...supabaseKeys.gabinetAppointments.list(organizationId), "weekly-sparkline"],
+    queryKey: [...supabaseKeys.gabinetAppointments.list(organizationId), "weekly-sparkline", locationId ?? ""],
     queryFn: async () => {
       if (!client) throw new Error("Supabase client not ready");
 
-      const { data, error } = await client
+      let query = client
         .from("gabinet_appointments")
         .select("date")
         .eq("organization_id", organizationId)
         .gte("date", startDate)
         .order("date");
+
+      if (locationId) query = query.eq("location_id", locationId);
+
+      const { data, error } = await query;
 
       if (error) throw error;
       const rows = (data ?? []) as Pick<AppointmentRow, "date">[];
@@ -135,22 +139,26 @@ export function useSupabaseGabinetMonthlyNewPatients(organizationId: string) {
 // Weekly Completed Treatments (sparkline — 7 days)
 // ---------------------------------------------------------------------------
 
-export function useSupabaseGabinetWeeklyCompletedTreatments(organizationId: string) {
+export function useSupabaseGabinetWeeklyCompletedTreatments(organizationId: string, locationId?: string) {
   const { client, isReady } = useSupabase();
   const startDate = dateNDaysAgo(6);
 
   return useQuery<{ day: string; completed: number }[], Error>({
-    queryKey: [...supabaseKeys.gabinetAppointments.list(organizationId), "weekly-completed"],
+    queryKey: [...supabaseKeys.gabinetAppointments.list(organizationId), "weekly-completed", locationId ?? ""],
     queryFn: async () => {
       if (!client) throw new Error("Supabase client not ready");
 
-      const { data, error } = await client
+      let query = client
         .from("gabinet_appointments")
         .select("date, status")
         .eq("organization_id", organizationId)
         .eq("status", "completed")
         .gte("date", startDate)
         .order("date");
+
+      if (locationId) query = query.eq("location_id", locationId);
+
+      const { data, error } = await query;
 
       if (error) throw error;
       const rows = (data ?? []) as Pick<AppointmentRow, "date" | "status">[];
@@ -179,11 +187,11 @@ export function useSupabaseGabinetWeeklyCompletedTreatments(organizationId: stri
 // Monthly Appointments (area chart — 6 months)
 // ---------------------------------------------------------------------------
 
-export function useSupabaseGabinetMonthlyAppointments(organizationId: string) {
+export function useSupabaseGabinetMonthlyAppointments(organizationId: string, locationId?: string) {
   const { client, isReady } = useSupabase();
 
   return useQuery<{ month: string; appointments: number; completed: number }[], Error>({
-    queryKey: [...supabaseKeys.gabinetAppointments.list(organizationId), "monthly"],
+    queryKey: [...supabaseKeys.gabinetAppointments.list(organizationId), "monthly", locationId ?? ""],
     queryFn: async () => {
       if (!client) throw new Error("Supabase client not ready");
 
@@ -192,12 +200,16 @@ export function useSupabaseGabinetMonthlyAppointments(organizationId: string) {
         .toISOString()
         .split("T")[0];
 
-      const { data, error } = await client
+      let query = client
         .from("gabinet_appointments")
         .select("date, status")
         .eq("organization_id", organizationId)
         .gte("date", oldestStart)
         .order("date");
+
+      if (locationId) query = query.eq("location_id", locationId);
+
+      const { data, error } = await query;
 
       if (error) throw error;
       const rows = (data ?? []) as Pick<AppointmentRow, "date" | "status">[];
@@ -226,11 +238,11 @@ export function useSupabaseGabinetMonthlyAppointments(organizationId: string) {
 // Appointment Status Distribution (donut chart — current month)
 // ---------------------------------------------------------------------------
 
-export function useSupabaseGabinetAppointmentStatusDistribution(organizationId: string) {
+export function useSupabaseGabinetAppointmentStatusDistribution(organizationId: string, locationId?: string) {
   const { client, isReady } = useSupabase();
 
   return useQuery<{ total: number; statuses: { status: string; count: number }[] }, Error>({
-    queryKey: [...supabaseKeys.gabinetAppointments.list(organizationId), "status-distribution"],
+    queryKey: [...supabaseKeys.gabinetAppointments.list(organizationId), "status-distribution", locationId ?? ""],
     queryFn: async () => {
       if (!client) throw new Error("Supabase client not ready");
 
@@ -240,12 +252,16 @@ export function useSupabaseGabinetAppointmentStatusDistribution(organizationId: 
         .toISOString()
         .split("T")[0];
 
-      const { data, error } = await client
+      let query = client
         .from("gabinet_appointments")
         .select("status")
         .eq("organization_id", organizationId)
         .gte("date", thisMonthStart)
         .lt("date", nextMonthStart);
+
+      if (locationId) query = query.eq("location_id", locationId);
+
+      const { data, error } = await query;
 
       if (error) throw error;
       const rows = (data ?? []) as Pick<AppointmentRow, "status">[];
@@ -271,21 +287,25 @@ export function useSupabaseGabinetAppointmentStatusDistribution(organizationId: 
 // Top Treatments (ranked by appointment count)
 // ---------------------------------------------------------------------------
 
-export function useSupabaseGabinetTopTreatments(organizationId: string) {
+export function useSupabaseGabinetTopTreatments(organizationId: string, locationId?: string) {
   const { client, isReady } = useSupabase();
 
   return useQuery<{ label: string; value: number }[], Error>({
-    queryKey: [...supabaseKeys.gabinetAppointments.list(organizationId), "top-treatments"],
+    queryKey: [...supabaseKeys.gabinetAppointments.list(organizationId), "top-treatments", locationId ?? ""],
     queryFn: async () => {
       if (!client) throw new Error("Supabase client not ready");
 
+      let apptQuery = client
+        .from("gabinet_appointments")
+        .select("treatment_id")
+        .eq("organization_id", organizationId)
+        .not("treatment_id", "is", null);
+
+      if (locationId) apptQuery = apptQuery.eq("location_id", locationId);
+
       // Fetch appointment treatment_ids and treatment names in parallel
       const [apptRes, treatRes] = await Promise.all([
-        client
-          .from("gabinet_appointments")
-          .select("treatment_id")
-          .eq("organization_id", organizationId)
-          .not("treatment_id", "is", null),
+        apptQuery,
         client
           .from("gabinet_treatments")
           .select("id, name")
@@ -324,22 +344,26 @@ export function useSupabaseGabinetTopTreatments(organizationId: string) {
 // Weekly Revenue (sparkline — 7 days)
 // ---------------------------------------------------------------------------
 
-export function useSupabaseGabinetWeeklyRevenue(organizationId: string) {
+export function useSupabaseGabinetWeeklyRevenue(organizationId: string, locationId?: string) {
   const { client, isReady } = useSupabase();
   const startDate = dateNDaysAgo(6);
 
   return useQuery<{ day: string; revenue: number }[], Error>({
-    queryKey: [...supabaseKeys.gabinetAppointments.list(organizationId), "weekly-revenue"],
+    queryKey: [...supabaseKeys.gabinetAppointments.list(organizationId), "weekly-revenue", locationId ?? ""],
     queryFn: async () => {
       if (!client) throw new Error("Supabase client not ready");
 
-      const { data, error } = await client
+      let query = client
         .from("gabinet_appointments")
         .select("date, price_at_booking, status")
         .eq("organization_id", organizationId)
         .gte("date", startDate)
         .not("status", "in", '("cancelled","no_show")')
         .order("date");
+
+      if (locationId) query = query.eq("location_id", locationId);
+
+      const { data, error } = await query;
 
       if (error) throw error;
       const rows = (data ?? []) as Pick<AppointmentRow, "date" | "price_at_booking" | "status">[];
@@ -369,21 +393,25 @@ export function useSupabaseGabinetWeeklyRevenue(organizationId: string) {
 // ---------------------------------------------------------------------------
 
 /** Appointment nudges: count of today's unconfirmed (scheduled) appointments */
-export function useSupabaseGabinetAppointmentNudges(organizationId: string) {
+export function useSupabaseGabinetAppointmentNudges(organizationId: string, locationId?: string) {
   const { client, isReady } = useSupabase();
   const today = todayStr();
 
   return useQuery<NudgeData[], Error>({
-    queryKey: [...supabaseKeys.gabinetAppointments.list(organizationId), "nudges", today],
+    queryKey: [...supabaseKeys.gabinetAppointments.list(organizationId), "nudges", today, locationId ?? ""],
     queryFn: async () => {
       if (!client) throw new Error("Supabase client not ready");
 
-      const { count, error } = await client
+      let query = client
         .from("gabinet_appointments")
         .select("id", { count: "exact", head: true })
         .eq("organization_id", organizationId)
         .eq("date", today)
         .eq("status", "scheduled");
+
+      if (locationId) query = query.eq("location_id", locationId);
+
+      const { count, error } = await query;
 
       if (error) throw error;
       const n = count ?? 0;

@@ -1460,9 +1460,9 @@ function GabinetReports() {
         />
         <StatisticsImpressionCard
           title={t("gabinet.reports.totalPatients")}
-          description={t("gabinet.reports.allClientsInSystem")}
+          description={selectedLocationId ? t("gabinet.reports.allClientsOrgWide") : t("gabinet.reports.allClientsInSystem")}
           value={totalPatients.toLocaleString()}
-          changePercentage={t("gabinet.reports.allClientsInSystem")}
+          changePercentage={selectedLocationId ? t("gabinet.reports.allClientsOrgWide") : t("gabinet.reports.allClientsInSystem")}
           chartData={revenueChartPoints.map((d) => ({ month: String(d.index), impression: d.count }))}
         />
       </div>

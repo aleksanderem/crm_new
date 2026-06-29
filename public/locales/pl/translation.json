@@ -3553,6 +3553,7 @@
       "last90days": "Ostatnie 90 dni",
       "lastYear": "Ostatni rok",
       "allClientsInSystem": "Łącznie w systemie",
+      "allClientsOrgWide": "Wszyscy klienci · cały gabinet",
       "statuses": {
         "pending_confirmation": "Oczekujące",
         "scheduled": "Zaplanowane",

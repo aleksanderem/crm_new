@@ -28,6 +28,7 @@ export const list = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_packages",
@@ -58,6 +59,7 @@ export const listActive = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_packages",
@@ -91,6 +93,7 @@ export const getById = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_packages",
@@ -132,6 +135,7 @@ export const create = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_packages", action: "create" },
@@ -232,6 +236,7 @@ export const update = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_packages", action: "edit" },
@@ -279,6 +284,7 @@ export const remove = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_packages", action: "delete" },
@@ -313,6 +319,7 @@ export const purchaseTreatment = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_packages", action: "create" },
@@ -458,6 +465,7 @@ export const purchasePackage = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_packages", action: "create" },
@@ -621,6 +629,7 @@ export const usePackageTreatment = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_packages", action: "edit" },
@@ -674,6 +683,7 @@ export const usePackageTreatmentsBatch = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_packages", action: "edit" },
@@ -758,6 +768,7 @@ export const getActiveUsageCounts = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_packages",
@@ -791,6 +802,7 @@ export const getPatientPackages = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_packages",
@@ -818,6 +830,7 @@ export const getPatientPackagesEnriched = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_packages",
@@ -894,6 +907,7 @@ export const getActiveUsageDetails = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_packages",

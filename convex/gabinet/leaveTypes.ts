@@ -16,6 +16,7 @@ export const list = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const db = createSupabaseDb();
     let q = db.query("gabinetLeaveTypes").eq("organizationId", String(args.organizationId));
     if (args.activeOnly) {
@@ -34,6 +35,7 @@ export const getById = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const db = createSupabaseDb();
     const lt = (await db.get("gabinetLeaveTypes", args.leaveTypeId)) as
       | GabinetLeaveTypeRow
@@ -60,6 +62,7 @@ export const create = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     if (authResult.role !== "owner" && authResult.role !== "admin") {
       throw new Error("Admin access required");
     }
@@ -109,6 +112,7 @@ export const update = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     if (authResult.role !== "owner" && authResult.role !== "admin") {
       throw new Error("Admin access required");
     }
@@ -156,6 +160,7 @@ export const remove = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     if (authResult.role !== "owner" && authResult.role !== "admin") {
       throw new Error("Admin access required");
     }
@@ -186,6 +191,7 @@ export const getBalances = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
 
     const db = createSupabaseDb();
     const all = await db
@@ -206,6 +212,7 @@ export const getAllBalances = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
 
     const db = createSupabaseDb();
     const all = await db
@@ -229,6 +236,7 @@ export const initializeBalance = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     if (authResult.role !== "owner" && authResult.role !== "admin") {
       throw new Error("Admin access required");
     }
@@ -285,6 +293,7 @@ export const adjustBalance = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     if (authResult.role !== "owner" && authResult.role !== "admin") {
       throw new Error("Admin access required");
     }
@@ -315,6 +324,7 @@ export const initializeAllBalances = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     if (authResult.role !== "owner" && authResult.role !== "admin") {
       throw new Error("Admin access required");
     }

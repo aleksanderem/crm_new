@@ -21,6 +21,7 @@ export const getWorkingHours = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const db = createSupabaseDb();
     return (await db
       .query("gabinetWorkingHours")
@@ -45,6 +46,7 @@ export const setWorkingHours = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     if (authResult.role !== "owner" && authResult.role !== "admin") {
       throw new Error("Admin access required");
     }
@@ -106,6 +108,7 @@ export const bulkSetWorkingHours = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     if (authResult.role !== "owner" && authResult.role !== "admin") {
       throw new Error("Admin access required");
     }
@@ -158,6 +161,7 @@ export const getEmployeeSchedule = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const db = createSupabaseDb();
     return (await db
       .query("gabinetEmployeeSchedules")
@@ -186,6 +190,7 @@ export const setEmployeeSchedule = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     if (authResult.role !== "owner" && authResult.role !== "admin") {
       throw new Error("Admin access required");
     }
@@ -254,6 +259,7 @@ export const bulkSetEmployeeSchedule = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     if (authResult.role !== "owner" && authResult.role !== "admin") {
       throw new Error("Admin access required");
     }
@@ -329,6 +335,7 @@ export const saveSchedulePeriod = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     if (authResult.role !== "owner" && authResult.role !== "admin") {
       throw new Error("Admin access required");
     }
@@ -392,6 +399,7 @@ export const removeSchedulePeriod = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     if (authResult.role !== "owner" && authResult.role !== "admin") {
       throw new Error("Admin access required");
     }
@@ -418,6 +426,7 @@ export const listEmployeeSchedules = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const db = createSupabaseDb();
     return (await db
       .query("gabinetEmployeeSchedules")
@@ -437,6 +446,7 @@ export const listLeaves = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const db = createSupabaseDb();
     let q = db.query("gabinetLeaves").eq("organizationId", String(args.organizationId));
     if (args.status) {
@@ -464,6 +474,7 @@ export const createLeave = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const now = Date.now();
     const db = createSupabaseDb();
 
@@ -506,6 +517,7 @@ export const approveLeave = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     if (authResult.role !== "owner" && authResult.role !== "admin") {
       throw new Error("Admin access required");
     }
@@ -566,6 +578,7 @@ export const rejectLeave = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     if (authResult.role !== "owner" && authResult.role !== "admin") {
       throw new Error("Admin access required");
     }
@@ -596,6 +609,7 @@ export const getLeavesByDateRange = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const db = createSupabaseDb();
     const leaves = (await db
       .query("gabinetLeaves")
@@ -620,6 +634,7 @@ export const removeEmployeeSchedule = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     if (authResult.role !== "owner" && authResult.role !== "admin") {
       throw new Error("Admin access required");
     }
@@ -653,6 +668,7 @@ export const findNextAvailableSlot = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
 
     const db = createSupabaseDb();
 

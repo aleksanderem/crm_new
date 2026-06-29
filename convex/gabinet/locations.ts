@@ -18,6 +18,7 @@ export const listLocations = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const db = createSupabaseDb();
     const results = (await db
       .query("gabinetLocations")
@@ -36,6 +37,7 @@ export const getLocation = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const db = createSupabaseDb();
     const location = (await db.get("gabinetLocations", args.locationId)) as
       | GabinetLocationRow
@@ -72,6 +74,7 @@ export const createLocation = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
@@ -138,6 +141,7 @@ export const updateLocation = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
@@ -184,6 +188,7 @@ export const deleteLocation = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
@@ -229,6 +234,7 @@ export const listRooms = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const db = createSupabaseDb();
     const location = await db.get("gabinetLocations", args.locationId);
     if (!location || String(location.organizationId) !== String(args.organizationId)) return [];
@@ -253,6 +259,7 @@ export const createRoom = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
@@ -310,6 +317,7 @@ export const updateRoom = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
@@ -355,6 +363,7 @@ export const deleteRoom = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },

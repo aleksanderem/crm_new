@@ -51,7 +51,7 @@ export const getStockSummary = action({
     });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
-      { organizationId: args.organizationId, feature: "products", action: "view" },
+      { organizationId: args.organizationId, feature: "gabinet_inventory", action: "view" },
     ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
@@ -71,7 +71,7 @@ export const listMovements = action({
     });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
-      { organizationId: args.organizationId, feature: "products", action: "view" },
+      { organizationId: args.organizationId, feature: "gabinet_inventory", action: "view" },
     ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
@@ -108,7 +108,7 @@ export const adjustStock = action({
     );
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
-      { organizationId: args.organizationId, feature: "products", action: "edit" },
+      { organizationId: args.organizationId, feature: "gabinet_inventory", action: "edit" },
     ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 

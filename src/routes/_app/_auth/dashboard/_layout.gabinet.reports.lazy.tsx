@@ -9,6 +9,7 @@ import {
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
+import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import { useOrganization } from "@/components/org-context";
 import { usePermission } from "@/hooks/use-permission";
 import { formatCurrencyPLN } from "@/lib/format-currency";
@@ -948,6 +949,7 @@ function GabinetReports() {
   const { allowed: canViewReports, loading: permLoading } = usePermission("gabinet_reports", "view");
 
   const [dateRange, setDateRange] = useState<DateRangeKey>("30d");
+  const [selectedLocationId, setSelectedLocationId] = useState<string | undefined>(undefined);
   const [dateFilterPanelOpen, setDateFilterPanelOpen] = useState(false);
   const todayIso = new Date().toISOString().split("T")[0];
   const defaultCustomStart = useMemo(() => {
@@ -1000,8 +1002,12 @@ function GabinetReports() {
     setDateFilterPanelOpen(false);
   }, [customStart, customEnd, t]);
 
+  const { data: locations } = useSupabaseGabinetLocationsList(organizationId, { activeOnly: true });
+
   const { data: appointments, isLoading: loadingAppointments } =
-    useSupabaseGabinetAppointmentsByDateRange(organizationId, startDate, endDate);
+    useSupabaseGabinetAppointmentsByDateRange(organizationId, startDate, endDate, {
+      locationId: selectedLocationId,
+    });
 
   const { data: treatments, isLoading: loadingTreatments } =
     useSupabaseGabinetTreatmentsList(organizationId);
@@ -1023,7 +1029,9 @@ function GabinetReports() {
     useSupabaseGratisBarterAppointmentIds(organizationId, completedAppointmentIds);
 
   const { data: actualPayments, isLoading: loadingActualPayments } =
-    useSupabasePaymentsRevenueByDateRange(organizationId, startDate, endDate);
+    useSupabasePaymentsRevenueByDateRange(organizationId, startDate, endDate, {
+      locationId: selectedLocationId,
+    });
 
   const isLoading =
     loadingAppointments || loadingTreatments || loadingPatients || loadingEmployees || loadingGratisBarter || loadingActualPayments;
@@ -1379,29 +1387,47 @@ function GabinetReports() {
           title={t("gabinet.reports.title")}
           description={t("gabinet.reports.description")}
         />
-        <Select
-          value={dateRange}
-          onValueChange={(v) => {
-            if (v === "custom") {
-              setDateFilterPanelOpen(true);
-              return;
-            }
-            setDateRange(v as DateRangeKey);
-          }}
-        >
-          <SelectTrigger className="w-40 shrink-0" aria-label={t("gabinet.reports.dateRange")}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="today">{t("gabinet.reports.today")}</SelectItem>
-            <SelectItem value="yesterday">{t("gabinet.reports.yesterday")}</SelectItem>
-            <SelectItem value="7d">{t("gabinet.reports.last7days")}</SelectItem>
-            <SelectItem value="30d">{t("gabinet.reports.last30days")}</SelectItem>
-            <SelectItem value="90d">{t("gabinet.reports.last90days")}</SelectItem>
-            <SelectItem value="365d">{t("gabinet.reports.lastYear")}</SelectItem>
-            <SelectItem value="custom">{t("common.custom", "Custom")}</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex gap-2 shrink-0">
+          {locations && locations.length > 0 && (
+            <Select
+              value={selectedLocationId ?? "all"}
+              onValueChange={(v) => setSelectedLocationId(v === "all" ? undefined : v)}
+            >
+              <SelectTrigger className="w-40" aria-label={t("gabinet.reports.location", "Location")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("gabinet.reports.allLocations", "All locations")}</SelectItem>
+                {locations.map((loc) => (
+                  <SelectItem key={loc._id} value={loc._id}>{loc.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Select
+            value={dateRange}
+            onValueChange={(v) => {
+              if (v === "custom") {
+                setDateFilterPanelOpen(true);
+                return;
+              }
+              setDateRange(v as DateRangeKey);
+            }}
+          >
+            <SelectTrigger className="w-40" aria-label={t("gabinet.reports.dateRange")}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">{t("gabinet.reports.today")}</SelectItem>
+              <SelectItem value="yesterday">{t("gabinet.reports.yesterday")}</SelectItem>
+              <SelectItem value="7d">{t("gabinet.reports.last7days")}</SelectItem>
+              <SelectItem value="30d">{t("gabinet.reports.last30days")}</SelectItem>
+              <SelectItem value="90d">{t("gabinet.reports.last90days")}</SelectItem>
+              <SelectItem value="365d">{t("gabinet.reports.lastYear")}</SelectItem>
+              <SelectItem value="custom">{t("common.custom", "Custom")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* KPI Cards */}

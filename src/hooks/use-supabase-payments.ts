@@ -143,15 +143,19 @@ export interface PaymentRevenueSummary {
  * the gabinet reports page to show actual collected revenue alongside the
  * appointment-based estimate. Only payments with a non-null `paid_at` are
  * included; `paid_at` timestamps are compared as milliseconds UTC.
+ *
+ * When `locationId` is provided, payments are scoped to those linked to
+ * appointments at that location in the date range. The payments table has no
+ * direct location_id column, so this requires a two-step query.
  */
 export function useSupabasePaymentsRevenueByDateRange(
   organizationId: string,
   startDate: string, // YYYY-MM-DD
   endDate: string,   // YYYY-MM-DD
-  options: { enabled?: boolean } = {},
+  options: { enabled?: boolean; locationId?: string } = {},
 ) {
   const { client, isReady } = useSupabase();
-  const { enabled = true } = options;
+  const { enabled = true, locationId } = options;
 
   return useQuery<PaymentRevenueSummary[], Error>({
     queryKey: [
@@ -159,6 +163,7 @@ export function useSupabasePaymentsRevenueByDateRange(
       "revenueByDateRange",
       startDate,
       endDate,
+      locationId ?? "",
     ],
     queryFn: async (): Promise<PaymentRevenueSummary[]> => {
       if (!client) throw new Error("Supabase client not ready");
@@ -166,7 +171,7 @@ export function useSupabasePaymentsRevenueByDateRange(
       const startTs = new Date(startDate + "T00:00:00.000Z").getTime();
       const endTs = new Date(endDate + "T23:59:59.999Z").getTime();
 
-      const { data, error } = await client
+      let paymentsQuery = client
         .from("payments")
         .select("amount, paid_at, currency, payment_method")
         .eq("organization_id", organizationId)
@@ -176,6 +181,25 @@ export function useSupabasePaymentsRevenueByDateRange(
         .not("paid_at", "is", null)
         .gte("paid_at", startTs)
         .lte("paid_at", endTs);
+
+      if (locationId) {
+        const { data: apptData, error: apptError } = await client
+          .from("gabinet_appointments")
+          .select("id")
+          .eq("organization_id", organizationId)
+          .eq("location_id", locationId)
+          .gte("date", startDate)
+          .lte("date", endDate);
+
+        if (apptError) throw apptError;
+
+        const apptIds = (apptData ?? []).map((a: { id: string }) => a.id);
+        if (apptIds.length === 0) return [];
+
+        paymentsQuery = paymentsQuery.in("appointment_id", apptIds);
+      }
+
+      const { data, error } = await paymentsQuery;
 
       if (error) throw error;
 

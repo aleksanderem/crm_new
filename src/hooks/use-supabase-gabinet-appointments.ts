@@ -78,6 +78,7 @@ export function useSupabaseGabinetAppointmentsByDateRange(
 interface UseSupabaseGabinetAppointmentsByPatientOptions {
   enabled?: boolean;
   limit?: number;
+  locationId?: string;
 }
 
 export function useSupabaseGabinetAppointmentsByPatient(
@@ -86,22 +87,29 @@ export function useSupabaseGabinetAppointmentsByPatient(
   options: UseSupabaseGabinetAppointmentsByPatientOptions = {},
 ) {
   const { client, isReady } = useSupabase();
-  const { enabled = true, limit = 100 } = options;
+  const { enabled = true, limit = 100, locationId } = options;
 
   return useQuery<MappedGabinetAppointment[], Error>({
     queryKey: [
       ...supabaseKeys.gabinetAppointments.list(organizationId),
       "patient",
       patientId ?? "",
+      locationId ?? "",
     ],
     queryFn: async (): Promise<MappedGabinetAppointment[]> => {
       if (!client || !patientId) return [];
 
-      const { data, error } = await client
+      let query = client
         .from("gabinet_appointments")
         .select("*")
         .eq("organization_id", organizationId)
-        .eq("patient_id", patientId)
+        .eq("patient_id", patientId);
+
+      if (locationId) {
+        query = query.eq("location_id", locationId);
+      }
+
+      const { data, error } = await query
         .order("date", { ascending: false })
         .order("start_time", { ascending: false })
         .limit(limit);

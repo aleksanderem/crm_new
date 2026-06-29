@@ -28,6 +28,11 @@
  *   • 00021_gabinet_appointments_contraindication_alerts_reviewed.sql
  *   • 00022_gabinet_appointments_price_at_booking.sql
  *   • 00023_payment_method_gratis_barter.sql
+ *   • 00024_payments_org_status_paid_at_idx.sql
+ *   • 00025_gabinet_treatment_products.sql
+ *   • 00026_gabinet_treatment_products_rls.sql
+ *   • 00027_gabinet_appointments_location_idx.sql
+ *   • 00028_gabinet_payment_methods.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -3929,64 +3934,6 @@ export interface Database {
           },
         ];
       };
-      gabinet_treatment_products: {
-        Row: {
-          id: string;
-          organization_id: string;
-          treatment_id: string;
-          product_id: string;
-          product_section: string;
-          quantity: number;
-          unit: string | null;
-          created_at: number;
-          updated_at: number;
-        };
-        Insert: {
-          id?: string;
-          organization_id: string;
-          treatment_id: string;
-          product_id: string;
-          product_section: string;
-          quantity: number;
-          unit?: string | null;
-          created_at: number;
-          updated_at: number;
-        };
-        Update: {
-          id?: string;
-          organization_id?: string;
-          treatment_id?: string;
-          product_id?: string;
-          product_section?: string;
-          quantity?: number;
-          unit?: string | null;
-          created_at?: number;
-          updated_at?: number;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "gabinet_treatment_products_organization_id_fkey";
-            columns: ["organization_id"];
-            isOneToOne: false;
-            referencedRelation: "organizations";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_treatment_products_treatment_id_fkey";
-            columns: ["treatment_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_treatments";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_treatment_products_product_id_fkey";
-            columns: ["product_id"];
-            isOneToOne: false;
-            referencedRelation: "products";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       gabinet_employees: {
         Row: {
           id: string;
@@ -6673,6 +6620,133 @@ export interface Database {
           },
         ];
       };
+      gabinet_treatment_products: {
+        Row: {
+          id: string;
+          organization_id: string;
+          treatment_id: string;
+          product_id: string;
+          product_section: string;
+          quantity: number;
+          unit: string | null;
+          created_at: number;
+          updated_at: number;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          treatment_id: string;
+          product_id: string;
+          product_section: string;
+          quantity: number;
+          unit?: string | null;
+          created_at: number;
+          updated_at: number;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          treatment_id?: string;
+          product_id?: string;
+          product_section?: string;
+          quantity?: number;
+          unit?: string | null;
+          created_at?: number;
+          updated_at?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_treatment_products_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_treatment_products_treatment_id_fkey";
+            columns: ["treatment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_treatment_products_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      gabinet_payment_methods: {
+        Row: {
+          id: string;
+          organization_id: string;
+          key: string;
+          name: string;
+          is_system: boolean;
+          is_active: boolean;
+          order: number;
+          available_for_settlement: boolean;
+          available_for_sales: boolean;
+          available_for_refund: boolean;
+          locks_amount_to_treatment_price: boolean;
+          is_package_coverage: boolean;
+          created_by: string;
+          created_at: number;
+          updated_at: number;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          key: string;
+          name: string;
+          is_system: boolean;
+          is_active: boolean;
+          order: number;
+          available_for_settlement: boolean;
+          available_for_sales: boolean;
+          available_for_refund: boolean;
+          locks_amount_to_treatment_price: boolean;
+          is_package_coverage: boolean;
+          created_by: string;
+          created_at: number;
+          updated_at: number;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          key?: string;
+          name?: string;
+          is_system?: boolean;
+          is_active?: boolean;
+          order?: number;
+          available_for_settlement?: boolean;
+          available_for_sales?: boolean;
+          available_for_refund?: boolean;
+          locks_amount_to_treatment_price?: boolean;
+          is_package_coverage?: boolean;
+          created_by?: string;
+          created_at?: number;
+          updated_at?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_payment_methods_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_payment_methods_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -6778,9 +6852,6 @@ export type GabinetTreatmentUpdate = Database["public"]["Tables"]["gabinet_treat
 export type GabinetTreatmentVariantRow = Database["public"]["Tables"]["gabinet_treatment_variants"]["Row"];
 export type GabinetTreatmentVariantInsert = Database["public"]["Tables"]["gabinet_treatment_variants"]["Insert"];
 export type GabinetTreatmentVariantUpdate = Database["public"]["Tables"]["gabinet_treatment_variants"]["Update"];
-export type GabinetTreatmentProductRow = Database["public"]["Tables"]["gabinet_treatment_products"]["Row"];
-export type GabinetTreatmentProductInsert = Database["public"]["Tables"]["gabinet_treatment_products"]["Insert"];
-export type GabinetTreatmentProductUpdate = Database["public"]["Tables"]["gabinet_treatment_products"]["Update"];
 export type GabinetEmployeeRow = Database["public"]["Tables"]["gabinet_employees"]["Row"];
 export type GabinetEmployeeInsert = Database["public"]["Tables"]["gabinet_employees"]["Insert"];
 export type GabinetEmployeeUpdate = Database["public"]["Tables"]["gabinet_employees"]["Update"];

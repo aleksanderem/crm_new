@@ -63,6 +63,7 @@ const TABLE_MAP: Record<string, string> = {
   gabinetEmployeeSchedules: "gabinet_employee_schedules",
   gabinetLeaves: "gabinet_leaves",
   gabinetLeaveTypes: "gabinet_leave_types",
+  gabinetPaymentMethods: "gabinet_payment_methods",
   gabinetLeaveBalances: "gabinet_leave_balances",
   gabinetTreatmentPackages: "gabinet_treatment_packages",
   gabinetPackageUsage: "gabinet_package_usage",

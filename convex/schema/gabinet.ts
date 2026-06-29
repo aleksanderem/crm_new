@@ -362,6 +362,26 @@ export function createGabinetTables({
     .index("by_org", ["organizationId"])
     .index("by_orgAndActive", ["organizationId", "isActive"]),
 
+  gabinetPaymentMethods: defineTable({
+    organizationId: v.id("organizations"),
+    key: v.string(),
+    name: v.string(),
+    isSystem: v.boolean(),
+    isActive: v.boolean(),
+    order: v.number(),
+    availableForSettlement: v.boolean(),
+    availableForSales: v.boolean(),
+    availableForRefund: v.boolean(),
+    locksAmountToTreatmentPrice: v.boolean(),
+    isPackageCoverage: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndActive", ["organizationId", "isActive"])
+    .index("by_orgAndKey", ["organizationId", "key"]),
+
   gabinetLeaveBalances: defineTable({
     organizationId: v.id("organizations"),
     employeeId: v.id("gabinetEmployees"),

@@ -28,6 +28,11 @@
  *   • 00021_gabinet_appointments_contraindication_alerts_reviewed.sql
  *   • 00022_gabinet_appointments_price_at_booking.sql
  *   • 00023_payment_method_gratis_barter.sql
+ *   • 00024_payments_org_status_paid_at_idx.sql
+ *   • 00025_gabinet_treatment_products.sql
+ *   • 00026_gabinet_treatment_products_rls.sql
+ *   • 00027_gabinet_appointments_location_idx.sql
+ *   • 00028_gabinet_payment_methods.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  */
@@ -127,7 +132,8 @@ export type TableName =
   | "document_components"
   | "product_stock_levels"
   | "product_stock_movements"
-  | "gabinet_treatment_products";
+  | "gabinet_treatment_products"
+  | "gabinet_payment_methods";
 
 /**
  * Column names per table, as a runtime-checkable Set.
@@ -228,4 +234,5 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   product_stock_levels: new Set(["id", "organization_id", "product_id", "location_id", "quantity", "updated_at"]),
   product_stock_movements: new Set(["id", "organization_id", "product_id", "location_id", "delta", "balance_after", "reason", "source_type", "source_id", "note", "performed_by", "created_at"]),
   gabinet_treatment_products: new Set(["id", "organization_id", "treatment_id", "product_id", "product_section", "quantity", "unit", "created_at", "updated_at"]),
+  gabinet_payment_methods: new Set(["id", "organization_id", "key", "name", "is_system", "is_active", "order", "available_for_settlement", "available_for_sales", "available_for_refund", "locks_amount_to_treatment_price", "is_package_coverage", "created_by", "created_at", "updated_at"]),
 };

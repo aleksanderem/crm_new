@@ -188,6 +188,19 @@ export async function checkPermission(
             ?? defaultGabinetScope(gRole, feature, action)) as Scope
         : defaultGabinetScope(gRole, feature, action);
       effectiveScope = maxScope(orgScope, gabinetScope);
+
+      // Layer 3: per-employee overrides (MAX-merge on top of role-level scope)
+      const membershipOverride = await ctx.db
+        .query("gabinetMembershipPermissions")
+        .withIndex("by_orgAndUser", (q) =>
+          q.eq("organizationId", orgId).eq("userId", user._id),
+        )
+        .unique();
+      if (membershipOverride) {
+        const mPerms = membershipOverride.permissions as Record<string, Record<string, string>>;
+        const membershipScope = (mPerms?.[feature]?.[action] ?? "none") as Scope;
+        effectiveScope = maxScope(effectiveScope, membershipScope);
+      }
     }
   }
 
@@ -286,6 +299,26 @@ export async function getEffectivePermissions(
         mergedActions[action] = maxScope(mergedActions[action], gabinetScope);
       }
       merged[feature] = mergedActions;
+    }
+
+    // Layer 3: per-employee overrides (MAX-merge on top of role-level scope)
+    const membershipOverride = await ctx.db
+      .query("gabinetMembershipPermissions")
+      .withIndex("by_orgAndUser", (q) =>
+        q.eq("organizationId", orgId).eq("userId", user._id),
+      )
+      .unique();
+    if (membershipOverride) {
+      const mPerms = membershipOverride.permissions as Partial<FeaturePermissions>;
+      for (const feature of ALL_FEATURES) {
+        if (!feature.startsWith("gabinet_")) continue;
+        const mergedActions = { ...merged[feature] };
+        for (const action of ACTIONS) {
+          const membershipScope: Scope = mPerms?.[feature as Feature]?.[action] ?? "none";
+          mergedActions[action] = maxScope(mergedActions[action], membershipScope);
+        }
+        merged[feature] = mergedActions;
+      }
     }
   }
 

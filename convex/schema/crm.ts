@@ -610,6 +610,21 @@ export function createCrmTables({
     .index("by_org", ["organizationId"])
     .index("by_orgAndRole", ["organizationId", "gabinetRole"]),
 
+  // --- RBAC: Gabinet Per-Employee Permission Overrides ---
+  // Optional per-user permission overrides, MAX-merged on top of the
+  // gabinetRolePermissions layer. Allows elevating a specific employee's
+  // access beyond what their gabinet role grants (e.g. giving one receptionist
+  // access to financial reports). Absent row → role-level permissions apply.
+  gabinetMembershipPermissions: defineTable({
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    permissions: v.any(), // FeaturePermissions JSON
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndUser", ["organizationId", "userId"]),
+
   // --- RBAC: Gabinet Membership Mirror ---
   // Slim Convex mirror of gabinet_employees.{userId, role, isActive} so that
   // checkPermission (which runs in QueryCtx and can't reach Supabase) can

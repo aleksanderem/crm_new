@@ -375,6 +375,7 @@ export const list = action({
   args: {
     organizationId: v.id("organizations"),
     paginationOpts: paginationOptsValidator,
+    locationId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<SupabasePaginationResult<GabinetAppointmentRow>> => {
     const authResult = await ctx.runQuery(
@@ -392,11 +393,13 @@ export const list = action({
     const orgIdStr = String(args.organizationId);
     const userIdStr = String(authResult.userId);
 
-    let page = (await db
+    let q = db
       .query("gabinetAppointments")
-      .eq("organizationId", orgIdStr)
-      .order("createdAt", false)
-      .collect()) as GabinetAppointmentRow[];
+      .eq("organizationId", orgIdStr);
+    if (args.locationId) {
+      q = q.eq("locationId", args.locationId);
+    }
+    let page = (await q.order("createdAt", false).collect()) as GabinetAppointmentRow[];
     if (perm.scope === "own") {
       page = page.filter((r) => String(r.employeeId) === userIdStr);
     }
@@ -437,6 +440,7 @@ export const listByDate = action({
   args: {
     organizationId: v.id("organizations"),
     date: v.string(),
+    locationId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<GabinetAppointmentRow[]> => {
     const authResult = await ctx.runQuery(
@@ -451,11 +455,14 @@ export const listByDate = action({
     if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
-    let results = (await db
+    let q = db
       .query("gabinetAppointments")
       .eq("organizationId", String(args.organizationId))
-      .eq("date", args.date)
-      .collect()) as GabinetAppointmentRow[];
+      .eq("date", args.date);
+    if (args.locationId) {
+      q = q.eq("locationId", args.locationId);
+    }
+    let results = (await q.collect()) as GabinetAppointmentRow[];
     if (perm.scope === "own") {
       results = results.filter((r) => String(r.employeeId) === String(authResult.userId));
     }
@@ -469,6 +476,7 @@ export const listByDateRange = action({
     startDate: v.string(),
     endDate: v.string(),
     employeeId: v.optional(v.string()),
+    locationId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<GabinetAppointmentRow[]> => {
     const authResult = await ctx.runQuery(
@@ -490,6 +498,9 @@ export const listByDateRange = action({
       .lte("date", args.endDate);
     if (args.employeeId) {
       builder = builder.eq("employeeId", args.employeeId);
+    }
+    if (args.locationId) {
+      builder = builder.eq("locationId", args.locationId);
     }
     let results = (await builder.collect()) as GabinetAppointmentRow[];
     if (perm.scope === "own") {

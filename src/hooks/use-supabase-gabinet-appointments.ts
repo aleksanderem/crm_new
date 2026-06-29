@@ -20,11 +20,12 @@ import {
 interface UseSupabaseGabinetAppointmentsByDateRangeOptions {
   enabled?: boolean;
   employeeId?: string;
+  locationId?: string;
 }
 
 /**
  * Fetches appointments within a date range for an organization.
- * Supports optional employee filter for per-employee calendar views.
+ * Supports optional employee and location filters.
  */
 export function useSupabaseGabinetAppointmentsByDateRange(
   organizationId: string,
@@ -33,7 +34,7 @@ export function useSupabaseGabinetAppointmentsByDateRange(
   options: UseSupabaseGabinetAppointmentsByDateRangeOptions = {},
 ) {
   const { client, isReady } = useSupabase();
-  const { enabled = true, employeeId } = options;
+  const { enabled = true, employeeId, locationId } = options;
 
   return useQuery<MappedGabinetAppointment[], Error>({
     queryKey: [
@@ -42,6 +43,7 @@ export function useSupabaseGabinetAppointmentsByDateRange(
       startDate,
       endDate,
       employeeId ?? "",
+      locationId ?? "",
     ],
     queryFn: async (): Promise<MappedGabinetAppointment[]> => {
       if (!client) throw new Error("Supabase client not ready");
@@ -55,6 +57,9 @@ export function useSupabaseGabinetAppointmentsByDateRange(
 
       if (employeeId) {
         query = query.eq("employee_id", employeeId);
+      }
+      if (locationId) {
+        query = query.eq("location_id", locationId);
       }
 
       const { data, error } = await query.order("date").order("start_time");

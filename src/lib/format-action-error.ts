@@ -395,7 +395,7 @@ const TREATMENT_ERROR_MAP: Array<{
     fallback: "Nie udało się zapisać zabiegu — nieprawidłowe dane.",
   },
   {
-    test: (m) => /supabasedb\.(get|getmany|patch|delete|insert|query)/i.test(m),
+    test: (m) => /supabasedb\.(getmany|get|patch|delete|insert|query)/i.test(m),
     key: "gabinet.treatments.errors.storage",
     fallback: "Nie udało się zapisać zabiegu — błąd magazynu danych. Spróbuj ponownie.",
   },
@@ -515,7 +515,7 @@ const GENERIC_ERROR_MAP: Array<{
     fallback: "Nieprawidłowe dane. Sprawdź formularz i spróbuj ponownie.",
   },
   {
-    test: (m) => /supabasedb\.(get|getmany|patch|delete|insert|query)/i.test(m),
+    test: (m) => /supabasedb\.(getmany|get|patch|delete|insert|query)/i.test(m),
     key: "common.errors.storage",
     fallback: "Błąd magazynu danych. Spróbuj ponownie.",
   },

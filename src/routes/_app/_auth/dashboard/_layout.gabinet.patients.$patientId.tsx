@@ -268,6 +268,10 @@ function PatientDetail() {
     "gabinet_payments",
     "view",
   );
+  const { allowed: canViewPhotos } = usePermission(
+    "gabinet_photos",
+    "view",
+  );
 
   const getPaymentForLabel = (payment: {
     appointmentId?: string;
@@ -1176,7 +1180,7 @@ function PatientDetail() {
         </div>
       ),
     },
-    {
+    ...(canViewPhotos ? [{
       label: t("gabinet.patients.tabs.photos", "Zdjęcia"),
       count: (patientAppointments ?? []).reduce(
         (sum, apt) =>
@@ -1190,7 +1194,7 @@ function PatientDetail() {
           treatments={treatmentsData}
         />
       ),
-    },
+    }] : []),
     ...(canViewPayments ? [{
       // Issue #1690: one merged tab — wpłaty, saldo, naliczenia, zwroty in
       // a single chronological table with a "Typ" column.

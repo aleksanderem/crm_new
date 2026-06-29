@@ -93,7 +93,7 @@ export const updateRun = internalAction({
       .maybeSingle();
 
     if (error) {
-      const msg = `Supabase update failed for automation run ${args.runId}: ${error.message} (code=${error.code})`;
+      const msg = `supabaseDb.update(automation_runs): ${error.message} (code=${error.code})`;
       console.error(msg);
       throw new Error(msg);
     }

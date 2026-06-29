@@ -117,7 +117,7 @@ export const updateRunStep = internalAction({
       .maybeSingle();
 
     if (error) {
-      const msg = `Supabase update failed for automation run step ${args.stepId}: ${error.message} (code=${error.code})`;
+      const msg = `supabaseDb.update(automation_run_steps): ${error.message} (code=${error.code})`;
       console.error(msg);
       throw new Error(msg);
     }

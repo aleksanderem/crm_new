@@ -82,7 +82,11 @@ export const writeEmailToSupabase = internalAction({
       updated_at: args.updatedAt,
     };
 
-    const data = await upsertWithFkRetry(client, "emails", row);
+    const data = await upsertWithFkRetry(client, "emails", row)
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`supabaseDb.insert(emails): ${msg}`);
+      });
 
     console.info(`Email written to Supabase id=${data.id} org=${args.organizationId}`);
     return { success: true, id: data.id };

@@ -38,7 +38,11 @@ export const writeSubscriptionToSupabase = internalAction({
       cancel_at_period_end: args.cancelAtPeriodEnd,
     };
 
-    const data = await upsertWithFkRetry(client, "subscriptions", row);
+    const data = await upsertWithFkRetry(client, "subscriptions", row)
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`supabaseDb.insert(subscriptions): ${msg}`);
+      });
 
     console.info(`Subscription written to Supabase id=${data.id}`);
     return { success: true, id: data.id };

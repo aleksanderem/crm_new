@@ -58,7 +58,11 @@ export const writeEmailEventLogToSupabase = internalAction({
       created_at: args.createdAt,
     };
 
-    const data = await upsertWithFkRetry(client, "email_event_log", row);
+    const data = await upsertWithFkRetry(client, "email_event_log", row)
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`supabaseDb.insert(email_event_log): ${msg}`);
+      });
 
     console.info(`EmailEventLog written to Supabase id=${data.id} org=${args.organizationId}`);
     return { success: true, id: data.id };

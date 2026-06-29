@@ -72,7 +72,11 @@ export const writeFormDocumentToSupabase = internalAction({
       updated_at: args.updatedAt,
     };
 
-    const data = await upsertWithFkRetry(client, "form_documents", row);
+    const data = await upsertWithFkRetry(client, "form_documents", row)
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`supabaseDb.insert(form_documents): ${msg}`);
+      });
 
     console.info(`Form document written to Supabase id=${data.id} org=${args.organizationId}`);
     return { success: true, id: data.id };

@@ -4,6 +4,7 @@ import { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { verifyOrgAccess } from "../_helpers/auth";
+import { checkModuleAccess } from "../_helpers/products";
 import { logError } from "../_helpers/logged";
 import type {
   GabinetEquipmentRow,
@@ -35,6 +36,7 @@ export const listEquipment = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const db = createSupabaseDb();
     let q = db.query("gabinetEquipment").eq("organizationId", String(args.organizationId));
     if (args.locationId) {
@@ -62,6 +64,7 @@ export const getEquipment = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const db = createSupabaseDb();
     const equipment = (await db.get("gabinetEquipment", args.equipmentId)) as
       | GabinetEquipmentRow
@@ -107,6 +110,7 @@ export const createEquipment = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
@@ -167,6 +171,7 @@ export const updateEquipment = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
@@ -220,6 +225,7 @@ export const transferEquipment = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
@@ -270,6 +276,7 @@ export const listTransfers = query({
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
+    await checkModuleAccess(ctx, args.organizationId, "equipment");
     const equipment = await ctx.db.get(args.equipmentId);
     if (!equipment || equipment.organizationId !== args.organizationId) return [];
     return await ctx.db

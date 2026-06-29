@@ -1,6 +1,7 @@
-import { QueryCtx } from "../_generated/server";
+import { QueryCtx, internalQuery } from "../_generated/server";
+import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
-import { GABINET_MODULES, type GabinetModule } from "../gabinet/_registry";
+import { GABINET_MODULES, GABINET_PRODUCT_ID, type GabinetModule } from "../gabinet/_registry";
 
 /**
  * Verify that the organization has an active subscription for a specific product.
@@ -53,3 +54,15 @@ export async function checkModuleAccess(
 ): Promise<void> {
   await verifyProductAccess(ctx, organizationId, GABINET_MODULES[module]);
 }
+
+/**
+ * Internal query that action handlers can call via ctx.runQuery() to verify
+ * gabinet product access. Actions receive ActionCtx (not QueryCtx) so they
+ * cannot call verifyProductAccess directly.
+ */
+export const verifyGabinetAccess = internalQuery({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+  },
+});

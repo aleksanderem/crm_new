@@ -26,6 +26,7 @@ export const list = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_treatments",
@@ -66,6 +67,7 @@ export const getById = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_treatments",
@@ -131,6 +133,7 @@ export const create = action({
         internal._helpers.authAction.verifyOrgAccess,
         { organizationId: args.organizationId },
       );
+      await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
       await ctx.runQuery(internal._helpers.authAction.checkPermission, {
         organizationId: args.organizationId,
         feature: "gabinet_treatments",
@@ -296,6 +299,7 @@ export const update = action({
         internal._helpers.authAction.verifyOrgAccess,
         { organizationId: args.organizationId },
       );
+      await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
       const perm = await ctx.runQuery(
         internal._helpers.authAction.checkPermission,
         {
@@ -410,6 +414,7 @@ export const remove = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       {
@@ -590,6 +595,7 @@ export const getTreatmentProducts = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_treatments",
@@ -644,6 +650,7 @@ export const setTreatmentProducts = action({
         internal._helpers.authAction.verifyOrgAccess,
         { organizationId: args.organizationId },
       );
+      await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
       await ctx.runQuery(internal._helpers.authAction.checkPermission, {
         organizationId: args.organizationId,
         feature: "gabinet_treatments",
@@ -703,6 +710,7 @@ export const listActive = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_treatments",
@@ -742,6 +750,7 @@ export const getTreatmentStats = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_treatments",
@@ -817,6 +826,7 @@ export const getTreatmentDetailedStats = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_treatments",
@@ -1033,6 +1043,7 @@ export const listTreatmentAppointments = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_appointments",
@@ -1108,6 +1119,7 @@ export const getTreatmentEmployees = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_employees",
@@ -1163,6 +1175,7 @@ export const getRequiredFormTemplates = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_treatments",
@@ -1229,6 +1242,7 @@ export const setRequiredFormTemplates = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_treatments",
@@ -1295,6 +1309,7 @@ export const saveTreatmentParameters = action({
         internal._helpers.authAction.verifyOrgAccess,
         { organizationId: args.organizationId },
       );
+      await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
       await ctx.runQuery(internal._helpers.authAction.checkPermission, {
         organizationId: args.organizationId,
         feature: "gabinet_treatments",
@@ -1355,6 +1370,7 @@ export const migrateParametersToTyped = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
 
     const db = createSupabaseDb();
 
@@ -1435,6 +1451,7 @@ export const listVariants = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_treatments",
@@ -1475,6 +1492,7 @@ export const getVariant = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_treatments",
@@ -1516,6 +1534,7 @@ export const createVariant = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_treatments",
@@ -1604,6 +1623,7 @@ export const updateVariant = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_treatments",
@@ -1687,6 +1707,7 @@ export const deleteVariant = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_treatments",

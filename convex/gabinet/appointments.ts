@@ -10,7 +10,7 @@ import {
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "../_helpers/auth";
-import { verifyProductAccess } from "../_helpers/products";
+import { checkModuleAccess } from "../_helpers/products";
 import { logActivity } from "../_helpers/activities";
 import { GABINET_PRODUCT_ID } from "./_registry";
 import { gabinetAppointmentStatusValidator } from "../schema";
@@ -382,6 +382,7 @@ export const list = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_appointments",
@@ -417,6 +418,7 @@ export const getById = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_appointments",
@@ -447,6 +449,7 @@ export const listByDate = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_appointments",
@@ -483,6 +486,7 @@ export const listByDateRange = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_appointments",
@@ -520,6 +524,7 @@ export const listByPatient = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_appointments",
@@ -550,6 +555,7 @@ export const listByEmployee = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_appointments",
@@ -580,6 +586,7 @@ export const listPatientsForEmployee = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_appointments",
@@ -631,6 +638,7 @@ export const listPatientsWithStatsForEmployee = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_appointments",
@@ -697,6 +705,7 @@ export const getAvailableSlotsQuery = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_appointments",
@@ -727,6 +736,7 @@ export const checkQualification = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_appointments",
@@ -1089,6 +1099,7 @@ export const create = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_appointments",
@@ -1452,6 +1463,7 @@ export const update = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       {
@@ -1797,6 +1809,7 @@ export const updateStatus = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       {
@@ -2021,7 +2034,7 @@ export const getDocumentGateStatus = query({
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
-    await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);
+    await checkModuleAccess(ctx, args.organizationId, "appointments");
 
     return await checkDocumentGate(
       ctx,
@@ -2142,6 +2155,7 @@ export const cancel = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       {
@@ -2559,6 +2573,7 @@ export const cancelRecurringSeries = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       {
@@ -2675,6 +2690,7 @@ export const getFullDetail = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_appointments",
@@ -2964,6 +2980,7 @@ export const getWarnings = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = (await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       {
@@ -3155,6 +3172,7 @@ export const getPhotoUrls = query({
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
+    await checkModuleAccess(ctx, args.organizationId, "appointments");
     return Promise.all(
       args.storageIds.map((id) => ctx.storage.getUrl(id)),
     );

@@ -48,6 +48,7 @@ export const getSetupStatus = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
 
     const db = createSupabaseDb();
     const orgIdStr = String(args.organizationId);

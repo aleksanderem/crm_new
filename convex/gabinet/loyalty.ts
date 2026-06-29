@@ -14,6 +14,7 @@ export const getBalance = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const db = createSupabaseDb();
     return await db
       .query("gabinetLoyaltyPoints")
@@ -32,6 +33,7 @@ export const getTransactions = action({
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const db = createSupabaseDb();
     return await db
       .query("gabinetLoyaltyTransactions")
@@ -81,6 +83,7 @@ export const earnPoints = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const now = Date.now();
     const db = createSupabaseDb();
 
@@ -123,6 +126,7 @@ export const spendPoints = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const now = Date.now();
     const db = createSupabaseDb();
 
@@ -165,6 +169,7 @@ export const adjustPoints = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const now = Date.now();
     const db = createSupabaseDb();
 

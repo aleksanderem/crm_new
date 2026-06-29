@@ -12,6 +12,9 @@ async function verify(ctx: any, organizationId: string) {
   await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
     organizationId,
   });
+  await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
+    organizationId,
+  });
 }
 
 // --- Dashboard KPIs ---

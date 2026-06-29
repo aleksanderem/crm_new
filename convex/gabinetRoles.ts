@@ -11,7 +11,7 @@
  * "none" everywhere until overrides land).
  */
 
-import { query, action, internalMutation } from "./_generated/server";
+import { query, mutation, action, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
@@ -283,6 +283,81 @@ export const _resetPermissionsInternal = internalMutation({
       .query("gabinetRolePermissions")
       .withIndex("by_orgAndRole", (q) =>
         q.eq("organizationId", args.organizationId).eq("gabinetRole", args.gabinetRole),
+      )
+      .unique();
+    if (existing) await ctx.db.delete(existing._id);
+  },
+});
+
+// --- Per-employee permission overrides ---
+
+/** Return the per-employee permission override blob for a given user, or null
+ *  if no override exists (i.e. role-level permissions apply). */
+export const getEmployeePermissions = query({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    await requireOrgAdmin(ctx, args.organizationId);
+    const override = await ctx.db
+      .query("gabinetMembershipPermissions")
+      .withIndex("by_orgAndUser", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
+      )
+      .unique();
+    return override?.permissions ?? null;
+  },
+});
+
+/** Upsert per-employee permission overrides. Overrides are MAX-merged on top
+ *  of the employee's gabinet-role permissions, so only elevation is possible. */
+export const setEmployeePermissions = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    permissions: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await requireOrgAdmin(ctx, args.organizationId);
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("gabinetMembershipPermissions")
+      .withIndex("by_orgAndUser", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
+      )
+      .unique();
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        permissions: args.permissions,
+        updatedBy: user._id,
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.insert("gabinetMembershipPermissions", {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        permissions: args.permissions,
+        updatedBy: user._id,
+        updatedAt: now,
+      });
+    }
+  },
+});
+
+/** Remove the per-employee permission override, reverting the employee to
+ *  role-level permissions. */
+export const resetEmployeePermissions = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    await requireOrgAdmin(ctx, args.organizationId);
+    const existing = await ctx.db
+      .query("gabinetMembershipPermissions")
+      .withIndex("by_orgAndUser", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
       )
       .unique();
     if (existing) await ctx.db.delete(existing._id);

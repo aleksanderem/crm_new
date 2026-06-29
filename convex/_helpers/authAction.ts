@@ -107,6 +107,19 @@ export const checkPermission = internalQuery({
           gabinetScope = defaultGabinetScope(gRole, feature, action);
         }
         effectiveScope = maxScope(orgScope, gabinetScope);
+
+        // Layer 3: per-employee overrides (MAX-merge on top of role-level scope)
+        const membershipOverride = await ctx.db
+          .query("gabinetMembershipPermissions")
+          .withIndex("by_orgAndUser", (q) =>
+            q.eq("organizationId", args.organizationId).eq("userId", user._id),
+          )
+          .unique();
+        if (membershipOverride) {
+          const mPerms = membershipOverride.permissions as Record<string, Record<string, string>>;
+          const membershipScope = (mPerms?.[feature]?.[action] ?? "none") as Scope;
+          effectiveScope = maxScope(effectiveScope, membershipScope);
+        }
       }
     }
 

@@ -558,6 +558,16 @@ async function saveTreatmentProductLinks(
     .delete()
     .eq("treatment_id", treatmentId);
   if (delError) {
+    // PostgreSQL error code 42P01 = undefined_table (relation does not exist).
+    // Surface a clear diagnostic instead of an opaque Postgres message.
+    if (
+      (delError as { code?: string }).code === "42P01" ||
+      delError.message?.includes("does not exist")
+    ) {
+      throw new Error(
+        "gabinet_treatment_products table missing — run migrations (supabase/migrations/)",
+      );
+    }
     throw new Error(`supabaseDb.delete(gabinet_treatment_products): ${delError.message}`);
   }
 

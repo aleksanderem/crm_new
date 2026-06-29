@@ -3531,6 +3531,7 @@
       "last90days": "Last 90 days",
       "lastYear": "Last year",
       "allClientsInSystem": "All clients in system",
+      "allClientsOrgWide": "All clients · org-wide",
       "statuses": {
         "pending_confirmation": "Pending",
         "scheduled": "Scheduled",

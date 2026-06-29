@@ -21,17 +21,18 @@ async function verify(ctx: any, organizationId: string) {
 
 // --- Appointment nudges ---
 export const getAppointmentNudges = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), locationId: v.optional(v.id("gabinetLocations")) },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
     const todayStr = new Date().toISOString().split("T")[0];
 
-    const unconfirmed = (await db
+    let q = db
       .query("gabinetAppointments")
       .eq("organizationId", String(args.organizationId))
-      .eq("date", todayStr)
-      .collect()) as Array<{ status: string }>;
+      .eq("date", todayStr);
+    if (args.locationId) q = q.eq("locationId", args.locationId);
+    const unconfirmed = (await q.collect()) as Array<{ status: string }>;
 
     const count = unconfirmed.filter((a) => a.status === "scheduled").length;
     if (count === 0) return [];

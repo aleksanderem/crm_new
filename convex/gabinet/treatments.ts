@@ -558,7 +558,7 @@ async function saveTreatmentProductLinks(
     .delete()
     .eq("treatment_id", treatmentId);
   if (delError) {
-    throw new Error(`Failed to clear existing treatment products: ${delError.message}`);
+    throw new Error(`supabaseDb.delete(gabinet_treatment_products): ${delError.message}`);
   }
 
   const now = Date.now();

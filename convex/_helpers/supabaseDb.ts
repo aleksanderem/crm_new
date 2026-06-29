@@ -253,8 +253,13 @@ export function createSupabaseDb(): SupabaseDb {
     const id = row._id ? String(row._id) : crypto.randomUUID();
     const snakeRow = mapRowToSnake(row);
     snakeRow.id = id;
-    const result = await upsertWithFkRetry(client, resolveTable(table), snakeRow);
-    return result.id;
+    try {
+      const result = await upsertWithFkRetry(client, resolveTable(table), snakeRow);
+      return result.id;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`supabaseDb.insert(${table}): ${msg}`);
+    }
   }
 
   async function patch(

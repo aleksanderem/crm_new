@@ -437,6 +437,15 @@ function TreatmentDetail() {
         ...treatmentData,
         categoryId: editCategoryId ?? null,
       });
+
+      // Update succeeded — close the panel and invalidate queries now so a
+      // product-link failure below does not make the update appear to have
+      // failed (#2422).
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.detail(organizationId, treatmentId) });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(organizationId) });
+      setEditPanelOpen(false);
+      toast.success(t("common.saved"));
+
       const allProductLinks = [
         ...(products ?? []).map((p) => ({
           productId: p.productId,
@@ -451,18 +460,26 @@ function TreatmentDetail() {
           unit: m.unit ?? undefined,
         })),
       ];
-      await setTreatmentProductsAction({
-        organizationId,
-        treatmentId: treatmentId as string,
-        products: allProductLinks,
-      });
-      void queryClient.invalidateQueries({
-        queryKey: ["gabinet.treatments.getTreatmentProducts", organizationId, treatmentId],
-      });
-      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.detail(organizationId, treatmentId) });
-      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(organizationId) });
-      setEditPanelOpen(false);
-      toast.success(t("common.saved"));
+
+      // Save product/material links separately so their failure does not
+      // mask a successful treatment update.
+      try {
+        await setTreatmentProductsAction({
+          organizationId,
+          treatmentId: treatmentId as string,
+          products: allProductLinks,
+        });
+        void queryClient.invalidateQueries({
+          queryKey: ["gabinet.treatments.getTreatmentProducts", organizationId, treatmentId],
+        });
+      } catch (productErr) {
+        toast.warning(
+          t("gabinet.treatments.errors.productsSaveFailed", {
+            defaultValue:
+              "Zabieg zapisany. Nie udało się zapisać preparatów/materiałów — otwórz zabieg i spróbuj ponownie.",
+          }),
+        );
+      }
     } catch (e) {
       toast.error(
         formatTreatmentError(e, t, {

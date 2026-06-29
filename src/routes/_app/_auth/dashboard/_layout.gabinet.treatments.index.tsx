@@ -484,6 +484,11 @@ function TreatmentsIndex() {
             unit: m.unit ?? undefined,
           })),
         ];
+        // treatmentId is set once the main write succeeds so the product-link
+        // step can reference it even if the main catch fires (it won't fire
+        // after this point because we close the panel before the product step).
+        let savedTreatmentId: string | null = null;
+
         if (editingTreatment) {
           await updateTreatment({
             organizationId,
@@ -492,11 +497,7 @@ function TreatmentsIndex() {
             tagIds,
             categoryId: categoryId ?? null,
           });
-          await setTreatmentProductsAction({
-            organizationId,
-            treatmentId: editingTreatment._id,
-            products: allProductLinks,
-          });
+          savedTreatmentId = editingTreatment._id;
         } else {
           const newTreatmentId = await createTreatment({
             organizationId,
@@ -504,18 +505,42 @@ function TreatmentsIndex() {
             tagIds,
             categoryId,
           });
-          if (allProductLinks.length > 0) {
-            await setTreatmentProductsAction({
-              organizationId,
-              treatmentId: newTreatmentId,
-              products: allProductLinks,
-            });
-          }
+          savedTreatmentId = newTreatmentId;
         }
+
+        // Main write succeeded — close the panel now so a product-link failure
+        // below does not mislead the user into thinking the treatment itself
+        // was not saved (which caused duplicate-creation retry loops, #2422).
         setPanelOpen(false);
         setEditingTreatment(null);
         setTagIds([]);
         setCategoryId(undefined);
+
+        // Save product/material links separately. Failure here does NOT mean
+        // the treatment was lost — only that the ingredient recipe needs to be
+        // set again via the edit panel.
+        if (savedTreatmentId && (editingTreatment || allProductLinks.length > 0)) {
+          try {
+            await setTreatmentProductsAction({
+              organizationId,
+              treatmentId: savedTreatmentId,
+              products: allProductLinks,
+            });
+          } catch (productErr) {
+            void reportError(productErr, {
+              scope: "gabinet.treatments",
+              fnName: "setTreatmentProducts",
+              argsJson: JSON.stringify({ treatmentId: savedTreatmentId, productCount: allProductLinks.length }),
+              organizationId,
+            });
+            toast.warning(
+              t("gabinet.treatments.errors.productsSaveFailed", {
+                defaultValue:
+                  "Zabieg zapisany. Nie udało się zapisać preparatów/materiałów — otwórz zabieg i spróbuj ponownie.",
+              }),
+            );
+          }
+        }
       } catch (e) {
         // Capture client-side so /admin/errors gets the failing payload.
         // ArgumentValidationError is thrown by the Convex wrapper before the

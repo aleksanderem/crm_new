@@ -459,11 +459,11 @@ export function useSupabaseGabinetLeaveNudges(organizationId: string) {
 }
 
 /** Patient nudges: patients missing contact info + no recent visit */
-export function useSupabaseGabinetPatientNudges(organizationId: string) {
+export function useSupabaseGabinetPatientNudges(organizationId: string, locationId?: string) {
   const { client, isReady } = useSupabase();
 
   return useQuery<NudgeData[], Error>({
-    queryKey: [...supabaseKeys.gabinetPatients.list(organizationId), "nudges"],
+    queryKey: [...supabaseKeys.gabinetPatients.list(organizationId), "nudges", locationId ?? ""],
     queryFn: async () => {
       if (!client) throw new Error("Supabase client not ready");
       const nudges: NudgeData[] = [];
@@ -486,14 +486,18 @@ export function useSupabaseGabinetPatientNudges(organizationId: string) {
         });
       }
 
-      // Patients with no recent visit (90 days)
+      // Patients with no recent visit (90 days), optionally scoped to a location
       const ninetyDaysAgo = dateNDaysAgo(90);
-      const { data: recentAppts, error: aErr } = await client
+      let apptQuery = client
         .from("gabinet_appointments")
         .select("patient_id")
         .eq("organization_id", organizationId)
         .gte("date", ninetyDaysAgo)
         .not("status", "in", '("cancelled","no_show")');
+
+      if (locationId) apptQuery = apptQuery.eq("location_id", locationId);
+
+      const { data: recentAppts, error: aErr } = await apptQuery;
 
       if (aErr) throw aErr;
       const recentPatientIds = new Set(

@@ -54,7 +54,11 @@ export const writeRun = internalAction({
       updated_at: args.updatedAt,
     };
 
-    const data = await upsertWithFkRetry(client, "automation_runs", row);
+    const data = await upsertWithFkRetry(client, "automation_runs", row)
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`supabaseDb.insert(automation_runs): ${msg}`);
+      });
 
     console.info(`Automation run written to Supabase id=${data.id} org=${args.organizationId}`);
     return { success: true, id: data.id };

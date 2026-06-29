@@ -36,7 +36,11 @@ export const writeOrganizationToSupabase = internalAction({
       onboarding_completed: args.onboardingCompleted ?? null,
     };
 
-    const data = await upsertWithFkRetry(client, "organizations", row);
+    const data = await upsertWithFkRetry(client, "organizations", row)
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`supabaseDb.insert(organizations): ${msg}`);
+      });
 
     console.info(`Organization written to Supabase id=${data.id}`);
     return { success: true, id: data.id };
@@ -139,7 +143,11 @@ export const writeTeamMembershipToSupabase = internalAction({
       joined_at: args.joinedAt,
     };
 
-    const data = await upsertWithFkRetry(client, "team_memberships", row);
+    const data = await upsertWithFkRetry(client, "team_memberships", row)
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`supabaseDb.insert(team_memberships): ${msg}`);
+      });
 
     console.info(`TeamMembership written to Supabase id=${data.id}`);
     return { success: true, id: data.id };

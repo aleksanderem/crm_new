@@ -33,7 +33,11 @@ export const writeAuditLogToSupabase = internalAction({
       created_at: args.createdAt,
     };
 
-    const data = await upsertWithFkRetry(client, "audit_log", row);
+    const data = await upsertWithFkRetry(client, "audit_log", row)
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`supabaseDb.insert(audit_log): ${msg}`);
+      });
 
     console.info(`AuditLog written to Supabase id=${data.id}`);
     return { success: true, id: data.id };

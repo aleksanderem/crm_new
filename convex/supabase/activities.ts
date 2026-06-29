@@ -36,7 +36,11 @@ export const writeActivityToSupabase = internalAction({
       created_at: args.createdAt,
     };
 
-    const data = await upsertWithFkRetry(client, "activities", row);
+    const data = await upsertWithFkRetry(client, "activities", row)
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`supabaseDb.insert(activities): ${msg}`);
+      });
 
     console.info(`Activity written to Supabase id=${data.id} org=${args.organizationId}`);
     return { success: true, id: data.id };

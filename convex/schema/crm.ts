@@ -611,10 +611,11 @@ export function createCrmTables({
     .index("by_orgAndRole", ["organizationId", "gabinetRole"]),
 
   // --- RBAC: Gabinet Per-Employee Permission Overrides ---
-  // Optional per-user permission overrides, MAX-merged on top of the
-  // gabinetRolePermissions layer. Allows elevating a specific employee's
-  // access beyond what their gabinet role grants (e.g. giving one receptionist
-  // access to financial reports). Absent row → role-level permissions apply.
+  // Optional per-user permission overrides with REPLACE semantics: for each
+  // feature/action present in the blob the stored scope wins over the
+  // role-derived value, supporting both elevation (e.g. receptionist sees
+  // financial reports) and restriction (e.g. doctor cannot view payments).
+  // Missing entries inherit from the role. Absent row → role-level applies.
   gabinetMembershipPermissions: defineTable({
     organizationId: v.id("organizations"),
     userId: v.id("users"),

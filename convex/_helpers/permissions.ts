@@ -189,7 +189,8 @@ export async function checkPermission(
         : defaultGabinetScope(gRole, feature, action);
       effectiveScope = maxScope(orgScope, gabinetScope);
 
-      // Layer 3: per-employee overrides (MAX-merge on top of role-level scope)
+      // Layer 3: per-employee overrides (REPLACE semantics — allows both
+      // elevation and restriction relative to the role-derived scope)
       const membershipOverride = await ctx.db
         .query("gabinetMembershipPermissions")
         .withIndex("by_orgAndUser", (q) =>
@@ -198,8 +199,10 @@ export async function checkPermission(
         .unique();
       if (membershipOverride) {
         const mPerms = membershipOverride.permissions as Record<string, Record<string, string>>;
-        const membershipScope = (mPerms?.[feature]?.[action] ?? "none") as Scope;
-        effectiveScope = maxScope(effectiveScope, membershipScope);
+        const membershipScope = mPerms?.[feature]?.[action];
+        if (membershipScope !== undefined) {
+          effectiveScope = membershipScope as Scope;
+        }
       }
     }
   }
@@ -301,7 +304,8 @@ export async function getEffectivePermissions(
       merged[feature] = mergedActions;
     }
 
-    // Layer 3: per-employee overrides (MAX-merge on top of role-level scope)
+    // Layer 3: per-employee overrides (REPLACE semantics — wins over role-derived
+    // scope, supporting both elevation and restriction)
     const membershipOverride = await ctx.db
       .query("gabinetMembershipPermissions")
       .withIndex("by_orgAndUser", (q) =>
@@ -314,8 +318,10 @@ export async function getEffectivePermissions(
         if (!feature.startsWith("gabinet_")) continue;
         const mergedActions = { ...merged[feature] };
         for (const action of ACTIONS) {
-          const membershipScope: Scope = mPerms?.[feature as Feature]?.[action] ?? "none";
-          mergedActions[action] = maxScope(mergedActions[action], membershipScope);
+          const membershipScope = mPerms?.[feature as Feature]?.[action];
+          if (membershipScope !== undefined) {
+            mergedActions[action] = membershipScope;
+          }
         }
         merged[feature] = mergedActions;
       }

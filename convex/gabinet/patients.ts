@@ -1069,6 +1069,19 @@ export const gdprErase = action({
       .eq("organization_id", orgStr)
       .eq("entity_type", "gabinetPatient")
       .eq("entity_id", args.patientId);
+    // Null out free-text clinical fields on appointments linked to this patient
+    await client
+      .from("gabinet_appointments")
+      .update({
+        interview_notes: null,
+        notes: null,
+        internal_notes: null,
+        clinical_remarks: null,
+        body_chart_data: null,
+        treatment_parameter_values: null,
+      })
+      .eq("organization_id", orgStr)
+      .eq("patient_id", args.patientId);
 
     try {
       await ctx.runMutation(internal.gabinet.patients._gdprEraseSideEffects, {
@@ -1116,6 +1129,24 @@ export const _gdprEraseSideEffects = internalMutation({
       .collect();
     for (const note of existingNotes) {
       await ctx.db.patch(note._id, { content: GDPR_REDACTED, updatedAt: Date.now() });
+    }
+
+    // Null out free-text clinical fields on all appointments linked to this patient
+    const existingAppointments = await ctx.db
+      .query("gabinetAppointments")
+      .withIndex("by_orgAndPatient", (q) =>
+        q.eq("organizationId", args.organizationId).eq("patientId", args.patientId as Id<"gabinetPatients">)
+      )
+      .collect();
+    for (const appointment of existingAppointments) {
+      await ctx.db.patch(appointment._id, {
+        interviewNotes: undefined,
+        notes: undefined,
+        internalNotes: undefined,
+        clinicalRemarks: undefined,
+        bodyChartData: undefined,
+        treatmentParameterValues: undefined,
+      });
     }
 
     // Audit log retains original name as compliance record

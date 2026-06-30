@@ -53,6 +53,7 @@
     "clearFilters": "Clear filters",
     "deleted": "Deleted",
     "confirmDelete": "Are you sure you want to delete?",
+    "confirmDeleteDescription": "Are you sure you want to remove {{name}}? This action cannot be undone.",
     "all": "All",
     "notFound": "Not found",
     "notFoundDescription": "The requested record could not be found. It may have been deleted or you may not have access.",
@@ -2275,6 +2276,7 @@
     "invitationCancelled": "Invitation cancelled.",
     "invitationSent": "Invitation sent successfully.",
     "invitationResent": "Invitation resent.",
+    "invitationRoleUpdated": "Invitation role updated.",
     "roles": {
       "owner": "Owner",
       "admin": "Admin",

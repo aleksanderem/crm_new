@@ -398,9 +398,12 @@ export const _acceptInternal = internalMutation({
       throw new Error("This invitation was sent to a different email address");
     }
 
-    // Check seat limit at acceptance time
+    // Check seat limit at acceptance time. Skip pending invitations here because
+    // accepting converts a pending slot to a member slot — net seat change is zero.
+    // Only check that there is room measured by actual members.
     const { canAddMore, currentSeats, seatLimit } = await checkSeatLimit(ctx, {
       organizationId: invitation.organizationId,
+      skipPendingInvitations: true,
     });
     if (!canAddMore) {
       throw new Error(

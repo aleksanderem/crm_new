@@ -129,6 +129,8 @@ export async function getAvailableSlotsSupabase(
   },
 ): Promise<AvailableSlotsResult> {
   const dayOfWeek = new Date(args.date + "T00:00:00").getDay();
+  const dayStartMs = new Date(args.date + "T00:00:00.000Z").getTime();
+  const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000;
 
   const empSchedule = await resolveScheduleForDate(
     db,
@@ -229,20 +231,20 @@ export async function getAvailableSlotsSupabase(
     .query("scheduledActivities")
     .eq("organizationId", args.organizationId)
     .eq("resourceId", args.userId)
+    .gte("dueDate", dayStartMs)
+    .lt("dueDate", dayEndMs)
     .collect();
 
   for (const activity of resourceActivities as any[]) {
     if (activity.isCompleted) continue;
     if (!activity.endDate) continue;
     if (activity.moduleRef?.moduleId === "gabinet") continue;
-    const actDate = new Date(activity.dueDate);
-    const actDateStr = `${actDate.getFullYear()}-${String(actDate.getMonth() + 1).padStart(2, "0")}-${String(actDate.getDate()).padStart(2, "0")}`;
-    if (actDateStr !== args.date) continue;
+    const actDate = new Date(activity.dueDate as number);
     blocked.push({
       start: actDate.getHours() * 60 + actDate.getMinutes(),
       end:
-        new Date(activity.endDate).getHours() * 60 +
-        new Date(activity.endDate).getMinutes(),
+        new Date(activity.endDate as number).getHours() * 60 +
+        new Date(activity.endDate as number).getMinutes(),
     });
   }
 
@@ -309,6 +311,8 @@ export async function checkConflictSupabase(
   const dayOfWeek = new Date(args.date + "T00:00:00").getDay();
   const reqStart = timeToMinutes(args.startTime);
   const reqEnd = timeToMinutes(args.endTime);
+  const dayStartMs = new Date(args.date + "T00:00:00.000Z").getTime();
+  const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000;
 
   const empSchedule = await resolveScheduleForDate(
     db,
@@ -389,14 +393,13 @@ export async function checkConflictSupabase(
       .query("scheduledActivities")
       .eq("organizationId", args.organizationId)
       .eq("resourceId", args.userId)
+      .gte("dueDate", dayStartMs)
+      .lt("dueDate", dayEndMs)
       .collect();
 
     for (const activity of resourceActivities as any[]) {
       if (activity.isCompleted) continue;
       if (!activity.endDate) continue;
-      const actDate = new Date(activity.dueDate);
-      const actDateStr = `${actDate.getFullYear()}-${String(actDate.getMonth() + 1).padStart(2, "0")}-${String(actDate.getDate()).padStart(2, "0")}`;
-      if (actDateStr !== args.date) continue;
       // Gabinet appointments are already counted via gabinetAppointments above.
       // Manual gabinet events (entityType="gabinetEvent") must still block time.
       if (
@@ -405,9 +408,8 @@ export async function checkConflictSupabase(
       )
         continue;
 
-      const actStartMin = actDate.getHours() * 60 + actDate.getMinutes();
-      const actEndDate = new Date(activity.endDate);
-      const actEndMin = actEndDate.getHours() * 60 + actEndDate.getMinutes();
+      const actStartMin = new Date(activity.dueDate as number).getHours() * 60 + new Date(activity.dueDate as number).getMinutes();
+      const actEndMin = new Date(activity.endDate as number).getHours() * 60 + new Date(activity.endDate as number).getMinutes();
       if (reqStart < actEndMin && reqEnd > actStartMin) {
         return { hasConflict: true, reason: `Conflicts with: ${activity.title}` };
       }
@@ -418,19 +420,17 @@ export async function checkConflictSupabase(
       .query("scheduledActivities")
       .eq("organizationId", args.organizationId)
       .eq("activityType", "gabinet:event")
+      .gte("dueDate", dayStartMs)
+      .lt("dueDate", dayEndMs)
       .collect();
 
     for (const activity of orgEvents as any[]) {
       if (activity.isCompleted) continue;
       if (!activity.endDate) continue;
       if (activity.resourceId) continue; // per-resource events already checked above
-      const actDate = new Date(activity.dueDate);
-      const actDateStr = `${actDate.getFullYear()}-${String(actDate.getMonth() + 1).padStart(2, "0")}-${String(actDate.getDate()).padStart(2, "0")}`;
-      if (actDateStr !== args.date) continue;
 
-      const actStartMin = actDate.getHours() * 60 + actDate.getMinutes();
-      const actEndDate = new Date(activity.endDate);
-      const actEndMin = actEndDate.getHours() * 60 + actEndDate.getMinutes();
+      const actStartMin = new Date(activity.dueDate as number).getHours() * 60 + new Date(activity.dueDate as number).getMinutes();
+      const actEndMin = new Date(activity.endDate as number).getHours() * 60 + new Date(activity.endDate as number).getMinutes();
       if (reqStart < actEndMin && reqEnd > actStartMin) {
         return { hasConflict: true, reason: `Conflicts with: ${activity.title}` };
       }

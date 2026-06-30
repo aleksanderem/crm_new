@@ -210,26 +210,26 @@ export const searchUnlinkedContacts = action({
     if (!perm.allowed) return [];
 
     if (!args.search.trim()) return [];
-    const term = args.search.trim().toLowerCase();
+    const term = args.search.trim();
 
     const db = createSupabaseDb();
     const orgIdStr = String(args.organizationId);
 
-    const allContacts = (await db
+    const pattern = `%${term}%`;
+    const matched = (await db
       .query("contacts")
       .eq("organizationId", orgIdStr)
+      .or(`first_name.ilike.${pattern},last_name.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern}`)
+      .take(20)
       .collect()) as Array<Record<string, any>>;
-    const matched = allContacts.filter((c) => {
-      const fn = String(c.firstName ?? "").toLowerCase();
-      const ln = String(c.lastName ?? "").toLowerCase();
-      const em = String(c.email ?? "").toLowerCase();
-      const ph = String(c.phone ?? "").toLowerCase();
-      return fn.includes(term) || ln.includes(term) || em.includes(term) || ph.includes(term);
-    }).slice(0, 20);
 
+    if (matched.length === 0) return [];
+
+    const matchedIds = matched.map((c) => String(c.id ?? c._id));
     const linkedPatients = (await db
       .query("gabinetPatients")
       .eq("organizationId", orgIdStr)
+      .in("contactId", matchedIds)
       .collect()) as Array<Record<string, any>>;
 
     const linkedContactIds = new Set(

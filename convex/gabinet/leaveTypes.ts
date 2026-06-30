@@ -200,12 +200,12 @@ export const getBalances = action({
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
 
     const db = createSupabaseDb();
-    const all = await db
+    return await db
       .query("gabinetLeaveBalances")
       .eq("organizationId", String(args.organizationId))
       .eq("employeeId", args.employeeId)
+      .eq("year", args.year)
       .collect();
-    return all.filter((b) => (b as { year?: number }).year === args.year);
   },
 });
 
@@ -221,11 +221,11 @@ export const getAllBalances = action({
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
 
     const db = createSupabaseDb();
-    const all = await db
+    return await db
       .query("gabinetLeaveBalances")
       .eq("organizationId", String(args.organizationId))
+      .eq("year", args.year)
       .collect();
-    return all.filter((b) => (b as { year?: number }).year === args.year);
   },
 });
 

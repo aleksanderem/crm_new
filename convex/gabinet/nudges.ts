@@ -30,11 +30,10 @@ export const getAppointmentNudges = action({
     let q = db
       .query("gabinetAppointments")
       .eq("organizationId", String(args.organizationId))
-      .eq("date", todayStr);
+      .eq("date", todayStr)
+      .eq("status", "scheduled");
     if (args.locationId) q = q.eq("locationId", args.locationId);
-    const unconfirmed = (await q.collect()) as Array<{ status: string }>;
-
-    const count = unconfirmed.filter((a) => a.status === "scheduled").length;
+    const count = (await q.collect()).length;
     if (count === 0) return [];
 
     return [

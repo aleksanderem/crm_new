@@ -43,34 +43,26 @@ export const list = action({
         .query("gabinetEmployees")
         .eq("organizationId", orgIdStr)
         .eq("role", args.role);
-      let all = (await q.collect()) as GabinetEmployeeRow[];
-      let filtered = args.activeOnly ? all.filter((e) => e.isActive) : all;
-      if (perm.scope === "own") {
-        filtered = filtered.filter((e) => String(e.userId) === userIdStr);
-      }
-      return filtered;
+      if (args.activeOnly) q = q.eq("isActive", true);
+      if (perm.scope === "own") q = q.eq("userId", userIdStr);
+      return (await q.collect()) as GabinetEmployeeRow[];
     }
 
     if (args.activeOnly) {
-      let results = (await db
+      let q = db
         .query("gabinetEmployees")
         .eq("organizationId", orgIdStr)
-        .eq("isActive", true)
-        .collect()) as GabinetEmployeeRow[];
-      if (perm.scope === "own") {
-        results = results.filter((e) => String(e.userId) === userIdStr);
-      }
-      return results;
+        .eq("isActive", true);
+      if (perm.scope === "own") q = q.eq("userId", userIdStr);
+      return (await q.collect()) as GabinetEmployeeRow[];
     }
 
-    let page = (await db
+    let q = db
       .query("gabinetEmployees")
       .eq("organizationId", orgIdStr)
-      .order("createdAt", false)
-      .collect()) as GabinetEmployeeRow[];
-    if (perm.scope === "own") {
-      page = page.filter((e) => String(e.userId) === userIdStr);
-    }
+      .order("createdAt", false);
+    if (perm.scope === "own") q = q.eq("userId", userIdStr);
+    const page = (await q.collect()) as GabinetEmployeeRow[];
     return { page, isDone: true, continueCursor: "" };
   },
 });
@@ -101,11 +93,10 @@ export const listAll = action({
     if (args.activeOnly) {
       q = q.eq("isActive", true);
     }
-    let results = (await q.collect()) as GabinetEmployeeRow[];
     if (perm.scope === "own") {
-      results = results.filter((e) => String(e.userId) === userIdStr);
+      q = q.eq("userId", userIdStr);
     }
-    return results;
+    return (await q.collect()) as GabinetEmployeeRow[];
   },
 });
 

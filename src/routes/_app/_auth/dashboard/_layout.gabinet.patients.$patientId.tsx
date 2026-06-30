@@ -64,6 +64,7 @@ import {
   Minus,
   ArrowUpRight,
   ArrowDownRight,
+  AlertCircle,
   CreditCard,
   Pencil,
   WalletIcon,
@@ -419,6 +420,23 @@ function PatientDetail() {
               )}
             </span>
           </div>
+          {(() => {
+            const unpaidCount = (patientPayments ?? []).filter(
+              (p) => p.status === "pending" && p.kind !== "credit_refund",
+            ).length;
+            if (!unpaidCount) return null;
+            return (
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <AlertCircle size={12} variant="stroke" />
+                  {t("gabinet.payments.unpaidAppointments")}
+                </span>
+                <span className="text-xs font-semibold tabular-nums text-destructive">
+                  {unpaidCount}
+                </span>
+              </div>
+            );
+          })()}
         </div>
       </div>
       {(() => {

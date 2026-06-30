@@ -47,9 +47,11 @@ export const setWorkingHours = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     const db = createSupabaseDb();
 
@@ -109,9 +111,11 @@ export const bulkSetWorkingHours = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     const db = createSupabaseDb();
 
@@ -191,9 +195,11 @@ export const setEmployeeSchedule = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     const db = createSupabaseDb();
 
@@ -260,9 +266,11 @@ export const bulkSetEmployeeSchedule = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     const db = createSupabaseDb();
 
@@ -336,9 +344,11 @@ export const saveSchedulePeriod = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     const db = createSupabaseDb();
 
@@ -400,9 +410,11 @@ export const removeSchedulePeriod = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
 
     const all = await db.query("gabinetEmployeeSchedules")
@@ -518,9 +530,11 @@ export const approveLeave = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     const db = createSupabaseDb();
 
@@ -579,9 +593,11 @@ export const rejectLeave = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     const db = createSupabaseDb();
 
@@ -635,9 +651,11 @@ export const removeEmployeeSchedule = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
 
     const schedule = await db.get("gabinetEmployeeSchedules", args.scheduleId);

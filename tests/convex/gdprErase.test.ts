@@ -101,6 +101,59 @@ describe("gabinet/patients.gdprErase — activity and note anonymization", () =>
     expect(notes[0].content).toBe("[RODO: dane usunięte]");
   });
 
+  test("nulls out clinical text fields on appointments for the erased patient", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
+    const patientIdStr = String(patientId);
+
+    await t.run(async (ctx) => {
+      const now = Date.now();
+      await ctx.db.insert("gabinetAppointments", {
+        organizationId,
+        patientId,
+        treatmentId,
+        employeeId: userId,
+        date: "2026-01-15",
+        startTime: "09:00",
+        endTime: "10:00",
+        status: "completed",
+        notes: "Jan Kowalski wymaga specjalnej opieki.",
+        internalNotes: "Historia choroby Jana Kowalskiego.",
+        interviewNotes: "Pacjent Jan Kowalski skarżył się na ból pleców.",
+        clinicalRemarks: "Kowalski ma alergię na lateks.",
+        bodyChartData: JSON.stringify({ marks: ["lower_back"] }),
+        treatmentParameterValues: JSON.stringify([{ name: "Waga", value: "85kg" }]),
+        isRecurring: false,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    await t.withIdentity(identity).action(api.gabinet.patients.gdprErase, {
+      organizationId,
+      patientId: patientIdStr,
+    });
+
+    const appointments = await t.run(async (ctx) =>
+      ctx.db
+        .query("gabinetAppointments")
+        .withIndex("by_orgAndPatient", (q) =>
+          q.eq("organizationId", organizationId).eq("patientId", patientId)
+        )
+        .collect()
+    );
+
+    expect(appointments).toHaveLength(1);
+    expect(appointments[0].interviewNotes).toBeUndefined();
+    expect(appointments[0].notes).toBeUndefined();
+    expect(appointments[0].internalNotes).toBeUndefined();
+    expect(appointments[0].clinicalRemarks).toBeUndefined();
+    expect(appointments[0].bodyChartData).toBeUndefined();
+    expect(appointments[0].treatmentParameterValues).toBeUndefined();
+  });
+
   test("new erasure activity entry does not contain original patient name", async () => {
     const t = createTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);

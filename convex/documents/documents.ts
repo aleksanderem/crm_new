@@ -1,4 +1,4 @@
-import { action } from "../_generated/server";
+import { action, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
@@ -595,6 +595,38 @@ export const remove = action({
 
     await db.delete("formDocuments", args.documentId);
     return args.documentId;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Scheduled job — marks documents whose signing token has expired as "expired".
+// Runs hourly (see convex/crons.ts). Supabase NULL values are naturally
+// excluded by the lt() filter (NULL < X evaluates to NULL in Postgres, not
+// true), so only rows with an actual expiry timestamp in the past are matched.
+// ---------------------------------------------------------------------------
+
+export const expireSigningTokens = internalAction({
+  args: {},
+  handler: async (_ctx, _args): Promise<void> => {
+    const db = createSupabaseDb();
+    const now = Date.now();
+
+    const docs = await db
+      .query("formDocuments")
+      .in("status", ["draft", "pending_signature"])
+      .lt("signingTokenExpiresAt", now)
+      .collect();
+
+    if (docs.length === 0) return;
+
+    for (const doc of docs) {
+      await db.patch("formDocuments", String(doc._id), {
+        status: "expired",
+        updatedAt: now,
+      });
+    }
+
+    console.info(`[expireSigningTokens] Marked ${docs.length} document(s) as expired`);
   },
 });
 

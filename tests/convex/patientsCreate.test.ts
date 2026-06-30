@@ -89,6 +89,22 @@ describe("gabinet/patients.create duplicate guard", () => {
     expect(typeof newId).toBe("string");
   });
 
+  test("rejects creation when another active patient has the same email in different case", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    // Seeds a patient with email "jan@example.com"
+    await seedGabinetPrereqs(t, organizationId, userId);
+
+    await expect(
+      t.withIdentity(identity).action(api.gabinet.patients.create, {
+        organizationId,
+        firstName: "Duplicate",
+        lastName: "Patient",
+        email: "JAN@EXAMPLE.COM",
+      }),
+    ).rejects.toThrow(/Duplicate patient detected/);
+  });
+
   test("allows creation when only phone is provided and no match exists", async () => {
     const t = createTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);

@@ -1,9 +1,9 @@
 {
-  "session_id": "S0103",
-  "started_at": "2026-06-12T16:00:00Z",
-  "last_updated": "2026-06-12T16:30:00Z",
-  "status": "active",
-  "focus": "Issue #1700 PR-A: Product inventory foundation (track_stock, stock_levels, stock_movements)",
+  "session_id": "S0104",
+  "started_at": "2026-06-30T00:00:00Z",
+  "last_updated": "2026-06-30T00:10:00Z",
+  "status": "completed",
+  "focus": "Issue #2475: CRM v1.0 audit of Klienci (patients) module",
   "tasks_snapshot": {
     "total": 1,
     "not_started": 0,
@@ -12,7 +12,7 @@
     "failing": 0,
     "blocked": 0
   },
-  "active_task_ids": ["INV-A"],
+  "active_task_ids": ["2475-AUDIT"],
   "blockers": [],
-  "notes": "S0103: Reviewed and shipped PR-A from an in-progress worktree state. Schema adds trackStock/stockUnit to products plus productStockLevels and productStockMovements tables (location-aware via gabinetLocations FK). Convex action `inventory.adjustStock` writes movements + level updates and returns negative_stock warning. Products list shows Stan column, create form has track-stock toggle + initial stock seed. PR-B (module feature flags) and PR-C/D (treatment defaults + visit settle + dealProducts stock deduction) are still ahead."
+  "notes": "S0104: Audited gabinet patients module end-to-end. All 9 checklist areas functional. Found and fixed one blocking bug: allergies field was a plain const (no useState, no <Input> rendered) so users could not view or edit allergies on any patient form. Fixed by converting to useState and adding Input element. All other features (create, edit, search, history, appointments, packages, payments, documents, delete) are fully implemented."
 }

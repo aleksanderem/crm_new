@@ -93,6 +93,9 @@ export const completeSetup = action({
   },
   handler: async (ctx, args) => {
     // Auth + permissions via internal query
+    const { userId } = await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
     await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "settings",
@@ -106,6 +109,13 @@ export const completeSetup = action({
       internal.gabinet.onboarding._completeSetupSideEffects,
       { organizationId: args.organizationId },
     );
+
+    // Seed default beauty document templates for this organization.
+    // Idempotent — skips any template whose name already exists.
+    await ctx.runMutation(internal.documents.seed.seedBeautyDocumentTemplatesInternal, {
+      organizationId: args.organizationId,
+      userId,
+    });
 
     // Backfill filledBy on any existing formField templates that pre-date
     // the filledBy feature. Idempotent — no-op when values are already correct.

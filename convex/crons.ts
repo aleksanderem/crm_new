@@ -18,4 +18,12 @@ crons.daily(
   internal.documents.seed.backfillFilledByAllOrgs,
 );
 
+// Mark formDocuments whose signing token has passed its 48h TTL as "expired".
+// Runs hourly so the DB status stays in sync with what the signing page shows.
+crons.hourly(
+  "expire-signing-tokens",
+  { minuteUTC: 15 },
+  internal.documents.documents.expireSigningTokens,
+);
+
 export default crons;

@@ -374,6 +374,15 @@ function PatientDetail() {
     if (patient.dateOfBirth) fields.push({ label: t("gabinet.patients.dateOfBirth"), value: formatBirthDate(patient.dateOfBirth), fieldKey: "dob" });
     if (patient.bloodType) fields.push({ label: t("gabinet.patients.bloodType"), value: <Badge variant="outline" className="text-[10px]">{patient.bloodType}</Badge>, fieldKey: "bloodType" });
     if (patient.allergies) fields.push({ label: t("gabinet.patients.allergies"), value: patient.allergies, fieldKey: "allergies" });
+    // Consents
+    const activeConsents: string[] = [];
+    if (patient.smsConsent) activeConsents.push(t("gabinet.patients.consents.sms", { defaultValue: "Zgoda SMS" }));
+    if (patient.emailConsent) activeConsents.push(t("gabinet.patients.consents.email", { defaultValue: "Zgoda e-mail" }));
+    if (patient.marketingConsent) activeConsents.push(t("gabinet.patients.consents.marketing", { defaultValue: "Zgoda marketingowa" }));
+    if (patient.gdprConsent) activeConsents.push(t("gabinet.patients.consents.gdpr", { defaultValue: "Zgoda RODO" }));
+    if (activeConsents.length > 0) {
+      fields.push({ label: t("gabinet.patients.consents.title", { defaultValue: "Zgody" }), value: activeConsents.join(", "), fieldKey: "consents" });
+    }
     return fields;
   })();
 
@@ -412,6 +421,25 @@ function PatientDetail() {
               )}
             </span>
           </div>
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <WalletIcon size={12} variant="stroke" />
+              {t("gabinet.patients.creditBalance", { defaultValue: "Saldo usług" })}
+            </span>
+            <span className="text-xs font-semibold tabular-nums">
+              {formatCurrencyPLN(patientCredit?.balance ?? 0)}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+          {t("gabinet.patients.tabs.documents")}
+        </p>
+        <div className="rounded-md border p-2.5 flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">
+            {t("gabinet.patients.documentsCount", { count: patientDocuments?.length ?? 0, defaultValue: "{{count}} dokumentów" })}
+          </span>
         </div>
       </div>
       {(() => {
@@ -462,6 +490,10 @@ function PatientDetail() {
     referralSource?: string | null;
     tagIds?: Id<"tagDefinitions">[];
     categoryId?: Id<"categoryDefinitions">;
+    smsConsent?: boolean;
+    emailConsent?: boolean;
+    marketingConsent?: boolean;
+    gdprConsent?: boolean;
   }) => {
     setIsSubmitting(true);
     try {
@@ -1005,6 +1037,29 @@ function PatientDetail() {
               )}
             </CardContent>
           </Card>
+
+          {(patient?.smsConsent || patient?.emailConsent || patient?.marketingConsent || patient?.gdprConsent) && (
+            <Card>
+              <CardContent className="pt-6 space-y-3">
+                <h3 className="text-sm font-semibold">{t("gabinet.patients.consents.title", { defaultValue: "Zgody" })}</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { key: "smsConsent", label: t("gabinet.patients.consents.sms", { defaultValue: "SMS" }) },
+                    { key: "emailConsent", label: t("gabinet.patients.consents.email", { defaultValue: "E-mail" }) },
+                    { key: "marketingConsent", label: t("gabinet.patients.consents.marketing", { defaultValue: "Marketing" }) },
+                    { key: "gdprConsent", label: t("gabinet.patients.consents.gdpr", { defaultValue: "RODO" }) },
+                  ].map(({ key, label }) => (
+                    <div key={key} className="flex items-center gap-2 text-sm">
+                      <span className={patient?.[key as keyof typeof patient] ? "text-green-600" : "text-muted-foreground"}>
+                        {patient?.[key as keyof typeof patient] ? "✓" : "✗"}
+                      </span>
+                      <span className={patient?.[key as keyof typeof patient] ? "" : "text-muted-foreground"}>{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       ),
     },

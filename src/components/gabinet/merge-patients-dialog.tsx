@@ -536,6 +536,33 @@ export function MergePatientsDialog({
           )}
 
           {target && (
+            <div className="rounded-md border p-3 text-sm">
+              <div className="font-medium mb-2">{t("gabinet.patients.merge.consentsTitle", { defaultValue: "Zgody" })}</div>
+              <p className="text-xs text-muted-foreground mb-2">
+                {t("gabinet.patients.merge.consentsNote", { defaultValue: "Zgody są łączone automatycznie — klient wynikowy zachowa wszystkie zgody z obu kart." })}
+              </p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                {[
+                  { key: "smsConsent", label: t("gabinet.patients.consents.sms", { defaultValue: "SMS" }) },
+                  { key: "emailConsent", label: t("gabinet.patients.consents.email", { defaultValue: "E-mail" }) },
+                  { key: "marketingConsent", label: t("gabinet.patients.consents.marketing", { defaultValue: "Marketing" }) },
+                  { key: "gdprConsent", label: t("gabinet.patients.consents.gdpr", { defaultValue: "RODO" }) },
+                ].map(({ key, label }) => {
+                  const tVal = (target as unknown as Record<string, unknown>)[key];
+                  const sVal = (sourcePatient as unknown as Record<string, unknown>)[key];
+                  const merged = Boolean(tVal) || Boolean(sVal);
+                  return (
+                    <div key={key} className="flex items-center gap-1">
+                      <span className={merged ? "text-green-600" : "text-muted-foreground"}>{merged ? "✓" : "✗"}</span>
+                      <span className={merged ? "" : "text-muted-foreground"}>{label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {target && (
             <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
               <div className="flex items-start gap-2">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" variant="stroke" />

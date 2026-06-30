@@ -2458,6 +2458,16 @@
       "upcomingAppointments": "Upcoming appointments",
       "noUpcomingAppointments": "No upcoming appointments",
       "noMedicalInfo": "No medical information",
+      "consents": {
+        "title": "Consents",
+        "sms": "SMS consent",
+        "email": "Email consent",
+        "marketing": "Marketing consent",
+        "gdpr": "GDPR consent"
+      },
+      "creditBalance": "Service balance",
+      "documentsCount": "{{count}} documents",
+      "viewDocuments": "View",
       "errors": {
         "createFailed": "Could not add the client.",
         "saveFailed": "Could not save client changes."
@@ -2483,6 +2493,8 @@
         "fieldsTitle": "Client merge form",
         "fieldsIntro": "Some fields differ between the two clients. Pick which value should end up on the resulting client card.",
         "emptyValue": "—",
+        "consentsTitle": "Consents",
+        "consentsNote": "Consents are combined automatically — the merged patient retains all consents from both records.",
         "field": {
           "firstName": "First name",
           "lastName": "Last name",

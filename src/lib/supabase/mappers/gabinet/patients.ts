@@ -30,6 +30,10 @@ export interface MappedGabinetPatient {
   tagIds?: string[];
   categoryId?: string;
   customFields?: unknown;
+  smsConsent?: boolean;
+  emailConsent?: boolean;
+  marketingConsent?: boolean;
+  gdprConsent?: boolean;
   createdBy: string;
   createdAt: number;
   updatedAt: number;

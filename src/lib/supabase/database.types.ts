@@ -4534,6 +4534,10 @@ export interface Database {
           tag_ids: string[] | null;
           category_id: string | null;
           custom_fields: unknown | null;
+          sms_consent: boolean;
+          email_consent: boolean;
+          marketing_consent: boolean;
+          gdpr_consent: boolean;
           created_by: string;
           created_at: number;
           updated_at: number;
@@ -4562,6 +4566,10 @@ export interface Database {
           tag_ids?: string[] | null;
           category_id?: string | null;
           custom_fields?: unknown | null;
+          sms_consent?: boolean;
+          email_consent?: boolean;
+          marketing_consent?: boolean;
+          gdpr_consent?: boolean;
           created_by: string;
           created_at: number;
           updated_at: number;
@@ -4590,6 +4598,10 @@ export interface Database {
           tag_ids?: string[] | null;
           category_id?: string | null;
           custom_fields?: unknown | null;
+          sms_consent?: boolean;
+          email_consent?: boolean;
+          marketing_consent?: boolean;
+          gdpr_consent?: boolean;
           created_by?: string;
           created_at?: number;
           updated_at?: number;

@@ -268,6 +268,10 @@ export const create = action({
     customFields: v.optional(v.any()),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),
+    smsConsent: v.optional(v.boolean()),
+    emailConsent: v.optional(v.boolean()),
+    marketingConsent: v.optional(v.boolean()),
+    gdprConsent: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     try {
@@ -312,6 +316,10 @@ export const create = action({
       customFields: args.customFields ?? null,
       tagIds: args.tagIds ?? null,
       categoryId: args.categoryId ?? null,
+      smsConsent: args.smsConsent ?? false,
+      emailConsent: args.emailConsent ?? false,
+      marketingConsent: args.marketingConsent ?? false,
+      gdprConsent: args.gdprConsent ?? false,
       createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
@@ -441,6 +449,10 @@ export const update = action({
     customFields: v.optional(v.any()),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),
+    smsConsent: v.optional(v.boolean()),
+    emailConsent: v.optional(v.boolean()),
+    marketingConsent: v.optional(v.boolean()),
+    gdprConsent: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     try {
@@ -855,14 +867,15 @@ export const merge = action({
       consolidatedLoyaltyBalance = Number(targetLoyalty.balance ?? 0);
     }
 
-    // Apply the user's per-field choices to the target before deactivating
-    // the source — the target is the row that survives the merge.
-    if (args.fieldOverrides && Object.keys(args.fieldOverrides).length > 0) {
-      await db.patch("gabinetPatients", args.targetPatientId, {
-        ...args.fieldOverrides,
-        updatedAt: Date.now(),
-      });
-    }
+    // Apply per-field choices + always OR consent fields (any granted consent is preserved).
+    await db.patch("gabinetPatients", args.targetPatientId, {
+      ...(args.fieldOverrides ?? {}),
+      smsConsent: Boolean(target.smsConsent) || Boolean(source.smsConsent),
+      emailConsent: Boolean(target.emailConsent) || Boolean(source.emailConsent),
+      marketingConsent: Boolean(target.marketingConsent) || Boolean(source.marketingConsent),
+      gdprConsent: Boolean(target.gdprConsent) || Boolean(source.gdprConsent),
+      updatedAt: Date.now(),
+    });
 
     // Soft-delete the source patient and annotate why it was deactivated.
     const now = Date.now();

@@ -1,0 +1,6 @@
+-- Add marketing/RODO consent fields to gabinet_patients (issue #1545)
+ALTER TABLE gabinet_patients
+  ADD COLUMN IF NOT EXISTS sms_consent     BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS email_consent   BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS marketing_consent BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS gdpr_consent    BOOLEAN NOT NULL DEFAULT FALSE;

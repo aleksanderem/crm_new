@@ -58,6 +58,10 @@ interface PatientFormData {
   referralSource?: string | null;
   tagIds?: Id<"tagDefinitions">[];
   categoryId?: Id<"categoryDefinitions">;
+  smsConsent?: boolean;
+  emailConsent?: boolean;
+  marketingConsent?: boolean;
+  gdprConsent?: boolean;
 }
 
 interface PatientFormProps {
@@ -110,6 +114,10 @@ export function PatientForm({
   const referralOptions = patientReferralSourceOptions(t).filter((opt) => opt.value !== "other");
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
+  const [smsConsent, setSmsConsent] = useState(initialData?.smsConsent ?? false);
+  const [emailConsent, setEmailConsent] = useState(initialData?.emailConsent ?? false);
+  const [marketingConsent, setMarketingConsent] = useState(initialData?.marketingConsent ?? false);
+  const [gdprConsent, setGdprConsent] = useState(initialData?.gdprConsent ?? false);
 
   const listCustomReferralSources = useAction(api.gabinet.patients.listCustomReferralSources);
 
@@ -185,6 +193,10 @@ export function PatientForm({
       referralSource,
       tagIds: tagIds.length > 0 ? tagIds : undefined,
       categoryId: categoryId || undefined,
+      smsConsent,
+      emailConsent,
+      marketingConsent,
+      gdprConsent,
     });
   };
 
@@ -406,6 +418,28 @@ export function PatientForm({
           />
         </div>
       )}
+
+      <div className="space-y-4 border-t pt-4">
+        <h4 className="text-sm font-medium">{t("gabinet.patients.consents.title", { defaultValue: "Zgody" })}</h4>
+        <div className="space-y-2">
+          {[
+            { key: "smsConsent" as const, label: t("gabinet.patients.consents.sms", { defaultValue: "Zgoda na SMS" }), value: smsConsent, set: setSmsConsent },
+            { key: "emailConsent" as const, label: t("gabinet.patients.consents.email", { defaultValue: "Zgoda na e-mail" }), value: emailConsent, set: setEmailConsent },
+            { key: "marketingConsent" as const, label: t("gabinet.patients.consents.marketing", { defaultValue: "Zgoda marketingowa" }), value: marketingConsent, set: setMarketingConsent },
+            { key: "gdprConsent" as const, label: t("gabinet.patients.consents.gdpr", { defaultValue: "Zgoda RODO" }), value: gdprConsent, set: setGdprConsent },
+          ].map(({ key, label, value, set }) => (
+            <label key={key} className="flex items-center gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-primary accent-primary cursor-pointer"
+                checked={value}
+                onChange={(e) => set(e.target.checked)}
+              />
+              <span className="text-sm">{label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>

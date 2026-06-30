@@ -2473,6 +2473,16 @@
       "upcomingAppointments": "Nadchodzące wizyty",
       "noUpcomingAppointments": "Brak nadchodzących wizyt",
       "noMedicalInfo": "Brak informacji medycznych",
+      "consents": {
+        "title": "Zgody",
+        "sms": "Zgoda na SMS",
+        "email": "Zgoda na e-mail",
+        "marketing": "Zgoda marketingowa",
+        "gdpr": "Zgoda RODO"
+      },
+      "creditBalance": "Saldo usług",
+      "documentsCount": "{{count}} dokumentów",
+      "viewDocuments": "Zobacz",
       "errors": {
         "createFailed": "Nie udało się dodać klienta.",
         "saveFailed": "Nie udało się zapisać zmian klienta."
@@ -2498,6 +2508,8 @@
         "fieldsTitle": "Formularz scalania klientów",
         "fieldsIntro": "Nie wszystkie dane scalanych klientów są identyczne. Wybierz poniżej, które dane zostaną użyte w wynikowej karcie klienta.",
         "emptyValue": "—",
+        "consentsTitle": "Zgody",
+        "consentsNote": "Zgody są łączone automatycznie — klient wynikowy zachowa wszystkie zgody z obu kart.",
         "field": {
           "firstName": "Imię",
           "lastName": "Nazwisko",

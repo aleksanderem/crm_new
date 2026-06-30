@@ -55,6 +55,7 @@ const TABLE_MAP: Record<string, string> = {
   gabinetTreatmentVariants: "gabinet_treatment_variants",
   gabinetTreatmentProducts: "gabinet_treatment_products",
   gabinetEmployees: "gabinet_employees",
+  gabinetEmployeeLocations: "gabinet_employee_locations",
   gabinetLocations: "gabinet_locations",
   gabinetRooms: "gabinet_rooms",
   gabinetEquipment: "gabinet_equipment",

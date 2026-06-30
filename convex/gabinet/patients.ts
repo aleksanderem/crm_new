@@ -536,6 +536,9 @@ export const update = action({
 
     // --- Build updates and PATCH to Supabase ---
     const { organizationId, patientId, ...updates } = args;
+    if ("phone" in updates) {
+      updates.phone = normalizePhone(updates.phone);
+    }
     await db.patch("gabinetPatients", patientId, { ...updates, updatedAt: Date.now() });
 
     // --- Delegate post-write side effects ---

@@ -63,9 +63,11 @@ export const create = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     const db = createSupabaseDb();
 
@@ -113,9 +115,11 @@ export const update = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
 
     const lt = await db.get("gabinetLeaveTypes", args.leaveTypeId);
@@ -161,9 +165,11 @@ export const remove = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
 
     const lt = await db.get("gabinetLeaveTypes", args.leaveTypeId);
@@ -237,9 +243,11 @@ export const initializeBalance = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     const db = createSupabaseDb();
 
@@ -294,9 +302,11 @@ export const adjustBalance = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
 
     const balance = await db.get("gabinetLeaveBalances", args.balanceId);
@@ -325,9 +335,11 @@ export const initializeAllBalances = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     const db = createSupabaseDb();
 

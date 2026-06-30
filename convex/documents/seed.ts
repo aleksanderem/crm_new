@@ -201,7 +201,7 @@ export const _listOnboardedOrgIds = internalQuery({
  */
 export const backfillFilledByAllOrgs = internalAction({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<{ totalPatched: number; orgsProcessed: number }> => {
     const orgIds = await ctx.runQuery(internal.documents.seed._listOnboardedOrgIds, {});
     let totalPatched = 0;
     for (const orgId of orgIds) {
@@ -2447,7 +2447,7 @@ export const migrateGotoweContactEntityTypes = internalMutation({
  */
 export const backfillGotoweContactEntityTypesAllOrgs = internalAction({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<{ totalPatched: number; orgsProcessed: number }> => {
     const orgIds = await ctx.runQuery(internal.documents.seed._listOnboardedOrgIds, {});
     let totalPatched = 0;
     for (const orgId of orgIds) {

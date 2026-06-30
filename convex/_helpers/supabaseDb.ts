@@ -70,8 +70,6 @@ const TABLE_MAP: Record<string, string> = {
   gabinetPackageUsage: "gabinet_package_usage",
   gabinetLoyaltyPoints: "gabinet_loyalty_points",
   gabinetLoyaltyTransactions: "gabinet_loyalty_transactions",
-  gabinetDocumentTemplates: "gabinet_document_templates",
-  gabinetDocuments: "gabinet_documents",
   gabinetPortalSessions: "gabinet_portal_sessions",
   gabinetOvertime: "gabinet_overtime",
   appointmentReminders: "appointment_reminders",

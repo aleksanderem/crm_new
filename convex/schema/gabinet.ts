@@ -9,8 +9,6 @@ interface GabinetSchemaDeps {
   gabinetPackageUsageStatusValidator: typeof import("../schema").gabinetPackageUsageStatusValidator;
   gabinetLoyaltyTierValidator: typeof import("../schema").gabinetLoyaltyTierValidator;
   gabinetLoyaltyTxTypeValidator: typeof import("../schema").gabinetLoyaltyTxTypeValidator;
-  gabinetDocTypeValidator: typeof import("../schema").gabinetDocTypeValidator;
-  gabinetDocStatusValidator: typeof import("../schema").gabinetDocStatusValidator;
   appointmentSmsDirectionValidator: typeof import("../schema").appointmentSmsDirectionValidator;
   appointmentSmsIntentValidator: typeof import("../schema").appointmentSmsIntentValidator;
   appointmentSmsProcessingStatusValidator: typeof import("../schema").appointmentSmsProcessingStatusValidator;
@@ -27,8 +25,6 @@ export function createGabinetTables({
   gabinetPackageUsageStatusValidator,
   gabinetLoyaltyTierValidator,
   gabinetLoyaltyTxTypeValidator,
-  gabinetDocTypeValidator,
-  gabinetDocStatusValidator,
   appointmentSmsDirectionValidator,
   appointmentSmsIntentValidator,
   appointmentSmsProcessingStatusValidator,
@@ -130,10 +126,6 @@ export function createGabinetTables({
           isRequired: v.optional(v.boolean()),
         }),
       ),
-    ),
-    // Treatment detail: required document templates for this treatment (legacy)
-    requiredDocumentTemplateIds: v.optional(
-      v.array(v.id("gabinetDocumentTemplates")),
     ),
     // Treatment detail: required form templates with timing
     requiredFormTemplates: v.optional(v.array(v.object({
@@ -572,52 +564,6 @@ export function createGabinetTables({
   })
     .index("by_org", ["organizationId"])
     .index("by_orgAndPatient", ["organizationId", "patientId"]),
-
-  // --- Gabinet: Documents & Signatures (Phase 5) ---
-
-  // TODO: Drop after confirming no data needs preserving — all code migrated to formTemplates/formDocuments
-  gabinetDocumentTemplates: defineTable({
-    organizationId: v.id("organizations"),
-    name: v.string(),
-    type: gabinetDocTypeValidator,
-    content: v.string(),
-    requiresSignature: v.boolean(),
-    isActive: v.boolean(),
-    sortOrder: v.optional(v.number()),
-    createdBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_org", ["organizationId"])
-    .index("by_orgAndType", ["organizationId", "type"]),
-
-  // TODO: Drop after confirming no data needs preserving — all code migrated to formTemplates/formDocuments
-  gabinetDocuments: defineTable({
-    organizationId: v.id("organizations"),
-    patientId: v.id("gabinetPatients"),
-    appointmentId: v.optional(v.id("gabinetAppointments")),
-    templateId: v.optional(v.id("gabinetDocumentTemplates")),
-    title: v.string(),
-    type: gabinetDocTypeValidator,
-    content: v.string(),
-    status: gabinetDocStatusValidator,
-    signatureData: v.optional(v.string()),
-    signedAt: v.optional(v.number()),
-    signedByPatient: v.optional(v.boolean()),
-    signedByEmployee: v.optional(v.id("users")),
-    fileStorageId: v.optional(v.id("_storage")),
-    fileName: v.optional(v.string()),
-    fileMimeType: v.optional(v.string()),
-    tagIds: v.optional(v.array(v.id("tagDefinitions"))),
-    categoryId: v.optional(v.id("categoryDefinitions")),
-    createdBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_org", ["organizationId"])
-    .index("by_orgAndPatient", ["organizationId", "patientId"])
-    .index("by_orgAndStatus", ["organizationId", "status"])
-    .index("by_appointment", ["appointmentId"]),
 
   // --- Platform: Document Templates ---
 

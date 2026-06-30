@@ -294,8 +294,6 @@ async function seed() {
   await seedTable('gabinet_treatment_packages', 'gabinetTreatmentPackages', forOrg);
   await seedTable('gabinet_patients', 'gabinetPatients', forOrg);
   await seedTable('gabinet_appointments', 'gabinetAppointments', forOrg);
-  await seedTable('gabinet_documents', 'gabinetDocuments', forOrg);
-  await seedTable('gabinet_document_templates', 'gabinetDocumentTemplates', forOrg);
   await seedTable('gabinet_loyalty_points', 'gabinetLoyaltyPoints', forOrg);
   await seedTable('gabinet_loyalty_transactions', 'gabinetLoyaltyTransactions', forOrg);
   await seedTable('gabinet_package_usage', 'gabinetPackageUsage', forOrg);

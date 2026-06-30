@@ -995,7 +995,8 @@
       "invitationInfo": "We'll send an invitation email. Recipient will have 7 days to accept.",
       "roles": {
         "admin": "Administrator",
-        "member": "Member"
+        "member": "Member",
+        "viewer": "Viewer"
       },
       "module": "Module",
       "moduleNone": "None (invitation only)",

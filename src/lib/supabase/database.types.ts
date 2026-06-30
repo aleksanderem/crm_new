@@ -34,6 +34,10 @@
  *   • 00027_gabinet_appointments_location_idx.sql
  *   • 00028_gabinet_payment_methods.sql
  *   • 00029_gabinet_employees_location.sql
+ *   • 00030_gabinet_employee_locations.sql
+ *   • 00031_add_current_user_id_helper.sql
+ *   • 00032_gabinet_patients_preferred_location.sql
+ *   • 00033_drop_gabinet_employees_location_id.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -3967,7 +3971,6 @@ export interface Database {
           bank_account: string | null;
           tag_ids: string[] | null;
           category_id: string | null;
-          location_id: string | null;
           created_by: string;
           created_at: number;
           updated_at: number;
@@ -4005,7 +4008,6 @@ export interface Database {
           bank_account?: string | null;
           tag_ids?: string[] | null;
           category_id?: string | null;
-          location_id?: string | null;
           created_by: string;
           created_at: number;
           updated_at: number;
@@ -4043,7 +4045,6 @@ export interface Database {
           bank_account?: string | null;
           tag_ids?: string[] | null;
           category_id?: string | null;
-          location_id?: string | null;
           created_by?: string;
           created_at?: number;
           updated_at?: number;
@@ -4077,13 +4078,6 @@ export interface Database {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_employees_location_id_fkey";
-            columns: ["location_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_locations";
             referencedColumns: ["id"];
           },
         ];

@@ -1201,21 +1201,28 @@ export const getByContact = action({
     if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
-    let results = (await db
-      .query("gabinetPatients")
-      .eq("organizationId", String(args.organizationId))
-      .eq("contactId", String(args.contactId))
-      .collect()) as GabinetPatientRow[];
+    const orgIdStr = String(args.organizationId);
 
+    let ownPatientIds: string[] | null = null;
     if (perm.scope === "own") {
       const ownAppts = (await db
         .query("gabinetAppointments")
-        .eq("organizationId", String(args.organizationId))
+        .eq("organizationId", orgIdStr)
         .eq("employeeId", String(authResult.userId))
         .collect()) as Array<{ patientId: unknown }>;
-      const ownPatientIds = new Set(ownAppts.map((a) => String(a.patientId)));
-      results = results.filter((r) => ownPatientIds.has(String(r._id)));
+      ownPatientIds = [...new Set(ownAppts.map((a) => String(a.patientId)))];
+      if (ownPatientIds.length === 0) return [];
     }
-    return results;
+
+    let query = db
+      .query("gabinetPatients")
+      .eq("organizationId", orgIdStr)
+      .eq("contactId", String(args.contactId));
+
+    if (ownPatientIds !== null) {
+      query = query.in("id", ownPatientIds);
+    }
+
+    return (await query.collect()) as GabinetPatientRow[];
   },
 });

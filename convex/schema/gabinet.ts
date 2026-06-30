@@ -346,6 +346,22 @@ export function createGabinetTables({
     .index("by_orgAndActive", ["organizationId", "isActive"])
     .index("by_orgAndRole", ["organizationId", "role"]),
 
+  // Many-to-many join between employees and locations.
+  // An employee may work across multiple locations (multi-site clinic chains).
+  // isPrimary marks the employee's default location for scheduling defaults and
+  // calendar filtering. Backfilled from gabinetEmployees.locationId on deploy.
+  gabinetEmployeeLocations: defineTable({
+    organizationId: v.id("organizations"),
+    employeeId: v.id("gabinetEmployees"),
+    locationId: v.id("gabinetLocations"),
+    isPrimary: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_employee", ["employeeId"])
+    .index("by_location", ["locationId"])
+    .index("by_employeeAndLocation", ["employeeId", "locationId"]),
+
   // --- Gabinet: Leave Types & Balances (HR) ---
 
   gabinetLeaveTypes: defineTable({

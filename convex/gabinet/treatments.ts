@@ -552,6 +552,13 @@ async function saveTreatmentProductLinks(
     });
   }
 
+  // Deduplicate by (productId, productSection): last entry wins, matching upsert semantics.
+  const seen = new Map<string, typeof resolved[number]>();
+  for (const r of resolved) {
+    seen.set(`${r.productId}:${r.productSection}`, r);
+  }
+  const deduped = Array.from(seen.values());
+
   // Replace: delete existing links, then insert new ones.
   const { error: delError } = await db.raw()
     .from("gabinet_treatment_products")
@@ -572,7 +579,7 @@ async function saveTreatmentProductLinks(
   }
 
   const now = Date.now();
-  for (const p of resolved) {
+  for (const p of deduped) {
     const row: Record<string, unknown> = {
       organizationId,
       treatmentId,

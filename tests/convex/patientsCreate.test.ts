@@ -119,4 +119,50 @@ describe("gabinet/patients.create duplicate guard", () => {
     });
     expect(typeof newId).toBe("string");
   });
+
+  test("rejects creation when phone matches existing patient after non-digit normalization", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await seedGabinetPrereqs(t, organizationId, userId);
+
+    // Create first patient with formatted phone
+    await t.withIdentity(identity).action(api.gabinet.patients.create, {
+      organizationId,
+      firstName: "First",
+      lastName: "Patient",
+      email: "first-normed@example.com",
+      phone: "600-100-200",
+    });
+
+    // Second patient with digits-only equivalent should be rejected
+    await expect(
+      t.withIdentity(identity).action(api.gabinet.patients.create, {
+        organizationId,
+        firstName: "Second",
+        lastName: "Patient",
+        email: "second-normed@example.com",
+        phone: "600100200",
+      }),
+    ).rejects.toThrow(/Duplicate patient detected/);
+  });
+
+  test("normalizes phone to digits-only when storing a new patient", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await seedGabinetPrereqs(t, organizationId, userId);
+
+    const patientId = await t.withIdentity(identity).action(api.gabinet.patients.create, {
+      organizationId,
+      firstName: "Normed",
+      lastName: "Patient",
+      email: "normed-phone@example.com",
+      phone: "700 200 300",
+    });
+
+    const patient = await t.withIdentity(identity).action(api.gabinet.patients.getById, {
+      organizationId,
+      patientId: String(patientId),
+    });
+    expect(patient.phone).toBe("700200300");
+  });
 });

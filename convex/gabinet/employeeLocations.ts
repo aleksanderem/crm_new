@@ -43,15 +43,12 @@ export const addLocation = action({
   },
   handler: async (ctx, args): Promise<string> => {
     try {
-      const authResult = await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
         organizationId: args.organizationId,
       });
       await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
         organizationId: args.organizationId,
       });
-      if (authResult.role !== "owner" && authResult.role !== "admin") {
-        throw new Error("Admin access required");
-      }
       const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
         organizationId: args.organizationId,
         feature: "gabinet_employees",
@@ -132,15 +129,12 @@ export const removeLocation = action({
   },
   handler: async (ctx, args): Promise<void> => {
     try {
-      const authResult = await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
         organizationId: args.organizationId,
       });
       await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
         organizationId: args.organizationId,
       });
-      if (authResult.role !== "owner" && authResult.role !== "admin") {
-        throw new Error("Admin access required");
-      }
       const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
         organizationId: args.organizationId,
         feature: "gabinet_employees",
@@ -194,15 +188,12 @@ export const setPrimary = action({
   },
   handler: async (ctx, args): Promise<void> => {
     try {
-      const authResult = await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
         organizationId: args.organizationId,
       });
       await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
         organizationId: args.organizationId,
       });
-      if (authResult.role !== "owner" && authResult.role !== "admin") {
-        throw new Error("Admin access required");
-      }
       const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
         organizationId: args.organizationId,
         feature: "gabinet_employees",

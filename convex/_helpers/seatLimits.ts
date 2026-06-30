@@ -5,13 +5,18 @@ import { Id } from "../_generated/dataModel";
  * Check the seat limit for an organization based on its owner's subscription plan.
  * Returns current seat count, limit, and whether more members can be added.
  *
- * Seat count is based on active teamMemberships only (not pending invitations).
+ * Seat count includes both active teamMemberships AND pending invitations, so that
+ * inviting someone immediately occupies a seat before they accept.
+ * Pass skipPendingInvitations=true at acceptance time (pending→member is a no-op
+ * on the total count, so only members are checked then).
+ *
  * If subscription lookup fails, defaults to free tier limit (5 seats).
  */
 export async function checkSeatLimit(
   ctx: QueryCtx,
   args: {
     organizationId: Id<"organizations">;
+    skipPendingInvitations?: boolean;
   }
 ): Promise<{
   currentSeats: number;
@@ -25,7 +30,16 @@ export async function checkSeatLimit(
     )
     .collect();
 
-  const currentSeats = members.length;
+  let pendingCount = 0;
+  if (!args.skipPendingInvitations) {
+    const invitations = await ctx.db
+      .query("invitations")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+    pendingCount = invitations.filter((inv) => inv.status === "pending").length;
+  }
+
+  const currentSeats = members.length + pendingCount;
 
   const org = await ctx.db.get(args.organizationId);
   if (!org) throw new Error("Organization not found");
@@ -43,7 +57,6 @@ export async function checkSeatLimit(
     .first();
 
   // Fail open: default to free tier limit if subscription data is unavailable.
-  // Log warnings so billing issues can be diagnosed.
   let seatLimit = 5; // Default free tier
   if (subscription) {
     const plan = await ctx.db.get(subscription.planId);

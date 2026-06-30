@@ -53,6 +53,7 @@
     "clearFilters": "Wyczyść filtry",
     "deleted": "Usunięto",
     "confirmDelete": "Czy na pewno chcesz usunąć?",
+    "confirmDeleteDescription": "Czy na pewno chcesz usunąć {{name}}? Tej operacji nie można cofnąć.",
     "all": "Wszystkie",
     "notFound": "Nie znaleziono",
     "notFoundDescription": "Nie można znaleźć żądanego rekordu. Mógł zostać usunięty lub nie masz do niego dostępu.",
@@ -2288,6 +2289,7 @@
     "invitationCancelled": "Zaproszenie anulowane.",
     "invitationSent": "Zaproszenie wysłane pomyślnie.",
     "invitationResent": "Zaproszenie wysłane ponownie.",
+    "invitationRoleUpdated": "Rola zaproszenia została zmieniona.",
     "roles": {
       "owner": "Właściciel",
       "admin": "Administrator",

@@ -147,7 +147,8 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
   }),
   // Manager: operational access without financial-admin powers.
   // Can manage catalog (treatments/packages) and view reports — unlike receptionist.
-  // Cannot delete core records, issue refunds, or change gabinet settings — unlike admin.
+  // Can view (but not change) gabinet settings to verify operational config.
+  // Cannot delete core records, issue refunds, or mutate gabinet settings — unlike admin.
   manager: buildGabinet({
     gabinet_patients: { view: "all", create: "all", edit: "all" },
     gabinet_appointments: { view: "all", create: "all", edit: "all", delete: "all" },
@@ -161,7 +162,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_photos: { view: "all" },
     gabinet_online_booking: { view: "all", edit: "all" },
     gabinet_inventory: { view: "all", create: "all", edit: "all" },
-    gabinet_settings: {},
+    gabinet_settings: { view: "all" },
   }),
   admin: buildGabinet({
     gabinet_patients: { view: "all", create: "all", edit: "all", delete: "all" },

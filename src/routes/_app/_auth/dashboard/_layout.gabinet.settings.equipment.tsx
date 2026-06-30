@@ -42,11 +42,12 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
 import { PermissionGate } from "@/hooks/use-permission";
+import { GabinetNoAccess } from "@/components/gabinet/no-access";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/settings/equipment"
 )({
-  component: () => <PermissionGate feature="gabinet_settings" action="view"><EquipmentSettingsPage /></PermissionGate>,
+  component: () => <PermissionGate feature="gabinet_settings" action="view" fallback={<GabinetNoAccess />}><EquipmentSettingsPage /></PermissionGate>,
 });
 
 type EquipmentStatus = "available" | "in_use" | "maintenance" | "retired";

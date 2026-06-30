@@ -11,11 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { PermissionGate } from "@/hooks/use-permission";
+import { GabinetNoAccess } from "@/components/gabinet/no-access";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/settings/leave-balances"
 )({
-  component: () => <PermissionGate feature="gabinet_settings" action="view"><LeaveBalancesPage /></PermissionGate>,
+  component: () => <PermissionGate feature="gabinet_settings" action="view" fallback={<GabinetNoAccess />}><LeaveBalancesPage /></PermissionGate>,
 });
 
 function LeaveBalancesPage() {

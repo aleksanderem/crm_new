@@ -13,11 +13,12 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PermissionGate } from "@/hooks/use-permission";
+import { GabinetNoAccess } from "@/components/gabinet/no-access";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/settings/reminders"
 )({
-  component: () => <PermissionGate feature="gabinet_settings" action="view"><ReminderSettings /></PermissionGate>,
+  component: () => <PermissionGate feature="gabinet_settings" action="view" fallback={<GabinetNoAccess />}><ReminderSettings /></PermissionGate>,
 });
 
 function ReminderSettings() {

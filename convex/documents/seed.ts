@@ -1663,7 +1663,7 @@ function buildGeneralHealthInterviewTemplate(c: ComponentMap): BeautyTemplate {
     formJson: "",
     contentJson: JSON.stringify(doc),
     modules: ["gabinet"],
-    entityTypes: ["patient", "appointment"],
+    entityTypes: ["patient", "appointment", "contact"],
     requiresSignature: true,
     signatureConfig: { method: "draw", signerRole: "patient" },
   };
@@ -1847,7 +1847,7 @@ function buildRodoV2Template(c: ComponentMap): BeautyTemplate {
     formJson: "",
     contentJson: JSON.stringify(doc),
     modules: ["gabinet"],
-    entityTypes: ["patient"],
+    entityTypes: ["patient", "contact"],
     requiresSignature: true,
     signatureConfig: { method: "draw", signerRole: "patient" },
   };
@@ -1992,7 +1992,7 @@ function buildZgodaNaZabiegTemplate(c: ComponentMap): BeautyTemplate {
     formJson: "",
     contentJson: JSON.stringify(doc),
     modules: ["gabinet"],
-    entityTypes: ["patient", "treatment", "appointment"],
+    entityTypes: ["patient", "treatment", "appointment", "contact"],
     requiresSignature: true,
     signatureConfig: { method: "draw", signerRole: "patient" },
   };
@@ -2077,7 +2077,7 @@ function buildDokumentacjaZdjieciowaTemplate(c: ComponentMap): BeautyTemplate {
     formJson: "",
     contentJson: JSON.stringify(doc),
     modules: ["gabinet"],
-    entityTypes: ["patient"],
+    entityTypes: ["patient", "contact"],
     requiresSignature: true,
     signatureConfig: { method: "draw", signerRole: "patient" },
   };
@@ -2215,7 +2215,7 @@ function buildZgodaMarketingowaTemplate(c: ComponentMap): BeautyTemplate {
     formJson: "",
     contentJson: JSON.stringify(doc),
     modules: ["gabinet"],
-    entityTypes: ["patient"],
+    entityTypes: ["patient", "contact"],
     requiresSignature: true,
     signatureConfig: { method: "draw", signerRole: "patient" },
   };
@@ -2404,5 +2404,59 @@ export const seedBeautyDocumentTemplatesInternal = internalMutation({
   },
   handler: async (ctx, args) => {
     return await seedBeautyHandler(ctx, args.organizationId, args.userId, args.force ?? false);
+  },
+});
+
+const GOTOWE_TEMPLATE_NAMES = new Set([
+  "Gotowe – RODO",
+  "Gotowe – Wywiad zdrowotny",
+  "Gotowe – Zgoda na zabieg",
+  "Gotowe – Dokumentacja zdjęciowa do gabinetu",
+  "Gotowe – Zgoda marketingowa na wykorzystanie zdjęć",
+]);
+
+/**
+ * One-time migration: add "contact" to entityTypes on the five "Gotowe" ready-made
+ * templates so they appear in the CRM contact document picker.
+ * Safe to run multiple times — skips templates that already include "contact".
+ */
+export const migrateGotoweContactEntityTypes = internalMutation({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const all = await ctx.db
+      .query("formTemplates")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+    let patched = 0;
+    for (const t of all) {
+      if (!GOTOWE_TEMPLATE_NAMES.has(t.name)) continue;
+      if (t.entityTypes.includes("contact")) continue;
+      await ctx.db.patch(t._id, {
+        entityTypes: [...t.entityTypes, "contact"],
+        updatedAt: Date.now(),
+      });
+      patched++;
+    }
+    return { patched, total: all.length };
+  },
+});
+
+/**
+ * Backfill "contact" entityType on the five "Gotowe" templates for ALL onboarded orgs.
+ * Idempotent — skips templates that already include "contact".
+ */
+export const backfillGotoweContactEntityTypesAllOrgs = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const orgIds = await ctx.runQuery(internal.documents.seed._listOnboardedOrgIds, {});
+    let totalPatched = 0;
+    for (const orgId of orgIds) {
+      const { patched } = await ctx.runMutation(
+        internal.documents.seed.migrateGotoweContactEntityTypes,
+        { organizationId: orgId },
+      );
+      totalPatched += patched;
+    }
+    return { totalPatched, orgsProcessed: orgIds.length };
   },
 });

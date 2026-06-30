@@ -95,7 +95,7 @@ export function PatientForm({
   const [city, setCity] = useState(initialData?.address?.city ?? "");
   const [postalCode, setPostalCode] = useState(initialData?.address?.postalCode ?? "");
   const [medicalNotes, setMedicalNotes] = useState(initialData?.medicalNotes ?? "");
-  const allergies = initialData?.allergies ?? "";
+  const [allergies, setAllergies] = useState(initialData?.allergies ?? "");
   const [bloodType, setBloodType] = useState(initialData?.bloodType ?? "");
   const [emergencyContactName, setEmergencyContactName] = useState(initialData?.emergencyContactName ?? "");
   const [emergencyContactPhone, setEmergencyContactPhone] = useState(initialData?.emergencyContactPhone ?? "");
@@ -265,6 +265,13 @@ export function PatientForm({
           <Input
             value={bloodType}
             onChange={(e) => setBloodType(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>{t("gabinet.patients.allergies")}</Label>
+          <Input
+            value={allergies}
+            onChange={(e) => setAllergies(e.target.value)}
           />
         </div>
       </div>

@@ -181,18 +181,14 @@ export async function getAvailableSlotsSupabase(
     breakEnd = clinicHours.breakEnd;
   }
 
-  const leaves = await db
+  const activeLeaves = await db
     .query("gabinetLeaves")
     .eq("organizationId", args.organizationId)
     .eq("userId", args.userId)
+    .eq("status", "approved")
+    .lte("startDate", args.date)
+    .gte("endDate", args.date)
     .collect();
-
-  const activeLeaves = (leaves as any[]).filter(
-    (l) =>
-      l.status === "approved" &&
-      l.startDate <= args.date &&
-      l.endDate >= args.date,
-  );
 
   if (activeLeaves.some((l) => !l.startTime)) {
     return { slots: [], reason: "on_leave" };
@@ -353,12 +349,12 @@ export async function checkConflictSupabase(
     .query("gabinetLeaves")
     .eq("organizationId", args.organizationId)
     .eq("userId", args.userId)
+    .eq("status", "approved")
+    .lte("startDate", args.date)
+    .gte("endDate", args.date)
     .collect();
 
   for (const leave of leaves as any[]) {
-    if (leave.status !== "approved") continue;
-    if (leave.startDate > args.date || leave.endDate < args.date) continue;
-
     if (!leave.startTime) {
       return { hasConflict: true, reason: "Employee is on leave" };
     }

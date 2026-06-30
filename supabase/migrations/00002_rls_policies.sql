@@ -18,6 +18,7 @@
 --
 -- Helper functions
 --   current_org_id()  – extracts org_id from the JWT
+--   current_user_id() – extracts sub (user id) from the JWT
 --   is_service_role() – true when called by the backend service role
 --
 -- Observability
@@ -34,6 +35,17 @@ STABLE
 AS $$
   SELECT nullif(
     current_setting('request.jwt.claims', true)::json->>'org_id',
+    ''
+  )
+$$;
+
+CREATE OR REPLACE FUNCTION current_user_id()
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT nullif(
+    current_setting('request.jwt.claims', true)::json->>'sub',
     ''
   )
 $$;
@@ -1012,11 +1024,11 @@ CREATE POLICY users_insert ON users
 CREATE POLICY users_update ON users
   FOR UPDATE
   USING (
-    id = nullif(current_setting('request.jwt.claims', true)::json->>'sub', '')
+    id = current_user_id()
     OR is_service_role()
   )
   WITH CHECK (
-    id = nullif(current_setting('request.jwt.claims', true)::json->>'sub', '')
+    id = current_user_id()
     OR is_service_role()
   );
 CREATE POLICY users_delete ON users
@@ -1047,7 +1059,7 @@ CREATE POLICY platform_products_delete ON platform_products
 CREATE POLICY subscriptions_select ON subscriptions
   FOR SELECT
   USING (
-    user_id = nullif(current_setting('request.jwt.claims', true)::json->>'sub', '')
+    user_id = current_user_id()
     OR is_service_role()
   );
 CREATE POLICY subscriptions_insert ON subscriptions

@@ -66,6 +66,7 @@ export function createGabinetTables({
     referralSource: v.optional(v.string()),
     referredByPatientId: v.optional(v.id("gabinetPatients")),
     isActive: v.boolean(),
+    smsConsent: v.optional(v.boolean()),
     tags: v.optional(v.array(v.string())),
     tagIds: v.optional(v.array(v.id("tagDefinitions"))),
     categoryId: v.optional(v.id("categoryDefinitions")),
@@ -77,7 +78,8 @@ export function createGabinetTables({
     .index("by_org", ["organizationId"])
     .index("by_orgAndEmail", ["organizationId", "email"])
     .index("by_orgAndPesel", ["organizationId", "pesel"])
-    .index("by_orgAndContact", ["organizationId", "contactId"]),
+    .index("by_orgAndContact", ["organizationId", "contactId"])
+    .index("by_orgAndSmsConsent", ["organizationId", "smsConsent"]),
 
   gabinetTreatments: defineTable({
     organizationId: v.id("organizations"),

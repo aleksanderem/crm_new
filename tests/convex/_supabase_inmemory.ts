@@ -228,6 +228,17 @@ class InMemoryQueryBuilder<T = Record<string, unknown>> {
     return this;
   }
 
+  ilike(field: string, pattern: string) {
+    // Convert SQL LIKE pattern to a JS case-insensitive regex
+    const regexStr = pattern
+      .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+      .replace(/%/g, ".*")
+      .replace(/_/g, ".");
+    const re = new RegExp(`^${regexStr}$`, "i");
+    this.filters.push((r) => typeof r[field] === "string" && re.test(r[field] as string));
+    return this;
+  }
+
   gt(field: string, value: unknown) {
     this.filters.push((r) => (r[field] as any) > (value as any));
     return this;

@@ -302,12 +302,14 @@ export const create = action({
     // Duplicate guard: reject creation if an active patient in this org
     // already has the same email or phone. Two queries to keep the in-memory
     // test stub compatible (it has no OR filter support).
+    // Email comparison is case-insensitive so jan@example.com and JAN@EXAMPLE.COM
+    // are treated as the same address.
     const [emailDupes, phoneDupes] = await Promise.all([
       (db
         .query("gabinetPatients")
         .eq("organizationId", orgIdStr)
         .eq("isActive", true)
-        .eq("email", args.email)
+        .ilike("email", args.email)
         .collect()) as Promise<Array<{ _id: unknown }>>,
       args.phone
         ? (db

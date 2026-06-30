@@ -26,6 +26,7 @@ export interface MappedGabinetPatient {
   referralSource?: string;
   referredByPatientId?: string;
   isActive: boolean;
+  preferredLocationId?: string;
   tags?: string[];
   tagIds?: string[];
   categoryId?: string;

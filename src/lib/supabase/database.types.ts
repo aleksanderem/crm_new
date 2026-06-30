@@ -4545,6 +4545,7 @@ export interface Database {
           tag_ids: string[] | null;
           category_id: string | null;
           custom_fields: unknown | null;
+          preferred_location_id: string | null;
           created_by: string;
           created_at: number;
           updated_at: number;
@@ -4573,6 +4574,7 @@ export interface Database {
           tag_ids?: string[] | null;
           category_id?: string | null;
           custom_fields?: unknown | null;
+          preferred_location_id?: string | null;
           created_by: string;
           created_at: number;
           updated_at: number;
@@ -4601,6 +4603,7 @@ export interface Database {
           tag_ids?: string[] | null;
           category_id?: string | null;
           custom_fields?: unknown | null;
+          preferred_location_id?: string | null;
           created_by?: string;
           created_at?: number;
           updated_at?: number;
@@ -4639,6 +4642,13 @@ export interface Database {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_patients_preferred_location_id_fkey";
+            columns: ["preferred_location_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_locations";
             referencedColumns: ["id"];
           },
         ];

@@ -356,6 +356,26 @@ class SupabaseQueryBuilder<T = Record<string, unknown>> {
     return this;
   }
 
+  ilike(field: string, pattern: string) {
+    this.filters.push((q) => q.ilike(toSnakeCase(field), pattern));
+    return this;
+  }
+
+  /**
+   * PostgREST OR filter. `filterStr` must use snake_case column names and
+   * PostgREST filter syntax, e.g. `"first_name.ilike.%jo%,last_name.ilike.%jo%"`.
+   * Multiple `.or()` calls on the same builder are AND-combined by PostgREST.
+   */
+  or(filterStr: string) {
+    this.filters.push((q) => q.or(filterStr));
+    return this;
+  }
+
+  in(field: string, values: unknown[]) {
+    this.filters.push((q) => q.in(toSnakeCase(field), values));
+    return this;
+  }
+
   order(field: string, ascending = true) {
     this.orderBy.push({ field: toSnakeCase(field), ascending });
     return this;

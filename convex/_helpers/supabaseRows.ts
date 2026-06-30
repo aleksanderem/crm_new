@@ -31,8 +31,8 @@ export type NoteRow = SupabaseRow<"notes">;
 export type EmailRow = SupabaseRow<"emails">;
 
 // Envelope returned by Supabase-backed list actions that imitate the Convex
-// pagination contract. The cursor is unused (Supabase-backed lists return
-// everything in one page), but kept for API-shape compatibility.
+// pagination contract. The cursor encodes the next page offset as a decimal
+// string; isDone=true and continueCursor="" signal the last page.
 export interface SupabasePaginationResult<TRow> {
   page: TRow[];
   isDone: boolean;

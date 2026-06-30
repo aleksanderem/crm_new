@@ -26,7 +26,7 @@ export function useSupabaseGabinetPatientsList(
   options: UseSupabaseGabinetPatientsListOptions = {},
 ) {
   const { client, isReady } = useSupabase();
-  const { enabled = true, limit = 100, search, sortOrder = "desc" } = options;
+  const { enabled = true, limit, search, sortOrder = "desc" } = options;
 
   return useQuery<MappedGabinetPatient[], Error>({
     queryKey: [
@@ -56,9 +56,11 @@ export function useSupabaseGabinetPatientsList(
         }
       }
 
-      const { data, error } = await query
-        .order("created_at", { ascending: sortOrder === "asc" })
-        .limit(limit);
+      let orderedQuery = query.order("created_at", { ascending: sortOrder === "asc" });
+      if (limit !== undefined) {
+        orderedQuery = orderedQuery.limit(limit);
+      }
+      const { data, error } = await orderedQuery;
 
       if (error) throw error;
       return (data ?? []).map(mapGabinetPatientFromSupabase);

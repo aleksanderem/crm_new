@@ -33,46 +33,47 @@ export const list = action({
     const orgIdStr = String(args.organizationId);
     const userIdStr = String(authResult.userId);
 
-    if (args.search) {
-      const term = args.search.trim().toLowerCase();
-      let results = (await db
-        .query("gabinetPatients")
-        .eq("organizationId", orgIdStr)
-        .collect()) as GabinetPatientRow[];
-      results = results.filter((r) => {
-        const fn = String(r.firstName ?? "").toLowerCase();
-        const ln = String(r.lastName ?? "").toLowerCase();
-        const em = String(r.email ?? "").toLowerCase();
-        const ph = String(r.phone ?? "").toLowerCase();
-        return fn.includes(term) || ln.includes(term) || em.includes(term) || ph.includes(term);
-      }).slice(0, 50);
-      if (perm.scope === "own") {
-        const ownAppts = (await db
-          .query("gabinetAppointments")
-          .eq("organizationId", orgIdStr)
-          .eq("employeeId", userIdStr)
-          .collect()) as Array<{ patientId: unknown }>;
-        const ownPatientIds = new Set(ownAppts.map((a) => String(a.patientId)));
-        results = results.filter((r) => ownPatientIds.has(String(r._id)));
-      }
-      return { page: results, isDone: true, continueCursor: "" };
-    }
+    const pageSize = args.paginationOpts?.numItems ?? 50;
+    const cursorStr = args.paginationOpts?.cursor ?? null;
+    const offset = cursorStr && /^\d+$/.test(cursorStr) ? parseInt(cursorStr, 10) : 0;
 
-    let page = (await db
-      .query("gabinetPatients")
-      .eq("organizationId", orgIdStr)
-      .order("createdAt", false)
-      .collect()) as GabinetPatientRow[];
+    // For "own" scope, resolve the set of patient IDs the employee can see
+    // via their appointments before applying the paged query.
+    let ownPatientIds: string[] | null = null;
     if (perm.scope === "own") {
       const ownAppts = (await db
         .query("gabinetAppointments")
         .eq("organizationId", orgIdStr)
         .eq("employeeId", userIdStr)
         .collect()) as Array<{ patientId: unknown }>;
-      const ownPatientIds = new Set(ownAppts.map((a) => String(a.patientId)));
-      page = page.filter((r) => ownPatientIds.has(String(r._id)));
+      ownPatientIds = [...new Set(ownAppts.map((a) => String(a.patientId)))];
+      if (ownPatientIds.length === 0) {
+        return { page: [], isDone: true, continueCursor: "" };
+      }
     }
-    return { page, isDone: true, continueCursor: "" };
+
+    let query = db
+      .query("gabinetPatients")
+      .eq("organizationId", orgIdStr)
+      .order("createdAt", false);
+
+    if (ownPatientIds !== null) {
+      query = query.in("id", ownPatientIds);
+    }
+
+    if (args.search?.trim()) {
+      for (const token of args.search.trim().split(/\s+/).filter(Boolean)) {
+        const pattern = `%${token}%`;
+        query = query.or(
+          `first_name.ilike.${pattern},last_name.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern}`,
+        );
+      }
+    }
+
+    query = query.range(offset, offset + pageSize - 1);
+    const page = (await query.collect()) as GabinetPatientRow[];
+    const isDone = page.length < pageSize;
+    return { page, isDone, continueCursor: isDone ? "" : String(offset + pageSize) };
   },
 });
 

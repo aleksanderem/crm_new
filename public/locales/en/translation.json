@@ -1001,7 +1001,10 @@
       "moduleNone": "None (invitation only)",
       "moduleGabinet": "Gabinet — create employee profile",
       "moduleHint": "Pick a module to pre-fill the fields needed to provision a profile once the invitation is accepted.",
-      "gabinetSectionTitle": "Gabinet employee details"
+      "gabinetSectionTitle": "Gabinet employee details",
+      "gabinetLocation": "Primary location",
+      "gabinetLocationPlaceholder": "Select a location",
+      "gabinetLocationNone": "No specific location"
     },
     "pipelines": {
       "title": "Pipelines",

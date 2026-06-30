@@ -336,6 +336,7 @@ export function createGabinetTables({
     showInCalendar: v.optional(v.boolean()),
     tagIds: v.optional(v.array(v.id("tagDefinitions"))),
     categoryId: v.optional(v.id("categoryDefinitions")),
+    locationId: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

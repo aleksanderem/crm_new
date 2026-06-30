@@ -75,6 +75,7 @@ export interface GabinetModuleData {
   qualifiedTreatmentIds?: string[];
   tagIds?: string[];
   categoryId?: string;
+  locationId?: string;
   customFields?: Array<{ fieldDefinitionId: string; value: unknown }>;
 }
 
@@ -113,6 +114,13 @@ export function UserInvitationForm({
     queryFn: () => listActiveTreatments({ organizationId }),
     enabled: !!organizationId && module === "gabinet",
   }) as { data: Array<{ _id: string; name: string; duration?: number }> | undefined };
+
+  const listLocationsAction = useAction(api.gabinet.locations.listLocations);
+  const { data: locations } = useQuery({
+    queryKey: ["gabinet.locations.listLocations", organizationId],
+    queryFn: () => listLocationsAction({ organizationId }),
+    enabled: !!organizationId && module === "gabinet",
+  }) as { data: Array<{ _id: string; name: string; isActive: boolean }> | undefined };
 
   const { tags: tagDefinitions } = useTagDefinitions(organizationId) as {
     tags: Array<{ _id: Id<"tagDefinitions">; name: string; color: string }>;
@@ -164,6 +172,7 @@ export function UserInvitationForm({
   const [selectedTreatments, setSelectedTreatments] = useState<string[]>([]);
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
+  const [locationId, setLocationId] = useState<string | undefined>(undefined);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
   const [treatmentSearch, setTreatmentSearch] = useState("");
 
@@ -222,6 +231,7 @@ export function UserInvitationForm({
           : undefined,
         tagIds: tagIds.length > 0 ? tagIds : undefined,
         categoryId: categoryId || undefined,
+        locationId: locationId || undefined,
         customFields: customFields.length > 0 ? customFields : undefined,
       };
     }
@@ -389,6 +399,28 @@ export function UserInvitationForm({
                 ))}
               </div>
             </div>
+
+            {locations && locations.filter((l) => l.isActive).length > 0 && (
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>{t("settings.team.gabinetLocation")}</Label>
+                <Select
+                  value={locationId ?? "none"}
+                  onValueChange={(v) => setLocationId(v === "none" ? undefined : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("settings.team.gabinetLocationPlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t("settings.team.gabinetLocationNone")}</SelectItem>
+                    {locations.filter((l) => l.isActive).map((loc) => (
+                      <SelectItem key={loc._id} value={loc._id}>
+                        {loc.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           {isClinicalRole && (

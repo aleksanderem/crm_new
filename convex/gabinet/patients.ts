@@ -290,6 +290,40 @@ export const create = action({
 
     const now = Date.now();
     const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+
+    // Duplicate guard: reject creation if an active patient in this org
+    // already has the same email or phone. Two queries to keep the in-memory
+    // test stub compatible (it has no OR filter support).
+    const [emailDupes, phoneDupes] = await Promise.all([
+      (db
+        .query("gabinetPatients")
+        .eq("organizationId", orgIdStr)
+        .eq("isActive", true)
+        .eq("email", args.email)
+        .collect()) as Promise<Array<{ _id: unknown }>>,
+      args.phone
+        ? (db
+            .query("gabinetPatients")
+            .eq("organizationId", orgIdStr)
+            .eq("isActive", true)
+            .eq("phone", args.phone)
+            .collect()) as Promise<Array<{ _id: unknown }>>
+        : Promise.resolve([] as Array<{ _id: unknown }>),
+    ]);
+
+    const duplicateIds = [
+      ...new Set([
+        ...emailDupes.map((p) => String(p._id)),
+        ...phoneDupes.map((p) => String(p._id)),
+      ]),
+    ];
+
+    if (duplicateIds.length > 0) {
+      throw new Error(
+        `Duplicate patient detected. Existing patient IDs: ${duplicateIds.join(",")}`,
+      );
+    }
 
     // --- INSERT patient directly to Supabase ---
     const patientId = await db.insert("gabinetPatients", {

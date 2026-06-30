@@ -193,6 +193,21 @@ export const _listOnboardedOrgIds = internalQuery({
 });
 
 /**
+ * Internal: return the userId of the first team member found for an org.
+ * Used by backfill actions that need a createdBy userId when seeding templates.
+ */
+export const _getOrgFirstMemberId = internalQuery({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args): Promise<GenericId<"users"> | null> => {
+    const membership = await ctx.db
+      .query("teamMemberships")
+      .withIndex("by_organizationId", (q) => q.eq("organizationId", args.organizationId))
+      .first();
+    return membership?.userId ?? null;
+  },
+});
+
+/**
  * Backfill `filledBy` on form-field nodes for ALL onboarded organizations.
  * Runs as a daily cron so existing orgs (that completed setup before the
  * filledBy feature was introduced) get migrated automatically.
@@ -2442,21 +2457,39 @@ export const migrateGotoweContactEntityTypes = internalMutation({
 });
 
 /**
- * Backfill "contact" entityType on the five "Gotowe" templates for ALL onboarded orgs.
- * Idempotent — skips templates that already include "contact".
+ * Backfill the five "Gotowe" templates for ALL onboarded orgs.
+ *
+ * Two-phase, both phases are idempotent:
+ * 1. Seed any missing Gotowe templates (orgs onboarded before #2528 never had
+ *    them created — the old onboarding path didn't call seedBeautyHandler).
+ * 2. Patch entityTypes to include "contact" so the templates appear in the
+ *    CRM contact document picker (fix from #2532).
  */
 export const backfillGotoweContactEntityTypesAllOrgs = internalAction({
   args: {},
-  handler: async (ctx): Promise<{ totalPatched: number; orgsProcessed: number }> => {
+  handler: async (ctx): Promise<{ totalSeeded: number; totalPatched: number; orgsProcessed: number }> => {
     const orgIds = await ctx.runQuery(internal.documents.seed._listOnboardedOrgIds, {});
+    let totalSeeded = 0;
     let totalPatched = 0;
     for (const orgId of orgIds) {
+      // Phase 1: seed templates that don't exist yet. Skips existing ones by name.
+      const userId = await ctx.runQuery(internal.documents.seed._getOrgFirstMemberId, {
+        organizationId: orgId,
+      });
+      if (userId) {
+        const { count } = await ctx.runMutation(
+          internal.documents.seed.seedBeautyDocumentTemplatesInternal,
+          { organizationId: orgId, userId },
+        );
+        totalSeeded += count;
+      }
+      // Phase 2: ensure "contact" is in entityTypes on all five Gotowe templates.
       const { patched } = await ctx.runMutation(
         internal.documents.seed.migrateGotoweContactEntityTypes,
         { organizationId: orgId },
       );
       totalPatched += patched;
     }
-    return { totalPatched, orgsProcessed: orgIds.length };
+    return { totalSeeded, totalPatched, orgsProcessed: orgIds.length };
   },
 });

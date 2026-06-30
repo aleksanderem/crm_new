@@ -170,6 +170,7 @@ function GabinetCalendarPage() {
   // Dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<string | undefined>();
   const [sellPackageOpen, setSellPackageOpen] = useState(false);
   const [createDefaultDate, setCreateDefaultDate] = useState<
     string | undefined
@@ -673,6 +674,7 @@ function GabinetCalendarPage() {
       indicators?: Indicator[];
       employeeCount?: number;
       employeeNames?: string[];
+      isGabinetManualEvent?: boolean;
     }> = [];
 
     if (rawAppointments) {
@@ -879,6 +881,7 @@ function GabinetCalendarPage() {
           status: "blocked",
           color: eventType?.color ?? "#9ca3af",
           employeeId: act.resourceId,
+          isGabinetManualEvent: isManualEvent,
         });
       }
     }
@@ -985,8 +988,16 @@ function GabinetCalendarPage() {
     setCreateDefaultTime(undefined);
     setCreateDefaultEndTime(undefined);
     setCreateDefaultUserId(undefined);
+    setEditingEventId(undefined);
     setEventDialogOpen(true);
   }, [currentDate]);
+
+  // Opens the event dialog in edit mode when clicking an existing gabinet event
+  // tile (status="blocked", isGabinetManualEvent=true) on the calendar.
+  const handleGabinetEventEdit = useCallback((id: string) => {
+    setEditingEventId(id);
+    setEventDialogOpen(true);
+  }, []);
 
   // Sidebar dispatch handlers
   useSidebarDispatch("goToToday", goToday);
@@ -1822,6 +1833,7 @@ function GabinetCalendarPage() {
               onSlotClick={handleEmployeeSlotClick}
               onSlotDragSelect={handleEmployeeSlotDragSelect}
               onAppointmentResize={handleAppointmentResize}
+              onGabinetEventEdit={handleGabinetEventEdit}
               slotMinutes={slotMinutes}
             />
           )}
@@ -1834,6 +1846,7 @@ function GabinetCalendarPage() {
               }
               onSlotDragSelect={handleSlotDragSelect}
               onAppointmentResize={handleAppointmentResize}
+              onGabinetEventEdit={handleGabinetEventEdit}
               workingHours={dayWorkingHours}
               leave={leavesByDate.get(formatDateStr(currentDate)) ?? null}
               slotMinutes={slotMinutes}
@@ -1846,6 +1859,7 @@ function GabinetCalendarPage() {
               onSlotClick={handleSlotClick}
               onSlotDragSelect={handleSlotDragSelect}
               onAppointmentResize={handleAppointmentResize}
+              onGabinetEventEdit={handleGabinetEventEdit}
               onDayHeaderClick={handleDayClick}
               selectedDate={formatDateStr(currentDate)}
               employeeSchedules={employeeSchedules}
@@ -1886,15 +1900,19 @@ function GabinetCalendarPage() {
           }}
         />
 
-        {/* Create event dialog (non-patient calendar block — issue #1555) */}
+        {/* Create/edit event dialog (non-patient calendar block — issue #1555) */}
         <EventDialog
           organizationId={organizationId}
           open={eventDialogOpen}
-          onOpenChange={setEventDialogOpen}
+          onOpenChange={(open) => {
+            setEventDialogOpen(open);
+            if (!open) setEditingEventId(undefined);
+          }}
           defaultDate={createDefaultDate}
           defaultTime={createDefaultTime}
           defaultEndTime={createDefaultEndTime}
           defaultUserId={createDefaultUserId}
+          eventId={editingEventId}
           onManageEventTypes={() => setEventTypesSlideoutOpen(true)}
         />
 

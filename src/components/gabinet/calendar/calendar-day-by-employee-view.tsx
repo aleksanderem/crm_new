@@ -19,6 +19,7 @@ interface Appointment {
   employeeId?: string;
   tags?: Array<{ name: string; color: string }>;
   indicators?: AppointmentIndicator[];
+  isGabinetManualEvent?: boolean;
 }
 
 export interface DayByEmployeeColumn {
@@ -46,6 +47,7 @@ interface CalendarDayByEmployeeViewProps {
     employeeId: string,
   ) => void;
   onAppointmentResize?: (id: string, newEndTime: string) => void;
+  onGabinetEventEdit?: (id: string) => void;
   slotMinutes?: 5 | 10 | 15 | 30 | 60;
 }
 
@@ -152,6 +154,7 @@ interface EmployeeColumnProps {
     employeeId: string,
   ) => void;
   onAppointmentResize?: (id: string, newEndTime: string) => void;
+  onGabinetEventEdit?: (id: string) => void;
 }
 
 function EmployeeColumn({
@@ -165,6 +168,7 @@ function EmployeeColumn({
   onSlotClick,
   onSlotDragSelect,
   onAppointmentResize,
+  onGabinetEventEdit,
 }: EmployeeColumnProps) {
   const { t } = useTranslation();
   const showSubdivisions = slotMinutes === 60;
@@ -377,6 +381,8 @@ function EmployeeColumn({
                 onResize={onAppointmentResize}
                 hourHeight={HOUR_HEIGHT}
                 snapMinutes={Math.min(15, slotMinutes)}
+                isGabinetEvent={appt.isGabinetManualEvent}
+                onGabinetEventEdit={onGabinetEventEdit}
               />
             </div>
           );
@@ -393,6 +399,7 @@ export function CalendarDayByEmployeeView({
   onSlotClick,
   onSlotDragSelect,
   onAppointmentResize,
+  onGabinetEventEdit,
   slotMinutes = 60,
 }: CalendarDayByEmployeeViewProps) {
   const { t } = useTranslation();
@@ -520,6 +527,7 @@ export function CalendarDayByEmployeeView({
             onSlotClick={onSlotClick}
             onSlotDragSelect={onSlotDragSelect}
             onAppointmentResize={onAppointmentResize}
+            onGabinetEventEdit={onGabinetEventEdit}
           />
         ))}
       </div>

@@ -35,6 +35,9 @@ interface DraggableAppointmentProps extends Appointment {
   onResize?: (id: string, newEndTime: string) => void;
   hourHeight?: number;
   snapMinutes?: number;
+  /** When true, clicking a "blocked" status card calls onGabinetEventEdit instead of no-op. */
+  isGabinetEvent?: boolean;
+  onGabinetEventEdit?: (id: string) => void;
 }
 
 function timeToMinutes(t: string): number {
@@ -64,6 +67,8 @@ export function DraggableAppointment({
   onResize,
   hourHeight = 60,
   snapMinutes = 15,
+  isGabinetEvent,
+  onGabinetEventEdit,
 }: DraggableAppointmentProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: _id,
@@ -301,7 +306,13 @@ export function DraggableAppointment({
       : null;
 
   const handleCardClick = () => {
-    if (isDragging || isPopoverDisabled) return;
+    if (isDragging) return;
+    if (isPopoverDisabled) {
+      if (isGabinetEvent && onGabinetEventEdit) {
+        onGabinetEventEdit(_id);
+      }
+      return;
+    }
     setPopoverOpen((o) => !o);
   };
 

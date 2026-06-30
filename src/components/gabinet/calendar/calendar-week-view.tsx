@@ -21,6 +21,7 @@ interface Appointment {
   indicators?: AppointmentIndicator[];
   employeeCount?: number;
   employeeNames?: string[];
+  isGabinetManualEvent?: boolean;
 }
 
 interface CalendarWeekViewProps {
@@ -29,6 +30,7 @@ interface CalendarWeekViewProps {
   onSlotClick?: (date: string, time: string) => void;
   onSlotDragSelect?: (date: string, startTime: string, endTime: string) => void;
   onAppointmentResize?: (id: string, newEndTime: string) => void;
+  onGabinetEventEdit?: (id: string) => void;
   onDayHeaderClick?: (date: string) => void;
   selectedDate?: string;
   employeeSchedules?: Map<string, { startTime: string; endTime: string; breakStart?: string; breakEnd?: string }>;
@@ -153,6 +155,7 @@ interface WeekDayColumnProps {
   onSlotClick?: (date: string, time: string) => void;
   onSlotDragSelect?: (date: string, startTime: string, endTime: string) => void;
   onAppointmentResize?: (id: string, newEndTime: string) => void;
+  onGabinetEventEdit?: (id: string) => void;
   slotMinutes: 5 | 10 | 15 | 30 | 60;
   slots: ReturnType<typeof buildSlots>;
 }
@@ -167,6 +170,7 @@ function WeekDayColumn({
   onSlotClick,
   onSlotDragSelect,
   onAppointmentResize,
+  onGabinetEventEdit,
   slotMinutes,
   slots,
 }: WeekDayColumnProps) {
@@ -367,6 +371,8 @@ function WeekDayColumn({
                 onResize={onAppointmentResize}
                 hourHeight={HOUR_HEIGHT}
                 snapMinutes={Math.min(15, slotMinutes)}
+                isGabinetEvent={appt.isGabinetManualEvent}
+                onGabinetEventEdit={onGabinetEventEdit}
               />
             </div>
           );
@@ -376,7 +382,7 @@ function WeekDayColumn({
   );
 }
 
-export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotDragSelect, onAppointmentResize, onDayHeaderClick, selectedDate, employeeSchedules, leavesByDate, slotMinutes = 60 }: CalendarWeekViewProps) {
+export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotDragSelect, onAppointmentResize, onGabinetEventEdit, onDayHeaderClick, selectedDate, employeeSchedules, leavesByDate, slotMinutes = 60 }: CalendarWeekViewProps) {
   const { t } = useTranslation();
   const dates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const now = useCurrentTime();
@@ -499,6 +505,7 @@ export function CalendarWeekView({ weekStart, appointments, onSlotClick, onSlotD
               onSlotClick={onSlotClick}
               onSlotDragSelect={onSlotDragSelect}
               onAppointmentResize={onAppointmentResize}
+              onGabinetEventEdit={onGabinetEventEdit}
               slotMinutes={slotMinutes}
               slots={slots}
             />

@@ -18,6 +18,7 @@ interface Appointment {
   indicators?: AppointmentIndicator[];
   employeeCount?: number;
   employeeNames?: string[];
+  isGabinetManualEvent?: boolean;
 }
 
 interface CalendarDayViewProps {
@@ -26,6 +27,7 @@ interface CalendarDayViewProps {
   onSlotClick?: (time: string) => void;
   onSlotDragSelect?: (date: string, startTime: string, endTime: string) => void;
   onAppointmentResize?: (id: string, newEndTime: string) => void;
+  onGabinetEventEdit?: (id: string) => void;
   workingHours?: { startTime: string; endTime: string; breakStart?: string; breakEnd?: string } | null;
   /** Approved leave overlapping this date for the filtered employee. */
   leave?: { startTime?: string; endTime?: string } | null;
@@ -119,7 +121,7 @@ function layoutAppointments(appts: Appointment[]): LayoutedAppointment[] {
   return result;
 }
 
-export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSelect, onAppointmentResize, workingHours, leave, slotMinutes = 60 }: CalendarDayViewProps) {
+export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSelect, onAppointmentResize, onGabinetEventEdit, workingHours, leave, slotMinutes = 60 }: CalendarDayViewProps) {
   const { t } = useTranslation();
   const now = useCurrentTime();
   const isToday = date === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -364,6 +366,8 @@ export function CalendarDayView({ date, appointments, onSlotClick, onSlotDragSel
                 onResize={onAppointmentResize}
                 hourHeight={HOUR_HEIGHT}
                 snapMinutes={Math.min(15, slotMinutes)}
+                isGabinetEvent={appt.isGabinetManualEvent}
+                onGabinetEventEdit={onGabinetEventEdit}
               />
             </div>
           );

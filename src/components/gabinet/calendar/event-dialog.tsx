@@ -7,6 +7,7 @@ import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { ChevronDown, Users } from "lucide-react";
+import { useSupabaseScheduledActivityById } from "@/hooks/use-supabase-scheduled-activities";
 import {
   Dialog,
   DialogContent,
@@ -48,6 +49,8 @@ interface EventDialogProps {
    */
   defaultUserIds?: string[];
   onManageEventTypes?: () => void;
+  /** When provided, opens the dialog in edit mode for an existing event. */
+  eventId?: string;
 }
 
 function computeEndTime(start: string, minutes: number): string {
@@ -73,11 +76,20 @@ export function EventDialog({
   defaultUserId,
   defaultUserIds,
   onManageEventTypes,
+  eventId,
 }: EventDialogProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const createActivity = useAction(api.scheduledActivities.create);
+  const updateActivity = useAction(api.scheduledActivities.update);
+  const removeActivity = useAction(api.scheduledActivities.remove);
+
+  const { data: editingEvent } = useSupabaseScheduledActivityById(
+    String(organizationId),
+    eventId,
+    { enabled: !!eventId && open },
+  );
 
   const { data: currentUser } = useQuery(
     convexQuery(api.app.getCurrentUser, {}),
@@ -113,10 +125,11 @@ export function EventDialog({
   >(undefined);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  // Re-seed form when dialog re-opens with new defaults
+  // Re-seed form when dialog re-opens with new defaults (create mode only)
   useEffect(() => {
-    if (!open) return;
+    if (!open || eventId) return;
     setTitle("");
     setDate(defaultDate ?? todayStr());
     setStartTime(defaultTime ?? "09:00");
@@ -132,7 +145,24 @@ export function EventDialog({
     );
     setCategoryId(undefined);
     setNotes("");
-  }, [open, defaultDate, defaultTime, defaultEndTime, defaultUserId, defaultUserIds]);
+  }, [open, eventId, defaultDate, defaultTime, defaultEndTime, defaultUserId, defaultUserIds]);
+
+  // Seed form from fetched event data (edit mode)
+  useEffect(() => {
+    if (!editingEvent || !open || !eventId) return;
+    setTitle(editingEvent.title);
+    const dt = new Date(editingEvent.dueDate);
+    const dateStr = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+    const startStr = `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
+    const endDt = editingEvent.endDate ? new Date(editingEvent.endDate) : dt;
+    const endStr = `${String(endDt.getHours()).padStart(2, "0")}:${String(endDt.getMinutes()).padStart(2, "0")}`;
+    setDate(dateStr);
+    setStartTime(startStr);
+    setEndTime(endStr);
+    setEmployeeIds(editingEvent.resourceId ? [editingEvent.resourceId] : []);
+    setCategoryId(editingEvent.categoryId ? (editingEvent.categoryId as Id<"categoryDefinitions">) : undefined);
+    setNotes(editingEvent.description ?? "");
+  }, [editingEvent, open, eventId]);
 
   // Keep endTime ≥ startTime as user edits start
   const handleStartTimeChange = useCallback(
@@ -204,54 +234,68 @@ export function EventDialog({
       const dueDateMs = new Date(`${date}T${startTime}:00`).getTime();
       const endDateMs = new Date(`${date}T${endTime}:00`).getTime();
 
-      // Empty selection means "whole office" — one activity, no resourceId.
-      // Otherwise create one activity per selected employee so the block
-      // shows up in each of their calendar columns.
-      const targets: (string | undefined)[] =
-        employeeIds.length === 0 ? [undefined] : employeeIds;
+      if (eventId) {
+        // Edit mode: update the single clicked event
+        await updateActivity({
+          organizationId,
+          activityId: eventId,
+          title: title.trim(),
+          dueDate: dueDateMs,
+          endDate: endDateMs,
+          description: notes.trim() ? notes.trim() : undefined,
+          categoryId: categoryId ? String(categoryId) : undefined,
+          resourceId: employeeIds.length > 0 ? employeeIds[0] : undefined,
+        });
+        invalidateActivities();
+        toast.success(t("gabinet.events.updated", { defaultValue: "Zaktualizowano zdarzenie" }));
+      } else {
+        // Create mode: one activity per selected employee
+        const targets: (string | undefined)[] =
+          employeeIds.length === 0 ? [undefined] : employeeIds;
 
-      await Promise.all(
-        targets.map((resourceId) =>
-          createActivity({
-            organizationId,
-            title: title.trim(),
-            activityType: "gabinet:event",
-            dueDate: dueDateMs,
-            endDate: endDateMs,
-            ownerId: String(currentUser._id),
-            description: notes.trim() ? notes.trim() : undefined,
-            categoryId: categoryId ? String(categoryId) : undefined,
-            resourceId,
-            sourceType: "manual",
-            moduleRef: {
-              moduleId: "gabinet",
-              entityType: "gabinetEvent",
-              // The activity row IS the event — there's no separate entity record.
-              // Use a placeholder so the moduleRef shape stays consistent with
-              // gabinetAppointment rows (which point at a gabinet_appointments row).
-              entityId: "self",
-            },
-          }),
-        ),
-      );
-
-      invalidateActivities();
-      toast.success(
-        targets.length > 1
-          ? t("gabinet.events.createdMultiple", {
-              defaultValue: "Dodano {{count}} zdarzenia",
-              count: targets.length,
-            })
-          : t("gabinet.events.created", {
-              defaultValue: "Dodano zdarzenie",
+        await Promise.all(
+          targets.map((resourceId) =>
+            createActivity({
+              organizationId,
+              title: title.trim(),
+              activityType: "gabinet:event",
+              dueDate: dueDateMs,
+              endDate: endDateMs,
+              ownerId: String(currentUser._id),
+              description: notes.trim() ? notes.trim() : undefined,
+              categoryId: categoryId ? String(categoryId) : undefined,
+              resourceId,
+              sourceType: "manual",
+              moduleRef: {
+                moduleId: "gabinet",
+                entityType: "gabinetEvent",
+                // The activity row IS the event — there's no separate entity record.
+                // Use a placeholder so the moduleRef shape stays consistent with
+                // gabinetAppointment rows (which point at a gabinet_appointments row).
+                entityId: "self",
+              },
             }),
-      );
+          ),
+        );
+
+        invalidateActivities();
+        toast.success(
+          targets.length > 1
+            ? t("gabinet.events.createdMultiple", {
+                defaultValue: "Dodano {{count}} zdarzenia",
+                count: targets.length,
+              })
+            : t("gabinet.events.created", {
+                defaultValue: "Dodano zdarzenie",
+              }),
+        );
+      }
       onOpenChange(false);
     } catch (err) {
       toast.error(
         formatActionError(err, t, {
-          key: "gabinet.events.errors.createFailed",
-          defaultValue: "Nie udało się dodać zdarzenia.",
+          key: eventId ? "gabinet.events.errors.updateFailed" : "gabinet.events.errors.createFailed",
+          defaultValue: eventId ? "Nie udało się zaktualizować zdarzenia." : "Nie udało się dodać zdarzenia.",
         }),
       );
     } finally {
@@ -265,6 +309,7 @@ export function EventDialog({
     endTime,
     employeeIds,
     createActivity,
+    updateActivity,
     organizationId,
     title,
     notes,
@@ -272,20 +317,47 @@ export function EventDialog({
     invalidateActivities,
     t,
     onOpenChange,
+    eventId,
   ]);
+
+  const handleDelete = useCallback(async () => {
+    if (!eventId || deleting) return;
+    setDeleting(true);
+    try {
+      await removeActivity({ organizationId, activityId: eventId });
+      invalidateActivities();
+      toast.success(t("gabinet.events.deleted", { defaultValue: "Usunięto zdarzenie" }));
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(
+        formatActionError(err, t, {
+          key: "gabinet.events.errors.deleteFailed",
+          defaultValue: "Nie udało się usunąć zdarzenia.",
+        }),
+      );
+    } finally {
+      setDeleting(false);
+    }
+  }, [eventId, deleting, removeActivity, organizationId, invalidateActivities, t, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {t("gabinet.events.create", { defaultValue: "Nowe zdarzenie" })}
+            {eventId
+              ? t("gabinet.events.edit", { defaultValue: "Edytuj zdarzenie" })
+              : t("gabinet.events.create", { defaultValue: "Nowe zdarzenie" })}
           </DialogTitle>
           <DialogDescription>
-            {t("gabinet.events.createDescription", {
-              defaultValue:
-                "Zablokuj czas w kalendarzu na zebranie, szkolenie lub inne wewnętrzne zdarzenie.",
-            })}
+            {eventId
+              ? t("gabinet.events.editDescription", {
+                  defaultValue: "Edytuj szczegóły zdarzenia w kalendarzu.",
+                })
+              : t("gabinet.events.createDescription", {
+                  defaultValue:
+                    "Zablokuj czas w kalendarzu na zebranie, szkolenie lub inne wewnętrzne zdarzenie.",
+                })}
           </DialogDescription>
         </DialogHeader>
 
@@ -471,16 +543,30 @@ export function EventDialog({
         </div>
 
         <DialogFooter>
+          {eventId && (
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting || submitting}
+              className="mr-auto"
+            >
+              {deleting
+                ? t("common.deleting", { defaultValue: "Usuwanie..." })
+                : t("common.delete", { defaultValue: "Usuń" })}
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={submitting}
+            disabled={submitting || deleting}
           >
             {t("common.cancel", { defaultValue: "Anuluj" })}
           </Button>
-          <Button onClick={handleSubmit} disabled={!canSubmit}>
+          <Button onClick={handleSubmit} disabled={!canSubmit || deleting}>
             {submitting
               ? t("common.saving", { defaultValue: "Zapisywanie..." })
+              : eventId
+              ? t("common.save", { defaultValue: "Zapisz" })
               : t("common.add", { defaultValue: "Dodaj" })}
           </Button>
         </DialogFooter>

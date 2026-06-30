@@ -350,7 +350,6 @@ export const _createFromInvitation = internalAction({
       showInCalendar: typeof d.showInCalendar === "boolean" ? d.showInCalendar : true,
       tagIds: asStringArray(d.tagIds),
       categoryId: asString(d.categoryId),
-      locationId: asString(d.locationId),
       createdBy: args.invitedBy,
       createdAt: now,
       updatedAt: now,

@@ -585,116 +585,6 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
       }
     }
 
-    // ============================================================
-    // 11. DOCUMENT TEMPLATES
-    // ============================================================
-    const templateData = [
-      {
-        name: "Zgoda na zabieg",
-        type: "consent" as const,
-        content: "Ja, {{patient.firstName}} {{patient.lastName}}, wyrażam zgodę na przeprowadzenie zabiegu {{treatment.name}} w dniu {{appointment.date}}.\n\nOświadczam, że zostałem/am poinformowany/a o:\n- przebiegu zabiegu\n- możliwych powikłaniach\n- alternatywnych metodach leczenia\n\nData: {{appointment.date}}\nPodpis klienta: _______________",
-        requiresSignature: true,
-      },
-      {
-        name: "Karta wizyty",
-        type: "medical_record" as const,
-        content: "KARTA WIZYTY\n\nKlient: {{patient.firstName}} {{patient.lastName}}\nPESEL: {{patient.pesel}}\nData wizyty: {{appointment.date}}\nLekarz: {{employee.name}}\n\nRozpoznanie:\n\n\nZalecenia:\n\n\nPrzepisy leków:\n\n\nNastępna wizyta:",
-        requiresSignature: false,
-      },
-      {
-        name: "Skierowanie",
-        type: "referral" as const,
-        content: "SKIEROWANIE\n\nSkierowuję klienta {{patient.firstName}} {{patient.lastName}} (PESEL: {{patient.pesel}})\ndo: ________________________________\nw celu: ________________________________\n\nRozpoznanie: ________________________________\nBadania dotychczasowe: ________________________________\n\nData: {{appointment.date}}\nLekarz: {{employee.name}}\nNr prawa wyk. zawodu: {{employee.license}}",
-        requiresSignature: true,
-      },
-      {
-        name: "Recepta",
-        type: "prescription" as const,
-        content: "RECEPTA\n\nKlient: {{patient.firstName}} {{patient.lastName}}\nPESEL: {{patient.pesel}}\nAdres: {{patient.address}}\n\nRp.\n1. ________________________________\n   Dawkowanie: ________________________________\n\n2. ________________________________\n   Dawkowanie: ________________________________\n\nData wystawienia: {{appointment.date}}\nLekarz: {{employee.name}}\nNr PWZ: {{employee.license}}",
-        requiresSignature: true,
-      },
-    ];
-
-    const templateIds: Id<"gabinetDocumentTemplates">[] = [];
-    for (let i = 0; i < templateData.length; i++) {
-      const tmpl = templateData[i];
-      const id = await ctx.db.insert("gabinetDocumentTemplates", {
-        organizationId: orgId,
-        name: tmpl.name,
-        type: tmpl.type,
-        content: tmpl.content,
-        requiresSignature: tmpl.requiresSignature,
-        isActive: true,
-        sortOrder: i,
-        createdBy: userId,
-        createdAt: now,
-        updatedAt: now,
-      });
-      templateIds.push(id);
-    }
-
-    // ============================================================
-    // 12. SAMPLE DOCUMENTS
-    // ============================================================
-    // Signed consent for a past appointment
-    await ctx.db.insert("gabinetDocuments", {
-      organizationId: orgId,
-      patientId: patientIds[0],
-      appointmentId: appointmentIds[43], // first past appointment (daysOffset -1, patientIdx 0)
-      templateId: templateIds[0],
-      title: "Zgoda na zabieg — Anna Kowalska",
-      type: "consent",
-      content: templateData[0].content
-        .replace("{{patient.firstName}}", "Anna")
-        .replace("{{patient.lastName}}", "Kowalska")
-        .replace(/\{\{treatment\.name\}\}/g, "Konsultacja lekarska")
-        .replace(/\{\{appointment\.date\}\}/g, ts(-1)),
-      status: "signed",
-      signedAt: now - 24 * 60 * 60 * 1000,
-      signedByPatient: true,
-      createdBy: userId,
-      createdAt: now - 24 * 60 * 60 * 1000,
-      updatedAt: now,
-    });
-
-    // Pending medical record
-    await ctx.db.insert("gabinetDocuments", {
-      organizationId: orgId,
-      patientId: patientIds[1],
-      appointmentId: appointmentIds[44], // second past appointment (daysOffset -1, patientIdx 1)
-      templateId: templateIds[1],
-      title: "Karta wizyty — Jan Nowak",
-      type: "medical_record",
-      content: templateData[1].content
-        .replace("{{patient.firstName}}", "Jan")
-        .replace("{{patient.lastName}}", "Nowak")
-        .replace("{{patient.pesel}}", "72110854321")
-        .replace(/\{\{appointment\.date\}\}/g, ts(-1))
-        .replace("{{employee.name}}", "Dr med. Kowalski"),
-      status: "draft",
-      createdBy: userId,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // Pending signature consent for upcoming appointment
-    await ctx.db.insert("gabinetDocuments", {
-      organizationId: orgId,
-      patientId: patientIds[3],
-      templateId: templateIds[0],
-      title: "Zgoda na zabieg — Piotr Zieliński",
-      type: "consent",
-      content: templateData[0].content
-        .replace("{{patient.firstName}}", "Piotr")
-        .replace("{{patient.lastName}}", "Zieliński")
-        .replace(/\{\{treatment\.name\}\}/g, "Mezoterapia igłowa")
-        .replace(/\{\{appointment\.date\}\}/g, ts(3)),
-      status: "pending_signature",
-      createdBy: userId,
-      createdAt: now,
-      updatedAt: now,
-    });
-
     return {
       patients: patientIds.length,
       treatments: treatmentIds.length,
@@ -702,8 +592,6 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
       leaveTypes: leaveTypeIds.length,
       appointments: appointmentIds.length,
       packages: 3,
-      templates: templateIds.length,
-      documents: 3,
     };
 }
 
@@ -731,8 +619,6 @@ export const clearAllInternal = internalMutation({
 
 async function doClear(ctx: any, orgId: Id<"organizations">) {
   const tables = [
-    "gabinetDocuments",
-    "gabinetDocumentTemplates",
     "gabinetLoyaltyTransactions",
     "gabinetLoyaltyPoints",
     "gabinetPackageUsage",

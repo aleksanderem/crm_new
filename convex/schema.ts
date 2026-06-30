@@ -453,23 +453,6 @@ export const automationStepStatusValidator = v.union(
 );
 export type AutomationStepStatus = Infer<typeof automationStepStatusValidator>;
 
-export const gabinetDocTypeValidator = v.union(
-  v.literal("consent"),
-  v.literal("medical_record"),
-  v.literal("prescription"),
-  v.literal("referral"),
-  v.literal("custom"),
-);
-export type GabinetDocType = Infer<typeof gabinetDocTypeValidator>;
-
-export const gabinetDocStatusValidator = v.union(
-  v.literal("draft"),
-  v.literal("pending_signature"),
-  v.literal("signed"),
-  v.literal("archived"),
-);
-export type GabinetDocStatus = Infer<typeof gabinetDocStatusValidator>;
-
 export const gabinetPackageUsageStatusValidator = v.union(
   v.literal("active"),
   v.literal("completed"),
@@ -547,8 +530,6 @@ const gabinetTables = createGabinetTables({
   gabinetPackageUsageStatusValidator,
   gabinetLoyaltyTierValidator,
   gabinetLoyaltyTxTypeValidator,
-  gabinetDocTypeValidator,
-  gabinetDocStatusValidator,
   appointmentSmsDirectionValidator,
   appointmentSmsIntentValidator,
   appointmentSmsProcessingStatusValidator,

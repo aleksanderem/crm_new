@@ -47,6 +47,7 @@ export interface ModuleSettingsNavItem {
   labelKey: string;
   to: string;
   sectionKey?: string;
+  adminOnly?: boolean;
 }
 
 export interface ModuleManifest {

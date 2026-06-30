@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useSidebarActions } from "@/components/layout/sidebar-context";
 import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
-import { usePermissions } from "@/hooks/use-permission";
+import { usePermissions, useRole } from "@/hooks/use-permission";
 import { useMiniCalendar } from "@/components/layout/mini-calendar-context";
 import { CalendarMiniMonth } from "@untitled/app/calendar/base-components/calendar-mini-month";
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
@@ -44,6 +44,8 @@ export function AppSidebar() {
   const { content: sidebarSlotContent, wideContent, dayAgendaDate, shellSidebarMode } = useSidebarSlot();
 
   const { can: canCreate } = usePermissions("create");
+  const { role } = useRole();
+  const isAdmin = role === "owner" || role === "admin";
 
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (same pattern as dashboard layout)
   const { data: activeProducts } = useQuery(convexQuery(api.productSubscriptions.getActiveProducts, { organizationId }));
@@ -70,7 +72,9 @@ export function AppSidebar() {
   const isSettingsRoute = moduleRegistry.some((module) =>
     module.settingsRoots.some((root) => matchRoute({ to: root, fuzzy: true })),
   );
-  const settingsNav = visibleModules.flatMap((module) => module.settingsNav);
+  const settingsNav = visibleModules
+    .flatMap((module) => module.settingsNav)
+    .filter((item) => !item.adminOnly || isAdmin);
 
   const pageContext = !isSettingsRoute
     ? activeModule.pageContexts.find((context) =>

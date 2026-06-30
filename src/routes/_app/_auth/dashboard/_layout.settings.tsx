@@ -5,6 +5,7 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
 import { getVisibleModules } from "@/modules/registry";
+import { useRole } from "@/hooks/use-permission";
 import { cn } from "@/utils/misc";
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout/settings")({
@@ -15,13 +16,19 @@ export default function DashboardSettingsLayout() {
   const { t } = useTranslation();
   const matchRoute = useMatchRoute();
   const { organizationId } = useOrganization();
+  const { role, loading: roleLoading } = useRole();
+  const isAdmin = role === "owner" || role === "admin";
 
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen
   const { data: activeProducts } = useQuery(
     convexQuery(api.productSubscriptions.getActiveProducts, { organizationId }),
   );
 
-  const settingsNav = getVisibleModules(activeProducts).flatMap((m) => m.settingsNav);
+  const allSettingsNav = getVisibleModules(activeProducts).flatMap((m) => m.settingsNav);
+  const settingsNav = allSettingsNav.filter((item) => !item.adminOnly || isAdmin);
+
+  const currentNavItem = allSettingsNav.find((item) => !!matchRoute({ to: item.to }));
+  const isAccessDenied = !roleLoading && !!currentNavItem?.adminOnly && !isAdmin;
 
   return (
     <>
@@ -47,7 +54,16 @@ export default function DashboardSettingsLayout() {
           })}
         </nav>
       </div>
-      <Outlet />
+      {isAccessDenied ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <p className="text-lg font-medium">{t("permissions.noAccess")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("settings.adminOnlyDescription", "This page is only accessible to organization admins and owners.")}
+          </p>
+        </div>
+      ) : (
+        <Outlet />
+      )}
     </>
   );
 }

@@ -1129,6 +1129,7 @@
     "integrations": "Integrations",
     "sms": "SMS",
     "gabinetSection": "Gabinet",
+    "adminOnlyDescription": "This page is only accessible to organization admins and owners.",
     "automations": "Automations",
     "automationsDescription": "Create and manage automation rules across Gabinet and CRM, then verify results in recent runs.",
     "automationRules": "Automation Rules",

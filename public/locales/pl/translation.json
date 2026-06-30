@@ -1130,6 +1130,7 @@
     "sms": "SMS",
     "emailSequences": "Sekwencje email",
     "gabinetSection": "Gabinet",
+    "adminOnlyDescription": "Ta strona jest dostępna tylko dla administratorów i właścicieli organizacji.",
     "automations": "Automatyzacje",
     "automationsDescription": "Twórz i zarządzaj regułami automatyzacji dla Gabinetu i CRM, a wyniki sprawdzaj w ostatnich uruchomieniach.",
     "automationRules": "Reguły automatyzacji",

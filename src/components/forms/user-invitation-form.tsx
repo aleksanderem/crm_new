@@ -24,7 +24,7 @@ import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { AlertCircle, Search, Users } from "@/lib/ez-icons";
 
-type OrgRole = "owner" | "admin" | "member";
+type OrgRole = "owner" | "admin" | "member" | "viewer";
 type InviteModule = "none" | "gabinet";
 type GabinetRole =
   | "doctor"
@@ -37,6 +37,7 @@ type GabinetRole =
 const ROLES: { value: OrgRole; labelKey: string }[] = [
   { value: "admin", labelKey: "settings.team.roles.admin" },
   { value: "member", labelKey: "settings.team.roles.member" },
+  { value: "viewer", labelKey: "settings.team.roles.viewer" },
 ];
 
 const GABINET_ROLES: GabinetRole[] = [

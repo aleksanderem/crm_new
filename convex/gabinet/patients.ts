@@ -107,11 +107,14 @@ export const listCustomReferralSources = action({
     if (!perm.allowed) return [];
 
     const db = createSupabaseDb();
+    const client = db.raw();
     const orgIdStr = String(args.organizationId);
-    let patients = (await db
-      .query("gabinetPatients")
-      .eq("organizationId", orgIdStr)
-      .collect()) as GabinetPatientRow[];
+
+    let sourceQuery = client
+      .from("gabinet_patients")
+      .select("referral_source")
+      .eq("organization_id", orgIdStr)
+      .not("referral_source", "is", null);
 
     if (perm.scope === "own") {
       const userIdStr = String(authResult.userId);
@@ -120,14 +123,18 @@ export const listCustomReferralSources = action({
         .eq("organizationId", orgIdStr)
         .eq("employeeId", userIdStr)
         .collect()) as Array<{ patientId: unknown }>;
-      const ownPatientIds = new Set(ownAppts.map((a) => String(a.patientId)));
-      patients = patients.filter((r) => ownPatientIds.has(String(r._id)));
+      const ownPatientIds = [...new Set(ownAppts.map((a) => String(a.patientId)))];
+      if (ownPatientIds.length === 0) return [];
+      sourceQuery = sourceQuery.in("id", ownPatientIds);
     }
+
+    const { data, error } = await sourceQuery;
+    if (error) throw new Error(`listCustomReferralSources: ${error.message}`);
 
     const seen = new Set<string>();
     const custom: string[] = [];
-    for (const p of patients) {
-      const raw = p.referralSource;
+    for (const row of data ?? []) {
+      const raw = (row as { referral_source: unknown }).referral_source;
       if (typeof raw !== "string") continue;
       const trimmed = raw.trim();
       if (!trimmed) continue;

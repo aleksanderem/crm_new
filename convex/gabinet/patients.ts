@@ -250,6 +250,12 @@ export const searchUnlinkedContacts = action({
   },
 });
 
+function normalizePhone(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, "");
+  return digits || null;
+}
+
 export const create = action({
   args: {
     organizationId: v.id("organizations"),
@@ -298,6 +304,9 @@ export const create = action({
     const now = Date.now();
     const db = createSupabaseDb();
     const orgIdStr = String(args.organizationId);
+    // Normalize phone to digits-only so "600-100-200" and "600100200" are
+    // treated as the same number in both the duplicate guard and stored value.
+    const normalizedPhone = normalizePhone(args.phone);
 
     // Duplicate guard: reject creation if an active patient in this org
     // already has the same email or phone. Two queries to keep the in-memory
@@ -311,12 +320,12 @@ export const create = action({
         .eq("isActive", true)
         .ilike("email", args.email)
         .collect()) as Promise<Array<{ _id: unknown }>>,
-      args.phone
+      normalizedPhone
         ? (db
             .query("gabinetPatients")
             .eq("organizationId", orgIdStr)
             .eq("isActive", true)
-            .eq("phone", args.phone)
+            .eq("phone", normalizedPhone)
             .collect()) as Promise<Array<{ _id: unknown }>>
         : Promise.resolve([] as Array<{ _id: unknown }>),
     ]);
@@ -344,7 +353,7 @@ export const create = action({
       dateOfBirth: args.dateOfBirth ?? null,
       gender: args.gender ?? null,
       email: args.email,
-      phone: args.phone ?? null,
+      phone: normalizedPhone,
       address: args.address ?? null,
       medicalNotes: args.medicalNotes ?? null,
       allergies: args.allergies ?? null,
@@ -373,7 +382,7 @@ export const create = action({
         firstName: args.firstName,
         lastName: args.lastName,
         email: args.email,
-        phone: args.phone ?? undefined,
+        phone: normalizedPhone ?? undefined,
         referralSource: args.referralSource ?? undefined,
         createdBy: String(authResult.userId),
         createdAt: now,

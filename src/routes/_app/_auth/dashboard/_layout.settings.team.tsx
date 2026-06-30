@@ -50,6 +50,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { MoreHorizontal, Send, XCircle, UserPlus, AlertTriangle, ArrowUpRight, CircleCheck } from "@/lib/ez-icons";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
+import { useRole } from "@/hooks/use-permission";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/team"
@@ -62,6 +63,8 @@ const ROLES = ["admin", "member", "viewer"] as const;
 function TeamSettings() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
+  const { role } = useRole();
+  const isAdmin = role === "owner" || role === "admin";
 
   const queryClient = useQueryClient();
 
@@ -316,7 +319,7 @@ function TeamSettings() {
                       {t("team.joinedDate")} {formatDate(member.joinedAt)}
                     </span>
                   )}
-                  {!isOwner && (
+                  {!isOwner && isAdmin && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -378,27 +381,29 @@ function TeamSettings() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">{t("team.invitations")}</CardTitle>
-          <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" disabled={isAtLimit}>
-                <UserPlus className="mr-2 h-4 w-4" variant="stroke" />
-                {t("team.inviteMember")}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>{t("team.inviteDialog.title")}</DialogTitle>
-                <DialogDescription>
-                  {t("team.inviteDialog.description")}
-                </DialogDescription>
-              </DialogHeader>
-              <UserInvitationForm
-                onSubmit={handleSendInvitation}
-                onCancel={() => setInviteOpen(false)}
-                isSubmitting={isSending}
-              />
-            </DialogContent>
-          </Dialog>
+          {isAdmin && (
+            <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" disabled={isAtLimit}>
+                  <UserPlus className="mr-2 h-4 w-4" variant="stroke" />
+                  {t("team.inviteMember")}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{t("team.inviteDialog.title")}</DialogTitle>
+                  <DialogDescription>
+                    {t("team.inviteDialog.description")}
+                  </DialogDescription>
+                </DialogHeader>
+                <UserInvitationForm
+                  onSubmit={handleSendInvitation}
+                  onCancel={() => setInviteOpen(false)}
+                  isSubmitting={isSending}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
         </CardHeader>
         <CardContent className="space-y-1">
           {invitations && invitations.length > 0 ? (
@@ -431,59 +436,61 @@ function TeamSettings() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Select
-                    value={invitation.role}
-                    onValueChange={(role) =>
-                      handleChangePendingRole(
-                        invitation._id as Id<"invitations">,
-                        role,
-                      )
-                    }
-                    disabled={resendingId === invitation._id || cancellingId === invitation._id}
-                  >
-                    <SelectTrigger className="h-8 w-32 capitalize">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ROLES.map((role) => (
-                        <SelectItem key={role} value={role} className="capitalize">
-                          {t(`team.roles.${role}`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 text-xs"
-                    disabled={resendingId === invitation._id || cancellingId === invitation._id}
-                    onClick={() =>
-                      handleResendInvitation(
-                        invitation._id as Id<"invitations">
-                      )
-                    }
-                  >
-                    <Send className="mr-1 h-4 w-4" variant="stroke" />
-                    {resendingId === invitation._id
-                      ? t("team.inviteDialog.sending")
-                      : t("team.resendInvitation")}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 text-xs text-destructive hover:text-destructive"
-                    disabled={resendingId === invitation._id || cancellingId === invitation._id}
-                    onClick={() =>
-                      handleCancelInvitation(
-                        invitation._id as Id<"invitations">
-                      )
-                    }
-                  >
-                    <XCircle className="mr-1 h-4 w-4" variant="stroke" />
-                    {t("team.cancelInvitation")}
-                  </Button>
-                </div>
+                {isAdmin && (
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={invitation.role}
+                      onValueChange={(role) =>
+                        handleChangePendingRole(
+                          invitation._id as Id<"invitations">,
+                          role,
+                        )
+                      }
+                      disabled={resendingId === invitation._id || cancellingId === invitation._id}
+                    >
+                      <SelectTrigger className="h-8 w-32 capitalize">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ROLES.map((role) => (
+                          <SelectItem key={role} value={role} className="capitalize">
+                            {t(`team.roles.${role}`)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs"
+                      disabled={resendingId === invitation._id || cancellingId === invitation._id}
+                      onClick={() =>
+                        handleResendInvitation(
+                          invitation._id as Id<"invitations">
+                        )
+                      }
+                    >
+                      <Send className="mr-1 h-4 w-4" variant="stroke" />
+                      {resendingId === invitation._id
+                        ? t("team.inviteDialog.sending")
+                        : t("team.resendInvitation")}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs text-destructive hover:text-destructive"
+                      disabled={resendingId === invitation._id || cancellingId === invitation._id}
+                      onClick={() =>
+                        handleCancelInvitation(
+                          invitation._id as Id<"invitations">
+                        )
+                      }
+                    >
+                      <XCircle className="mr-1 h-4 w-4" variant="stroke" />
+                      {t("team.cancelInvitation")}
+                    </Button>
+                  </div>
+                )}
               </div>
             ))
           ) : (

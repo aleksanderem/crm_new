@@ -18,6 +18,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useRole } from "@/hooks/use-permission";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/permissions"
@@ -81,8 +82,14 @@ function buildPermissionsMap(overrides: Record<string, Record<string, string>> |
 function PermissionsSettings() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const { role, loading: roleLoading } = useRole();
 
-  const overrides = useQuery(api.permissions.getOrgPermissionOverrides, { organizationId });
+  const isAdmin = role === "owner" || role === "admin";
+
+  const overrides = useQuery(
+    api.permissions.getOrgPermissionOverrides,
+    isAdmin ? { organizationId } : "skip",
+  );
   const resourceSharingEnabled = useQuery(api.permissions.getResourceSharingEnabled, { organizationId });
 
   const updatePermissions = useMutation(api.permissions.updateOrgPermissions);
@@ -139,6 +146,25 @@ function PermissionsSettings() {
       toast.error(t("permissions.sharingError", "Failed to update resource sharing"));
     }
   };
+
+  if (roleLoading) return null;
+
+  if (!isAdmin) {
+    return (
+      <div className="flex h-full w-full flex-col gap-6">
+        <SectionHeader.Root className="pt-4">
+          <SectionHeader.Group>
+            <SectionHeader.Heading className="flex-1">
+              {t("permissions.title", "Permissions")}
+            </SectionHeader.Heading>
+          </SectionHeader.Group>
+        </SectionHeader.Root>
+        <p className="text-sm text-muted-foreground">
+          {t("permissions.adminOnly", "Only owners and admins can view and edit permission settings.")}
+        </p>
+      </div>
+    );
+  }
 
   if (overrides === undefined) {
     return null;

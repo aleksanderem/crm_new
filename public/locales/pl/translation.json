@@ -1002,7 +1002,10 @@
       "moduleNone": "Brak (tylko zaproszenie)",
       "moduleGabinet": "Gabinet — utwórz profil pracownika",
       "moduleHint": "Wybierz moduł, aby od razu wypełnić dane potrzebne do utworzenia profilu po akceptacji zaproszenia.",
-      "gabinetSectionTitle": "Dane pracownika Gabinetu"
+      "gabinetSectionTitle": "Dane pracownika Gabinetu",
+      "gabinetLocation": "Główna lokalizacja",
+      "gabinetLocationPlaceholder": "Wybierz lokalizację",
+      "gabinetLocationNone": "Brak konkretnej lokalizacji"
     },
     "pipelines": {
       "title": "Pipeline",

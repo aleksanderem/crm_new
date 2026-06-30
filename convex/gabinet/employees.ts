@@ -809,15 +809,12 @@ export const getQualifiedForTreatment = action({
     if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
-    const employees = (await db
+    return (await db
       .query("gabinetEmployees")
       .eq("organizationId", String(args.organizationId))
       .eq("isActive", true)
+      .contains("qualifiedTreatmentIds", [args.treatmentId])
       .collect()) as GabinetEmployeeRow[];
-
-    return employees.filter((e) =>
-      (e.qualifiedTreatmentIds ?? []).includes(args.treatmentId as Id<"gabinetTreatments">)
-    );
   },
 });
 

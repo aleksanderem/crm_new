@@ -44,6 +44,7 @@ export function AppSidebar() {
   const { content: sidebarSlotContent, wideContent, dayAgendaDate, shellSidebarMode } = useSidebarSlot();
 
   const { can: canCreate } = usePermissions("create");
+  const { can: canView } = usePermissions("view");
   const { role } = useRole();
   const isAdmin = role === "owner" || role === "admin";
 
@@ -74,7 +75,11 @@ export function AppSidebar() {
   );
   const settingsNav = visibleModules
     .flatMap((module) => module.settingsNav)
-    .filter((item) => !item.adminOnly || isAdmin);
+    .filter((item) => {
+      if (item.adminOnly && !isAdmin) return false;
+      if (item.permissionFeature && !canView(item.permissionFeature)) return false;
+      return true;
+    });
 
   const pageContext = !isSettingsRoute
     ? activeModule.pageContexts.find((context) =>

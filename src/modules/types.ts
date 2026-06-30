@@ -48,6 +48,7 @@ export interface ModuleSettingsNavItem {
   to: string;
   sectionKey?: string;
   adminOnly?: boolean;
+  permissionFeature?: Feature;
 }
 
 export interface ModuleManifest {

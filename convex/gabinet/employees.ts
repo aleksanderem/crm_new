@@ -193,10 +193,6 @@ export const create = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    // Require admin role (mirrors requireOrgAdmin)
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
     await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_employees",
@@ -601,10 +597,6 @@ export const update = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    // Require admin role (mirrors requireOrgAdmin)
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       {
@@ -730,10 +722,6 @@ export const remove = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    // Require admin role (mirrors requireOrgAdmin)
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       {
@@ -852,10 +840,6 @@ export const setQualifiedTreatments = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    // Require admin role (mirrors requireOrgAdmin)
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
     await ctx.runQuery(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_employees",

@@ -3685,6 +3685,7 @@
       "summary": "Summary",
       "totalPaid": "Total paid",
       "totalSpent": "Total spent",
+      "unpaidAppointments": "Unpaid visits",
       "treatmentPrice": "Treatment price",
       "creditBalance": "Credit balance",
       "useCredit": "Use credit balance",

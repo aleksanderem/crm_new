@@ -3707,6 +3707,7 @@
       "summary": "Podsumowanie",
       "totalPaid": "Zapłacono łącznie",
       "totalSpent": "Wydano łącznie",
+      "unpaidAppointments": "Zaległe wizyty",
       "treatmentPrice": "Cena zabiegu",
       "creditBalance": "Saldo nadpłat",
       "useCredit": "Użyj salda nadpłat",

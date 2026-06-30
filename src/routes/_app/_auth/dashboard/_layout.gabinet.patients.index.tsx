@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, useSearch, Link } from "@tanstack/react-r
 import { useAction } from "convex/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { formatActionError } from "@/lib/format-action-error";
+import { formatActionError, extractActionErrorMessage } from "@/lib/format-action-error";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseGabinetRecentVisitPatientIds } from "@/hooks/use-supabase-gabinet-appointments";
@@ -434,12 +434,21 @@ function PatientsIndex() {
         });
         setPanelOpen(false);
       } catch (e) {
-        toast.error(
-          formatActionError(e, t, {
-            key: "gabinet.patients.errors.createFailed",
-            defaultValue: "Nie udało się dodać klienta.",
-          }),
-        );
+        const inner = extractActionErrorMessage(e);
+        if (/duplicate patient detected/i.test(inner)) {
+          toast.warning(
+            t("gabinet.patients.errors.duplicatePatient", {
+              defaultValue: "Klient z tym e-mailem lub telefonem już istnieje. Sprawdź listę klientów i rozważ scalenie.",
+            }),
+          );
+        } else {
+          toast.error(
+            formatActionError(e, t, {
+              key: "gabinet.patients.errors.createFailed",
+              defaultValue: "Nie udało się dodać klienta.",
+            }),
+          );
+        }
       } finally {
         setIsCreating(false);
       }

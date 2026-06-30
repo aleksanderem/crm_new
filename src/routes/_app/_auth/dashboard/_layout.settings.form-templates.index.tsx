@@ -571,7 +571,7 @@ export function FormTemplatesListPage() {
   const createTemplate = useAction(api.documents.templates.create);
   const duplicateTemplate = useAction(api.documents.templates.duplicate);
   const removeTemplate = useAction(api.documents.templates.remove);
-  const seedTemplates = useMutation(api.documents.seed.seedFormTemplates);
+  const seedTemplates = useMutation(api.documents.seed.seedBeautyDocumentTemplates);
   const migrateFolders = useMutation(api.documents.seed.migrateFolderPaths);
 
   const allTemplates = useMemo<FormTemplateRecord[]>(

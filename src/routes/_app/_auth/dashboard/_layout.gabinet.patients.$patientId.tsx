@@ -74,7 +74,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { useTranslation } from "react-i18next";
-import { usePermission, PermissionGate } from "@/hooks/use-permission";
+import { usePermission, useRole, PermissionGate } from "@/hooks/use-permission";
 import { PatientPackagesCard } from "@/components/gabinet/patient-packages-card";
 import { PatientTreatmentsCard } from "@/components/gabinet/patient-treatments-card";
 import { PatientPhotosTab } from "@/components/gabinet/patient-photos-tab";
@@ -100,6 +100,8 @@ function PatientDetail() {
   const updatePatient = useAction(api.gabinet.patients.update);
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action
   const removePatient = useAction(api.gabinet.patients.remove);
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action
+  const gdprErasePatient = useAction(api.gabinet.patients.gdprErase);
   const updatePaymentAction = useAction(api.payments.update);
   const createPaymentAction = useAction(api.payments.create);
   const cancelPaymentAction = useAction(api.payments.cancel);
@@ -114,6 +116,9 @@ function PatientDetail() {
 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [gdprDialogOpen, setGdprDialogOpen] = useState(false);
+  const [gdprConfirmText, setGdprConfirmText] = useState("");
+  const [isGdprSubmitting, setIsGdprSubmitting] = useState(false);
   // Issue #1928: collapse the "Last appointments" overview card by default on
   // mobile so other sections (medical info, status tiles) aren't pushed below
   // the fold. On desktop (md+) the section stays expanded — see JSX below.
@@ -272,6 +277,8 @@ function PatientDetail() {
     "gabinet_photos",
     "view",
   );
+  const { role } = useRole();
+  const canGdprErase = role === "owner" || role === "admin";
 
   const getPaymentForLabel = (payment: {
     appointmentId?: string;
@@ -602,6 +609,28 @@ function PatientDetail() {
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(organizationId) });
       navigate({ to: "/dashboard/gabinet/patients" });
+    }
+  };
+
+  const handleGdprErase = async () => {
+    if (gdprConfirmText.trim().toUpperCase() !== "USUŃ") return;
+    setIsGdprSubmitting(true);
+    try {
+      await gdprErasePatient({ organizationId, patientId });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(organizationId) });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.detail(organizationId, patientId) });
+      setGdprDialogOpen(false);
+      toast.success(t("gabinet.patients.gdprEraseSuccess", "Dane klienta zostały trwale usunięte (RODO)."));
+      navigate({ to: "/dashboard/gabinet/patients" });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "common.error",
+          defaultValue: "Wystąpił błąd podczas usuwania danych.",
+        }),
+      );
+    } finally {
+      setIsGdprSubmitting(false);
     }
   };
 
@@ -1731,6 +1760,11 @@ function PatientDetail() {
         onEdit={() => setEditDrawerOpen(true)}
         secondaryActions={[
           { label: t("common.delete"), onClick: handleDelete, variant: "destructive" as const },
+          ...(canGdprErase ? [{
+            label: t("gabinet.patients.gdprErase", "RODO: Usuń dane"),
+            onClick: () => { setGdprConfirmText(""); setGdprDialogOpen(true); },
+            variant: "destructive" as const,
+          }] : []),
         ]}
         fields={detailFields}
         expandedFieldCount={4}
@@ -2102,6 +2136,48 @@ function PatientDetail() {
               {isAddPaymentSubmitting
                 ? t("common.processing")
                 : t("gabinet.payments.create")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={gdprDialogOpen} onOpenChange={(open) => { if (!open) setGdprDialogOpen(false); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("gabinet.patients.gdprEraseTitle", "Trwałe usunięcie danych (RODO)")}</DialogTitle>
+            <DialogDescription>
+              {t(
+                "gabinet.patients.gdprEraseDesc",
+                "Ta operacja trwale anonimizuje dane osobowe klienta: imię, nazwisko, e-mail, telefon, PESEL, adres, dane medyczne i kontakt alarmowy. Historię wizyt i płatności zostawiamy ze względów prawno-księgowych. Operacji nie można cofnąć.",
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>
+                {t("gabinet.patients.gdprEraseConfirmLabel", 'Wpisz "USUŃ" aby potwierdzić')}
+              </Label>
+              <Input
+                type="text"
+                value={gdprConfirmText}
+                onChange={(e) => setGdprConfirmText(e.target.value)}
+                placeholder="USUŃ"
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGdprDialogOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleGdprErase}
+              disabled={isGdprSubmitting || gdprConfirmText.trim().toUpperCase() !== "USUŃ"}
+            >
+              {isGdprSubmitting
+                ? t("common.processing")
+                : t("gabinet.patients.gdprEraseConfirm", "Usuń dane trwale")}
             </Button>
           </DialogFooter>
         </DialogContent>

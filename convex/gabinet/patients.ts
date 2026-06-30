@@ -4,6 +4,7 @@ import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { logActivity } from "../_helpers/activities";
+import { logAudit } from "../auditLog";
 import { logError } from "../_helpers/logged";
 import type { GabinetPatientRow, SupabasePaginationResult } from "../_helpers/supabaseRows";
 import { Id } from "../_generated/dataModel";
@@ -949,6 +950,110 @@ export const _mergeSideEffects = internalMutation({
         merge: { targetPatientId: args.targetPatientId },
       },
       performedBy: performedByUserId,
+    });
+  },
+});
+
+export const gdprErase = action({
+  args: {
+    organizationId: v.id("organizations"),
+    patientId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
+      throw new Error("Permission denied: GDPR erasure requires owner or admin role");
+    }
+
+    const db = createSupabaseDb();
+    const patient = (await db.get("gabinetPatients", args.patientId)) as GabinetPatientRow | null;
+    if (!patient || String(patient.organizationId) !== String(args.organizationId)) {
+      throw new Error("Patient not found");
+    }
+
+    const originalName = `${patient.firstName ?? ""} ${patient.lastName ?? ""}`.trim();
+    const anonSuffix = args.patientId.slice(-6).toUpperCase();
+
+    // Anonymize all PII fields; keep the row for referential integrity
+    // (appointments, payments, documents still reference this patient ID)
+    await db.patch("gabinetPatients", args.patientId, {
+      firstName: "ANONIMOWY",
+      lastName: `#${anonSuffix}`,
+      email: `deleted-${anonSuffix}@gdpr.invalid`,
+      phone: null,
+      pesel: null,
+      dateOfBirth: null,
+      address: null,
+      medicalNotes: null,
+      allergies: null,
+      bloodType: null,
+      emergencyContactName: null,
+      emergencyContactPhone: null,
+      referralSource: null,
+      referredByPatientId: null,
+      contactId: null,
+      tags: null,
+      tagIds: null,
+      categoryId: null,
+      customFields: null,
+      isActive: false,
+      updatedAt: Date.now(),
+    });
+
+    // Hard-delete portal sessions (patient login credentials)
+    const client = db.raw();
+    await client
+      .from("gabinet_portal_sessions")
+      .delete()
+      .eq("organization_id", String(args.organizationId))
+      .eq("patient_id", args.patientId);
+
+    try {
+      await ctx.runMutation(internal.gabinet.patients._gdprEraseSideEffects, {
+        patientId: args.patientId,
+        organizationId: args.organizationId,
+        originalName,
+        erasedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[patients.gdprErase] Side effects FAILED for patient", args.patientId, ":", e);
+    }
+
+    return args.patientId;
+  },
+});
+
+export const _gdprEraseSideEffects = internalMutation({
+  args: {
+    patientId: v.string(),
+    organizationId: v.id("organizations"),
+    originalName: v.string(),
+    erasedBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const erasedByUserId = args.erasedBy as Id<"users">;
+
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetPatient",
+      entityId: args.patientId as Id<"gabinetPatients">,
+      action: "deleted",
+      description: `RODO: usunięto dane klienta "${args.originalName}"`,
+      performedBy: erasedByUserId,
+    });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: erasedByUserId,
+      action: "gdpr_patient_erased",
+      entityType: "gabinetPatient",
+      entityId: args.patientId,
+      details: `GDPR erasure performed on patient "${args.originalName}" (ID: ${args.patientId})`,
     });
   },
 });

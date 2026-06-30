@@ -96,14 +96,11 @@ export function UserInvitationForm({
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
 
-  const { data: members } = useQuery(
-    convexQuery(api.organizations.getMembers, { organizationId })
-  );
+  const { data: seatUsage } = useQuery(
+    convexQuery(api.organizations.getSeatUsage, { organizationId })
+  ) as { data: { currentSeats: number; seatLimit: number; canAddMore: boolean } | undefined };
   const { data: pendingInvitations } = useQuery(
     convexQuery(api.invitations.listPending, { organizationId })
-  );
-  const { data: subscription } = useQuery(
-    convexQuery(api.productSubscriptions.getSubscription, { organizationId })
   );
 
   // Gabinet-specific data sources — only fetched lazily once Gabinet is picked.
@@ -177,12 +174,13 @@ export function UserInvitationForm({
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
   const [treatmentSearch, setTreatmentSearch] = useState("");
 
-  const memberCount = members?.length ?? 0;
   const pendingCount = pendingInvitations?.length ?? 0;
-  const totalUsers = memberCount + pendingCount;
-  const seatLimit = subscription?.seatLimit ?? 10;
-  const isNearLimit = totalUsers >= seatLimit - 2;
-  const isAtLimit = totalUsers >= seatLimit;
+  const totalUsers = seatUsage?.currentSeats ?? 0;
+  const seatLimit = seatUsage?.seatLimit ?? 5;
+  const isNearLimit = seatUsage
+    ? seatUsage.currentSeats >= seatUsage.seatLimit - 2 && seatUsage.canAddMore
+    : false;
+  const isAtLimit = seatUsage ? !seatUsage.canAddMore : false;
 
   const filteredTreatments = useMemo(() => {
     if (!treatments) return [];

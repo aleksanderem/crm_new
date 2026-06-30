@@ -91,6 +91,17 @@ DEFAULT_PERMISSIONS.viewer.gabinet_online_booking = {
   view: "none", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
 };
 
+// --- Per-feature overrides for gabinet_settings ---
+// Scheduling / timetable / leave-types / equipment config — admin-only.
+// Gabinet-role layer grants view to manager and full access to gabinet admin;
+// org member/viewer must not see these pages by default. (issue #2453)
+DEFAULT_PERMISSIONS.member.gabinet_settings = {
+  view: "none", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
+};
+DEFAULT_PERMISSIONS.viewer.gabinet_settings = {
+  view: "none", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
+};
+
 // --- Per-feature overrides for document_templates ---
 // owner/admin: all actions allowed (approve/sign not applicable to templates)
 // member: view only (no create/edit/delete)

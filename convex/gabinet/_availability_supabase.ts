@@ -50,18 +50,14 @@ async function resolveScheduleForDate(
   dayOfWeek: number,
   date: string,
 ): Promise<Record<string, any> | null> {
-  const candidates = await db
+  const matching = await db
     .query("gabinetEmployeeSchedules")
     .eq("organizationId", organizationId)
     .eq("userId", userId)
     .eq("dayOfWeek", dayOfWeek)
+    .or(`effective_from.is.null,effective_from.lte.${date}`)
+    .or(`effective_to.is.null,effective_to.gte.${date}`)
     .collect();
-
-  const matching = candidates.filter((c: any) => {
-    if (c.effectiveFrom && date < c.effectiveFrom) return false;
-    if (c.effectiveTo && date > c.effectiveTo) return false;
-    return true;
-  });
 
   matching.sort((a: any, b: any) => {
     if (a.effectiveFrom && b.effectiveFrom) return b.effectiveFrom.localeCompare(a.effectiveFrom);

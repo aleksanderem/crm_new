@@ -5,6 +5,7 @@ import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useTranslation } from "react-i18next";
 import { getVisibleModules } from "@/modules/registry";
+import { useRole } from "@/hooks/use-permission";
 import { cn } from "@/utils/misc";
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout/settings")({
@@ -21,7 +22,11 @@ export default function DashboardSettingsLayout() {
     convexQuery(api.productSubscriptions.getActiveProducts, { organizationId }),
   );
 
-  const settingsNav = getVisibleModules(activeProducts).flatMap((m) => m.settingsNav);
+  const { role } = useRole();
+  const isAdmin = role === "owner" || role === "admin";
+  const settingsNav = getVisibleModules(activeProducts)
+    .flatMap((m) => m.settingsNav)
+    .filter((item) => !item.adminOnly || isAdmin);
 
   return (
     <>

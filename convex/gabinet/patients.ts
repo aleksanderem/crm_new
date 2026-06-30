@@ -1054,6 +1054,22 @@ export const gdprErase = action({
       .eq("organization_id", String(args.organizationId))
       .eq("patient_id", args.patientId);
 
+    // Anonymize PII in Supabase activity descriptions and note contents
+    const orgStr = String(args.organizationId);
+    const GDPR_REDACTED = "[RODO: dane usunięte]";
+    await client
+      .from("activities")
+      .update({ description: GDPR_REDACTED })
+      .eq("organization_id", orgStr)
+      .eq("entity_type", "gabinetPatient")
+      .eq("entity_id", args.patientId);
+    await client
+      .from("notes")
+      .update({ content: GDPR_REDACTED, updated_at: Date.now() })
+      .eq("organization_id", orgStr)
+      .eq("entity_type", "gabinetPatient")
+      .eq("entity_id", args.patientId);
+
     try {
       await ctx.runMutation(internal.gabinet.patients._gdprEraseSideEffects, {
         patientId: args.patientId,
@@ -1078,16 +1094,31 @@ export const _gdprEraseSideEffects = internalMutation({
   },
   handler: async (ctx, args) => {
     const erasedByUserId = args.erasedBy as Id<"users">;
+    const GDPR_REDACTED = "[RODO: dane usunięte]";
 
-    await logActivity(ctx, {
-      organizationId: args.organizationId,
-      entityType: "gabinetPatient",
-      entityId: args.patientId as Id<"gabinetPatients">,
-      action: "deleted",
-      description: `RODO: usunięto dane klienta "${args.originalName}"`,
-      performedBy: erasedByUserId,
-    });
+    // Anonymize all existing Convex activity descriptions for this patient
+    const existingActivities = await ctx.db
+      .query("activities")
+      .withIndex("by_entity", (q) =>
+        q.eq("entityType", "gabinetPatient").eq("entityId", args.patientId)
+      )
+      .collect();
+    for (const activity of existingActivities) {
+      await ctx.db.patch(activity._id, { description: GDPR_REDACTED });
+    }
 
+    // Anonymize all existing Convex note contents for this patient
+    const existingNotes = await ctx.db
+      .query("notes")
+      .withIndex("by_entity", (q) =>
+        q.eq("entityType", "gabinetPatient").eq("entityId", args.patientId)
+      )
+      .collect();
+    for (const note of existingNotes) {
+      await ctx.db.patch(note._id, { content: GDPR_REDACTED, updatedAt: Date.now() });
+    }
+
+    // Audit log retains original name as compliance record
     await logAudit(ctx, {
       organizationId: args.organizationId,
       userId: erasedByUserId,
@@ -1095,6 +1126,16 @@ export const _gdprEraseSideEffects = internalMutation({
       entityType: "gabinetPatient",
       entityId: args.patientId,
       details: `GDPR erasure performed on patient "${args.originalName}" (ID: ${args.patientId})`,
+    });
+
+    // Activity entry without PII marks the erasure in the patient timeline
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetPatient",
+      entityId: args.patientId as Id<"gabinetPatients">,
+      action: "deleted",
+      description: "RODO: dane klienta zostały usunięte",
+      performedBy: erasedByUserId,
     });
   },
 });

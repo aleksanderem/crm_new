@@ -1595,6 +1595,10 @@
       "newFolder": "New folder",
       "newTemplateName": "New template",
       "seedExamples": "Load examples",
+      "seedConfirmTitle": "Load example templates",
+      "seedConfirmDescription": "This will add a ready-made set of document templates for beauty salons (consents, health questionnaires, treatment protocols, GDPR). Templates that already exist will not be overwritten.",
+      "seedConfirmAction": "Load templates",
+      "seedAlreadyLoaded": "All example templates are already loaded",
       "seedSuccess": "Loaded {{count}} templates",
       "migrateFolders": "Assign folders to templates",
       "migrateSuccess": "Assigned folders to {{count}} templates"

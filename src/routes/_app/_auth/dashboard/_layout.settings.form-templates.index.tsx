@@ -545,6 +545,7 @@ export function FormTemplatesListPage() {
   const [search, setSearch] = useState("");
   const [deletingTemplate, setDeletingTemplate] =
     useState<FormTemplateRecord | null>(null);
+  const [seedConfirmOpen, setSeedConfirmOpen] = useState(false);
   const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderParent, setNewFolderParent] = useState("");
@@ -828,17 +829,7 @@ export function FormTemplatesListPage() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={async () => {
-                    try {
-                      const result = await seedTemplates({ organizationId });
-                      await invalidateTemplates();
-                      toast.success(t("settings.formTemplates.seedSuccess", { count: result.count }));
-                    } catch (e) {
-                      toast.error(
-                        e instanceof Error ? e.message : t("common.error"),
-                      );
-                    }
-                  }}
+                  onClick={() => setSeedConfirmOpen(true)}
                 >
                   {t("settings.formTemplates.seedExamples")}
                 </DropdownMenuItem>
@@ -925,6 +916,44 @@ export function FormTemplatesListPage() {
           </div>
         )
       )}
+
+      {/* Load examples confirmation */}
+      <AlertDialog open={seedConfirmOpen} onOpenChange={setSeedConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("settings.formTemplates.seedConfirmTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("settings.formTemplates.seedConfirmDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                try {
+                  const result = await seedTemplates({ organizationId });
+                  await invalidateTemplates();
+                  if (result.count === 0) {
+                    toast(t("settings.formTemplates.seedAlreadyLoaded"));
+                  } else {
+                    toast.success(
+                      t("settings.formTemplates.seedSuccess", { count: result.count }),
+                    );
+                  }
+                } catch (e) {
+                  toast.error(
+                    e instanceof Error ? e.message : t("common.error"),
+                  );
+                }
+              }}
+            >
+              {t("settings.formTemplates.seedConfirmAction")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete confirmation */}
       <AlertDialog

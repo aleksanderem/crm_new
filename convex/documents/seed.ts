@@ -2273,6 +2273,7 @@ async function seedBeautyHandler(
   orgId: GenericId<"organizations">,
   userId: GenericId<"users">,
   force = false,
+  templateName?: string,
 ) {
   // 1. Ensure system components exist
   let systemComps = await ctx.db
@@ -2306,7 +2307,20 @@ async function seedBeautyHandler(
     componentMap[comp.name] = { id: comp._id, version: comp.version };
   }
 
-  // 3. If force=true, delete ALL existing templates for this org
+  // 3. Resolve template list (all or single)
+  const allTemplates = buildBeautyDocumentTemplates(componentMap);
+  let templates = allTemplates;
+  if (templateName !== undefined) {
+    templates = allTemplates.filter((t) => t.name === templateName);
+    if (templates.length === 0) {
+      throw new Error(
+        `Unknown template name: "${templateName}". Valid names: ${allTemplates.map((t) => t.name).join(", ")}`,
+      );
+    }
+  }
+
+  // 4. Handle force: when seeding a single template only delete that one;
+  //    when seeding all templates delete all existing ones.
   const existingTemplates = await ctx.db
     .query("formTemplates")
     .withIndex("by_org", (q) => q.eq("organizationId", orgId))
@@ -2314,9 +2328,12 @@ async function seedBeautyHandler(
 
   let deleted = 0;
   if (force) {
+    const targetNames = new Set(templates.map((t) => t.name));
     for (const t of existingTemplates) {
-      await ctx.db.delete(t._id);
-      deleted++;
+      if (targetNames.has(t.name)) {
+        await ctx.db.delete(t._id);
+        deleted++;
+      }
     }
   }
 
@@ -2324,9 +2341,8 @@ async function seedBeautyHandler(
     ? new Set<string>()
     : new Set(existingTemplates.map((t) => t.name));
 
-  // 4. Create templates with component references
+  // 5. Create templates with component references
   const now = Date.now();
-  const templates = buildBeautyDocumentTemplates(componentMap);
 
   let count = 0;
   for (const tmpl of templates) {
@@ -2419,6 +2435,44 @@ export const seedBeautyDocumentTemplatesInternal = internalMutation({
   },
   handler: async (ctx, args) => {
     return await seedBeautyHandler(ctx, args.organizationId, args.userId, args.force ?? false);
+  },
+});
+
+/** Seed a single template by name. Public (frontend-callable). */
+export const seedSingleBeautyDocumentTemplate = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    templateName: v.string(),
+    force: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    return await seedBeautyHandler(
+      ctx,
+      args.organizationId,
+      user._id,
+      args.force ?? false,
+      args.templateName,
+    );
+  },
+});
+
+/** Seed a single template by name. Internal (callable via `convex run`). */
+export const seedSingleBeautyDocumentTemplateInternal = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    templateName: v.string(),
+    force: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    return await seedBeautyHandler(
+      ctx,
+      args.organizationId,
+      args.userId,
+      args.force ?? false,
+      args.templateName,
+    );
   },
 });
 

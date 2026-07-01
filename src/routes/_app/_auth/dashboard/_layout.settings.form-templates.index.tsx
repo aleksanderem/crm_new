@@ -572,7 +572,7 @@ export function FormTemplatesListPage() {
   const createTemplate = useAction(api.documents.templates.create);
   const duplicateTemplate = useAction(api.documents.templates.duplicate);
   const removeTemplate = useAction(api.documents.templates.remove);
-  const seedTemplates = useMutation(api.documents.seed.seedBeautyDocumentTemplates);
+  const seedTemplates = useMutation(api.documents.seed.seedSingleBeautyDocumentTemplate);
   const migrateFolders = useMutation(api.documents.seed.migrateFolderPaths);
 
   const allTemplates = useMemo<FormTemplateRecord[]>(
@@ -933,7 +933,7 @@ export function FormTemplatesListPage() {
             <AlertDialogAction
               onClick={async () => {
                 try {
-                  const result = await seedTemplates({ organizationId });
+                  const result = await seedTemplates({ organizationId, templateName: "Gotowe – RODO" });
                   await invalidateTemplates();
                   if (result.count === 0) {
                     toast(t("settings.formTemplates.seedAlreadyLoaded"));

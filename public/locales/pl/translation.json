@@ -1599,7 +1599,7 @@
       "newTemplateName": "Nowy szablon",
       "seedExamples": "Załaduj przykłady",
       "seedSuccess": "Załadowano {{count}} szablonów",
-      "migrateFolders": "Migruj foldery",
+      "migrateFolders": "Przypisz foldery do szablonów",
       "migrateSuccess": "Przypisano foldery do {{count}} szablonów"
     },
     "documentComponents": {

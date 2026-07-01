@@ -1596,7 +1596,7 @@
       "newTemplateName": "New template",
       "seedExamples": "Load examples",
       "seedSuccess": "Loaded {{count}} templates",
-      "migrateFolders": "Migrate folders",
+      "migrateFolders": "Assign folders to templates",
       "migrateSuccess": "Assigned folders to {{count}} templates"
     },
     "documentComponents": {

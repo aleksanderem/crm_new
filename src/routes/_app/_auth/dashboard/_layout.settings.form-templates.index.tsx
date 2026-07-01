@@ -571,7 +571,7 @@ export function FormTemplatesListPage() {
   const createTemplate = useAction(api.documents.templates.create);
   const duplicateTemplate = useAction(api.documents.templates.duplicate);
   const removeTemplate = useAction(api.documents.templates.remove);
-  const seedTemplates = useMutation(api.documents.seed.seedFormTemplates);
+  const seedTemplates = useMutation(api.documents.seed.seedSingleBeautyDocumentTemplate);
   const migrateFolders = useMutation(api.documents.seed.migrateFolderPaths);
 
   const allTemplates = useMemo<FormTemplateRecord[]>(
@@ -830,9 +830,13 @@ export function FormTemplatesListPage() {
                 <DropdownMenuItem
                   onClick={async () => {
                     try {
-                      const result = await seedTemplates({ organizationId });
+                      const result = await seedTemplates({ organizationId, templateName: "Gotowe – RODO" });
                       await invalidateTemplates();
-                      toast.success(t("settings.formTemplates.seedSuccess", { count: result.count }));
+                      if (result.count === 0) {
+                        toast(t("settings.formTemplates.seedAlreadyLoaded"));
+                      } else {
+                        toast.success(t("settings.formTemplates.seedSuccess", { count: result.count }));
+                      }
                     } catch (e) {
                       toast.error(
                         e instanceof Error ? e.message : t("common.error"),

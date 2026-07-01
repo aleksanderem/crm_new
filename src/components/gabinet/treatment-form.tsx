@@ -610,6 +610,9 @@ export function TreatmentForm({
           <p className="text-xs text-muted-foreground mt-0.5">
             Preparaty używane podczas jednej wizyty, np. ampułka, serum, krem znieczulający.
           </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Podaj ilość preparatu potrzebną do wykonania jednego zabiegu (np. 3 ml, 1 szt.). Pozycje z ilością 0 nie zostaną zapisane.
+          </p>
         </div>
 
         {productLines.length > 0 && (
@@ -753,6 +756,9 @@ export function TreatmentForm({
           </Label>
           <p className="text-xs text-muted-foreground mt-0.5">
             Materiały zużywane podczas jednej wizyty, np. igły, gaziki, rękawiczki.
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Podaj ilość materiału potrzebną do wykonania jednego zabiegu (np. 1 szt., 2 pary). Pozycje z ilością 0 nie zostaną zapisane.
           </p>
         </div>
 

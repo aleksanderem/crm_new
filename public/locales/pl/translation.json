@@ -1598,6 +1598,10 @@
       "newFolder": "Nowy folder",
       "newTemplateName": "Nowy szablon",
       "seedExamples": "Załaduj przykłady",
+      "seedConfirmTitle": "Załaduj przykładowe szablony",
+      "seedConfirmDescription": "Spowoduje to dodanie gotowego zestawu szablonów dokumentów dla salonu beauty (zgody, wywiady, protokoły zabiegów, RODO). Szablony, które już istnieją, nie zostaną nadpisane.",
+      "seedConfirmAction": "Załaduj szablony",
+      "seedAlreadyLoaded": "Wszystkie przykładowe szablony są już załadowane",
       "seedSuccess": "Załadowano {{count}} szablonów",
       "migrateFolders": "Przypisz foldery do szablonów",
       "migrateSuccess": "Przypisano foldery do {{count}} szablonów"

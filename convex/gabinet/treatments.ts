@@ -552,6 +552,13 @@ async function saveTreatmentProductLinks(
     });
   }
 
+  // Deduplicate resolved by (productId, productSection) — last entry wins.
+  const dedupMap = new Map<string, (typeof resolved)[number]>();
+  for (const item of resolved) {
+    dedupMap.set(`${item.productId}:${item.productSection}`, item);
+  }
+  const deduped = Array.from(dedupMap.values());
+
   // Replace: delete existing links, then insert new ones.
   const { error: delError } = await db.raw()
     .from("gabinet_treatment_products")
@@ -572,7 +579,7 @@ async function saveTreatmentProductLinks(
   }
 
   const now = Date.now();
-  for (const p of resolved) {
+  for (const p of deduped) {
     const row: Record<string, unknown> = {
       organizationId,
       treatmentId,

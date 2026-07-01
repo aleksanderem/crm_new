@@ -266,8 +266,8 @@ export function TreatmentForm({
         : undefined
       : undefined;
 
-    const validProducts = productLines.filter((p) => p.productId.trim() !== "");
-    const validMaterials = materialLines.filter((m) => m.productId.trim() !== "");
+    const validProducts = productLines.filter((p) => p.productId.trim() !== "" && p.quantity > 0);
+    const validMaterials = materialLines.filter((m) => m.productId.trim() !== "" && m.quantity > 0);
 
     onSubmit({
       name,

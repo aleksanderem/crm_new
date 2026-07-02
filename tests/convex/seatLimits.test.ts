@@ -20,7 +20,7 @@ describe("checkSeatLimit via getSeatUsage", () => {
       .query(api.organizations.getSeatUsage, { organizationId });
 
     expect(usage.currentSeats).toBe(1);
-    expect(usage.seatLimit).toBe(5); // free tier default
+    expect(usage.seatLimit).toBe(20); // free tier default
     expect(usage.canAddMore).toBe(true);
   });
 

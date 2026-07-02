@@ -57,7 +57,7 @@ export async function checkSeatLimit(
     .first();
 
   // Fail open: default to free tier limit if subscription data is unavailable.
-  let seatLimit = 5; // Default free tier
+  let seatLimit = 20; // Default free tier
   if (subscription) {
     const plan = await ctx.db.get(subscription.planId);
     if (plan) {

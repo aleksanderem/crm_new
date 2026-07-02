@@ -178,7 +178,7 @@ export function UserInvitationForm({
 
   const pendingCount = pendingInvitations?.length ?? 0;
   const totalUsers = seatUsage?.currentSeats ?? 0;
-  const seatLimit = seatUsage?.seatLimit ?? 5;
+  const seatLimit = seatUsage?.seatLimit ?? 20;
   const isNearLimit = seatUsage
     ? seatUsage.currentSeats >= seatUsage.seatLimit - 2 && seatUsage.canAddMore
     : false;

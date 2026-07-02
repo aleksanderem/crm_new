@@ -50,6 +50,7 @@ export function AppSidebar() {
 
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (same pattern as dashboard layout)
   const { data: activeProducts } = useQuery(convexQuery(api.productSubscriptions.getActiveProducts, { organizationId }));
+  const { data: currentUser } = useQuery(convexQuery(api.app.getCurrentUser, {}));
 
   const visibleModules = getVisibleModules(activeProducts);
   const hasGabinet = visibleModules.some((module) => module.id === "gabinet");
@@ -77,6 +78,7 @@ export function AppSidebar() {
     .flatMap((module) => module.settingsNav)
     .filter((item) => {
       if (item.adminOnly && !isAdmin) return false;
+      if (item.platformAdminOnly && !currentUser?.isPlatformAdmin) return false;
       if (item.permissionFeature && !canView(item.permissionFeature)) return false;
       return true;
     });

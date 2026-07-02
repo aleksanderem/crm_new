@@ -1941,6 +1941,7 @@
     "team": "Zespół",
     "permissions": "Uprawnienia",
     "auditLog": "Dziennik audytu",
+    "errorLog": "Dziennik błędów",
     "email": "Email",
     "mail": "Poczta",
     "sms": "SMS",

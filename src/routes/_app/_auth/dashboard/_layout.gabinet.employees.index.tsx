@@ -527,6 +527,7 @@ function CreateEmployeeSheet({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const createEmployee = useAction(api.gabinet.employees.create);
+  const createInvitation = useAction(api.invitations.create);
   const [saving, setSaving] = useState(false);
 
   return (
@@ -544,18 +545,47 @@ function CreateEmployeeSheet({
             isSubmitting={saving}
             onCancel={onClose}
             onSubmit={async (data) => {
-              if (!data.userId) return;
+              const shouldInvite = !!(data.grantSystemAccess && data.accessEmail);
+              if (!data.userId && !shouldInvite) return;
               setSaving(true);
               try {
-                await createEmployee({
-                  organizationId,
-                  ...data,
-                  userId: data.userId,
-                });
-                toast.success(t("common.created"));
-                void queryClient.invalidateQueries({
-                  queryKey: supabaseKeys.gabinetEmployees.list(organizationId),
-                });
+                if (data.userId) {
+                  await createEmployee({
+                    organizationId,
+                    ...data,
+                    userId: data.userId,
+                  });
+                  toast.success(t("common.created"));
+                  void queryClient.invalidateQueries({
+                    queryKey: supabaseKeys.gabinetEmployees.list(organizationId),
+                  });
+                }
+                if (shouldInvite) {
+                  await createInvitation({
+                    organizationId,
+                    email: data.accessEmail!,
+                    role: data.accessRole ?? "member",
+                    module: "gabinet",
+                    moduleData: {
+                      firstName: data.firstName,
+                      lastName: data.lastName,
+                      role: data.role,
+                      specialization: data.specialization,
+                      color: data.color,
+                      showInCalendar: data.showInCalendar,
+                      qualifiedTreatmentIds: data.qualifiedTreatmentIds,
+                      tagIds: data.tagIds,
+                      categoryId: data.categoryId,
+                    },
+                  });
+                  toast.success(t("team.invitationSent"));
+                  void queryClient.invalidateQueries({
+                    queryKey: supabaseKeys.invitations.list(organizationId),
+                  });
+                  void queryClient.invalidateQueries({
+                    queryKey: supabaseKeys.teamMemberships.list(organizationId),
+                  });
+                }
                 onClose();
               } catch (e) {
                 toast.error(

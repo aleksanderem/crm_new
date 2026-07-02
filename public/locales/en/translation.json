@@ -1938,6 +1938,7 @@
     "team": "Team",
     "permissions": "Permissions",
     "auditLog": "Audit Log",
+    "errorLog": "Error Log",
     "email": "Email",
     "mail": "Mail",
     "sms": "SMS",

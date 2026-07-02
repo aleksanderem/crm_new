@@ -81,6 +81,7 @@ export const crmManifest: ModuleManifest = {
     { labelKey: "settingsNav.team", to: "/dashboard/settings/team" },
     { labelKey: "settingsNav.permissions", to: "/dashboard/settings/permissions", adminOnly: true },
     { labelKey: "settingsNav.auditLog", to: "/dashboard/settings/audit-log", adminOnly: true },
+    { labelKey: "settingsNav.errorLog", to: "/admin/errors", platformAdminOnly: true },
     { labelKey: "settingsNav.mail", to: "/dashboard/settings/mail", adminOnly: true },
     { labelKey: "settingsNav.automations", to: "/dashboard/settings/automations", adminOnly: true },
     { labelKey: "settingsNav.emailTemplates", to: "/dashboard/settings/email-templates" },

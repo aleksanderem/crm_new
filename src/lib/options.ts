@@ -16,7 +16,7 @@ export const COMPANY_SIZES = ["1-10", "11-50", "51-200", "201-500", "501-1000", 
 
 export const GENDERS = ["male", "female", "other"] as const;
 
-export const EMPLOYEE_ROLES = ["doctor", "nurse", "therapist", "receptionist", "admin", "other"] as const;
+export const EMPLOYEE_ROLES = ["doctor", "cosmetologist", "nurse", "therapist", "receptionist", "manager", "admin", "other"] as const;
 
 export const APPOINTMENT_STATUSES = ["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"] as const;
 

@@ -73,6 +73,9 @@ export interface EmployeeFormData {
   qualifiedTreatmentIds: Id<"gabinetTreatments">[];
   tagIds?: Id<"tagDefinitions">[];
   categoryId?: Id<"categoryDefinitions">;
+  grantSystemAccess?: boolean;
+  accessEmail?: string;
+  accessRole?: "admin" | "member" | "viewer";
 }
 
 interface EmployeeFormProps {
@@ -159,7 +162,7 @@ export function EmployeeForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (requireUserSelection && !userId) return;
+    if (requireUserSelection && !userId && !(grantSystemAccess && accessEmail.trim())) return;
 
     const isClinicalRole = role !== "receptionist" && role !== "manager";
 
@@ -177,6 +180,9 @@ export function EmployeeForm({
         : [],
       tagIds: tagIds.length > 0 ? tagIds : undefined,
       categoryId: categoryId || undefined,
+      grantSystemAccess: grantSystemAccess || undefined,
+      accessEmail: grantSystemAccess ? (accessEmail.trim() || undefined) : undefined,
+      accessRole: grantSystemAccess ? accessRole : undefined,
     });
   };
 
@@ -531,7 +537,11 @@ export function EmployeeForm({
         </Button>
         <Button
           type="submit"
-          disabled={(requireUserSelection && !userId) || isSubmitting}
+          disabled={
+            isSubmitting ||
+            (grantSystemAccess && !accessEmail.trim()) ||
+            (!grantSystemAccess && requireUserSelection && !userId)
+          }
         >
           {isSubmitting
             ? t("common.saving")

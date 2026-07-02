@@ -146,6 +146,7 @@ export function EmployeeForm({
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
   const [treatmentSearch, setTreatmentSearch] = useState("");
+  const [grantSystemAccess, setGrantSystemAccess] = useState(false);
 
   const filteredTreatments = useMemo(() => {
     if (!treatments) return [];
@@ -467,6 +468,23 @@ export function EmployeeForm({
           />
         </div>
       )}
+
+      {/* System access */}
+      <div className="space-y-2 rounded-md border p-4">
+        <p className="text-sm font-medium">
+          {t("gabinet.employees.systemAccess", { defaultValue: "Dostęp do systemu" })}
+        </p>
+        <label className="flex items-start gap-3 cursor-pointer">
+          <Checkbox
+            className="mt-0.5 h-5 w-5"
+            checked={grantSystemAccess}
+            onCheckedChange={(checked) => setGrantSystemAccess(checked === true)}
+          />
+          <span className="text-sm leading-none pt-0.5">
+            {t("gabinet.employees.grantSystemAccess", { defaultValue: "Nadaj dostęp do systemu" })}
+          </span>
+        </label>
+      </div>
 
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="outline" onClick={onCancel}>

@@ -78,6 +78,7 @@ export interface GabinetModuleData {
   categoryId?: string;
   locationId?: string;
   customFields?: Array<{ fieldDefinitionId: string; value: unknown }>;
+  showInCalendar?: boolean;
 }
 
 interface UserInvitationFormProps {
@@ -172,6 +173,7 @@ export function UserInvitationForm({
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
   const [locationId, setLocationId] = useState<string | undefined>(undefined);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
+  const [showInCalendar, setShowInCalendar] = useState(true);
   const [treatmentSearch, setTreatmentSearch] = useState("");
 
   const pendingCount = pendingInvitations?.length ?? 0;
@@ -232,6 +234,7 @@ export function UserInvitationForm({
         categoryId: categoryId || undefined,
         locationId: locationId || undefined,
         customFields: customFields.length > 0 ? customFields : undefined,
+        showInCalendar,
       };
     }
 
@@ -397,6 +400,24 @@ export function UserInvitationForm({
                   />
                 ))}
               </div>
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <Checkbox
+                  className="mt-0.5 h-5 w-5"
+                  checked={showInCalendar}
+                  onCheckedChange={(checked) => setShowInCalendar(checked === true)}
+                />
+                <span className="flex flex-col gap-0.5">
+                  <span className="text-sm font-medium leading-none">
+                    {t("gabinet.employees.showInCalendar")}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {t("gabinet.employees.showInCalendarHint")}
+                  </span>
+                </span>
+              </label>
             </div>
 
             {locations && locations.filter((l) => l.isActive).length > 0 && (

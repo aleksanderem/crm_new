@@ -478,6 +478,12 @@ function TreatmentDetail() {
             defaultValue:
               "Zabieg zapisany. Nie udało się zapisać preparatów/materiałów — otwórz zabieg i spróbuj ponownie.",
           }),
+          {
+            description: formatTreatmentError(productErr, t, {
+              key: "gabinet.treatments.errors.productsSaveFailedDetail",
+              defaultValue: "Nie udało się zapisać preparatów/materiałów.",
+            }),
+          },
         );
       }
     } catch (e) {

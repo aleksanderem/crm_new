@@ -17,6 +17,7 @@ import type { Feature, Action, Scope, FeaturePermissions } from "./permissionTyp
 
 export type SystemGabinetRole =
   | "doctor"
+  | "cosmetologist"
   | "nurse"
   | "therapist"
   | "receptionist"
@@ -26,6 +27,7 @@ export type SystemGabinetRole =
 
 export const SYSTEM_GABINET_ROLES: readonly SystemGabinetRole[] = [
   "doctor",
+  "cosmetologist",
   "nurse",
   "therapist",
   "receptionist",
@@ -102,6 +104,16 @@ function buildGabinet(
 
 export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, FeaturePermissions> = {
   doctor: buildGabinet({
+    gabinet_patients: { view: "all", create: "all", edit: "own" },
+    gabinet_appointments: { view: "all", create: "all", edit: "own", delete: "own" },
+    gabinet_treatments: { view: "all" },
+    gabinet_packages: { view: "all" },
+    gabinet_employees: { view: "all" },
+    gabinet_payments: { view: "all" },
+    gabinet_photos: { view: "all", create: "all", edit: "own", delete: "own" },
+    gabinet_settings: {},
+  }),
+  cosmetologist: buildGabinet({
     gabinet_patients: { view: "all", create: "all", edit: "own" },
     gabinet_appointments: { view: "all", create: "all", edit: "own", delete: "own" },
     gabinet_treatments: { view: "all" },
@@ -195,6 +207,7 @@ export const SYSTEM_GABINET_ROLE_LABELS: Record<
   { pl: string; en: string; color: string; isClinical: boolean }
 > = {
   doctor: { pl: "Lekarz", en: "Doctor", color: "#3b82f6", isClinical: true },
+  cosmetologist: { pl: "Kosmetolog / Specjalista", en: "Cosmetologist / Specialist", color: "#ec4899", isClinical: true },
   nurse: { pl: "Pielęgniarka", en: "Nurse", color: "#22c55e", isClinical: true },
   therapist: { pl: "Terapeuta", en: "Therapist", color: "#8b5cf6", isClinical: true },
   receptionist: { pl: "Recepcjonista", en: "Receptionist", color: "#f59e0b", isClinical: false },

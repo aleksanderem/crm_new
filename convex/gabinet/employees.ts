@@ -317,7 +317,7 @@ export const _createFromInvitation = internalAction({
       Array.isArray(v) ? (v.filter((x) => typeof x === "string") as string[]) : null;
 
     const role = asString(d.role) ?? "doctor";
-    const allowedRoles = ["doctor", "nurse", "therapist", "receptionist", "admin", "other"];
+    const allowedRoles = ["doctor", "cosmetologist", "nurse", "therapist", "receptionist", "manager", "admin", "other"];
     const safeRole = allowedRoles.includes(role) ? role : "doctor";
 
     const now = Date.now();

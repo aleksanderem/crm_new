@@ -191,9 +191,11 @@ export type GabinetLeaveType = Infer<typeof gabinetLeaveTypeValidator>;
 
 export const gabinetEmployeeRoleValidator = v.union(
   v.literal("doctor"),
+  v.literal("cosmetologist"),
   v.literal("nurse"),
   v.literal("therapist"),
   v.literal("receptionist"),
+  v.literal("manager"),
   v.literal("admin"),
   v.literal("other"),
 );

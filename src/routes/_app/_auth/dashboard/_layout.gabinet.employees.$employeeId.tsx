@@ -96,7 +96,7 @@ export const Route = createFileRoute(
   component: () => <PermissionGate feature="gabinet_employees" action="view"><EmployeeDetail /></PermissionGate>,
 });
 
-const ROLES = ["doctor", "nurse", "therapist", "receptionist", "admin", "other"] as const;
+const ROLES = ["cosmetologist", "doctor", "receptionist", "manager"] as const;
 
 function EmployeeDetail() {
   const { employeeId } = Route.useParams();

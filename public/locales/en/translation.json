@@ -2945,6 +2945,7 @@
         "weeklyPattern": "Weekly pattern"
       },
       "roles": {
+        "cosmetologist": "Cosmetologist / Specialist",
         "doctor": "Doctor",
         "nurse": "Assistant",
         "therapist": "Therapist",

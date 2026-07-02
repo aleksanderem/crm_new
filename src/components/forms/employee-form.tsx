@@ -34,7 +34,7 @@ import {
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { Search } from "@/lib/ez-icons";
 
-const ROLES = ["doctor", "nurse", "therapist", "receptionist", "admin", "other"] as const;
+const ROLES = ["cosmetologist", "doctor", "receptionist", "manager"] as const;
 type EmployeeRole = (typeof ROLES)[number];
 
 interface TagDef {
@@ -158,7 +158,7 @@ export function EmployeeForm({
     e.preventDefault();
     if (requireUserSelection && !userId) return;
 
-    const isClinicalRole = role !== "receptionist" && role !== "admin";
+    const isClinicalRole = role !== "receptionist" && role !== "manager";
 
     onSubmit({
       userId: userId as Id<"users"> | undefined,
@@ -367,7 +367,7 @@ export function EmployeeForm({
       </div>
 
       {/* Qualified treatments — hidden for non-clinical roles */}
-      {role !== "receptionist" && role !== "admin" && (
+      {role !== "receptionist" && role !== "manager" && (
         <div className="space-y-2">
           <Label>{t("gabinet.employees.qualifiedTreatments")}</Label>
           {treatments && treatments.length > 0 && (

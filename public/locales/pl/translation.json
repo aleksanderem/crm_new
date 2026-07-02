@@ -2966,11 +2966,12 @@
         "weeklyPattern": "Wzorzec tygodniowy"
       },
       "roles": {
+        "cosmetologist": "Kosmetolog / Specjalista",
         "doctor": "Lekarz",
         "nurse": "Pielęgniarka",
         "therapist": "Terapeuta",
         "receptionist": "Recepcjonista",
-        "manager": "Menadżer",
+        "manager": "Manager",
         "admin": "Administrator",
         "other": "Inny"
       },

@@ -34,7 +34,7 @@ import {
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { Search } from "@/lib/ez-icons";
 
-const ROLES = ["cosmetologist", "doctor", "receptionist", "manager"] as const;
+const ROLES = ["doctor", "cosmetologist", "nurse", "therapist", "receptionist", "manager", "admin", "other"] as const;
 type EmployeeRole = (typeof ROLES)[number];
 
 interface TagDef {

@@ -2302,8 +2302,8 @@
     "roles": {
       "owner": "Właściciel",
       "admin": "Administrator",
-      "member": "Członek",
-      "viewer": "Przeglądający"
+      "member": "Pracownik",
+      "viewer": "Tylko podgląd"
     },
     "invitedBy": "Zaproszony przez",
     "sentDate": "Wysłano",

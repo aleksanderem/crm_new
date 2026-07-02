@@ -147,6 +147,8 @@ export function EmployeeForm({
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
   const [treatmentSearch, setTreatmentSearch] = useState("");
   const [grantSystemAccess, setGrantSystemAccess] = useState(false);
+  const [accessEmail, setAccessEmail] = useState("");
+  const [accessRole, setAccessRole] = useState<"admin" | "member" | "viewer">("member");
 
   const filteredTreatments = useMemo(() => {
     if (!treatments) return [];
@@ -484,6 +486,43 @@ export function EmployeeForm({
             {t("gabinet.employees.grantSystemAccess", { defaultValue: "Nadaj dostęp do systemu" })}
           </span>
         </label>
+
+        {grantSystemAccess && (
+          <div className="mt-3 space-y-3 border-t pt-3">
+            <div className="space-y-1.5">
+              <Label>
+                {t("gabinet.employees.accessEmail", { defaultValue: "Adres e-mail" })} <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                type="email"
+                value={accessEmail}
+                onChange={(e) => setAccessEmail(e.target.value)}
+                placeholder={t("gabinet.employees.accessEmailPlaceholder", { defaultValue: "np. jan.kowalski@firma.pl" })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>
+                {t("gabinet.employees.accessRole", { defaultValue: "Rola dostępu" })} <span className="text-destructive">*</span>
+              </Label>
+              <Select value={accessRole} onValueChange={(v) => setAccessRole(v as "admin" | "member" | "viewer")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">
+                    {t("gabinet.employees.accessRoles.admin", { defaultValue: "Administrator" })}
+                  </SelectItem>
+                  <SelectItem value="member">
+                    {t("gabinet.employees.accessRoles.member", { defaultValue: "Pracownik" })}
+                  </SelectItem>
+                  <SelectItem value="viewer">
+                    {t("gabinet.employees.accessRoles.viewer", { defaultValue: "Tylko podgląd" })}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-end gap-2 pt-2">

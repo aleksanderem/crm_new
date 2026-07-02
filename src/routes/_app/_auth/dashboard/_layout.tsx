@@ -808,21 +808,6 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
   return (
     <>
       <div className="flex h-dvh w-full flex-col overflow-hidden">
-        {/* Beta strip */}
-        <div
-          className="relative z-40 flex h-[30px] shrink-0 items-center overflow-hidden px-4 text-xs font-medium text-white"
-          style={{
-            background: "repeating-linear-gradient(-45deg, #7c3aed, #7c3aed 10px, #6d28d9 10px, #6d28d9 20px)",
-          }}
-        >
-          <span className="drop-shadow-sm">
-            Quera — v. active beta{" "}
-            <span className="mx-1.5 opacity-50">|</span>{" "}
-            <button onClick={() => setDevInfoOpen(true)} className="underline underline-offset-2 opacity-80 hover:opacity-100">
-              co to znaczy?
-            </button>
-          </span>
-        </div>
         {(firstOrg?.role === "owner" || firstOrg?.role === "admin") && (
           <MigrationHealthBanner />
         )}

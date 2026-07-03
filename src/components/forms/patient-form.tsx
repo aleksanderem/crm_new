@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { isPhoneNumberValid } from "@/lib/phone";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import {
   Select,
@@ -22,6 +21,7 @@ import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { GENDERS, PATIENT_REFERRAL_SOURCES, patientReferralSourceOptions } from "@/lib/options";
 import { parseBirthDateToIso } from "@/lib/format-date";
+import { isPhoneNumberValid } from "@/lib/phone";
 import type { Id } from "@cvx/_generated/dataModel";
 
 interface TagDef {
@@ -86,6 +86,8 @@ export function PatientForm({
   organizationId,
 }: PatientFormProps) {
   const { t } = useTranslation();
+  const isCreateMode = !initialData;
+
   const [firstName, setFirstName] = useState(initialData?.firstName ?? "");
   const [lastName, setLastName] = useState(initialData?.lastName ?? "");
   const [email, setEmail] = useState(initialData?.email ?? "");
@@ -122,7 +124,7 @@ export function PatientForm({
   const listCustomReferralSources = useAction(api.gabinet.patients.listCustomReferralSources);
 
   useEffect(() => {
-    if (!organizationId) return;
+    if (!organizationId || isCreateMode) return;
     let cancelled = false;
     listCustomReferralSources({ organizationId })
       .then((sources) => {
@@ -139,7 +141,7 @@ export function PatientForm({
     return () => {
       cancelled = true;
     };
-  }, [organizationId, listCustomReferralSources]);
+  }, [organizationId, listCustomReferralSources, isCreateMode]);
 
   const handleReferralSourceChange = (value: string) => {
     if (value === ADD_NEW_REFERRAL_SOURCE) {
@@ -199,6 +201,81 @@ export function PatientForm({
       gdprConsent,
     });
   };
+
+  if (isCreateMode) {
+    return (
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.patients.firstName")}</Label>
+            <Input
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.patients.lastName")}</Label>
+            <Input
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("common.phone")}</Label>
+            <PhoneInput
+              value={phone}
+              onChange={setPhone}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("common.email")}</Label>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.patients.dateOfBirth")}</Label>
+            <Input
+              type="date"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.patients.gender")}</Label>
+            <Select value={gender} onValueChange={setGender}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {GENDERS.map((g) => (
+                  <SelectItem key={g} value={g}>{t(`gabinet.patients.genderOptions.${g}`)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label>{t("gabinet.patients.notes", { defaultValue: "Notatka" })}</Label>
+          <RichTextEditor
+            value={medicalNotes}
+            onChange={(v) => setMedicalNotes(v ?? "")}
+            minHeight="80px"
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            {t("common.cancel")}
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? t("common.saving") : t("gabinet.patients.createPatient")}
+          </Button>
+        </div>
+      </form>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -458,9 +535,7 @@ export function PatientForm({
         >
           {isSubmitting
             ? t("common.saving")
-            : initialData
-              ? t("common.save")
-              : t("gabinet.patients.createPatient")}
+            : t("common.save")}
         </Button>
       </div>
     </form>

@@ -419,6 +419,14 @@ export const _removeMemberInternal = internalMutation({
 
     await ctx.db.delete(args.membershipId);
 
+    // Mirror deletion to Supabase — UI reads team_memberships from there, and
+    // RLS / seat-count queries would see a ghost row without this.
+    await ctx.scheduler.runAfter(
+      0,
+      internal.supabase.organizations.deleteTeamMembershipFromSupabase,
+      { membershipId: String(args.membershipId) },
+    );
+
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "organization",

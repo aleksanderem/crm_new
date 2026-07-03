@@ -360,6 +360,22 @@ export const _updateMemberRoleInternal = internalMutation({
 
     await ctx.db.patch(args.membershipId, { role: args.role });
 
+    // Mirror updated role to Supabase — the UI reads team_memberships from
+    // Supabase via useSupabaseOrganizationMembers, so without this the role
+    // badge stays stale after a role change.
+    await ctx.scheduler.runAfter(
+      0,
+      internal.supabase.organizations.writeTeamMembershipToSupabase,
+      {
+        membershipId: String(args.membershipId),
+        userId: String(membership.userId),
+        organizationId: String(args.organizationId),
+        role: args.role,
+        invitedBy: membership.invitedBy ? String(membership.invitedBy) : undefined,
+        joinedAt: membership.joinedAt ?? Date.now(),
+      },
+    );
+
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "organization",

@@ -108,12 +108,18 @@ function TeamSettings() {
     membershipId: Id<"teamMemberships">,
     role: string
   ) => {
-    await updateRole({
-      organizationId,
-      membershipId,
-      role: role as "admin" | "member" | "viewer" | "owner",
-    });
-    void queryClient.invalidateQueries({ queryKey: supabaseKeys.teamMemberships.list(organizationId) });
+    try {
+      await updateRole({
+        organizationId,
+        membershipId,
+        role: role as "admin" | "member" | "viewer" | "owner",
+      });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.teamMemberships.list(organizationId) });
+      toast.success(t("team.roleUpdated", { defaultValue: "Rola została zmieniona" }));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      toast.error(message);
+    }
   };
 
   const handleChangePendingRole = async (

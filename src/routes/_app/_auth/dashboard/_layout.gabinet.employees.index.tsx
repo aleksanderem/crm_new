@@ -546,10 +546,9 @@ function CreateEmployeeSheet({
             onCancel={onClose}
             onSubmit={async (data) => {
               const shouldInvite = !!(data.grantSystemAccess && data.accessEmail);
-              if (!data.userId && !shouldInvite) return;
               setSaving(true);
               try {
-                if (data.userId) {
+                if (!shouldInvite) {
                   await createEmployee({
                     organizationId,
                     ...data,

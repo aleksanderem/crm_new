@@ -593,7 +593,6 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
           return (
             <EmployeeForm
               onSubmit={async (data) => {
-                if (!data.userId) return;
                 setIsCreating(true);
                 try {
                   await createEmployee({ organizationId: orgId, ...data, userId: data.userId });

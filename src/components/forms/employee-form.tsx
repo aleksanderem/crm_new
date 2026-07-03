@@ -1,9 +1,7 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
-import { toast } from "sonner";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
@@ -18,20 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
-import {
-  UserInvitationForm,
-  type UserInvitationFormData,
-} from "@/components/forms/user-invitation-form";
-import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { Search } from "@/lib/ez-icons";
 
 const ROLES = ["doctor", "cosmetologist", "nurse", "therapist", "receptionist", "manager", "admin", "other"] as const;
@@ -83,8 +69,6 @@ interface EmployeeFormProps {
   onSubmit: (data: EmployeeFormData) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
-  /** If true, user selection is required (create mode). If false, user is pre-selected (edit mode). */
-  requireUserSelection?: boolean;
   tagDefinitions?: TagDef[];
   categoryDefinitions?: CategoryDef[];
 }
@@ -94,23 +78,11 @@ export function EmployeeForm({
   onSubmit,
   onCancel,
   isSubmitting = false,
-  requireUserSelection = true,
   tagDefinitions = [],
   categoryDefinitions = [],
 }: EmployeeFormProps) {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
-
-  // Fetch organization members and existing employees
-  const { data: members } = useQuery(
-    convexQuery(api.organizations.getMembers, { organizationId })
-  );
-  const listEmployees = useAction(api.gabinet.employees.listAll);
-  const { data: employees } = useQuery({
-    queryKey: ["gabinet.employees.listAll", organizationId],
-    queryFn: () => listEmployees({ organizationId }),
-    enabled: !!organizationId,
-  });
 
   const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
   const { data: treatments } = useQuery({
@@ -119,21 +91,6 @@ export function EmployeeForm({
     enabled: !!organizationId,
   });
 
-  // Users not yet registered as employees (for create mode)
-  const availableUsers = useMemo(() => {
-    if (!members || !employees) return [];
-    const empUserIds = new Set(employees.map((e) => e.userId));
-    return members
-      .filter((m) => m.user && !empUserIds.has(m.userId))
-      .map((m) => ({ _id: m.userId, name: m.user!.name, email: m.user!.email }));
-  }, [members, employees]);
-
-  const queryClient = useQueryClient();
-  const createInvitation = useAction(api.invitations.create);
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const [isSendingInvite, setIsSendingInvite] = useState(false);
-
-  const [userId, setUserId] = useState<string>(initialData?.userId ?? "");
   const [firstName, setFirstName] = useState(initialData?.firstName ?? "");
   const [lastName, setLastName] = useState(initialData?.lastName ?? "");
   const [role, setRole] = useState<EmployeeRole>(initialData?.role ?? "doctor");
@@ -162,12 +119,10 @@ export function EmployeeForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (requireUserSelection && !userId && !(grantSystemAccess && accessEmail.trim())) return;
 
     const isClinicalRole = role !== "receptionist" && role !== "manager";
 
     onSubmit({
-      userId: userId as Id<"users"> | undefined,
       firstName: firstName || undefined,
       lastName: lastName || undefined,
       role,
@@ -196,86 +151,6 @@ export function EmployeeForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {/* User selection (only for create mode) */}
-      {requireUserSelection && (
-        <div className="space-y-1.5">
-          <Label>
-            {t("gabinet.employees.selectUser")} <span className="text-destructive">*</span>
-          </Label>
-          <Select value={userId} onValueChange={setUserId}>
-            <SelectTrigger>
-              <SelectValue placeholder={t("gabinet.employees.selectUserPlaceholder")} />
-            </SelectTrigger>
-            <SelectContent>
-              {availableUsers.map((u) => (
-                <SelectItem key={u._id} value={u._id}>
-                  {u.name || u.email}
-                </SelectItem>
-              ))}
-              {availableUsers.length === 0 && (
-                <SelectItem value="_none" disabled>
-                  {t("gabinet.employees.noAvailableUsers")}
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            {availableUsers.length === 0 && (
-              <>{t("gabinet.employees.allUsersRegistered")}{" "}</>
-            )}
-            <button
-              type="button"
-              onClick={() => setInviteOpen(true)}
-              className="text-brand-secondary underline hover:no-underline"
-            >
-              {t("gabinet.employees.inviteTeamMember", { defaultValue: "Zaproś nowego członka zespołu" })}
-            </button>
-          </p>
-        </div>
-      )}
-
-      {requireUserSelection && (
-        <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-          <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{t("team.inviteDialog.title")}</DialogTitle>
-              <DialogDescription>
-                {t("team.inviteDialog.description")}
-              </DialogDescription>
-            </DialogHeader>
-            <UserInvitationForm
-              defaultModule="gabinet"
-              isSubmitting={isSendingInvite}
-              onCancel={() => setInviteOpen(false)}
-              onSubmit={async (data: UserInvitationFormData) => {
-                setIsSendingInvite(true);
-                try {
-                  await createInvitation({
-                    organizationId,
-                    email: data.email,
-                    role: data.role as "admin" | "member" | "viewer" | "owner",
-                    module: data.module,
-                    moduleData: data.moduleData,
-                  });
-                  toast.success(t("team.invitationSent"));
-                  void queryClient.invalidateQueries({
-                    queryKey: supabaseKeys.invitations.list(organizationId),
-                  });
-                  void queryClient.invalidateQueries({
-                    queryKey: supabaseKeys.teamMemberships.list(organizationId),
-                  });
-                  setInviteOpen(false);
-                } catch (e) {
-                  toast.error(e instanceof Error ? e.message : String(e));
-                } finally {
-                  setIsSendingInvite(false);
-                }
-              }}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
-
       {/* Name fields */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
@@ -539,8 +414,7 @@ export function EmployeeForm({
           type="submit"
           disabled={
             isSubmitting ||
-            (grantSystemAccess && !accessEmail.trim()) ||
-            (!grantSystemAccess && requireUserSelection && !userId)
+            (grantSystemAccess && !accessEmail.trim())
           }
         >
           {isSubmitting

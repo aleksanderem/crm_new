@@ -48,13 +48,32 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
 import { PermissionGate } from "@/hooks/use-permission";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type LeavesNudgeFilter = "pending";
+
+function LeavesPageSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-7 w-48" />
+      <Skeleton className="h-10 w-full" />
+      <div className="space-y-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/settings/leaves"
 )({
-  component: () => <PermissionGate feature="gabinet_settings" action="view"><LeavesPage /></PermissionGate>,
+  component: () => (
+    <PermissionGate feature="gabinet_settings" action="view" loadingFallback={<LeavesPageSkeleton />}>
+      <LeavesPage />
+    </PermissionGate>
+  ),
   validateSearch: (
     search: Record<string, unknown>,
   ): { nudge?: LeavesNudgeFilter } => ({

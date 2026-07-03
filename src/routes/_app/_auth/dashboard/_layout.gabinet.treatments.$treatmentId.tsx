@@ -66,11 +66,26 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { formatTreatmentError } from "@/lib/format-action-error";
 import { PermissionGate } from "@/hooks/use-permission";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function TreatmentDetailSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-8 w-64" />
+      <Skeleton className="h-48 w-full" />
+      <Skeleton className="h-48 w-full" />
+    </div>
+  );
+}
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/treatments/$treatmentId",
 )({
-  component: () => <PermissionGate feature="gabinet_treatments" action="view"><TreatmentDetail /></PermissionGate>,
+  component: () => (
+    <PermissionGate feature="gabinet_treatments" action="view" loadingFallback={<TreatmentDetailSkeleton />}>
+      <TreatmentDetail />
+    </PermissionGate>
+  ),
 });
 
 function formatCurrency(amount: number, currency?: string): string {

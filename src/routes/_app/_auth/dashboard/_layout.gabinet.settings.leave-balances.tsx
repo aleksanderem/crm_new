@@ -11,11 +11,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { PermissionGate } from "@/hooks/use-permission";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function LeaveBalancesSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-7 w-48" />
+      <Skeleton className="h-32 w-full" />
+      <Skeleton className="h-32 w-full" />
+    </div>
+  );
+}
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/settings/leave-balances"
 )({
-  component: () => <PermissionGate feature="gabinet_settings" action="view"><LeaveBalancesPage /></PermissionGate>,
+  component: () => (
+    <PermissionGate feature="gabinet_settings" action="view" loadingFallback={<LeaveBalancesSkeleton />}>
+      <LeaveBalancesPage />
+    </PermissionGate>
+  ),
 });
 
 function LeaveBalancesPage() {

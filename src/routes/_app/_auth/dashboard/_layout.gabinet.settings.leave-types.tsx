@@ -22,11 +22,26 @@ import { toast } from "sonner";
 import { Id } from "@cvx/_generated/dataModel";
 import { formatActionError } from "@/lib/format-action-error";
 import { PermissionGate } from "@/hooks/use-permission";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function LeaveTypesSettingsSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-7 w-48" />
+      <Skeleton className="h-32 w-full" />
+      <Skeleton className="h-32 w-full" />
+    </div>
+  );
+}
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/settings/leave-types"
 )({
-  component: () => <PermissionGate feature="gabinet_settings" action="view"><LeaveTypesSettings /></PermissionGate>,
+  component: () => (
+    <PermissionGate feature="gabinet_settings" action="view" loadingFallback={<LeaveTypesSettingsSkeleton />}>
+      <LeaveTypesSettings />
+    </PermissionGate>
+  ),
 });
 
 function LeaveTypesSettings() {

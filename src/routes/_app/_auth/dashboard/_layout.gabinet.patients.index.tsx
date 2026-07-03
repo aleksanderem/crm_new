@@ -38,13 +38,42 @@ import { formatBirthDate } from "@/lib/format-date";
 import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import { displayReferralSource } from "@/lib/options";
 import { PermissionGate } from "@/hooks/use-permission";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type PatientNudgeFilter = "missing-contact" | "no-recent-visit" | "duplicates";
+
+function PatientListSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <Skeleton className="h-9 w-32" />
+      </div>
+      <Skeleton className="h-10 w-full" />
+      <div className="space-y-2">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/patients/",
 )({
-  component: () => <PermissionGate feature="gabinet_patients" action="view"><PatientsIndex /></PermissionGate>,
+  component: () => (
+    <PermissionGate
+      feature="gabinet_patients"
+      action="view"
+      loadingFallback={<PatientListSkeleton />}
+    >
+      <PatientsIndex />
+    </PermissionGate>
+  ),
   validateSearch: (search: Record<string, unknown>): { nudge?: PatientNudgeFilter } => {
     const nudge =
       search.nudge === "missing-contact" ||

@@ -229,6 +229,7 @@ function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
   const createLead = useAction(api.leads.create);
   const createPatient = useAction(api.gabinet.patients.create);
   const createTreatment = useAction(api.gabinet.treatments.create);
+  const setTreatmentProducts = useAction(api.gabinet.treatments.setTreatmentProducts);
   const createPackage = useAction(api.gabinet.packages.create);
   const createEmployee = useAction(api.gabinet.employees.create);
   const createActivity = useAction(api.scheduledActivities.create);
@@ -551,7 +552,29 @@ function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
               onSubmit={async (data) => {
                 setIsCreating(true);
                 try {
-                  await createTreatment({ organizationId: orgId, ...data });
+                  const { products, materials, ...treatmentData } = data;
+                  const newTreatmentId = await createTreatment({ organizationId: orgId, ...treatmentData });
+                  const allProductLinks = [
+                    ...(products ?? []).map((p) => ({
+                      productId: p.productId,
+                      productSection: "treatment" as const,
+                      quantity: p.quantity,
+                      unit: p.unit ?? undefined,
+                    })),
+                    ...(materials ?? []).map((m) => ({
+                      productId: m.productId,
+                      productSection: "disposable" as const,
+                      quantity: m.quantity,
+                      unit: m.unit ?? undefined,
+                    })),
+                  ];
+                  if (allProductLinks.length > 0) {
+                    await setTreatmentProducts({
+                      organizationId: orgId,
+                      treatmentId: newTreatmentId,
+                      products: allProductLinks,
+                    });
+                  }
                   void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(orgId) });
                   opts.onSuccess();
                 } catch (e) {

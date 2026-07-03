@@ -594,9 +594,32 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
             <EmployeeForm
               onSubmit={async (data) => {
                 setIsCreating(true);
+                const shouldInvite = !!(data.grantSystemAccess && data.accessEmail);
                 try {
-                  await createEmployee({ organizationId: orgId, ...data, userId: data.userId });
-                  void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(orgId) });
+                  if (!shouldInvite) {
+                    await createEmployee({ organizationId: orgId, ...data, userId: data.userId });
+                    void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(orgId) });
+                  } else {
+                    await createInvitation({
+                      organizationId: orgId,
+                      email: data.accessEmail!,
+                      role: data.accessRole ?? "member",
+                      module: "gabinet",
+                      moduleData: {
+                        firstName: data.firstName,
+                        lastName: data.lastName,
+                        role: data.role,
+                        specialization: data.specialization,
+                        color: data.color,
+                        showInCalendar: data.showInCalendar,
+                        qualifiedTreatmentIds: data.qualifiedTreatmentIds,
+                        tagIds: data.tagIds,
+                        categoryId: data.categoryId,
+                      },
+                    });
+                    void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(orgId) });
+                    void queryClient.invalidateQueries({ queryKey: supabaseKeys.teamMemberships.list(orgId) });
+                  }
                   opts.onSuccess();
                 } catch (e) {
                   toast.error(

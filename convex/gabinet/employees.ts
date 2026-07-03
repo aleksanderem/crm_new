@@ -162,7 +162,7 @@ export const getByUserId = action({
 export const create = action({
   args: {
     organizationId: v.id("organizations"),
-    userId: v.string(),
+    userId: v.optional(v.string()),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     role: gabinetEmployeeRoleValidator,
@@ -195,19 +195,21 @@ export const create = action({
     const now = Date.now();
     const db = createSupabaseDb();
 
-    // --- Check if employee already exists (via Supabase) ---
-    const existing = await db.query("gabinetEmployees")
-      .eq("organizationId", String(args.organizationId))
-      .eq("userId", args.userId)
-      .collect();
-    if (existing.length > 0) {
-      throw new Error("Employee profile already exists for this user");
+    // --- Check if employee already exists (only when a user is linked) ---
+    if (args.userId) {
+      const existing = await db.query("gabinetEmployees")
+        .eq("organizationId", String(args.organizationId))
+        .eq("userId", args.userId)
+        .collect();
+      if (existing.length > 0) {
+        throw new Error("Employee profile already exists for this user");
+      }
     }
 
     // --- INSERT employee directly to Supabase ---
     const employeeId = await db.insert("gabinetEmployees", {
       organizationId: String(args.organizationId),
-      userId: args.userId,
+      userId: args.userId ?? null,
       firstName: args.firstName ?? null,
       lastName: args.lastName ?? null,
       role: args.role,
@@ -239,15 +241,17 @@ export const create = action({
 
     // --- Mirror role into Convex `gabinetMemberships` so checkPermission
     //     can resolve the user's gabinet-role (it can't reach Supabase). ---
-    try {
-      await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
-        organizationId: args.organizationId,
-        userId: args.userId,
-        gabinetRole: args.role,
-        isActive: true,
-      });
-    } catch (e) {
-      console.error("[employees.create] Membership mirror FAILED:", e);
+    if (args.userId) {
+      try {
+        await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
+          organizationId: args.organizationId,
+          userId: args.userId,
+          gabinetRole: args.role,
+          isActive: true,
+        });
+      } catch (e) {
+        console.error("[employees.create] Membership mirror FAILED:", e);
+      }
     }
 
     return employeeId;

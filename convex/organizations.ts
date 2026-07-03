@@ -397,6 +397,11 @@ export const removeMember = action({
       organizationId: args.organizationId,
       membershipId: args.membershipId as any,
     });
+    // Await the Supabase delete directly so the UI sees the removal when it
+    // refetches — scheduler.runAfter is fire-and-forget and loses the race.
+    await ctx.runAction(internal.supabase.organizations.deleteTeamMembershipFromSupabase, {
+      membershipId: args.membershipId,
+    });
     return args.membershipId;
   },
 });
@@ -418,14 +423,6 @@ export const _removeMemberInternal = internalMutation({
     }
 
     await ctx.db.delete(args.membershipId);
-
-    // Mirror deletion to Supabase — UI reads team_memberships from there, and
-    // RLS / seat-count queries would see a ghost row without this.
-    await ctx.scheduler.runAfter(
-      0,
-      internal.supabase.organizations.deleteTeamMembershipFromSupabase,
-      { membershipId: String(args.membershipId) },
-    );
 
     await logActivity(ctx, {
       organizationId: args.organizationId,

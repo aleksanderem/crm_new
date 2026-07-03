@@ -4609,5 +4609,11 @@
       "duplicateSection": "Duplicate section",
       "deleteSection": "Delete section"
     }
+  },
+  "crossModuleDialog": {
+    "title": "Shared CRM Module",
+    "description": "This module is shared across the entire CRM system and is not directly part of the Gabinet section.\n\nYou will be taken to the relevant CRM module.",
+    "confirm": "Go to module",
+    "dontShowAgain": "Don't show again"
   }
 }

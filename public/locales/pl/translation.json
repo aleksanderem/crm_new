@@ -4635,5 +4635,11 @@
       "duplicateSection": "Duplikuj sekcję",
       "deleteSection": "Usuń sekcję"
     }
+  },
+  "crossModuleDialog": {
+    "title": "Moduł wspólny CRM",
+    "description": "Ten moduł jest wspólny dla całego systemu CRM i nie znajduje się bezpośrednio w części Gabinet.\n\nZa chwilę otworzymy odpowiedni moduł CRM.",
+    "confirm": "Przejdź do modułu",
+    "dontShowAgain": "Nie pokazuj ponownie"
   }
 }

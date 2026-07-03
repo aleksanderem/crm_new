@@ -23,6 +23,7 @@ export interface ModuleNavItem {
   href: string;
   icon: ElementType;
   activeMatch?: "exact" | "fuzzy";
+  crossModule?: boolean;
 }
 
 export interface ModuleContextAction {

@@ -128,6 +128,8 @@ export const getMyOrganizations = query({
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
       .collect();
 
+    memberships.sort((a, b) => b.joinedAt - a.joinedAt);
+
     const orgs = await Promise.all(
       memberships.map(async (m) => {
         const org = await ctx.db.get(m.organizationId);

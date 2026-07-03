@@ -101,6 +101,33 @@ export const backfillSinglePatient = internalAction({
 
     const client = createServiceRoleClient();
 
+    const orgIdStr = String(p.organizationId);
+    const { data: existingOrg } = await client
+      .from("organizations")
+      .select("id")
+      .eq("id", orgIdStr)
+      .maybeSingle();
+    if (!existingOrg) {
+      const org = await ctx.runQuery(internal.supabase.backfill._getOrganization, {
+        organizationId: orgIdStr,
+      });
+      if (org) {
+        await client.from("organizations").upsert(
+          {
+            id: orgIdStr,
+            name: org.name,
+            slug: org.slug,
+            owner_id: String(org.ownerId),
+            logo: org.logo ?? null,
+            website: org.website ?? null,
+            created_at: org.createdAt ?? Date.now(),
+            updated_at: org.updatedAt ?? Date.now(),
+          },
+          { onConflict: "id" },
+        );
+      }
+    }
+
     const createdByExists = await client
       .from("users")
       .select("id")
@@ -183,6 +210,33 @@ export const backfillSingleTreatment = internalAction({
     if (!t) return { synced: 0, errors: ["Treatment not found in Convex"] };
 
     const client = createServiceRoleClient();
+
+    const orgIdStr = String(t.organizationId);
+    const { data: existingOrg } = await client
+      .from("organizations")
+      .select("id")
+      .eq("id", orgIdStr)
+      .maybeSingle();
+    if (!existingOrg) {
+      const org = await ctx.runQuery(internal.supabase.backfill._getOrganization, {
+        organizationId: orgIdStr,
+      });
+      if (org) {
+        await client.from("organizations").upsert(
+          {
+            id: orgIdStr,
+            name: org.name,
+            slug: org.slug,
+            owner_id: String(org.ownerId),
+            logo: org.logo ?? null,
+            website: org.website ?? null,
+            created_at: org.createdAt ?? Date.now(),
+            updated_at: org.updatedAt ?? Date.now(),
+          },
+          { onConflict: "id" },
+        );
+      }
+    }
 
     const createdByExists = await client
       .from("users")

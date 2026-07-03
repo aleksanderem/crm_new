@@ -12,7 +12,6 @@ import { paginationOptsValidator } from "convex/server";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { checkModuleAccess } from "../_helpers/products";
 import { logActivity } from "../_helpers/activities";
-import { GABINET_PRODUCT_ID } from "./_registry";
 import { gabinetAppointmentStatusValidator } from "../schema";
 import {
   checkConflict,

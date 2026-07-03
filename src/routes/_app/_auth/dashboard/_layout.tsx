@@ -28,6 +28,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/ui/dropdown-menu";
@@ -48,6 +49,7 @@ import {
   UserPlus,
   CalendarCheck,
   BarChart3,
+  Check,
 } from "@/lib/ez-icons";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
@@ -207,9 +209,12 @@ interface DashboardLayoutInnerProps {
   user: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   firstOrg: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  orgs: any[];
+  onOrgSwitch: (orgId: string) => void;
 }
 
-function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
+function DashboardLayoutInner({ user, firstOrg, orgs, onOrgSwitch }: DashboardLayoutInnerProps) {
   const { t } = useTranslation();
   const quickCreateRef = useRef<QuickCreateMenuHandle>(null);
   const signOut = useSignOut();
@@ -916,6 +921,27 @@ function DashboardLayoutInner({ user, firstOrg }: DashboardLayoutInnerProps) {
                         <p className="text-xs text-muted-foreground">{user.email}</p>
                       </div>
                       <DropdownMenuSeparator className="sm:hidden" />
+                      {orgs.length > 1 && (
+                        <>
+                          <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
+                            {t("layout.organizations")}
+                          </DropdownMenuLabel>
+                          {orgs.map((org: any) => (
+                            <DropdownMenuItem
+                              key={org._id}
+                              onClick={() => onOrgSwitch(org._id)}
+                              className="gap-2"
+                            >
+                              <Building2 className="h-4 w-4 shrink-0" variant="stroke" />
+                              <span className="flex-1 truncate">{org.name}</span>
+                              {org._id === firstOrg._id && (
+                                <Check className="h-4 w-4 shrink-0 text-primary" variant="stroke" />
+                              )}
+                            </DropdownMenuItem>
+                          ))}
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
                       <DropdownMenuItem onClick={() => navigate({ to: "/dashboard/settings" })}>
                         <Settings className="mr-2 h-4 w-4" variant="stroke" />
                         {t("layout.settings")}
@@ -1035,22 +1061,28 @@ function DashboardLayout() {
   const { data: orgs } = useQuery(
     convexQuery(api.organizations.getMyOrganizations, {})
   );
+  const [activeOrgId, setActiveOrgId] = useState<string | null>(null);
 
   if (!user || !orgs) return null;
-  const savedOrgId = localStorage.getItem(LS_ACTIVE_ORG_KEY);
+  const savedOrgId = activeOrgId ?? localStorage.getItem(LS_ACTIVE_ORG_KEY);
   const firstOrg =
     (savedOrgId && orgs.find((o) => o._id === savedOrgId)) || orgs[0];
   if (!firstOrg) return null;
 
+  const handleOrgSwitch = (orgId: string) => {
+    localStorage.setItem(LS_ACTIVE_ORG_KEY, orgId);
+    setActiveOrgId(orgId);
+  };
+
   return (
     <DateRangeProvider>
-      <OrgProvider initialOrgId={firstOrg._id}>
+      <OrgProvider key={firstOrg._id} initialOrgId={firstOrg._id}>
         <SupabaseProvider>
           <NudgesProvider>
             <MiniCalendarProvider>
               <SidebarSlotProvider>
                 <HeaderSlotProvider>
-                  <DashboardLayoutInner user={user} firstOrg={firstOrg} />
+                  <DashboardLayoutInner user={user} firstOrg={firstOrg} orgs={orgs} onOrgSwitch={handleOrgSwitch} />
                 </HeaderSlotProvider>
               </SidebarSlotProvider>
             </MiniCalendarProvider>

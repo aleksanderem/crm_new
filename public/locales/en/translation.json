@@ -2183,7 +2183,8 @@
     "logOut": "Log Out",
     "openDeals": "Open Deals",
     "notifications": "Notifications",
-    "createNew": "Create new"
+    "createNew": "Create new",
+    "organizations": "Organizations"
   },
   "profile": {
     "title": "Settings",

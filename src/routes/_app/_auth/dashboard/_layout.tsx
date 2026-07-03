@@ -929,7 +929,6 @@ function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
                             <DropdownMenuItem
                               key={org._id}
                               onClick={() => {
-                                localStorage.setItem(getOrgStorageKey(user._id), org._id);
                                 setOrganizationId(org._id as Id<"organizations">);
                               }}
                               className="gap-2"
@@ -1071,7 +1070,7 @@ function DashboardLayout() {
 
   return (
     <DateRangeProvider>
-      <OrgProvider initialOrgId={firstOrg._id}>
+      <OrgProvider initialOrgId={firstOrg._id} userId={user._id}>
         <SupabaseProvider>
           <NudgesProvider>
             <MiniCalendarProvider>

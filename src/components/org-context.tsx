@@ -1,8 +1,6 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { Id } from "@cvx/_generated/dataModel";
 
-export const LS_ACTIVE_ORG_KEY = "quera-active-org-id";
-
 interface OrgContextType {
   organizationId: Id<"organizations"> | null;
   setOrganizationId: (id: Id<"organizations">) => void;
@@ -21,7 +19,6 @@ export function OrgProvider({
     useState<Id<"organizations"> | null>(initialOrgId ?? null);
 
   const setOrganizationId = useCallback((id: Id<"organizations">) => {
-    localStorage.setItem(LS_ACTIVE_ORG_KEY, id);
     _setOrganizationId(id);
   }, []);
 

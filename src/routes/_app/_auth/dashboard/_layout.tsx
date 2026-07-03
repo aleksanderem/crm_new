@@ -12,7 +12,7 @@ import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-f
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppFooter } from "@/components/layout/app-footer";
 import { RouteErrorBoundary } from "@/components/layout/route-error-boundary";
-import { OrgProvider, LS_ACTIVE_ORG_KEY } from "@/components/org-context";
+import { OrgProvider } from "@/components/org-context";
 import { SupabaseProvider } from "@/components/supabase-provider";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
@@ -1057,14 +1057,12 @@ function DashboardLayout() {
   const [activeOrgId, setActiveOrgId] = useState<string | null>(null);
 
   if (!user || !orgs) return null;
-  const savedOrgId = activeOrgId ?? localStorage.getItem(LS_ACTIVE_ORG_KEY);
   const firstOrg =
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (savedOrgId && orgs.find((o: any) => o._id === savedOrgId)) || orgs[0];
+    (activeOrgId && orgs.find((o: any) => o._id === activeOrgId)) || orgs[0];
   if (!firstOrg) return null;
 
   const handleOrgSwitch = (orgId: string) => {
-    localStorage.setItem(LS_ACTIVE_ORG_KEY, orgId);
     setActiveOrgId(orgId);
   };
 

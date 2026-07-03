@@ -56,16 +56,34 @@ import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-or
 import StatisticsProfitCard from "@/components/shadcn-studio/blocks/statistics-profit-card";
 import StatisticsImpressionCard from "@/components/shadcn-studio/blocks/statistics-impression-card";
 import { PermissionGate } from "@/hooks/use-permission";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Type alias for Convex mutation compatibility (Knowledge Pattern #9/#12)
 type TreatmentPackage = MappedGabinetTreatmentPackage;
 
 type PackagesNudgeFilter = "expiring" | "no-usage";
 
+function PackagesListSkeleton() {
+  return (
+    <div className="flex flex-col gap-4 p-6">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-9 w-32" />
+      </div>
+      <Skeleton className="h-10 w-full" />
+      <div className="flex flex-col gap-2">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/packages/"
 )({
-  component: () => <PermissionGate feature="gabinet_packages" action="view"><PackagesIndex /></PermissionGate>,
+  component: () => <PermissionGate feature="gabinet_packages" action="view" loadingFallback={<PackagesListSkeleton />}><PackagesIndex /></PermissionGate>,
   validateSearch: (
     search: Record<string, unknown>,
   ): { nudge?: PackagesNudgeFilter } => {

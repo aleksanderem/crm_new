@@ -39,6 +39,18 @@ async function upsertBatch<T extends SupabaseTable>(
 // Internal queries — single record (for self-healing FK deps)
 // ---------------------------------------------------------------------------
 
+export const _getOrganization = internalQuery({
+  args: { organizationId: v.string() },
+  handler: async (ctx, args) => {
+    try {
+      return await ctx.db.get(args.organizationId as Id<"organizations">);
+    } catch {
+      const all = await ctx.db.query("organizations").collect();
+      return all.find((o) => o._id === args.organizationId) ?? null;
+    }
+  },
+});
+
 export const _getUser = internalQuery({
   args: { userId: v.string() },
   handler: async (ctx, args) => {

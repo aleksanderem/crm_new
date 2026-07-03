@@ -122,6 +122,23 @@ export const _listAllTeamMemberships = internalQuery({
   },
 });
 
+export const deleteTeamMembershipFromSupabase = internalAction({
+  args: { membershipId: v.string() },
+  returns: v.null_(),
+  handler: async (_ctx, args) => {
+    const client = createServiceRoleClient();
+    const { error } = await client
+      .from("team_memberships")
+      .delete()
+      .eq("id", args.membershipId);
+    if (error) {
+      throw new Error(`supabaseDb.delete(team_memberships, ${args.membershipId}): ${error.message}`);
+    }
+    console.info(`TeamMembership deleted from Supabase id=${args.membershipId}`);
+    return null;
+  },
+});
+
 export const writeTeamMembershipToSupabase = internalAction({
   args: {
     membershipId: v.string(),

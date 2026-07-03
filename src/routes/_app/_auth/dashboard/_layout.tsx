@@ -208,13 +208,12 @@ interface DashboardLayoutInnerProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   user: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  firstOrg: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   orgs: any[];
-  onOrgSwitch: (orgId: string) => void;
 }
 
-function DashboardLayoutInner({ user, firstOrg, orgs, onOrgSwitch }: DashboardLayoutInnerProps) {
+function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
+  const { organizationId, setOrganizationId } = useOrganization();
+  const firstOrg = orgs.find((o: any) => o._id === organizationId) ?? orgs[0];
   const { t } = useTranslation();
   const quickCreateRef = useRef<QuickCreateMenuHandle>(null);
   const signOut = useSignOut();
@@ -929,7 +928,10 @@ function DashboardLayoutInner({ user, firstOrg, orgs, onOrgSwitch }: DashboardLa
                           {orgs.map((org: any) => (
                             <DropdownMenuItem
                               key={org._id}
-                              onClick={() => onOrgSwitch(org._id)}
+                              onClick={() => {
+                                localStorage.setItem(getOrgStorageKey(user._id), org._id);
+                                setOrganizationId(org._id as Id<"organizations">);
+                              }}
                               className="gap-2"
                             >
                               <Building2 className="h-4 w-4 shrink-0" variant="stroke" />
@@ -1061,28 +1063,21 @@ function DashboardLayout() {
   const { data: orgs } = useQuery(
     convexQuery(api.organizations.getMyOrganizations, {})
   );
-  const [activeOrgId, setActiveOrgId] = useState<string | null>(null);
-
   if (!user || !orgs) return null;
-  const savedOrgId = activeOrgId ?? localStorage.getItem(getOrgStorageKey(user._id));
+  const savedOrgId = localStorage.getItem(getOrgStorageKey(user._id));
   const firstOrg =
     (savedOrgId && orgs.find((o) => o._id === savedOrgId)) || orgs[0];
   if (!firstOrg) return null;
 
-  const handleOrgSwitch = (orgId: string) => {
-    localStorage.setItem(getOrgStorageKey(user._id), orgId);
-    setActiveOrgId(orgId);
-  };
-
   return (
     <DateRangeProvider>
-      <OrgProvider key={firstOrg._id} initialOrgId={firstOrg._id}>
+      <OrgProvider initialOrgId={firstOrg._id}>
         <SupabaseProvider>
           <NudgesProvider>
             <MiniCalendarProvider>
               <SidebarSlotProvider>
                 <HeaderSlotProvider>
-                  <DashboardLayoutInner user={user} firstOrg={firstOrg} orgs={orgs} onOrgSwitch={handleOrgSwitch} />
+                  <DashboardLayoutInner user={user} orgs={orgs} />
                 </HeaderSlotProvider>
               </SidebarSlotProvider>
             </MiniCalendarProvider>

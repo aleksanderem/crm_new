@@ -12,7 +12,7 @@ import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-f
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppFooter } from "@/components/layout/app-footer";
 import { RouteErrorBoundary } from "@/components/layout/route-error-boundary";
-import { OrgProvider } from "@/components/org-context";
+import { OrgProvider, LS_ACTIVE_ORG_KEY } from "@/components/org-context";
 import { SupabaseProvider } from "@/components/supabase-provider";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
@@ -1037,7 +1037,9 @@ function DashboardLayout() {
   );
 
   if (!user || !orgs) return null;
-  const firstOrg = orgs[0];
+  const savedOrgId = localStorage.getItem(LS_ACTIVE_ORG_KEY);
+  const firstOrg =
+    (savedOrgId && orgs.find((o) => o._id === savedOrgId)) || orgs[0];
   if (!firstOrg) return null;
 
   return (

@@ -22,8 +22,48 @@ export const writeOrganizationToSupabase = internalAction({
     onboardingCompleted: v.optional(v.boolean()),
   },
   returns: v.object({ success: v.boolean(), id: v.string() }),
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
     const client = createServiceRoleClient();
+
+    // Self-heal: writeUserToSupabase and writeOrganizationToSupabase are both
+    // scheduled with runAfter(0) from completeOnboarding. If the org action
+    // fires first the owner_id FK doesn't exist yet, and the immediate 3-retry
+    // loop in upsertWithFkRetry has no delay to let it appear. Ensure the owner
+    // user row is present before attempting the org upsert.
+    const { data: existingUser } = await client
+      .from("users")
+      .select("id")
+      .eq("id", args.ownerId)
+      .maybeSingle();
+    if (!existingUser) {
+      const user = await ctx.runQuery(internal.supabase.backfill._getUser, {
+        userId: args.ownerId,
+      });
+      if (user) {
+        await client.from("users").upsert(
+          {
+            id: user._id,
+            name: user.name ?? null,
+            username: user.username ?? null,
+            image_storage_id: user.imageId ?? null,
+            image: user.image ?? null,
+            email: user.email ?? null,
+            email_verification_time: user.emailVerificationTime ?? null,
+            phone: user.phone ?? null,
+            phone_verification_time: user.phoneVerificationTime ?? null,
+            is_anonymous: user.isAnonymous ?? false,
+            customer_id: user.customerId ?? null,
+            language: user.language ?? null,
+            theme: user.theme ?? null,
+            timezone: user.timezone ?? null,
+            created_at: Math.floor(user._creationTime),
+            updated_at: Math.floor(user._creationTime),
+          },
+          { onConflict: "id" },
+        );
+      }
+    }
+
     const row = {
       id: args.organizationId,
       name: args.name,

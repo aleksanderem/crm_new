@@ -2196,7 +2196,8 @@
     "logOut": "Wyloguj",
     "openDeals": "Otwarte transakcje",
     "notifications": "Powiadomienia",
-    "createNew": "Utwórz nowy"
+    "createNew": "Utwórz nowy",
+    "organizations": "Organizacje"
   },
   "profile": {
     "title": "Ustawienia",

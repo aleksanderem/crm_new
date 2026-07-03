@@ -1813,6 +1813,7 @@ function PatientDetail() {
           title={t("common.edit")}
         >
           <PatientForm
+            mode="edit"
             initialData={{
               firstName: patient.firstName,
               lastName: patient.lastName,

@@ -61,6 +61,7 @@ interface PatientFormData {
 }
 
 interface PatientFormProps {
+  mode?: "create" | "edit";
   initialData?: Partial<PatientFormData>;
   onSubmit: (data: PatientFormData) => void;
   onCancel: () => void;
@@ -73,6 +74,7 @@ interface PatientFormProps {
 const ADD_NEW_REFERRAL_SOURCE = "__add_new__";
 
 export function PatientForm({
+  mode,
   initialData,
   onSubmit,
   onCancel,
@@ -81,6 +83,7 @@ export function PatientForm({
   categoryDefinitions = [],
   organizationId,
 }: PatientFormProps) {
+  const isEditMode = mode === "edit" || (!mode && !!initialData);
   const { t } = useTranslation();
   const [firstName, setFirstName] = useState(initialData?.firstName ?? "");
   const [lastName, setLastName] = useState(initialData?.lastName ?? "");
@@ -260,7 +263,7 @@ export function PatientForm({
             </SelectContent>
           </Select>
         </div>
-        {initialData && (
+        {isEditMode && (
           <div className="space-y-1.5">
             <Label>{t("gabinet.patients.bloodType")}</Label>
             <Input
@@ -433,7 +436,7 @@ export function PatientForm({
         >
           {isSubmitting
             ? t("common.saving")
-            : initialData
+            : isEditMode
               ? t("common.save")
               : t("gabinet.patients.createPatient")}
         </Button>

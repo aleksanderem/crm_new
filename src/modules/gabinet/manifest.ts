@@ -55,8 +55,8 @@ export const gabinetManifest: ModuleManifest = {
     { labelKey: "nav.gabinet.employees", href: "/dashboard/gabinet/employees", icon: UserCog },
     { labelKey: "nav.gabinet.documents", href: "/dashboard/gabinet/documents", icon: ClipboardList },
     { labelKey: "nav.gabinet.documentTemplates", href: "/dashboard/gabinet/document-templates", icon: FilePlus },
-    { labelKey: "nav.emailTemplates", href: "/dashboard/email-templates", icon: MailOpen },
-    { labelKey: "nav.products", href: "/dashboard/products", icon: Package },
+    { labelKey: "nav.emailTemplates", href: "/dashboard/email-templates", icon: MailOpen, crossModule: true },
+    { labelKey: "nav.products", href: "/dashboard/products", icon: Package, crossModule: true },
     { labelKey: "nav.gabinet.reports", href: "/dashboard/gabinet/reports", icon: PieChart },
   ],
   settingsNav: [

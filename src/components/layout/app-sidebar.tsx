@@ -1,4 +1,5 @@
-import { Link, useMatchRoute } from "@tanstack/react-router";
+import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
@@ -24,6 +25,16 @@ import { CalendarMiniMonth } from "@untitled/app/calendar/base-components/calend
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
 import { cn } from "@/utils/misc";
 import Logo from "@/assets/svg/logo";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DayTimeline } from "@/components/sidebar-widgets/day-timeline";
 import { getModuleById, getVisibleModules, moduleRegistry } from "@/modules/registry";
 
@@ -31,13 +42,47 @@ const routeAwareModules = [...moduleRegistry].sort(
   (left, right) => right.workspaceRoot.length - left.workspaceRoot.length,
 );
 
+const CROSS_MODULE_DISMISSED_KEY = "gabinet.crossModuleWarningDismissed";
+
 export function AppSidebar() {
   const matchRoute = useMatchRoute();
   const { t } = useTranslation();
   const { openQuickCreate, navigateTo, dispatch } = useSidebarActions();
   const { isMobile, setOpenMobile } = useSidebar();
+  const navigate = useNavigate();
+  const [pendingNavHref, setPendingNavHref] = useState<string | null>(null);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
+
   const closeMobile = () => {
     if (isMobile) setOpenMobile(false);
+  };
+
+  const handleCrossModuleClick = (href: string) => {
+    const dismissed = localStorage.getItem(CROSS_MODULE_DISMISSED_KEY) === "true";
+    if (dismissed) {
+      void navigate({ to: href });
+      closeMobile();
+    } else {
+      setPendingNavHref(href);
+    }
+  };
+
+  const handleCrossModuleConfirm = () => {
+    if (dontShowAgain) {
+      localStorage.setItem(CROSS_MODULE_DISMISSED_KEY, "true");
+    }
+    const href = pendingNavHref;
+    setPendingNavHref(null);
+    setDontShowAgain(false);
+    if (href) {
+      void navigate({ to: href });
+      closeMobile();
+    }
+  };
+
+  const handleCrossModuleCancel = () => {
+    setPendingNavHref(null);
+    setDontShowAgain(false);
   };
   const { organizationId } = useOrganization();
   const { state: miniCalState } = useMiniCalendar();
@@ -138,17 +183,29 @@ export function AppSidebar() {
 
                   return (
                     <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton
-                        className="[&>svg]:text-primary [&>easier-icon]:text-primary group-data-[collapsible=icon]:size-10! [&>svg]:size-4 [&>easier-icon]:size-4"
-                        tooltip={t(item.labelKey)}
-                        isActive={isActive}
-                        asChild
-                      >
-                        <Link to={item.href} onClick={closeMobile}>
+                      {item.crossModule ? (
+                        <SidebarMenuButton
+                          className="[&>svg]:text-primary [&>easier-icon]:text-primary group-data-[collapsible=icon]:size-10! [&>svg]:size-4 [&>easier-icon]:size-4"
+                          tooltip={t(item.labelKey)}
+                          isActive={isActive}
+                          onClick={() => handleCrossModuleClick(item.href)}
+                        >
                           <item.icon variant="stroke" />
                           <span>{t(item.labelKey)}</span>
-                        </Link>
-                      </SidebarMenuButton>
+                        </SidebarMenuButton>
+                      ) : (
+                        <SidebarMenuButton
+                          className="[&>svg]:text-primary [&>easier-icon]:text-primary group-data-[collapsible=icon]:size-10! [&>svg]:size-4 [&>easier-icon]:size-4"
+                          tooltip={t(item.labelKey)}
+                          isActive={isActive}
+                          asChild
+                        >
+                          <Link to={item.href} onClick={closeMobile}>
+                            <item.icon variant="stroke" />
+                            <span>{t(item.labelKey)}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      )}
                     </SidebarMenuItem>
                   );
                 })}
@@ -272,6 +329,35 @@ export function AppSidebar() {
             )}
         </div>
       )}
+
+      <Dialog open={pendingNavHref !== null} onOpenChange={(open) => { if (!open) handleCrossModuleCancel(); }}>
+        <DialogContent hideClose>
+          <DialogHeader>
+            <DialogTitle>{t("crossModuleDialog.title")}</DialogTitle>
+            <DialogDescription className="whitespace-pre-line">
+              {t("crossModuleDialog.description")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="cross-module-dont-show"
+              checked={dontShowAgain}
+              onCheckedChange={(checked) => setDontShowAgain(!!checked)}
+            />
+            <label htmlFor="cross-module-dont-show" className="cursor-pointer text-sm">
+              {t("crossModuleDialog.dontShowAgain")}
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCrossModuleCancel}>
+              {t("common.cancel")}
+            </Button>
+            <Button onClick={handleCrossModuleConfirm}>
+              {t("crossModuleDialog.confirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

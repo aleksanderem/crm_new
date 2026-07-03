@@ -1109,6 +1109,37 @@ export const create = action({
 
     const now = Date.now();
     const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+
+    // Self-heal: if the organization row is missing from Supabase (can happen
+    // for orgs created before the Supabase migration or during a failed async
+    // sync), upsert it now so the gabinet_appointments FK constraint doesn't fire.
+    const client = db.raw();
+    const { data: existingOrg } = await client
+      .from("organizations")
+      .select("id")
+      .eq("id", orgIdStr)
+      .maybeSingle();
+    if (!existingOrg) {
+      const org = await ctx.runQuery(internal.supabase.backfill._getOrganization, {
+        organizationId: orgIdStr,
+      });
+      if (org) {
+        await client.from("organizations").upsert(
+          {
+            id: orgIdStr,
+            name: org.name,
+            slug: org.slug,
+            owner_id: String(org.ownerId),
+            logo: org.logo ?? null,
+            website: org.website ?? null,
+            created_at: org.createdAt ?? now,
+            updated_at: org.updatedAt ?? now,
+          },
+          { onConflict: "id" },
+        );
+      }
+    }
 
     // --- Past-time guard (issue #1414) ---
     // Reject appointments whose start is already in the past unless the

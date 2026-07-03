@@ -128,6 +128,10 @@ export const getMyOrganizations = query({
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
       .collect();
 
+    // Sort most-recently-joined first so the UI picks the right org on login
+    // when a user belongs to multiple orgs (e.g. their own + an invited org).
+    memberships.sort((a, b) => b.joinedAt - a.joinedAt);
+
     const orgs = await Promise.all(
       memberships.map(async (m) => {
         const org = await ctx.db.get(m.organizationId);

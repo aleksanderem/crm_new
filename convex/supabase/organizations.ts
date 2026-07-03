@@ -189,8 +189,75 @@ export const writeTeamMembershipToSupabase = internalAction({
     joinedAt: v.number(),
   },
   returns: v.object({ success: v.boolean(), id: v.string() }),
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
     const client = createServiceRoleClient();
+
+    // Self-heal: writeUserToSupabase, writeOrganizationToSupabase, and
+    // writeTeamMembershipToSupabase are all scheduled with runAfter(0) from
+    // org.create / completeOnboarding / invitations._acceptInternal. If this
+    // action fires first, either FK may not exist yet. Ensure both parent rows
+    // are present before attempting the team_memberships upsert.
+    const { data: existingUser } = await client
+      .from("users")
+      .select("id")
+      .eq("id", args.userId)
+      .maybeSingle();
+    if (!existingUser) {
+      const user = await ctx.runQuery(internal.supabase.backfill._getUser, {
+        userId: args.userId,
+      });
+      if (user) {
+        await client.from("users").upsert(
+          {
+            id: user._id,
+            name: user.name ?? null,
+            username: user.username ?? null,
+            image_storage_id: user.imageId ?? null,
+            image: user.image ?? null,
+            email: user.email ?? null,
+            email_verification_time: user.emailVerificationTime ?? null,
+            phone: user.phone ?? null,
+            phone_verification_time: user.phoneVerificationTime ?? null,
+            is_anonymous: user.isAnonymous ?? false,
+            customer_id: user.customerId ?? null,
+            language: user.language ?? null,
+            theme: user.theme ?? null,
+            timezone: user.timezone ?? null,
+            created_at: Math.floor(user._creationTime),
+            updated_at: Math.floor(user._creationTime),
+          },
+          { onConflict: "id" },
+        );
+      }
+    }
+
+    const { data: existingOrg } = await client
+      .from("organizations")
+      .select("id")
+      .eq("id", args.organizationId)
+      .maybeSingle();
+    if (!existingOrg) {
+      const org = await ctx.runQuery(
+        internal.supabase.backfill._getOrganization,
+        { organizationId: args.organizationId },
+      );
+      if (org) {
+        await client.from("organizations").upsert(
+          {
+            id: String(org._id),
+            name: org.name,
+            slug: org.slug,
+            owner_id: String(org.ownerId),
+            logo: org.logo ?? null,
+            website: org.website ?? null,
+            created_at: org.createdAt ?? Date.now(),
+            updated_at: org.updatedAt ?? Date.now(),
+          },
+          { onConflict: "id" },
+        );
+      }
+    }
+
     const row = {
       id: args.membershipId,
       user_id: args.userId,

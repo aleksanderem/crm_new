@@ -40,6 +40,7 @@ import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { EmployeeForm } from "@/components/forms/employee-form";
 import { EventDialog } from "@/components/gabinet/calendar/event-dialog";
 import { PermissionGate } from "@/hooks/use-permission";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   FlexibleScheduleEditor,
   groupSchedulesIntoPeriods,
@@ -50,10 +51,36 @@ import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-or
 import StatisticsProfitCard from "@/components/shadcn-studio/blocks/statistics-profit-card";
 import StatisticsImpressionCard from "@/components/shadcn-studio/blocks/statistics-impression-card";
 
+function EmployeesIndexSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-7 w-40" />
+        <Skeleton className="h-9 w-28" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Skeleton className="h-28" />
+        <Skeleton className="h-28" />
+        <Skeleton className="h-28" />
+      </div>
+      <Skeleton className="h-10 w-full" />
+      <div className="space-y-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/employees/"
 )({
-  component: () => <PermissionGate feature="gabinet_employees" action="view"><EmployeesIndex /></PermissionGate>,
+  component: () => (
+    <PermissionGate feature="gabinet_employees" action="view" loadingFallback={<EmployeesIndexSkeleton />}>
+      <EmployeesIndex />
+    </PermissionGate>
+  ),
 });
 
 

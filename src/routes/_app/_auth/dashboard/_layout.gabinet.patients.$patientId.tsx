@@ -76,6 +76,7 @@ import { cn } from "@/lib/utils";
 
 import { useTranslation } from "react-i18next";
 import { usePermission, useRole, PermissionGate } from "@/hooks/use-permission";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PatientPackagesCard } from "@/components/gabinet/patient-packages-card";
 import { PatientTreatmentsCard } from "@/components/gabinet/patient-treatments-card";
 import { PatientPhotosTab } from "@/components/gabinet/patient-photos-tab";
@@ -86,10 +87,24 @@ import { formatPhoneNumber } from "@/lib/phone";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { formatBirthDate } from "@/lib/format-date";
 
+function PatientDetailSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-8 w-64" />
+      <Skeleton className="h-48 w-full" />
+      <Skeleton className="h-48 w-full" />
+    </div>
+  );
+}
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/patients/$patientId",
 )({
-  component: () => <PermissionGate feature="gabinet_patients" action="view"><PatientDetail /></PermissionGate>,
+  component: () => (
+    <PermissionGate feature="gabinet_patients" action="view" loadingFallback={<PatientDetailSkeleton />}>
+      <PatientDetail />
+    </PermissionGate>
+  ),
 });
 
 function PatientDetail() {

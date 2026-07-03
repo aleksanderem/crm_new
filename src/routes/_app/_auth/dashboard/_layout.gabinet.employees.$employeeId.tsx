@@ -90,10 +90,24 @@ import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
 import { PermissionGate, useRole } from "@/hooks/use-permission";
 
+function EmployeeDetailSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-8 w-64" />
+      <Skeleton className="h-48 w-full" />
+      <Skeleton className="h-48 w-full" />
+    </div>
+  );
+}
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/employees/$employeeId"
 )({
-  component: () => <PermissionGate feature="gabinet_employees" action="view"><EmployeeDetail /></PermissionGate>,
+  component: () => (
+    <PermissionGate feature="gabinet_employees" action="view" loadingFallback={<EmployeeDetailSkeleton />}>
+      <EmployeeDetail />
+    </PermissionGate>
+  ),
 });
 
 const ROLES = ["doctor", "cosmetologist", "nurse", "therapist", "receptionist", "manager", "admin", "other"] as const;

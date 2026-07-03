@@ -86,11 +86,28 @@ import { EventDialog } from "@/components/gabinet/calendar/event-dialog";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatAppointmentError } from "@/lib/format-action-error";
 import { PermissionGate } from "@/hooks/use-permission";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function CalendarSkeleton() {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-7 w-32" />
+        <Skeleton className="h-9 w-48" />
+      </div>
+      <Skeleton className="h-[600px] w-full" />
+    </div>
+  );
+}
 
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/calendar/",
 )({
-  component: () => <PermissionGate feature="gabinet_appointments" action="view"><GabinetCalendarPage /></PermissionGate>,
+  component: () => (
+    <PermissionGate feature="gabinet_appointments" action="view" loadingFallback={<CalendarSkeleton />}>
+      <GabinetCalendarPage />
+    </PermissionGate>
+  ),
 });
 
 type ViewMode = "day" | "week" | "month";

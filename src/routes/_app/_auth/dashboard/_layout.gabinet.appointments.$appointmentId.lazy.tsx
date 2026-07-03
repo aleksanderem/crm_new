@@ -107,15 +107,30 @@ import type { AppointmentFullDetailNote } from "@cvx/gabinet/appointments";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { PermissionGate } from "@/hooks/use-permission";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
 
+function AppointmentDetailSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-8 w-64" />
+      <Skeleton className="h-48 w-full" />
+      <Skeleton className="h-48 w-full" />
+    </div>
+  );
+}
+
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId",
 )({
-  component: () => <PermissionGate feature="gabinet_appointments" action="view"><AppointmentDetail /></PermissionGate>,
+  component: () => (
+    <PermissionGate feature="gabinet_appointments" action="view" loadingFallback={<AppointmentDetailSkeleton />}>
+      <AppointmentDetail />
+    </PermissionGate>
+  ),
 });
 
 // All statuses can transition to any other status. Lets staff correct mistakes

@@ -58,11 +58,28 @@ import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 // Route
 // ---------------------------------------------------------------------------
 
+function GabinetDocumentsSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-7 w-40" />
+        <Skeleton className="h-9 w-28" />
+      </div>
+      <Skeleton className="h-10 w-full" />
+      <div className="space-y-2">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/documents/",
 )({
   component: () => (
-    <PermissionGate feature="document_instances" action="view">
+    <PermissionGate feature="document_instances" action="view" loadingFallback={<GabinetDocumentsSkeleton />}>
       <GabinetDocumentsPage />
     </PermissionGate>
   ),

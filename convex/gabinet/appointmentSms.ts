@@ -256,7 +256,7 @@ export const queueConfirmationRequest = internalMutation({
     organizationId: v.id("organizations"),
     appointmentId: v.string(),
     reminderId: v.optional(v.id("appointmentReminders")),
-    trigger: v.optional(v.union(v.literal("reminder"), v.literal("manual"))),
+    trigger: v.optional(v.union(v.literal("reminder"), v.literal("manual"), v.literal("booking"))),
   },
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
@@ -301,9 +301,12 @@ export const queueConfirmationRequest = internalMutation({
     });
     const now = Date.now();
     const correlationKey = `appointment-confirmation:${appointmentId}`;
-    const idempotencyKey = args.reminderId
-      ? `outbound:${args.reminderId}`
-      : `${correlationKey}:${now}`;
+    const idempotencyKey =
+      args.trigger === "booking"
+        ? `outbound:booking:${appointmentId}`
+        : args.reminderId
+          ? `outbound:${args.reminderId}`
+          : `${correlationKey}:${now}`;
 
     const existingEvent = await db
       .query("appointmentSmsEvents")

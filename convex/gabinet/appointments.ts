@@ -1037,10 +1037,10 @@ export const _createSideEffects = internalMutation({
           apptDate: string,
           apptStartTime: string,
           hoursAhead: number,
-        ) => {
+        ): Promise<boolean> => {
           const appointmentMs = new Date(`${apptDate}T${apptStartTime}:00`).getTime();
           const reminderMs = appointmentMs - hoursAhead * 60 * 60 * 1000;
-          if (reminderMs <= Date.now()) return;
+          if (reminderMs <= Date.now()) return false;
           const reminderId = await ctx.db.insert("appointmentReminders", {
             organizationId: args.organizationId,
             appointmentId: apptId as any,
@@ -1054,10 +1054,14 @@ export const _createSideEffects = internalMutation({
             internal.gabinet.appointmentReminders.sendReminder,
             { reminderId },
           );
+          return true;
         };
 
+        let baseApptScheduled = 0;
         for (const hours of timingsHours) {
-          await scheduleReminderFor(args.appointmentId, args.date, args.startTime, hours);
+          if (await scheduleReminderFor(args.appointmentId, args.date, args.startTime, hours)) {
+            baseApptScheduled++;
+          }
           for (const recur of recurringAppointments) {
             await scheduleReminderFor(
               recur.appointmentId,
@@ -1065,6 +1069,24 @@ export const _createSideEffects = internalMutation({
               recur.startTime ?? args.startTime,
               hours,
             );
+          }
+        }
+
+        // Short-notice appointment: all configured reminder slots are in the past.
+        // Send an immediate booking confirmation SMS so the patient still gets notified.
+        if (timingsHours.length > 0 && baseApptScheduled === 0 && args.patientPhone) {
+          const needSms = has4ToggleConfig
+            ? Boolean(
+                (apptOverrides.sms48h !== undefined ? apptOverrides.sms48h : supaOrgSettings?.reminderSms48h) ||
+                (apptOverrides.sms24h !== undefined ? apptOverrides.sms24h : supaOrgSettings?.reminderSms24h)
+              )
+            : true;
+          if (needSms) {
+            await ctx.runMutation(internal.gabinet.appointmentSms.queueConfirmationRequest, {
+              organizationId: args.organizationId,
+              appointmentId: args.appointmentId,
+              trigger: "booking",
+            });
           }
         }
       } catch (e) {

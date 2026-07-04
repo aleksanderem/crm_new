@@ -58,6 +58,39 @@ describe("extractFieldValidationDetail", () => {
     expect(extractFieldValidationDetail("Some other error")).toBeNull();
   });
 
+  it("extracts column name from FK constraint with standard Postgres naming (issue #2673)", () => {
+    const detail = extractFieldValidationDetail(
+      'insert or update on table "category_definitions" violates foreign key constraint "category_definitions_organization_id_fkey"',
+    );
+    expect(detail).toEqual({
+      rawField: "organization_id",
+      fieldLabel: "Organizacja",
+      reason: "powiązany rekord nie istnieje",
+    });
+  });
+
+  it("extracts column name from FK constraint for gabinet tables (issue #2673)", () => {
+    for (const constraint of [
+      "products_organization_id_fkey",
+      "gabinet_locations_organization_id_fkey",
+      "gabinet_equipment_organization_id_fkey",
+      "gabinet_treatments_organization_id_fkey",
+    ]) {
+      const detail = extractFieldValidationDetail(
+        `violates foreign key constraint "${constraint}"`,
+      );
+      expect(detail?.rawField).toBe("organization_id");
+      expect(detail?.fieldLabel).toBe("Organizacja");
+    }
+  });
+
+  it("returns null for FK constraint whose column cannot be parsed (issue #2673)", () => {
+    const detail = extractFieldValidationDetail(
+      'violates foreign key constraint "some_unknown_table_unknown_col_fkey"',
+    );
+    expect(detail).toBeNull();
+  });
+
   it("extracts field from Convex 'Validator error: Missing required field' (issue #1941)", () => {
     const detail = extractFieldValidationDetail(
       "Validator error: Missing required field `name` in object",

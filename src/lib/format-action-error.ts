@@ -129,11 +129,28 @@ export function extractFieldValidationDetail(
 
   // Postgres: violates foreign key constraint "X" — happens when a referenced
   // row (e.g. selected package, category) no longer exists.
+  // Constraint names follow Postgres convention: <table>_<column>_fkey.
+  // We strip the suffix and look up the column name so users never see raw
+  // SQL constraint identifiers in the UI (issue #2673).
   const fkCon = msg.match(/violates foreign key constraint "([^"]+)"/i);
   if (fkCon) {
+    const constraintName = fkCon[1];
+    const withoutSuffix = constraintName.replace(/_fkey$/i, "");
+    const knownCols = Object.keys(COLUMN_LABEL_MAP).sort(
+      (a, b) => b.length - a.length,
+    );
+    const matchedCol = knownCols.find(
+      (col) => withoutSuffix.endsWith(`_${col}`) || withoutSuffix === col,
+    );
+    if (!matchedCol) {
+      // Cannot identify the column from the constraint name — return null so
+      // the caller falls back to the generic save-failed message instead of
+      // leaking the raw constraint name.
+      return null;
+    }
     return {
-      rawField: fkCon[1],
-      fieldLabel: humanFieldLabel(fkCon[1]),
+      rawField: matchedCol,
+      fieldLabel: humanFieldLabel(matchedCol),
       reason: "powiązany rekord nie istnieje",
     };
   }
@@ -348,6 +365,7 @@ export function formatAppointmentError(
   t: TFunction,
   fallback: { key: string; defaultValue: string },
 ): string {
+  console.error("[formatAppointmentError]", err);
   const inner = extractActionErrorMessage(err);
   for (const entry of APPOINTMENT_ERROR_MAP) {
     if (entry.test(inner)) {
@@ -410,6 +428,7 @@ export function formatTreatmentError(
   t: TFunction,
   fallback: { key: string; defaultValue: string },
 ): string {
+  console.error("[formatTreatmentError]", err);
   const inner = extractActionErrorMessage(err);
   for (const entry of TREATMENT_ERROR_MAP) {
     if (entry.test(inner)) {
@@ -530,6 +549,7 @@ export function formatActionError(
   t: TFunction,
   fallback: { key: string; defaultValue: string },
 ): string {
+  console.error("[formatActionError]", err);
   const inner = extractActionErrorMessage(err);
   for (const entry of GENERIC_ERROR_MAP) {
     if (entry.test(inner)) {

@@ -14,7 +14,6 @@ import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import {
-  extractActionErrorMessage,
   formatActionError,
   formatAppointmentError,
 } from "@/lib/format-action-error";
@@ -553,6 +552,12 @@ export function AppointmentDialog({
   });
   const availableSlots = slotsResult?.slots;
   const noSlotsReason = slotsResult?.reason;
+
+  useEffect(() => {
+    if (slotsErrored && slotsError) {
+      console.error("[appointment-dialog] slots load failed", slotsError);
+    }
+  }, [slotsErrored, slotsError]);
 
   // Rooms query — enabled only when a location is selected
   const getLocationAction = useAction(api.gabinet.locations.getLocation);
@@ -1718,16 +1723,12 @@ export function AppointmentDialog({
                       // Issue #1429.
                       <div
                         role="alert"
-                        className="py-8 text-center space-y-1.5 px-3"
+                        className="py-8 text-center px-3"
                       >
                         <p className="text-sm font-medium text-destructive">
                           {t(
                             "gabinet.appointments.calendarDialog.slotsLoadError",
                           )}
-                        </p>
-                        <p className="text-xs text-muted-foreground break-words">
-                          {extractActionErrorMessage(slotsError) ||
-                            String((slotsError as Error)?.message ?? "")}
                         </p>
                       </div>
                     ) : availableSlots && availableSlots.length > 0 ? (

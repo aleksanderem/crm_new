@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import {
   extractActionErrorMessage,
+  formatActionError,
   formatAppointmentError,
 } from "@/lib/format-action-error";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
@@ -743,12 +744,12 @@ export function AppointmentDialog({
         setAddPatientOpen(false);
         toast.success(t("gabinet.patients.created", { defaultValue: "Klient utworzony" }));
       } catch (e) {
-        const inner = extractActionErrorMessage(e);
+        console.error("[appointment-dialog] create patient failed", e);
         toast.error(
-          inner ||
-            t("gabinet.patients.errors.createFailed", {
-              defaultValue: "Nie udało się utworzyć klienta.",
-            }),
+          formatActionError(e, t, {
+            key: "gabinet.patients.errors.createFailed",
+            defaultValue: "Nie udało się utworzyć klienta.",
+          }),
         );
       } finally {
         setCreatingPatient(false);

@@ -11,7 +11,7 @@ import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatPhoneNumber } from "@/lib/phone";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import {
-  extractActionErrorMessage,
+  formatActionError,
   formatAppointmentError,
 } from "@/lib/format-action-error";
 import { Badge } from "@/components/ui/badge";
@@ -515,7 +515,12 @@ export function AppointmentPreviewContent({
       toast.success(t("gabinet.appointmentDetail.phoneAdded"));
     } catch (error) {
       console.error("[appointment-preview] phone save failed", error);
-      toast.error(extractActionErrorMessage(error) || t("common.error"));
+      toast.error(
+        formatActionError(error, t, {
+          key: "common.errors.invalidArguments",
+          defaultValue: "Nie udało się zapisać. Spróbuj ponownie.",
+        }),
+      );
     } finally {
       setSavingPhone(false);
     }

@@ -625,6 +625,62 @@ export const rejectLeave = action({
   },
 });
 
+export const deleteLeave = action({
+  args: {
+    organizationId: v.id("organizations"),
+    leaveId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+    const db = createSupabaseDb();
+
+    const leave = await db.get("gabinetLeaves", args.leaveId);
+    if (!leave || String(leave.organizationId) !== String(args.organizationId)) {
+      throw new Error("Leave not found");
+    }
+
+    // If the leave was approved and had a leave type, reverse the balance deduction
+    if (leave.status === "approved" && leave.leaveTypeId) {
+      const startD = new Date(leave.startDate as string);
+      const endD = new Date(leave.endDate as string);
+      const days = Math.max(1, Math.ceil((endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+      const year = startD.getFullYear();
+
+      const employee = await db.query("gabinetEmployees")
+        .eq("organizationId", String(args.organizationId))
+        .eq("userId", leave.userId as string)
+        .first();
+
+      if (employee) {
+        const balance = await db.query("gabinetLeaveBalances")
+          .eq("organizationId", String(args.organizationId))
+          .eq("employeeId", employee._id as string)
+          .eq("leaveTypeId", leave.leaveTypeId as string)
+          .eq("year", year)
+          .first();
+
+        if (balance) {
+          await db.patch("gabinetLeaveBalances", balance._id as string, {
+            usedDays: Math.max(0, (balance.usedDays as number) - days),
+            updatedAt: Date.now(),
+          });
+        }
+      }
+    }
+
+    await db.delete("gabinetLeaves", args.leaveId);
+  },
+});
+
 export const getLeavesByDateRange = action({
   args: {
     organizationId: v.id("organizations"),

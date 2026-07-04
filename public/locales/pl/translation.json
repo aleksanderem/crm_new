@@ -2819,13 +2819,18 @@
       },
       "approve": "Zatwierdź",
       "reject": "Odrzuć",
+      "delete": "Usuń",
+      "deleted": "Wniosek urlopowy usunięty",
       "confirmApproveTitle": "Zatwierdź wniosek urlopowy",
       "confirmApproveDesc": "Czy na pewno chcesz zatwierdzić ten wniosek urlopowy? Pracownik zostanie powiadomiony.",
       "confirmRejectTitle": "Odrzuć wniosek urlopowy",
       "confirmRejectDesc": "Czy na pewno chcesz odrzucić ten wniosek urlopowy? Pracownik zostanie powiadomiony.",
+      "confirmDeleteTitle": "Usuń wniosek urlopowy",
+      "confirmDeleteDesc": "Czy na pewno chcesz usunąć ten wniosek urlopowy? Tej operacji nie można cofnąć.",
       "errors": {
         "createFailed": "Nie udało się utworzyć wniosku urlopowego.",
-        "statusChangeFailed": "Nie udało się zaktualizować statusu wniosku urlopowego."
+        "statusChangeFailed": "Nie udało się zaktualizować statusu wniosku urlopowego.",
+        "deleteFailed": "Nie udało się usunąć wniosku urlopowego."
       }
     },
     "employees": {

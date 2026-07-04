@@ -2798,13 +2798,18 @@
       },
       "approve": "Approve",
       "reject": "Reject",
+      "delete": "Delete",
+      "deleted": "Leave request deleted",
       "confirmApproveTitle": "Approve Leave Request",
       "confirmApproveDesc": "Are you sure you want to approve this leave request? The employee will be notified.",
       "confirmRejectTitle": "Reject Leave Request",
       "confirmRejectDesc": "Are you sure you want to reject this leave request? The employee will be notified.",
+      "confirmDeleteTitle": "Delete Leave Request",
+      "confirmDeleteDesc": "Are you sure you want to delete this leave request? This action cannot be undone.",
       "errors": {
         "createFailed": "Could not create the leave request.",
-        "statusChangeFailed": "Could not update the leave request status."
+        "statusChangeFailed": "Could not update the leave request status.",
+        "deleteFailed": "Could not delete the leave request."
       }
     },
     "employees": {

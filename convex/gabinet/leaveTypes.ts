@@ -239,6 +239,11 @@ export const getBalances = action({
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "view" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     return await db
@@ -260,6 +265,11 @@ export const getAllBalances = action({
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "view" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     return await db

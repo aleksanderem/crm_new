@@ -21,7 +21,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Id } from "@cvx/_generated/dataModel";
 import { formatActionError } from "@/lib/format-action-error";
-import { PermissionGate } from "@/hooks/use-permission";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function LeaveTypesSettingsSkeleton() {
@@ -47,6 +47,7 @@ export const Route = createFileRoute(
 function LeaveTypesSettings() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const { allowed: canEdit } = usePermission("gabinet_settings", "edit");
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -84,6 +85,7 @@ function LeaveTypesSettings() {
           <SectionHeader.Heading className="flex-1">
             {t("gabinet.leaveTypes.title")}
           </SectionHeader.Heading>
+          {canEdit && (
           <SectionHeader.Actions>
             <div className="flex gap-2">
               <Button variant="outline" onClick={handleInitBalances}>
@@ -95,6 +97,7 @@ function LeaveTypesSettings() {
               </Button>
             </div>
           </SectionHeader.Actions>
+          )}
         </SectionHeader.Group>
         <UntitledAlert>{t("gabinet.leaveTypes.description")}</UntitledAlert>
       </SectionHeader.Root>
@@ -133,6 +136,7 @@ function LeaveTypesSettings() {
                   <Badge variant="outline">{t("common.inactive")}</Badge>
                 )}
               </div>
+              {canEdit && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -141,6 +145,7 @@ function LeaveTypesSettings() {
               >
                 <Pencil className="h-4 w-4" variant="stroke" />
               </Button>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -171,9 +176,7 @@ function LeaveTypesSettings() {
             void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLeaveTypes.list(organizationId) });
             setEditingId(null);
           }}
-          onDelete={async () => {
-            setDeleteDialogOpen(true);
-          }}
+          onDelete={canEdit ? async () => { setDeleteDialogOpen(true); } : undefined}
           t={t}
         />
       )}

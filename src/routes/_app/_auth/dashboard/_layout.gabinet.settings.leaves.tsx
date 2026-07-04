@@ -47,7 +47,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
-import { PermissionGate } from "@/hooks/use-permission";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type LeavesNudgeFilter = "pending";
@@ -90,6 +90,7 @@ function LeavesPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const { nudge: nudgeFilter } = useSearch({ from: Route.id });
+  const { allowed: canManageLeaves } = usePermission("gabinet_settings", "edit");
   const routeNavigate = useNavigate();
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const createLeave = useAction(api.gabinet.scheduling.createLeave);
@@ -254,6 +255,7 @@ function LeavesPage() {
               {t("gabinet.leaves.title")}
             </SectionHeader.Heading>
             <SectionHeader.Actions>
+              {canManageLeaves && (
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm">
@@ -337,6 +339,7 @@ function LeavesPage() {
                   </div>
                 </DialogContent>
               </Dialog>
+              )}
             </SectionHeader.Actions>
           </SectionHeader.Group>
           <UntitledAlert>{t("gabinet.leaves.description")}</UntitledAlert>
@@ -414,7 +417,7 @@ function LeavesPage() {
                     </Badge>
                   </td>
                   <td className="px-4 py-2 text-right">
-                    {leave.status === "pending" && (
+                    {leave.status === "pending" && canManageLeaves && (
                       <div className="flex justify-end gap-1">
                         <Button size="sm" variant="ghost" onClick={() => handleApprove(leave._id as Id<"gabinetLeaves">)}>
                           <Check className="h-4 w-4 text-green-600" variant="stroke" />

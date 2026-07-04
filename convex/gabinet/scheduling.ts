@@ -487,6 +487,11 @@ export const createLeave = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     const db = createSupabaseDb();
 

@@ -459,6 +459,11 @@ export const listLeaves = action({
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "view" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
     let q = db.query("gabinetLeaves").eq("organizationId", String(args.organizationId));
     if (args.status) {
@@ -631,6 +636,11 @@ export const getLeavesByDateRange = action({
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "view" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
     const leaves = (await db
       .query("gabinetLeaves")

@@ -41,7 +41,7 @@ import {
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { PlateText } from "@/components/plate-text";
 import { Id } from "@cvx/_generated/dataModel";
-import { Plus, Check, X } from "@/lib/ez-icons";
+import { Plus, Check, X, Trash2 } from "@/lib/ez-icons";
 import { AlertTriangle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -98,6 +98,8 @@ function LeavesPage() {
   const approveLeave = useAction(api.gabinet.scheduling.approveLeave);
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const rejectLeave = useAction(api.gabinet.scheduling.rejectLeave);
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+  const deleteLeave = useAction(api.gabinet.scheduling.deleteLeave);
   const queryClient = useQueryClient();
 
   const [statusFilter, setStatusFilter] = useState<string>(
@@ -123,6 +125,7 @@ function LeavesPage() {
 
   const [confirmLeaveId, setConfirmLeaveId] = useState<Id<"gabinetLeaves"> | null>(null);
   const [confirmAction, setConfirmAction] = useState<"approve" | "reject" | null>(null);
+  const [deleteLeaveId, setDeleteLeaveId] = useState<Id<"gabinetLeaves"> | null>(null);
 
   // Existing appointments overlapping the requested leave range — warn the
   // user there are bookings they need to deal with before approving. Issue #652.
@@ -229,6 +232,24 @@ function LeavesPage() {
     } finally {
       setConfirmLeaveId(null);
       setConfirmAction(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteLeaveId) return;
+    try {
+      await deleteLeave({ organizationId, leaveId: deleteLeaveId });
+      toast.success(t("gabinet.leaves.deleted"));
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLeaves.all });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.leaves.errors.deleteFailed",
+          defaultValue: "Nie udało się usunąć wniosku urlopowego.",
+        }),
+      );
+    } finally {
+      setDeleteLeaveId(null);
     }
   };
 
@@ -417,13 +438,20 @@ function LeavesPage() {
                     </Badge>
                   </td>
                   <td className="px-4 py-2 text-right">
-                    {leave.status === "pending" && canManageLeaves && (
+                    {canManageLeaves && (
                       <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => handleApprove(leave._id as Id<"gabinetLeaves">)}>
-                          <Check className="h-4 w-4 text-green-600" variant="stroke" />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleReject(leave._id as Id<"gabinetLeaves">)}>
-                          <X className="h-4 w-4 text-red-600" variant="stroke" />
+                        {leave.status === "pending" && (
+                          <>
+                            <Button size="sm" variant="ghost" onClick={() => handleApprove(leave._id as Id<"gabinetLeaves">)}>
+                              <Check className="h-4 w-4 text-green-600" variant="stroke" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleReject(leave._id as Id<"gabinetLeaves">)}>
+                              <X className="h-4 w-4 text-red-600" variant="stroke" />
+                            </Button>
+                          </>
+                        )}
+                        <Button size="sm" variant="ghost" onClick={() => setDeleteLeaveId(leave._id as Id<"gabinetLeaves">)}>
+                          <Trash2 className="h-4 w-4 text-muted-foreground" variant="stroke" />
                         </Button>
                       </div>
                     )}
@@ -486,6 +514,28 @@ function LeavesPage() {
               className={confirmAction === "reject" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : undefined}
             >
               {confirmAction === "approve" ? t("gabinet.leaves.approve") : t("gabinet.leaves.reject")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={!!deleteLeaveId}
+        onOpenChange={(open) => {
+          if (!open) setDeleteLeaveId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("gabinet.leaves.confirmDeleteTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("gabinet.leaves.confirmDeleteDesc")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("gabinet.leaves.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

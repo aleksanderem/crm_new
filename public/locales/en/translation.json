@@ -2761,11 +2761,26 @@
     "reminders": {
       "title": "Appointment Reminders",
       "description": "Configure automatic reminders sent before appointments",
+      "sectionSms": "SMS",
+      "sectionEmail": "Email",
+      "sms48h": "SMS 48 hours before appointment",
+      "sms48hDesc": "Send an SMS to the client 48 hours before the appointment",
+      "sms24h": "SMS 24 hours before appointment",
+      "sms24hDesc": "Send an SMS to the client 24 hours before the appointment",
+      "email48h": "Email 48 hours before appointment",
+      "email48hDesc": "Send an email to the client 48 hours before the appointment",
+      "email24h": "Email 24 hours before appointment",
+      "email24hDesc": "Send an email to the client 24 hours before the appointment",
+      "noContactWarning": "A reminder will be skipped if the client has no phone number (SMS) or email address (email).",
+      "saved": "Reminder settings saved",
+      "appointmentSection": "Reminders",
+      "appointmentDescription": "Defaults from clinic settings. You can override for this appointment.",
+      "noPhone": "Client has no phone number — SMS will not be sent",
+      "noEmail": "Client has no email address — email will not be sent",
       "enabled": "Enable reminders",
       "enabledDescription": "Automatically send reminders about upcoming appointments",
       "hoursBefore": "Hours before appointment",
-      "hoursBeforeDescription": "How many hours before the appointment to send the reminder",
-      "saved": "Reminder settings saved"
+      "hoursBeforeDescription": "How many hours before the appointment to send the reminder"
     },
     "leaves": {
       "title": "Leave Management",

@@ -157,6 +157,58 @@ export const sendReminder = internalMutation({
       : "Klient";
     const treatmentName = (treatment?.name as string) ?? "Wizyta";
 
+    // Resolve per-channel settings from org settings + per-appointment overrides.
+    // Org settings are read from Supabase (primary store). Per-appointment overrides
+    // are stored as JSON on the appointment and take priority.
+    const orgSettings = await db.query("orgSettings")
+      .eq("organizationId", String(reminder.organizationId))
+      .first();
+
+    let apptOverrides: Record<string, boolean> = {};
+    if (appointment.reminderOverrides) {
+      try { apptOverrides = JSON.parse(String(appointment.reminderOverrides)); } catch {}
+    }
+
+    const appointmentMs = new Date(
+      `${appointment.date}T${appointment.startTime}:00`,
+    ).getTime();
+    const reminderHoursAhead = Math.round(
+      (appointmentMs - (reminder.scheduledFor as number)) / (60 * 60 * 1000),
+    );
+
+    // Determine timing slot: >=36h ahead means this is a 48h-slot reminder.
+    const is48h = reminderHoursAhead >= 36;
+
+    // Check if 4-toggle mode is active (any channel setting explicitly configured).
+    const orgS = orgSettings as Record<string, unknown> | null;
+    const has4ToggleConfig =
+      orgS?.reminderSms48h !== null && orgS?.reminderSms48h !== undefined ||
+      orgS?.reminderSms24h !== null && orgS?.reminderSms24h !== undefined ||
+      orgS?.reminderEmail48h !== null && orgS?.reminderEmail48h !== undefined ||
+      orgS?.reminderEmail24h !== null && orgS?.reminderEmail24h !== undefined ||
+      Object.keys(apptOverrides).length > 0;
+
+    let sendSms = true;
+    let sendEmail = true;
+
+    if (has4ToggleConfig) {
+      if (is48h) {
+        sendSms = apptOverrides.sms48h !== undefined
+          ? apptOverrides.sms48h
+          : Boolean(orgS?.reminderSms48h ?? false);
+        sendEmail = apptOverrides.email48h !== undefined
+          ? apptOverrides.email48h
+          : Boolean(orgS?.reminderEmail48h ?? false);
+      } else {
+        sendSms = apptOverrides.sms24h !== undefined
+          ? apptOverrides.sms24h
+          : Boolean(orgS?.reminderSms24h ?? false);
+        sendEmail = apptOverrides.email24h !== undefined
+          ? apptOverrides.email24h
+          : Boolean(orgS?.reminderEmail24h ?? false);
+      }
+    }
+
     // Send in-app notification to the employee assigned to the appointment
     await createNotificationDirect(ctx, {
       organizationId: reminder.organizationId as Id<"organizations">,
@@ -179,10 +231,8 @@ export const sendReminder = internalMutation({
       });
     }
 
-    // Send appointment reminder email if patient has email.
-    // Pick the event type that matches the configured lead time so it
-    // resolves against the seeded gabinet.appointment.reminder_* bindings.
-    if (patient?.email) {
+    // Send appointment reminder email if enabled for this timing and patient has email.
+    if (sendEmail && patient?.email) {
       // appointment.employeeId references users(id), not gabinetEmployees(id),
       // so query the gabinet profile by userId and fall back to the linked user.
       const employeeUserId = String(appointment.employeeId);
@@ -202,18 +252,14 @@ export const sendReminder = internalMutation({
         (employeeUser?.email as string | undefined) ??
         "Specjalista";
 
-      const appointmentMs = new Date(
-        `${appointment.date}T${appointment.startTime}:00`,
-      ).getTime();
-      const reminderHoursAhead = Math.round(
-        (appointmentMs - (reminder.scheduledFor as number)) / (60 * 60 * 1000),
-      );
       const reminderEventType =
-        reminderHoursAhead === 24
-          ? "gabinet.appointment.reminder_24h"
-          : reminderHoursAhead === 1
-            ? "gabinet.appointment.reminder_1h"
-            : "gabinet.appointment.reminder_custom";
+        reminderHoursAhead === 48
+          ? "gabinet.appointment.reminder_48h"
+          : reminderHoursAhead === 24
+            ? "gabinet.appointment.reminder_24h"
+            : reminderHoursAhead === 1
+              ? "gabinet.appointment.reminder_1h"
+              : "gabinet.appointment.reminder_custom";
 
       await ctx.runMutation(internal.emailEventTrigger.triggerEmailEvent, {
         organizationId: reminder.organizationId as Id<"organizations">,
@@ -258,8 +304,8 @@ export const sendReminder = internalMutation({
       occurredAt: Date.now(),
     });
 
-    // Queue appointment confirmation SMS if patient has phone
-    if (patient?.phone) {
+    // Queue appointment confirmation SMS if enabled for this timing and patient has phone
+    if (sendSms && patient?.phone) {
       await ctx.runMutation(internal.gabinet.appointmentSms.queueConfirmationRequest, {
         organizationId: reminder.organizationId as Id<"organizations">,
         appointmentId: appointment._id as Id<"gabinetAppointments">,

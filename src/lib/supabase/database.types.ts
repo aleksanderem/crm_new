@@ -526,6 +526,10 @@ export interface Database {
           resource_sharing_enabled: boolean | null;
           reminder_enabled: boolean | null;
           reminder_hours_before: number | null;
+          reminder_sms_48h: boolean | null;
+          reminder_sms_24h: boolean | null;
+          reminder_email_48h: boolean | null;
+          reminder_email_24h: boolean | null;
           appointment_workflow_config: string | null;
           created_at: number;
           updated_at: number;
@@ -540,6 +544,10 @@ export interface Database {
           resource_sharing_enabled?: boolean | null;
           reminder_enabled?: boolean | null;
           reminder_hours_before?: number | null;
+          reminder_sms_48h?: boolean | null;
+          reminder_sms_24h?: boolean | null;
+          reminder_email_48h?: boolean | null;
+          reminder_email_24h?: boolean | null;
           appointment_workflow_config?: string | null;
           created_at: number;
           updated_at: number;
@@ -554,6 +562,10 @@ export interface Database {
           resource_sharing_enabled?: boolean | null;
           reminder_enabled?: boolean | null;
           reminder_hours_before?: number | null;
+          reminder_sms_48h?: boolean | null;
+          reminder_sms_24h?: boolean | null;
+          reminder_email_48h?: boolean | null;
+          reminder_email_24h?: boolean | null;
           appointment_workflow_config?: string | null;
           created_at?: number;
           updated_at?: number;
@@ -4678,6 +4690,7 @@ export interface Database {
           scheduled_activity_id: string | null;
           reminder_sent_at: number | null;
           send_reminder: boolean | null;
+          reminder_overrides: string | null;
           cancelled_at: number | null;
           cancelled_by: string | null;
           cancellation_reason: string | null;
@@ -4724,6 +4737,7 @@ export interface Database {
           scheduled_activity_id?: string | null;
           reminder_sent_at?: number | null;
           send_reminder?: boolean | null;
+          reminder_overrides?: string | null;
           cancelled_at?: number | null;
           cancelled_by?: string | null;
           cancellation_reason?: string | null;
@@ -4770,6 +4784,7 @@ export interface Database {
           scheduled_activity_id?: string | null;
           reminder_sent_at?: number | null;
           send_reminder?: boolean | null;
+          reminder_overrides?: string | null;
           cancelled_at?: number | null;
           cancelled_by?: string | null;
           cancellation_reason?: string | null;

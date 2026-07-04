@@ -552,6 +552,11 @@ export function createCrmTables({
     // Appointment reminder settings
     reminderEnabled: v.optional(v.boolean()),
     reminderHoursBefore: v.optional(v.number()), // default 24
+    // Per-channel/per-timing reminder toggles (issue #2685)
+    reminderSms48h: v.optional(v.boolean()),
+    reminderSms24h: v.optional(v.boolean()),
+    reminderEmail48h: v.optional(v.boolean()),
+    reminderEmail24h: v.optional(v.boolean()),
     appointmentWorkflowConfig: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),

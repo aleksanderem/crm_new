@@ -2782,11 +2782,26 @@
     "reminders": {
       "title": "Przypomnienia o wizytach",
       "description": "Konfiguruj automatyczne przypomnienia wysyłane przed wizytami",
+      "sectionSms": "SMS",
+      "sectionEmail": "E-mail",
+      "sms48h": "SMS 48 godzin przed wizytą",
+      "sms48hDesc": "Wyślij SMS do klienta 48 godzin przed wizytą",
+      "sms24h": "SMS 24 godziny przed wizytą",
+      "sms24hDesc": "Wyślij SMS do klienta 24 godziny przed wizytą",
+      "email48h": "E-mail 48 godzin przed wizytą",
+      "email48hDesc": "Wyślij e-mail do klienta 48 godzin przed wizytą",
+      "email24h": "E-mail 24 godziny przed wizytą",
+      "email24hDesc": "Wyślij e-mail do klienta 24 godziny przed wizytą",
+      "noContactWarning": "Przypomnienie zostanie pominięte, jeśli klient nie ma numeru telefonu (SMS) lub adresu e-mail (e-mail).",
+      "saved": "Ustawienia przypomnień zapisane",
+      "appointmentSection": "Przypomnienia",
+      "appointmentDescription": "Domyślnie na podstawie ustawień gabinetu. Możesz zmienić dla tej wizyty.",
+      "noPhone": "Klient nie ma numeru telefonu — SMS nie zostanie wysłany",
+      "noEmail": "Klient nie ma adresu e-mail — e-mail nie zostanie wysłany",
       "enabled": "Włącz przypomnienia",
       "enabledDescription": "Automatycznie wysyłaj przypomnienia o nadchodzących wizytach",
       "hoursBefore": "Godziny przed wizytą",
-      "hoursBeforeDescription": "Ile godzin przed wizytą wysłać przypomnienie",
-      "saved": "Ustawienia przypomnień zapisane"
+      "hoursBeforeDescription": "Ile godzin przed wizytą wysłać przypomnienie"
     },
     "leaves": {
       "title": "Zarządzanie urlopami",

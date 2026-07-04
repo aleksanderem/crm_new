@@ -887,6 +887,7 @@ export const _createSideEffects = internalMutation({
     isRecurring: v.boolean(),
     recurringGroupId: v.optional(v.string()),
     sendReminder: v.boolean(),
+    reminderOverrides: v.optional(v.string()), // JSON: per-appointment channel overrides
     createdBy: v.string(),
     createdAt: v.number(),
     // Resolved names for calendar title
@@ -989,19 +990,56 @@ export const _createSideEffects = internalMutation({
     // --- 6. Schedule reminders (inline — avoid DB read since appointment is in Supabase) ---
     if (args.sendReminder) {
       try {
-        const orgSettings = await ctx.db
-          .query("orgSettings")
-          .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-          .unique();
-        const reminderHours = (orgSettings as any)?.reminderHoursBefore ?? 24;
+        // Read org settings from Supabase (primary store) to get 4-toggle channel config.
+        const remDb = createSupabaseDb();
+        const supaOrgSettings = await remDb.query("orgSettings")
+          .eq("organizationId", String(args.organizationId))
+          .first() as Record<string, unknown> | null;
+
+        // Parse per-appointment overrides from dialog.
+        let apptOverrides: Record<string, boolean> = {};
+        if (args.reminderOverrides) {
+          try { apptOverrides = JSON.parse(args.reminderOverrides); } catch {}
+        }
+
+        // Determine which timings to schedule based on merged settings.
+        // If no 4-toggle settings exist (legacy orgs), fall back to single 24h reminder.
+        const has4ToggleConfig =
+          supaOrgSettings?.reminderSms48h !== null && supaOrgSettings?.reminderSms48h !== undefined ||
+          supaOrgSettings?.reminderSms24h !== null && supaOrgSettings?.reminderSms24h !== undefined ||
+          supaOrgSettings?.reminderEmail48h !== null && supaOrgSettings?.reminderEmail48h !== undefined ||
+          supaOrgSettings?.reminderEmail24h !== null && supaOrgSettings?.reminderEmail24h !== undefined ||
+          Object.keys(apptOverrides).length > 0;
+
+        let timingsHours: number[];
+        if (has4ToggleConfig) {
+          timingsHours = [];
+          const need48h =
+            (apptOverrides.sms48h !== undefined ? apptOverrides.sms48h : Boolean(supaOrgSettings?.reminderSms48h)) ||
+            (apptOverrides.email48h !== undefined ? apptOverrides.email48h : Boolean(supaOrgSettings?.reminderEmail48h));
+          const need24h =
+            (apptOverrides.sms24h !== undefined ? apptOverrides.sms24h : Boolean(supaOrgSettings?.reminderSms24h)) ||
+            (apptOverrides.email24h !== undefined ? apptOverrides.email24h : Boolean(supaOrgSettings?.reminderEmail24h));
+          if (need48h) timingsHours.push(48);
+          if (need24h) timingsHours.push(24);
+        } else {
+          // Legacy: single reminder at configured hours (default 24)
+          const orgSettings = await ctx.db
+            .query("orgSettings")
+            .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+            .unique();
+          const reminderHours = (orgSettings as any)?.reminderHoursBefore ?? 24;
+          timingsHours = [reminderHours];
+        }
 
         const scheduleReminderFor = async (
           apptId: string,
           apptDate: string,
           apptStartTime: string,
+          hoursAhead: number,
         ) => {
           const appointmentMs = new Date(`${apptDate}T${apptStartTime}:00`).getTime();
-          const reminderMs = appointmentMs - reminderHours * 60 * 60 * 1000;
+          const reminderMs = appointmentMs - hoursAhead * 60 * 60 * 1000;
           if (reminderMs <= Date.now()) return;
           const reminderId = await ctx.db.insert("appointmentReminders", {
             organizationId: args.organizationId,
@@ -1018,13 +1056,16 @@ export const _createSideEffects = internalMutation({
           );
         };
 
-        await scheduleReminderFor(args.appointmentId, args.date, args.startTime);
-        for (const recur of recurringAppointments) {
-          await scheduleReminderFor(
-            recur.appointmentId,
-            recur.date,
-            recur.startTime ?? args.startTime,
-          );
+        for (const hours of timingsHours) {
+          await scheduleReminderFor(args.appointmentId, args.date, args.startTime, hours);
+          for (const recur of recurringAppointments) {
+            await scheduleReminderFor(
+              recur.appointmentId,
+              recur.date,
+              recur.startTime ?? args.startTime,
+              hours,
+            );
+          }
         }
       } catch (e) {
         console.warn("Reminder scheduling failed (non-fatal):", e);
@@ -1076,6 +1117,7 @@ export const create = action({
     prepaymentAmount: v.optional(v.number()),
     packageUsageId: v.optional(v.string()),
     sendReminder: v.optional(v.boolean()),
+    reminderOverrides: v.optional(v.string()), // JSON: per-appointment channel overrides
     locationId: v.optional(v.string()),
     roomId: v.optional(v.string()),
     tagIds: v.optional(v.array(v.string())),
@@ -1256,6 +1298,7 @@ export const create = action({
       prepaymentStatus: args.prepaymentRequired ? "pending" : null,
       packageUsageId: resolvedPackageUsageId ?? null,
       sendReminder: shouldSendReminder,
+      reminderOverrides: args.reminderOverrides ?? null,
       locationId: resolvedLocationId ?? null,
       roomId: args.roomId ?? null,
       tagIds: args.tagIds ?? null,
@@ -1396,6 +1439,7 @@ export const create = action({
           isRecurring,
           recurringGroupId,
           sendReminder: shouldSendReminder,
+          reminderOverrides: args.reminderOverrides,
           createdBy: String(authResult.userId),
           createdAt: now,
           patientName,

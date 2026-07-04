@@ -16,6 +16,10 @@ export interface MappedOrgSettings {
   resourceSharingEnabled?: boolean;
   reminderEnabled?: boolean;
   reminderHoursBefore?: number;
+  reminderSms48h?: boolean;
+  reminderSms24h?: boolean;
+  reminderEmail48h?: boolean;
+  reminderEmail24h?: boolean;
   appointmentWorkflowConfig?: string;
   createdAt: number;
   updatedAt: number;

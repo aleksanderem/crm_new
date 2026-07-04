@@ -27,7 +27,8 @@ function IntegrationsSettings() {
       toast.success(t("integrations.connected"));
       window.history.replaceState({}, "", window.location.pathname);
     } else if (error) {
-      toast.error(`${t("integrations.notConnected")}: ${error}`);
+      console.error("[integrations] OAuth callback error:", error);
+      toast.error(t("integrations.oauthError"));
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, [success, error, t]);

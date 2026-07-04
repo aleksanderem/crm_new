@@ -86,8 +86,39 @@ export const earnPoints = action({
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const now = Date.now();
     const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
 
-    const loyalty = await getOrCreateLoyalty(db, String(args.organizationId), args.patientId);
+    // Self-heal: if the organization row is missing from Supabase (can happen
+    // for orgs created before the Supabase migration or during a failed async
+    // sync), upsert it now so the gabinet_loyalty_points FK constraint doesn't fire.
+    const client = db.raw();
+    const { data: existingOrg } = await client
+      .from("organizations")
+      .select("id")
+      .eq("id", orgIdStr)
+      .maybeSingle();
+    if (!existingOrg) {
+      const org = await ctx.runQuery(internal.supabase.backfill._getOrganization, {
+        organizationId: orgIdStr,
+      });
+      if (org) {
+        await client.from("organizations").upsert(
+          {
+            id: orgIdStr,
+            name: org.name,
+            slug: org.slug,
+            owner_id: String(org.ownerId),
+            logo: org.logo ?? null,
+            website: org.website ?? null,
+            created_at: org.createdAt ?? now,
+            updated_at: org.updatedAt ?? now,
+          },
+          { onConflict: "id" },
+        );
+      }
+    }
+
+    const loyalty = await getOrCreateLoyalty(db, orgIdStr, args.patientId);
     const newBalance = (loyalty!.balance as number) + args.points;
     const newLifetimeEarned = (loyalty!.lifetimeEarned as number) + args.points;
 
@@ -98,7 +129,7 @@ export const earnPoints = action({
     });
 
     await db.insert("gabinetLoyaltyTransactions", {
-      organizationId: String(args.organizationId),
+      organizationId: orgIdStr,
       patientId: args.patientId,
       type: "earn",
       points: args.points,
@@ -129,8 +160,38 @@ export const spendPoints = action({
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const now = Date.now();
     const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
 
-    const loyalty = await getOrCreateLoyalty(db, String(args.organizationId), args.patientId);
+    // Self-heal: if the organization row is missing from Supabase, upsert it now
+    // so the gabinet_loyalty_transactions FK constraint doesn't fire.
+    const clientSpend = db.raw();
+    const { data: existingOrgSpend } = await clientSpend
+      .from("organizations")
+      .select("id")
+      .eq("id", orgIdStr)
+      .maybeSingle();
+    if (!existingOrgSpend) {
+      const org = await ctx.runQuery(internal.supabase.backfill._getOrganization, {
+        organizationId: orgIdStr,
+      });
+      if (org) {
+        await clientSpend.from("organizations").upsert(
+          {
+            id: orgIdStr,
+            name: org.name,
+            slug: org.slug,
+            owner_id: String(org.ownerId),
+            logo: org.logo ?? null,
+            website: org.website ?? null,
+            created_at: org.createdAt ?? now,
+            updated_at: org.updatedAt ?? now,
+          },
+          { onConflict: "id" },
+        );
+      }
+    }
+
+    const loyalty = await getOrCreateLoyalty(db, orgIdStr, args.patientId);
     if ((loyalty!.balance as number) < args.points) throw new Error("Insufficient loyalty points");
 
     const newBalance = (loyalty!.balance as number) - args.points;
@@ -143,7 +204,7 @@ export const spendPoints = action({
     });
 
     await db.insert("gabinetLoyaltyTransactions", {
-      organizationId: String(args.organizationId),
+      organizationId: orgIdStr,
       patientId: args.patientId,
       type: "spend",
       points: args.points,
@@ -172,8 +233,38 @@ export const adjustPoints = action({
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const now = Date.now();
     const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
 
-    const loyalty = await getOrCreateLoyalty(db, String(args.organizationId), args.patientId);
+    // Self-heal: if the organization row is missing from Supabase, upsert it now
+    // so the gabinet_loyalty_transactions FK constraint doesn't fire.
+    const clientAdjust = db.raw();
+    const { data: existingOrgAdjust } = await clientAdjust
+      .from("organizations")
+      .select("id")
+      .eq("id", orgIdStr)
+      .maybeSingle();
+    if (!existingOrgAdjust) {
+      const org = await ctx.runQuery(internal.supabase.backfill._getOrganization, {
+        organizationId: orgIdStr,
+      });
+      if (org) {
+        await clientAdjust.from("organizations").upsert(
+          {
+            id: orgIdStr,
+            name: org.name,
+            slug: org.slug,
+            owner_id: String(org.ownerId),
+            logo: org.logo ?? null,
+            website: org.website ?? null,
+            created_at: org.createdAt ?? now,
+            updated_at: org.updatedAt ?? now,
+          },
+          { onConflict: "id" },
+        );
+      }
+    }
+
+    const loyalty = await getOrCreateLoyalty(db, orgIdStr, args.patientId);
     const newBalance = (loyalty!.balance as number) + args.points;
     const newLifetimeEarned = args.points > 0
       ? (loyalty!.lifetimeEarned as number) + args.points
@@ -190,7 +281,7 @@ export const adjustPoints = action({
     });
 
     await db.insert("gabinetLoyaltyTransactions", {
-      organizationId: String(args.organizationId),
+      organizationId: orgIdStr,
       patientId: args.patientId,
       type: "adjust",
       points: args.points,

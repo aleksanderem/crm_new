@@ -79,6 +79,38 @@ export const addLocation = action({
       if (existing) return String(existing._id);
 
       const makePrimary = args.isPrimary ?? false;
+      const orgIdStr = String(args.organizationId);
+      const now = Date.now();
+
+      // Self-heal: if the organization row is missing from Supabase (can happen
+      // for orgs created before the Supabase migration or during a failed async
+      // sync), upsert it now so the gabinet_employee_locations FK constraint doesn't fire.
+      const client = db.raw();
+      const { data: existingOrg } = await client
+        .from("organizations")
+        .select("id")
+        .eq("id", orgIdStr)
+        .maybeSingle();
+      if (!existingOrg) {
+        const org = await ctx.runQuery(internal.supabase.backfill._getOrganization, {
+          organizationId: orgIdStr,
+        });
+        if (org) {
+          await client.from("organizations").upsert(
+            {
+              id: orgIdStr,
+              name: org.name,
+              slug: org.slug,
+              owner_id: String(org.ownerId),
+              logo: org.logo ?? null,
+              website: org.website ?? null,
+              created_at: org.createdAt ?? now,
+              updated_at: org.updatedAt ?? now,
+            },
+            { onConflict: "id" },
+          );
+        }
+      }
 
       // If this should become primary, clear any existing primary for this employee.
       if (makePrimary) {
@@ -95,11 +127,11 @@ export const addLocation = action({
       }
 
       const grantId = await db.insert("gabinetEmployeeLocations", {
-        organizationId: String(args.organizationId),
+        organizationId: orgIdStr,
         employeeId: args.employeeId,
         locationId: args.locationId,
         isPrimary: makePrimary,
-        createdAt: Date.now(),
+        createdAt: now,
       });
 
       return grantId;

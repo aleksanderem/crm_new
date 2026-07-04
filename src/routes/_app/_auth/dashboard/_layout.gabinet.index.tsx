@@ -391,7 +391,7 @@ function GabinetDashboard() {
         <Button asChild variant="outline" className="justify-start gap-2 h-auto py-3 px-3">
           <Link to="/dashboard/gabinet/calendar" search={{ action: "create-appointment" }}>
             <Plus className="size-4 shrink-0 text-muted-foreground" />
-            {t("gabinet.dashboard.addAppointment", "Dodaj wizytę")}
+            {t("gabinet.dashboard.addAppointment", "Umów wizytę")}
           </Link>
         </Button>
         <Button asChild variant="outline" className="justify-start gap-2 h-auto py-3 px-3">

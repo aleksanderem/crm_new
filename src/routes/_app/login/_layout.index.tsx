@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Route as OnboardingUsernameRoute } from "@/routes/_app/_auth/onboarding/_layout.username";
 import { Route as DashboardRoute } from "@/routes/_app/_auth/dashboard/_layout.index";
+import { Route as GabinetRoute } from "@/routes/_app/_auth/dashboard/_layout.gabinet.index";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery, useConvexAuth } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
@@ -80,7 +81,7 @@ function Login() {
       navigate({ to: OnboardingUsernameRoute.fullPath, replace: true });
       return;
     }
-    navigate({ to: DashboardRoute.fullPath, replace: true });
+    navigate({ to: GabinetRoute.fullPath, replace: true });
   }, [isLoading, isAuthenticated, user, navigate, inviteToken]);
 
   // Optional banner rendered above every step when in invite flow

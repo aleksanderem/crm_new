@@ -10,6 +10,7 @@ import { formatPhoneNumber } from "@/lib/phone";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
 import { useSupabaseGabinetEquipmentList } from "@/hooks/use-supabase-gabinet-equipment";
+import { useSupabaseOrgSettings } from "@/hooks/use-supabase-organizations";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -43,6 +44,7 @@ import { RichTextEditor, plateJsonToText } from "@/components/gabinet/rich-text-
 import { Avatar as UntitledAvatar } from "@untitled/base/avatar/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -101,6 +103,7 @@ import {
   Stethoscope,
   MapPin,
   Building2,
+  Clock,
 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import type { AppointmentFullDetailNote } from "@cvx/gabinet/appointments";
@@ -359,6 +362,13 @@ function AppointmentDetail() {
   const [treatmentSearch, setTreatmentSearch] = useState("");
   const [isSavingScheduling, setIsSavingScheduling] = useState(false);
 
+  // Reminder channel overrides — editable inline on this page
+  const [editReminderSms48h, setEditReminderSms48h] = useState(false);
+  const [editReminderSms24h, setEditReminderSms24h] = useState(false);
+  const [editReminderEmail48h, setEditReminderEmail48h] = useState(false);
+  const [editReminderEmail24h, setEditReminderEmail24h] = useState(false);
+  const [isSavingReminders, setIsSavingReminders] = useState(false);
+
   const { tags: tagDefinitions } = useTagDefinitions(organizationId);
 
 
@@ -517,6 +527,8 @@ function AppointmentDetail() {
     }),
   );
 
+  const { data: orgSettings } = useSupabaseOrgSettings(organizationId as string);
+
   // Equipment list used to surface parameter units on the Documentation tab —
   // when the appointment's treatment lists required equipment, the editor
   // pre-fills the unit field with that equipment's catalog. See #1847.
@@ -567,6 +579,24 @@ function AppointmentDetail() {
   useEffect(() => {
     setTagIds((detail?.appointment.tagIds as Id<"tagDefinitions">[] | undefined) ?? []);
   }, [detail?.appointment._id, detail?.appointment.tagIds]);
+
+  // Seed reminder toggles from per-appointment overrides (falling back to org defaults).
+  // Uses a ref guard so user edits are not overwritten by query refetches.
+  const reminderInitRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!detail || !orgSettings) return;
+    if (reminderInitRef.current === detail.appointment._id) return;
+    reminderInitRef.current = detail.appointment._id;
+    const appt = detail.appointment as Record<string, unknown>;
+    let overrides: Record<string, boolean> = {};
+    if (appt.reminderOverrides) {
+      try { overrides = JSON.parse(String(appt.reminderOverrides)); } catch {}
+    }
+    setEditReminderSms48h("sms48h" in overrides ? overrides.sms48h : (orgSettings.reminderSms48h ?? false));
+    setEditReminderSms24h("sms24h" in overrides ? overrides.sms24h : (orgSettings.reminderSms24h ?? false));
+    setEditReminderEmail48h("email48h" in overrides ? overrides.email48h : (orgSettings.reminderEmail48h ?? false));
+    setEditReminderEmail24h("email24h" in overrides ? overrides.email24h : (orgSettings.reminderEmail24h ?? false));
+  }, [detail, orgSettings]);
 
   // Initialize body chart data from appointment
   useEffect(() => {
@@ -1248,6 +1278,30 @@ function AppointmentDetail() {
     }
   };
 
+  const handleSaveReminders = async () => {
+    setIsSavingReminders(true);
+    try {
+      await updateAppointment({
+        organizationId,
+        appointmentId: appointment._id,
+        reminderOverrides: JSON.stringify({
+          sms48h: editReminderSms48h,
+          sms24h: editReminderSms24h,
+          email48h: editReminderEmail48h,
+          email24h: editReminderEmail24h,
+        }),
+      });
+      await invalidateAppointmentCaches();
+      refetch();
+      toast.success(t("gabinet.reminders.saved"));
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
+    } finally {
+      setIsSavingReminders(false);
+    }
+  };
+
   // Group notes by parent for threading
   const rootNotes = notes.filter((n) => !n.parentNoteId);
   const getReplies = (noteId: string) =>
@@ -1699,6 +1753,75 @@ function AppointmentDetail() {
                   </div>
                 );
               })()}
+            </CardContent>
+          </Card>
+
+          {/* Reminders Card */}
+          <Card>
+            <CardHeader className="px-6 py-3 border-b">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Clock className="h-4 w-4" variant="stroke" />
+                {t("gabinet.reminders.appointmentSection")}
+              </CardTitle>
+              <CardDescription className="text-xs">
+                {t("gabinet.reminders.appointmentDescription")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 px-6 py-4">
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("gabinet.reminders.sectionSms")}</p>
+                <Label className="-mx-1 flex min-h-9 select-none items-center gap-2.5 rounded-md px-1 py-1 text-sm cursor-pointer hover:bg-accent/40">
+                  <Checkbox
+                    checked={editReminderSms48h}
+                    onCheckedChange={(v) => setEditReminderSms48h(v === true)}
+                    disabled={!patient?.phone}
+                  />
+                  <span className={!patient?.phone ? "text-muted-foreground" : ""}>{t("gabinet.reminders.sms48h")}</span>
+                </Label>
+                <Label className="-mx-1 flex min-h-9 select-none items-center gap-2.5 rounded-md px-1 py-1 text-sm cursor-pointer hover:bg-accent/40">
+                  <Checkbox
+                    checked={editReminderSms24h}
+                    onCheckedChange={(v) => setEditReminderSms24h(v === true)}
+                    disabled={!patient?.phone}
+                  />
+                  <span className={!patient?.phone ? "text-muted-foreground" : ""}>{t("gabinet.reminders.sms24h")}</span>
+                </Label>
+                {patient && !patient.phone && (
+                  <p className="text-xs text-muted-foreground">{t("gabinet.reminders.noPhone")}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("gabinet.reminders.sectionEmail")}</p>
+                <Label className="-mx-1 flex min-h-9 select-none items-center gap-2.5 rounded-md px-1 py-1 text-sm cursor-pointer hover:bg-accent/40">
+                  <Checkbox
+                    checked={editReminderEmail48h}
+                    onCheckedChange={(v) => setEditReminderEmail48h(v === true)}
+                    disabled={!patient?.email}
+                  />
+                  <span className={!patient?.email ? "text-muted-foreground" : ""}>{t("gabinet.reminders.email48h")}</span>
+                </Label>
+                <Label className="-mx-1 flex min-h-9 select-none items-center gap-2.5 rounded-md px-1 py-1 text-sm cursor-pointer hover:bg-accent/40">
+                  <Checkbox
+                    checked={editReminderEmail24h}
+                    onCheckedChange={(v) => setEditReminderEmail24h(v === true)}
+                    disabled={!patient?.email}
+                  />
+                  <span className={!patient?.email ? "text-muted-foreground" : ""}>{t("gabinet.reminders.email24h")}</span>
+                </Label>
+                {patient && !patient.email && (
+                  <p className="text-xs text-muted-foreground">{t("gabinet.reminders.noEmail")}</p>
+                )}
+              </div>
+              <div className="flex justify-end pt-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSaveReminders}
+                  disabled={isSavingReminders}
+                >
+                  {isSavingReminders ? t("common.saving") : t("common.save")}
+                </Button>
+              </div>
             </CardContent>
           </Card>
 

@@ -6,9 +6,9 @@ import { useSupabaseOrgSettings } from "@/hooks/use-supabase-organizations";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -19,8 +19,8 @@ function ReminderSettingsSkeleton() {
   return (
     <div className="space-y-4">
       <Skeleton className="h-7 w-48" />
-      <Skeleton className="h-32 w-full" />
-      <Skeleton className="h-32 w-full" />
+      <Skeleton className="h-40 w-full" />
+      <Skeleton className="h-40 w-full" />
     </div>
   );
 }
@@ -35,6 +35,45 @@ export const Route = createFileRoute(
   ),
 });
 
+interface ChannelConfig {
+  sms48h: boolean;
+  sms24h: boolean;
+  email48h: boolean;
+  email24h: boolean;
+}
+
+function ChannelToggle({
+  id,
+  label,
+  description,
+  checked,
+  onCheckedChange,
+  disabled,
+}: {
+  id: string;
+  label: string;
+  description: string;
+  checked: boolean;
+  onCheckedChange: (v: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <Checkbox
+        id={id}
+        checked={checked}
+        onCheckedChange={(v) => onCheckedChange(v === true)}
+        disabled={disabled}
+        className="mt-0.5"
+      />
+      <div className="grid gap-1 leading-none">
+        <Label htmlFor={id}>{label}</Label>
+        <p className="text-muted-foreground text-sm">{description}</p>
+      </div>
+    </div>
+  );
+}
+
 function ReminderSettings() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
@@ -43,27 +82,37 @@ function ReminderSettings() {
 
   const { data: orgSettings } = useSupabaseOrgSettings(organizationId);
 
-  const [enabled, setEnabled] = useState(false);
-  const [hoursBefore, setHoursBefore] = useState(24);
+  const [config, setConfig] = useState<ChannelConfig>({
+    sms48h: false,
+    sms24h: false,
+    email48h: false,
+    email24h: false,
+  });
 
   useEffect(() => {
     if (orgSettings) {
-      setEnabled(orgSettings.reminderEnabled ?? false);
-      setHoursBefore(orgSettings.reminderHoursBefore ?? 24);
+      setConfig({
+        sms48h: orgSettings.reminderSms48h ?? false,
+        sms24h: orgSettings.reminderSms24h ?? false,
+        email48h: orgSettings.reminderEmail48h ?? false,
+        email24h: orgSettings.reminderEmail24h ?? false,
+      });
     }
   }, [orgSettings]);
 
+  const toggle = (key: keyof ChannelConfig) => (value: boolean) => {
+    setConfig((prev) => ({ ...prev, [key]: value }));
+  };
+
   const handleSave = async () => {
-    if (hoursBefore < 1 || hoursBefore > 168) {
-      toast.error(t("gabinet.reminders.hoursBeforeDescription"));
-      return;
-    }
     setSaving(true);
     try {
       await upsertSettings({
         organizationId,
-        reminderEnabled: enabled,
-        reminderHoursBefore: hoursBefore,
+        reminderSms48h: config.sms48h,
+        reminderSms24h: config.sms24h,
+        reminderEmail48h: config.email48h,
+        reminderEmail24h: config.email24h,
       });
       toast.success(t("gabinet.reminders.saved"));
     } catch (e) {
@@ -86,42 +135,47 @@ function ReminderSettings() {
       </SectionHeader.Root>
 
       <div className="max-w-lg space-y-6">
-        <div className="flex items-start gap-3">
-          <Checkbox
-            id="reminderEnabled"
-            checked={enabled}
-            onCheckedChange={(checked) => setEnabled(checked === true)}
+        <div className="space-y-4">
+          <p className="text-sm font-medium">{t("gabinet.reminders.sectionSms")}</p>
+          <ChannelToggle
+            id="sms48h"
+            label={t("gabinet.reminders.sms48h")}
+            description={t("gabinet.reminders.sms48hDesc")}
+            checked={config.sms48h}
+            onCheckedChange={toggle("sms48h")}
           />
-          <div className="grid gap-1 leading-none">
-            <Label htmlFor="reminderEnabled">
-              {t("gabinet.reminders.enabled")}
-            </Label>
-            <p className="text-muted-foreground text-sm">
-              {t("gabinet.reminders.enabledDescription")}
-            </p>
-          </div>
+          <ChannelToggle
+            id="sms24h"
+            label={t("gabinet.reminders.sms24h")}
+            description={t("gabinet.reminders.sms24hDesc")}
+            checked={config.sms24h}
+            onCheckedChange={toggle("sms24h")}
+          />
         </div>
 
-        {enabled && (
-          <div className="space-y-2">
-            <Label htmlFor="hoursBefore">
-              {t("gabinet.reminders.hoursBefore")}
-            </Label>
-            <Input
-              id="hoursBefore"
-              type="number"
-              inputMode="numeric"
-              className="w-32"
-              min={1}
-              max={168}
-              value={hoursBefore}
-              onChange={(e) => setHoursBefore(Number(e.target.value))}
-            />
-            <p className="text-muted-foreground text-xs">
-              {t("gabinet.reminders.hoursBeforeDescription")}
-            </p>
-          </div>
-        )}
+        <Separator />
+
+        <div className="space-y-4">
+          <p className="text-sm font-medium">{t("gabinet.reminders.sectionEmail")}</p>
+          <ChannelToggle
+            id="email48h"
+            label={t("gabinet.reminders.email48h")}
+            description={t("gabinet.reminders.email48hDesc")}
+            checked={config.email48h}
+            onCheckedChange={toggle("email48h")}
+          />
+          <ChannelToggle
+            id="email24h"
+            label={t("gabinet.reminders.email24h")}
+            description={t("gabinet.reminders.email24hDesc")}
+            checked={config.email24h}
+            onCheckedChange={toggle("email24h")}
+          />
+        </div>
+
+        <p className="text-muted-foreground text-xs">
+          {t("gabinet.reminders.noContactWarning")}
+        </p>
 
         <div className="flex justify-end">
           <Button onClick={handleSave} disabled={saving}>

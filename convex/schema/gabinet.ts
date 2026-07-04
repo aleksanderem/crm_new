@@ -458,6 +458,7 @@ export function createGabinetTables({
     scheduledActivityId: v.optional(v.string()),
     reminderSentAt: v.optional(v.number()),
     sendReminder: v.optional(v.boolean()),
+    reminderOverrides: v.optional(v.string()), // JSON: {sms48h?,sms24h?,email48h?,email24h?}
     cancelledAt: v.optional(v.number()),
     cancelledBy: v.optional(v.id("users")),
     cancellationReason: v.optional(v.string()),

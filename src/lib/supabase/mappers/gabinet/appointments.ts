@@ -36,6 +36,7 @@ export interface MappedGabinetAppointment {
   scheduledActivityId?: string;
   reminderSentAt?: number;
   sendReminder?: boolean;
+  reminderOverrides?: string;
   cancelledAt?: number;
   cancelledBy?: string;
   cancellationReason?: string;

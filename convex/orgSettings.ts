@@ -29,6 +29,10 @@ export const upsert = action({
     timezone: v.optional(v.string()),
     reminderEnabled: v.optional(v.boolean()),
     reminderHoursBefore: v.optional(v.number()),
+    reminderSms48h: v.optional(v.boolean()),
+    reminderSms24h: v.optional(v.boolean()),
+    reminderEmail48h: v.optional(v.boolean()),
+    reminderEmail24h: v.optional(v.boolean()),
     appointmentWorkflowConfig: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -52,6 +56,10 @@ export const upsert = action({
       if (args.timezone !== undefined) updates.timezone = args.timezone;
       if (args.reminderEnabled !== undefined) updates.reminderEnabled = args.reminderEnabled;
       if (args.reminderHoursBefore !== undefined) updates.reminderHoursBefore = args.reminderHoursBefore;
+      if (args.reminderSms48h !== undefined) updates.reminderSms48h = args.reminderSms48h;
+      if (args.reminderSms24h !== undefined) updates.reminderSms24h = args.reminderSms24h;
+      if (args.reminderEmail48h !== undefined) updates.reminderEmail48h = args.reminderEmail48h;
+      if (args.reminderEmail24h !== undefined) updates.reminderEmail24h = args.reminderEmail24h;
       if (args.appointmentWorkflowConfig !== undefined) updates.appointmentWorkflowConfig = args.appointmentWorkflowConfig;
 
       await db.patch("orgSettings", existing._id as string, updates);
@@ -66,6 +74,10 @@ export const upsert = action({
       timezone: args.timezone ?? null,
       reminderEnabled: args.reminderEnabled ?? null,
       reminderHoursBefore: args.reminderHoursBefore ?? null,
+      reminderSms48h: args.reminderSms48h ?? null,
+      reminderSms24h: args.reminderSms24h ?? null,
+      reminderEmail48h: args.reminderEmail48h ?? null,
+      reminderEmail24h: args.reminderEmail24h ?? null,
       appointmentWorkflowConfig: args.appointmentWorkflowConfig ?? null,
       createdAt: now,
       updatedAt: now,

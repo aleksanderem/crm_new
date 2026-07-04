@@ -8,7 +8,13 @@ import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
-import { Plus, Trash2 } from "@/lib/ez-icons";
+import { Plus, Trash2, MoreHorizontal } from "@/lib/ez-icons";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -94,6 +100,18 @@ function SchedulingSettings() {
     );
   };
 
+  const copyHoursTo = (sourceDayOfWeek: number, target: "weekdays" | "all") => {
+    const src = hours.find((h) => h.dayOfWeek === sourceDayOfWeek);
+    if (!src) return;
+    setHours((prev) =>
+      prev.map((h) => {
+        const isTarget = target === "all" || (h.dayOfWeek >= 1 && h.dayOfWeek <= 5);
+        if (!isTarget || h.dayOfWeek === sourceDayOfWeek) return h;
+        return { ...h, startTime: src.startTime, endTime: src.endTime, isOpen: src.isOpen, breakStart: src.breakStart, breakEnd: src.breakEnd };
+      }),
+    );
+  };
+
   const validationErrors = hours
     .filter((h) => h.isOpen && h.endTime <= h.startTime)
     .map((h) => dayNames[h.dayOfWeek]);
@@ -164,13 +182,14 @@ function SchedulingSettings() {
         <UntitledAlert>{t("gabinet.scheduling.description")}</UntitledAlert>
       </SectionHeader.Root>
 
-      <div className="rounded-lg border">
-        <div className="grid grid-cols-[180px_80px_1fr_1fr_2fr] gap-2 border-b bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground">
+      <div className="rounded-lg border overflow-x-auto">
+        <div className="grid grid-cols-[180px_80px_1fr_1fr_2fr_32px] gap-2 border-b bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground min-w-[620px]">
           <span>{t("gabinet.scheduling.day")}</span>
           <span>{t("gabinet.scheduling.open")}</span>
           <span>{t("gabinet.scheduling.start")}</span>
           <span>{t("gabinet.scheduling.end")}</span>
           <span>{t("gabinet.schedules.break")}</span>
+          <span />
         </div>
 
         {DISPLAY_ORDER.map((dayOfWeek) => {
@@ -182,7 +201,7 @@ function SchedulingSettings() {
           return (
           <div
             key={h.dayOfWeek}
-            className={`grid grid-cols-[180px_80px_1fr_1fr_2fr] items-center gap-2 border-b px-4 py-2 last:border-b-0 ${hasTimeError || hasBreakError ? "bg-red-50 dark:bg-red-950/20" : ""}`}
+            className={`grid grid-cols-[180px_80px_1fr_1fr_2fr_32px] items-center gap-2 border-b px-4 py-2 last:border-b-0 min-w-[620px] ${hasTimeError || hasBreakError ? "bg-red-50 dark:bg-red-950/20" : ""}`}
           >
             <span className="text-sm font-medium">{dayNames[h.dayOfWeek]}</span>
             <Checkbox
@@ -190,12 +209,14 @@ function SchedulingSettings() {
               onCheckedChange={(checked) => updateDay(h.dayOfWeek, "isOpen", checked as boolean)}
             />
             <TimePicker5Min
+              allowTyping
               className="h-8 w-24"
               value={h.startTime}
               onChange={(v) => updateDay(h.dayOfWeek, "startTime", v)}
               disabled={!h.isOpen}
             />
             <TimePicker5Min
+              allowTyping
               className="h-8 w-24"
               value={h.endTime}
               onChange={(v) => updateDay(h.dayOfWeek, "endTime", v)}
@@ -204,6 +225,7 @@ function SchedulingSettings() {
             {hasBreak ? (
               <div className="flex items-center gap-1">
                 <TimePicker5Min
+                  allowTyping
                   className="h-8 w-24"
                   value={h.breakStart}
                   onChange={(v) => updateDay(h.dayOfWeek, "breakStart", v)}
@@ -211,6 +233,7 @@ function SchedulingSettings() {
                 />
                 <span className="text-xs text-muted-foreground">–</span>
                 <TimePicker5Min
+                  allowTyping
                   className="h-8 w-24"
                   value={h.breakEnd}
                   onChange={(v) => updateDay(h.dayOfWeek, "breakEnd", v)}
@@ -248,6 +271,27 @@ function SchedulingSettings() {
                 {t("gabinet.scheduling.addBreak")}
               </Button>
             )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground"
+                  aria-label={t("gabinet.scheduling.copyHours", "Kopiuj godziny")}
+                >
+                  <MoreHorizontal className="h-4 w-4" variant="stroke" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => copyHoursTo(h.dayOfWeek, "weekdays")}>
+                  {t("gabinet.scheduling.applyToWeekdays", "Zastosuj do dni roboczych")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => copyHoursTo(h.dayOfWeek, "all")}>
+                  {t("gabinet.scheduling.applyToAllDays", "Zastosuj do wszystkich dni")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         );
         })}

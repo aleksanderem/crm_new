@@ -3516,6 +3516,7 @@
       "noAppointmentsToday": "No appointments scheduled today",
       "pendingLeaveRequests": "Pending Leave Requests",
       "noPendingLeaves": "No pending leave requests",
+      "addAppointment": "Book Appointment",
       "goToCalendar": "Open Calendar",
       "goToPatients": "View Clients",
       "goToPackages": "View Packages",

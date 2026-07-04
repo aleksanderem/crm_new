@@ -305,8 +305,40 @@ export const createRoom = action({
     }
 
     const now = Date.now();
+    const orgIdStr = String(args.organizationId);
+
+    // Self-heal: upsert the org row in Supabase if it is missing (can happen
+    // for orgs created before the Supabase migration or during a failed async
+    // sync), so the gabinet_rooms_organization_id_fkey FK doesn't fire.
+    const client = db.raw();
+    const { data: existingOrg } = await client
+      .from("organizations")
+      .select("id")
+      .eq("id", orgIdStr)
+      .maybeSingle();
+    if (!existingOrg) {
+      const org = await ctx.runQuery(internal.supabase.backfill._getOrganization, {
+        organizationId: orgIdStr,
+      });
+      if (org) {
+        await client.from("organizations").upsert(
+          {
+            id: orgIdStr,
+            name: org.name,
+            slug: org.slug,
+            owner_id: String(org.ownerId),
+            logo: org.logo ?? null,
+            website: org.website ?? null,
+            created_at: org.createdAt ?? now,
+            updated_at: org.updatedAt ?? now,
+          },
+          { onConflict: "id" },
+        );
+      }
+    }
+
     const roomId = await db.insert("gabinetRooms", {
-      organizationId: String(args.organizationId),
+      organizationId: orgIdStr,
       locationId: args.locationId,
       name: args.name,
       description: args.description ?? null,

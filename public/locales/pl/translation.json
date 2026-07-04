@@ -2774,7 +2774,10 @@
       "errors": {
         "saveFailed": "Nie udało się zapisać godzin pracy.",
         "deleteFailed": "Nie udało się usunąć harmonogramu."
-      }
+      },
+      "applyToWeekdays": "Zastosuj do dni roboczych",
+      "applyToAllDays": "Zastosuj do wszystkich dni",
+      "copyHours": "Kopiuj godziny"
     },
     "reminders": {
       "title": "Przypomnienia o wizytach",

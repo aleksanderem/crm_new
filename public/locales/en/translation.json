@@ -2753,7 +2753,10 @@
       "errors": {
         "saveFailed": "Could not save working hours.",
         "deleteFailed": "Could not delete the schedule."
-      }
+      },
+      "applyToWeekdays": "Apply to weekdays",
+      "applyToAllDays": "Apply to all days",
+      "copyHours": "Copy hours"
     },
     "reminders": {
       "title": "Appointment Reminders",

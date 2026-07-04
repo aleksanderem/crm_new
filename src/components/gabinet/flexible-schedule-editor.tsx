@@ -19,7 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Clock, Pencil, Plus, Trash2 } from "@/lib/ez-icons";
+import { Clock, Pencil, Plus, Trash2, MoreHorizontal } from "@/lib/ez-icons";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { formatActionError } from "@/lib/format-action-error";
 import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 
@@ -307,6 +313,18 @@ export function FlexibleScheduleEditor({
       prev.map((h) =>
         h.dayOfWeek === dayOfWeek ? { ...h, [field]: value } : h,
       ),
+    );
+  };
+
+  const copyHoursTo = (sourceDayOfWeek: number, target: "weekdays" | "all") => {
+    const src = periodHours.find((h) => h.dayOfWeek === sourceDayOfWeek);
+    if (!src) return;
+    setPeriodHours((prev) =>
+      prev.map((h) => {
+        const isTarget = target === "all" || (h.dayOfWeek >= 1 && h.dayOfWeek <= 5);
+        if (!isTarget || h.dayOfWeek === sourceDayOfWeek) return h;
+        return { ...h, startTime: src.startTime, endTime: src.endTime, isWorking: src.isWorking, breakStart: src.breakStart, breakEnd: src.breakEnd };
+      }),
     );
   };
 
@@ -610,14 +628,15 @@ export function FlexibleScheduleEditor({
             </div>
 
             <div className="overflow-x-auto">
-            <div className="rounded-lg border min-w-[600px]">
-              <div className="grid grid-cols-[180px_50px_1fr_1fr_2fr_1fr] gap-2 border-b bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground">
+            <div className="rounded-lg border min-w-[640px]">
+              <div className="grid grid-cols-[180px_50px_1fr_1fr_2fr_1fr_32px] gap-2 border-b bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground">
                 <span>{t("gabinet.scheduling.day")}</span>
                 <span>{t("gabinet.scheduling.open")}</span>
                 <span>{t("gabinet.scheduling.start")}</span>
                 <span>{t("gabinet.scheduling.end")}</span>
                 <span>{t("gabinet.schedules.break")}</span>
                 <span>{t("gabinet.appointments.location")}</span>
+                <span />
               </div>
 
               {DISPLAY_ORDER.map((dayOfWeek) => {
@@ -627,7 +646,7 @@ export function FlexibleScheduleEditor({
                 return (
                   <div
                     key={h.dayOfWeek}
-                    className="grid grid-cols-[180px_50px_1fr_1fr_2fr_1fr] items-center gap-2 border-b px-3 py-1.5 last:border-b-0"
+                    className="grid grid-cols-[180px_50px_1fr_1fr_2fr_1fr_32px] items-center gap-2 border-b px-3 py-1.5 last:border-b-0"
                   >
                     <div className="flex flex-col gap-0.5">
                       <span className="text-sm font-medium">
@@ -641,6 +660,7 @@ export function FlexibleScheduleEditor({
                       }
                     />
                     <TimePicker5Min
+                      allowTyping
                       stepMinutes={15}
                       className="h-7 w-22"
                       value={h.startTime}
@@ -650,6 +670,7 @@ export function FlexibleScheduleEditor({
                       disabled={!h.isWorking}
                     />
                     <TimePicker5Min
+                      allowTyping
                       stepMinutes={15}
                       className="h-7 w-22"
                       value={h.endTime}
@@ -661,6 +682,7 @@ export function FlexibleScheduleEditor({
                     {hasBreak ? (
                       <div className="flex items-center gap-1">
                         <TimePicker5Min
+                          allowTyping
                           stepMinutes={15}
                           className="h-7 w-22"
                           value={h.breakStart}
@@ -671,6 +693,7 @@ export function FlexibleScheduleEditor({
                         />
                         <span className="text-xs text-muted-foreground">–</span>
                         <TimePicker5Min
+                          allowTyping
                           stepMinutes={15}
                           className="h-7 w-22"
                           value={h.breakEnd}
@@ -738,6 +761,27 @@ export function FlexibleScheduleEditor({
                           ))}
                       </SelectContent>
                     </Select>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground"
+                          aria-label={t("gabinet.scheduling.copyHours", "Kopiuj godziny")}
+                        >
+                          <MoreHorizontal className="h-4 w-4" variant="stroke" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => copyHoursTo(h.dayOfWeek, "weekdays")}>
+                          {t("gabinet.scheduling.applyToWeekdays", "Zastosuj do dni roboczych")}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => copyHoursTo(h.dayOfWeek, "all")}>
+                          {t("gabinet.scheduling.applyToAllDays", "Zastosuj do wszystkich dni")}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 );
               })}

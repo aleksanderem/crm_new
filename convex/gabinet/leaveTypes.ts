@@ -17,6 +17,11 @@ export const list = action({
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "view" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
     let q = db.query("gabinetLeaveTypes").eq("organizationId", String(args.organizationId));
     if (args.activeOnly) {
@@ -36,6 +41,11 @@ export const getById = action({
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_settings", action: "view" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
     const lt = (await db.get("gabinetLeaveTypes", args.leaveTypeId)) as
       | GabinetLeaveTypeRow

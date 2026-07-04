@@ -551,4 +551,58 @@ describe("appointment SMS flow", () => {
       "Cannot transition from completed to confirmed",
     );
   });
+
+  test("queueConfirmationRequest with booking trigger uses stable idempotency key", async () => {
+    const t = createManagedTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(
+      t,
+      organizationId,
+      userId,
+    );
+
+    await setPatientPhone(t, patientId, "500600700");
+    await seedSmsConfig(t, organizationId);
+
+    const appointmentId = await createAppointment(t, identity, {
+      organizationId,
+      patientId,
+      treatmentId,
+      employeeId: userId,
+    });
+
+    // First call with booking trigger
+    const firstEventId = await t.mutation(
+      internal.gabinet.appointmentSms.queueConfirmationRequest,
+      {
+        organizationId,
+        appointmentId,
+        trigger: "booking",
+      },
+    );
+
+    // Second call with same booking trigger — must not create a duplicate
+    const secondEventId = await t.mutation(
+      internal.gabinet.appointmentSms.queueConfirmationRequest,
+      {
+        organizationId,
+        appointmentId,
+        trigger: "booking",
+      },
+    );
+
+    const db = createSupabaseDb();
+    const allEvents = await db
+      .query("appointmentSmsEvents")
+      .eq("appointmentId", appointmentId)
+      .collect();
+    const outboundEvents = allEvents.filter((e) => e.direction === "outbound");
+
+    expect(firstEventId).toBeTruthy();
+    expect(secondEventId).toBe(firstEventId);
+    expect(outboundEvents).toHaveLength(1);
+    expect(outboundEvents[0]?.idempotencyKey).toBe(
+      `outbound:booking:${appointmentId}`,
+    );
+  });
 });

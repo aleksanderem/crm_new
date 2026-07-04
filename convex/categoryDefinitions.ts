@@ -45,6 +45,38 @@ export const create = action({
     if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+    const now = Date.now();
+
+    // Self-heal: if the organization row is missing from Supabase (can happen
+    // for orgs created before the Supabase migration or during a failed async
+    // sync), upsert it now so the category_definitions FK constraint doesn't fire.
+    const client = db.raw();
+    const { data: existingOrg } = await client
+      .from("organizations")
+      .select("id")
+      .eq("id", orgIdStr)
+      .maybeSingle();
+    if (!existingOrg) {
+      const org = await ctx.runQuery(internal.supabase.backfill._getOrganization, {
+        organizationId: orgIdStr,
+      });
+      if (org) {
+        await client.from("organizations").upsert(
+          {
+            id: orgIdStr,
+            name: org.name,
+            slug: org.slug,
+            owner_id: String(org.ownerId),
+            logo: org.logo ?? null,
+            website: org.website ?? null,
+            created_at: org.createdAt ?? now,
+            updated_at: org.updatedAt ?? now,
+          },
+          { onConflict: "id" },
+        );
+      }
+    }
 
     // Validate 2-level constraint
     if (args.parentId) {
@@ -57,7 +89,7 @@ export const create = action({
     // Get next sortOrder within same level
     const siblings = await db
       .query("categoryDefinitions")
-      .eq("organizationId", String(args.organizationId))
+      .eq("organizationId", orgIdStr)
       .eq("entityType", args.entityType)
       .collect();
     const sameLevelSiblings = siblings.filter((c: any) =>
@@ -65,9 +97,8 @@ export const create = action({
     );
     const maxOrder = sameLevelSiblings.reduce((max: number, c: any) => Math.max(max, c.sortOrder ?? 0), -1);
 
-    const now = Date.now();
     const catId = await db.insert("categoryDefinitions", {
-      organizationId: String(args.organizationId),
+      organizationId: orgIdStr,
       entityType: args.entityType,
       name: args.name.trim(),
       parentId: args.parentId ?? null,

@@ -26,7 +26,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Plus, Search, Users, X } from "@/lib/ez-icons";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Plus, Search, Users, X } from "@/lib/ez-icons";
+import { EmptyState } from "@/components/layout/empty-state";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -149,6 +150,7 @@ function GabinetCalendarPage() {
   // Indicate this page has wide content (hides Column 2 on 1024-1400px screens)
   useWideContent(true);
 
+  const [calendarTab, setCalendarTab] = useState<"calendar" | "waitlist">("calendar");
   const [viewMode, setViewMode] = useState<ViewMode>(
     nudgeFilter === "unconfirmed-today" ? "day" : "week",
   );
@@ -1337,6 +1339,49 @@ function GabinetCalendarPage() {
       onDragEnd={handleDragEnd}
     >
       <div className="flex min-h-0 flex-1 flex-col">
+        {/* Top-level tab switcher: Kalendarz | Lista rezerwowa */}
+        <div className="flex shrink-0 border-b bg-background px-4">
+          {(["calendar", "waitlist"] as const).map((tab) => (
+            <button
+              key={tab}
+              className={cn(
+                "border-b-2 px-4 py-2.5 text-sm font-medium transition-colors",
+                calendarTab === tab
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+              onClick={() => setCalendarTab(tab)}
+            >
+              {tab === "calendar"
+                ? t("gabinet.calendar.tab.calendar", "Kalendarz")
+                : t("gabinet.calendar.tab.waitlist", "Lista rezerwowa")}
+            </button>
+          ))}
+        </div>
+
+        {calendarTab === "waitlist" ? (
+          <div className="flex-1 overflow-auto p-6">
+            <EmptyState
+              icon={ClipboardList}
+              title={t("gabinet.waitlist.empty.title", "Lista rezerwowa jest pusta.")}
+              description={t(
+                "gabinet.waitlist.empty.description",
+                "Tutaj będą widoczni klienci oczekujący na wcześniejszy lub dogodny termin.",
+              )}
+              action={
+                <Button
+                  size="sm"
+                  disabled
+                  title={t("gabinet.waitlist.comingSoon", "Funkcja w przygotowaniu")}
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" variant="stroke" />
+                  {t("gabinet.waitlist.addToWaitlist", "Dodaj do listy rezerwowej")}
+                </Button>
+              }
+            />
+          </div>
+        ) : (
+          <>
         {nudgeFilter === "unconfirmed-today" && (
           <div className="flex shrink-0 items-center justify-between border-b border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
             <span>
@@ -1883,6 +1928,8 @@ function GabinetCalendarPage() {
             />
           )}
         </div>
+          </>
+        )}
 
         {/* Create appointment dialog */}
         <AppointmentDialog

@@ -920,12 +920,14 @@ export function AppointmentDialog({
         allowPast: recordWalkIn || undefined,
         allowConflict: hasBookingConflict || undefined,
         sendReminder: anyReminderEnabled,
-        reminderOverrides: JSON.stringify({
-          sms48h: reminderSms48h,
-          sms24h: reminderSms24h,
-          email48h: reminderEmail48h,
-          email24h: reminderEmail24h,
-        }),
+        reminderOverrides: anyReminderEnabled
+          ? JSON.stringify({
+              sms48h: reminderSms48h,
+              sms24h: reminderSms24h,
+              email48h: reminderEmail48h,
+              email24h: reminderEmail24h,
+            })
+          : undefined,
       });
       // Refresh the calendar immediately — Convex actions don't invalidate
       // the Supabase React Query cache automatically.
@@ -969,6 +971,10 @@ export function AppointmentDialog({
     onOpenChange,
     queryClient,
     t,
+    reminderSms48h,
+    reminderSms24h,
+    reminderEmail48h,
+    reminderEmail24h,
   ]);
 
   const handleSubmit = useCallback(() => {

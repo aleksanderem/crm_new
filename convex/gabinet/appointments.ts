@@ -1862,17 +1862,104 @@ export const _updateSideEffects = internalMutation({
       performedBy: actorUserId,
     });
 
+    // A "significant" reschedule is one where the patient's calendar changes:
+    // date, start time, or assigned employee moved. Changing only the end time
+    // (duration) does not affect the patient's arrival time so no client
+    // communication is warranted. Issue #2700.
+    const significantChange =
+      args.newDate !== args.previousDate ||
+      args.newStartTime !== args.previousStartTime ||
+      args.newEmployeeId !== args.previousEmployeeId;
+
+    if (significantChange) {
+      // Buffer 10 minutes before sending the reschedule notification. If the
+      // appointment is edited again within that window the deferred job detects
+      // the stale updatedAt and skips, so only one final message is sent.
+      await ctx.scheduler.runAfter(
+        10 * 60 * 1000,
+        internal.gabinet.appointments._sendRescheduleNotification,
+        {
+          appointmentId: args.appointmentId,
+          organizationId: args.organizationId,
+          updatedAt: args.updatedAt,
+          actorUserId: String(actorUserId),
+          patientId: args.patientId,
+          treatmentId: args.treatmentId,
+          newDate: args.newDate,
+          newStartTime: args.newStartTime,
+          newEndTime: args.newEndTime,
+          newEmployeeId: args.newEmployeeId,
+          newStatus: args.newStatus,
+          previousStatus: args.previousStatus,
+          createdBy: args.createdBy,
+          updatedFields: args.updatedFields,
+        },
+      );
+    } else {
+      await emitAutomationEvent(ctx, {
+        organizationId: args.organizationId,
+        module: "gabinet",
+        eventType: "gabinet.appointment.updated",
+        entityType: "gabinetAppointment",
+        entityId: args.appointmentId,
+        actorUserId,
+        correlationKey: `appointment:${args.appointmentId}`,
+        eventIdempotencyKey: `automation-event:${args.organizationId}:${args.appointmentId}:${args.updatedAt}:updated`,
+        payload: {
+          organizationId: String(args.organizationId),
+          appointmentId: args.appointmentId,
+          patientId: args.patientId,
+          treatmentId: args.treatmentId,
+          employeeId: args.newEmployeeId,
+          date: args.newDate,
+          startTime: args.newStartTime,
+          endTime: args.newEndTime,
+          previousStatus: args.previousStatus,
+          status: args.newStatus,
+          createdBy: args.createdBy,
+          updatedFields: args.updatedFields,
+        },
+      });
+    }
+  },
+});
+
+export const _sendRescheduleNotification = internalMutation({
+  args: {
+    appointmentId: v.string(),
+    organizationId: v.id("organizations"),
+    updatedAt: v.number(),
+    actorUserId: v.string(),
+    patientId: v.string(),
+    treatmentId: v.string(),
+    newDate: v.string(),
+    newStartTime: v.string(),
+    newEndTime: v.string(),
+    newEmployeeId: v.string(),
+    newStatus: v.string(),
+    previousStatus: v.string(),
+    createdBy: v.string(),
+    updatedFields: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const db = createSupabaseDb();
+    const appt = await db.get("gabinetAppointments", args.appointmentId);
+    if (!appt || String(appt.organizationId) !== String(args.organizationId)) return;
+
+    // If the appointment was edited again after this job was scheduled, a newer
+    // _sendRescheduleNotification is already queued. Skip to avoid sending a
+    // stale or duplicate notification.
+    if ((appt.updatedAt as number) !== args.updatedAt) return;
+
     await emitAutomationEvent(ctx, {
       organizationId: args.organizationId,
       module: "gabinet",
-      eventType: args.dateChanged
-        ? "gabinet.appointment.rescheduled"
-        : "gabinet.appointment.updated",
+      eventType: "gabinet.appointment.rescheduled",
       entityType: "gabinetAppointment",
       entityId: args.appointmentId,
-      actorUserId,
+      actorUserId: args.actorUserId as Id<"users">,
       correlationKey: `appointment:${args.appointmentId}`,
-      eventIdempotencyKey: `automation-event:${args.organizationId}:${args.appointmentId}:${args.updatedAt}:${args.dateChanged ? "rescheduled" : "updated"}`,
+      eventIdempotencyKey: `automation-event:${args.organizationId}:${args.appointmentId}:${args.updatedAt}:rescheduled`,
       payload: {
         organizationId: String(args.organizationId),
         appointmentId: args.appointmentId,

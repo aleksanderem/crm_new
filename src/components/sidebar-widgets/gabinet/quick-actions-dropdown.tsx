@@ -22,6 +22,7 @@ import { useSidebarActions } from "@/components/layout/sidebar-context";
 import { usePermission } from "@/hooks/use-permission";
 import { useOrganization } from "@/components/org-context";
 import { SellTreatmentPanel } from "@/components/gabinet/sell-treatment-panel";
+import { AddDeliveryPanel } from "@/components/gabinet/add-delivery-panel";
 
 export function GabinetQuickActionsDropdown() {
   const { t } = useTranslation();
@@ -30,6 +31,7 @@ export function GabinetQuickActionsDropdown() {
   const { allowed: canManageLeaves } = usePermission("gabinet_settings", "edit");
   const { organizationId } = useOrganization();
   const [sellTreatmentOpen, setSellTreatmentOpen] = useState(false);
+  const [addDeliveryOpen, setAddDeliveryOpen] = useState(false);
 
   // "Umów wizytę" routes through the calendar so every appointment entry
   // point opens the same AppointmentDialog (issue #1506).
@@ -98,14 +100,12 @@ export function GabinetQuickActionsDropdown() {
             {t("sidebar.gabinet.addLeave", "Dodaj nieobecność")}
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem className="px-3 py-2.5 text-sm" disabled>
+        <DropdownMenuItem
+          className="px-3 py-2.5 text-sm"
+          onSelect={() => setAddDeliveryOpen(true)}
+        >
           <TruckIcon className="text-foreground size-5 shrink-0" />
-          <span className="flex flex-col gap-0.5">
-            <span>{t("sidebar.gabinet.addDelivery", "Dodaj dostawę")}</span>
-            <span className="text-muted-foreground text-xs font-normal">
-              {t("common.featureInProgress", "Funkcja w przygotowaniu")}
-            </span>
-          </span>
+          {t("sidebar.gabinet.addDelivery", "Dodaj dostawę")}
         </DropdownMenuItem>
         <DropdownMenuItem
           className="px-3 py-2.5 text-sm"
@@ -120,6 +120,11 @@ export function GabinetQuickActionsDropdown() {
       organizationId={organizationId}
       open={sellTreatmentOpen}
       onOpenChange={setSellTreatmentOpen}
+    />
+    <AddDeliveryPanel
+      organizationId={organizationId}
+      open={addDeliveryOpen}
+      onOpenChange={setAddDeliveryOpen}
     />
     </>
   );

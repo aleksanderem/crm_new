@@ -3,30 +3,29 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   CalendarCheck,
   UserPlus,
-  Calendar,
-  Clock,
-  Users,
   Package,
   FileText,
-  Gift,
-  Settings,
-  Stethoscope,
   Plus,
+  ShoppingCart,
+  TruckIcon,
+  TreePalm,
 } from "@/lib/ez-icons";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSidebarActions } from "@/components/layout/sidebar-context";
+import { usePermission } from "@/hooks/use-permission";
 
 export function GabinetQuickActionsDropdown() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { openQuickCreate } = useSidebarActions();
+  const { allowed: canManageLeaves } = usePermission("gabinet_settings", "edit");
+
   // "Umów wizytę" routes through the calendar so every appointment entry
   // point opens the same AppointmentDialog (issue #1506).
   const goToCalendarCreateAppointment = () =>
@@ -70,69 +69,46 @@ export function GabinetQuickActionsDropdown() {
           <UserPlus className="text-foreground size-5" />
           {t("sidebar.gabinet.addPatient", "Dodaj klienta")}
         </DropdownMenuItem>
-        <DropdownMenuItem
-          className="px-3 py-2.5 text-sm"
-          onSelect={() =>
-            navigate({
-              to: "/dashboard/gabinet/calendar",
-              search: { action: "sell-package" },
-            })
-          }
-        >
-          <Gift className="text-foreground size-5" />
-          {t("gabinet.packages.purchaseButton", "Dodaj sprzedaż")}
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-
-        <DropdownMenuItem
-          className="px-3 py-2.5 text-sm"
-          onSelect={() => navigate({ to: "/dashboard/gabinet/calendar" })}
-        >
-          <Calendar className="text-foreground size-5" />
-          {t("sidebar.gabinet.goToCalendar", "Kalendarz")}
+        <DropdownMenuItem className="px-3 py-2.5 text-sm" disabled>
+          <ShoppingCart className="text-foreground size-5 shrink-0" />
+          <span className="flex flex-col gap-0.5">
+            <span>{t("sidebar.gabinet.sellProduct", "Sprzedaj produkt")}</span>
+            <span className="text-muted-foreground text-xs font-normal">
+              {t("common.featureInProgress", "Funkcja w przygotowaniu")}
+            </span>
+          </span>
         </DropdownMenuItem>
         <DropdownMenuItem
           className="px-3 py-2.5 text-sm"
-          onSelect={() => navigate({ to: "/dashboard/gabinet/patients" })}
-        >
-          <Users className="text-foreground size-5" />
-          {t("sidebar.gabinet.goToPatients", "Klienci")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="px-3 py-2.5 text-sm"
-          onSelect={() => navigate({ to: "/dashboard/gabinet/treatments" })}
-        >
-          <Stethoscope className="text-foreground size-5" />
-          {t("sidebar.gabinet.goToTreatments", "Zabiegi")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="px-3 py-2.5 text-sm"
-          onSelect={() => navigate({ to: "/dashboard/gabinet/packages" })}
+          onSelect={() => openQuickCreate("package")}
         >
           <Package className="text-foreground size-5" />
-          {t("sidebar.gabinet.goToPackages", "Pakiety")}
+          {t("sidebar.gabinet.addPackage", "Dodaj pakiet")}
+        </DropdownMenuItem>
+        {canManageLeaves && (
+          <DropdownMenuItem
+            className="px-3 py-2.5 text-sm"
+            onSelect={() => openQuickCreate("leave")}
+          >
+            <TreePalm className="text-foreground size-5" />
+            {t("sidebar.gabinet.addLeave", "Dodaj nieobecność")}
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem className="px-3 py-2.5 text-sm" disabled>
+          <TruckIcon className="text-foreground size-5 shrink-0" />
+          <span className="flex flex-col gap-0.5">
+            <span>{t("sidebar.gabinet.addDelivery", "Dodaj dostawę")}</span>
+            <span className="text-muted-foreground text-xs font-normal">
+              {t("common.featureInProgress", "Funkcja w przygotowaniu")}
+            </span>
+          </span>
         </DropdownMenuItem>
         <DropdownMenuItem
           className="px-3 py-2.5 text-sm"
           onSelect={() => navigate({ to: "/dashboard/gabinet/documents" })}
         >
           <FileText className="text-foreground size-5" />
-          {t("sidebar.gabinet.goToDocuments", "Dokumenty")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="px-3 py-2.5 text-sm"
-          onSelect={() => navigate({ to: "/dashboard/gabinet/settings/timetable" })}
-        >
-          <Clock className="text-foreground size-5" />
-          {t("sidebar.gabinet.goToSchedules", "Grafiki")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="px-3 py-2.5 text-sm"
-          onSelect={() => navigate({ to: "/dashboard/gabinet/settings/scheduling" })}
-        >
-          <Settings className="text-foreground size-5" />
-          {t("sidebar.gabinet.goToSettings", "Ustawienia")}
+          {t("sidebar.gabinet.issueDocument", "Wystaw dokument")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

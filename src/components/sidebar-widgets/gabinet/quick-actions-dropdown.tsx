@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -19,12 +20,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSidebarActions } from "@/components/layout/sidebar-context";
 import { usePermission } from "@/hooks/use-permission";
+import { useOrganization } from "@/components/org-context";
+import { SellTreatmentPanel } from "@/components/gabinet/sell-treatment-panel";
 
 export function GabinetQuickActionsDropdown() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { openQuickCreate } = useSidebarActions();
   const { allowed: canManageLeaves } = usePermission("gabinet_settings", "edit");
+  const { organizationId } = useOrganization();
+  const [sellTreatmentOpen, setSellTreatmentOpen] = useState(false);
 
   // "Umów wizytę" routes through the calendar so every appointment entry
   // point opens the same AppointmentDialog (issue #1506).
@@ -35,6 +40,7 @@ export function GabinetQuickActionsDropdown() {
     });
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
@@ -69,14 +75,12 @@ export function GabinetQuickActionsDropdown() {
           <UserPlus className="text-foreground size-5" />
           {t("sidebar.gabinet.addPatient", "Dodaj klienta")}
         </DropdownMenuItem>
-        <DropdownMenuItem className="px-3 py-2.5 text-sm" disabled>
+        <DropdownMenuItem
+          className="px-3 py-2.5 text-sm"
+          onSelect={() => setSellTreatmentOpen(true)}
+        >
           <ShoppingCart className="text-foreground size-5 shrink-0" />
-          <span className="flex flex-col gap-0.5">
-            <span>{t("sidebar.gabinet.sellProduct", "Sprzedaj produkt")}</span>
-            <span className="text-muted-foreground text-xs font-normal">
-              {t("common.featureInProgress", "Funkcja w przygotowaniu")}
-            </span>
-          </span>
+          {t("sidebar.gabinet.sellProduct", "Sprzedaj produkt")}
         </DropdownMenuItem>
         <DropdownMenuItem
           className="px-3 py-2.5 text-sm"
@@ -112,5 +116,11 @@ export function GabinetQuickActionsDropdown() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    <SellTreatmentPanel
+      organizationId={organizationId}
+      open={sellTreatmentOpen}
+      onOpenChange={setSellTreatmentOpen}
+    />
+    </>
   );
 }

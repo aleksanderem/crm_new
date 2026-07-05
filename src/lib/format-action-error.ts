@@ -27,6 +27,9 @@ const COLUMN_LABEL_MAP: Record<string, string> = {
   package_id: "Powiązany pakiet",
   organization_id: "Organizacja",
   created_by: "Utworzone przez",
+  reminder_overrides: "Konfiguracja przypomnień",
+  send_reminder: "Przypomnienia",
+  reminder_hours_before: "Czas przypomnienia",
 };
 
 function humanFieldLabel(rawField: string): string {
@@ -369,6 +372,16 @@ export function formatAppointmentError(
   const inner = extractActionErrorMessage(err);
   for (const entry of APPOINTMENT_ERROR_MAP) {
     if (entry.test(inner)) {
+      if (entry.key === "gabinet.appointments.errors.invalidArguments") {
+        const detail = extractFieldValidationDetail(inner);
+        if (detail) {
+          return t("gabinet.appointments.errors.invalidField", {
+            field: detail.fieldLabel,
+            reason: detail.reason,
+            defaultValue: `Nieprawidłowe dane: ${detail.fieldLabel} — ${detail.reason}.`,
+          });
+        }
+      }
       return t(entry.key, { defaultValue: entry.fallback });
     }
   }

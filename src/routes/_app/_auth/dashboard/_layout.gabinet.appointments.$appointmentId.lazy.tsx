@@ -72,7 +72,6 @@ import type { SmsEventEntry, AutomationRunEntry, TimelineSourceEntry } from "@/c
 import { AppointmentDocumentChecklist, useAppointmentDocumentCounts } from "@/components/documents/appointment-document-checklist";
 import { DocumentGateDialog } from "@/components/documents/document-gate-dialog";
 import { AfterCompletionDocumentsDialog } from "@/components/documents/after-completion-documents-dialog";
-import { BodyChart, type BodyRegion } from "@/components/gabinet/BodyChart";
 import { EmptyState } from "@/components/layout/empty-state";
 import {
   Calendar,
@@ -384,9 +383,6 @@ function AppointmentDetail() {
   );
 
   // Body chart state
-  const [bodyChartData, setBodyChartData] = useState<BodyRegion[]>([]);
-  const [isBodyChartSaving, setIsBodyChartSaving] = useState(false);
-  const [bodyChartModalOpen, setBodyChartModalOpen] = useState(false);
 
   // Package usage dialog state
   const [usageDialogOpen, setUsageDialogOpen] = useState(false);
@@ -597,17 +593,6 @@ function AppointmentDetail() {
     setEditReminderEmail48h("email48h" in overrides ? overrides.email48h : (orgSettings.reminderEmail48h ?? false));
     setEditReminderEmail24h("email24h" in overrides ? overrides.email24h : (orgSettings.reminderEmail24h ?? false));
   }, [detail, orgSettings]);
-
-  // Initialize body chart data from appointment
-  useEffect(() => {
-    if (detail?.appointment.bodyChartData) {
-      try {
-        setBodyChartData(JSON.parse(detail.appointment.bodyChartData));
-      } catch {
-        // Ignore parse errors
-      }
-    }
-  }, [detail?.appointment.bodyChartData]);
 
   // Track recently viewed
   useEffect(() => {
@@ -1252,30 +1237,6 @@ function AppointmentDetail() {
   const startEditNote = (note: AppointmentFullDetailNote) => {
     setEditingNoteId(note._id);
     setEditNoteContent(note.content);
-  };
-
-  // Body chart handlers
-  const handleBodyChartChange = (data: BodyRegion[]) => {
-    setBodyChartData(data);
-  };
-
-  const handleBodyChartSave = async () => {
-    setIsBodyChartSaving(true);
-    try {
-      await updateAppointment({
-        organizationId,
-        appointmentId: appointment._id,
-        bodyChartData:
-          bodyChartData.length > 0 ? JSON.stringify(bodyChartData) : null,
-      });
-      toast.success(t("common.saved"));
-      refetch();
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : t("common.error");
-      toast.error(msg);
-    } finally {
-      setIsBodyChartSaving(false);
-    }
   };
 
   const handleSaveReminders = async () => {
@@ -2781,109 +2742,6 @@ function AppointmentDetail() {
           organizationId={organizationId}
           treatmentId={appointment.treatmentId}
         />
-      ),
-    },
-    {
-      label: t("gabinet.appointments.tabs.bodyChart"),
-      content: (
-        <>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between px-6 py-3 border-b">
-              <div>
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Heart className="h-4 w-4" variant="stroke" />
-                  {t("gabinet.appointments.tabs.bodyChart")}
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  {t("gabinet.bodyChart.description")}
-                </CardDescription>
-              </div>
-              <Button onClick={() => setBodyChartModalOpen(true)}>
-                {t("gabinet.bodyChart.openFullMap", "Otwórz mapę ciała")}
-              </Button>
-            </CardHeader>
-            <CardContent className="px-6 py-4">
-              {bodyChartData.length > 0 ? (
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">
-                    {t("gabinet.bodyChart.markedCount", {
-                      count: bodyChartData.length,
-                    })}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {bodyChartData.map((region) => (
-                      <div
-                        key={region.region}
-                        className="flex items-center gap-1.5 px-2 py-1 border rounded-md bg-card text-sm"
-                      >
-                        <div
-                          className="w-3 h-3 rounded-sm"
-                          style={{
-                            backgroundColor: region.color,
-                            opacity: region.intensity,
-                          }}
-                        />
-                        <span>
-                          {t(
-                            `gabinet.bodyChart.regions.${region.region}`,
-                            region.region,
-                          )}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="py-8 text-center text-muted-foreground text-sm">
-                  {t(
-                    "gabinet.bodyChart.noRegions",
-                    "Brak zaznaczonych regionów. Otwórz mapę ciała aby zaznaczyć.",
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Body Chart Modal */}
-          <Dialog
-            open={bodyChartModalOpen}
-            onOpenChange={setBodyChartModalOpen}
-          >
-            <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {t("gabinet.appointments.tabs.bodyChart")}
-                </DialogTitle>
-                <DialogDescription>
-                  {t("gabinet.bodyChart.description")}
-                </DialogDescription>
-              </DialogHeader>
-              <BodyChart
-                data={bodyChartData}
-                onChange={handleBodyChartChange}
-              />
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setBodyChartModalOpen(false)}
-                >
-                  {t("common.cancel")}
-                </Button>
-                <Button
-                  onClick={async () => {
-                    await handleBodyChartSave();
-                    setBodyChartModalOpen(false);
-                  }}
-                  disabled={isBodyChartSaving}
-                >
-                  {isBodyChartSaving
-                    ? t("common.saving")
-                    : t("common.save")}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </>
       ),
     },
   ];

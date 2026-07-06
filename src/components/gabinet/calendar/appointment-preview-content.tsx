@@ -1799,7 +1799,9 @@ export function AppointmentPreviewContent({
             params={{ appointmentId: appointment._id }}
           >
             <ExternalLink className="mr-1 size-3.5" />
-            {t("gabinet.appointmentDetail.edit", "Edytuj")}
+            {isSettled
+              ? t("gabinet.appointmentDetail.viewDetails", "Szczegóły wizyty")
+              : t("gabinet.appointmentDetail.edit", "Edytuj")}
           </Link>
         </Button>
         <Button

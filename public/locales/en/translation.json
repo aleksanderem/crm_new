@@ -2875,6 +2875,7 @@
         "detailedData": "Detailed Data",
         "schedule": "Schedule",
         "assignedItems": "Materials",
+        "notes": "Notes",
         "noPatients": "No clients seen yet."
       },
       "agenda": {

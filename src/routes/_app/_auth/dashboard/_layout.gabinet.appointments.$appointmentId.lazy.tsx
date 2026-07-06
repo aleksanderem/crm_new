@@ -545,12 +545,6 @@ function AppointmentDetail() {
                   {t("gabinet.patients.viewProfile", "Profil klienta")}
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/dashboard/gabinet/patients/$patientId" params={{ patientId: pat?._id ?? "" }} search={{ tab: "history" }}>
-                  <History size={14} variant="stroke" className="mr-2" />
-                  {t("gabinet.patients.history", "Historia wizyt")}
-                </Link>
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               {pat?.phone && (
                 <DropdownMenuItem asChild>

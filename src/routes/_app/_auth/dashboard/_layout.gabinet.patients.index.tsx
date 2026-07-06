@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { formatActionError, extractActionErrorMessage } from "@/lib/format-action-error";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
-import { useSupabaseGabinetRecentVisitPatientIds } from "@/hooks/use-supabase-gabinet-appointments";
+import { useSupabaseGabinetRecentVisitPatientIds, useSupabaseGabinetNextAppointmentByPatient } from "@/hooks/use-supabase-gabinet-appointments";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
@@ -216,6 +216,7 @@ function PatientsIndex() {
     90,
     { enabled: nudgeFilter === "no-recent-visit" },
   );
+  const { data: nextAppointmentByPatient } = useSupabaseGabinetNextAppointmentByPatient(organizationId);
 
   const {
     views,
@@ -374,6 +375,25 @@ function PatientsIndex() {
         getSortValue: (item) => item.phone ?? "",
       },
       {
+        id: "nextAppointment",
+        label: t("gabinet.patients.nextAppointment"),
+        sortable: true,
+        render: (item) => {
+          const appt = nextAppointmentByPatient?.get(item._id);
+          if (!appt) return "—";
+          const [year, month, day] = appt.date.split("-");
+          return (
+            <span className="whitespace-nowrap">
+              {day}.{month}.{year} {appt.startTime.slice(0, 5)}
+            </span>
+          );
+        },
+        getSortValue: (item) => {
+          const appt = nextAppointmentByPatient?.get(item._id);
+          return appt ? appt.date + "T" + appt.startTime : "";
+        },
+      },
+      {
         id: "pesel",
         label: t("gabinet.patients.pesel"),
         sortable: true,
@@ -430,7 +450,7 @@ function PatientsIndex() {
         getSortValue: (item) => item.createdAt,
       },
     ],
-    [t],
+    [t, nextAppointmentByPatient],
   );
 
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);

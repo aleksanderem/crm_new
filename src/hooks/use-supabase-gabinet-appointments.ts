@@ -505,6 +505,71 @@ export function useSupabaseGabinetAppointmentPaymentTotals(
 }
 
 // ---------------------------------------------------------------------------
+// Next Appointment per Patient (for patients table column)
+// ---------------------------------------------------------------------------
+
+export interface NextAppointmentInfo {
+  id: string;
+  date: string;
+  startTime: string;
+}
+
+/**
+ * Returns the earliest upcoming non-cancelled, non-no-show appointment for
+ * each patient in the organization. Used by the patients list to render the
+ * "Zaplanowana wizyta" column without N+1 queries.
+ */
+export function useSupabaseGabinetNextAppointmentByPatient(
+  organizationId: string,
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  const today = new Date().toISOString().split("T")[0];
+
+  return useQuery<Map<string, NextAppointmentInfo>, Error>({
+    queryKey: [
+      ...supabaseKeys.gabinetAppointments.list(organizationId),
+      "nextByPatient",
+      today,
+    ],
+    queryFn: async (): Promise<Map<string, NextAppointmentInfo>> => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      const { data, error } = await client
+        .from("gabinet_appointments")
+        .select("id, patient_id, date, start_time")
+        .eq("organization_id", organizationId)
+        .gte("date", today)
+        .not("status", "in", '("cancelled","no_show")')
+        .order("date", { ascending: true })
+        .order("start_time", { ascending: true });
+
+      if (error) throw error;
+
+      const result = new Map<string, NextAppointmentInfo>();
+      for (const row of (data ?? []) as {
+        id: string;
+        patient_id: string;
+        date: string;
+        start_time: string;
+      }[]) {
+        if (!result.has(row.patient_id)) {
+          result.set(row.patient_id, {
+            id: row.id,
+            date: row.date,
+            startTime: row.start_time,
+          });
+        }
+      }
+      return result;
+    },
+    enabled: enabled && isReady && !!organizationId,
+  } satisfies UseQueryOptions<Map<string, NextAppointmentInfo>, Error>);
+}
+
+// ---------------------------------------------------------------------------
 // Single Appointment
 // ---------------------------------------------------------------------------
 

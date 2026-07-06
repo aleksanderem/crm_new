@@ -440,7 +440,7 @@ export function DocumentationTab({
                 <div key={i} className="space-y-1.5">
                   {param.isCustom ? (
                     <div className="flex items-start gap-2">
-                      <div className="grid flex-1 gap-2 sm:grid-cols-[1fr_8rem]">
+                      <div className="grid flex-1 gap-2 sm:grid-cols-[1fr_8rem_1fr]">
                         <Input
                           value={param.name}
                           onChange={(e) =>
@@ -481,6 +481,18 @@ export function DocumentationTab({
                             ))}
                           </datalist>
                         )}
+                        <Input
+                          value={String(param.value ?? "")}
+                          onChange={(e) => handleParamChange(i, e.target.value)}
+                          placeholder={t(
+                            "gabinet.documentation.paramValuePlaceholder",
+                            "Wartość",
+                          )}
+                          aria-label={t(
+                            "gabinet.documentation.paramValue",
+                            "Wartość",
+                          )}
+                        />
                       </div>
                       <Button
                         type="button"
@@ -507,18 +519,11 @@ export function DocumentationTab({
                   {def?.description && (
                     <p className="text-xs text-muted-foreground">{def.description}</p>
                   )}
-                  {paramType === "text" && (
+                  {!param.isCustom && paramType === "text" && (
                     <Input
                       value={String(param.value ?? "")}
                       onChange={(e) => handleParamChange(i, e.target.value)}
-                      placeholder={
-                        param.isCustom
-                          ? t(
-                              "gabinet.documentation.paramValuePlaceholder",
-                              "Wartość",
-                            )
-                          : "—"
-                      }
+                      placeholder="—"
                     />
                   )}
                   {paramType === "number" && (

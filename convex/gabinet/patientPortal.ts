@@ -18,6 +18,45 @@ import {
 // must hit Supabase rather than Convex ctx.db).
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Plate JSON helpers (backend-safe, no React imports)
+// ---------------------------------------------------------------------------
+
+type PlateNode = { type: string; children: Array<{ text: string }> };
+
+/**
+ * Append plain-text lines to an internalNotes field that may already be stored
+ * as Plate JSON or as legacy plain text.  Always returns valid Plate JSON so
+ * that subsequent reads by the RichTextEditor display correctly without any raw
+ * JSON leaking into the editor.
+ */
+function appendPlateNotes(existing: string | undefined, text: string): string {
+  const toNodes = (raw: string): PlateNode[] =>
+    raw.split("\n").map((line) => ({ type: "p", children: [{ text: line }] }));
+
+  let existingNodes: PlateNode[] = [];
+  if (existing) {
+    try {
+      const parsed = JSON.parse(existing);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        existingNodes = parsed as PlateNode[];
+      } else {
+        existingNodes = toNodes(existing);
+      }
+    } catch {
+      existingNodes = toNodes(existing);
+    }
+  }
+
+  const separator: PlateNode = { type: "p", children: [{ text: "" }] };
+  const newNodes = toNodes(text);
+  const combined =
+    existingNodes.length > 0
+      ? [...existingNodes, separator, ...newNodes]
+      : newNodes;
+  return JSON.stringify(combined);
+}
+
 export const getMyProfile = action({
   args: { tokenHash: v.string() },
   handler: async (_ctx, args) => {
@@ -640,10 +679,10 @@ export const requestReschedule = action({
       ...(args.reason ? [`Reason: ${args.reason}`] : []),
     ].join("\n");
 
-    const existingNotes = (appt.internalNotes as string) ?? "";
-    const updatedNotes = existingNotes
-      ? `${existingNotes}\n\n${requestNote}`
-      : requestNote;
+    const updatedNotes = appendPlateNotes(
+      appt.internalNotes as string | undefined,
+      requestNote,
+    );
 
     // Patch appointment in Supabase
     await db.patch("gabinetAppointments", args.appointmentId, {

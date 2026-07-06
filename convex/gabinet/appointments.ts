@@ -31,7 +31,6 @@ import type {
   AppointmentWorkflowHistoryRow,
   FormDocumentRow,
   PaymentRow,
-  NoteRow,
   SupabasePaginationResult,
   SupabaseRow,
 } from "../_helpers/supabaseRows";
@@ -2826,11 +2825,6 @@ export interface AppointmentFullDetailHistoryEntry extends GabinetAppointmentRow
   treatment?: GabinetTreatmentRow;
 }
 
-/** Note row enriched with the resolved author display name. */
-export interface AppointmentFullDetailNote extends NoteRow {
-  authorName: string | null;
-}
-
 /**
  * Employee row returned by the action, enriched with the linked user's
  * display `name` and `image`. The Convex schema for `gabinetEmployees`
@@ -2850,7 +2844,6 @@ export interface AppointmentFullDetail {
   employee: AppointmentFullDetailEmployee | null;
   documents: FormDocumentRow[];
   payments: PaymentRow[];
-  notes: AppointmentFullDetailNote[];
   patientPackageUsage: AppointmentFullDetailPackageUsage[];
   patientHistory: AppointmentFullDetailHistoryEntry[];
   loyaltyBalance: number;
@@ -2909,7 +2902,6 @@ export const getFullDetail = action({
       employeeUserRaw,
       documentsRaw,
       paymentsRaw,
-      notesRaw,
       patientPackageUsageRaw,
       patientHistoryRawAll,
       loyaltyBalanceRow,
@@ -2933,12 +2925,6 @@ export const getFullDetail = action({
         .collect(),
       db.query("payments")
         .eq("appointmentId", args.appointmentId)
-        .collect(),
-      db.query("notes")
-        .eq("entityType", "gabinetAppointment")
-        .eq("entityId", args.appointmentId)
-        .order("createdAt", false)
-        .take(50)
         .collect(),
       db.query("gabinetPackageUsage")
         .eq("organizationId", orgIdStr)
@@ -2999,7 +2985,6 @@ export const getFullDetail = action({
       : null;
     const documents = documentsRaw as unknown as FormDocumentRow[];
     const payments = paymentsRaw as unknown as PaymentRow[];
-    const notes = notesRaw as unknown as NoteRow[];
     const patientPackageUsage = patientPackageUsageRaw as unknown as GabinetPackageUsageRow[];
     const patientHistoryRaw = patientHistoryRawAll as unknown as GabinetAppointmentRow[];
     const loyaltyTransactions = loyaltyTransactionsRaw as unknown as GabinetLoyaltyTransactionRow[];
@@ -3081,27 +3066,6 @@ export const getFullDetail = action({
         };
       });
 
-    // Enrich notes with author names
-    const noteAuthorIds = Array.from(
-      new Set(
-        notes
-          .map((n) => (n.createdBy ? String(n.createdBy) : null))
-          .filter((id): id is string => id !== null),
-      ),
-    );
-    const noteAuthors = await Promise.all(
-      noteAuthorIds.map((id) => db.get("users", id).catch(() => null)),
-    );
-    const noteAuthorMap = new Map<string, string | null>(
-      noteAuthors
-        .filter((u): u is SupabaseRow<"users"> => u !== null)
-        .map((u) => [String(u._id), u.name ?? u.email ?? null]),
-    );
-    const enrichedNotes: AppointmentFullDetailNote[] = notes.map((n) => ({
-      ...n,
-      authorName: noteAuthorMap.get(String(n.createdBy)) ?? null,
-    }));
-
     return {
       appointment,
       patient,
@@ -3109,7 +3073,6 @@ export const getFullDetail = action({
       employee,
       documents,
       payments,
-      notes: enrichedNotes,
       patientPackageUsage: enrichedPatientPackageUsage,
       patientHistory: patientHistory.map((a) => ({
         ...a,

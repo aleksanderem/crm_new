@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Item,
   ItemContent,
@@ -41,7 +40,6 @@ import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 import { DocumentationTab } from "@/components/gabinet/documentation-tab";
 import { TreatmentPicker } from "@/components/gabinet/appointment-shared/treatment-picker";
 import { RichTextEditor, plateJsonToText } from "@/components/gabinet/rich-text-editor";
-import { Avatar as UntitledAvatar } from "@untitled/base/avatar/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -92,8 +90,6 @@ import {
   Heart,
   Plus,
   Eye,
-  Pencil,
-  Trash2,
   Star,
   MoreVerticalCircle02,
   MessageSquare,
@@ -105,7 +101,6 @@ import {
   Clock,
 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
-import type { AppointmentFullDetailNote } from "@cvx/gabinet/appointments";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { PermissionGate } from "@/hooks/use-permission";
@@ -195,140 +190,6 @@ function getSmsSummary(events: Array<Record<string, unknown>>, appointmentStatus
   }
 
   return { labelKey: "gabinet.appointmentDetail.sms.summaryNoHistory", tone: "secondary" as const };
-}
-
-// Note Item Component
-function NoteItem({
-  note,
-  isEditing,
-  editContent,
-  onEditContentChange,
-  onStartEdit,
-  onCancelEdit,
-  onSaveEdit,
-  onDelete,
-  onTogglePin,
-  onReply,
-  isSubmitting,
-  hasReplies = false,
-  isReply = false,
-}: {
-  note: AppointmentFullDetailNote;
-  isEditing: boolean;
-  editContent: string;
-  onEditContentChange: (content: string) => void;
-  onStartEdit: () => void;
-  onCancelEdit: () => void;
-  onSaveEdit: () => void;
-  onDelete: () => void;
-  onTogglePin: () => void;
-  onReply: () => void;
-  isSubmitting: boolean;
-  hasReplies?: boolean;
-  isReply?: boolean;
-}) {
-  const { t, i18n } = useTranslation();
-  const authorName = note.authorName ?? t("common.unknown");
-  const initials = authorName.slice(0, 2).toUpperCase();
-  const dateStr = new Date(note.createdAt).toLocaleString(i18n.language);
-
-  return (
-    <article className="relative flex gap-3">
-      {!!note.isPinned && (
-        <Badge variant="outline" className="absolute top-0 right-0 text-xs">
-          {t("gabinet.notes.pinned")}
-        </Badge>
-      )}
-      <div className="flex shrink-0 flex-col">
-        <UntitledAvatar
-          size={isReply ? "sm" : "md"}
-          initials={initials}
-          alt={authorName}
-        />
-        {hasReplies && (
-          <div className="relative my-1 flex h-full w-full justify-center self-center overflow-hidden">
-            <svg className="absolute" width="2.4">
-              <line
-                x1="1.2" y1="1.2" x2="1.2" y2="100%"
-                className="stroke-muted-foreground/30"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeDasharray="0,6"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col gap-2">
-        <header>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">
-              {authorName}
-            </span>
-            <time className="text-xs text-muted-foreground">{dateStr}</time>
-          </div>
-        </header>
-
-        {isEditing ? (
-          <div className="space-y-2">
-            <RichTextEditor
-              value={editContent}
-              onChange={(val) => onEditContentChange(val ?? "")}
-              minHeight="80px"
-            />
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={onCancelEdit}>
-                {t("common.cancel")}
-              </Button>
-              <Button size="sm" onClick={onSaveEdit} disabled={isSubmitting}>
-                {t("common.save")}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-start gap-1">
-            <section className="flex-1 rounded-lg rounded-tl-none border p-3">
-              <p className="text-sm whitespace-pre-wrap">
-                {plateJsonToText(note.content)}
-              </p>
-            </section>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                  <MoreVerticalCircle02 size={16} variant="stroke" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onReply}>
-                  <MessageSquare className="h-4 w-4 mr-2" variant="stroke" />
-                  {t("gabinet.notes.reply")}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onStartEdit}>
-                  <Pencil className="h-4 w-4 mr-2" variant="stroke" />
-                  {t("common.edit")}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onTogglePin}>
-                  <Star className="h-4 w-4 mr-2" variant="stroke" />
-                  {note.isPinned
-                    ? t("gabinet.notes.unpin")
-                    : t("gabinet.notes.pin")}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={onDelete}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" variant="stroke" />
-                  {t("common.delete")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
-      </div>
-    </article>
-  );
 }
 
 function AppointmentDetail() {
@@ -433,21 +294,8 @@ function AppointmentDetail() {
   const refundPayment = useAction(api.payments.refund);
   const getPatientCreditAction = useAction(api.payments.getPatientCredit);
 
-  // Note actions (Supabase-primary)
-  const createNote = useAction(api.notes.create);
-  const updateNote = useAction(api.notes.update);
-  const deleteNote = useAction(api.notes.remove);
-  const togglePinNote = useAction(api.notes.togglePin);
-
   // Package usage mutation
   const usePackageTreatmentsBatch = useAction(api.gabinet.packages.usePackageTreatmentsBatch);
-
-  // Note state
-  const [newNoteContent, setNewNoteContent] = useState("");
-  const [replyToNoteId, setReplyToNoteId] = useState<string | null>(null);
-  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-  const [editNoteContent, setEditNoteContent] = useState("");
-  const [isNoteSubmitting, setIsNoteSubmitting] = useState(false);
 
   const getFullDetailAction = useAction(api.gabinet.appointments.getFullDetail);
   const {
@@ -849,7 +697,6 @@ function AppointmentDetail() {
     treatment,
     employee,
     payments,
-    notes,
     patientPackageUsage,
     patientHistory,
     loyaltyBalance,
@@ -1162,83 +1009,6 @@ function AppointmentDetail() {
     }
   };
 
-  // Note handlers
-  const handleCreateNote = async () => {
-    if (!newNoteContent.trim()) return;
-
-    setIsNoteSubmitting(true);
-    try {
-      await createNote({
-        organizationId,
-        entityType: "gabinetAppointment",
-        entityId: appointment._id,
-        content: newNoteContent.trim(),
-        parentNoteId: replyToNoteId
-          ? (replyToNoteId as Id<"notes">)
-          : undefined,
-      });
-      toast.success(t("gabinet.notes.created"));
-      setNewNoteContent("");
-      setReplyToNoteId(null);
-      refetch();
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : t("common.error");
-      toast.error(msg);
-    } finally {
-      setIsNoteSubmitting(false);
-    }
-  };
-
-  const handleUpdateNote = async (noteId: Id<"notes">) => {
-    if (!editNoteContent.trim()) return;
-
-    setIsNoteSubmitting(true);
-    try {
-      await updateNote({
-        organizationId,
-        noteId,
-        content: editNoteContent.trim(),
-      });
-      toast.success(t("common.saved"));
-      setEditingNoteId(null);
-      setEditNoteContent("");
-      refetch();
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : t("common.error");
-      toast.error(msg);
-    } finally {
-      setIsNoteSubmitting(false);
-    }
-  };
-
-  const handleDeleteNote = async (noteId: Id<"notes">) => {
-    if (!confirm(t("common.confirmDelete"))) return;
-
-    try {
-      await deleteNote({ organizationId, noteId });
-      toast.success(t("common.deleted"));
-      refetch();
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : t("common.error");
-      toast.error(msg);
-    }
-  };
-
-  const handleTogglePin = async (noteId: Id<"notes">) => {
-    try {
-      await togglePinNote({ organizationId, noteId });
-      refetch();
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : t("common.error");
-      toast.error(msg);
-    }
-  };
-
-  const startEditNote = (note: AppointmentFullDetailNote) => {
-    setEditingNoteId(note._id);
-    setEditNoteContent(note.content);
-  };
-
   const handleSaveReminders = async () => {
     setIsSavingReminders(true);
     try {
@@ -1262,11 +1032,6 @@ function AppointmentDetail() {
       setIsSavingReminders(false);
     }
   };
-
-  // Group notes by parent for threading
-  const rootNotes = notes.filter((n) => !n.parentNoteId);
-  const getReplies = (noteId: string) =>
-    notes.filter((n) => n.parentNoteId === noteId);
 
   // Calculate payment summary. Credit applied from the patient's overpayment
   // balance (issue #1059) counts toward the paid total alongside `amount` —
@@ -2389,116 +2154,6 @@ function AppointmentDetail() {
             </CardContent>
           </Card>
         </div>
-      ),
-    },
-    {
-      label: t("common.notes"),
-      count: notes.length,
-      content: (
-        <Card>
-          <CardHeader className="px-6 py-3 border-b">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <StickyNote className="h-4 w-4" variant="stroke" />
-              {t("common.notes")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 px-6 py-4">
-            {/* Add note textarea */}
-            <div className="space-y-2">
-              {replyToNoteId && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>{t("gabinet.notes.replyingTo")}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setReplyToNoteId(null)}
-                  >
-                    {t("common.cancel")}
-                  </Button>
-                </div>
-              )}
-              <RichTextEditor
-                placeholder={t("gabinet.notes.placeholder")}
-                value={newNoteContent}
-                onChange={(val) => setNewNoteContent(val ?? "")}
-                minHeight="80px"
-              />
-              <div className="flex justify-end">
-                <Button
-                  onClick={handleCreateNote}
-                  disabled={isNoteSubmitting || !newNoteContent.trim()}
-                >
-                  {isNoteSubmitting
-                    ? t("common.saving")
-                    : t("gabinet.notes.addNote")}
-                </Button>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Notes list */}
-            {notes.length === 0 ? (
-              <EmptyState
-                icon={StickyNote}
-                title={t("gabinet.notes.noNotes")}
-                description={t("gabinet.notes.noNotesDesc")}
-              />
-            ) : (
-              <ul className="flex flex-col gap-8">
-                {rootNotes.map((note) => {
-                  const replies = getReplies(note._id);
-                  return (
-                    <li key={note._id}>
-                      <NoteItem
-                        note={note}
-                        isEditing={editingNoteId === note._id}
-                        editContent={editNoteContent}
-                        onEditContentChange={setEditNoteContent}
-                        onStartEdit={() => startEditNote(note)}
-                        onCancelEdit={() => {
-                          setEditingNoteId(null);
-                          setEditNoteContent("");
-                        }}
-                        onSaveEdit={() => handleUpdateNote(note._id)}
-                        onDelete={() => handleDeleteNote(note._id)}
-                        onTogglePin={() => handleTogglePin(note._id)}
-                        onReply={() => setReplyToNoteId(note._id)}
-                        isSubmitting={isNoteSubmitting}
-                        hasReplies={replies.length > 0}
-                      />
-                      {replies.length > 0 && (
-                        <ul className="ml-12 mt-4 flex flex-col gap-6">
-                          {replies.map((reply) => (
-                            <li key={reply._id}>
-                              <NoteItem
-                                note={reply}
-                                isEditing={editingNoteId === reply._id}
-                                editContent={editNoteContent}
-                                onEditContentChange={setEditNoteContent}
-                                onStartEdit={() => startEditNote(reply)}
-                                onCancelEdit={() => {
-                                  setEditingNoteId(null);
-                                  setEditNoteContent("");
-                                }}
-                                onSaveEdit={() => handleUpdateNote(reply._id)}
-                                onDelete={() => handleDeleteNote(reply._id)}
-                                onTogglePin={() => handleTogglePin(reply._id)}
-                                onReply={() => setReplyToNoteId(note._id)}
-                                isSubmitting={isNoteSubmitting}
-                                isReply
-                              />
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
       ),
     },
     {

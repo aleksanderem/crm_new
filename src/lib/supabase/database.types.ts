@@ -521,6 +521,10 @@ export interface Database {
           resource_sharing_enabled: boolean | null;
           reminder_enabled: boolean | null;
           reminder_hours_before: number | null;
+          reminder_sms_48h: boolean | null;
+          reminder_sms_24h: boolean | null;
+          reminder_email_48h: boolean | null;
+          reminder_email_24h: boolean | null;
           appointment_workflow_config: string | null;
           created_at: number;
           updated_at: number;
@@ -535,6 +539,10 @@ export interface Database {
           resource_sharing_enabled?: boolean | null;
           reminder_enabled?: boolean | null;
           reminder_hours_before?: number | null;
+          reminder_sms_48h?: boolean | null;
+          reminder_sms_24h?: boolean | null;
+          reminder_email_48h?: boolean | null;
+          reminder_email_24h?: boolean | null;
           appointment_workflow_config?: string | null;
           created_at: number;
           updated_at: number;
@@ -549,6 +557,10 @@ export interface Database {
           resource_sharing_enabled?: boolean | null;
           reminder_enabled?: boolean | null;
           reminder_hours_before?: number | null;
+          reminder_sms_48h?: boolean | null;
+          reminder_sms_24h?: boolean | null;
+          reminder_email_48h?: boolean | null;
+          reminder_email_24h?: boolean | null;
           appointment_workflow_config?: string | null;
           created_at?: number;
           updated_at?: number;
@@ -4690,6 +4702,7 @@ export interface Database {
           updated_at: number;
           contraindication_alerts_reviewed: boolean | null;
           price_at_booking: number | null;
+          reminder_overrides: string | null;
         };
         Insert: {
           id?: string;
@@ -4736,6 +4749,7 @@ export interface Database {
           updated_at: number;
           contraindication_alerts_reviewed?: boolean | null;
           price_at_booking?: number | null;
+          reminder_overrides?: string | null;
         };
         Update: {
           id?: string;

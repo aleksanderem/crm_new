@@ -305,6 +305,12 @@ export function AppointmentDialog({
   // before they can pick a time in the past. Issue #1406.
   const [recordWalkIn, setRecordWalkIn] = useState(false);
 
+  // Per-appointment reminder toggle. When true, a reminder notification is
+  // scheduled for the appointment regardless of org-level reminderEnabled.
+  // When false, the org default applies (sendReminder=false overrides it).
+  // Issue #2716.
+  const [sendReminder, setSendReminder] = useState(false);
+
   // Drag-to-reposition state — users want to peek at the calendar underneath
   // without closing the dialog (issue #977). Offset resets when the dialog
   // closes so the next open starts centered. The live offset lives in a ref
@@ -887,6 +893,7 @@ export function AppointmentDialog({
         locationId: locationId ? (locationId as Id<"gabinetLocations">) : undefined,
         roomId: roomId ? (roomId as Id<"gabinetRooms">) : undefined,
         packageUsageId: packageUsageId ?? undefined,
+        sendReminder,
         allowPast: recordWalkIn || undefined,
         allowConflict: hasBookingConflict || undefined,
       });
@@ -927,6 +934,7 @@ export function AppointmentDialog({
     locationId,
     roomId,
     packageUsageId,
+    sendReminder,
     recordWalkIn,
     hasBookingConflict,
     onOpenChange,
@@ -979,6 +987,7 @@ export function AppointmentDialog({
       setAddPatientOpen(false);
       setPendingPatientLabel(null);
       setRecordWalkIn(false);
+      setSendReminder(false);
     }
   }, [open, defaultDate, defaultTime, defaultEndTime, defaultUserId]);
 
@@ -1384,6 +1393,19 @@ export function AppointmentDialog({
                     className="mt-0.5"
                   />
                   {t("gabinet.appointments.recordWalkIn")}
+                </Label>
+
+                {/* Reminder toggle — per-appointment opt-in. Issue #2716. */}
+                <Label
+                  htmlFor="send-reminder"
+                  className="-mx-1 flex min-h-11 select-none items-center gap-3 rounded-md px-1 py-1.5 text-sm mb-0 cursor-pointer transition-colors hover:bg-accent/40 active:bg-accent"
+                >
+                  <Checkbox
+                    id="send-reminder"
+                    checked={sendReminder}
+                    onCheckedChange={(c) => setSendReminder(c as boolean)}
+                  />
+                  {t("gabinet.appointments.sendReminder")}
                 </Label>
 
                 {/* Find nearest slot */}

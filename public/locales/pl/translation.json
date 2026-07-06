@@ -2896,6 +2896,7 @@
         "detailedData": "Dane szczegółowe",
         "schedule": "Grafik",
         "assignedItems": "Materiały",
+        "notes": "Notatki",
         "noPatients": "Brak obsługiwanych klientów."
       },
       "agenda": {

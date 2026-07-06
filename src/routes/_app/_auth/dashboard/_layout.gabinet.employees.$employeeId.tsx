@@ -527,7 +527,7 @@ function EmployeeDetail() {
       {employee.notes && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">{t("gabinet.employees.notes")}</CardTitle>
+            <CardTitle className="text-base">{t("gabinet.employees.detailedData.notesComments")}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground whitespace-pre-wrap">
@@ -733,7 +733,7 @@ function EmployeeDetail() {
       ),
     },
     {
-      label: t("gabinet.employees.notes"),
+      label: t("gabinet.employees.tabs.notes"),
       content: (
         <NotesTabContent
           notesData={notesData}

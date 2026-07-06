@@ -434,7 +434,14 @@ function PatientsIndex() {
   );
 
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
-  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "gabinet-patients");
+  const patientsDefaultHidden = useMemo(() => {
+    const hidden = new Set(defaultHidden);
+    for (const id of ["email", "pesel", "dateOfBirth", "gender", "referralSource", "allergies", "bloodType", "medicalNotes", "createdAt"]) {
+      hidden.add(id);
+    }
+    return hidden;
+  }, [defaultHidden]);
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(patientsDefaultHidden, "gabinet-patients");
 
   const handleCreate = useCallback(
     async (formData: {

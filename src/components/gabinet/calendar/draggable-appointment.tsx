@@ -359,16 +359,20 @@ export function DraggableAppointment({
       <PopoverAnchor asChild>{card}</PopoverAnchor>
       {/* Backdrop overlay (issue #1886): Radix Popover has no built-in
           overlay, so the preview previously visually merged with the calendar
-          grid underneath. A portaled dimmer sits between the calendar and
-          the popover content (z-40 vs the popover's z-50) so the preview
-          stands out. Clicking the overlay falls through to Radix's outside-
-          click detection and closes the popover. */}
+          grid underneath. The portaled dimmer uses z-50 (matching the sticky
+          header) so that at the same z-index level the header is covered by the
+          backdrop because the portal is appended to document.body later in DOM
+          order — this hides the header search bar while the preview is open
+          (issue #2729). The popover content also renders at z-50 but its portal
+          is appended after the backdrop, so DOM order keeps it on top.
+          Clicking the overlay falls through to Radix's outside-click detection
+          and closes the popover. */}
       {popoverOpen &&
         typeof document !== "undefined" &&
         createPortal(
           <div
             aria-hidden="true"
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px] animate-in fade-in-0 duration-150"
+            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px] animate-in fade-in-0 duration-150"
           />,
           document.body,
         )}

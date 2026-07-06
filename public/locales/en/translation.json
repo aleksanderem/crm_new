@@ -2462,6 +2462,7 @@
         "compareVisit": "Compare",
         "compareTitle": "Before / after photo comparison"
       },
+      "nextAppointment": "Scheduled appointment",
       "byDay": "Clients by Day",
       "bySource": "Clients by Source",
       "appointmentHistory": "Appointment history",

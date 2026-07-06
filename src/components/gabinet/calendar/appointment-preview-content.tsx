@@ -326,6 +326,7 @@ export function AppointmentPreviewContent({
     const em = newEnd % 60;
     setEndTime(`${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`);
   };
+  const [notes, setNotes] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
   const [treatmentId, setTreatmentId] = useState("");
   const [treatmentOpen, setTreatmentOpen] = useState(false);
@@ -427,6 +428,7 @@ export function AppointmentPreviewContent({
     setDate(appt.date);
     setStartTime(appt.startTime.slice(0, 5));
     setEndTime(appt.endTime.slice(0, 5));
+    setNotes(appt.notes ?? "");
     setInternalNotes(appt.internalNotes ?? "");
     setTreatmentId(appt.treatmentId ? String(appt.treatmentId) : "");
     setTagIds(
@@ -482,6 +484,7 @@ export function AppointmentPreviewContent({
     date !== appointment.date ||
     startTime !== appointment.startTime.slice(0, 5) ||
     endTime !== appointment.endTime.slice(0, 5) ||
+    notes !== (appointment.notes ?? "") ||
     internalNotes !== (appointment.internalNotes ?? "") ||
     treatmentId !== initialTreatmentId ||
     tagsDirty;
@@ -661,6 +664,8 @@ export function AppointmentPreviewContent({
         if (startTime !== appointment.startTime.slice(0, 5))
           args.startTime = startTime;
         if (endTime !== appointment.endTime.slice(0, 5)) args.endTime = endTime;
+        if (notes !== (appointment.notes ?? ""))
+          args.notes = notes || null;
         if (internalNotes !== (appointment.internalNotes ?? ""))
           args.internalNotes = internalNotes || null;
         if (treatmentId && treatmentId !== initialTreatmentId)
@@ -1608,6 +1613,18 @@ export function AppointmentPreviewContent({
               })}
             </button>
           </div>
+        </div>
+
+        <div className="space-y-1">
+          <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            {t("gabinet.appointments.notes")}
+          </Label>
+          <RichTextEditor
+            value={notes}
+            onChange={(v) => setNotes(v ?? "")}
+            placeholder={t("gabinet.appointments.notesPlaceholder")}
+            minHeight="80px"
+          />
         </div>
 
         <div className="space-y-1">

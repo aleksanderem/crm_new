@@ -907,7 +907,7 @@ export function TreatmentForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label>{t("gabinet.treatments.notes", "Uwagi / Notatki")}</Label>
+          <Label>{t("gabinet.treatments.notes", "Opis")}</Label>
           <RichTextEditor
             value={notes}
             onChange={(v) => setNotes(v ?? "")}

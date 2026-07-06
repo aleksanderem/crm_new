@@ -2563,7 +2563,7 @@
       "preparationInstructions": "Instrukcje przygotowania",
       "aftercareInstructions": "Instrukcje po zabiegu",
       "requiredDocuments": "Wymagane dokumenty",
-      "notes": "Uwagi / Notatki",
+      "notes": "Opis",
       "requiresApproval": "Wymaga zatwierdzenia",
       "treatmentCount": "Liczba zabiegów",
       "treatmentCountHint": "Ilość zabiegów w cyklu (np. 20). Automatycznie tworzy pakiet przy pierwszej wizycie.",

@@ -51,7 +51,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
-import { ChangeEmployeeModal } from "@/components/gabinet/change-employee-modal";
 import { DocumentGateDialog } from "@/components/documents/document-gate-dialog";
 import { useAppointmentDocumentCounts } from "@/components/documents/appointment-document-checklist";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -75,7 +74,6 @@ import {
   PlayCircle,
   Sparkles,
   Stethoscope,
-  User,
   XCircle,
 } from "@/lib/ez-icons";
 import {
@@ -345,8 +343,6 @@ export function AppointmentPreviewContent({
   >("before_start");
   const [gateTargetStatus, setGateTargetStatus] =
     useState<AppointmentStatus>("in_progress");
-  const [changeEmployeeOpen, setChangeEmployeeOpen] = useState(false);
-
   const [settleDialogOpen, setSettleDialogOpen] = useState(false);
   // Drag-to-reposition for the sub-dialogs that open from the preview popover
   // (issue #1548). Same drag-from-anywhere behaviour as the appointment dialog
@@ -447,13 +443,12 @@ export function AppointmentPreviewContent({
     );
   }
 
-  const { appointment, patient, treatment, employee } = detail;
+  const { appointment, patient, treatment } = detail;
   const initialStatus = appointment.status as AppointmentStatus;
   const initialTreatmentId = appointment.treatmentId
     ? String(appointment.treatmentId)
     : "";
   const availableTransitions = VALID_TRANSITIONS[initialStatus] ?? [];
-  const employeeName = employee?.name ?? employee?.email ?? "-";
   const patientFullName = patient
     ? `${patient.firstName ?? ""} ${patient.lastName ?? ""}`.trim()
     : "-";
@@ -1491,38 +1486,11 @@ export function AppointmentPreviewContent({
 
       <Separator />
 
-      {/* Employee + Date summary — labelled grid so it's clear what each
-          value is and that "Zmień" rebinds the employee, not something
-          unrelated. */}
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-        <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-          {t("gabinet.appointmentDetail.employeeLabel", "Pracownik")}
-        </Label>
+      {/* Date summary */}
+      <div className="flex flex-col gap-y-1 text-xs">
         <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
           {t("gabinet.appointmentDetail.appointmentDateLabel", "Data wizyty")}
         </Label>
-        {appointment.treatmentId ? (
-          <div className="flex min-w-0 items-center gap-1.5 text-foreground">
-            <User className="size-3.5 shrink-0 text-muted-foreground" />
-            <span className="truncate text-sm">{employeeName}</span>
-            <button
-              type="button"
-              onClick={() => setChangeEmployeeOpen(true)}
-              className="shrink-0 rounded text-[11px] font-medium text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label={t(
-                "gabinet.appointments.changeEmployee",
-                "Zmień pracownika",
-              )}
-            >
-              {t("common.change", "Zmień")}
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1.5 text-foreground">
-            <User className="size-3.5 text-muted-foreground" />
-            <span className="truncate text-sm">{employeeName}</span>
-          </div>
-        )}
         <div className="flex items-center gap-1.5 text-foreground">
           <Calendar className="size-3.5 text-muted-foreground" />
           <span className="truncate text-sm">{formatDateLabel(appointment.date)}</span>
@@ -1935,24 +1903,6 @@ export function AppointmentPreviewContent({
       onProceed={() => performStatusChange(gateTargetStatus)}
       onFillDocument={() => setGateDialogOpen(false)}
     />
-
-    {appointment.treatmentId && (
-      <ChangeEmployeeModal
-        open={changeEmployeeOpen}
-        onOpenChange={(o) => {
-          setChangeEmployeeOpen(o);
-          if (!o) void refetch();
-        }}
-        organizationId={organizationId}
-        appointmentId={appointment._id as Id<"gabinetAppointments">}
-        treatmentId={appointment.treatmentId as Id<"gabinetTreatments">}
-        currentEmployeeId={appointment.employeeId as Id<"users">}
-        appointmentDate={appointment.date}
-        startTime={appointment.startTime.slice(0, 5)}
-        endTime={appointment.endTime.slice(0, 5)}
-        durationMinutes={treatment?.duration ?? 30}
-      />
-    )}
 
     <Dialog
       open={settleDialogOpen}

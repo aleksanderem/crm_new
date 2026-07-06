@@ -1614,11 +1614,11 @@ export function AppointmentPreviewContent({
           <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
             {t("gabinet.appointments.internalNotes")}
           </Label>
-          <Textarea
+          <RichTextEditor
             value={internalNotes}
-            onChange={(e) => setInternalNotes(e.target.value)}
+            onChange={(v) => setInternalNotes(v ?? "")}
             placeholder={t("gabinet.appointments.internalNotesPlaceholder")}
-            className="min-h-[104px] text-sm"
+            minHeight="104px"
           />
         </div>
 

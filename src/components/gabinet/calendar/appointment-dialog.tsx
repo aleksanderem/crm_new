@@ -95,7 +95,6 @@ import { TreatmentPicker } from "@/components/gabinet/appointment-shared/treatme
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
-import { useSupabaseOrgSettings } from "@/hooks/use-supabase-organizations";
 import { formatPhoneNumber } from "@/lib/phone";
 
 // ---------------------------------------------------------------------------
@@ -287,12 +286,6 @@ export function AppointmentDialog({
   const [locationId, setLocationId] = useState("");
   const [roomId, setRoomId] = useState("");
   const [packageUsageId, setPackageUsageId] = useState<string | null>(null);
-
-  // Per-appointment reminder channel overrides
-  const [reminderSms48h, setReminderSms48h] = useState(false);
-  const [reminderSms24h, setReminderSms24h] = useState(false);
-  const [reminderEmail48h, setReminderEmail48h] = useState(false);
-  const [reminderEmail24h, setReminderEmail24h] = useState(false);
 
   // Combobox open states
   const [treatmentOpen, setTreatmentOpen] = useState(false);
@@ -524,21 +517,6 @@ export function AppointmentDialog({
   const now = new Date();
   const nowDate = format(now, "yyyy-MM-dd");
   const nowTime = format(now, "HH:mm");
-
-  // Org reminder defaults — used to pre-populate reminder toggles
-  const { data: orgSettings } = useSupabaseOrgSettings(organizationId as string, {
-    enabled: open,
-  });
-
-  // Initialize reminder toggles from org settings when they load
-  useEffect(() => {
-    if (orgSettings) {
-      setReminderSms48h(orgSettings.reminderSms48h ?? false);
-      setReminderSms24h(orgSettings.reminderSms24h ?? false);
-      setReminderEmail48h(orgSettings.reminderEmail48h ?? false);
-      setReminderEmail24h(orgSettings.reminderEmail24h ?? false);
-    }
-  }, [orgSettings]);
 
   // Available slots — action reading from Supabase
   const getAvailableSlots = useAction(api.gabinet.appointments.getAvailableSlotsQuery);
@@ -898,8 +876,6 @@ export function AppointmentDialog({
           (o, i) =>
             o.startTime !== selectedSlot.start || o.date !== cycleDates[i],
         );
-      const anyReminderEnabled =
-        reminderSms48h || reminderSms24h || reminderEmail48h || reminderEmail24h;
       await createAppointment({
         organizationId,
         patientId: patientId as Id<"gabinetPatients">,
@@ -919,15 +895,6 @@ export function AppointmentDialog({
         packageUsageId: packageUsageId ?? undefined,
         allowPast: recordWalkIn || undefined,
         allowConflict: hasBookingConflict || undefined,
-        sendReminder: anyReminderEnabled,
-        reminderOverrides: anyReminderEnabled
-          ? JSON.stringify({
-              sms48h: reminderSms48h,
-              sms24h: reminderSms24h,
-              email48h: reminderEmail48h,
-              email24h: reminderEmail24h,
-            })
-          : undefined,
       });
       // Refresh the calendar immediately — Convex actions don't invalidate
       // the Supabase React Query cache automatically.
@@ -971,10 +938,6 @@ export function AppointmentDialog({
     onOpenChange,
     queryClient,
     t,
-    reminderSms48h,
-    reminderSms24h,
-    reminderEmail48h,
-    reminderEmail24h,
   ]);
 
   const handleSubmit = useCallback(() => {
@@ -1470,81 +1433,6 @@ export function AppointmentDialog({
                           "gabinet.appointments.notesPlaceholder",
                         )}
                       />
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-
-                {/* Reminders */}
-                <Accordion type="single" collapsible>
-                  <AccordionItem value="reminders" className="border-none">
-                    <AccordionTrigger className="py-0 text-xs text-muted-foreground hover:text-foreground hover:no-underline gap-1.5">
-                      <span className="flex items-center gap-1.5">
-                        <Clock className="size-3" />
-                        {t("gabinet.reminders.appointmentSection")}
-                      </span>
-                    </AccordionTrigger>
-                    <AccordionContent className="pb-0 pt-2">
-                      <div className="space-y-3">
-                        <p className="text-muted-foreground text-xs">
-                          {t("gabinet.reminders.appointmentDescription")}
-                        </p>
-                        <div className="space-y-2">
-                          <p className="text-xs font-medium">{t("gabinet.reminders.sectionSms")}</p>
-                          <Label className="-mx-1 flex min-h-9 select-none items-center gap-2.5 rounded-md px-1 py-1 text-sm cursor-pointer hover:bg-accent/40">
-                            <Checkbox
-                              checked={reminderSms48h}
-                              onCheckedChange={(v) => setReminderSms48h(v === true)}
-                              disabled={!selectedPatient?.phone}
-                            />
-                            <span className={!selectedPatient?.phone ? "text-muted-foreground" : ""}>
-                              {t("gabinet.reminders.sms48h")}
-                            </span>
-                          </Label>
-                          <Label className="-mx-1 flex min-h-9 select-none items-center gap-2.5 rounded-md px-1 py-1 text-sm cursor-pointer hover:bg-accent/40">
-                            <Checkbox
-                              checked={reminderSms24h}
-                              onCheckedChange={(v) => setReminderSms24h(v === true)}
-                              disabled={!selectedPatient?.phone}
-                            />
-                            <span className={!selectedPatient?.phone ? "text-muted-foreground" : ""}>
-                              {t("gabinet.reminders.sms24h")}
-                            </span>
-                          </Label>
-                          {selectedPatient && !selectedPatient.phone && (
-                            <p className="text-xs text-muted-foreground">
-                              {t("gabinet.reminders.noPhone")}
-                            </p>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-xs font-medium">{t("gabinet.reminders.sectionEmail")}</p>
-                          <Label className="-mx-1 flex min-h-9 select-none items-center gap-2.5 rounded-md px-1 py-1 text-sm cursor-pointer hover:bg-accent/40">
-                            <Checkbox
-                              checked={reminderEmail48h}
-                              onCheckedChange={(v) => setReminderEmail48h(v === true)}
-                              disabled={!selectedPatient?.email}
-                            />
-                            <span className={!selectedPatient?.email ? "text-muted-foreground" : ""}>
-                              {t("gabinet.reminders.email48h")}
-                            </span>
-                          </Label>
-                          <Label className="-mx-1 flex min-h-9 select-none items-center gap-2.5 rounded-md px-1 py-1 text-sm cursor-pointer hover:bg-accent/40">
-                            <Checkbox
-                              checked={reminderEmail24h}
-                              onCheckedChange={(v) => setReminderEmail24h(v === true)}
-                              disabled={!selectedPatient?.email}
-                            />
-                            <span className={!selectedPatient?.email ? "text-muted-foreground" : ""}>
-                              {t("gabinet.reminders.email24h")}
-                            </span>
-                          </Label>
-                          {selectedPatient && !selectedPatient.email && (
-                            <p className="text-xs text-muted-foreground">
-                              {t("gabinet.reminders.noEmail")}
-                            </p>
-                          )}
-                        </div>
-                      </div>
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>

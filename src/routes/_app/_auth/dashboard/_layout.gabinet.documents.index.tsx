@@ -549,48 +549,6 @@ function GabinetDocumentsPage() {
         ),
       },
       {
-        id: "createdAt",
-        label: t("gabinet.formDocuments.colCreatedAt", "Data utworzenia"),
-        className: "min-w-[130px]",
-        render: (item) => (
-          <span className="text-sm text-muted-foreground">
-            {formatDate(item.createdAt)}
-          </span>
-        ),
-      },
-      {
-        id: "signedAt",
-        label: t("gabinet.formDocuments.colSignedAt", "Data podpisania"),
-        className: "min-w-[130px]",
-        render: (item) => (
-          <span className="text-sm text-muted-foreground">
-            {item.signedAt ? formatDate(item.signedAt) : "—"}
-          </span>
-        ),
-      },
-      {
-        id: "expiresAt",
-        label: t("gabinet.formDocuments.colExpiresAt", "Data wygaśnięcia"),
-        className: "min-w-[130px]",
-        render: (item) => (
-          <span className="text-sm text-muted-foreground">
-            {item.status !== "signed" && item.signingTokenExpiresAt
-              ? formatDate(item.signingTokenExpiresAt)
-              : "—"}
-          </span>
-        ),
-      },
-      {
-        id: "createdBy",
-        label: t("gabinet.formDocuments.colCreatedBy", "Utworzony przez"),
-        className: "min-w-[130px]",
-        render: (item) => (
-          <span className="text-sm text-muted-foreground">
-            {getUserName(item.createdBy)}
-          </span>
-        ),
-      },
-      {
         id: "actions",
         render: (item) => (
           <DropdownMenu>
@@ -635,7 +593,7 @@ function GabinetDocumentsPage() {
       },
     ];
     return result;
-  }, [t, getUserName, formatDate, patientMap]);
+  }, [t, patientMap]);
 
   // --- Column visibility ---
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
@@ -769,7 +727,7 @@ function GabinetDocumentsPage() {
 
       {/* Data Table */}
       {!docsLoading && filteredDocuments.length > 0 && (
-        <div className="md:[&_th:first-child]:w-[72px] md:[&_td:first-child]:w-[72px]">
+        <div className="md:[&_th:first-child]:w-[92px] md:[&_td:first-child]:w-[92px]">
         <DocumentsGroupedView
           documents={filteredDocuments}
           columns={allColumns}
@@ -879,6 +837,32 @@ function GabinetDocumentsPage() {
                     {getEntityTypeLabel(selectedDoc.entityType)}
                   </span>
                 </div>
+                {(() => {
+                  let signerName = selectedDoc.signedByName;
+                  if (!signerName) {
+                    if (selectedDoc.entityType === "patient") {
+                      signerName = patientMap.get(selectedDoc.entityId);
+                    } else if (selectedDoc.entityType === "appointment" && selectedDoc.scopeEntities) {
+                      try {
+                        const scope = JSON.parse(selectedDoc.scopeEntities) as { patient?: string };
+                        if (scope.patient) signerName = patientMap.get(scope.patient);
+                      } catch {
+                        // ignore
+                      }
+                    }
+                  }
+                  return signerName ? (
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <User size={12} variant="stroke" />
+                        {t("gabinet.formDocuments.colSignedBy", "Podpisał/a")}
+                      </span>
+                      <span className="text-xs font-semibold">
+                        {signerName}
+                      </span>
+                    </div>
+                  ) : null;
+                })()}
                 {selectedDoc.status === "signed" && selectedDoc.signedAt && (
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -887,6 +871,17 @@ function GabinetDocumentsPage() {
                     </span>
                     <span className="text-xs font-semibold tabular-nums">
                       {formatDate(selectedDoc.signedAt)}
+                    </span>
+                  </div>
+                )}
+                {selectedDoc.status !== "signed" && selectedDoc.signingTokenExpiresAt && (
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Calendar size={12} variant="stroke" />
+                      {t("gabinet.formDocuments.colExpiresAt", "Data wygaśnięcia")}
+                    </span>
+                    <span className="text-xs font-semibold tabular-nums">
+                      {formatDate(selectedDoc.signingTokenExpiresAt)}
                     </span>
                   </div>
                 )}

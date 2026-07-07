@@ -520,8 +520,19 @@ function GabinetDocumentsPage() {
         label: t("gabinet.formDocuments.colSignedBy", "Podpisał/a"),
         className: "min-w-[140px]",
         render: (item) => {
-          const name = item.signedByName ||
-            (item.entityType === "patient" ? patientMap.get(item.entityId) : undefined);
+          let name = item.signedByName;
+          if (!name) {
+            if (item.entityType === "patient") {
+              name = patientMap.get(item.entityId);
+            } else if (item.entityType === "appointment" && item.scopeEntities) {
+              try {
+                const scope = JSON.parse(item.scopeEntities) as { patient?: string };
+                if (scope.patient) name = patientMap.get(scope.patient);
+              } catch {
+                // malformed scopeEntities — fall through to "—"
+              }
+            }
+          }
           return (
             <span className="text-sm text-muted-foreground">
               {name || "—"}

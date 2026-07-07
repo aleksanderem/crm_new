@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   extractFieldValidationDetail,
   extractTreatmentFieldError,
+  formatActionError,
   formatTreatmentError,
 } from "./format-action-error";
 
@@ -123,6 +124,19 @@ describe("extractFieldValidationDetail", () => {
     );
     expect(detail?.fieldLabel).toContain("string");
     expect(detail?.reason).toContain("null");
+  });
+});
+
+describe("formatActionError", () => {
+  it("maps Convex 'Connection lost' to a Polish connection error message (issue #2745)", () => {
+    const err = new Error(
+      "[CONVEX A(documents/documents:submitDocumentFormFields)] Connection lost while action was in flight. Called by client",
+    );
+    const msg = formatActionError(err, t, {
+      key: "documents.signing.submitError",
+      defaultValue: "Nie udało się dokończyć podpisywania dokumentu.",
+    });
+    expect(msg).toBe("Wystąpił chwilowy problem z połączeniem. Spróbuj ponownie za moment.");
   });
 });
 

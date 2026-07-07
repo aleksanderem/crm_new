@@ -528,6 +528,11 @@ const GENERIC_ERROR_MAP: Array<{
   fallback: string;
 }> = [
   {
+    test: (m) => /connection lost while action was in flight|connection reset|websocket.*closed|network.*error/i.test(m),
+    key: "common.errors.connectionLost",
+    fallback: "Wystąpił chwilowy problem z połączeniem. Spróbuj ponownie za moment.",
+  },
+  {
     test: (m) => /permission denied/i.test(m),
     key: "common.errors.permissionDenied",
     fallback: "Brak uprawnień do tej operacji.",

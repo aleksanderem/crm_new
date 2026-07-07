@@ -425,10 +425,12 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
     return init;
   });
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [invalidFieldId, setInvalidFieldId] = useState<string | null>(null);
 
   const handleValueChange = useCallback((fieldId: string, value: string) => {
     setFormValues((prev) => ({ ...prev, [fieldId]: value }));
     setValidationError(null);
+    setInvalidFieldId(null);
   }, []);
 
   // Document preview rendered from the template + scope + any employee-filled
@@ -486,30 +488,48 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
   const handleSubmitFormValues = useCallback(async () => {
     // Validate required client fields before proceeding to signature step.
     // Checkboxes require value === "true"; other field types require non-empty.
+    let firstInvalidId: string | null = null;
+    let hasConsentsError = false;
+
     for (const field of formFields) {
       if (!field.required) continue;
       const val = formValues[field.fieldId];
       if (field.fieldType === "checkbox") {
         if (val !== "true") {
-          setValidationError(
-            t(
-              "documents.signing.requiredConsents",
-              "Zaznacz wszystkie wymagane zgody przed podpisaniem dokumentu.",
-            ),
-          );
-          return;
+          firstInvalidId = field.fieldId;
+          hasConsentsError = true;
+          break;
         }
       } else if (!val?.trim()) {
-        setValidationError(
-          t(
-            "documents.signing.requiredFields",
-            "Uzupełnij wszystkie wymagane pola przed podpisaniem dokumentu.",
-          ),
-        );
-        return;
+        firstInvalidId = field.fieldId;
+        break;
       }
     }
+
+    if (firstInvalidId !== null) {
+      setValidationError(
+        hasConsentsError
+          ? t(
+              "documents.signing.requiredConsents",
+              "Zaznacz wszystkie wymagane zgody przed podpisaniem dokumentu.",
+            )
+          : t(
+              "documents.signing.requiredFields",
+              "Uzupełnij wszystkie wymagane pola przed podpisaniem dokumentu.",
+            ),
+      );
+      setInvalidFieldId(firstInvalidId);
+      const el = document.getElementById(`ff_portal_${firstInvalidId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        const focusable = el.querySelector("input, textarea, select");
+        (focusable as HTMLElement | null)?.focus({ preventScroll: true });
+      }
+      return;
+    }
+
     setValidationError(null);
+    setInvalidFieldId(null);
     await handleFormComplete(formValues);
   }, [formFields, formValues, handleFormComplete, t]);
 
@@ -557,6 +577,7 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
                   formFields={formFields}
                   values={formValues}
                   onValueChange={handleValueChange}
+                  invalidFieldId={invalidFieldId}
                 />
               </div>
             </CardContent>

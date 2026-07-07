@@ -19,6 +19,8 @@ interface InlineDocumentFormProps {
   /** Current client-filled values managed by the parent. */
   values: Record<string, string>;
   onValueChange: (fieldId: string, value: string) => void;
+  /** Field ID that failed validation — highlighted with a red outline. */
+  invalidFieldId?: string | null;
 }
 
 interface PortalTarget {
@@ -69,6 +71,7 @@ export function InlineDocumentForm({
   formFields,
   values,
   onValueChange,
+  invalidFieldId,
 }: InlineDocumentFormProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [portals, setPortals] = useState<PortalTarget[]>([]);
@@ -138,6 +141,7 @@ export function InlineDocumentForm({
             }
             onChange={(v) => onValueChange(field.fieldId, v)}
             isStandalone={isStandalone}
+            isInvalid={field.fieldId === invalidFieldId}
           />,
           element,
         ),
@@ -155,12 +159,16 @@ export function InlineFieldControl({
   value,
   onChange,
   isStandalone,
+  isInvalid,
 }: {
   field: ExtractedFormField;
   value: string;
   onChange: (value: string) => void;
   isStandalone?: boolean;
+  isInvalid?: boolean;
 }) {
+  const invalidOutline = isInvalid ? "2px solid #ef4444" : undefined;
+
   // Show the field label as a visible question prompt for standalone fields
   // where the label IS the question (not just a blank inside a sentence).
   // Checkboxes are excluded — they always show their label inline.
@@ -201,6 +209,8 @@ export function InlineFieldControl({
           userSelect: "none",
           width: "100%",
           padding: "6px 0",
+          outline: invalidOutline,
+          borderRadius: "4px",
         }}
       >
         <input
@@ -239,12 +249,13 @@ export function InlineFieldControl({
           style={{
             display: "block",
             width: "100%",
-            border: "1px solid #d1d5db",
+            border: isInvalid ? "1px solid #ef4444" : "1px solid #d1d5db",
             borderRadius: "4px",
             padding: "6px 10px",
             fontSize: "14px",
             color: "#111827",
             background: "#fff",
+            outline: isInvalid ? "1px solid #ef4444" : undefined,
           }}
         />
         {inlineRequiredMarker}
@@ -266,13 +277,14 @@ export function InlineFieldControl({
           required={field.required}
           style={{
             display: "inline-block",
-            border: "1px solid #d1d5db",
+            border: isInvalid ? "1px solid #ef4444" : "1px solid #d1d5db",
             borderRadius: "4px",
             padding: "4px 8px",
             fontSize: "14px",
             color: "#111827",
             background: "#fff",
             minWidth: "140px",
+            outline: isInvalid ? "1px solid #ef4444" : undefined,
           }}
         >
           <option value="">{field.placeholder || "Wybierz..."}</option>
@@ -293,7 +305,7 @@ export function InlineFieldControl({
       .map((o) => o.trim())
       .filter(Boolean);
     return (
-      <span style={{ display: "block", width: "100%" }}>
+      <span style={{ display: "block", width: "100%", outline: invalidOutline, borderRadius: "4px" }}>
         {labelNode}
         <span
           style={{
@@ -347,13 +359,14 @@ export function InlineFieldControl({
         required={field.required}
         style={{
           display: "inline-block",
-          border: "1px solid #d1d5db",
+          border: isInvalid ? "1px solid #ef4444" : "1px solid #d1d5db",
           borderRadius: "4px",
           padding: "4px 8px",
           fontSize: "14px",
           color: "#111827",
           background: "#fff",
           minWidth: "140px",
+          outline: isInvalid ? "1px solid #ef4444" : undefined,
         }}
       />
       {inlineRequiredMarker}

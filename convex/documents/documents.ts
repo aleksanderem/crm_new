@@ -462,12 +462,39 @@ export const recordSignature = action({
     if (doc.status !== "pending_signature")
       throw new Error("Document is not awaiting signature");
 
+    // When the public signing page submits an empty name (unauthenticated flow),
+    // resolve the patient name server-side from the document's entity reference.
+    let resolvedSignedByName = args.signedByName;
+    if (!resolvedSignedByName) {
+      const entityType = doc.entityType as string | undefined;
+      const entityId = doc.entityId as string | undefined;
+      if (entityType === "appointment" && entityId) {
+        const appointment = await db.get("gabinetAppointments", entityId);
+        if (appointment && typeof appointment === "object") {
+          const appt = appointment as { patientId?: string };
+          if (appt.patientId) {
+            const patient = await db.get("gabinetPatients", String(appt.patientId));
+            if (patient && typeof patient === "object") {
+              const p = patient as { firstName?: string; lastName?: string };
+              resolvedSignedByName = [p.firstName, p.lastName].filter(Boolean).join(" ");
+            }
+          }
+        }
+      } else if (entityType === "patient" && entityId) {
+        const patient = await db.get("gabinetPatients", entityId);
+        if (patient && typeof patient === "object") {
+          const p = patient as { firstName?: string; lastName?: string };
+          resolvedSignedByName = [p.firstName, p.lastName].filter(Boolean).join(" ");
+        }
+      }
+    }
+
     const now = Date.now();
     const patch: Record<string, unknown> = {
       status: "signed",
       signatureData: args.signatureData,
       signedAt: now,
-      signedByName: args.signedByName,
+      signedByName: resolvedSignedByName,
       signedByEmail: args.signedByEmail ?? null,
       signedByIp: args.signedByIp ?? null,
       updatedAt: now,

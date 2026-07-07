@@ -38,6 +38,13 @@ function PatientDocuments() {
     enabled: !!tokenHash,
   });
 
+  const getPortalSession = useAction(api.gabinet.patientAuth.getPortalSession);
+  const { data: portalSession } = useQuery({
+    queryKey: ["gabinet.patientAuth.getPortalSession", tokenHash],
+    queryFn: () => getPortalSession({ tokenHash }),
+    enabled: !!tokenHash,
+  });
+
   const recordSignature = useAction(
     api.documents.documents.recordSignature,
   );
@@ -55,7 +62,7 @@ function PatientDocuments() {
       await recordSignature({
         token: signDoc.signingToken,
         signatureData,
-        signedByName: t("patientPortal.documents.patientSigner", "Patient"),
+        signedByName: portalSession?.patientName ?? t("patientPortal.documents.patientSigner", "Patient"),
       });
       toast.success(t("patientPortal.documents.signed"));
       setSignDocId(null);

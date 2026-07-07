@@ -50,6 +50,7 @@ import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 import { useSupabaseFormDocumentsList } from "@/hooks/use-supabase-form-documents";
+import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSavedViews, applyFilterConditions } from "@/hooks/use-saved-views";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 
@@ -216,6 +217,15 @@ function GabinetDocumentsPage() {
     }
     return map;
   }, [members]);
+
+  const { data: patients } = useSupabaseGabinetPatientsList(organizationId);
+  const patientMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of patients ?? []) {
+      map.set(p._id, [p.firstName, p.lastName].filter(Boolean).join(" "));
+    }
+    return map;
+  }, [patients]);
 
   // Extract unique categories from loaded templates
   const availableCategories = useMemo(() => {
@@ -509,11 +519,15 @@ function GabinetDocumentsPage() {
         id: "signedBy",
         label: t("gabinet.formDocuments.colSignedBy", "Podpisał/a"),
         className: "min-w-[140px]",
-        render: (item) => (
-          <span className="text-sm text-muted-foreground">
-            {item.signedByName ?? "—"}
-          </span>
-        ),
+        render: (item) => {
+          const name = item.signedByName ||
+            (item.entityType === "patient" ? patientMap.get(item.entityId) : undefined);
+          return (
+            <span className="text-sm text-muted-foreground">
+              {name || "—"}
+            </span>
+          );
+        },
       },
       {
         id: "status",
@@ -549,7 +563,9 @@ function GabinetDocumentsPage() {
         className: "min-w-[130px]",
         render: (item) => (
           <span className="text-sm text-muted-foreground">
-            {item.signingTokenExpiresAt ? formatDate(item.signingTokenExpiresAt) : "—"}
+            {item.status !== "signed" && item.signingTokenExpiresAt
+              ? formatDate(item.signingTokenExpiresAt)
+              : "—"}
           </span>
         ),
       },
@@ -608,7 +624,7 @@ function GabinetDocumentsPage() {
       },
     ];
     return result;
-  }, [t, getUserName, formatDate]);
+  }, [t, getUserName, formatDate, patientMap]);
 
   // --- Column visibility ---
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);

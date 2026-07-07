@@ -22,7 +22,6 @@ import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { MiniChartsRow, type MiniChartData } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -507,22 +506,12 @@ function GabinetDocumentsPage() {
         ),
       },
       {
-        id: "category",
-        label: t("gabinet.formDocuments.colCategory", "Kategoria"),
-        className: "min-w-[120px]",
-        render: (item) => (
-          <Badge variant="secondary" className="text-xs">
-            {getCategoryLabel(item.templateId)}
-          </Badge>
-        ),
-      },
-      {
-        id: "entityType",
-        label: t("gabinet.formDocuments.colEntityType", "Typ"),
-        className: "min-w-[100px]",
+        id: "signedBy",
+        label: t("gabinet.formDocuments.colSignedBy", "Podpisał/a"),
+        className: "min-w-[140px]",
         render: (item) => (
           <span className="text-sm text-muted-foreground">
-            {getEntityTypeLabel(item.entityType)}
+            {item.signedByName ?? "—"}
           </span>
         ),
       },
@@ -541,6 +530,26 @@ function GabinetDocumentsPage() {
         render: (item) => (
           <span className="text-sm text-muted-foreground">
             {formatDate(item.createdAt)}
+          </span>
+        ),
+      },
+      {
+        id: "signedAt",
+        label: t("gabinet.formDocuments.colSignedAt", "Data podpisania"),
+        className: "min-w-[130px]",
+        render: (item) => (
+          <span className="text-sm text-muted-foreground">
+            {item.signedAt ? formatDate(item.signedAt) : "—"}
+          </span>
+        ),
+      },
+      {
+        id: "expiresAt",
+        label: t("gabinet.formDocuments.colExpiresAt", "Data wygaśnięcia"),
+        className: "min-w-[130px]",
+        render: (item) => (
+          <span className="text-sm text-muted-foreground">
+            {item.signingTokenExpiresAt ? formatDate(item.signingTokenExpiresAt) : "—"}
           </span>
         ),
       },
@@ -599,7 +608,7 @@ function GabinetDocumentsPage() {
       },
     ];
     return result;
-  }, [t, getCategoryLabel, getEntityTypeLabel, getUserName, formatDate]);
+  }, [t, getUserName, formatDate]);
 
   // --- Column visibility ---
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
@@ -733,6 +742,7 @@ function GabinetDocumentsPage() {
 
       {/* Data Table */}
       {!docsLoading && filteredDocuments.length > 0 && (
+        <div className="md:[&_th:first-child]:w-[72px] md:[&_td:first-child]:w-[72px]">
         <DocumentsGroupedView
           documents={filteredDocuments}
           columns={allColumns}
@@ -770,6 +780,7 @@ function GabinetDocumentsPage() {
             },
           ]}
         />
+        </div>
       )}
 
       {/* Document viewer side panel */}

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import {
   ShieldCheck,
   AlertTriangle,
 } from "@/lib/ez-icons";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute("/sign/$token")({
   component: SigningPage,
@@ -126,6 +128,7 @@ function SigningFlow({
   document,
   organizationName,
 }: SigningFlowProps) {
+  const { t } = useTranslation();
   const signExternal = useAction(api.signatureRequests.signExternal);
   const verifyOtp = useAction(api.signatureRequests.verifyOtp);
   const requestOtp = useAction(api.sms.requestOtp);
@@ -152,7 +155,7 @@ function SigningFlow({
       await requestOtp({ token });
       setOtpSent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nie udało się wysłać kodu");
+      setError(formatActionError(err, t, { key: "documents.signing.otpSendError", defaultValue: "Nie udało się wysłać kodu weryfikacyjnego. Spróbuj ponownie." }));
     } finally {
       setLoading(false);
     }
@@ -166,7 +169,7 @@ function SigningFlow({
       setOtpVerified(true);
       setStep("sign");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nieprawidłowy kod");
+      setError(formatActionError(err, t, { key: "documents.signing.otpVerifyError", defaultValue: "Nieprawidłowy kod lub błąd połączenia. Spróbuj ponownie." }));
     } finally {
       setLoading(false);
     }
@@ -180,7 +183,7 @@ function SigningFlow({
         await signExternal({ token, signatureData });
         setStep("done");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Nie udało się podpisać dokumentu");
+        setError(formatActionError(err, t, { key: "documents.signing.signError", defaultValue: "Nie udało się podpisać dokumentu. Sprawdź połączenie z Internetem i spróbuj ponownie." }));
       } finally {
         setLoading(false);
       }

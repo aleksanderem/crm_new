@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   Loader2,
 } from "@/lib/ez-icons";
+import { formatActionError } from "@/lib/format-action-error";
 
 // ---------------------------------------------------------------------------
 // Route definition — public page, no auth required
@@ -184,14 +185,15 @@ function SignatureSection({
         });
         onDone();
       } catch (err: unknown) {
-        const message =
-          err instanceof Error ? err.message : "Wystąpił nieoczekiwany błąd";
-        setError(message);
+        setError(formatActionError(err, t, {
+          key: "documents.signing.signError",
+          defaultValue: "Nie udało się podpisać dokumentu. Sprawdź połączenie z Internetem i spróbuj ponownie.",
+        }));
       } finally {
         setLoading(false);
       }
     },
-    [recordSignature, token, resolvedHtml, onDone],
+    [recordSignature, token, resolvedHtml, onDone, t],
   );
 
   const handleClickSign = useCallback(async () => {
@@ -470,14 +472,15 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
         setRenderedHtml(html);
         setStep("sign");
       } catch (err: unknown) {
-        const message =
-          err instanceof Error ? err.message : "Wystąpił nieoczekiwany błąd";
-        setError(message);
+        setError(formatActionError(err, t, {
+          key: "documents.signing.submitError",
+          defaultValue: "Nie udało się dokończyć podpisywania dokumentu. Sprawdź połączenie z Internetem i spróbuj ponownie.",
+        }));
       } finally {
         setSubmitting(false);
       }
     },
-    [template.contentJson, prefilledData, existingFormFieldValues, submitFormFields, token],
+    [template.contentJson, prefilledData, existingFormFieldValues, submitFormFields, token, t],
   );
 
   const handleSubmitFormValues = useCallback(async () => {

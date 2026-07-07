@@ -31,7 +31,6 @@ import {
   Stethoscope,
   MessageSquare,
   Eye,
-  StickyNote,
   ChevronLeft,
   ChevronRight,
   Plus,
@@ -92,7 +91,6 @@ interface DocumentationTabProps {
   appointment: {
     treatmentParameterValues?: string;
     interviewNotes?: string;
-    clinicalRemarks?: string;
     photos?: Photo[];
   };
   treatmentParameters?: TreatmentParamDefinition[];
@@ -252,34 +250,6 @@ export function DocumentationTab({
       );
     } finally {
       setIsSavingInterview(false);
-    }
-  };
-
-  // --- Clinical remarks ---
-  const [remarks, setRemarks] = useState<string | undefined>(
-    appointment.clinicalRemarks,
-  );
-  const [isSavingRemarks, setIsSavingRemarks] = useState(false);
-
-  const handleSaveRemarks = async () => {
-    setIsSavingRemarks(true);
-    try {
-      await updateAppointment({
-        organizationId,
-        appointmentId,
-        clinicalRemarks: remarks || null,
-      });
-      toast.success(t("common.saved"));
-      await onChanged?.();
-    } catch (err) {
-      toast.error(
-        formatActionError(err, t, {
-          key: "gabinet.documentation.errors.saveRemarksFailed",
-          defaultValue: "Nie udało się zapisać uwag klinicznych.",
-        }),
-      );
-    } finally {
-      setIsSavingRemarks(false);
     }
   };
 
@@ -651,40 +621,6 @@ export function DocumentationTab({
         t={t as (key: string, fallback?: string) => string}
       />
 
-      {/* Clinical Remarks */}
-      <Card>
-        <CardHeader className="px-6 py-3 border-b">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <StickyNote className="h-4 w-4" variant="stroke" />
-            {t("gabinet.documentation.remarks", "Uwagi")}
-          </CardTitle>
-          <CardDescription className="text-xs">
-            {t(
-              "gabinet.documentation.remarksDesc",
-              "Dodatkowe uwagi kliniczne dotyczące zabiegu.",
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="px-6 py-4">
-          <RichTextEditor
-            value={appointment.clinicalRemarks}
-            onChange={setRemarks}
-            placeholder={t(
-              "gabinet.documentation.remarksPlaceholder",
-              "Dodaj uwagi...",
-            )}
-          />
-          <div className="flex justify-end pt-3">
-            <Button
-              size="sm"
-              onClick={handleSaveRemarks}
-              disabled={isSavingRemarks}
-            >
-              {isSavingRemarks ? t("common.saving") : t("common.save")}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

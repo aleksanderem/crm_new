@@ -18,6 +18,7 @@ import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/c
 import type { CrmColumn } from "@/components/crm/enhanced-data-table";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { SidePanel } from "@/components/crm/side-panel";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CustomFieldFormSection } from "@/components/custom-fields/custom-field-form-section";
 import { useCustomFieldColumns } from "@/hooks/use-custom-field-columns";
 import { useCustomFieldForm } from "@/hooks/use-custom-field-form";
@@ -119,6 +120,7 @@ function ActivitiesPage() {
   const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
+  const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
   const [filterSlideoutOpen, setFilterSlideoutOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<ScheduledActivity | null>(null);
@@ -435,10 +437,7 @@ function ActivitiesPage() {
         searchPlaceholder={t('activities.searchPlaceholder')}
         onTagsManage={() => setTagsSlideoutOpen(true)}
         onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
-        columnDefs={columns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
-        hiddenColumnIds={hiddenColumnIds}
-        onToggleColumn={toggleColumn}
-        onSetHiddenColumns={setHiddenColumns}
+        onColumnSettingsOpen={() => setColumnSettingsOpen(true)}
       />
 
       <CrmDataTable
@@ -453,6 +452,35 @@ function ActivitiesPage() {
           if (activity) openEditPanel(activity);
         }}
       />
+
+      <SidePanel
+        open={columnSettingsOpen}
+        onOpenChange={setColumnSettingsOpen}
+        title={t("common.columnSettings", "Ustawienia kolumn")}
+      >
+        <div className="space-y-1 py-2">
+          {columns
+            .filter((col) => !["actions"].includes(col.id))
+            .map((col) => {
+              const isVisible = !hiddenColumnIds.has(col.id);
+              return (
+                <button
+                  key={col.id}
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left hover:bg-muted/50 transition-colors"
+                  onClick={() => toggleColumn(col.id)}
+                >
+                  <Checkbox
+                    checked={isVisible}
+                    className="pointer-events-none"
+                    aria-hidden
+                  />
+                  <span className="text-sm font-medium">{col.label ?? col.id}</span>
+                </button>
+              );
+            })}
+        </div>
+      </SidePanel>
 
       <SidePanel
         open={panelOpen}

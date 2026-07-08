@@ -12,6 +12,8 @@ import { DocumentViewer } from "@/components/documents/document-viewer";
 import { TemplateFallbackViewer } from "@/components/documents/template-fallback-viewer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { SidePanel } from "@/components/crm/side-panel";
 import {
   Sheet,
   SheetContent,
@@ -142,6 +144,7 @@ function DocumentsPage() {
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
   const [filterSlideoutOpen, setFilterSlideoutOpen] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
 
   // --- Data ---
   const { data: documents, isLoading: docsLoading } = useSupabaseFormDocumentsList(
@@ -517,10 +520,7 @@ function DocumentsPage() {
         searchPlaceholder={t("documents.searchPlaceholder", "Szukaj po tytule...")}
         onTagsManage={() => setTagsSlideoutOpen(true)}
         onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
-        columnDefs={allColumns.map((c) => ({ id: c.id, label: c.label ?? c.id }))}
-        hiddenColumnIds={hiddenColumnIds}
-        onToggleColumn={toggleColumn}
-        onSetHiddenColumns={setHiddenColumns}
+        onColumnSettingsOpen={() => setColumnSettingsOpen(true)}
         onFiltersChange={setActiveFilters}
       />
 
@@ -539,6 +539,35 @@ function DocumentsPage() {
         ]}
         onBulkAction={handleBulkAction}
       />
+
+      <SidePanel
+        open={columnSettingsOpen}
+        onOpenChange={setColumnSettingsOpen}
+        title={t("common.columnSettings", "Ustawienia kolumn")}
+      >
+        <div className="space-y-1 py-2">
+          {allColumns
+            .filter((col) => !["actions"].includes(col.id))
+            .map((col) => {
+              const isVisible = !hiddenColumnIds.has(col.id);
+              return (
+                <button
+                  key={col.id}
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left hover:bg-muted/50 transition-colors"
+                  onClick={() => toggleColumn(col.id)}
+                >
+                  <Checkbox
+                    checked={isVisible}
+                    className="pointer-events-none"
+                    aria-hidden
+                  />
+                  <span className="text-sm font-medium">{col.label ?? col.id}</span>
+                </button>
+              );
+            })}
+        </div>
+      </SidePanel>
 
       {/* Document viewer sheet */}
       <Sheet

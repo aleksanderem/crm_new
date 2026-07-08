@@ -17,6 +17,7 @@ import {
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { MiniChartsRow } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
+import { Checkbox } from "@/components/ui/checkbox";
 import { LeadForm } from "@/components/forms/lead-form";
 import { PlateText } from "@/components/plate-text";
 import { leadStatusOptions, leadPriorityOptions } from "@/lib/options";
@@ -113,6 +114,7 @@ function LeadsIndex() {
   const { categories } = useCategoryDefinitions(organizationId, "lead");
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
+  const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
@@ -637,10 +639,7 @@ function LeadsIndex() {
             onClick: () => setImportOpen(true),
           },
         ]}
-        columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
-        hiddenColumnIds={hiddenColumnIds}
-        onToggleColumn={toggleColumn}
-        onSetHiddenColumns={setHiddenColumns}
+        onColumnSettingsOpen={() => setColumnSettingsOpen(true)}
       />
 
       <MiniChartsRow
@@ -712,6 +711,35 @@ function LeadsIndex() {
         open={importOpen}
         onOpenChange={setImportOpen}
       />
+
+      <SidePanel
+        open={columnSettingsOpen}
+        onOpenChange={setColumnSettingsOpen}
+        title={t("common.columnSettings", "Ustawienia kolumn")}
+      >
+        <div className="space-y-1 py-2">
+          {allColumns
+            .filter((col) => !["actions"].includes(col.id))
+            .map((col) => {
+              const isVisible = !hiddenColumnIds.has(col.id);
+              return (
+                <button
+                  key={col.id}
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left hover:bg-muted/50 transition-colors"
+                  onClick={() => toggleColumn(col.id)}
+                >
+                  <Checkbox
+                    checked={isVisible}
+                    className="pointer-events-none"
+                    aria-hidden
+                  />
+                  <span className="text-sm font-medium">{col.label ?? col.id}</span>
+                </button>
+              );
+            })}
+        </div>
+      </SidePanel>
 
       <SidePanel
         open={createOpen}

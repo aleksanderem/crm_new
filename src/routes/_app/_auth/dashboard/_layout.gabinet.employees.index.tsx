@@ -10,7 +10,9 @@ import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizatio
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
+import { SidePanel } from "@/components/crm/side-panel";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
@@ -302,6 +304,7 @@ function EmployeesIndex() {
 
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
   const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "gabinet-employees");
+  const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
 
   const editingSchedulePeriods = useMemo(() => {
     if (!editingScheduleEmployee) return [];
@@ -441,6 +444,7 @@ function EmployeesIndex() {
         hiddenColumnIds={hiddenColumnIds}
         onToggleColumn={toggleColumn}
         onSetHiddenColumns={setHiddenColumns}
+        onColumnSettingsOpen={() => setColumnSettingsOpen(true)}
         onFiltersChange={setActiveFilters}
         onTagsManage={() => setTagsSlideoutOpen(true)}
         onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
@@ -476,6 +480,29 @@ function EmployeesIndex() {
         entityType="gabinetEmployee"
         categories={categories}
       />
+
+      <SidePanel
+        open={columnSettingsOpen}
+        onOpenChange={setColumnSettingsOpen}
+        title={t("common.columnSettings", "Ustawienia kolumn")}
+      >
+        <div className="space-y-1 py-2">
+          {allColumns.map((col) => {
+            const isVisible = !hiddenColumnIds.has(col.id);
+            return (
+              <button
+                key={col.id}
+                type="button"
+                className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left hover:bg-muted/50 transition-colors"
+                onClick={() => toggleColumn(col.id)}
+              >
+                <Checkbox checked={isVisible} className="pointer-events-none" aria-hidden />
+                <span className="text-sm font-medium">{col.label ?? col.id}</span>
+              </button>
+            );
+          })}
+        </div>
+      </SidePanel>
 
       <CreateEmployeeSheet
         open={showCreate}

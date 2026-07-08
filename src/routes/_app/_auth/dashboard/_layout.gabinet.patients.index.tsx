@@ -13,6 +13,7 @@ import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { MiniChartsRow, useChartsToggleState, ChartsToggleButton } from "@/components/crm/mini-charts";
 import { SidePanel } from "@/components/crm/side-panel";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PatientForm } from "@/components/forms/patient-form";
 import { MergePatientsDialog } from "@/components/gabinet/merge-patients-dialog";
 import { Button } from "@/components/ui/button";
@@ -462,6 +463,7 @@ function PatientsIndex() {
     return hidden;
   }, [defaultHidden]);
   const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(patientsDefaultHidden, "gabinet-patients");
+  const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
 
   const handleCreate = useCallback(
     async (formData: {
@@ -627,6 +629,7 @@ function PatientsIndex() {
         hiddenColumnIds={hiddenColumnIds}
         onToggleColumn={toggleColumn}
         onSetHiddenColumns={setHiddenColumns}
+        onColumnSettingsOpen={() => setColumnSettingsOpen(true)}
         onTagsManage={() => setTagsSlideoutOpen(true)}
         onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
         onFiltersChange={setActiveFilters}
@@ -680,6 +683,29 @@ function PatientsIndex() {
           navigate({ to: `/dashboard/gabinet/patients/${patientId}` })
         }
       />
+
+      <SidePanel
+        open={columnSettingsOpen}
+        onOpenChange={setColumnSettingsOpen}
+        title={t("common.columnSettings", "Ustawienia kolumn")}
+      >
+        <div className="space-y-1 py-2">
+          {allColumns.map((col) => {
+            const isVisible = !hiddenColumnIds.has(col.id);
+            return (
+              <button
+                key={col.id}
+                type="button"
+                className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left hover:bg-muted/50 transition-colors"
+                onClick={() => toggleColumn(col.id)}
+              >
+                <Checkbox checked={isVisible} className="pointer-events-none" aria-hidden />
+                <span className="text-sm font-medium">{col.label ?? col.id}</span>
+              </button>
+            );
+          })}
+        </div>
+      </SidePanel>
 
       <SidePanel
         open={panelOpen}

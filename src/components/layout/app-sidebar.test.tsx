@@ -7,6 +7,7 @@ const shellSidebarMode = vi.hoisted(() => ({ value: "default" as "default" | "ic
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
   useMatchRoute: () => ({ to }: { to: string }) => to === "/dashboard/leads",
+  useNavigate: () => vi.fn(),
 }));
 
 vi.mock("@tanstack/react-query", () => ({
@@ -74,6 +75,7 @@ vi.mock("@/components/layout/sidebar-slot-context", () => ({
 
 vi.mock("@/hooks/use-permission", () => ({
   usePermissions: () => ({ can: () => true }),
+  useRole: () => ({ role: null, loading: false }),
 }));
 
 vi.mock("@/components/layout/mini-calendar-context", () => ({

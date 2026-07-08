@@ -16,7 +16,7 @@ export interface MappedFormDocument {
   responseData: string;
   entityType: string;
   entityId: string;
-  scopeEntities?: string;
+  scopeEntities?: unknown;
   status: string;
   signatureData?: string;
   signedAt?: number;

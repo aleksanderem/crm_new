@@ -230,18 +230,8 @@ export const getPriorResponseData = action({
         return true;
       // Appointment-linked doc with scopeEntities.patient
       if (doc.scopeEntities) {
-        try {
-          const scope =
-            typeof doc.scopeEntities === "string"
-              ? (JSON.parse(doc.scopeEntities as string) as Record<
-                  string,
-                  unknown
-                >)
-              : (doc.scopeEntities as Record<string, unknown>);
-          return String(scope?.patient) === resolvedPatientId;
-        } catch {
-          return false;
-        }
+        const scope = doc.scopeEntities as Record<string, unknown>;
+        return String(scope?.patient) === resolvedPatientId;
       }
       return false;
     });

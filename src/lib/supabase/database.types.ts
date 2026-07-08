@@ -38,6 +38,17 @@
  *   • 00031_add_current_user_id_helper.sql
  *   • 00032_gabinet_patients_preferred_location.sql
  *   • 00033_drop_gabinet_employees_location_id.sql
+ *   • 00034_gabinet_appointments_location_rls.sql
+ *   • 00035_drop_current_app_user_id.sql
+ *   • 00036_gabinet_appointments_write_location_rls.sql
+ *   • 00037_team_memberships_admin_role_idx.sql
+ *   • 00038_backfill_gabinet_patients_phone_digits_only.sql
+ *   • 00039_gabinet_patients_sms_consent.sql
+ *   • 00040_drop_legacy_gabinet_documents.sql
+ *   • 00041_gabinet_employee_role_add_cosmetologist_manager.sql
+ *   • 00042_gabinet_employees_nullable_user_id.sql
+ *   • 00043_reminder_channel_settings.sql
+ *   • 00044_scope_entities_jsonb.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -526,13 +537,13 @@ export interface Database {
           resource_sharing_enabled: boolean | null;
           reminder_enabled: boolean | null;
           reminder_hours_before: number | null;
+          appointment_workflow_config: string | null;
+          created_at: number;
+          updated_at: number;
           reminder_sms_48h: boolean | null;
           reminder_sms_24h: boolean | null;
           reminder_email_48h: boolean | null;
           reminder_email_24h: boolean | null;
-          appointment_workflow_config: string | null;
-          created_at: number;
-          updated_at: number;
         };
         Insert: {
           id?: string;
@@ -544,13 +555,13 @@ export interface Database {
           resource_sharing_enabled?: boolean | null;
           reminder_enabled?: boolean | null;
           reminder_hours_before?: number | null;
+          appointment_workflow_config?: string | null;
+          created_at: number;
+          updated_at: number;
           reminder_sms_48h?: boolean | null;
           reminder_sms_24h?: boolean | null;
           reminder_email_48h?: boolean | null;
           reminder_email_24h?: boolean | null;
-          appointment_workflow_config?: string | null;
-          created_at: number;
-          updated_at: number;
         };
         Update: {
           id?: string;
@@ -562,13 +573,13 @@ export interface Database {
           resource_sharing_enabled?: boolean | null;
           reminder_enabled?: boolean | null;
           reminder_hours_before?: number | null;
+          appointment_workflow_config?: string | null;
+          created_at?: number;
+          updated_at?: number;
           reminder_sms_48h?: boolean | null;
           reminder_sms_24h?: boolean | null;
           reminder_email_48h?: boolean | null;
           reminder_email_24h?: boolean | null;
-          appointment_workflow_config?: string | null;
-          created_at?: number;
-          updated_at?: number;
         };
         Relationships: [
           {
@@ -3955,7 +3966,7 @@ export interface Database {
         Row: {
           id: string;
           organization_id: string;
-          user_id: string;
+          user_id: string | null;
           first_name: string | null;
           last_name: string | null;
           role: string;
@@ -3988,11 +3999,12 @@ export interface Database {
           updated_at: number;
           show_in_calendar: boolean;
           assigned_items: unknown | null;
+          location_id: string | null;
         };
         Insert: {
           id?: string;
           organization_id: string;
-          user_id: string;
+          user_id?: string | null;
           first_name?: string | null;
           last_name?: string | null;
           role: string;
@@ -4025,11 +4037,12 @@ export interface Database {
           updated_at: number;
           show_in_calendar?: boolean;
           assigned_items?: unknown | null;
+          location_id?: string | null;
         };
         Update: {
           id?: string;
           organization_id?: string;
-          user_id?: string;
+          user_id?: string | null;
           first_name?: string | null;
           last_name?: string | null;
           role?: string;
@@ -4062,6 +4075,7 @@ export interface Database {
           updated_at?: number;
           show_in_calendar?: boolean;
           assigned_items?: unknown | null;
+          location_id?: string | null;
         };
         Relationships: [
           {
@@ -4090,6 +4104,13 @@ export interface Database {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_employees_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_locations";
             referencedColumns: ["id"];
           },
         ];
@@ -4551,10 +4572,11 @@ export interface Database {
           tag_ids: string[] | null;
           category_id: string | null;
           custom_fields: unknown | null;
-          preferred_location_id: string | null;
           created_by: string;
           created_at: number;
           updated_at: number;
+          preferred_location_id: string | null;
+          sms_consent: boolean | null;
         };
         Insert: {
           id?: string;
@@ -4580,10 +4602,11 @@ export interface Database {
           tag_ids?: string[] | null;
           category_id?: string | null;
           custom_fields?: unknown | null;
-          preferred_location_id?: string | null;
           created_by: string;
           created_at: number;
           updated_at: number;
+          preferred_location_id?: string | null;
+          sms_consent?: boolean | null;
         };
         Update: {
           id?: string;
@@ -4609,10 +4632,11 @@ export interface Database {
           tag_ids?: string[] | null;
           category_id?: string | null;
           custom_fields?: unknown | null;
-          preferred_location_id?: string | null;
           created_by?: string;
           created_at?: number;
           updated_at?: number;
+          preferred_location_id?: string | null;
+          sms_consent?: boolean | null;
         };
         Relationships: [
           {
@@ -4690,7 +4714,6 @@ export interface Database {
           scheduled_activity_id: string | null;
           reminder_sent_at: number | null;
           send_reminder: boolean | null;
-          reminder_overrides: string | null;
           cancelled_at: number | null;
           cancelled_by: string | null;
           cancellation_reason: string | null;
@@ -4706,6 +4729,7 @@ export interface Database {
           updated_at: number;
           contraindication_alerts_reviewed: boolean | null;
           price_at_booking: number | null;
+          reminder_overrides: string | null;
         };
         Insert: {
           id?: string;
@@ -4737,7 +4761,6 @@ export interface Database {
           scheduled_activity_id?: string | null;
           reminder_sent_at?: number | null;
           send_reminder?: boolean | null;
-          reminder_overrides?: string | null;
           cancelled_at?: number | null;
           cancelled_by?: string | null;
           cancellation_reason?: string | null;
@@ -4753,6 +4776,7 @@ export interface Database {
           updated_at: number;
           contraindication_alerts_reviewed?: boolean | null;
           price_at_booking?: number | null;
+          reminder_overrides?: string | null;
         };
         Update: {
           id?: string;
@@ -4784,7 +4808,6 @@ export interface Database {
           scheduled_activity_id?: string | null;
           reminder_sent_at?: number | null;
           send_reminder?: boolean | null;
-          reminder_overrides?: string | null;
           cancelled_at?: number | null;
           cancelled_by?: string | null;
           cancellation_reason?: string | null;
@@ -4800,6 +4823,7 @@ export interface Database {
           updated_at?: number;
           contraindication_alerts_reviewed?: boolean | null;
           price_at_booking?: number | null;
+          reminder_overrides?: string | null;
         };
         Relationships: [
           {
@@ -6096,7 +6120,7 @@ export interface Database {
           response_data: string;
           entity_type: string;
           entity_id: string;
-          scope_entities: string | null;
+          scope_entities: unknown | null;
           status: string;
           signature_data: string | null;
           signed_at: number | null;
@@ -6125,7 +6149,7 @@ export interface Database {
           response_data: string;
           entity_type: string;
           entity_id: string;
-          scope_entities?: string | null;
+          scope_entities?: unknown | null;
           status: string;
           signature_data?: string | null;
           signed_at?: number | null;
@@ -6154,7 +6178,7 @@ export interface Database {
           response_data?: string;
           entity_type?: string;
           entity_id?: string;
-          scope_entities?: string | null;
+          scope_entities?: unknown | null;
           status?: string;
           signature_data?: string | null;
           signed_at?: number | null;
@@ -6773,6 +6797,55 @@ export interface Database {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      gabinet_employee_locations: {
+        Row: {
+          id: string;
+          organization_id: string;
+          employee_id: string;
+          location_id: string;
+          is_primary: boolean;
+          created_at: number;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          employee_id: string;
+          location_id: string;
+          is_primary?: boolean;
+          created_at?: number;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          employee_id?: string;
+          location_id?: string;
+          is_primary?: boolean;
+          created_at?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_employee_locations_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_employee_locations_employee_id_fkey";
+            columns: ["employee_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_employees";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_employee_locations_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_locations";
             referencedColumns: ["id"];
           },
         ];

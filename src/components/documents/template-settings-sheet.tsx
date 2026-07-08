@@ -75,14 +75,14 @@ interface TemplateSettingsSheetProps {
 // ---------------------------------------------------------------------------
 
 const CATEGORY_OPTIONS: FormCategory[] = [
+  "intake",
   "consent",
+  "protocol",
   "medical_record",
   "prescription",
   "referral",
   "contract",
   "invoice",
-  "protocol",
-  "intake",
   "custom",
 ];
 

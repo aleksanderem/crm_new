@@ -188,6 +188,102 @@ export const listByStatus = action({
   },
 });
 
+/**
+ * Returns the most recently signed "Wywiad" (intake) document for a patient.
+ *
+ * Searches both entity types:
+ *  - documents linked directly to the patient (entityType = "patient")
+ *  - documents linked to the patient's appointments via scopeEntities.patient
+ *
+ * Returns null when the patient has no completed intake document.
+ */
+export const getLatestSignedIntakeByPatient = action({
+  args: {
+    organizationId: v.id("organizations"),
+    patientId: v.string(),
+  },
+  handler: async (ctx, args): Promise<{
+    id: string;
+    responseData: string;
+    formFieldValues: Record<string, string>;
+    signedAt: number | null;
+    templateId: string;
+  } | null> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+
+    // Collect all "intake" ("Wywiad") template IDs for this org
+    const intakeTemplates = await db
+      .query("formTemplates")
+      .eq("organizationId", orgIdStr)
+      .eq("category", "intake")
+      .collect();
+
+    if (intakeTemplates.length === 0) return null;
+
+    const intakeTemplateIds = intakeTemplates.map((t) => String(t._id));
+
+    // Query 1: documents linked directly to the patient
+    const directDocs = await db
+      .query("formDocuments")
+      .eq("organizationId", orgIdStr)
+      .eq("entityType", "patient")
+      .eq("entityId", args.patientId)
+      .in("templateId", intakeTemplateIds)
+      .in("status", ["signed", "completed"])
+      .collect();
+
+    // Query 2: documents linked to the patient's appointments.
+    // Uses the GIN index on scope_entities JSONB (migration 00044).
+    const appointmentDocs = await db
+      .query("formDocuments")
+      .eq("organizationId", orgIdStr)
+      .eq("entityType", "appointment")
+      .in("templateId", intakeTemplateIds)
+      .in("status", ["signed", "completed"])
+      .contains("scopeEntities", { patient: args.patientId })
+      .collect();
+
+    const allDocs = [...directDocs, ...appointmentDocs];
+    if (allDocs.length === 0) return null;
+
+    // Most recent first: prefer signedAt, fall back to updatedAt/createdAt
+    allDocs.sort((a, b) => {
+      const aTime = ((a.signedAt ?? a.updatedAt ?? a.createdAt) as number) ?? 0;
+      const bTime = ((b.signedAt ?? b.updatedAt ?? b.createdAt) as number) ?? 0;
+      return bTime - aTime;
+    });
+
+    const latest = allDocs[0];
+
+    // Extract formFieldValues from the stored responseData JSON
+    let formFieldValues: Record<string, string> = {};
+    try {
+      const parsed = JSON.parse(latest.responseData as string);
+      const raw = parsed?.formFieldValues;
+      if (raw && typeof raw === "object") {
+        for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+          formFieldValues[k] = String(v);
+        }
+      }
+    } catch {
+      // Non-JSON responseData: formFieldValues stays empty
+    }
+
+    return {
+      id: String(latest._id),
+      responseData: latest.responseData as string,
+      formFieldValues,
+      signedAt: (latest.signedAt as number | null | undefined) ?? null,
+      templateId: String(latest.templateId),
+    };
+  },
+});
+
 export const create = action({
   args: {
     organizationId: v.id("organizations"),

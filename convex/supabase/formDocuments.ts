@@ -51,7 +51,7 @@ export const writeFormDocumentToSupabase = internalAction({
       response_data: args.responseData,
       entity_type: args.entityType,
       entity_id: args.entityId,
-      scope_entities: args.scopeEntities ?? null,
+      scope_entities: args.scopeEntities ? JSON.parse(args.scopeEntities) : null,
       status: args.status,
       signature_data: args.signatureData ?? null,
       signed_at: args.signedAt ?? null,

@@ -217,7 +217,7 @@ export const create = action({
       responseData: args.responseData,
       entityType: args.entityType,
       entityId: args.entityId,
-      scopeEntities: args.scopeEntities ?? null,
+      scopeEntities: args.scopeEntities ? JSON.parse(args.scopeEntities) : null,
       status: args.status,
       signingToken: args.signingToken ?? null,
       signingTokenExpiresAt: args.signingTokenExpiresAt ?? null,

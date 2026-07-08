@@ -247,6 +247,17 @@ function applyMigration(sql) {
       const col = table.columns.find((c) => c.name === colName);
       if (col) col.nullable = true;
     }
+
+    const alterTypeRe = /ALTER\s+COLUMN\s+"?(\w+)"?\s+TYPE\s+([\w\s\[\]()]+?)(?:\s+USING\b.*?)?(?=,\s*(?:ADD|ALTER|DROP|RENAME|ENABLE|DISABLE)\b|$)/gi;
+    for (const a of actions.matchAll(alterTypeRe)) {
+      const colName = a[1];
+      const rawType = a[2].trim().toUpperCase();
+      const col = table.columns.find((c) => c.name === colName);
+      if (col) {
+        const newTsType = mapSqlType(rawType);
+        if (newTsType !== null) col.tsType = newTsType;
+      }
+    }
   }
 
   // ─── ALTER TABLE <name> ADD CONSTRAINT <name> FOREIGN KEY (<cols>) REFERENCES <table>(<cols>) ──

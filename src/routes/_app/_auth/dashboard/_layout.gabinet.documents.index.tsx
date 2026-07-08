@@ -527,12 +527,8 @@ function GabinetDocumentsPage() {
             if (item.entityType === "patient") {
               name = patientMap.get(item.entityId);
             } else if (item.entityType === "appointment" && item.scopeEntities) {
-              try {
-                const scope = JSON.parse(item.scopeEntities) as { patient?: string };
-                if (scope.patient) name = patientMap.get(scope.patient);
-              } catch {
-                // malformed scopeEntities — fall through to "—"
-              }
+              const scope = item.scopeEntities as { patient?: string };
+              if (scope.patient) name = patientMap.get(scope.patient);
             }
           }
           return (
@@ -877,12 +873,8 @@ function GabinetDocumentsPage() {
                     if (selectedDoc.entityType === "patient") {
                       signerName = patientMap.get(selectedDoc.entityId);
                     } else if (selectedDoc.entityType === "appointment" && selectedDoc.scopeEntities) {
-                      try {
-                        const scope = JSON.parse(selectedDoc.scopeEntities) as { patient?: string };
-                        if (scope.patient) signerName = patientMap.get(scope.patient);
-                      } catch {
-                        // ignore
-                      }
+                      const scope = selectedDoc.scopeEntities as { patient?: string };
+                      if (scope.patient) signerName = patientMap.get(scope.patient);
                     }
                   }
                   return signerName ? (

@@ -374,6 +374,16 @@ class SupabaseQueryBuilder<T = Record<string, unknown>> {
     return this;
   }
 
+  /**
+   * JSONB containment filter (`@>` operator). Checks whether the column value
+   * contains all key-value pairs in `value` (for objects) or all elements in
+   * `value` (for arrays). Only meaningful for JSONB / array columns in Postgres.
+   */
+  contains(field: string, value: Record<string, unknown> | unknown[]) {
+    this.filters.push((q) => q.contains(toSnakeCase(field), value));
+    return this;
+  }
+
   order(field: string, ascending = true) {
     this.orderBy.push({ field: toSnakeCase(field), ascending });
     return this;

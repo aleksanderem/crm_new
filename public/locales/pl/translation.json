@@ -2427,7 +2427,10 @@
         "female": "Kobieta",
         "other": "Inna"
       },
-      "medicalNotes": "Notatka o kliencie",
+      "medicalNotes": "Notatki medyczne",
+      "intakeSummarySection": "Istotne informacje z Wywiadu",
+      "noIntakeSummary": "Brak istotnych informacji z ostatniego Wywiadu.",
+      "staffNotesSection": "Dodatkowe notatki personelu",
       "allergies": "Alergie",
       "bloodType": "Grupa krwi",
       "emergencyContact": "Kontakt awaryjny",

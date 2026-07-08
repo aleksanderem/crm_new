@@ -2412,7 +2412,10 @@
         "female": "Female",
         "other": "Other"
       },
-      "medicalNotes": "Client Note",
+      "medicalNotes": "Medical Notes",
+      "intakeSummarySection": "Key Intake Information",
+      "noIntakeSummary": "No key information from the last intake.",
+      "staffNotesSection": "Additional Staff Notes",
       "allergies": "Allergies",
       "bloodType": "Blood Type",
       "emergencyContact": "Emergency Contact",

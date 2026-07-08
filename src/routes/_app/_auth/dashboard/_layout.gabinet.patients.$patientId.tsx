@@ -128,6 +128,8 @@ function PatientDetail() {
   );
   const trackView = useAction(api.recentlyViewed.track);
   const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action
+  const getLatestSignedIntakeByPatientAction = useAction(api.documents.documents.getLatestSignedIntakeByPatient);
   const queryClient = useQueryClient();
 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
@@ -252,6 +254,12 @@ function PatientDetail() {
         entityType: "patient",
         entityId: patientId,
       }),
+    enabled: !!organizationId && !!patientId,
+  });
+
+  const { data: latestIntake } = useQuery({
+    queryKey: ["documents.getLatestSignedIntakeByPatient", organizationId, patientId],
+    queryFn: () => getLatestSignedIntakeByPatientAction({ organizationId, patientId }),
     enabled: !!organizationId && !!patientId,
   });
 
@@ -454,22 +462,49 @@ function PatientDetail() {
           })()}
         </div>
       </div>
-      {(() => {
-        const medicalNotesText = plateJsonToText(patient.medicalNotes ?? undefined).trim();
-        if (!medicalNotesText) return null;
-        return (
-          <div className="space-y-2">
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-              {t("gabinet.patients.medicalNotes")}
-            </p>
+      <div className="space-y-3">
+        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+          {t("gabinet.patients.medicalNotes")}
+        </p>
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+            {t("gabinet.patients.intakeSummarySection")}
+          </p>
+          {latestIntake && latestIntake.intakeSummary.length > 0 ? (
             <div className="rounded-md border p-2.5">
-              <p className="text-xs text-muted-foreground whitespace-pre-wrap">
-                {medicalNotesText}
+              <ul className="space-y-1">
+                {latestIntake.intakeSummary.map((item, i) => (
+                  <li key={i} className="text-xs text-muted-foreground">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <div className="rounded-md border p-2.5">
+              <p className="text-xs text-muted-foreground italic">
+                {t("gabinet.patients.noIntakeSummary")}
               </p>
             </div>
-          </div>
-        );
-      })()}
+          )}
+        </div>
+        {(() => {
+          const medicalNotesText = plateJsonToText(patient.medicalNotes ?? undefined).trim();
+          if (!medicalNotesText) return null;
+          return (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                {t("gabinet.patients.staffNotesSection")}
+              </p>
+              <div className="rounded-md border p-2.5">
+                <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                  {medicalNotesText}
+                </p>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
       <PatientPackagesCard
         patientId={patientId}
         organizationId={organizationId}

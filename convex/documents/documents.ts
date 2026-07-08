@@ -234,7 +234,9 @@ export const getLatestSignedIntakeByPatient = action({
 
     const intakeTemplateIds = intakeTemplates.map((t) => String(t._id));
 
-    // Query 1: documents linked directly to the patient
+    // Query 1: documents linked directly to the patient.
+    // ORDER BY + LIMIT 1 so Postgres returns only the latest match; the
+    // in-memory merge below compares at most one row from each query.
     const directDocs = await db
       .query("formDocuments")
       .eq("organizationId", orgIdStr)
@@ -242,10 +244,13 @@ export const getLatestSignedIntakeByPatient = action({
       .eq("entityId", args.patientId)
       .in("templateId", intakeTemplateIds)
       .in("status", ["signed", "completed"])
+      .order("signedAt", false)
+      .take(1)
       .collect();
 
     // Query 2: documents linked to the patient's appointments.
     // Uses the GIN index on scope_entities JSONB (migration 00044).
+    // ORDER BY + LIMIT 1 bounds the result set to a single row.
     const appointmentDocs = await db
       .query("formDocuments")
       .eq("organizationId", orgIdStr)
@@ -253,6 +258,8 @@ export const getLatestSignedIntakeByPatient = action({
       .in("templateId", intakeTemplateIds)
       .in("status", ["signed", "completed"])
       .contains("scopeEntities", { patient: args.patientId })
+      .order("signedAt", false)
+      .take(1)
       .collect();
 
     const allDocs = [...directDocs, ...appointmentDocs];

@@ -2431,6 +2431,13 @@
       "intakeSummarySection": "Istotne informacje z Wywiadu",
       "noIntakeSummary": "Brak istotnych informacji z ostatniego Wywiadu.",
       "staffNotesSection": "Dodatkowe notatki personelu",
+      "intakeGroups": {
+        "diseases": "Choroby / informacje zdrowotne",
+        "allergies": "Alergie",
+        "medications": "Leki",
+        "devices": "Urządzenia / implanty",
+        "other": "Inne informacje"
+      },
       "allergies": "Alergie",
       "bloodType": "Grupa krwi",
       "emergencyContact": "Kontakt awaryjny",

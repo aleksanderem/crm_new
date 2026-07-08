@@ -425,6 +425,86 @@ describe("documents.getLatestSignedIntakeByPatient", () => {
     ]);
   });
 
+  test("throws when template contentJson is malformed JSON", async () => {
+    const { t, organizationId, userId, identity, patientId, db, now } = await setup();
+
+    const malformedTemplateId = await t.run(async (ctx) => {
+      return await ctx.db.insert("formTemplates", {
+        organizationId,
+        name: "Malformed template",
+        category: "intake",
+        formJson: "{}",
+        contentJson: "{not valid json}",
+        modules: ["gabinet"],
+        entityTypes: ["patient"],
+        requiresSignature: true,
+        version: 1,
+        isActive: true,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    await db.insert("formTemplates", {
+      _id: malformedTemplateId,
+      organizationId: String(organizationId),
+      name: "Malformed template",
+      category: "intake",
+      formJson: "{}",
+      contentJson: "{not valid json}",
+      modules: ["gabinet"],
+      entityTypes: ["patient"],
+      requiresSignature: true,
+      version: 1,
+      isActive: true,
+      createdBy: String(userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const signedAt = now + 1000;
+    const responseData = JSON.stringify({ formFieldValues: { q1: "a1" } });
+
+    const docId = await t.run(async (ctx) => {
+      return await ctx.db.insert("formDocuments", {
+        organizationId,
+        templateId: malformedTemplateId,
+        title: "Wywiad",
+        responseData,
+        entityType: "patient",
+        entityId: String(patientId),
+        status: "signed",
+        signedAt,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    await db.insert("formDocuments", {
+      _id: docId,
+      organizationId: String(organizationId),
+      templateId: String(malformedTemplateId),
+      title: "Wywiad",
+      responseData,
+      entityType: "patient",
+      entityId: String(patientId),
+      status: "signed",
+      signedAt,
+      createdBy: String(userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await expect(
+      t.withIdentity(identity).action(
+        api.documents.documents.getLatestSignedIntakeByPatient,
+        { organizationId, patientId: String(patientId) },
+      ),
+    ).rejects.toThrow(SyntaxError);
+  });
+
   test("ignores intake documents belonging to a different patient", async () => {
     const { t, organizationId, userId, identity, patientId, templateId, db, now } = await setup();
 

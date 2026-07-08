@@ -287,13 +287,9 @@ export const getLatestSignedIntakeByPatient = action({
     );
     let fieldDefinitions: IntakeFieldDefinition[] = [];
     if (matchedTemplate?.contentJson) {
-      try {
-        fieldDefinitions = extractFieldDefinitions(
-          JSON.parse(matchedTemplate.contentJson as string),
-        );
-      } catch {
-        // contentJson not parseable — fieldDefinitions stays empty
-      }
+      fieldDefinitions = extractFieldDefinitions(
+        JSON.parse(matchedTemplate.contentJson as string),
+      );
     }
 
     return {

@@ -190,6 +190,14 @@ export const gabinetManifest: ModuleManifest = {
       ],
     },
     {
+      key: "document-templates",
+      titleKey: "nav.gabinet.documentTemplates",
+      matches: [{ to: "/dashboard/gabinet/document-templates" }],
+      actions: [
+        { labelKey: "nav.actions.addTemplate", icon: PlusCircle, href: "/dashboard/document-editor/new" },
+      ],
+    },
+    {
       key: "reports",
       titleKey: "nav.gabinet.reports",
       widgets: GabinetReportsWidgets,

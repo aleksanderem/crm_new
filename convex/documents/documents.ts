@@ -687,3 +687,166 @@ export const listByPatientToken = action({
     return enriched.sort((a, b) => b.createdAt - a.createdAt);
   },
 });
+
+// ---------------------------------------------------------------------------
+// Helper: recursively extract formField nodes from a TipTap JSON tree.
+// ---------------------------------------------------------------------------
+
+type ExtractedFormFieldDef = {
+  fieldId: string;
+  fieldType: string;
+  label: string;
+  options: string;
+  required: boolean;
+  filledBy: string;
+};
+
+function walkTipTapForFields(
+  node: unknown,
+  out: ExtractedFormFieldDef[],
+): void {
+  if (!node || typeof node !== "object") return;
+  const n = node as {
+    type?: string;
+    attrs?: Record<string, unknown>;
+    content?: unknown[];
+  };
+  if (n.type === "formField" && n.attrs) {
+    out.push({
+      fieldId: String(n.attrs.fieldId ?? ""),
+      fieldType: String(n.attrs.fieldType ?? "text"),
+      label: String(n.attrs.label ?? ""),
+      options: String(n.attrs.options ?? ""),
+      required: Boolean(n.attrs.required),
+      filledBy: String(n.attrs.filledBy ?? "client"),
+    });
+  }
+  if (Array.isArray(n.content)) {
+    for (const child of n.content) walkTipTapForFields(child, out);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// getLatestSignedIntakeByPatient — returns formFieldValues from the most
+// recent signed/completed intake form directly linked to a patient, enriched
+// with field definitions extracted from the template's TipTap contentJson.
+// ---------------------------------------------------------------------------
+
+export const getLatestSignedIntakeByPatient = action({
+  args: {
+    organizationId: v.id("organizations"),
+    patientId: v.string(),
+  },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    documentId: string;
+    templateId: string;
+    templateName: string;
+    signedAt: number | null;
+    formFieldValues: Record<string, string>;
+    fieldDefinitions: ExtractedFormFieldDef[];
+    byFieldType: Record<
+      string,
+      Array<{ fieldId: string; label: string; value: string }>
+    >;
+  } | null> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
+    const orgId = String(args.organizationId);
+
+    // 1. Fetch all intake-category templates for this org
+    const intakeTemplates = await db
+      .query("formTemplates")
+      .eq("organizationId", orgId)
+      .eq("category", "intake")
+      .collect();
+
+    if (intakeTemplates.length === 0) return null;
+
+    const intakeTemplateIds = new Set(intakeTemplates.map((t) => String(t._id)));
+    const templateById = new Map(intakeTemplates.map((t) => [String(t._id), t]));
+
+    // 2. Fetch formDocuments directly linked to this patient
+    const patientDocs = await db
+      .query("formDocuments")
+      .eq("organizationId", orgId)
+      .eq("entityType", "patient")
+      .eq("entityId", args.patientId)
+      .collect();
+
+    // 3. Filter to intake templates with signed/completed status
+    const signedIntakeDocs = patientDocs.filter(
+      (doc) =>
+        intakeTemplateIds.has(String(doc.templateId)) &&
+        (doc.status === "signed" || doc.status === "completed"),
+    );
+
+    if (signedIntakeDocs.length === 0) return null;
+
+    // 4. Pick most recent (signedAt desc, fallback to updatedAt)
+    signedIntakeDocs.sort((a, b) => {
+      const aTime = (a.signedAt as number | null) ?? (a.updatedAt as number);
+      const bTime = (b.signedAt as number | null) ?? (b.updatedAt as number);
+      return bTime - aTime;
+    });
+    const doc = signedIntakeDocs[0];
+    const template = templateById.get(String(doc.templateId));
+
+    // 5. Parse formFieldValues from responseData
+    const formFieldValues: Record<string, string> = {};
+    try {
+      const responseData = JSON.parse(doc.responseData as string);
+      const raw = responseData.formFieldValues;
+      if (raw && typeof raw === "object") {
+        for (const [k, val] of Object.entries(raw as Record<string, unknown>)) {
+          formFieldValues[k] = String(val);
+        }
+      }
+    } catch {
+      // malformed responseData — return empty map
+    }
+
+    // 6. Extract field definitions from template's TipTap contentJson
+    const fieldDefinitions: ExtractedFormFieldDef[] = [];
+    if (template?.contentJson) {
+      try {
+        walkTipTapForFields(
+          JSON.parse(template.contentJson as string),
+          fieldDefinitions,
+        );
+      } catch {
+        // malformed contentJson — skip enrichment
+      }
+    }
+
+    // 7. Group values by fieldType
+    const byFieldType: Record<
+      string,
+      Array<{ fieldId: string; label: string; value: string }>
+    > = {};
+    for (const field of fieldDefinitions) {
+      const value = formFieldValues[field.fieldId] ?? "";
+      if (!byFieldType[field.fieldType]) byFieldType[field.fieldType] = [];
+      byFieldType[field.fieldType].push({
+        fieldId: field.fieldId,
+        label: field.label,
+        value,
+      });
+    }
+
+    return {
+      documentId: String(doc._id),
+      templateId: String(doc.templateId),
+      templateName: (template?.name as string) ?? "",
+      signedAt: (doc.signedAt as number | null) ?? null,
+      formFieldValues,
+      fieldDefinitions,
+      byFieldType,
+    };
+  },
+});

@@ -259,6 +259,54 @@ class InMemoryQueryBuilder<T = Record<string, unknown>> {
     return this;
   }
 
+  or(filterStr: string) {
+    // Parse PostgREST OR filter: "col.op.val,col.op.val,..."
+    // Column names in the filter string are snake_case; convert to camelCase for in-memory lookup.
+    const clauses = filterStr.split(",").map((cond) => {
+      const first = cond.indexOf(".");
+      const second = cond.indexOf(".", first + 1);
+      return {
+        field: snakeToCamel(cond.slice(0, first)),
+        op: cond.slice(first + 1, second),
+        rawValue: cond.slice(second + 1),
+      };
+    });
+    this.filters.push((row) =>
+      clauses.some(({ field, op, rawValue }) => {
+        const col = row[field];
+        switch (op) {
+          case "eq":
+            return col === rawValue || (typeof col === "number" && col === Number(rawValue));
+          case "neq":
+            return col !== rawValue && !(typeof col === "number" && col === Number(rawValue));
+          case "ilike": {
+            if (typeof col !== "string") return false;
+            const regexStr = rawValue
+              .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+              .replace(/%/g, ".*")
+              .replace(/_/g, ".");
+            return new RegExp(`^${regexStr}$`, "i").test(col);
+          }
+          case "is":
+            if (rawValue === "null") return col == null;
+            if (rawValue === "not.null") return col != null;
+            return false;
+          case "gt":
+            return col != null && (col as any) > rawValue;
+          case "gte":
+            return col != null && (col as any) >= rawValue;
+          case "lt":
+            return col != null && (col as any) < rawValue;
+          case "lte":
+            return col != null && (col as any) <= rawValue;
+          default:
+            return false;
+        }
+      }),
+    );
+    return this;
+  }
+
   in(field: string, values: unknown[]) {
     const set = new Set(values);
     this.filters.push((r) => set.has(r[field]));

@@ -259,6 +259,22 @@ class InMemoryQueryBuilder<T = Record<string, unknown>> {
     return this;
   }
 
+  contains(field: string, value: Record<string, unknown> | unknown[]) {
+    this.filters.push((row) => {
+      const col = row[field];
+      if (col === null || col === undefined) return false;
+      if (Array.isArray(value)) {
+        if (!Array.isArray(col)) return false;
+        const colArr = col as unknown[];
+        return value.every((v) => colArr.includes(v));
+      }
+      if (typeof col !== "object") return false;
+      const colObj = col as Record<string, unknown>;
+      return Object.entries(value).every(([k, v]) => colObj[k] === v);
+    });
+    return this;
+  }
+
   order(field: string, ascending = true) {
     this.orderBy.push({ field, ascending });
     return this;

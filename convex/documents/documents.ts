@@ -728,8 +728,11 @@ function walkTipTapForFields(
 
 // ---------------------------------------------------------------------------
 // getLatestSignedIntakeByPatient — returns formFieldValues from the most
-// recent signed/completed intake form directly linked to a patient, enriched
+// recent signed/completed form directly linked to a patient, enriched
 // with field definitions extracted from the template's TipTap contentJson.
+// No template-category filter is applied: the template category="intake" is
+// the intended convention but the UI defaults new templates to category="custom",
+// so restricting to intake-category would silently return null for most orgs.
 // ---------------------------------------------------------------------------
 
 export const getLatestSignedIntakeByPatient = action({
@@ -759,19 +762,7 @@ export const getLatestSignedIntakeByPatient = action({
     const db = createSupabaseDb();
     const orgId = String(args.organizationId);
 
-    // 1. Fetch all intake-category templates for this org
-    const intakeTemplates = await db
-      .query("formTemplates")
-      .eq("organizationId", orgId)
-      .eq("category", "intake")
-      .collect();
-
-    if (intakeTemplates.length === 0) return null;
-
-    const intakeTemplateIds = new Set(intakeTemplates.map((t) => String(t._id)));
-    const templateById = new Map(intakeTemplates.map((t) => [String(t._id), t]));
-
-    // 2a. Fetch formDocuments directly linked to this patient (entity_type='patient')
+    // 1. Fetch formDocuments directly linked to this patient (entity_type='patient')
     const patientDocs = await db
       .query("formDocuments")
       .eq("organizationId", orgId)
@@ -779,7 +770,7 @@ export const getLatestSignedIntakeByPatient = action({
       .eq("entityId", args.patientId)
       .collect();
 
-    // 2b. Fetch appointment-linked docs for this org and filter by patient in scopeEntities.
+    // 2. Fetch appointment-linked docs for this org and filter by patient in scopeEntities.
     // Documents generated from the appointment checklist use entityType='appointment'
     // and store the linked patient id in scopeEntities.patient (set by generateDocument
     // and autoGenerateAppointmentDocuments). Both TEXT and JSONB formats are handled.
@@ -802,25 +793,27 @@ export const getLatestSignedIntakeByPatient = action({
       }
     });
 
-    // 3. Filter combined set to intake templates with signed/completed status
-    const signedIntakeDocs = [...patientDocs, ...apptPatientDocs].filter(
-      (doc) =>
-        intakeTemplateIds.has(String(doc.templateId)) &&
-        (doc.status === "signed" || doc.status === "completed"),
+    // 3. Filter combined set to signed/completed status (any template category)
+    const signedDocs = [...patientDocs, ...apptPatientDocs].filter(
+      (doc) => doc.status === "signed" || doc.status === "completed",
     );
 
-    if (signedIntakeDocs.length === 0) return null;
+    if (signedDocs.length === 0) return null;
 
     // 4. Pick most recent (signedAt desc, fallback to updatedAt)
-    signedIntakeDocs.sort((a, b) => {
+    signedDocs.sort((a, b) => {
       const aTime = (a.signedAt as number | null) ?? (a.updatedAt as number);
       const bTime = (b.signedAt as number | null) ?? (b.updatedAt as number);
       return bTime - aTime;
     });
-    const doc = signedIntakeDocs[0];
-    const template = templateById.get(String(doc.templateId));
+    const doc = signedDocs[0];
 
-    // 5. Parse formFieldValues from responseData
+    // 5. Fetch the template for this document (single lookup, no category restriction)
+    const template = doc.templateId
+      ? await db.get("formTemplates", String(doc.templateId))
+      : null;
+
+    // 6. Parse formFieldValues from responseData
     const formFieldValues: Record<string, string> = {};
     try {
       const responseData = JSON.parse(doc.responseData as string);
@@ -834,7 +827,7 @@ export const getLatestSignedIntakeByPatient = action({
       // malformed responseData — return empty map
     }
 
-    // 6. Extract field definitions from template's TipTap contentJson
+    // 7. Extract field definitions from template's TipTap contentJson
     const fieldDefinitions: ExtractedFormFieldDef[] = [];
     if (template?.contentJson) {
       try {
@@ -847,7 +840,7 @@ export const getLatestSignedIntakeByPatient = action({
       }
     }
 
-    // 7. Group values by fieldType
+    // 8. Group values by fieldType
     const byFieldType: Record<
       string,
       Array<{ fieldId: string; label: string; value: string }>

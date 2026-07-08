@@ -96,7 +96,7 @@ async function seedFormDocument(
 // ---------------------------------------------------------------------------
 
 describe("getLatestSignedIntakeByPatient", () => {
-  test("returns null when no intake templates exist for the org", async () => {
+  test("returns null when no signed documents exist for the patient", async () => {
     const { t, organizationId, identity, patientId } = await setup();
 
     const result = await t.withIdentity(identity).action(
@@ -261,10 +261,10 @@ describe("getLatestSignedIntakeByPatient", () => {
     expect(result).toBeNull();
   });
 
-  test("ignores non-intake templates", async () => {
+  test("returns signed document regardless of template category, with empty fieldDefinitions when template has no form fields", async () => {
     const { t, organizationId, userId, identity, patientId } = await setup();
 
-    // Seed a consent template (not intake)
+    // Seed a consent template (not intake category) — no contentJson so no form fields
     const db = createSupabaseDb();
     const now = Date.now();
     const consentTemplateId = await db.insert("formTemplates", {
@@ -288,7 +288,54 @@ describe("getLatestSignedIntakeByPatient", () => {
       { organizationId, patientId: String(patientId) },
     );
 
-    expect(result).toBeNull();
+    // Category is no longer filtered — any signed document is returned.
+    // Since the consent template has no contentJson, fieldDefinitions is empty,
+    // so the UI's hasIntakeData check will return false and show no medical info.
+    expect(result).not.toBeNull();
+    expect(result!.templateName).toBe("Consent Form");
+    expect(result!.fieldDefinitions).toHaveLength(0);
+    expect(result!.formFieldValues).toEqual({});
+  });
+
+  test("returns signed document with category=custom (the UI default) — regression for #2823", async () => {
+    const { t, organizationId, userId, identity, patientId } = await setup();
+
+    const db = createSupabaseDb();
+    const now = Date.now();
+    const wywiadTemplateId = await db.insert("formTemplates", {
+      organizationId: String(organizationId),
+      name: "Wywiad",
+      category: "custom",
+      formJson: "{}",
+      contentJson: makeContentJson([
+        { fieldId: "pregnancy", fieldType: "checkbox", label: "Ciąża" },
+        { fieldId: "diabetes", fieldType: "checkbox", label: "Cukrzyca" },
+      ]),
+      modules: ["gabinet"],
+      entityTypes: ["patient"],
+      requiresSignature: true,
+      version: 1,
+      isActive: true,
+      createdBy: String(userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+    await seedFormDocument(String(organizationId), wywiadTemplateId, String(patientId), String(userId), {
+      responseData: JSON.stringify({
+        html: "<p>wywiad</p>",
+        formFieldValues: { pregnancy: "true", diabetes: "true" },
+      }),
+    });
+
+    const result = await t.withIdentity(identity).action(
+      api["documents/documents"].getLatestSignedIntakeByPatient,
+      { organizationId, patientId: String(patientId) },
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.templateName).toBe("Wywiad");
+    expect(result!.formFieldValues).toEqual({ pregnancy: "true", diabetes: "true" });
+    expect(result!.fieldDefinitions).toHaveLength(2);
   });
 
   test("also returns completed-status documents", async () => {

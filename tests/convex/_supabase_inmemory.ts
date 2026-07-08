@@ -259,6 +259,12 @@ class InMemoryQueryBuilder<T = Record<string, unknown>> {
     return this;
   }
 
+  in(field: string, values: unknown[]) {
+    const set = new Set(values);
+    this.filters.push((r) => set.has(r[field]));
+    return this;
+  }
+
   contains(field: string, value: Record<string, unknown> | unknown[]) {
     this.filters.push((row) => {
       const col = row[field];

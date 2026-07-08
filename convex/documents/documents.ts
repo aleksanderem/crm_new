@@ -7,6 +7,11 @@ import { formDocumentStatusValidator } from "../schema/documents";
 import { resolveComponentsInContent } from "./resolveComponents";
 import type { FormDocumentRow, FormTemplateRow } from "../_helpers/supabaseRows";
 import { Id } from "../_generated/dataModel";
+import {
+  extractFieldDefinitions,
+  extractIntakeSummary,
+  type IntakeFieldDefinition,
+} from "./intake-summary";
 
 // Dual-write refs removed — Supabase is now primary for document writes
 
@@ -206,6 +211,8 @@ export const getLatestSignedIntakeByPatient = action({
     id: string;
     responseData: string;
     formFieldValues: Record<string, string>;
+    fieldDefinitions: IntakeFieldDefinition[];
+    intakeSummary: string[];
     signedAt: number | null;
     templateId: string;
   } | null> => {
@@ -274,10 +281,27 @@ export const getLatestSignedIntakeByPatient = action({
       // Non-JSON responseData: formFieldValues stays empty
     }
 
+    // Extract field definitions from the template's TipTap contentJson
+    const matchedTemplate = intakeTemplates.find(
+      (t) => String(t._id) === String(latest.templateId),
+    );
+    let fieldDefinitions: IntakeFieldDefinition[] = [];
+    if (matchedTemplate?.contentJson) {
+      try {
+        fieldDefinitions = extractFieldDefinitions(
+          JSON.parse(matchedTemplate.contentJson as string),
+        );
+      } catch {
+        // contentJson not parseable — fieldDefinitions stays empty
+      }
+    }
+
     return {
       id: String(latest._id),
       responseData: latest.responseData as string,
       formFieldValues,
+      fieldDefinitions,
+      intakeSummary: extractIntakeSummary(fieldDefinitions, formFieldValues),
       signedAt: (latest.signedAt as number | null | undefined) ?? null,
       templateId: String(latest.templateId),
     };

@@ -175,6 +175,9 @@ describe("documents.getLatestSignedIntakeByPatient", () => {
     expect(result!.responseData).toBe(responseData);
     expect(result!.formFieldValues).toEqual({ name: "Anna", age: "30" });
     expect(result!.templateId).toBe(String(templateId));
+    // Template has no contentJson → both arrays must be empty
+    expect(result!.fieldDefinitions).toEqual([]);
+    expect(result!.intakeSummary).toEqual([]);
   });
 
   test("returns intake document linked to appointment via scopeEntities", async () => {
@@ -225,6 +228,8 @@ describe("documents.getLatestSignedIntakeByPatient", () => {
     expect(result!.id).toBe(String(docId));
     expect(result!.signedAt).toBe(signedAt);
     expect(result!.formFieldValues).toEqual({ condition: "healthy" });
+    expect(result!.fieldDefinitions).toEqual([]);
+    expect(result!.intakeSummary).toEqual([]);
   });
 
   test("returns the most recently signed document when multiple exist", async () => {
@@ -303,6 +308,121 @@ describe("documents.getLatestSignedIntakeByPatient", () => {
     expect(result).not.toBeNull();
     expect(result!.id).toBe(String(newDocId));
     expect(result!.formFieldValues).toEqual({ visit: "second" });
+  });
+
+  test("extracts fieldDefinitions and intakeSummary from template contentJson", async () => {
+    const { t, organizationId, userId, identity, patientId, db, now } = await setup();
+
+    const contentJson = JSON.stringify({
+      type: "doc",
+      content: [
+        {
+          type: "formField",
+          attrs: { fieldId: "allergies", fieldType: "textarea", label: "Alergie" },
+        },
+        {
+          type: "formField",
+          attrs: { fieldId: "diabetes", fieldType: "checkbox", label: "Cukrzyca" },
+        },
+        {
+          type: "formField",
+          attrs: { fieldId: "medications", fieldType: "text", label: "Leki" },
+        },
+      ],
+    });
+
+    const richTemplateId = await t.run(async (ctx) => {
+      return await ctx.db.insert("formTemplates", {
+        organizationId,
+        name: "Wywiad z contentJson",
+        category: "intake",
+        formJson: "{}",
+        contentJson,
+        modules: ["gabinet"],
+        entityTypes: ["patient"],
+        requiresSignature: true,
+        version: 1,
+        isActive: true,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    await db.insert("formTemplates", {
+      _id: richTemplateId,
+      organizationId: String(organizationId),
+      name: "Wywiad z contentJson",
+      category: "intake",
+      formJson: "{}",
+      contentJson,
+      modules: ["gabinet"],
+      entityTypes: ["patient"],
+      requiresSignature: true,
+      version: 1,
+      isActive: true,
+      createdBy: String(userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const signedAt = now + 3000;
+    const responseData = JSON.stringify({
+      formFieldValues: {
+        allergies: "penicylina",
+        diabetes: "true",
+        medications: "",
+      },
+    });
+
+    const docId = await t.run(async (ctx) => {
+      return await ctx.db.insert("formDocuments", {
+        organizationId,
+        templateId: richTemplateId,
+        title: "Wywiad",
+        responseData,
+        entityType: "patient",
+        entityId: String(patientId),
+        status: "signed",
+        signedAt,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    await db.insert("formDocuments", {
+      _id: docId,
+      organizationId: String(organizationId),
+      templateId: String(richTemplateId),
+      title: "Wywiad",
+      responseData,
+      entityType: "patient",
+      entityId: String(patientId),
+      status: "signed",
+      signedAt,
+      createdBy: String(userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const result = await t.withIdentity(identity).action(
+      api.documents.documents.getLatestSignedIntakeByPatient,
+      { organizationId, patientId: String(patientId) },
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.fieldDefinitions).toEqual([
+      { fieldId: "allergies", fieldType: "textarea", label: "Alergie" },
+      { fieldId: "diabetes", fieldType: "checkbox", label: "Cukrzyca" },
+      { fieldId: "medications", fieldType: "text", label: "Leki" },
+    ]);
+    // allergies has a value → "Label: value"; diabetes is checked → plain label;
+    // medications is empty → omitted
+    expect(result!.intakeSummary).toEqual([
+      "Alergie: penicylina",
+      "Cukrzyca",
+    ]);
   });
 
   test("ignores intake documents belonging to a different patient", async () => {

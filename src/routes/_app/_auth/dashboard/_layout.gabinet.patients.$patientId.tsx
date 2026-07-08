@@ -110,6 +110,7 @@ function PatientDetail() {
   );
   const trackView = useAction(api.recentlyViewed.track);
   const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
+  const getLatestSignedIntakeByPatientAction = useAction(api.documents.documents.getLatestSignedIntakeByPatient);
   const queryClient = useQueryClient();
 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
@@ -230,6 +231,20 @@ function PatientDetail() {
         organizationId,
         entityType: "patient",
         entityId: patientId,
+      }),
+    enabled: !!organizationId && !!patientId,
+  });
+
+  const { data: latestIntake } = useQuery({
+    queryKey: [
+      "documents.documents.getLatestSignedIntakeByPatient",
+      organizationId,
+      patientId,
+    ],
+    queryFn: () =>
+      getLatestSignedIntakeByPatientAction({
+        organizationId,
+        patientId,
       }),
     enabled: !!organizationId && !!patientId,
   });
@@ -458,6 +473,42 @@ function PatientDetail() {
           </div>
         );
       })()}
+      <div className="space-y-2">
+        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+          {t("gabinet.patients.intakeSummary", { defaultValue: "Istotne informacje z wywiadu" })}
+        </p>
+        <div className="rounded-md border p-2.5 space-y-1.5">
+          {latestIntake ? (() => {
+            const filledFields = latestIntake.fieldDefinitions.filter(
+              (f) => {
+                const val = latestIntake.formFieldValues[f.fieldId] ?? "";
+                return val && val !== "false";
+              }
+            );
+            if (filledFields.length === 0) {
+              return (
+                <p className="text-xs text-muted-foreground">
+                  {t("gabinet.patients.noIntakeSummary", { defaultValue: "Brak istotnych informacji z ostatniego Wywiadu" })}
+                </p>
+              );
+            }
+            return filledFields.map((f) => {
+              const val = latestIntake.formFieldValues[f.fieldId];
+              const display = val === "true" ? "✓" : val;
+              return (
+                <div key={f.fieldId} className="flex items-start gap-1.5">
+                  <span className="text-xs text-muted-foreground shrink-0">{f.label}:</span>
+                  <span className="text-xs font-medium">{display}</span>
+                </div>
+              );
+            });
+          })() : (
+            <p className="text-xs text-muted-foreground">
+              {t("gabinet.patients.noIntakeSummary", { defaultValue: "Brak istotnych informacji z ostatniego Wywiadu" })}
+            </p>
+          )}
+        </div>
+      </div>
       <PatientPackagesCard
         patientId={patientId}
         organizationId={organizationId}
@@ -800,9 +851,12 @@ function PatientDetail() {
     .slice(0, 3);
   // Allergies and bloodType are already shown in the Details sidebar (which is
   // stacked above the tabs on mobile) — see #1927. Keep the "medical info" card
-  // dedicated to emergency contact so the same data isn't presented twice.
+  // dedicated to emergency contact + intake summary so the same data isn't presented twice.
+  const hasIntakeData = latestIntake != null && latestIntake.fieldDefinitions.some(
+    (f) => { const v = latestIntake.formFieldValues[f.fieldId] ?? ""; return v && v !== "false"; }
+  );
   const hasMedicalInfo = Boolean(
-    patient?.emergencyContactName || patient?.emergencyContactPhone,
+    patient?.emergencyContactName || patient?.emergencyContactPhone || hasIntakeData,
   );
 
   // Issue #1894: Beauty plan history — chronological list of `interviewNotes`
@@ -1033,6 +1087,31 @@ function PatientDetail() {
                       </p>
                     </div>
                   )}
+                  {hasIntakeData && latestIntake && (() => {
+                    const filledFields = latestIntake.fieldDefinitions.filter(
+                      (f) => { const v = latestIntake.formFieldValues[f.fieldId] ?? ""; return v && v !== "false"; }
+                    );
+                    return (
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <p className="text-xs text-muted-foreground">
+                          {t("gabinet.patients.intakeSummary", { defaultValue: "Istotne informacje z wywiadu" })}
+                          {latestIntake.signedAt ? ` (${new Date(latestIntake.signedAt).toLocaleDateString()})` : ""}
+                        </p>
+                        <div className="space-y-1">
+                          {filledFields.map((f) => {
+                            const val = latestIntake.formFieldValues[f.fieldId];
+                            const display = val === "true" ? "✓" : val;
+                            return (
+                              <div key={f.fieldId} className="flex items-start gap-1.5">
+                                <span className="text-sm text-muted-foreground shrink-0">{f.label}:</span>
+                                <span className="text-sm font-medium">{display}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </CardContent>

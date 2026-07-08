@@ -1572,14 +1572,14 @@
         "employee": "Employee"
       },
       "categories": {
+        "intake": "Health Questionnaire",
         "consent": "Consent",
+        "protocol": "Treatment Protocol",
         "medical_record": "Medical Record",
         "prescription": "Prescription",
         "referral": "Referral",
         "contract": "Contract",
         "invoice": "Invoice",
-        "protocol": "Protocol",
-        "intake": "Intake Form",
         "custom": "Custom"
       },
       "signatureMethods": {

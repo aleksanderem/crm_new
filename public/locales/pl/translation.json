@@ -1575,14 +1575,14 @@
         "employee": "Pracownik"
       },
       "categories": {
+        "intake": "Wywiad",
         "consent": "Zgoda",
+        "protocol": "Protokół zabiegu",
         "medical_record": "Karta medyczna",
         "prescription": "Recepta",
         "referral": "Skierowanie",
         "contract": "Umowa",
         "invoice": "Faktura",
-        "protocol": "Protokół",
-        "intake": "Formularz przyjęcia",
         "custom": "Własny"
       },
       "signatureMethods": {

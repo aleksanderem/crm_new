@@ -99,22 +99,29 @@ export async function autoGenerateAppointmentDocuments(
 
   for (const entry of requiredTemplates) {
     try {
-      // Skip if this is a one-time document and the patient has already signed it
+      // Skip if this is a one-time document and the patient has already signed it.
+      // Uses a two-step query: fetch the patient's appointment IDs (indexed on
+      // organization_id, patient_id), then check form_documents by entity_id IN
+      // (those IDs). This avoids the previous O(N-org) scan + in-memory JSON parse
+      // that was needed because scope_entities is TEXT, not JSONB.
       if (entry.isOneTime) {
-        const signedForPatient = await supabaseDb
-          .query("formDocuments")
-          .eq("templateId", String(entry.templateId))
+        const patientAppointments = await supabaseDb
+          .query("gabinetAppointments")
+          .eq("patientId", String(args.patientId))
           .eq("organizationId", String(args.organizationId))
-          .eq("status", "signed")
           .collect();
-        const alreadySigned = signedForPatient.some((doc) => {
-          const scope =
-            typeof doc.scopeEntities === "string"
-              ? (JSON.parse(doc.scopeEntities as string) as Record<string, unknown>)
-              : (doc.scopeEntities as Record<string, unknown> | null);
-          return scope?.patient === String(args.patientId);
-        });
-        if (alreadySigned) continue;
+        if (patientAppointments.length > 0) {
+          const appointmentIds = patientAppointments.map((a) => String(a._id));
+          const alreadySigned = await supabaseDb
+            .query("formDocuments")
+            .eq("templateId", String(entry.templateId))
+            .eq("organizationId", String(args.organizationId))
+            .eq("entityType", "appointment")
+            .eq("status", "signed")
+            .in("entityId", appointmentIds)
+            .first();
+          if (alreadySigned) continue;
+        }
       }
 
       // Skip if a document for this template+appointment already exists

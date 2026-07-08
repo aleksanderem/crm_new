@@ -827,14 +827,19 @@ export const getLatestSignedIntakeByPatient = action({
       // malformed responseData — return empty map
     }
 
-    // 7. Extract field definitions from template's TipTap contentJson
+    // 7. Extract field definitions from template's TipTap contentJson.
+    // Resolve component blocks first: formField nodes inside componentBlock nodes
+    // are only visible after expansion (componentBlock has no content array in the
+    // raw JSON — only a componentId reference). Without this step, any Wywiad
+    // template that uses document components for its questions returns empty
+    // fieldDefinitions even though the patient successfully filled the form.
     const fieldDefinitions: ExtractedFormFieldDef[] = [];
     if (template?.contentJson) {
       try {
-        walkTipTapForFields(
-          JSON.parse(template.contentJson as string),
-          fieldDefinitions,
-        );
+        const resolvedJson =
+          (await resolveComponentsInContent(db, template.contentJson as string)) ??
+          (template.contentJson as string);
+        walkTipTapForFields(JSON.parse(resolvedJson), fieldDefinitions);
       } catch {
         // malformed contentJson — skip enrichment
       }

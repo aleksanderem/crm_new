@@ -907,7 +907,9 @@ function PatientDetail() {
   // stacked above the tabs on mobile) — see #1927. Keep the "medical info" card
   // dedicated to emergency contact so the same data isn't presented twice.
   const hasMedicalInfo = Boolean(
-    patient?.emergencyContactName || patient?.emergencyContactPhone,
+    patient?.emergencyContactName ||
+      patient?.emergencyContactPhone ||
+      (latestIntake && latestIntake.intakeSummary.length > 0),
   );
 
   // Issue #1894: Beauty plan history — chronological list of `interviewNotes`
@@ -1120,6 +1122,36 @@ function PatientDetail() {
                 </p>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
+                  {latestIntake && latestIntake.intakeSummary.length > 0 && (
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        {t("gabinet.patients.intakeSummarySection")}
+                      </p>
+                      <div className="space-y-2">
+                        {groupIntakeSummary(latestIntake.intakeSummary).map(
+                          (group) => (
+                            <div key={group.key}>
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                                {t(
+                                  `gabinet.patients.intakeGroups.${group.key}`,
+                                )}
+                              </p>
+                              <ul className="space-y-0.5">
+                                {group.items.map((item, i) => (
+                                  <li
+                                    key={i}
+                                    className="text-sm text-muted-foreground"
+                                  >
+                                    {item}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  )}
                   {(patient?.emergencyContactName ||
                     patient?.emergencyContactPhone) && (
                     <div className="sm:col-span-2">

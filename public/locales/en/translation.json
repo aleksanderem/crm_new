@@ -2416,6 +2416,13 @@
       "intakeSummarySection": "Key Intake Information",
       "noIntakeSummary": "No key information from the last intake.",
       "staffNotesSection": "Additional Staff Notes",
+      "intakeGroups": {
+        "diseases": "Diseases / health information",
+        "allergies": "Allergies",
+        "medications": "Medications",
+        "devices": "Devices / implants",
+        "other": "Other information"
+      },
       "allergies": "Allergies",
       "bloodType": "Blood Type",
       "emergencyContact": "Emergency Contact",

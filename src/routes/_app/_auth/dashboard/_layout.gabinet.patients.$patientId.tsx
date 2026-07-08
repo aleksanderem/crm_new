@@ -87,6 +87,39 @@ import { formatPhoneNumber } from "@/lib/phone";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { formatBirthDate } from "@/lib/format-date";
 
+const INTAKE_GROUP_ORDER = ["diseases", "allergies", "medications", "devices", "other"] as const;
+type IntakeGroupKey = (typeof INTAKE_GROUP_ORDER)[number];
+
+const ALLERGY_KEYWORDS = ["alerg", "uczulen", "nadwrażliw", "nietolerancj"];
+const MED_KEYWORDS = ["lek", "preparat", "suplement", "farmak", "dawkow", "przyjmow"];
+const DEVICE_KEYWORDS = ["implan", "rozrusznik", "protez", "urządzeni", "wszczep", "defibrylat", "endoprotez", "metalow", "stymulat"];
+
+function classifyIntakeItem(item: string): IntakeGroupKey {
+  const separatorIdx = item.indexOf(": ");
+  const isTextField = separatorIdx !== -1;
+  const label = isTextField ? item.slice(0, separatorIdx) : item;
+  const lower = label.toLowerCase();
+
+  if (ALLERGY_KEYWORDS.some((k) => lower.includes(k))) return "allergies";
+  if (MED_KEYWORDS.some((k) => lower.includes(k))) return "medications";
+  if (DEVICE_KEYWORDS.some((k) => lower.includes(k))) return "devices";
+  return isTextField ? "other" : "diseases";
+}
+
+function groupIntakeSummary(items: string[]): { key: IntakeGroupKey; items: string[] }[] {
+  const map: Record<IntakeGroupKey, string[]> = {
+    diseases: [],
+    allergies: [],
+    medications: [],
+    devices: [],
+    other: [],
+  };
+  for (const item of items) {
+    map[classifyIntakeItem(item)].push(item);
+  }
+  return INTAKE_GROUP_ORDER.filter((k) => map[k].length > 0).map((k) => ({ key: k, items: map[k] }));
+}
+
 function PatientDetailSkeleton() {
   return (
     <div className="space-y-4">
@@ -471,14 +504,21 @@ function PatientDetail() {
             {t("gabinet.patients.intakeSummarySection")}
           </p>
           {latestIntake && latestIntake.intakeSummary.length > 0 ? (
-            <div className="rounded-md border p-2.5">
-              <ul className="space-y-1">
-                {latestIntake.intakeSummary.map((item, i) => (
-                  <li key={i} className="text-xs text-muted-foreground">
-                    {item}
-                  </li>
-                ))}
-              </ul>
+            <div className="rounded-md border p-2.5 space-y-2.5">
+              {groupIntakeSummary(latestIntake.intakeSummary).map((group) => (
+                <div key={group.key}>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                    {t(`gabinet.patients.intakeGroups.${group.key}`)}
+                  </p>
+                  <ul className="space-y-0.5">
+                    {group.items.map((item, i) => (
+                      <li key={i} className="text-xs text-muted-foreground">
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="rounded-md border p-2.5">

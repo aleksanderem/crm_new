@@ -142,6 +142,16 @@ export const generateDocument = action({
       signingTokenExpiresAt = now + 48 * 60 * 60 * 1000;
     }
 
+    // Resolve scopeEntities for appointment documents so getLatestSignedIntakeByPatient
+    // can find them via the patient link (mirrors autoGenerateAppointmentDocuments).
+    let scopeEntities: Record<string, string> | null = null;
+    if (args.entityType === "appointment") {
+      const appt = await db.get("gabinetAppointments", args.entityId);
+      if (appt && String(appt.organizationId) === String(args.organizationId) && appt.patientId) {
+        scopeEntities = { patient: String(appt.patientId) };
+      }
+    }
+
     const docId = await db.insert("formDocuments", {
       organizationId: String(args.organizationId),
       templateId: args.templateId,
@@ -149,6 +159,7 @@ export const generateDocument = action({
       responseData: args.responseData,
       entityType: args.entityType,
       entityId: args.entityId,
+      scopeEntities: scopeEntities ? JSON.stringify(scopeEntities) : null,
       status,
       signingToken: signingToken ?? null,
       signingTokenExpiresAt: signingTokenExpiresAt ?? null,

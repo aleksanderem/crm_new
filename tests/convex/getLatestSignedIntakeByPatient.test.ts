@@ -306,4 +306,85 @@ describe("getLatestSignedIntakeByPatient", () => {
     expect(result).not.toBeNull();
     expect(result!.templateName).toBe("Health Intake");
   });
+
+  test("finds signed intake document linked via appointment (entityType=appointment, scopeEntities.patient)", async () => {
+    const { t, organizationId, userId, identity, patientId } = await setup();
+    const templateId = await seedIntakeTemplate(String(organizationId), String(userId));
+
+    // Seed an appointment linked to the patient
+    const db = createSupabaseDb();
+    const now = Date.now();
+    const appointmentId = "appt-test-1";
+    await db.insert("gabinetAppointments", {
+      _id: appointmentId,
+      organizationId: String(organizationId),
+      patientId: String(patientId),
+      date: "2026-07-08",
+      startTime: "10:00",
+      endTime: "10:30",
+      status: "completed",
+      isRecurring: false,
+      createdBy: String(userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Seed a signed intake doc linked to the appointment (not directly to the patient).
+    // scopeEntities stores the patient link so the function can find it.
+    await db.insert("formDocuments", {
+      organizationId: String(organizationId),
+      templateId,
+      title: "Intake via Appointment",
+      responseData: JSON.stringify({
+        html: "<p>appt intake</p>",
+        formFieldValues: { complaint: "back pain" },
+      }),
+      entityType: "appointment",
+      entityId: appointmentId,
+      scopeEntities: JSON.stringify({ patient: String(patientId) }),
+      status: "signed",
+      signedAt: now,
+      createdBy: String(userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const result = await t.withIdentity(identity).action(
+      api["documents/documents"].getLatestSignedIntakeByPatient,
+      { organizationId, patientId: String(patientId) },
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.formFieldValues).toEqual({ complaint: "back pain" });
+    expect(result!.templateName).toBe("Health Intake");
+  });
+
+  test("does not return appointment intake document linked to a different patient via scopeEntities", async () => {
+    const { t, organizationId, userId, identity, patientId } = await setup();
+    const templateId = await seedIntakeTemplate(String(organizationId), String(userId));
+
+    const db = createSupabaseDb();
+    const now = Date.now();
+    await db.insert("formDocuments", {
+      organizationId: String(organizationId),
+      templateId,
+      title: "Other patient's intake",
+      responseData: JSON.stringify({ html: "", formFieldValues: { complaint: "headache" } }),
+      entityType: "appointment",
+      entityId: "some-other-appointment",
+      scopeEntities: JSON.stringify({ patient: "other-patient-id" }),
+      status: "signed",
+      signedAt: now,
+      createdBy: String(userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const result = await t.withIdentity(identity).action(
+      api["documents/documents"].getLatestSignedIntakeByPatient,
+      { organizationId, patientId: String(patientId) },
+    );
+
+    expect(result).toBeNull();
+  });
 });

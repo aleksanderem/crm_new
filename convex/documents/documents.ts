@@ -771,7 +771,7 @@ export const getLatestSignedIntakeByPatient = action({
     const intakeTemplateIds = new Set(intakeTemplates.map((t) => String(t._id)));
     const templateById = new Map(intakeTemplates.map((t) => [String(t._id), t]));
 
-    // 2. Fetch formDocuments directly linked to this patient
+    // 2a. Fetch formDocuments directly linked to this patient (entity_type='patient')
     const patientDocs = await db
       .query("formDocuments")
       .eq("organizationId", orgId)
@@ -779,8 +779,31 @@ export const getLatestSignedIntakeByPatient = action({
       .eq("entityId", args.patientId)
       .collect();
 
-    // 3. Filter to intake templates with signed/completed status
-    const signedIntakeDocs = patientDocs.filter(
+    // 2b. Fetch appointment-linked docs for this org and filter by patient in scopeEntities.
+    // Documents generated from the appointment checklist use entityType='appointment'
+    // and store the linked patient id in scopeEntities.patient (set by generateDocument
+    // and autoGenerateAppointmentDocuments). Both TEXT and JSONB formats are handled.
+    const apptDocs = await db
+      .query("formDocuments")
+      .eq("organizationId", orgId)
+      .eq("entityType", "appointment")
+      .collect();
+
+    const apptPatientDocs = apptDocs.filter((doc) => {
+      if (!doc.scopeEntities) return false;
+      try {
+        const scope =
+          typeof doc.scopeEntities === "string"
+            ? (JSON.parse(doc.scopeEntities as string) as Record<string, unknown>)
+            : (doc.scopeEntities as Record<string, unknown>);
+        return String(scope?.patient) === args.patientId;
+      } catch {
+        return false;
+      }
+    });
+
+    // 3. Filter combined set to intake templates with signed/completed status
+    const signedIntakeDocs = [...patientDocs, ...apptPatientDocs].filter(
       (doc) =>
         intakeTemplateIds.has(String(doc.templateId)) &&
         (doc.status === "signed" || doc.status === "completed"),

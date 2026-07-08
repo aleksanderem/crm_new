@@ -16,6 +16,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { SidePanel } from "@/components/crm/side-panel";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History } from "@/lib/ez-icons";
@@ -209,6 +210,7 @@ function ProductsPage() {
   ], [t, tags, categories]);
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
+  const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
 
   // Sidebar action dispatches
   useSidebarDispatch("importCsv", () => setImportOpen(true));
@@ -648,10 +650,7 @@ function ProductsPage() {
           { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
           { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
         ]}
-        columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
-        hiddenColumnIds={hiddenColumnIds}
-        onToggleColumn={toggleColumn}
-        onSetHiddenColumns={setHiddenColumns}
+        onColumnSettingsOpen={() => setColumnSettingsOpen(true)}
         onFiltersChange={setActiveFilters}
       />
 
@@ -673,6 +672,35 @@ function ProductsPage() {
         open={importOpen}
         onOpenChange={setImportOpen}
       />
+
+      <SidePanel
+        open={columnSettingsOpen}
+        onOpenChange={setColumnSettingsOpen}
+        title={t("common.columnSettings", "Ustawienia kolumn")}
+      >
+        <div className="space-y-1 py-2">
+          {allColumns
+            .filter((col) => !["actions"].includes(col.id))
+            .map((col) => {
+              const isVisible = !hiddenColumnIds.has(col.id);
+              return (
+                <button
+                  key={col.id}
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left hover:bg-muted/50 transition-colors"
+                  onClick={() => toggleColumn(col.id)}
+                >
+                  <Checkbox
+                    checked={isVisible}
+                    className="pointer-events-none"
+                    aria-hidden
+                  />
+                  <span className="text-sm font-medium">{col.label ?? col.id}</span>
+                </button>
+              );
+            })}
+        </div>
+      </SidePanel>
 
       <SidePanel
         open={panelOpen}

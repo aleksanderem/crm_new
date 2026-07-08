@@ -12,6 +12,7 @@ import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/c
 import type { CrmColumn } from "@/components/crm/enhanced-data-table";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { SidePanel } from "@/components/crm/side-panel";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
@@ -99,6 +100,7 @@ function CallsPage() {
   ], [t, tags, categories]);
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
+  const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingCall, setEditingCall] = useState<Call | null>(null);
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
@@ -408,10 +410,7 @@ function CallsPage() {
         onTagsManage={() => setTagsSlideoutOpen(true)}
         onFiltersChange={setActiveFilters}
         onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
-        columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
-        hiddenColumnIds={hiddenColumnIds}
-        onToggleColumn={toggleColumn}
-        onSetHiddenColumns={setHiddenColumns}
+        onColumnSettingsOpen={() => setColumnSettingsOpen(true)}
       />
 
       <CrmDataTable
@@ -425,6 +424,35 @@ function CallsPage() {
           if (call) openEditPanel(call);
         }}
       />
+
+      <SidePanel
+        open={columnSettingsOpen}
+        onOpenChange={setColumnSettingsOpen}
+        title={t("common.columnSettings", "Ustawienia kolumn")}
+      >
+        <div className="space-y-1 py-2">
+          {allColumns
+            .filter((col) => !["actions"].includes(col.id))
+            .map((col) => {
+              const isVisible = !hiddenColumnIds.has(col.id);
+              return (
+                <button
+                  key={col.id}
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left hover:bg-muted/50 transition-colors"
+                  onClick={() => toggleColumn(col.id)}
+                >
+                  <Checkbox
+                    checked={isVisible}
+                    className="pointer-events-none"
+                    aria-hidden
+                  />
+                  <span className="text-sm font-medium">{col.label ?? col.id}</span>
+                </button>
+              );
+            })}
+        </div>
+      </SidePanel>
 
       <SidePanel
         open={panelOpen}

@@ -116,6 +116,8 @@ export interface DataListFilterBarProps {
   hiddenColumnIds?: Set<string>;
   onToggleColumn?: (columnId: string) => void;
   onSetHiddenColumns?: (ids: Set<string>) => void;
+  /** When provided, clicking the columns icon calls this instead of opening the built-in popover. */
+  onColumnSettingsOpen?: () => void;
 
   // Extra dropdown actions
   dropdownActions?: Array<{
@@ -173,6 +175,7 @@ export function DataListFilterBar({
   hiddenColumnIds,
   onToggleColumn,
   onSetHiddenColumns: _onSetHiddenColumns,
+  onColumnSettingsOpen,
   onFiltersChange,
   dropdownActions = [],
   onTagsManage: _onTagsManage,
@@ -480,7 +483,12 @@ export function DataListFilterBar({
             </span>
           </Button>
         )}
-        {columnDefs && columnDefs.length > 0 && onToggleColumn && (
+        {onColumnSettingsOpen && (
+          <button type="button" className="group relative inline-flex h-max cursor-pointer items-center justify-center rounded-lg border border-border-primary bg-bg-primary px-2 py-1.5 text-fg-quaternary shadow-xs hover:bg-bg-primary_hover hover:text-fg-tertiary" onClick={onColumnSettingsOpen}>
+            <Columns03 className="size-4 stroke-[2px]" />
+          </button>
+        )}
+        {!onColumnSettingsOpen && columnDefs && columnDefs.length > 0 && onToggleColumn && (
           <Popover>
             <PopoverTrigger asChild>
               <button type="button" className="group relative inline-flex h-max cursor-pointer items-center justify-center rounded-lg border border-border-primary bg-bg-primary px-2 py-1.5 text-fg-quaternary shadow-xs hover:bg-bg-primary_hover hover:text-fg-tertiary">

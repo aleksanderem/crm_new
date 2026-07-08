@@ -33,6 +33,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { FileText, Send, Download, Menu, Trash2, Calendar, User, Tag, FileSignature, Pencil } from "@/lib/ez-icons";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -127,6 +128,7 @@ function GabinetDocumentsPage() {
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
   const [filterSlideoutOpen, setFilterSlideoutOpen] = useState(false);
+  const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
 
   useSidebarDispatch("openFilter", () => setFilterSlideoutOpen(true));
   useSidebarDispatch("createFromTemplate", () =>
@@ -550,6 +552,7 @@ function GabinetDocumentsPage() {
       },
       {
         id: "actions",
+        label: t("common.actions", "Akcje"),
         render: (item) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -655,7 +658,7 @@ function GabinetDocumentsPage() {
             onClick={() =>
               navigate({ to: "/dashboard/gabinet/document-templates" })
             }
-            variant="outline"
+            variant="default"
           >
             <FileText className="mr-2 h-4 w-4" />
             {t("gabinet.formDocuments.manageTemplates", "Szablony")}
@@ -684,10 +687,7 @@ function GabinetDocumentsPage() {
         onFiltersChange={setActiveFilters}
         onTagsManage={() => setTagsSlideoutOpen(true)}
         onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
-        columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
-        hiddenColumnIds={hiddenColumnIds}
-        onToggleColumn={toggleColumn}
-        onSetHiddenColumns={setHiddenColumns}
+        onColumnSettingsOpen={() => setColumnSettingsOpen(true)}
       />
 
       {/* Loading state */}
@@ -699,19 +699,7 @@ function GabinetDocumentsPage() {
         </div>
       )}
 
-      {/* Mini charts */}
-      {!docsLoading && documents && documents.length > 0 && (
-        <MiniChartsRow
-          leftChart={{
-            title: t("gabinet.formDocuments.byDay", "Dokumenty w czasie"),
-            data: documentsByDay,
-          }}
-          rightChart={{
-            title: t("gabinet.formDocuments.byStatus", "Dokumenty według statusu"),
-            data: documentsByStatus,
-          }}
-        />
-      )}
+      {/* Statistics — collapsed by default, user can expand */}
 
       {/* Empty state */}
       {!docsLoading && filteredDocuments.length === 0 && (
@@ -767,6 +755,52 @@ function GabinetDocumentsPage() {
         />
         </div>
       )}
+
+      {/* Statistics — below the list so the document list stays primary */}
+      {!docsLoading && documents && documents.length > 0 && (
+        <MiniChartsRow
+          storageKey="gabinetDocuments"
+          leftChart={{
+            title: t("gabinet.formDocuments.byDay", "Dokumenty w czasie"),
+            data: documentsByDay,
+          }}
+          rightChart={{
+            title: t("gabinet.formDocuments.byStatus", "Dokumenty według statusu"),
+            data: documentsByStatus,
+          }}
+        />
+      )}
+
+      {/* Column settings side panel */}
+      <SidePanel
+        open={columnSettingsOpen}
+        onOpenChange={setColumnSettingsOpen}
+        title={t("common.columnSettings", "Ustawienia kolumn")}
+      >
+        <div className="space-y-1 py-2">
+          {/* TODO: entityType and category columns hidden per #2780 — restore here if needed */}
+          {allColumns
+            .filter((col) => !["entityType", "category", "actions"].includes(col.id))
+            .map((col) => {
+              const isVisible = !hiddenColumnIds.has(col.id);
+              return (
+                <button
+                  key={col.id}
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left hover:bg-muted/50 transition-colors"
+                  onClick={() => toggleColumn(col.id)}
+                >
+                  <Checkbox
+                    checked={isVisible}
+                    className="pointer-events-none"
+                    aria-hidden
+                  />
+                  <span className="text-sm font-medium">{col.label ?? col.id}</span>
+                </button>
+              );
+            })}
+        </div>
+      </SidePanel>
 
       {/* Document viewer side panel */}
       <SidePanel

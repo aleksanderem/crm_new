@@ -43,7 +43,14 @@ function FormSigningPage() {
     queryKey: ["documents.documents.getBySigningToken", token],
     queryFn: () => getBySigningToken({ token }),
     enabled: !!token,
-    retry: false,
+    // Retry on transient Convex client init failures (cold start from email link),
+    // but not on permanent errors like "Document not found" or "Signing link expired".
+    retry: (failureCount, error) => {
+      if (failureCount >= 2) return false;
+      const msg = error instanceof Error ? error.message : "";
+      return msg !== "Document not found" && msg !== "Signing link expired";
+    },
+    retryDelay: 500,
   });
 
   if (isLoading) {

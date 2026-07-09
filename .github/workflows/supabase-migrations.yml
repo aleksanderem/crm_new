@@ -35,6 +35,10 @@ jobs:
       - name: Verify base-branch migrations are applied
         run: node scripts/supabase-migrations.mjs check
         env:
+          # HTTP transport (preferred) — works over 443, no Postgres port needed.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # psql fallback.
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
 
   # On push to main: apply any pending migrations to the deployed database
@@ -54,13 +58,19 @@ jobs:
 
       - name: Apply pending migrations
         env:
+          # HTTP transport (preferred) — works over 443, no Postgres port needed.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # psql fallback.
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          if [ -z "${SUPABASE_DB_URL:-}" ]; then
-            echo "::error::SUPABASE_DB_URL repository secret is not set."
-            echo "::error::Configure it in Settings -> Secrets and variables -> Actions"
-            echo "::error::so this workflow can apply migrations to the deployed database."
-            exit 1
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            if [ -z "${SUPABASE_DB_URL:-}" ]; then
+              echo "::error::No migration transport configured."
+              echo "::error::Set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (HTTP, preferred),"
+              echo "::error::or SUPABASE_DB_URL (psql), in Settings -> Secrets and variables -> Actions."
+              exit 1
+            fi
           fi
           node scripts/supabase-migrations.mjs apply
 

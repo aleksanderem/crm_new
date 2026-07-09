@@ -45,13 +45,6 @@ export function ProductsWidgets({ organizationId }: { organizationId: Id<"organi
             </span>
           </CardHeader>
           <CardContent className="px-4">
-            <div className="mt-2 flex justify-center">
-              <img
-                src="/images/best-selling-bg.png"
-                alt=""
-                className="w-full"
-              />
-            </div>
             <div className="bg-card flex flex-col gap-5 rounded-xl p-4">
               {topProducts.map((product, i) => {
                 const color = PRODUCT_COLORS[i % PRODUCT_COLORS.length];

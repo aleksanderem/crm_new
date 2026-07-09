@@ -445,6 +445,7 @@ export const _acceptInternal = internalMutation({
     // address like "john.doe@x.com" would fail it, leaving the invitee
     // stuck. Slug derivation downstream tolerates anything (already strips
     // non-[a-z0-9-]).
+    let effectiveUsername = user.username;
     if (!user.username) {
       const local = (user.email ?? invitation.email).split("@")[0] ?? "";
       const base = local.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -467,6 +468,7 @@ export const _acceptInternal = internalMutation({
         if (suffix > 50) break; // give up; informational only
       }
       await ctx.db.patch(user._id, { username: candidate });
+      effectiveUsername = candidate;
     }
 
     // Mirror the invitee's user row to Supabase. Without this, any
@@ -477,7 +479,7 @@ export const _acceptInternal = internalMutation({
       userId: String(user._id),
       email: user.email,
       name: user.name,
-      username: user.username,
+      username: effectiveUsername,
       image: user.image,
       imageStorageId: user.imageId ? String(user.imageId) : undefined,
       phone: user.phone,

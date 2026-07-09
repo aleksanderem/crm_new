@@ -2623,6 +2623,7 @@
       "description": "Description",
       "instructions": "Instructions",
       "deactivate": "Deactivate",
+      "reactivate": "Reactivate",
       "recentAppointments": "Recent Appointments",
       "noAppointments": "No appointments for this treatment",
       "overview": {

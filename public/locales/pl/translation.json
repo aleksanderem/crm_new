@@ -2640,6 +2640,7 @@
       "description": "Opis",
       "instructions": "Instrukcje",
       "deactivate": "Dezaktywuj",
+      "reactivate": "Reaktywuj",
       "recentAppointments": "Ostatnie wizyty",
       "noAppointments": "Brak wizyt dla tego zabiegu",
       "overview": {

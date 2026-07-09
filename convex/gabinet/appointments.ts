@@ -241,6 +241,7 @@ async function applyAppointmentStatusChange(
         appointmentId: args.appointment._id,
         patientId: args.appointment.patientId,
         treatmentId: args.appointment.treatmentId,
+        variantId: args.appointment.variantId as Id<"gabinetTreatmentVariants"> | undefined,
         packageUsageId: args.appointment.packageUsageId as
           | Id<"gabinetPackageUsage">
           | undefined,
@@ -2624,6 +2625,7 @@ async function handleAppointmentCompletion(
     appointmentId: Id<"gabinetAppointments">;
     patientId: Id<"gabinetPatients">;
     treatmentId: Id<"gabinetTreatments">;
+    variantId?: Id<"gabinetTreatmentVariants">;
     packageUsageId?: Id<"gabinetPackageUsage">;
     priceAtBooking?: number;
     userId: Id<"users">;
@@ -2652,14 +2654,13 @@ async function handleAppointmentCompletion(
       packageUsageIdStr,
     );
     if (usage && usage.status === "active") {
-      const entry = usage.treatmentsUsed.find(
-        (t: any) => t.treatmentId === treatmentIdStr,
-      );
+      const variantIdStr = args.variantId ? String(args.variantId) : undefined;
+      const matchesTreatment = (t: any) =>
+        t.treatmentId === treatmentIdStr && (variantIdStr == null || t.variantId === variantIdStr);
+      const entry = usage.treatmentsUsed.find(matchesTreatment);
       if (entry && entry.usedCount < entry.totalCount) {
         const updatedTreatments = usage.treatmentsUsed.map((t: any) =>
-          t.treatmentId === treatmentIdStr
-            ? { ...t, usedCount: t.usedCount + 1 }
-            : t,
+          matchesTreatment(t) ? { ...t, usedCount: t.usedCount + 1 } : t,
         );
         const allUsed = updatedTreatments.every(
           (t: any) => t.usedCount >= t.totalCount,

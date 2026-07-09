@@ -1066,6 +1066,7 @@ export function AppointmentPreviewContent({
           items: [
             {
               treatmentId: String(appointment.treatmentId),
+              ...(appointment.variantId ? { variantId: String(appointment.variantId) } : {}),
               quantity: settlePackageQuantity,
             },
           ],

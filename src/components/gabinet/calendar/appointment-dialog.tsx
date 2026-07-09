@@ -227,6 +227,8 @@ export function AppointmentDialog({
     enabled: !!organizationId,
   }) as { data: any[] | undefined };
 
+  const listVariantsAction = useAction(api.gabinet.treatments.listVariants);
+
   const listEmployeesAction = useAction(api.gabinet.employees.listAll);
   const { data: employees } = useQuery({
     queryKey: ["gabinet.employees.listAll", organizationId, true],
@@ -258,6 +260,7 @@ export function AppointmentDialog({
   // -------------------------------------------------------------------------
 
   const [treatmentId, setTreatmentId] = useState("");
+  const [variantId, setVariantId] = useState("");
   const [employeeId, setEmployeeId] = useState(defaultUserId ?? "");
   const [patientId, setPatientId] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
@@ -518,6 +521,20 @@ export function AppointmentDialog({
   const nowDate = format(now, "yyyy-MM-dd");
   const nowTime = format(now, "HH:mm");
 
+  // Variants query — load variants for the selected treatment
+  const { data: variants } = useQuery({
+    queryKey: ["gabinet.treatments.listVariants", organizationId, treatmentId],
+    queryFn: () => listVariantsAction({ organizationId, treatmentId }),
+    enabled: !!organizationId && !!treatmentId,
+  }) as { data: any[] | undefined };
+
+  const selectedVariant = useMemo(
+    () => variants?.find((v) => v._id === variantId),
+    [variants, variantId],
+  );
+
+  const effectiveDuration = selectedVariant?.resolvedDuration ?? selectedTreatment?.duration ?? 30;
+
   // Available slots — action reading from Supabase
   const getAvailableSlots = useAction(api.gabinet.appointments.getAvailableSlotsQuery);
   const {
@@ -531,7 +548,7 @@ export function AppointmentDialog({
       organizationId,
       employeeId,
       dateStr,
-      selectedTreatment?.duration ?? 30,
+      effectiveDuration,
       // Bucket by the hour so the query is cached but still refreshes as the
       // clock advances past past-slot boundaries. Walk-in mode disables the
       // filter so it must also key the cache.
@@ -543,7 +560,7 @@ export function AppointmentDialog({
         organizationId,
         userId: employeeId as string,
         date: dateStr,
-        duration: selectedTreatment?.duration ?? 30,
+        duration: effectiveDuration,
         nowDate: recordWalkIn ? undefined : nowDate,
         nowTime: recordWalkIn ? undefined : nowTime,
       }),
@@ -603,6 +620,7 @@ export function AppointmentDialog({
   const handleTreatmentSelect = useCallback(
     (tid: string) => {
       setTreatmentId(tid);
+      setVariantId("");
       setTreatmentOpen(false);
       setTreatmentSearch("");
       setPackageUsageId(null);
@@ -676,7 +694,7 @@ export function AppointmentDialog({
       const result = await findNextSlotAction({
         organizationId,
         employeeId: employeeId as string,
-        durationMinutes: selectedTreatment.duration,
+        durationMinutes: effectiveDuration,
         fromDate:
           dateStr || (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`; })(),
         nowDate: recordWalkIn ? undefined : nowDate,
@@ -703,6 +721,7 @@ export function AppointmentDialog({
   }, [
     employeeId,
     selectedTreatment,
+    effectiveDuration,
     organizationId,
     dateStr,
     findNextSlotAction,
@@ -782,7 +801,7 @@ export function AppointmentDialog({
     ? selectedSlot.end ||
       computeEndTime(
         selectedSlot.start,
-        selectedTreatment?.duration ?? 30,
+        effectiveDuration,
       )
     : "";
 
@@ -851,7 +870,7 @@ export function AppointmentDialog({
     if (!canSubmit || !selectedSlot) return;
     setSubmitting(true);
     try {
-      const treatmentDuration = selectedTreatment?.duration ?? 30;
+      const treatmentDuration = effectiveDuration;
       // Build per-occurrence overrides for the recurrences (excluding the base
       // appointment at index 0). Only send if at least one entry has a custom
       // date or start time so the backend keeps using the simple rule path
@@ -880,6 +899,7 @@ export function AppointmentDialog({
         organizationId,
         patientId: patientId as Id<"gabinetPatients">,
         treatmentId: treatmentId as Id<"gabinetTreatments">,
+        variantId: variantId || undefined,
         employeeId: employeeId as Id<"users">,
         date: dateStr,
         startTime: selectedSlot.start,
@@ -921,6 +941,7 @@ export function AppointmentDialog({
     organizationId,
     patientId,
     treatmentId,
+    variantId,
     employeeId,
     dateStr,
     endTime,
@@ -929,7 +950,7 @@ export function AppointmentDialog({
     frequency,
     recurringCount,
     recurringOccurrences,
-    selectedTreatment,
+    effectiveDuration,
     locationId,
     roomId,
     packageUsageId,
@@ -964,6 +985,7 @@ export function AppointmentDialog({
       }
     } else {
       setTreatmentId("");
+      setVariantId("");
       setEmployeeId(defaultUserId ?? "");
       setPatientId("");
       setSelectedDate(
@@ -1247,14 +1269,49 @@ export function AppointmentDialog({
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge variant="secondary" className="text-xs gap-1">
                         <Clock className="size-3" />
-                        {selectedTreatment.duration} min
+                        {effectiveDuration} min
                       </Badge>
-                      {selectedTreatment.price != null && (
+                      {(selectedVariant?.resolvedPrice ?? selectedTreatment.price) != null && (
                         <Badge variant="secondary" className="text-xs">
-                          {formatPrice(selectedTreatment.price)}
+                          {formatPrice(selectedVariant?.resolvedPrice ?? selectedTreatment.price)}
                         </Badge>
                       )}
                     </div>
+                  </div>
+                )}
+
+                {/* Variant selector — shown only when the selected treatment has variants */}
+                {selectedTreatment && variants && variants.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      {t("gabinet.appointments.variant", "Wariant")}
+                    </Label>
+                    <Select
+                      value={variantId}
+                      onValueChange={(v) => setVariantId(v === "__none__" ? "" : v)}
+                    >
+                      <SelectTrigger className="h-9" data-testid="appointment-variant-trigger">
+                        <SelectValue
+                          placeholder={t("gabinet.appointments.selectVariant", "Wybierz wariant")}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">
+                          {t("gabinet.appointments.noVariant", "Bez wariantu")}
+                        </SelectItem>
+                        {variants.map((v: any) => (
+                          <SelectItem key={v._id} value={v._id}>
+                            <div className="flex flex-col">
+                              <span>{v.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {v.resolvedDuration} min
+                                {v.resolvedPrice != null ? ` · ${formatPrice(v.resolvedPrice)}` : ""}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
 
@@ -1767,6 +1824,9 @@ export function AppointmentDialog({
                             </span>
                             <span className="font-medium truncate ml-2 text-right">
                               {selectedTreatment.name}
+                              {selectedVariant && (
+                                <span className="text-muted-foreground font-normal"> · {selectedVariant.name}</span>
+                              )}
                             </span>
                           </div>
                         )}

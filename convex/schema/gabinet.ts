@@ -417,6 +417,7 @@ export function createGabinetTables({
     organizationId: v.id("organizations"),
     patientId: v.id("gabinetPatients"),
     treatmentId: v.optional(v.id("gabinetTreatments")),
+    variantId: v.optional(v.id("gabinetTreatmentVariants")),
     employeeId: v.id("users"),
     date: v.string(), // YYYY-MM-DD
     startTime: v.string(), // HH:MM

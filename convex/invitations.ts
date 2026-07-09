@@ -427,7 +427,7 @@ export const _acceptInternal = internalMutation({
     // Convex teamMemberships but is invisible to the UI's permission
     // checks — UI shows empty / 403 on protected actions.
     await ctx.scheduler.runAfter(
-      0,
+      500, // delay so writeUserToSupabase lands first (avoids 23503 FK violation)
       internal.supabase.organizations.writeTeamMembershipToSupabase,
       {
         membershipId: String(membershipId),

@@ -218,6 +218,7 @@ export function AppointmentPreviewContent({
   const updatePatient = useAction(api.gabinet.patients.update);
   const getWarnings = useAction(api.gabinet.appointments.getWarnings);
   const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
+  const listVariantsAction = useAction(api.gabinet.treatments.listVariants);
   const createPaymentAction = useAction(api.payments.create);
   const getPatientPackagesEnriched = useAction(
     api.gabinet.packages.getPatientPackagesEnriched,
@@ -327,6 +328,12 @@ export function AppointmentPreviewContent({
   const [notes, setNotes] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
   const [treatmentId, setTreatmentId] = useState("");
+  const [variantId, setVariantId] = useState("");
+  const { data: variants } = useQuery({
+    queryKey: ["gabinet.treatments.listVariants", organizationId, treatmentId],
+    queryFn: () => listVariantsAction({ organizationId, treatmentId }),
+    enabled: !!organizationId && !!treatmentId,
+  }) as { data: Array<{ _id: string; name: string; resolvedDuration: number | null; resolvedPrice: number | null }> | undefined };
   const [treatmentOpen, setTreatmentOpen] = useState(false);
   const [treatmentSearch, setTreatmentSearch] = useState("");
   const [tagIds, setTagIds] = useState<Array<Id<"tagDefinitions">>>([]);
@@ -427,6 +434,7 @@ export function AppointmentPreviewContent({
     setNotes(appt.notes ?? "");
     setInternalNotes(appt.internalNotes ?? "");
     setTreatmentId(appt.treatmentId ? String(appt.treatmentId) : "");
+    setVariantId(appt.variantId ? String(appt.variantId) : "");
     setTagIds(
       (appt.tagIds ?? []).map((id) => id as Id<"tagDefinitions">),
     );
@@ -447,6 +455,9 @@ export function AppointmentPreviewContent({
   const initialStatus = appointment.status as AppointmentStatus;
   const initialTreatmentId = appointment.treatmentId
     ? String(appointment.treatmentId)
+    : "";
+  const initialVariantId = appointment.variantId
+    ? String(appointment.variantId)
     : "";
   const availableTransitions = VALID_TRANSITIONS[initialStatus] ?? [];
   const patientFullName = patient
@@ -482,6 +493,7 @@ export function AppointmentPreviewContent({
     notes !== (appointment.notes ?? "") ||
     internalNotes !== (appointment.internalNotes ?? "") ||
     treatmentId !== initialTreatmentId ||
+    variantId !== initialVariantId ||
     tagsDirty;
 
   const dirty = phoneDirty || apptDirty;
@@ -665,6 +677,8 @@ export function AppointmentPreviewContent({
           args.internalNotes = internalNotes || null;
         if (treatmentId && treatmentId !== initialTreatmentId)
           args.treatmentId = treatmentId;
+        if (variantId !== initialVariantId)
+          args.variantId = variantId || null;
         if (tagsDirty) args.tagIds = tagIds.map((id) => String(id));
 
         await updateAppointment(args);
@@ -1351,6 +1365,7 @@ export function AppointmentPreviewContent({
                         value={tr._id}
                         onSelect={() => {
                           setTreatmentId(tr._id);
+                          setVariantId("");
                           setTreatmentOpen(false);
                           setTreatmentSearch("");
                         }}
@@ -1391,6 +1406,40 @@ export function AppointmentPreviewContent({
             </div>
           )}
         </div>
+
+        {/* Variant selector — shown only when the selected treatment has variants */}
+        {selectedTreatment && variants && variants.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Select
+              value={variantId}
+              onValueChange={(v) => setVariantId(v === "__none__" ? "" : v)}
+            >
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue
+                  placeholder={t("gabinet.appointments.selectVariant", "Wybierz wariant")}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">
+                  {t("gabinet.appointments.noVariant", "Bez wariantu")}
+                </SelectItem>
+                {variants.map((v) => (
+                  <SelectItem key={v._id} value={v._id}>
+                    <div className="flex flex-col">
+                      <span>{v.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {v.resolvedDuration} min
+                        {v.resolvedPrice != null
+                          ? ` · ${formatCurrencyPLN(v.resolvedPrice)}`
+                          : ""}
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Quick contact links */}
         {patient && (

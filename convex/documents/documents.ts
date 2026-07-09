@@ -12,7 +12,7 @@ import {
   extractFieldDefinitions,
   extractIntakeSummary,
   type IntakeFieldDefinition,
-} from "./intake-summary";
+} from "./intakeSummary";
 
 // Dual-write refs removed — Supabase is now primary for document writes
 

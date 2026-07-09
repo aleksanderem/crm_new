@@ -3,7 +3,7 @@ import {
   extractFieldDefinitions,
   extractIntakeSummary,
   type IntakeFieldDefinition,
-} from "../../convex/documents/intake-summary";
+} from "../../convex/documents/intakeSummary";
 
 // ---------------------------------------------------------------------------
 // extractFieldDefinitions

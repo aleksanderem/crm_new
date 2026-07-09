@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
@@ -16,7 +16,7 @@ import {
 } from "@/hooks/use-supabase-gabinet-appointments";
 import type { MappedGabinetAppointment } from "@/lib/supabase/mappers/gabinet/appointments";
 import { useSupabaseGabinetLoyaltyBalance, useSupabaseGabinetLoyaltyTransactions } from "@/hooks/use-supabase-gabinet-loyalty";
-import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
+import { useSupabaseGabinetTreatmentsList, useSupabaseGabinetAllTreatmentVariants } from "@/hooks/use-supabase-gabinet-treatments";
 import {
   useSupabaseGabinetPackageUsageByPatient,
   useSupabaseGabinetTreatmentPackagesList,
@@ -259,6 +259,17 @@ function PatientDetail() {
   );
 
   const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId);
+  const { data: allVariantsData } = useSupabaseGabinetAllTreatmentVariants(organizationId);
+
+  const variantNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (allVariantsData) {
+      for (const v of allVariantsData) {
+        map.set(v._id, v.name);
+      }
+    }
+    return map;
+  }, [allVariantsData]);
 
   const { data: patientPayments } = useSupabasePaymentsByPatient(
     organizationId,
@@ -924,6 +935,12 @@ function PatientDetail() {
     const treatmentName = treatmentsData?.find(
       (tr) => tr._id === apt.treatmentId,
     )?.name;
+    const variantName = apt.variantId ? variantNameMap.get(apt.variantId) : undefined;
+    const treatmentDisplayName = treatmentName
+      ? variantName
+        ? `${treatmentName} · ${variantName}`
+        : treatmentName
+      : undefined;
     const visitCount = getVisitCountLabel(apt);
     return (
       <div
@@ -942,7 +959,7 @@ function PatientDetail() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <p className="text-sm font-medium truncate">
-              {treatmentName ?? t("common.unknown")}
+              {treatmentDisplayName ?? t("common.unknown")}
             </p>
             {visitCount && (
               <Badge
@@ -1217,6 +1234,12 @@ function PatientDetail() {
                   const treatmentName = treatmentsData?.find(
                     (tr) => tr._id === apt.treatmentId,
                   )?.name;
+                  const variantName = apt.variantId ? variantNameMap.get(apt.variantId) : undefined;
+                  const treatmentDisplayName = treatmentName
+                    ? variantName
+                      ? `${treatmentName} · ${variantName}`
+                      : treatmentName
+                    : undefined;
                   const isPast =
                     apt.date < new Date().toISOString().split("T")[0];
                   const visitCount = getVisitCountLabel(apt);
@@ -1240,7 +1263,7 @@ function PatientDetail() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 min-w-0">
                           <p className="text-sm font-medium truncate">
-                            {treatmentName ?? t("common.unknown")}
+                            {treatmentDisplayName ?? t("common.unknown")}
                           </p>
                           {visitCount && (
                             <Badge
@@ -1309,6 +1332,12 @@ function PatientDetail() {
                 const treatmentName = treatmentsData?.find(
                   (tr) => tr._id === apt.treatmentId,
                 )?.name;
+                const variantName = apt.variantId ? variantNameMap.get(apt.variantId) : undefined;
+                const treatmentDisplayName = treatmentName
+                  ? variantName
+                    ? `${treatmentName} · ${variantName}`
+                    : treatmentName
+                  : undefined;
                 const planText = plateJsonToText(apt.interviewNotes).trim();
                 return (
                   <Card
@@ -1330,7 +1359,7 @@ function PatientDetail() {
                             variant="stroke"
                           />
                           <p className="text-sm font-medium truncate">
-                            {treatmentName ?? t("common.unknown")}
+                            {treatmentDisplayName ?? t("common.unknown")}
                           </p>
                         </div>
                         <p className="text-xs text-muted-foreground tabular-nums shrink-0">
@@ -2238,9 +2267,13 @@ function PatientDetail() {
                       const treatmentName =
                         treatmentsData?.find((tr) => tr._id === apt.treatmentId)
                           ?.name ?? t("common.unknown");
+                      const variantName = apt.variantId ? variantNameMap.get(apt.variantId) : undefined;
+                      const treatmentDisplayName = variantName
+                        ? `${treatmentName} · ${variantName}`
+                        : treatmentName;
                       return (
                         <SelectItem key={apt._id} value={apt._id}>
-                          {apt.date} · {apt.startTime} · {treatmentName}
+                          {apt.date} · {apt.startTime} · {treatmentDisplayName}
                         </SelectItem>
                       );
                     });

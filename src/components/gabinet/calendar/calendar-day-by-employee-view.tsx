@@ -14,6 +14,7 @@ interface Appointment {
   endTime: string;
   patientName: string;
   treatmentName: string;
+  variantName?: string;
   status: string;
   color?: string;
   employeeId?: string;

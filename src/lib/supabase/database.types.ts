@@ -4730,6 +4730,7 @@ export interface Database {
           contraindication_alerts_reviewed: boolean | null;
           price_at_booking: number | null;
           reminder_overrides: string | null;
+          variant_id: string | null;
         };
         Insert: {
           id?: string;
@@ -4777,6 +4778,7 @@ export interface Database {
           contraindication_alerts_reviewed?: boolean | null;
           price_at_booking?: number | null;
           reminder_overrides?: string | null;
+          variant_id?: string | null;
         };
         Update: {
           id?: string;
@@ -4824,6 +4826,7 @@ export interface Database {
           contraindication_alerts_reviewed?: boolean | null;
           price_at_booking?: number | null;
           reminder_overrides?: string | null;
+          variant_id?: string | null;
         };
         Relationships: [
           {

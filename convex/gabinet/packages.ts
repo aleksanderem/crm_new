@@ -514,9 +514,10 @@ export const purchasePackage = action({
       ? now + pkgValidityDays * 24 * 60 * 60 * 1000
       : null;
 
-    const pkgTreatments = pkg.treatments as Array<{ treatmentId: string; quantity: number }>;
+    const pkgTreatments = pkg.treatments as Array<{ treatmentId: string; variantId?: string; quantity: number }>;
     const treatmentsUsed = pkgTreatments.map((t) => ({
       treatmentId: t.treatmentId,
+      ...(t.variantId ? { variantId: t.variantId } : {}),
       usedCount: 0,
       totalCount: t.quantity,
     }));

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 interface PackageUsageSelectorProps {
   patientId: string;
   treatmentId: string;
+  variantId?: string;
   organizationId: Id<"organizations">;
   onSelect: (packageUsageId: string | null) => void;
   selectedUsageId?: string | null;
@@ -17,6 +18,7 @@ interface PackageUsageSelectorProps {
 export function PackageUsageSelector({
   patientId,
   treatmentId,
+  variantId,
   organizationId,
   onSelect,
   selectedUsageId,
@@ -47,11 +49,18 @@ export function PackageUsageSelector({
 
   if (!patientId || !treatmentId || !usages) return null;
 
-  // Find active usages that have remaining uses for this treatment
+  const matchesVariant = (tuVariantId?: string) => {
+    if (!tuVariantId) return true;
+    return tuVariantId === variantId;
+  };
+
+  // Find active usages that have remaining uses for this treatment and variant
   const eligibleUsages = usages.filter((u) => {
     if (u.status !== "active") return false;
     if (u.expiresAt && u.expiresAt < Date.now()) return false;
-    const entry = u.treatmentsUsed.find((tu) => tu.treatmentId === treatmentId);
+    const entry = u.treatmentsUsed.find(
+      (tu) => tu.treatmentId === treatmentId && matchesVariant(tu.variantId),
+    );
     return entry && entry.usedCount < entry.totalCount;
   });
 
@@ -60,7 +69,9 @@ export function PackageUsageSelector({
   return (
     <div className="space-y-2">
       {eligibleUsages.map((usage) => {
-        const entry = usage.treatmentsUsed.find((tu) => tu.treatmentId === treatmentId)!;
+        const entry = usage.treatmentsUsed.find(
+          (tu) => tu.treatmentId === treatmentId && matchesVariant(tu.variantId),
+        )!;
         const pkgName = packageMap.get(usage.packageId) ?? t("common.unknown");
         const remaining = entry.totalCount - entry.usedCount;
         const isChecked = selectedUsageId === usage._id;

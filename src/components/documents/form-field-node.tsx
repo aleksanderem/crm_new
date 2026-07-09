@@ -24,6 +24,18 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
+import { useAction } from "convex/react";
+import { useQueryClient } from "@tanstack/react-query";
+import { api } from "@cvx/_generated/api";
+import type { CustomFieldType } from "@cvx/schema";
+import { useOrganization } from "@/components/org-context";
+import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
+import {
+  PATIENT_BUILTIN_FIELDS,
+  formFieldTypeToCustomFieldType,
+  slugifyFieldKey,
+} from "@/lib/documents/patient-mappable-fields";
 import {
   Type,
   AlignLeft,
@@ -49,6 +61,8 @@ export interface FormFieldAttrs {
   required: boolean;
   placeholder: string;
   filledBy: FilledBy;
+  // Mapping to a patient record field: "" | "builtin:<col>" | "custom:<key>"
+  patientField: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -67,6 +81,143 @@ const FIELD_TYPE_ICONS: Record<FormFieldType, typeof Type> = {
 function FormFieldIcon({ type }: { type: FormFieldType }) {
   const Icon = FIELD_TYPE_ICONS[type] ?? Type;
   return <Icon className="h-3 w-3" />;
+}
+
+// ---------------------------------------------------------------------------
+// Patient field mapping
+// ---------------------------------------------------------------------------
+
+const NONE = "__none__";
+const CREATE = "__create__";
+
+function PatientFieldMapping({
+  value,
+  fieldLabel,
+  fieldType,
+  onChange,
+}: {
+  value: string;
+  fieldLabel: string;
+  fieldType: FormFieldType;
+  onChange: (v: string) => void;
+}) {
+  const { t } = useTranslation();
+  const { organizationId } = useOrganization();
+  const orgId = String(organizationId);
+  const defsQuery = useSupabaseCustomFieldDefinitions(orgId, "gabinetPatient");
+  const ensureDefinition = useAction(api.customFields.ensureDefinition);
+  const queryClient = useQueryClient();
+
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const customDefs = defsQuery.data ?? [];
+  const knownValues = new Set<string>([
+    ...PATIENT_BUILTIN_FIELDS.map((f) => `builtin:${f.key}`),
+    ...customDefs.map((d) => `custom:${d.fieldKey}`),
+  ]);
+
+  const handleSelect = (v: string) => {
+    if (v === CREATE) {
+      setCreating(true);
+      setNewName(fieldLabel || "");
+      return;
+    }
+    onChange(v === NONE ? "" : v);
+  };
+
+  const handleCreate = async () => {
+    const name = newName.trim();
+    if (!name) return;
+    setBusy(true);
+    try {
+      const fieldKey = slugifyFieldKey(name);
+      await ensureDefinition({
+        organizationId,
+        entityType: "gabinetPatient",
+        name,
+        fieldKey,
+        fieldType: formFieldTypeToCustomFieldType(fieldType) as CustomFieldType,
+      });
+      await queryClient.invalidateQueries({
+        queryKey: supabaseKeys.customFieldDefinitions.list(orgId),
+      });
+      onChange(`custom:${fieldKey}`);
+      setCreating(false);
+      setNewName("");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs">
+        {t("formEditor.formField.mapToPatient", "Mapuj do kartoteki pacjenta")}
+      </Label>
+      {creating ? (
+        <div className="space-y-1.5">
+          <Input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            className="h-8 text-sm"
+            placeholder={t("formEditor.formField.newPatientFieldName", "Nazwa nowego pola")}
+            autoFocus
+          />
+          <div className="flex gap-1.5">
+            <Button
+              size="sm"
+              className="h-7 flex-1 text-xs"
+              onClick={handleCreate}
+              disabled={busy || !newName.trim()}
+            >
+              {t("common.create", "Utwórz")}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              onClick={() => setCreating(false)}
+              disabled={busy}
+            >
+              {t("common.cancel", "Anuluj")}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Select value={value ? value : NONE} onValueChange={handleSelect}>
+          <SelectTrigger className="h-8 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NONE}>
+              {t("formEditor.formField.noMapping", "Brak — nie zapisuj do kartoteki")}
+            </SelectItem>
+            {/* Built-in patient fields */}
+            {PATIENT_BUILTIN_FIELDS.map((f) => (
+              <SelectItem key={f.key} value={`builtin:${f.key}`}>
+                {f.label}
+              </SelectItem>
+            ))}
+            {/* Existing custom fields */}
+            {customDefs.map((d) => (
+              <SelectItem key={d.fieldKey} value={`custom:${d.fieldKey}`}>
+                {d.name}
+              </SelectItem>
+            ))}
+            {/* Fallback for a dangling / not-yet-loaded value */}
+            {value && !knownValues.has(value) && (
+              <SelectItem value={value}>{value}</SelectItem>
+            )}
+            <SelectItem value={CREATE}>
+              {t("formEditor.formField.createPatientField", "+ Utwórz nowe pole pacjenta")}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      )}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -169,6 +320,15 @@ function FormFieldConfig({
         </Select>
       </div>
 
+      {(attrs.filledBy ?? "client") === "client" && (
+        <PatientFieldMapping
+          value={attrs.patientField ?? ""}
+          fieldLabel={attrs.label}
+          fieldType={attrs.fieldType}
+          onChange={(patientField) => onChange({ patientField })}
+        />
+      )}
+
       <div className="flex items-center justify-between">
         <Label className="text-xs">{t("common.required")}</Label>
         <Switch
@@ -244,6 +404,7 @@ export const FormFieldNode = Node.create({
       required: { default: false },
       placeholder: { default: "" },
       filledBy: { default: "client" as FilledBy },
+      patientField: { default: "" },
     };
   },
 
@@ -254,6 +415,7 @@ export const FormFieldNode = Node.create({
         const dom = el as HTMLElement;
         return {
           filledBy: dom.getAttribute("data-filled-by") || "employee",
+          patientField: dom.getAttribute("data-patient-field") || "",
         };
       },
     }];
@@ -267,6 +429,7 @@ export const FormFieldNode = Node.create({
         "data-form-field": HTMLAttributes.fieldId,
         "data-field-type": HTMLAttributes.fieldType,
         "data-filled-by": HTMLAttributes.filledBy || "employee",
+        "data-patient-field": HTMLAttributes.patientField || "",
         // No dark: variants — this HTML is always rendered inside a
         // white-paper document container (bg-white + [&_*]:!text-gray-900),
         // where dark-mode backgrounds would clash with the forced dark text.

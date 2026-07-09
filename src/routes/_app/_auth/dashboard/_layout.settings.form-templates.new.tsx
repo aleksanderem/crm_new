@@ -21,6 +21,7 @@ import {
 import { ArrowLeft, ChevronDown, ChevronUp } from "@/lib/ez-icons";
 import { toast } from "sonner";
 import { DocumentTemplateEditor } from "@/components/documents/document-template-editor";
+import { buildPatientVariableBindings } from "@/lib/documents/variable-bindings";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/form-templates/new",
@@ -150,6 +151,7 @@ function NewFormTemplatePage() {
         description: description.trim() || undefined,
         category,
         contentJson,
+        variableBindings: buildPatientVariableBindings(contentJson),
         modules,
         entityTypes,
         requiresSignature,

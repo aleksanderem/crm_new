@@ -84,6 +84,76 @@ export const createDefinition = action({
   },
 });
 
+/**
+ * Idempotent "ensure a definition exists" by (org, entityType, fieldKey).
+ * Returns the existing definition id if one already exists, otherwise creates
+ * it. This is the anti-duplication primitive used when a document template
+ * field maps to a "new" patient field: repeated template saves / document
+ * generations converge on the same definition instead of creating duplicates.
+ */
+export const ensureDefinition = action({
+  args: {
+    organizationId: v.id("organizations"),
+    entityType: entityTypeValidator,
+    name: v.string(),
+    fieldKey: v.string(),
+    fieldType: customFieldTypeValidator,
+    options: v.optional(v.array(v.string())),
+    group: v.optional(v.string()),
+  },
+  handler: async (ctx, args): Promise<string> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+
+    const existingDefs = await db
+      .query("customFieldDefinitions")
+      .eq("organizationId", orgIdStr)
+      .eq("entityType", args.entityType)
+      .collect();
+
+    const found = existingDefs.find((e: any) => e.fieldKey === args.fieldKey);
+    if (found) return String(found._id);
+
+    const now = Date.now();
+    const nextOrder = existingDefs.reduce(
+      (max: number, e: any) => Math.max(max, (e.order ?? 0) + 1),
+      0,
+    );
+
+    try {
+      const defId = await db.insert("customFieldDefinitions", {
+        organizationId: orgIdStr,
+        entityType: args.entityType,
+        name: args.name,
+        fieldKey: args.fieldKey,
+        fieldType: args.fieldType,
+        options: args.options ?? null,
+        isRequired: null,
+        order: nextOrder,
+        group: args.group ?? null,
+        activityTypeKey: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+      return String(defId);
+    } catch {
+      // Lost a race on the unique (org, entityType, fieldKey) index — re-select.
+      const retry = await db
+        .query("customFieldDefinitions")
+        .eq("organizationId", orgIdStr)
+        .eq("entityType", args.entityType)
+        .collect();
+      const raced = retry.find((e: any) => e.fieldKey === args.fieldKey);
+      if (raced) return String(raced._id);
+      throw new Error(`Failed to ensure custom field "${args.fieldKey}"`);
+    }
+  },
+});
+
 export const updateDefinition = action({
   args: {
     organizationId: v.id("organizations"),

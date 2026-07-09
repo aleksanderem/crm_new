@@ -5,6 +5,7 @@ import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { validatePortalSessionSupabase } from "../_helpers/portalSession";
 import { formDocumentStatusValidator } from "../schema/documents";
 import { resolveComponentsInContent } from "./resolveComponents";
+import { applyPatientBindings } from "./_helpers/patientBindings";
 import type { FormDocumentRow, FormTemplateRow } from "../_helpers/supabaseRows";
 import { Id } from "../_generated/dataModel";
 import {
@@ -643,6 +644,19 @@ export const recordSignature = action({
     }
 
     await db.patch("formDocuments", doc._id as string, patch);
+
+    // Write client-filled values back into the patient record per the
+    // template's field→patient mapping. Best-effort: a mapping failure must
+    // never break the signing flow.
+    try {
+      await applyPatientBindings(db, String(doc.organizationId), {
+        ...(doc as Record<string, unknown>),
+        ...patch,
+      });
+    } catch (err) {
+      console.error("applyPatientBindings failed after signature", err);
+    }
+
     return doc._id as string;
   },
 });

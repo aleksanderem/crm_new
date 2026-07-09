@@ -289,6 +289,7 @@ export const update = action({
     organizationId: v.id("organizations"),
     treatmentId: v.string(),
     name: v.optional(v.string()),
+    isActive: v.optional(v.boolean()),
     description: v.optional(v.union(v.string(), v.null())),
     duration: v.optional(v.number()),
     price: v.optional(v.number()),

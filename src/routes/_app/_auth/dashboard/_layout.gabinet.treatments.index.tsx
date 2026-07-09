@@ -631,19 +631,14 @@ function TreatmentsIndex() {
               onClick: () => openEditPanel(row),
             },
             {
-              label: row.isActive ? t("common.inactive") : t("common.active"),
+              label: row.isActive ? t("common.deactivate", "Dezaktywuj") : t("common.activate", "Aktywuj"),
               icon: <Power className="h-4 w-4" variant="stroke" />,
               onClick: async () => {
-                // Soft toggle by removing (deactivate) or updating
-                if (row.isActive) {
-                  await removeTreatment({ organizationId, treatmentId: row._id as Id<"gabinetTreatments"> });
-                } else {
-                  await updateTreatment({
-                    organizationId,
-                    treatmentId: row._id as Id<"gabinetTreatments">,
-                    name: row.name,
-                  });
-                }
+                await updateTreatment({
+                  organizationId,
+                  treatmentId: row._id as Id<"gabinetTreatments">,
+                  isActive: !row.isActive,
+                });
               },
             },
           ]

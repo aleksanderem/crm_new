@@ -73,7 +73,7 @@ import {
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
-import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
+import { useSupabaseGabinetTreatmentsList, useSupabaseGabinetAllTreatmentVariants } from "@/hooks/use-supabase-gabinet-treatments";
 import { useSupabaseGabinetEmployeeSchedulesList } from "@/hooks/use-supabase-gabinet-employee-schedules";
 import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
 import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
@@ -210,6 +210,7 @@ function GabinetCalendarPage() {
     endTime: string;
     patientName: string;
     treatmentName: string;
+    variantName?: string;
     status: string;
     color?: string;
     tags?: Array<{ name: string; color: string }>;
@@ -334,6 +335,7 @@ function GabinetCalendarPage() {
     organizationId,
     { limit: 200 },
   );
+  const { data: allVariants } = useSupabaseGabinetAllTreatmentVariants(organizationId);
 
   // Fetch employee schedules from Supabase
   const { data: employeeSchedulesRaw } = useSupabaseGabinetEmployeeSchedulesList(
@@ -366,6 +368,16 @@ function GabinetCalendarPage() {
     }
     return map;
   }, [treatments]);
+
+  const variantMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (allVariants) {
+      for (const v of allVariants) {
+        map.set(v._id, v.name);
+      }
+    }
+    return map;
+  }, [allVariants]);
 
   // Fetch tag definitions to render colored pills on appointment cards
   const { tags: tagDefinitions } = useTagDefinitions(organizationId);
@@ -685,6 +697,7 @@ function GabinetCalendarPage() {
       endTime: string;
       patientName: string;
       treatmentName: string;
+      variantName?: string;
       status: string;
       color?: string;
       employeeId?: string;
@@ -837,6 +850,7 @@ function GabinetCalendarPage() {
           }
         }
 
+        const variantName = a.variantId ? variantMap.get(a.variantId) : undefined;
         items.push({
           _id: a._id,
           date: a.date,
@@ -844,6 +858,7 @@ function GabinetCalendarPage() {
           endTime: a.endTime,
           patientName: patientMap.get(a.patientId) ?? "",
           treatmentName: treatment?.name ?? "",
+          variantName,
           status: a.status,
           // Per-appointment override wins, then the employee's assigned color
           // (issue #1019), then treatment color as a final fallback.
@@ -903,7 +918,7 @@ function GabinetCalendarPage() {
     }
 
     return items;
-  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, tagMap, employeeColorMap, eventTypeColorMap, firstAppointmentIds, packagePositions, recurringPositions, appointmentPaymentTotals, creditByAppointmentId, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
+  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, variantMap, tagMap, employeeColorMap, eventTypeColorMap, firstAppointmentIds, packagePositions, recurringPositions, appointmentPaymentTotals, creditByAppointmentId, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
 
   // Collapse blocked-time events that target multiple employees into a single
   // tile for views that don't break the day into per-employee columns
@@ -1997,6 +2012,7 @@ function GabinetCalendarPage() {
               endTime={activeAppointment.endTime}
               patientName={activeAppointment.patientName}
               treatmentName={activeAppointment.treatmentName}
+              variantName={activeAppointment.variantName}
               status={activeAppointment.status}
               color={activeAppointment.color}
               tags={activeAppointment.tags}

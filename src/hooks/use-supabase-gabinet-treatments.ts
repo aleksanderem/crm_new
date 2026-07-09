@@ -92,6 +92,35 @@ export function useSupabaseGabinetTreatment(
 // Treatment Variants (by treatment ID)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// All Treatment Variants for Org (for building lookup maps)
+// ---------------------------------------------------------------------------
+
+export function useSupabaseGabinetAllTreatmentVariants(
+  organizationId: string,
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  return useQuery<MappedGabinetTreatmentVariant[], Error>({
+    queryKey: supabaseKeys.gabinetTreatmentVariants.list(organizationId),
+    queryFn: async (): Promise<MappedGabinetTreatmentVariant[]> => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      const { data, error } = await client
+        .from("gabinet_treatment_variants")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .order("sort_order", { ascending: true });
+
+      if (error) throw error;
+      return (data ?? []).map(mapGabinetTreatmentVariantFromSupabase);
+    },
+    enabled: enabled && isReady && !!organizationId,
+  } satisfies UseQueryOptions<MappedGabinetTreatmentVariant[], Error>);
+}
+
 interface UseSupabaseGabinetTreatmentVariantsOptions {
   enabled?: boolean;
   limit?: number;

@@ -21,6 +21,7 @@ interface AppointmentCardProps {
   endTime: string;
   patientName: string;
   treatmentName: string;
+  variantName?: string;
   status: string;
   color?: string;
   tags?: AppointmentTag[];
@@ -41,6 +42,7 @@ export function AppointmentCard({
   endTime,
   patientName,
   treatmentName,
+  variantName,
   status,
   color,
   tags,
@@ -122,7 +124,9 @@ export function AppointmentCard({
       </div>
       <div className="px-2 py-1">
         <div className="truncate font-medium">{patientName}</div>
-        <div className="truncate opacity-75">{treatmentName}</div>
+        <div className="truncate opacity-75">
+          {treatmentName}{variantName ? ` · ${variantName}` : ""}
+        </div>
       </div>
     </button>
   );

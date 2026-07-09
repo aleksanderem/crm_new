@@ -23,6 +23,7 @@ interface Appointment {
   endTime: string;
   patientName: string;
   treatmentName: string;
+  variantName?: string;
   status: string;
   color?: string;
   tags?: AppointmentTag[];
@@ -55,6 +56,7 @@ export function DraggableAppointment({
   endTime,
   patientName,
   treatmentName,
+  variantName,
   status,
   color,
   tags,
@@ -329,6 +331,7 @@ export function DraggableAppointment({
         endTime={displayEndTime}
         patientName={patientName}
         treatmentName={treatmentName}
+        variantName={variantName}
         status={status}
         color={color}
         tags={tags}

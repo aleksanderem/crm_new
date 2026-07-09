@@ -468,6 +468,8 @@ export function AppointmentPreviewContent({
     treatments?.find((tr) => tr._id === treatmentId) ?? null;
   const treatmentDisplayName =
     selectedTreatment?.name ?? treatment?.name ?? "";
+  const selectedVariantName =
+    variants?.find((v) => v._id === variantId)?.name ?? "";
   const filteredTreatments = (() => {
     const all = treatments ?? [];
     const q = treatmentSearch.trim().toLowerCase();
@@ -1335,8 +1337,11 @@ export function AppointmentPreviewContent({
               >
                 <Stethoscope className="size-3.5 shrink-0 text-primary" />
                 <span className="truncate">
-                  {treatmentDisplayName ||
-                    t("gabinet.appointments.selectTreatment")}
+                  {treatmentDisplayName
+                    ? selectedVariantName
+                      ? `${treatmentDisplayName} · ${selectedVariantName}`
+                      : treatmentDisplayName
+                    : t("gabinet.appointments.selectTreatment")}
                 </span>
                 <ChevronsUpDown className="size-3.5 shrink-0 opacity-60" />
               </button>

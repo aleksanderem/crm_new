@@ -44,6 +44,7 @@ export interface MappedGabinetAppointment {
   bookedByPatientId?: string;
   locationId?: string;
   roomId?: string;
+  variantId?: string;
   tagIds?: string[];
   categoryId?: string;
   requiresCompletion?: boolean;

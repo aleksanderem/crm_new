@@ -65,15 +65,17 @@ function Login() {
 
   useEffect(() => {
     if (isLoading || !isAuthenticated) return;
+    // Check inviteToken BEFORE the !user guard so a brand-new OTP sign-up
+    // (isAuthenticated=true but user query still pending) doesn't get
+    // redirected to dashboard and lose the invite token. The invite page
+    // handles its own auth/loading state.
+    if (inviteToken) {
+      navigate({ to: "/invite/$token", params: { token: inviteToken }, replace: true });
+      return;
+    }
     if (!user) {
       // No user record yet — let the dashboard's auth gate handle it
       navigate({ to: DashboardRoute.fullPath, replace: true });
-      return;
-    }
-    // If user came from /invite/<token>, send them back so the invitation
-    // gets accepted automatically.
-    if (inviteToken) {
-      navigate({ to: "/invite/$token", params: { token: inviteToken }, replace: true });
       return;
     }
     if (!user.username) {

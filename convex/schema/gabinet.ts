@@ -496,6 +496,7 @@ export function createGabinetTables({
     treatments: v.array(
       v.object({
         treatmentId: v.id("gabinetTreatments"),
+        variantId: v.optional(v.id("gabinetTreatmentVariants")),
         quantity: v.number(),
       }),
     ),
@@ -524,6 +525,7 @@ export function createGabinetTables({
     treatmentsUsed: v.array(
       v.object({
         treatmentId: v.id("gabinetTreatments"),
+        variantId: v.optional(v.id("gabinetTreatmentVariants")),
         usedCount: v.number(),
         totalCount: v.number(),
       }),

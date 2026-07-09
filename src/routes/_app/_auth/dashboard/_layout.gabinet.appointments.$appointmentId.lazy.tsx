@@ -249,7 +249,7 @@ function AppointmentDetail() {
   const [usageDialogOpen, setUsageDialogOpen] = useState(false);
   const [usageDialogPkgId, setUsageDialogPkgId] = useState<string | null>(null);
   const [usageDialogItems, setUsageDialogItems] = useState<
-    Array<{ treatmentId: string; treatmentName: string; remaining: number; qty: number }>
+    Array<{ treatmentId: string; variantId?: string; treatmentName: string; remaining: number; qty: number }>
   >([]);
   const [isUsageSubmitting, setIsUsageSubmitting] = useState(false);
 
@@ -1869,6 +1869,7 @@ function AppointmentDetail() {
                                       .filter((e) => (e.usedCount ?? 0) < (e.totalCount ?? 0))
                                       .map((e) => ({
                                         treatmentId: e.treatmentId,
+                                        variantId: (e as any).variantId ?? undefined,
                                         treatmentName: e.treatmentName ?? t("gabinet.packages.treatment"),
                                         remaining: (e.totalCount ?? 0) - (e.usedCount ?? 0),
                                         qty: 0,
@@ -2483,6 +2484,7 @@ function AppointmentDetail() {
                   .filter((it) => it.qty > 0)
                   .map((it) => ({
                     treatmentId: it.treatmentId,
+                    ...(it.variantId ? { variantId: it.variantId } : {}),
                     quantity: it.qty,
                   }));
                 if (items.length === 0) return;

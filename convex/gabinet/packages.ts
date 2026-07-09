@@ -655,6 +655,7 @@ export const usePackageTreatment = action({
     organizationId: v.id("organizations"),
     usageId: v.string(),
     treatmentId: v.string(),
+    variantId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await ctx.runQuery(
@@ -675,13 +676,15 @@ export const usePackageTreatment = action({
     if ((usage.status as string) !== "active") throw new Error("Package is not active");
     if (usage.expiresAt && (usage.expiresAt as number) < Date.now()) throw new Error("Package has expired");
 
-    const treatmentsUsed = usage.treatmentsUsed as Array<{ treatmentId: string; usedCount: number; totalCount: number }>;
-    const treatmentEntry = treatmentsUsed.find((t) => t.treatmentId === args.treatmentId);
+    const treatmentsUsed = usage.treatmentsUsed as Array<{ treatmentId: string; variantId?: string; usedCount: number; totalCount: number }>;
+    const treatmentEntry = treatmentsUsed.find(
+      (t) => t.treatmentId === args.treatmentId && (args.variantId == null || t.variantId === args.variantId),
+    );
     if (!treatmentEntry) throw new Error("Treatment not in package");
     if (treatmentEntry.usedCount >= treatmentEntry.totalCount) throw new Error("Treatment usage exhausted");
 
     const updatedTreatments = treatmentsUsed.map((t) =>
-      t.treatmentId === args.treatmentId
+      t.treatmentId === args.treatmentId && (args.variantId == null || t.variantId === args.variantId)
         ? { ...t, usedCount: t.usedCount + 1 }
         : t
     );
@@ -705,6 +708,7 @@ export const usePackageTreatmentsBatch = action({
     items: v.array(
       v.object({
         treatmentId: v.string(),
+        variantId: v.optional(v.string()),
         quantity: v.number(),
       }),
     ),
@@ -731,12 +735,15 @@ export const usePackageTreatmentsBatch = action({
     if ((usage.status as string) !== "active") throw new Error("Package is not active");
     if (usage.expiresAt && (usage.expiresAt as number) < Date.now()) throw new Error("Package has expired");
 
-    const treatmentsUsed = usage.treatmentsUsed as Array<{ treatmentId: string; usedCount: number; totalCount: number }>;
+    const treatmentsUsed = usage.treatmentsUsed as Array<{ treatmentId: string; variantId?: string; usedCount: number; totalCount: number }>;
+
+    const matchesItem = (t: { treatmentId: string; variantId?: string }, item: { treatmentId: string; variantId?: string }) =>
+      t.treatmentId === item.treatmentId && (item.variantId == null || t.variantId === item.variantId);
 
     // Validate all items before applying any
     for (const item of args.items) {
       if (item.quantity < 1) throw new Error("Quantity must be at least 1");
-      const entry = treatmentsUsed.find((t) => t.treatmentId === item.treatmentId);
+      const entry = treatmentsUsed.find((t) => matchesItem(t, item));
       if (!entry) throw new Error(`Treatment ${item.treatmentId} not in package`);
       if (entry.usedCount + item.quantity > entry.totalCount) {
         throw new Error(
@@ -747,7 +754,7 @@ export const usePackageTreatmentsBatch = action({
 
     // Apply all increments
     const updatedTreatments = treatmentsUsed.map((t) => {
-      const item = args.items.find((i) => i.treatmentId === t.treatmentId);
+      const item = args.items.find((i) => matchesItem(t, i));
       if (!item) return t;
       return { ...t, usedCount: t.usedCount + item.quantity };
     });

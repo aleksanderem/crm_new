@@ -415,12 +415,21 @@ export const runAll = internalMutation({
 
       if (existingTreatments.length < 2) throw new Error("Need at least 2 treatments for package");
 
+      // Create a variant for the first treatment to exercise variant-aware package paths
+      const testVariantId = await ctx.db.insert("gabinetTreatmentVariants", {
+        organizationId: orgId,
+        treatmentId: existingTreatments[0]._id,
+        name: "E2E Test Variant",
+        price: 120,
+        duration: 45,
+      });
+
       testPackageId = await ctx.db.insert("gabinetTreatmentPackages", {
         organizationId: orgId,
         name: "E2E Test Package",
         description: "Package created by E2E test",
         treatments: [
-          { treatmentId: existingTreatments[0]._id, quantity: 3 },
+          { treatmentId: existingTreatments[0]._id, variantId: testVariantId, quantity: 3 },
           { treatmentId: existingTreatments[1]._id, quantity: 2 },
         ],
         totalPrice: 500,
@@ -473,6 +482,7 @@ export const runAll = internalMutation({
         status: "active",
         treatmentsUsed: pkg.treatments.map((t) => ({
           treatmentId: t.treatmentId,
+          ...(t.variantId ? { variantId: t.variantId } : {}),
           usedCount: 0,
           totalCount: t.quantity,
         })),
@@ -488,6 +498,7 @@ export const runAll = internalMutation({
       if (usage.status !== "active") throw new Error("Status should be active");
       if (usage.treatmentsUsed.length !== 2) throw new Error("Treatments used count mismatch");
       if (usage.treatmentsUsed.some((t) => t.usedCount !== 0)) throw new Error("Used count should be 0");
+      if (!(usage.treatmentsUsed as any[]).some((t) => t.variantId != null)) throw new Error("variantId not propagated to treatmentsUsed");
 
       // Award loyalty points
       if (pkg.loyaltyPointsAwarded && pkg.loyaltyPointsAwarded > 0) {

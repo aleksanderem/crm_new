@@ -164,7 +164,7 @@ export const _listAllTeamMemberships = internalQuery({
 
 export const deleteTeamMembershipFromSupabase = internalAction({
   args: { membershipId: v.string() },
-  returns: v.null_(),
+  returns: v.null(),
   handler: async (_ctx, args) => {
     const client = createServiceRoleClient();
     const { error } = await client

@@ -228,6 +228,31 @@ function TeamSettings() {
           <SectionHeader.Heading className="flex-1">
             {t("team.title")}
           </SectionHeader.Heading>
+          {isAdmin && (
+            <SectionHeader.Actions>
+              <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" disabled={isAtLimit}>
+                    <UserPlus className="mr-2 h-4 w-4" variant="stroke" />
+                    {t("team.inviteMember")}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>{t("team.inviteDialog.title")}</DialogTitle>
+                    <DialogDescription>
+                      {t("team.inviteDialog.description")}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <UserInvitationForm
+                    onSubmit={handleSendInvitation}
+                    onCancel={() => setInviteOpen(false)}
+                    isSubmitting={isSending}
+                  />
+                </DialogContent>
+              </Dialog>
+            </SectionHeader.Actions>
+          )}
         </SectionHeader.Group>
         <UntitledAlert>{t("team.description")}</UntitledAlert>
       </SectionHeader.Root>
@@ -385,31 +410,8 @@ function TeamSettings() {
 
       {/* Pending invitations section */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader>
           <CardTitle className="text-base">{t("team.invitations")}</CardTitle>
-          {isAdmin && (
-            <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" disabled={isAtLimit}>
-                  <UserPlus className="mr-2 h-4 w-4" variant="stroke" />
-                  {t("team.inviteMember")}
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>{t("team.inviteDialog.title")}</DialogTitle>
-                  <DialogDescription>
-                    {t("team.inviteDialog.description")}
-                  </DialogDescription>
-                </DialogHeader>
-                <UserInvitationForm
-                  onSubmit={handleSendInvitation}
-                  onCancel={() => setInviteOpen(false)}
-                  isSubmitting={isSending}
-                />
-              </DialogContent>
-            </Dialog>
-          )}
         </CardHeader>
         <CardContent className="space-y-1">
           {invitations && invitations.length > 0 ? (

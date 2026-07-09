@@ -1324,6 +1324,7 @@ export function AppointmentDialog({
                   <PackageUsageSelector
                     patientId={patientId}
                     treatmentId={treatmentId}
+                    variantId={variantId || undefined}
                     organizationId={organizationId}
                     selectedUsageId={packageUsageId}
                     onSelect={setPackageUsageId}

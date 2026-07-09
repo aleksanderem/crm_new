@@ -1106,6 +1106,7 @@ export const create = action({
     organizationId: v.id("organizations"),
     patientId: v.string(),
     treatmentId: v.string(),
+    variantId: v.optional(v.string()),
     employeeId: v.string(),
     date: v.string(),
     startTime: v.string(),
@@ -1299,11 +1300,22 @@ export const create = action({
       : "Patient";
     const treatmentName = (treatment?.name as string) ?? "Treatment";
 
+    // --- Resolve variant price (if variantId provided) ---
+    let priceAtBooking: number | null = (treatment?.price as number | undefined) ?? null;
+    if (args.variantId) {
+      const variant = await db.get("gabinetTreatmentVariants", args.variantId);
+      if (variant && String(variant.organizationId) === String(args.organizationId)) {
+        const variantPrice = variant.price as number | null | undefined;
+        priceAtBooking = variantPrice ?? priceAtBooking;
+      }
+    }
+
     // --- INSERT first appointment directly to Supabase ---
     const baseRow: Record<string, unknown> = {
       organizationId: String(args.organizationId),
       patientId: args.patientId,
       treatmentId: args.treatmentId,
+      variantId: args.variantId ?? null,
       employeeId: args.employeeId,
       startTime: args.startTime,
       endTime: args.endTime,
@@ -1324,7 +1336,7 @@ export const create = action({
       roomId: args.roomId ?? null,
       tagIds: args.tagIds ?? null,
       categoryId: args.categoryId ?? null,
-      priceAtBooking: (treatment?.price as number | undefined) ?? null,
+      priceAtBooking,
       createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,

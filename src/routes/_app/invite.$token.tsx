@@ -36,28 +36,41 @@ function InviteAcceptPage() {
   const [isAccepting, setIsAccepting] = useState(false);
   const [isDeclining, setIsDeclining] = useState(false);
   const [result, setResult] = useState<"accepted" | "declined" | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const isLoading = authLoading || inviteLoading;
 
   const handleAccept = async () => {
     setIsAccepting(true);
+    setActionError(null);
     try {
       await acceptInvitation({ token });
       setResult("accepted");
       setTimeout(() => {
         navigate({ to: "/dashboard" });
       }, 1500);
-    } catch {
+    } catch (err) {
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : t("invite.acceptError", { defaultValue: "Coś poszło nie tak. Spróbuj ponownie." })
+      );
       setIsAccepting(false);
     }
   };
 
   const handleDecline = async () => {
     setIsDeclining(true);
+    setActionError(null);
     try {
       await declineInvitation({ token });
       setResult("declined");
-    } catch {
+    } catch (err) {
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : t("invite.declineError", { defaultValue: "Coś poszło nie tak. Spróbuj ponownie." })
+      );
       setIsDeclining(false);
     }
   };
@@ -220,6 +233,13 @@ function InviteAcceptPage() {
               </Badge>
             </div>
           </div>
+
+          {actionError && (
+            <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{actionError}</span>
+            </div>
+          )}
 
           <div className="flex gap-3">
             <Button

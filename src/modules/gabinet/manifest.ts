@@ -97,12 +97,15 @@ export const gabinetManifest: ModuleManifest = {
       matches: [{ to: "/dashboard/gabinet/calendar", fuzzy: true }],
       actions: [
         {
-          labelKey: "nav.actions.add",
+          labelKey: "nav.actions.bookAppointment",
+          icon: CalendarCheck,
+          dispatch: "openCreateAppointment",
+          permissionFeature: "gabinet_appointments",
+        },
+        {
+          labelKey: "nav.actions.addEvent",
           icon: PlusCircle,
-          children: [
-            { labelKey: "gabinet.appointments.createAppointment", dispatch: "openCreateAppointment" },
-            { labelKey: "gabinet.events.create", dispatch: "openCreateEvent" },
-          ],
+          dispatch: "openCreateEvent",
         },
         {
           labelKey: "nav.actions.addPatient",

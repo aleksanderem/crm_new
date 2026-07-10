@@ -169,6 +169,7 @@
       "activate": "Activate/Deactivate",
       "add": "Add",
       "bookAppointment": "Book Appointment",
+      "addEvent": "Add Event",
       "addAppointment": "Add Appointment",
       "addPatient": "Add Client",
       "printSchedule": "Print",
@@ -2181,6 +2182,7 @@
     "logCall": "Log Call",
     "share": "Share",
     "bookAppointment": "Book Appointment",
+      "addEvent": "Add Event",
     "addDocument": "Add Document",
     "download": "Download"
   },

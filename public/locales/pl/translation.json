@@ -3205,6 +3205,9 @@
         "changeEmployeeFailed": "Nie udało się zmienić pracownika dla wizyty."
       }
     },
+    "events": {
+      "create": "Nowe zdarzenie"
+    },
     "appointmentDetail": {
       "title": "Szczegóły wizyty",
       "time": "Godzina",

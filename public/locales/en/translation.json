@@ -3183,6 +3183,9 @@
         "changeEmployeeFailed": "Could not change the appointment's employee."
       }
     },
+    "events": {
+      "create": "New Event"
+    },
     "appointmentDetail": {
       "title": "Appointment Details",
       "time": "Time",

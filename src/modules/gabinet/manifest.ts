@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Bell,
   Calendar,
   CalendarCheck,
   CheckCircle,
@@ -54,6 +55,7 @@ export const gabinetManifest: ModuleManifest = {
     { labelKey: "nav.gabinet.employees", href: "/dashboard/gabinet/employees", icon: UserCog },
     { labelKey: "nav.gabinet.documents", href: "/dashboard/gabinet/documents", icon: ClipboardList },
     { labelKey: "nav.gabinet.reports", href: "/dashboard/gabinet/reports", icon: PieChart },
+    { labelKey: "nav.notifications", href: "/dashboard/notifications", icon: Bell, crossModule: true },
   ],
   settingsNav: [
     { sectionKey: "settings.gabinetSection", labelKey: "gabinet.locations.title", to: "/dashboard/gabinet/settings/locations", permissionFeature: "gabinet_settings" },

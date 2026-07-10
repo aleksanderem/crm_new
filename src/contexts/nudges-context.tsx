@@ -31,6 +31,7 @@ export function NudgesProvider({ children }: { children: React.ReactNode }) {
   const { organizationId } = useOrganization();
   const matchRoute = useMatchRoute();
   const isGabinetRoute = !!matchRoute({ to: "/dashboard/gabinet", fuzzy: true });
+  const isNotificationsRoute = !!matchRoute({ to: "/dashboard/notifications" });
 
   const [nudges, setNudges] = useState<NudgeData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -41,7 +42,7 @@ export function NudgesProvider({ children }: { children: React.ReactNode }) {
   const { data: crmNudges, isLoading: crmLoading } = useQuery({
     queryKey: ["nudges.getAll", organizationId],
     queryFn: () => getCrmNudges({ organizationId }),
-    enabled: !!organizationId && !isGabinetRoute,
+    enabled: !!organizationId && (!isGabinetRoute || isNotificationsRoute),
   });
 
   // Gabinet nudges (Supabase-primary action)
@@ -50,15 +51,20 @@ export function NudgesProvider({ children }: { children: React.ReactNode }) {
   const { data: gabinetNudges, isLoading: gabinetLoading } = useQuery({
     queryKey: ["gabinet.nudges.getAll", organizationId],
     queryFn: () => getGabinetNudges({ organizationId }),
-    enabled: !!organizationId && isGabinetRoute,
+    enabled: !!organizationId && (isGabinetRoute || isNotificationsRoute),
   });
 
   // Aggregate nudges based on current route
   useEffect(() => {
     setIsLoading(crmLoading || gabinetLoading);
-    const sourceNudges = isGabinetRoute ? gabinetNudges : crmNudges;
-    setNudges(sourceNudges ?? []);
-  }, [crmNudges, gabinetNudges, isGabinetRoute, crmLoading, gabinetLoading]);
+    let sourceNudges: NudgeData[];
+    if (isNotificationsRoute) {
+      sourceNudges = [...(crmNudges ?? []), ...(gabinetNudges ?? [])];
+    } else {
+      sourceNudges = isGabinetRoute ? (gabinetNudges ?? []) : (crmNudges ?? []);
+    }
+    setNudges(sourceNudges);
+  }, [crmNudges, gabinetNudges, isGabinetRoute, isNotificationsRoute, crmLoading, gabinetLoading]);
 
   const totalCount = nudges.length;
   const redCount = nudges.filter(n => n.severity === "red").length;

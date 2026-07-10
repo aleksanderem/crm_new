@@ -26,6 +26,14 @@ export interface ModuleNavItem {
   crossModule?: boolean;
 }
 
+export interface ModuleContextSubAction {
+  labelKey: string;
+  dispatch?: string;
+  quickCreate?: string;
+  href?: string;
+  search?: Record<string, string>;
+}
+
 export interface ModuleContextAction {
   labelKey: string;
   icon: ElementType;
@@ -34,6 +42,8 @@ export interface ModuleContextAction {
   search?: Record<string, string>;
   dispatch?: string;
   permissionFeature?: Feature;
+  /** When present the button renders as a dropdown; each child is a menu item. */
+  children?: ModuleContextSubAction[];
 }
 
 export interface ModulePageContext {

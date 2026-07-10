@@ -50,9 +50,9 @@ export const gabinetManifest: ModuleManifest = {
     { labelKey: "nav.gabinet.patients", href: "/dashboard/gabinet/patients", icon: Heart },
     { labelKey: "nav.gabinet.treatments", href: "/dashboard/gabinet/treatments", icon: Stethoscope },
     { labelKey: "nav.gabinet.packages", href: "/dashboard/gabinet/packages", icon: Gift },
+    { labelKey: "nav.products", href: "/dashboard/products", icon: Package, crossModule: true },
     { labelKey: "nav.gabinet.employees", href: "/dashboard/gabinet/employees", icon: UserCog },
     { labelKey: "nav.gabinet.documents", href: "/dashboard/gabinet/documents", icon: ClipboardList },
-    { labelKey: "nav.products", href: "/dashboard/products", icon: Package, crossModule: true },
     { labelKey: "nav.gabinet.reports", href: "/dashboard/gabinet/reports", icon: PieChart },
   ],
   settingsNav: [

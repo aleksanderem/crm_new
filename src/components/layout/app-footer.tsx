@@ -2,7 +2,6 @@ import { useMatchRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/ui/language-switcher";
-import { NudgesBadge } from "@/components/notifications/nudges-badge";
 import {
   CalendarCheck,
   Download,
@@ -144,7 +143,6 @@ export function AppFooter() {
             {`© ${new Date().getFullYear()}`}
           </p>
           <LanguageSwitcher />
-          <NudgesBadge />
         </div>
 
         <div className="flex items-center gap-2 max-sm:min-w-0 max-sm:flex-1 max-sm:flex-nowrap max-sm:justify-end sm:flex-wrap">

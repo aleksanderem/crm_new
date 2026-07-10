@@ -20,12 +20,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Plus, Search, Users, X } from "@/lib/ez-icons";
 import { EmptyState } from "@/components/layout/empty-state";
 import { cn } from "@/lib/utils";
@@ -1456,28 +1450,14 @@ function GabinetCalendarPage() {
                 </Button>
                 <h2 className="ml-2 truncate text-xs font-semibold">{title}</h2>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    className="h-7 shrink-0 text-xs md:hidden"
-                    aria-label={t("gabinet.calendar.add", "Dodaj")}
-                  >
-                    <Plus className="h-3.5 w-3.5" variant="stroke" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={openCreateDialog}>
-                    {t(
-                      "gabinet.appointments.createAppointment",
-                      "Nowa wizyta",
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={openCreateEventDialog}>
-                    {t("gabinet.events.create", "Nowe zdarzenie")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Button
+                size="sm"
+                className="h-7 shrink-0 text-xs md:hidden"
+                aria-label={t("gabinet.dashboard.addAppointment", "Umów wizytę")}
+                onClick={openCreateDialog}
+              >
+                <Plus className="h-3.5 w-3.5" variant="stroke" />
+              </Button>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -1541,39 +1521,18 @@ function GabinetCalendarPage() {
               )}
 
               {/* Create button — hidden on mobile where it lives next to the
-                  date nav (above) to avoid wrapping onto its own row.
-                  Split into a DropdownMenu (issue #1555) so the user can pick
-                  between a regular appointment and a non-patient event
-                  (meeting / training etc.). */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    className="hidden h-7 text-xs md:inline-flex"
-                    data-testid="calendar-create-appointment-button"
-                  >
-                    <Plus className="h-3.5 w-3.5 sm:mr-1" variant="stroke" />
-                    <span className="hidden sm:inline">
-                      {t("gabinet.calendar.add", "Dodaj")}
-                    </span>
-                    <ChevronDown
-                      className="ml-1 hidden h-3.5 w-3.5 sm:inline"
-                      variant="stroke"
-                    />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={openCreateDialog}>
-                    {t(
-                      "gabinet.appointments.createAppointment",
-                      "Nowa wizyta",
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={openCreateEventDialog}>
-                    {t("gabinet.events.create", "Nowe zdarzenie")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  date nav (above) to avoid wrapping onto its own row. */}
+              <Button
+                size="sm"
+                className="hidden h-7 text-xs md:inline-flex"
+                data-testid="calendar-create-appointment-button"
+                onClick={openCreateDialog}
+              >
+                <Plus className="h-3.5 w-3.5 sm:mr-1" variant="stroke" />
+                <span className="hidden sm:inline">
+                  {t("gabinet.dashboard.addAppointment", "Umów wizytę")}
+                </span>
+              </Button>
             </div>
           </div>
 

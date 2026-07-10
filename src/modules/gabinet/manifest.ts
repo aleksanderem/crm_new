@@ -105,15 +105,15 @@ export const gabinetManifest: ModuleManifest = {
           permissionFeature: "gabinet_appointments",
         },
         {
-          labelKey: "nav.actions.addEvent",
-          icon: PlusCircle,
-          dispatch: "openCreateEvent",
-        },
-        {
           labelKey: "nav.actions.addPatient",
           icon: UserPlus,
           quickCreate: "patient",
           permissionFeature: "gabinet_patients",
+        },
+        {
+          labelKey: "nav.actions.addEvent",
+          icon: PlusCircle,
+          dispatch: "openCreateEvent",
         },
         { labelKey: "nav.actions.filters", icon: Filter, dispatch: "openFilter" },
       ],

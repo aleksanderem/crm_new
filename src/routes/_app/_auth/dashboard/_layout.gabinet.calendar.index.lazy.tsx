@@ -146,7 +146,7 @@ function GabinetCalendarPage() {
 
   const [calendarTab, setCalendarTab] = useState<"calendar" | "waitlist">("calendar");
   const [viewMode, setViewMode] = useState<ViewMode>(
-    nudgeFilter === "unconfirmed-today" ? "day" : "week",
+    nudgeFilter === "unconfirmed-today" ? "day" : "day",
   );
   const [slotMinutes, setSlotMinutesState] = useState<SlotMinutes>(readStoredSlotMinutes);
   const setSlotMinutes = useCallback((next: SlotMinutes) => {
@@ -1481,43 +1481,24 @@ function GabinetCalendarPage() {
 
               {/* Slot size switcher (only meaningful for day/week) */}
               {viewMode !== "month" && (
-                <>
-                  <div
-                    className="hidden rounded-md border sm:flex"
+                <Select
+                  value={String(slotMinutes)}
+                  onValueChange={(v) => setSlotMinutes(Number(v) as SlotMinutes)}
+                >
+                  <SelectTrigger
+                    className="h-7 w-[88px] text-xs"
                     aria-label={t("gabinet.calendar.slotSize", "Rozdzielczość")}
                   >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
                     {SLOT_OPTIONS.map((opt) => (
-                      <Button
-                        key={opt}
-                        variant={slotMinutes === opt ? "default" : "ghost"}
-                        size="sm"
-                        className="h-7 rounded-none first:rounded-l-md last:rounded-r-md text-xs px-2"
-                        onClick={() => setSlotMinutes(opt)}
-                        title={t("gabinet.calendar.slotSize", "Rozdzielczość")}
-                      >
+                      <SelectItem key={opt} value={String(opt)} className="text-xs">
                         {opt} min
-                      </Button>
+                      </SelectItem>
                     ))}
-                  </div>
-                  <Select
-                    value={String(slotMinutes)}
-                    onValueChange={(v) => setSlotMinutes(Number(v) as SlotMinutes)}
-                  >
-                    <SelectTrigger
-                      className="h-7 w-[88px] text-xs sm:hidden"
-                      aria-label={t("gabinet.calendar.slotSize", "Rozdzielczość")}
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SLOT_OPTIONS.map((opt) => (
-                        <SelectItem key={opt} value={String(opt)} className="text-xs">
-                          {opt} min
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </>
+                  </SelectContent>
+                </Select>
               )}
 
               {/* Create button — hidden on mobile where it lives next to the

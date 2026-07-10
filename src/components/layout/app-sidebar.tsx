@@ -35,6 +35,12 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DayTimeline } from "@/components/sidebar-widgets/day-timeline";
 import { getModuleById, getVisibleModules, moduleRegistry } from "@/modules/registry";
 
@@ -284,25 +290,57 @@ export function AppSidebar() {
                             if (!action.permissionFeature) return true;
                             return canCreate(action.permissionFeature);
                           })
-                          .map((action) => (
-                            <button
-                              key={action.labelKey}
-                              type="button"
-                              className="hover:bg-primary/5 flex flex-col items-center gap-1.5 rounded-md border px-2 py-3 text-xs transition-colors"
-                              onClick={() => {
-                                if (action.quickCreate) {
-                                  openQuickCreate(action.quickCreate);
-                                } else if (action.dispatch) {
-                                  dispatch(action.dispatch);
-                                } else if (action.href) {
-                                  navigateTo(action.href, action.search);
-                                }
-                              }}
-                            >
-                              <action.icon className="size-4" variant="stroke" />
-                              <span className="text-center leading-tight">{t(action.labelKey)}</span>
-                            </button>
-                          ))}
+                          .map((action) =>
+                            action.children ? (
+                              <DropdownMenu key={action.labelKey}>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="hover:bg-primary/5 flex flex-col items-center gap-1.5 rounded-md border px-2 py-3 text-xs transition-colors"
+                                  >
+                                    <action.icon className="size-4" variant="stroke" />
+                                    <span className="text-center leading-tight">{t(action.labelKey)}</span>
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start">
+                                  {action.children.map((child) => (
+                                    <DropdownMenuItem
+                                      key={child.labelKey}
+                                      onClick={() => {
+                                        if (child.quickCreate) {
+                                          openQuickCreate(child.quickCreate);
+                                        } else if (child.dispatch) {
+                                          dispatch(child.dispatch);
+                                        } else if (child.href) {
+                                          navigateTo(child.href, child.search);
+                                        }
+                                      }}
+                                    >
+                                      {t(child.labelKey)}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            ) : (
+                              <button
+                                key={action.labelKey}
+                                type="button"
+                                className="hover:bg-primary/5 flex flex-col items-center gap-1.5 rounded-md border px-2 py-3 text-xs transition-colors"
+                                onClick={() => {
+                                  if (action.quickCreate) {
+                                    openQuickCreate(action.quickCreate);
+                                  } else if (action.dispatch) {
+                                    dispatch(action.dispatch);
+                                  } else if (action.href) {
+                                    navigateTo(action.href, action.search);
+                                  }
+                                }}
+                              >
+                                <action.icon className="size-4" variant="stroke" />
+                                <span className="text-center leading-tight">{t(action.labelKey)}</span>
+                              </button>
+                            )
+                          )}
                       </div>
                     </div>
                   )}

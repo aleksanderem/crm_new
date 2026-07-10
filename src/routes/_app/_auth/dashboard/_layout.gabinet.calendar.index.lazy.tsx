@@ -1030,6 +1030,7 @@ function GabinetCalendarPage() {
   // used by the toolbar's "Nowa wizyta" button so all entry points behave
   // identically on the calendar page (issue #1502).
   useSidebarDispatch("openCreateAppointment", openCreateDialog);
+  useSidebarDispatch("openCreateEvent", openCreateEventDialog);
 
   // ?action=sell-package opens the sell package side panel after navigation
   // from the gabinet quick-actions dropdown (issue #1236).

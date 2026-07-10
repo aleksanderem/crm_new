@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Bell,
   Building2,
   Calendar,
   CalendarCheck,
@@ -63,6 +64,7 @@ export const crmManifest: ModuleManifest = {
     { labelKey: "nav.products", href: "/dashboard/products", icon: Package },
     { labelKey: "nav.documents", href: "/dashboard/documents", icon: FileText },
     { labelKey: "nav.calls", href: "/dashboard/calls", icon: Phone },
+    { labelKey: "nav.notifications", href: "/dashboard/notifications", icon: Bell },
     { labelKey: "nav.settings", href: "/dashboard/settings", icon: Settings },
   ],
   settingsNav: [

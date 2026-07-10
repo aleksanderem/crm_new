@@ -1,0 +1,343 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAction } from "convex/react";
+import { convexQuery } from "@convex-dev/react-query";
+import { useTranslation } from "react-i18next";
+import { useState } from "react";
+import { toast } from "sonner";
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle,
+  ChevronRight,
+  Mail,
+  TrendingUp,
+  Users,
+  Calendar,
+  FileText,
+  Info,
+  Bell,
+} from "@/lib/ez-icons";
+import { api } from "@cvx/_generated/api";
+import { useOrganization } from "@/components/org-context";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { useNudges } from "@/contexts/nudges-context";
+import {
+  translateNotificationMessage,
+  translateNotificationTitle,
+} from "@/components/notifications/translate-notification";
+import type { Id } from "@cvx/_generated/dataModel";
+
+export const Route = createFileRoute(
+  "/_app/_auth/dashboard/_layout/notifications",
+)({
+  component: NotificationsPage,
+});
+
+type RefundAuthMetadata = {
+  requestId: string;
+  patientId: string;
+  patientLabel: string;
+  amount: number;
+  notes: string | null;
+  requesterId: string;
+  requesterName: string;
+  status: "pending" | "approved" | "rejected";
+};
+
+function isPendingRefundAuth(notification: {
+  type?: string;
+  metadata?: unknown;
+}): notification is { type: string; metadata: RefundAuthMetadata } {
+  if (notification.type !== "refund_authorization_requested") return false;
+  const m = notification.metadata as RefundAuthMetadata | null | undefined;
+  return !!m && m.status === "pending";
+}
+
+function useFormatRelativeTime() {
+  const { t, i18n } = useTranslation();
+  return (timestamp: number): string => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (seconds < 60) return t("notifications.relativeTime.justNow");
+    if (minutes < 60) return t("notifications.relativeTime.minutesAgo", { count: minutes });
+    if (hours < 24) return t("notifications.relativeTime.hoursAgo", { count: hours });
+    if (days < 7) return t("notifications.relativeTime.daysAgo", { count: days });
+    return new Date(timestamp).toLocaleDateString(i18n.language);
+  };
+}
+
+const notificationTypeIcons: Record<string, React.ReactNode> = {
+  email: <Mail className="h-4 w-4" variant="stroke" />,
+  deal: <TrendingUp className="h-4 w-4" variant="stroke" />,
+  contact: <Users className="h-4 w-4" variant="stroke" />,
+  activity: <Calendar className="h-4 w-4" variant="stroke" />,
+  document: <FileText className="h-4 w-4" variant="stroke" />,
+};
+
+function getNotificationIcon(type?: string) {
+  if (type && type in notificationTypeIcons) return notificationTypeIcons[type];
+  return <Info className="h-4 w-4" variant="stroke" />;
+}
+
+const severityConfig = {
+  red: {
+    Icon: AlertCircle,
+    bgClass: "bg-red-500/10",
+    iconClass: "text-red-500",
+  },
+  yellow: {
+    Icon: AlertTriangle,
+    bgClass: "bg-amber-500/10",
+    iconClass: "text-amber-500",
+  },
+  green: {
+    Icon: CheckCircle,
+    bgClass: "bg-emerald-500/10",
+    iconClass: "text-emerald-500",
+  },
+} as const;
+
+function NotificationsPage() {
+  const { t } = useTranslation();
+  const { organizationId } = useOrganization();
+  const navigate = useNavigate();
+  const formatRelativeTime = useFormatRelativeTime();
+  const queryClient = useQueryClient();
+  const { nudges, totalCount: nudgeCount, isLoading: nudgesLoading } = useNudges();
+
+  const { data: notifications } = useQuery({
+    ...convexQuery(api.notifications.list, { organizationId, limit: 50 }),
+    enabled: !!organizationId,
+  });
+
+  const { data: unreadCount } = useQuery({
+    ...convexQuery(api.notifications.getUnreadCount, { organizationId }),
+    enabled: !!organizationId,
+  });
+
+  const markAsRead = useAction(api.notifications.markAsRead);
+  const markAllRead = useAction(api.notifications.markAllRead);
+  const approveRefundAuth = useAction(api.payments.approveRefundAuth);
+  const rejectRefundAuth = useAction(api.payments.rejectRefundAuth);
+
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<"approve" | "reject" | null>(null);
+
+  const count = unreadCount?.count ?? 0;
+
+  const refreshNotifications = () => {
+    void queryClient.invalidateQueries({
+      queryKey: convexQuery(api.notifications.list, { organizationId, limit: 50 }).queryKey,
+    });
+    void queryClient.invalidateQueries({
+      queryKey: convexQuery(api.notifications.getUnreadCount, { organizationId }).queryKey,
+    });
+  };
+
+  const handleNotificationClick = async (notification: {
+    _id: Id<"notifications">;
+    isRead?: boolean;
+    link?: string;
+  }) => {
+    if (!notification.isRead) {
+      await markAsRead({ notificationId: notification._id });
+    }
+    if (notification.link) {
+      navigate({ to: notification.link });
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    await markAllRead({ organizationId });
+  };
+
+  const handleApproveRefund = async (notificationId: Id<"notifications">) => {
+    setPendingId(notificationId);
+    setPendingAction("approve");
+    try {
+      await approveRefundAuth({ organizationId, notificationId });
+      toast.success(t("notifications.refundAuth.approved"));
+      refreshNotifications();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("notifications.refundAuth.approveError"));
+    } finally {
+      setPendingId(null);
+      setPendingAction(null);
+    }
+  };
+
+  const handleRejectRefund = async (notificationId: Id<"notifications">) => {
+    setPendingId(notificationId);
+    setPendingAction("reject");
+    try {
+      await rejectRefundAuth({ organizationId, notificationId });
+      toast.success(t("notifications.refundAuth.rejected"));
+      refreshNotifications();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("notifications.refundAuth.rejectError"));
+    } finally {
+      setPendingId(null);
+      setPendingAction(null);
+    }
+  };
+
+  const handleNudgeClick = (link: string) => {
+    navigate({ to: link });
+  };
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
+      <PageHeader
+        title={t("nav.notifications")}
+        actions={
+          count > 0 ? (
+            <Button variant="outline" size="sm" onClick={handleMarkAllRead}>
+              {t("notifications.markAllRead")}
+            </Button>
+          ) : undefined
+        }
+      />
+
+      {/* System alerts (nudges) */}
+      {(nudgeCount > 0 || nudgesLoading) && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">
+            {t("notifications.systemAlerts", "Alerty systemowe")}
+          </h2>
+          <div className="rounded-lg border divide-y overflow-hidden">
+            {nudgesLoading ? (
+              <div className="p-4 space-y-3">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex gap-3 items-start">
+                    <div className="h-7 w-7 rounded-md bg-muted animate-pulse shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3 w-3/4 rounded bg-muted animate-pulse" />
+                      <div className="h-3 w-1/2 rounded bg-muted animate-pulse" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              nudges.map((nudge, idx) => {
+                const cfg = severityConfig[nudge.severity];
+                const NudgeIcon = cfg.Icon;
+                const isClickable = !!nudge.link;
+                const inner = (
+                  <>
+                    <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${cfg.bgClass}`}>
+                      <NudgeIcon className={`h-4 w-4 ${cfg.iconClass}`} />
+                    </div>
+                    <p className="flex-1 text-sm leading-snug">
+                      {t(nudge.message, { defaultValue: nudge.message, ...(nudge.messageValues ?? {}) })}
+                    </p>
+                    {isClickable && <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />}
+                  </>
+                );
+                if (isClickable) {
+                  return (
+                    <button
+                      key={`${nudge.message}-${idx}`}
+                      type="button"
+                      onClick={() => handleNudgeClick(nudge.link!)}
+                      className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors"
+                    >
+                      {inner}
+                    </button>
+                  );
+                }
+                return (
+                  <div key={`${nudge.message}-${idx}`} className="flex items-start gap-3 px-4 py-3">
+                    {inner}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Regular notifications */}
+      <section>
+        <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">
+          {t("notifications.title")}
+        </h2>
+        <div className="rounded-lg border divide-y overflow-hidden">
+          {!notifications || notifications.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-12 text-center text-muted-foreground">
+              <Bell className="h-8 w-8 opacity-40" variant="stroke" />
+              <p className="text-sm">{t("notifications.empty")}</p>
+            </div>
+          ) : (
+            notifications.map((notification) => {
+              const showRefundActions = isPendingRefundAuth(notification);
+              const isThisRowBusy = pendingId === notification._id;
+              return (
+                <div key={notification._id} className="border-b last:border-b-0">
+                  <button
+                    type="button"
+                    className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50"
+                    onClick={() => handleNotificationClick(notification)}
+                  >
+                    {!notification.isRead ? (
+                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                    ) : (
+                      <span className="w-2 shrink-0" />
+                    )}
+                    <div className="mt-0.5 shrink-0 text-muted-foreground">
+                      {getNotificationIcon(notification.type)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={notification.isRead ? "truncate text-sm text-foreground" : "truncate text-sm font-medium text-foreground"}>
+                        {translateNotificationTitle(notification.title, t)}
+                      </p>
+                      {notification.message && (
+                        <p className={showRefundActions ? "text-xs text-muted-foreground" : "truncate text-xs text-muted-foreground"}>
+                          {translateNotificationMessage(notification.message, t)}
+                        </p>
+                      )}
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {formatRelativeTime(notification._creationTime)}
+                      </p>
+                    </div>
+                  </button>
+                  {showRefundActions && (
+                    <div className="flex items-center gap-2 px-4 pb-3 pl-[3.25rem]">
+                      <Button
+                        size="sm"
+                        className="h-7 px-3 text-xs"
+                        disabled={pendingId !== null}
+                        onClick={(e) => { e.stopPropagation(); void handleApproveRefund(notification._id); }}
+                      >
+                        {isThisRowBusy && pendingAction === "approve"
+                          ? t("notifications.refundAuth.approving")
+                          : t("notifications.refundAuth.approve")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-3 text-xs"
+                        disabled={pendingId !== null}
+                        onClick={(e) => { e.stopPropagation(); void handleRejectRefund(notification._id); }}
+                      >
+                        {isThisRowBusy && pendingAction === "reject"
+                          ? t("notifications.refundAuth.rejecting")
+                          : t("notifications.refundAuth.reject")}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}

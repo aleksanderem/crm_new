@@ -222,12 +222,14 @@
       "gabinetDesc": "Clinic & clients"
     },
     "settings": "Settings",
+    "notifications": "Notifications",
     "home": "Home"
   },
   "notifications": {
     "title": "Notifications",
     "empty": "No notifications",
     "markAllRead": "Mark all read",
+    "systemAlerts": "System alerts",
     "relativeTime": {
       "justNow": "just now",
       "minutesAgo": "{{count}}m ago",

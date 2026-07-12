@@ -102,6 +102,8 @@ import {
   AppointmentIndicatorBadge,
   type AppointmentIndicator,
 } from "./appointment-indicators";
+import { StockShortageWarning } from "@/components/gabinet/appointment-shared/warnings";
+import { useAppointmentShortage } from "@/components/gabinet/appointment-shared/use-appointment-warnings";
 
 // All statuses can transition to any other status. Lets staff correct mistakes
 // after a visit was already marked completed/cancelled/no_show (issue #1027).
@@ -417,6 +419,14 @@ export function AppointmentPreviewContent({
       organizationId,
       indicatorRecurringGroupIds,
     );
+
+  const { shortageItems, hasShortage } = useAppointmentShortage({
+    organizationId,
+    treatmentId,
+    locationId: detail?.appointment.locationId
+      ? String(detail.appointment.locationId)
+      : undefined,
+  });
 
   // Only seed local form state from `detail` once per appointment. Refetches
   // triggered by status changes must not clobber the user's other unsaved edits
@@ -1826,6 +1836,10 @@ export function AppointmentPreviewContent({
       </div>
 
       <Separator />
+
+      {hasShortage && (
+        <StockShortageWarning items={shortageItems} size="compact" />
+      )}
 
       {/* Actions — unified Button size="sm" (h-9) so every clickable in the
           popover matches the same scale (issue #1738 follow-up: previously

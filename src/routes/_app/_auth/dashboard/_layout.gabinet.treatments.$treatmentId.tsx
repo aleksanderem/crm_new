@@ -176,6 +176,7 @@ function TreatmentDetail() {
   });
 
   // Mutations
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const updateTreatment = useAction(api.gabinet.treatments.update);
   const removeTreatment = useAction(api.gabinet.treatments.remove);
   const saveTreatmentParameters = useAction(api.gabinet.treatments.saveTreatmentParameters);

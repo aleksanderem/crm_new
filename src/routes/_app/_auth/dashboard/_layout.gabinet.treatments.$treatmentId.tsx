@@ -5,6 +5,7 @@ import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetTreatment, useSupabaseGabinetTreatmentVariants } from "@/hooks/use-supabase-gabinet-treatments";
+import { useSupabaseProductsList } from "@/hooks/use-supabase-products";
 import { useSupabaseGabinetTreatmentPackagesList } from "@/hooks/use-supabase-gabinet-packages";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
@@ -146,6 +147,12 @@ function TreatmentDetail() {
   const [aptDateFrom, setAptDateFrom] = useState("");
   const [aptDateTo, setAptDateTo] = useState("");
 
+  // Add product (Magazyn tab) dialog state
+  const [addProductDialogOpen, setAddProductDialogOpen] = useState(false);
+  const [addProductSelectedId, setAddProductSelectedId] = useState("");
+  const [addProductQuantity, setAddProductQuantity] = useState("");
+  const [addProductSubmitting, setAddProductSubmitting] = useState(false);
+
   // Variants tab state
   const [variantDialogOpen, setVariantDialogOpen] = useState(false);
   const [editingVariant, setEditingVariant] = useState<string | null>(null);
@@ -266,6 +273,8 @@ function TreatmentDetail() {
       }),
     enabled: !!organizationId && !!treatmentId,
   });
+
+  const { data: warehouseProducts } = useSupabaseProductsList(organizationId, { limit: 500 });
 
   // Enrich variants with resolved/inherited fields (previously computed server-side in Convex)
   const variants = useMemo(() => {
@@ -452,6 +461,53 @@ function TreatmentDetail() {
     void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.detail(organizationId, treatmentId) });
     void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(organizationId) });
     toast.success(t("common.saved"));
+  };
+
+  const handleAddProduct = async () => {
+    const product = (warehouseProducts ?? []).find(p => p._id === addProductSelectedId);
+    if (!product) return;
+    const qty = parseFloat(addProductQuantity);
+    if (!qty || qty <= 0) return;
+
+    const currentList = (existingProducts ?? []).map(p => ({
+      productId: p.productId,
+      productSection: p.productSection as "treatment" | "disposable",
+      quantity: p.quantity,
+      unit: p.unit ?? undefined,
+    }));
+
+    setAddProductSubmitting(true);
+    try {
+      await setTreatmentProductsAction({
+        organizationId,
+        treatmentId: treatmentId as string,
+        products: [
+          ...currentList,
+          {
+            productId: product._id,
+            productSection: (product.productSection === "disposable" ? "disposable" : "treatment") as "treatment" | "disposable",
+            quantity: qty,
+            unit: product.stockUnit ?? undefined,
+          },
+        ],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["gabinet.treatments.getTreatmentProducts", organizationId, treatmentId],
+      });
+      setAddProductDialogOpen(false);
+      setAddProductSelectedId("");
+      setAddProductQuantity("");
+      toast.success(t("gabinet.treatmentDetail.productAdded", "Produkt został dodany"));
+    } catch (err) {
+      toast.error(
+        formatTreatmentError(err, t, {
+          key: "gabinet.treatments.errors.productsSaveFailed",
+          defaultValue: "Nie udało się dodać produktu.",
+        }),
+      );
+    } finally {
+      setAddProductSubmitting(false);
+    }
   };
 
   const handleEditSubmit = async (formData: TreatmentFormData) => {
@@ -940,11 +996,17 @@ function TreatmentDetail() {
             <div className="space-y-4">
               <Card>
                 <CardHeader className="pb-3">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-muted-foreground" variant="stroke" />
-                    <CardTitle className="text-sm font-medium">
-                      {t("gabinet.treatmentDetail.inventoryUsage", "Zużycie magazynowe")}
-                    </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-muted-foreground" variant="stroke" />
+                      <CardTitle className="text-sm font-medium">
+                        {t("gabinet.treatmentDetail.inventoryUsage", "Zużycie magazynowe")}
+                      </CardTitle>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => setAddProductDialogOpen(true)}>
+                      <Plus className="h-4 w-4 mr-1" variant="stroke" />
+                      {t("gabinet.treatmentDetail.addProduct", "Dodaj produkt")}
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -1696,6 +1758,92 @@ function TreatmentDetail() {
               disabled={!variantForm.name.trim() || isSubmitting}
             >
               {isSubmitting ? t("common.saving") : t("common.save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add product to Magazyn dialog */}
+      <Dialog
+        open={addProductDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAddProductDialogOpen(false);
+            setAddProductSelectedId("");
+            setAddProductQuantity("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>{t("gabinet.treatmentDetail.addProduct", "Dodaj produkt")}</DialogTitle>
+            <DialogDescription>
+              {t("gabinet.treatmentDetail.addProductDescription", "Wybierz produkt z katalogu i podaj ilość")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>{t("gabinet.treatmentDetail.product", "Produkt")}</Label>
+              <Select value={addProductSelectedId} onValueChange={setAddProductSelectedId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t("gabinet.treatmentDetail.selectProduct", "Wybierz produkt")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {(warehouseProducts ?? [])
+                    .filter(
+                      p =>
+                        p.productSection !== "sale" &&
+                        !(existingProducts ?? []).some(ep => ep.productId === p._id),
+                    )
+                    .map(p => (
+                      <SelectItem key={p._id} value={p._id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{t("gabinet.treatmentDetail.quantity", "Ilość")}</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min="0.001"
+                  step="any"
+                  value={addProductQuantity}
+                  onChange={e => setAddProductQuantity(e.target.value)}
+                  placeholder="0"
+                  className="flex-1"
+                />
+                {addProductSelectedId && (
+                  <span className="min-w-[3rem] text-sm text-muted-foreground">
+                    {(warehouseProducts ?? []).find(p => p._id === addProductSelectedId)?.stockUnit ?? ""}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAddProductDialogOpen(false);
+                setAddProductSelectedId("");
+                setAddProductQuantity("");
+              }}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              onClick={handleAddProduct}
+              disabled={
+                !addProductSelectedId ||
+                !addProductQuantity ||
+                parseFloat(addProductQuantity) <= 0 ||
+                addProductSubmitting
+              }
+            >
+              {addProductSubmitting ? t("common.saving", "Zapisywanie...") : t("common.save")}
             </Button>
           </DialogFooter>
         </DialogContent>

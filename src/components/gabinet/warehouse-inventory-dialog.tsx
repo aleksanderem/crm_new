@@ -15,18 +15,29 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatActionError } from "@/lib/format-action-error";
 import { cn } from "@/lib/utils";
 import type { MappedProduct } from "@/lib/supabase/mappers/products";
 import type { ProductStockTotal } from "@/hooks/use-supabase-products";
 
+const NO_LOCATION_VALUE = "__none__";
+
 type AdjustStockArgs = {
   organizationId: Id<"organizations">;
   productId: string;
   locationId?: Id<"gabinetLocations"> | null;
   delta?: number;
-  reason?: "initial" | "warehouse_receive" | "manual_adjust" | "appointment_use" | "appointment_return" | "deal_close" | "deal_reopen" | "transfer_in" | "transfer_out" | "other";
+  reason?: "initial" | "warehouse_receive" | "manual_adjust" | "inventory_adjustment" | "appointment_use" | "appointment_return" | "deal_close" | "deal_reopen" | "transfer_in" | "transfer_out" | "other";
   note?: string | null;
 };
 type AdjustStockResult = { movementId: string; balanceAfter: number; warning: string | null };
@@ -71,10 +82,26 @@ export function WarehouseInventoryDialog({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const adjustStock = useAction(adjustStockRef);
+  const { data: locations = [] } = useSupabaseGabinetLocationsList(
+    organizationId,
+    { activeOnly: true },
+  );
 
   const [step, setStep] = useState<Step>("count");
   const [counts, setCounts] = useState<Map<string, string>>(new Map());
+  const [locationId, setLocationId] = useState<string>(NO_LOCATION_VALUE);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const resolvedLocationId: string | null =
+    locationId === NO_LOCATION_VALUE ? null : locationId;
+
+  function getStockForLocation(stock: ProductStockTotal | undefined): number {
+    if (!stock) return 0;
+    const match = stock.byLocation.find(
+      (row) => row.locationId === resolvedLocationId,
+    );
+    return match?.quantity ?? 0;
+  }
 
   const trackedProducts = useMemo(
     () => products.filter((p) => p.isActive && p.trackStock),
@@ -87,7 +114,7 @@ export function WarehouseInventoryDialog({
       const input = counts.get(p._id) ?? "";
       const actual = parseActual(input);
       if (actual === null) continue;
-      const systemStock = totalsByProductId.get(p._id)?.total ?? 0;
+      const systemStock = getStockForLocation(totalsByProductId.get(p._id));
       const delta = actual - systemStock;
       result.push({
         product: p,
@@ -98,7 +125,7 @@ export function WarehouseInventoryDialog({
       });
     }
     return result;
-  }, [trackedProducts, counts, totalsByProductId]);
+  }, [trackedProducts, counts, totalsByProductId, resolvedLocationId]);
 
   const summary = useMemo(() => {
     const withDiff = diffs.filter((d) => d.kind !== "match").length;
@@ -115,6 +142,7 @@ export function WarehouseInventoryDialog({
     if (nextOpen) {
       setStep("count");
       setCounts(new Map());
+      setLocationId(NO_LOCATION_VALUE);
     }
     onOpenChange(nextOpen);
   };
@@ -134,7 +162,7 @@ export function WarehouseInventoryDialog({
         const result = await adjustStock({
           organizationId: organizationId as Id<"organizations">,
           productId: row.product._id,
-          locationId: null,
+          locationId: resolvedLocationId as Id<"gabinetLocations"> | null,
           delta: row.delta,
           reason: "inventory_adjustment",
           note,
@@ -339,6 +367,33 @@ export function WarehouseInventoryDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {locations.length > 0 && (
+          <div className="space-y-1.5 px-1">
+            <Label htmlFor="inventory-location">
+              {t("inventory.count.locationLabel", {
+                defaultValue: "Lokalizacja",
+              })}
+            </Label>
+            <Select value={locationId} onValueChange={(v) => { setLocationId(v); setCounts(new Map()); }}>
+              <SelectTrigger id="inventory-location">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_LOCATION_VALUE}>
+                  {t("inventory.count.locationNone", {
+                    defaultValue: "Bez lokalizacji",
+                  })}
+                </SelectItem>
+                {locations.map((loc) => (
+                  <SelectItem key={loc._id} value={loc._id}>
+                    {loc.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {trackedProducts.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             {t("inventory.count.noProducts", {
@@ -374,8 +429,9 @@ export function WarehouseInventoryDialog({
               </thead>
               <tbody>
                 {trackedProducts.map((product) => {
-                  const systemStock =
-                    totalsByProductId.get(product._id)?.total ?? 0;
+                  const systemStock = getStockForLocation(
+                    totalsByProductId.get(product._id),
+                  );
                   const input = counts.get(product._id) ?? "";
                   const actual = parseActual(input);
                   const delta = actual !== null ? actual - systemStock : null;

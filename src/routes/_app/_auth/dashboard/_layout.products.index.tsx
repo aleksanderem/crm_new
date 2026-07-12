@@ -19,7 +19,7 @@ import { SidePanel } from "@/components/crm/side-panel";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History } from "@/lib/ez-icons";
+import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History, ClipboardList } from "@/lib/ez-icons";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
@@ -37,6 +37,7 @@ import { CategoriesManagerSlideout } from "@/components/categories-tags/categori
 import { formatActionError } from "@/lib/format-action-error";
 import { cn } from "@/lib/utils";
 import { ProductForm, type ProductFormData, type ProductSection, PRODUCT_SECTIONS } from "@/components/forms/product-form";
+import { WarehouseInventoryDialog } from "@/components/gabinet/warehouse-inventory-dialog";
 
 type ProductsNudgeFilter = "unused" | "low_stock";
 
@@ -222,6 +223,7 @@ function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [stockAdjustProduct, setStockAdjustProduct] = useState<Product | null>(null);
   const [stockHistoryProduct, setStockHistoryProduct] = useState<Product | null>(null);
+  const [inventoryOpen, setInventoryOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
 
   const { data: allProducts = [], isLoading } = useSupabaseProductsList(organizationId);
@@ -611,10 +613,16 @@ function ProductsPage() {
         title={t('products.title')}
         description={t('products.description')}
         actions={
-          <Button onClick={openCreatePanel}>
-            <Plus className="mr-2 h-4 w-4" variant="stroke" />
-            {t('products.addProduct')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setInventoryOpen(true)}>
+              <ClipboardList className="mr-2 h-4 w-4" variant="stroke" />
+              {t("inventory.startButton", { defaultValue: "Rozpocznij inwentaryzację" })}
+            </Button>
+            <Button onClick={openCreatePanel}>
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
+              {t('products.addProduct')}
+            </Button>
+          </div>
         }
       />
 
@@ -847,6 +855,14 @@ function ProductsPage() {
           organizationId={organizationId}
         />
       </SidePanel>
+
+      <WarehouseInventoryDialog
+        open={inventoryOpen}
+        onOpenChange={setInventoryOpen}
+        organizationId={organizationId}
+        products={allProducts}
+        totalsByProductId={totalsByProductId}
+      />
 
       <ProductStockAdjustDialog
         open={!!stockAdjustProduct}

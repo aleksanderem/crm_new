@@ -32,7 +32,6 @@ import type {
   FormDocumentRow,
   PaymentRow,
   SupabasePaginationResult,
-  SupabaseRow,
 } from "../_helpers/supabaseRows";
 import { logAudit } from "../auditLog";
 import { createNotificationDirect } from "../notifications";

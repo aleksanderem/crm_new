@@ -128,11 +128,18 @@ function snakeToCamel(s: string): string {
 }
 
 /**
- * Minimal raw-client stand-in for the merge action's bulk-update pattern:
- *   client.from(snakeTable).update({col: val}).eq(...).eq(...).select("id")
+ * Raw-client stand-in supporting two patterns:
  *
- * Returns `{ data, error }` where `data` is the list of updated row ids
- * (so `data.length` reports the count, matching PostgREST semantics).
+ *   1. SELECT-first read (org-existence checks, CAS reads):
+ *        client.from(t).select(cols).eq(field, val).maybeSingle()
+ *        client.from(t).select(cols).eq(...).not(...) — awaited directly
+ *
+ *   2. Write-then-read (merge / CAS update):
+ *        client.from(t).update({...}).eq(...).select("id")
+ *        client.from(t).delete().eq(...).eq(...)        — awaited directly
+ *
+ * Returns `{ data, error }` matching PostgREST semantics. `data` contains
+ * the matched rows (all fields, camelCase keys matching the in-memory store).
  */
 function createInMemoryRawClient() {
   return {
@@ -144,7 +151,7 @@ function createInMemoryRawClient() {
 
 class InMemoryRawQuery {
   private table: string;
-  private mode: "select" | "update" | "delete" | "insert" = "select";
+  private mode: "select" | "update" | "delete" = "select";
   private updatePayload: Record<string, unknown> | null = null;
   private filters: Array<(row: Row) => boolean> = [];
 
@@ -167,6 +174,12 @@ class InMemoryRawQuery {
     return this;
   }
 
+  /** Builder step — records that columns should be projected (or switches to
+   *  read-after-write for update/delete). Does NOT execute the query. */
+  select(_cols?: string) {
+    return this;
+  }
+
   eq(field: string, value: unknown) {
     const camelField = snakeToCamel(field);
     this.filters.push((r) => r[camelField] === value);
@@ -180,7 +193,18 @@ class InMemoryRawQuery {
     return this;
   }
 
-  async select(_cols?: string) {
+  not(field: string, op: string, value: unknown) {
+    const camelField = snakeToCamel(field);
+    this.filters.push((r) => {
+      if (op === "is") {
+        return value === null ? r[camelField] != null : r[camelField] == null;
+      }
+      return r[camelField] !== value;
+    });
+    return this;
+  }
+
+  private _execute(): { data: Row[]; error: null | { message: string } } {
     const t = getTable(this.table);
     const matched: Row[] = [];
     for (const row of t.values()) {
@@ -199,10 +223,26 @@ class InMemoryRawQuery {
         t.delete(String(row.id));
       }
     }
-    return {
-      data: matched.map((r) => ({ id: String(r.id) })),
-      error: null as null | { message: string },
-    };
+    return { data: matched.map((r) => ({ ...r })), error: null };
+  }
+
+  /** Makes the builder directly awaitable: `await client.from(t).delete().eq(...)` */
+  then(
+    onfulfilled?: (value: { data: Row[]; error: null | { message: string } }) => any,
+    onrejected?: (reason: any) => any,
+  ) {
+    return Promise.resolve(this._execute()).then(onfulfilled, onrejected);
+  }
+
+  async maybeSingle<T = Row>(): Promise<{ data: T | null; error: null }> {
+    const { data } = this._execute();
+    return { data: (data.length > 0 ? data[0] : null) as T | null, error: null };
+  }
+
+  async single<T = Row>(): Promise<{ data: T | null; error: null | { message: string } }> {
+    const { data } = this._execute();
+    if (data.length === 0) return { data: null, error: { message: "No rows found" } };
+    return { data: data[0] as T | null, error: null };
   }
 }
 

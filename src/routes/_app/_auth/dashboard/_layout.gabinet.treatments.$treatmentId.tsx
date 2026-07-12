@@ -55,6 +55,7 @@ import {
   Calendar,
   Clock,
   DollarSign,
+  Package,
   Pencil,
   Plus,
   Settings2,
@@ -929,6 +930,71 @@ function TreatmentDetail() {
         ),
       },
       {
+        label: t("gabinet.treatmentDetail.tabs.inventory", "Magazyn"),
+        count: (existingProducts ?? []).length || undefined,
+        content: (() => {
+          const treatmentProducts = (existingProducts ?? []).filter((p) => p.productSection === "treatment");
+          const disposableProducts = (existingProducts ?? []).filter((p) => p.productSection === "disposable");
+          const hasAny = treatmentProducts.length > 0 || disposableProducts.length > 0;
+          return (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-muted-foreground" variant="stroke" />
+                    <CardTitle className="text-sm font-medium">
+                      {t("gabinet.treatmentDetail.inventoryUsage", "Zużycie magazynowe")}
+                    </CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {!hasAny ? (
+                    <p className="py-4 text-center text-sm text-muted-foreground">
+                      {t("gabinet.treatmentDetail.noInventoryProducts", "Brak przypisanych produktów")}
+                    </p>
+                  ) : (
+                    <div className="space-y-6">
+                      {treatmentProducts.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                            {t("gabinet.treatmentForm.treatmentProducts", "Preparaty do zabiegu")}
+                          </p>
+                          {treatmentProducts.map((p) => (
+                            <div key={p._id} className="flex items-center justify-between rounded-md border p-3">
+                              <span className="text-sm font-medium">{p.productName}</span>
+                              <span className="text-sm tabular-nums text-muted-foreground">
+                                {p.quantity}
+                                {(p.unit ?? p.stockUnit) ? ` ${p.unit ?? p.stockUnit}` : ""}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {disposableProducts.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                            {t("gabinet.treatmentForm.disposableProducts", "Materiały jednorazowe")}
+                          </p>
+                          {disposableProducts.map((p) => (
+                            <div key={p._id} className="flex items-center justify-between rounded-md border p-3">
+                              <span className="text-sm font-medium">{p.productName}</span>
+                              <span className="text-sm tabular-nums text-muted-foreground">
+                                {p.quantity}
+                                {(p.unit ?? p.stockUnit) ? ` ${p.unit ?? p.stockUnit}` : ""}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          );
+        })(),
+      },
+      {
         label: t("gabinet.treatmentDetail.tabs.documents"),
         count: treatmentDocuments?.length ?? 0,
         content: (
@@ -1267,7 +1333,7 @@ function TreatmentDetail() {
   }, [
     treatment, detailedStats, recentAppointments, treatmentAppointments,
     treatmentEmployees, variants, activities, unassignedEmployees,
-    editingParam, newOption, empSearchQuery, aptStatusFilter,
+    existingProducts, editingParam, newOption, empSearchQuery, aptStatusFilter,
     aptDateFrom, aptDateTo, navigate, t, treatmentId, organizationId,
   ]);
 

@@ -85,10 +85,12 @@ import {
   ConflictWarning,
   EquipmentWarning,
   LeaveWarning,
+  StockShortageWarning,
 } from "@/components/gabinet/appointment-shared/warnings";
 import {
   useEmployeeLeaveOnDate,
   useMissingEquipment,
+  useAppointmentShortage,
 } from "@/components/gabinet/appointment-shared/use-appointment-warnings";
 import { SlotPicker } from "@/components/gabinet/appointment-shared/slot-picker";
 import { TreatmentPicker } from "@/components/gabinet/appointment-shared/treatment-picker";
@@ -601,6 +603,12 @@ export function AppointmentDialog({
     organizationId,
     locationId,
     treatment: selectedTreatment,
+  });
+
+  const { shortageItems, hasShortage } = useAppointmentShortage({
+    organizationId,
+    treatmentId,
+    locationId: locationId || undefined,
   });
 
   // -------------------------------------------------------------------------
@@ -1874,6 +1882,13 @@ export function AppointmentDialog({
                           </span>
                         </div>
                       </div>
+
+                      {hasShortage && (
+                        <StockShortageWarning
+                          items={shortageItems}
+                          size="compact"
+                        />
+                      )}
 
                       <Button
                         className="w-full"

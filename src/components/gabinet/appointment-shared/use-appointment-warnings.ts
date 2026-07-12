@@ -5,6 +5,14 @@ import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
 
+export interface ShortagePreviewItem {
+  productName: string;
+  unit: string;
+  currentStock: number;
+  plannedAfterSave: number;
+  deficit: number;
+}
+
 /**
  * Returns the approved leave (if any) that overlaps the chosen date for the
  * selected employee. The available-slots backend already excludes leave time,
@@ -80,4 +88,40 @@ export function useMissingEquipment(params: {
     missingEquipmentIds,
     blocking: missingEquipmentIds.length > 0,
   };
+}
+
+/**
+ * Checks whether saving an appointment for the given treatment would push any
+ * product into planned-usage deficit over the next 7 days (issue #2933).
+ * Returns shortage items and a boolean flag — informational only, does not
+ * block submission.
+ */
+export function useAppointmentShortage(params: {
+  organizationId: Id<"organizations"> | string | null | undefined;
+  treatmentId: string;
+  locationId?: string;
+}) {
+  const { organizationId, treatmentId, locationId } = params;
+  const checkShortageAction = useAction(
+    api.gabinet.inventory.checkAppointmentShortage,
+  );
+  const { data } = useQuery({
+    queryKey: [
+      "gabinet.inventory.checkAppointmentShortage",
+      String(organizationId ?? ""),
+      treatmentId,
+      locationId ?? "",
+    ],
+    queryFn: () =>
+      checkShortageAction({
+        organizationId: organizationId as Id<"organizations">,
+        treatmentId,
+        locationId: locationId || undefined,
+      }),
+    enabled: !!organizationId && !!treatmentId,
+    retry: false,
+    staleTime: 30_000,
+  });
+  const items = (data ?? []) as ShortagePreviewItem[];
+  return { shortageItems: items, hasShortage: items.length > 0 };
 }

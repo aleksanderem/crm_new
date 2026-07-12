@@ -153,6 +153,12 @@ function TreatmentDetail() {
   const [addProductQuantity, setAddProductQuantity] = useState("");
   const [addProductSubmitting, setAddProductSubmitting] = useState(false);
 
+  // Edit product (Magazyn tab) dialog state
+  const [editProductDialogOpen, setEditProductDialogOpen] = useState(false);
+  const [editProductLinkId, setEditProductLinkId] = useState("");
+  const [editProductQuantity, setEditProductQuantity] = useState("");
+  const [editProductSubmitting, setEditProductSubmitting] = useState(false);
+
   // Variants tab state
   const [variantDialogOpen, setVariantDialogOpen] = useState(false);
   const [editingVariant, setEditingVariant] = useState<string | null>(null);
@@ -507,6 +513,73 @@ function TreatmentDetail() {
       );
     } finally {
       setAddProductSubmitting(false);
+    }
+  };
+
+  const handleEditProduct = async () => {
+    const qty = parseFloat(editProductQuantity);
+    if (!qty || qty <= 0) return;
+
+    const updatedList = (existingProducts ?? []).map(p => ({
+      productId: p.productId,
+      productSection: p.productSection as "treatment" | "disposable",
+      quantity: p._id === editProductLinkId ? qty : p.quantity,
+      unit: p.unit ?? undefined,
+    }));
+
+    setEditProductSubmitting(true);
+    try {
+      await setTreatmentProductsAction({
+        organizationId,
+        treatmentId: treatmentId as string,
+        products: updatedList,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["gabinet.treatments.getTreatmentProducts", organizationId, treatmentId],
+      });
+      setEditProductDialogOpen(false);
+      setEditProductLinkId("");
+      setEditProductQuantity("");
+      toast.success(t("gabinet.treatmentDetail.productUpdated", "Produkt został zaktualizowany"));
+    } catch (err) {
+      toast.error(
+        formatTreatmentError(err, t, {
+          key: "gabinet.treatments.errors.productsSaveFailed",
+          defaultValue: "Nie udało się zaktualizować produktu.",
+        }),
+      );
+    } finally {
+      setEditProductSubmitting(false);
+    }
+  };
+
+  const handleDeleteProduct = async (linkId: string) => {
+    const updatedList = (existingProducts ?? [])
+      .filter(p => p._id !== linkId)
+      .map(p => ({
+        productId: p.productId,
+        productSection: p.productSection as "treatment" | "disposable",
+        quantity: p.quantity,
+        unit: p.unit ?? undefined,
+      }));
+
+    try {
+      await setTreatmentProductsAction({
+        organizationId,
+        treatmentId: treatmentId as string,
+        products: updatedList,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["gabinet.treatments.getTreatmentProducts", organizationId, treatmentId],
+      });
+      toast.success(t("gabinet.treatmentDetail.productRemoved", "Produkt został usunięty"));
+    } catch (err) {
+      toast.error(
+        formatTreatmentError(err, t, {
+          key: "gabinet.treatments.errors.productsSaveFailed",
+          defaultValue: "Nie udało się usunąć produktu.",
+        }),
+      );
     }
   };
 
@@ -1024,10 +1097,32 @@ function TreatmentDetail() {
                           {treatmentProducts.map((p) => (
                             <div key={p._id} className="flex items-center justify-between rounded-md border p-3">
                               <span className="text-sm font-medium">{p.productName}</span>
-                              <span className="text-sm tabular-nums text-muted-foreground">
-                                {p.quantity}
-                                {(p.unit ?? p.stockUnit) ? ` ${p.unit ?? p.stockUnit}` : ""}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm tabular-nums text-muted-foreground">
+                                  {p.quantity}
+                                  {(p.unit ?? p.stockUnit) ? ` ${p.unit ?? p.stockUnit}` : ""}
+                                </span>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={() => {
+                                    setEditProductLinkId(p._id);
+                                    setEditProductQuantity(String(p.quantity));
+                                    setEditProductDialogOpen(true);
+                                  }}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" variant="stroke" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 text-destructive hover:text-destructive"
+                                  onClick={() => void handleDeleteProduct(p._id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" variant="stroke" />
+                                </Button>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -1040,10 +1135,32 @@ function TreatmentDetail() {
                           {disposableProducts.map((p) => (
                             <div key={p._id} className="flex items-center justify-between rounded-md border p-3">
                               <span className="text-sm font-medium">{p.productName}</span>
-                              <span className="text-sm tabular-nums text-muted-foreground">
-                                {p.quantity}
-                                {(p.unit ?? p.stockUnit) ? ` ${p.unit ?? p.stockUnit}` : ""}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm tabular-nums text-muted-foreground">
+                                  {p.quantity}
+                                  {(p.unit ?? p.stockUnit) ? ` ${p.unit ?? p.stockUnit}` : ""}
+                                </span>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={() => {
+                                    setEditProductLinkId(p._id);
+                                    setEditProductQuantity(String(p.quantity));
+                                    setEditProductDialogOpen(true);
+                                  }}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" variant="stroke" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 text-destructive hover:text-destructive"
+                                  onClick={() => void handleDeleteProduct(p._id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" variant="stroke" />
+                                </Button>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -1844,6 +1961,68 @@ function TreatmentDetail() {
               }
             >
               {addProductSubmitting ? t("common.saving", "Zapisywanie...") : t("common.save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Edit product quantity dialog */}
+      <Dialog
+        open={editProductDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditProductDialogOpen(false);
+            setEditProductLinkId("");
+            setEditProductQuantity("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[360px]">
+          <DialogHeader>
+            <DialogTitle>{t("gabinet.treatmentDetail.editProduct", "Edytuj produkt")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>{t("gabinet.treatmentDetail.quantity", "Ilość")}</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min="0.001"
+                  step="any"
+                  value={editProductQuantity}
+                  onChange={e => setEditProductQuantity(e.target.value)}
+                  placeholder="0"
+                  className="flex-1"
+                  autoFocus
+                />
+                {editProductLinkId && (
+                  <span className="min-w-[3rem] text-sm text-muted-foreground">
+                    {(existingProducts ?? []).find(p => p._id === editProductLinkId)?.unit ??
+                     (existingProducts ?? []).find(p => p._id === editProductLinkId)?.stockUnit ?? ""}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditProductDialogOpen(false);
+                setEditProductLinkId("");
+                setEditProductQuantity("");
+              }}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              onClick={handleEditProduct}
+              disabled={
+                !editProductQuantity ||
+                parseFloat(editProductQuantity) <= 0 ||
+                editProductSubmitting
+              }
+            >
+              {editProductSubmitting ? t("common.saving", "Zapisywanie...") : t("common.save")}
             </Button>
           </DialogFooter>
         </DialogContent>

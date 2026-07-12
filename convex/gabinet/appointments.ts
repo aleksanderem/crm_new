@@ -2121,58 +2121,62 @@ export const updateStatus = action({
     }
 
     // Auto-deduct stock on visit completion. Guard against double-deduction
-    // using a persistent `stockDeducted` flag so that rollback paths such as
-    // completed→in_progress→completed do not deduct stock a second time (#2916).
-    // The previous guard (`appt.status !== "completed"`) only blocked
-    // completed→completed; it failed when the appointment was rolled back to
-    // in_progress first because then `appt.status` was `in_progress` again.
+    // using an atomic CAS update (WHERE stock_deducted = false). Two concurrent
+    // updateStatus calls can both read stockDeducted=false from the earlier
+    // Supabase read, but only one can win the conditional UPDATE — Postgres row
+    // locking ensures only one writer updates a row matching the predicate.
+    // The loser gets 0 rows back and skips deduction entirely. Closes #2917.
+    // (Previous guard used !appt.stockDeducted from the stale read, which both
+    // concurrent calls saw as false, leading to double deduction.)
     const stockWarnings: string[] = [];
-    if (args.status === "completed" && !appt.stockDeducted && appt.treatmentId) {
-      try {
-        const links = await db
-          .query("gabinetTreatmentProducts")
-          .eq("organizationId", String(args.organizationId))
-          .eq("treatmentId", String(appt.treatmentId))
-          .collect();
-        for (const link of links) {
-          if (!link.quantity || Number(link.quantity) <= 0) continue;
-          try {
-            const result = await applyMovementInternal({
-              organizationId: String(args.organizationId),
-              productId: String(link.productId),
-              locationId: null,
-              delta: -Number(link.quantity),
-              reason: "appointment_use",
-              sourceType: "appointment",
-              sourceId: args.appointmentId,
-              performedBy: authResult.userId,
-            });
-            if (result.warning === "negative_stock") {
-              stockWarnings.push(String(link.productId));
+    if (args.status === "completed" && appt.treatmentId) {
+      const { data: casRows } = await db.raw()
+        .from("gabinet_appointments")
+        .update({ stock_deducted: true })
+        .eq("id", args.appointmentId)
+        .eq("stock_deducted", false)
+        .select("id");
+      const wonRace = Array.isArray(casRows) && casRows.length === 1;
+      if (wonRace) {
+        try {
+          const links = await db
+            .query("gabinetTreatmentProducts")
+            .eq("organizationId", String(args.organizationId))
+            .eq("treatmentId", String(appt.treatmentId))
+            .collect();
+          for (const link of links) {
+            if (!link.quantity || Number(link.quantity) <= 0) continue;
+            try {
+              const result = await applyMovementInternal({
+                organizationId: String(args.organizationId),
+                productId: String(link.productId),
+                locationId: null,
+                delta: -Number(link.quantity),
+                reason: "appointment_use",
+                sourceType: "appointment",
+                sourceId: args.appointmentId,
+                performedBy: authResult.userId,
+              });
+              if (result.warning === "negative_stock") {
+                stockWarnings.push(String(link.productId));
+              }
+            } catch (e) {
+              console.warn(
+                "[updateStatus] stock deduction failed for product",
+                link.productId,
+                ":",
+                e,
+              );
             }
-          } catch (e) {
-            console.warn(
-              "[updateStatus] stock deduction failed for product",
-              link.productId,
-              ":",
-              e,
-            );
           }
+        } catch (e) {
+          console.error(
+            "[updateStatus] warehouse auto-deduction FAILED for appointment",
+            args.appointmentId,
+            ":",
+            e,
+          );
         }
-      } catch (e) {
-        console.error(
-          "[updateStatus] warehouse auto-deduction FAILED for appointment",
-          args.appointmentId,
-          ":",
-          e,
-        );
-      }
-      // Persist the flag regardless of partial failures so subsequent
-      // re-completions do not re-run deduction.
-      try {
-        await db.patch("gabinetAppointments", args.appointmentId, { stockDeducted: true });
-      } catch (e) {
-        console.warn("[updateStatus] failed to set stockDeducted flag:", e);
       }
     }
 

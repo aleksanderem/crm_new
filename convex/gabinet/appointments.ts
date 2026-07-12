@@ -1565,6 +1565,7 @@ export const update = action({
     categoryId: v.optional(v.union(v.string(), v.null())),
     contraindicationAlertsReviewed: v.optional(v.union(v.boolean(), v.null())),
     variantId: v.optional(v.union(v.string(), v.null())),
+    reminderOverrides: v.optional(v.string()), // JSON: per-appointment channel overrides
   },
   handler: async (ctx, args) => {
     try {

@@ -136,7 +136,7 @@ export function WarehouseInventoryDialog({
           productId: row.product._id,
           locationId: null,
           delta: row.delta,
-          reason: "manual_adjust",
+          reason: "inventory_adjustment",
           note,
         });
         if (result.warning === "negative_stock") negativeCount++;

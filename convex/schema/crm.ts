@@ -355,6 +355,7 @@ export function createCrmTables({
       v.literal("initial"),
       v.literal("warehouse_receive"),
       v.literal("manual_adjust"),
+      v.literal("inventory_adjustment"),
       v.literal("appointment_use"),
       v.literal("appointment_return"),
       v.literal("deal_close"),

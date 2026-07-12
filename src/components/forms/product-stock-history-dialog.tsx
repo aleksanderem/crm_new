@@ -38,6 +38,7 @@ function reasonLabel(reason: StockMovementReason, t: ReturnType<typeof useTransl
     warehouse_receive: t("products.stock.reason.warehouse_receive", { defaultValue: "Przyjęcie magazynowe" }),
     initial: t("products.stock.reason.initial", { defaultValue: "Stan początkowy" }),
     manual_adjust: t("products.stock.reason.manual_adjust", { defaultValue: "Korekta ręczna" }),
+    inventory_adjustment: t("products.stock.reason.inventory_adjustment", { defaultValue: "Inwentaryzacja" }),
     appointment_use: t("products.stock.reason.appointment_use", { defaultValue: "Zużycie podczas wizyty" }),
     appointment_return: t("products.stock.reason.appointment_return", { defaultValue: "Zwrot po wizycie" }),
     deal_close: t("products.stock.reason.deal_close", { defaultValue: "Zamknięcie transakcji" }),

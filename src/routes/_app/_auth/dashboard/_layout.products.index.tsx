@@ -322,6 +322,28 @@ function ProductsPage() {
     return map;
   }, [plannedUsageData]);
 
+  const productsWithDeficit = useMemo(() => {
+    const nameMap = new Map<string, string>();
+    for (const item of (plannedUsageData ?? []) as Array<{ productId: string; productName: string }>) {
+      if (!nameMap.has(item.productId)) nameMap.set(item.productId, item.productName);
+    }
+    const result: Array<{ productId: string; productName: string; currentStock: number; plannedUsage: number; deficit: number; unit: string }> = [];
+    for (const [productId, data] of plannedUsageByProductId) {
+      if (data.deficit !== null && data.deficit > 0) {
+        result.push({
+          productId,
+          productName: nameMap.get(productId) ?? productId,
+          currentStock: data.currentStock,
+          plannedUsage: data.plannedUsage,
+          deficit: data.deficit,
+          unit: data.unit,
+        });
+      }
+    }
+    result.sort((a, b) => b.deficit - a.deficit);
+    return result;
+  }, [plannedUsageData, plannedUsageByProductId]);
+
   const openCreatePanel = () => {
     setEditingProduct(null);
     setPanelOpen(true);
@@ -632,6 +654,34 @@ function ProductsPage() {
             : undefined}
         />
       </div>
+
+      {productsWithDeficit.length > 0 && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/40">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" variant="stroke" />
+            <span className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+              {t("products.actionRequired.title", { defaultValue: "Produkty wymagające działania" })}
+            </span>
+          </div>
+          <ul className="space-y-2">
+            {productsWithDeficit.map((item) => {
+              const unitStr = item.unit?.trim() ? ` ${item.unit.trim()}` : "";
+              return (
+                <li key={item.productId} className="text-sm text-amber-900 dark:text-amber-100">
+                  <span className="font-medium">{item.productName}</span>
+                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-amber-800 dark:text-amber-200">
+                    <span>{t("products.actionRequired.stock", { defaultValue: "Stan:" })} {item.currentStock}{unitStr}</span>
+                    <span>{t("products.actionRequired.planned", { defaultValue: "Planowane:" })} {item.plannedUsage}{unitStr}</span>
+                    <span className="font-medium text-destructive">
+                      {t("products.actionRequired.missing", { amount: `${item.deficit}${unitStr}`, defaultValue: `Brakuje: ${item.deficit}${unitStr}` })}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       {nudgeFilter === "unused" && (
         <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">

@@ -6,6 +6,7 @@ export type StockMovementReason =
   | "initial"
   | "warehouse_receive"
   | "manual_adjust"
+  | "inventory_adjustment"
   | "appointment_use"
   | "appointment_return"
   | "deal_close"

@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useAction } from "convex/react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -291,6 +291,37 @@ function ProductsPage() {
   const removeProduct = useAction(api.products.remove);
   const toggleActive = useAction(api.products.toggleActive);
 
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen
+  const getPlannedUsage = useAction(api.gabinet.inventory.getPlannedUsage);
+  const { data: plannedUsageData } = useQuery({
+    queryKey: ["gabinet.inventory.getPlannedUsage", organizationId],
+    queryFn: () => getPlannedUsage({ organizationId }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const plannedUsageByProductId = useMemo(() => {
+    const map = new Map<string, { plannedUsage: number; unit: string; currentStock: number; deficit: number | null }>();
+    for (const item of (plannedUsageData ?? []) as Array<{ productId: string; plannedUsage: number; unit: string; currentStock: number }>) {
+      const existing = map.get(item.productId);
+      if (existing) {
+        existing.plannedUsage += item.plannedUsage;
+        existing.currentStock += item.currentStock;
+      } else {
+        map.set(item.productId, {
+          plannedUsage: item.plannedUsage,
+          unit: item.unit,
+          currentStock: item.currentStock,
+          deficit: null,
+        });
+      }
+    }
+    for (const [, entry] of map) {
+      const projected = entry.currentStock - entry.plannedUsage;
+      entry.deficit = projected < 0 ? -projected : null;
+    }
+    return map;
+  }, [plannedUsageData]);
+
   const openCreatePanel = () => {
     setEditingProduct(null);
     setPanelOpen(true);
@@ -434,6 +465,29 @@ function ProductsPage() {
         if (!item.trackStock) return -Infinity;
         return totalsByProductId.get(item._id)?.total ?? 0;
       },
+      sortable: true,
+    },
+    {
+      id: "plannedUsage",
+      label: t("products.plannedUsage.column", { defaultValue: "Planowane 7 dni" }),
+      headerClassName: "whitespace-normal leading-tight",
+      render: (item) => {
+        const usage = plannedUsageByProductId.get(item._id);
+        if (!usage || usage.plannedUsage === 0) return <span>0</span>;
+        const unit = usage.unit || item.stockUnit || "";
+        const unitStr = unit.trim() ? ` ${unit.trim()}` : "";
+        return (
+          <div className="flex flex-col gap-0.5">
+            <span>{usage.plannedUsage}{unitStr}</span>
+            {usage.deficit !== null && (
+              <span className="text-xs text-destructive">
+                {t("products.plannedUsage.deficit", { amount: `${usage.deficit}${unitStr}`, defaultValue: `Brakuje: ${usage.deficit}${unitStr}` })}
+              </span>
+            )}
+          </div>
+        );
+      },
+      getSortValue: (item) => plannedUsageByProductId.get(item._id)?.plannedUsage ?? 0,
       sortable: true,
     },
     {

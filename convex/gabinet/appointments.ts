@@ -2122,6 +2122,7 @@ export const updateStatus = action({
 
     // Auto-deduct stock on visit completion. Guard against double-deduction:
     // only deduct when transitioning INTO completed, not on completed→completed.
+    const stockWarnings: string[] = [];
     if (args.status === "completed" && appt.status !== "completed" && appt.treatmentId) {
       try {
         const links = await db
@@ -2132,7 +2133,7 @@ export const updateStatus = action({
         for (const link of links) {
           if (!link.quantity || Number(link.quantity) <= 0) continue;
           try {
-            await applyMovementInternal({
+            const result = await applyMovementInternal({
               organizationId: String(args.organizationId),
               productId: String(link.productId),
               locationId: null,
@@ -2142,6 +2143,9 @@ export const updateStatus = action({
               sourceId: args.appointmentId,
               performedBy: authResult.userId,
             });
+            if (result.warning === "negative_stock") {
+              stockWarnings.push(String(link.productId));
+            }
           } catch (e) {
             console.warn(
               "[updateStatus] stock deduction failed for product",
@@ -2161,7 +2165,7 @@ export const updateStatus = action({
       }
     }
 
-    return args.appointmentId;
+    return { appointmentId: args.appointmentId, warnings: stockWarnings };
     } catch (err) {
       await logError(ctx, err, {
         scope: "gabinet.appointments",

@@ -544,7 +544,7 @@ export function AppointmentPreviewContent({
     setStatus(newStatus);
     setSavingStatus(true);
     try {
-      await updateStatus({
+      const result = await updateStatus({
         organizationId,
         appointmentId: appointment._id,
         status: newStatus,
@@ -559,6 +559,9 @@ export function AppointmentPreviewContent({
       ]);
       await refetch();
       toast.success(t("gabinet.appointments.statusUpdated"));
+      if (result?.warnings && result.warnings.length > 0) {
+        toast.warning(t("gabinet.stock.negativeWarning"));
+      }
     } catch (error) {
       setStatus(previous);
       console.error("[appointment-preview] status update failed", error);
@@ -1179,12 +1182,14 @@ export function AppointmentPreviewContent({
           notes: settleNotes.trim() || undefined,
         });
       }
+      let settleStockWarnings: string[] = [];
       if (settleMarkCompleted && canMarkCompleted) {
-        await updateStatus({
+        const result = await updateStatus({
           organizationId,
           appointmentId: appointment._id,
           status: "completed",
         });
+        settleStockWarnings = result?.warnings ?? [];
       }
       await Promise.all([
         queryClient.invalidateQueries({
@@ -1222,6 +1227,9 @@ export function AppointmentPreviewContent({
           defaultValue: "Wizyta rozliczona",
         }),
       );
+      if (settleStockWarnings.length > 0) {
+        toast.warning(t("gabinet.stock.negativeWarning"));
+      }
       onClose();
     } catch (error) {
       console.error("[appointment-preview] settle failed", error);

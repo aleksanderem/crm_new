@@ -743,12 +743,15 @@ function AppointmentDetail() {
   const performStatusChange = async (newStatus: string) => {
     setIsUpdating(true);
     try {
-      await updateStatus({
+      const result = await updateStatus({
         organizationId,
         appointmentId: appointment._id,
         status: newStatus as "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled" | "no_show" | "pending_confirmation",
       });
       toast.success(t("gabinet.appointments.statusUpdated"));
+      if (result?.warnings && result.warnings.length > 0) {
+        toast.warning(t("gabinet.stock.negativeWarning"));
+      }
       await invalidateAppointmentCaches();
       refetch();
 

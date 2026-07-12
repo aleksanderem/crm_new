@@ -2120,8 +2120,9 @@ export const updateStatus = action({
       console.error("[updateStatus] Side effects FAILED for appointment", args.appointmentId, ":", e);
     }
 
-    // Auto-deduct stock on visit completion
-    if (args.status === "completed" && appt.treatmentId) {
+    // Auto-deduct stock on visit completion. Guard against double-deduction:
+    // only deduct when transitioning INTO completed, not on completed→completed.
+    if (args.status === "completed" && appt.status !== "completed" && appt.treatmentId) {
       try {
         const links = await db
           .query("gabinetTreatmentProducts")

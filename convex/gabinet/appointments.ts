@@ -2120,10 +2120,14 @@ export const updateStatus = action({
       console.error("[updateStatus] Side effects FAILED for appointment", args.appointmentId, ":", e);
     }
 
-    // Auto-deduct stock on visit completion. Guard against double-deduction:
-    // only deduct when transitioning INTO completed, not on completed→completed.
+    // Auto-deduct stock on visit completion. Guard against double-deduction
+    // using a persistent `stockDeducted` flag so that rollback paths such as
+    // completed→in_progress→completed do not deduct stock a second time (#2916).
+    // The previous guard (`appt.status !== "completed"`) only blocked
+    // completed→completed; it failed when the appointment was rolled back to
+    // in_progress first because then `appt.status` was `in_progress` again.
     const stockWarnings: string[] = [];
-    if (args.status === "completed" && appt.status !== "completed" && appt.treatmentId) {
+    if (args.status === "completed" && !appt.stockDeducted && appt.treatmentId) {
       try {
         const links = await db
           .query("gabinetTreatmentProducts")
@@ -2162,6 +2166,13 @@ export const updateStatus = action({
           ":",
           e,
         );
+      }
+      // Persist the flag regardless of partial failures so subsequent
+      // re-completions do not re-run deduction.
+      try {
+        await db.patch("gabinetAppointments", args.appointmentId, { stockDeducted: true });
+      } catch (e) {
+        console.warn("[updateStatus] failed to set stockDeducted flag:", e);
       }
     }
 

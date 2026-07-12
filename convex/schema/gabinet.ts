@@ -472,6 +472,7 @@ export function createGabinetTables({
     requiresCompletion: v.optional(v.boolean()),
     contraindicationAlertsReviewed: v.optional(v.boolean()),
     priceAtBooking: v.optional(v.number()),
+    stockDeducted: v.optional(v.boolean()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

@@ -2121,6 +2121,81 @@ export const updateStatus = action({
       console.error("[updateStatus] Side effects FAILED for appointment", args.appointmentId, ":", e);
     }
 
+    // Stock return: when reverting from "completed" to any other status, undo the
+    // auto-deductions created at completion time. Uses the same CAS pattern as
+    // the deduction guard below — atomically flips stock_deducted back to false;
+    // only the winner proceeds with creating return movements. Closes #3009.
+    if (appt.status === "completed" && appt.stockDeducted === true && appt.treatmentId) {
+      const { data: returnCasRows } = await db.raw()
+        .from("gabinet_appointments")
+        .update({ stock_deducted: false })
+        .eq("id", args.appointmentId)
+        .eq("stock_deducted", true)
+        .select("id");
+      const wonReturnRace = Array.isArray(returnCasRows) && returnCasRows.length === 1;
+      if (wonReturnRace) {
+        try {
+          // Secondary guard: if appointment_return movements already exist for this
+          // appointment, skip — this prevents double-return if the CAS guard is ever
+          // bypassed (e.g., manual DB edits resetting the flag).
+          const { data: existingReturns } = await db.raw()
+            .from("product_stock_movements")
+            .select("id")
+            .eq("source_type", "appointment")
+            .eq("source_id", args.appointmentId)
+            .eq("reason", "appointment_return")
+            .limit(1);
+          const alreadyReturned = Array.isArray(existingReturns) && existingReturns.length > 0;
+          if (!alreadyReturned) {
+            // Find the original appointment_use movements and invert each one,
+            // preserving per-LOT granularity so lot quantities are restored correctly.
+            const { data: useMovements } = await db.raw()
+              .from("product_stock_movements")
+              .select("product_id, delta, lot_number, expiry_date")
+              .eq("source_type", "appointment")
+              .eq("source_id", args.appointmentId)
+              .eq("reason", "appointment_use");
+            const movements = (useMovements ?? []) as Array<{
+              product_id: string;
+              delta: number;
+              lot_number: string | null;
+              expiry_date: string | null;
+            }>;
+            for (const mv of movements) {
+              try {
+                await applyMovementInternal({
+                  organizationId: String(args.organizationId),
+                  productId: mv.product_id,
+                  locationId: null,
+                  delta: -Number(mv.delta), // original delta was negative; negating restores stock
+                  reason: "appointment_return",
+                  sourceType: "appointment",
+                  sourceId: args.appointmentId,
+                  lotNumber: mv.lot_number ?? undefined,
+                  expiryDate: mv.expiry_date ?? undefined,
+                  performedBy: authResult.userId,
+                });
+              } catch (e) {
+                console.warn(
+                  "[updateStatus] stock return failed for product",
+                  mv.product_id,
+                  ":",
+                  e,
+                );
+              }
+            }
+          }
+        } catch (e) {
+          console.error(
+            "[updateStatus] warehouse stock return FAILED for appointment",
+            args.appointmentId,
+            ":",
+            e,
+          );
+        }
+      }
+    }
+
     // Auto-deduct stock on visit completion. Guard against double-deduction
     // using an atomic CAS update (WHERE stock_deducted = false). Two concurrent
     // updateStatus calls can both read stockDeducted=false from the earlier

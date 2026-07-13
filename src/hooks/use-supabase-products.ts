@@ -137,7 +137,7 @@ export function useSupabaseUsedProductIds(
 
 export interface ProductStockTotal {
   total: number;
-  byLocation: Array<{ locationId: string | null; quantity: number }>;
+  byLocation: Array<{ locationId: string | null; quantity: number; avgCost: number | null }>;
 }
 
 export function useSupabaseProductStockTotals(
@@ -148,7 +148,7 @@ export function useSupabaseProductStockTotals(
   const { enabled = true } = options;
 
   const query = useQuery<
-    Array<{ product_id: string; location_id: string | null; quantity: number }>,
+    Array<{ product_id: string; location_id: string | null; quantity: number; avg_cost: number | null }>,
     Error
   >({
     queryKey: supabaseKeys.productStockLevels.list(organizationId),
@@ -156,13 +156,14 @@ export function useSupabaseProductStockTotals(
       if (!client) throw new Error("Supabase client not ready");
       const { data, error } = await client
         .from("product_stock_levels")
-        .select("product_id, location_id, quantity")
+        .select("product_id, location_id, quantity, avg_cost")
         .eq("organization_id", organizationId);
       if (error) throw error;
       return (data ?? []) as Array<{
         product_id: string;
         location_id: string | null;
         quantity: number;
+        avg_cost: number | null;
       }>;
     },
     enabled: enabled && isReady && !!organizationId,
@@ -177,6 +178,7 @@ export function useSupabaseProductStockTotals(
       existing.byLocation.push({
         locationId: row.location_id,
         quantity: qty,
+        avgCost: row.avg_cost != null ? Number(row.avg_cost) : null,
       });
       map.set(row.product_id, existing);
     }

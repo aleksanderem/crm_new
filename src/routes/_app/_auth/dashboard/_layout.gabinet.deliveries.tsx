@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { getExpiryStatus } from "@/lib/expiry-utils";
 import { useAction, useMutation } from "convex/react";
@@ -40,7 +40,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, TruckIcon, Loader2, CheckCircle, ChevronUp, ChevronDown, FileText } from "@/lib/ez-icons";
+import { Plus, Trash2, TruckIcon, Loader2, CheckCircle, ChevronUp, ChevronDown, FileText, Sparkles, RefreshCw, AlertCircle, X } from "@/lib/ez-icons";
 import { formatActionError } from "@/lib/format-action-error";
 import { useSupabaseProductsList, useSupabaseProductStockTotals } from "@/hooks/use-supabase-products";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
@@ -115,6 +115,40 @@ function newLine(): LineItem {
 function parseNum(s: string): number | null {
   const v = parseFloat(s.replace(",", "."));
   return Number.isFinite(v) && v >= 0 ? v : null;
+}
+
+// ---------------------------------------------------------------------------
+// Local types mirroring backend invoiceMatching.ts (no cross-boundary import)
+// ---------------------------------------------------------------------------
+
+interface ProductCandidate {
+  productId: string;
+  productName: string;
+  matchReason: string;
+}
+
+interface ItemMatchResult {
+  invoiceName: string;
+  status: "matched" | "suggestions" | "unmatched" | "non_inventory_candidate";
+  matched?: ProductCandidate;
+  suggestions?: ProductCandidate[];
+  handlingHint?: string;
+}
+
+interface MatchingProposalsFE {
+  matchedAt: number;
+  items: ItemMatchResult[];
+}
+
+interface ParsedInvoiceItemFE {
+  productName: string;
+  quantity: number | null;
+  unit: string | null;
+  unitPrice: number | null;
+  vatCode: string | null;
+  unitPriceGross: number | null;
+  lotNumber: string | null;
+  expiryDate: string | null;
 }
 
 function statusBadge(status: string, t: ReturnType<typeof useTranslation>["t"]) {
@@ -207,6 +241,10 @@ function DeliveriesPage() {
   const postDeliveryAction = useAction(api.warehouseDeliveries.postDelivery);
   // @ts-ignore
   const cancelDeliveryAction = useAction(api.warehouseDeliveries.cancelDelivery);
+  // @ts-ignore
+  const analyzeDeliveryInvoiceAction = useAction(api.warehouseDeliveries.analyzeDeliveryInvoice);
+  // @ts-ignore
+  const matchDeliveryItemsAction = useAction(api.warehouseDeliveries.matchDeliveryItems);
 
   const queryKey = ["warehouseDeliveries.list", organizationId];
 
@@ -280,6 +318,14 @@ function DeliveriesPage() {
   // Invoice import dialog
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
 
+  // AI pipeline state (analysis + matching for the currently open draft delivery)
+  const [editAnalysisStatus, setEditAnalysisStatus] = useState<string | null>(null);
+  const [editAnalysisItems, setEditAnalysisItems] = useState<ParsedInvoiceItemFE[]>([]);
+  const [editProposals, setEditProposals] = useState<MatchingProposalsFE | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [matching, setMatching] = useState(false);
+  const [verifyOpen, setVerifyOpen] = useState(false);
+
   const isEditMode = editDeliveryId !== null;
 
   const resetPanel = useCallback(() => {
@@ -291,6 +337,9 @@ function DeliveriesPage() {
     setNotes("");
     setItems([newLine()]);
     setEditInvoicePageUrls([]);
+    setEditAnalysisStatus(null);
+    setEditAnalysisItems([]);
+    setEditProposals(null);
   }, []);
 
   const handleEditOpen = async (id: string) => {
@@ -324,6 +373,24 @@ function DeliveriesPage() {
           : [newLine()],
       );
       setEditInvoicePageUrls(result.invoicePageUrls ?? []);
+
+      // Load AI pipeline state
+      const analysisStatus = d.analysisStatus ? String(d.analysisStatus) : null;
+      setEditAnalysisStatus(analysisStatus);
+      if (analysisStatus === "completed" && d.analysisResult && typeof d.analysisResult === "object") {
+        const ar = d.analysisResult as Record<string, unknown>;
+        setEditAnalysisItems(
+          Array.isArray(ar.items) ? (ar.items as ParsedInvoiceItemFE[]) : [],
+        );
+      } else {
+        setEditAnalysisItems([]);
+      }
+      setEditProposals(
+        d.matchingProposals != null && typeof d.matchingProposals === "object"
+          ? (d.matchingProposals as MatchingProposalsFE)
+          : null,
+      );
+
       setPanelOpen(true);
     } catch (e) {
       toast.error(
@@ -334,6 +401,65 @@ function DeliveriesPage() {
       );
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  const handleAnalyze = async () => {
+    if (!editDeliveryId) return;
+    setAnalyzing(true);
+    try {
+      const result = await analyzeDeliveryInvoiceAction({
+        organizationId,
+        deliveryId: editDeliveryId,
+      }) as { status: "completed"; result: Record<string, unknown> } | { status: "failed"; error: string };
+      if (result.status === "completed") {
+        setEditAnalysisStatus("completed");
+        setEditAnalysisItems(
+          Array.isArray(result.result?.items) ? (result.result.items as ParsedInvoiceItemFE[]) : [],
+        );
+        setEditProposals(null);
+        toast.success(t("gabinet.deliveries.analyzeSuccess", "Faktura przeanalizowana pomyślnie."));
+      } else {
+        setEditAnalysisStatus("failed");
+        toast.error(result.error || t("gabinet.deliveries.analyzeFailed", "Analiza nie powiodła się."));
+      }
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.deliveries.analyzeError",
+          defaultValue: "Nie udało się przeanalizować faktury.",
+        }),
+      );
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const handleMatch = async () => {
+    if (!editDeliveryId) return;
+    setMatching(true);
+    try {
+      const proposals = await matchDeliveryItemsAction({
+        organizationId,
+        deliveryId: editDeliveryId,
+      }) as MatchingProposalsFE;
+      setEditProposals(proposals);
+      const matchedCount = proposals.items.filter((i) => i.status === "matched").length;
+      toast.success(
+        t("gabinet.deliveries.matchSuccess", "Dopasowanie zakończone. {{matched}} z {{total}} pozycji dopasowanych.", {
+          matched: matchedCount,
+          total: proposals.items.length,
+        }),
+      );
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.deliveries.matchError",
+          defaultValue: "Nie udało się dopasować pozycji.",
+        }),
+      );
+    } finally {
+      setMatching(false);
     }
   };
 
@@ -967,6 +1093,122 @@ function DeliveriesPage() {
             </div>
           )}
 
+          {/* AI import pipeline — visible for draft deliveries with uploaded invoice pages */}
+          {isEditMode && editInvoicePageUrls.length > 0 && (
+            <div className="rounded-md border bg-muted/20 p-3 space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                {t("gabinet.deliveries.aiImport.title", "Import z faktury (AI)")}
+              </p>
+
+              {/* Step 1 — OCR analysis */}
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold leading-none",
+                  editAnalysisStatus === "completed"
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                    : "bg-muted text-muted-foreground",
+                )}>
+                  {editAnalysisStatus === "completed" ? "✓" : "1"}
+                </div>
+                <div className="flex flex-1 items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium">
+                      {t("gabinet.deliveries.aiImport.analyzeStep", "Odczyt faktury (OCR)")}
+                    </p>
+                    {editAnalysisStatus === "completed" && (
+                      <p className="text-xs text-muted-foreground">
+                        {t("gabinet.deliveries.aiImport.analyzeResult", "{{count}} pozycji odczytanych", { count: editAnalysisItems.length })}
+                      </p>
+                    )}
+                    {editAnalysisStatus === "failed" && (
+                      <p className="text-xs text-destructive">
+                        {t("gabinet.deliveries.aiImport.analyzeFailed", "Analiza nie powiodła się")}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs shrink-0"
+                    disabled={analyzing || matching}
+                    onClick={handleAnalyze}
+                  >
+                    {analyzing
+                      ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" variant="stroke" />
+                      : <Sparkles className="mr-1.5 h-3.5 w-3.5" variant="stroke" />
+                    }
+                    {editAnalysisStatus === "completed"
+                      ? t("gabinet.deliveries.aiImport.reanalyze", "Ponów")
+                      : t("gabinet.deliveries.aiImport.analyze", "Analizuj")}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Step 2 — product matching */}
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold leading-none",
+                  editProposals != null
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                    : "bg-muted text-muted-foreground",
+                  editAnalysisStatus !== "completed" ? "opacity-40" : "",
+                )}>
+                  {editProposals != null ? "✓" : "2"}
+                </div>
+                <div className="flex flex-1 items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className={cn("text-xs font-medium", editAnalysisStatus !== "completed" ? "opacity-50" : "")}>
+                      {t("gabinet.deliveries.aiImport.matchStep", "Dopasowanie produktów")}
+                    </p>
+                    {editProposals != null && (
+                      <p className="text-xs text-muted-foreground">
+                        {t(
+                          "gabinet.deliveries.aiImport.matchResult",
+                          "{{matched}} / {{total}} dopasowanych",
+                          {
+                            matched: editProposals.items.filter((i) => i.status === "matched").length,
+                            total: editProposals.items.length,
+                          },
+                        )}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs shrink-0"
+                    disabled={matching || analyzing || editAnalysisStatus !== "completed"}
+                    onClick={handleMatch}
+                  >
+                    {matching
+                      ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" variant="stroke" />
+                      : <RefreshCw className="mr-1.5 h-3.5 w-3.5" variant="stroke" />
+                    }
+                    {editProposals != null
+                      ? t("gabinet.deliveries.aiImport.rematch", "Ponów")
+                      : t("gabinet.deliveries.aiImport.match", "Dopasuj")}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Step 3 — review */}
+              {editProposals != null && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="h-8 text-xs w-full"
+                  onClick={() => setVerifyOpen(true)}
+                >
+                  <CheckCircle className="mr-1.5 h-3.5 w-3.5" variant="stroke" />
+                  {t("gabinet.deliveries.aiImport.review", "Weryfikuj i importuj pozycje")}
+                </Button>
+              )}
+            </div>
+          )}
+
           <Button
             className="w-full"
             disabled={!canSubmit}
@@ -1204,6 +1446,20 @@ function DeliveriesPage() {
         onOpenChange={setInvoiceDialogOpen}
         onSaved={() => void queryClient.invalidateQueries({ queryKey })}
       />
+
+      {/* Matching proposals verification dialog */}
+      {editProposals != null && (
+        <VerifyMatchesDialog
+          open={verifyOpen}
+          onOpenChange={setVerifyOpen}
+          proposals={editProposals}
+          analysisItems={editAnalysisItems}
+          products={stockableProducts}
+          onApply={(newItems) => {
+            setItems(newItems.length > 0 ? newItems : [newLine()]);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -1539,6 +1795,283 @@ function InvoiceImportDialog({
           <Button type="button" onClick={handleSave} disabled={!canSave}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" variant="stroke" />}
             {t("gabinet.deliveries.invoiceImport.save", "Utwórz dostawę")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// VerifyMatchesDialog (#3052)
+// ---------------------------------------------------------------------------
+// Shows each item from matchingProposals, lets user confirm/override the
+// product assignment or skip the item, then inserts the accepted items into
+// the delivery line-items form.
+
+const STATUS_LABELS: Record<string, string> = {
+  matched: "Dopasowano",
+  suggestions: "Propozycje",
+  unmatched: "Nie znaleziono",
+  non_inventory_candidate: "Niemagazynowa",
+};
+
+const STATUS_CLASSES: Record<string, string> = {
+  matched:
+    "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
+  suggestions:
+    "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+  unmatched:
+    "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border-red-200 dark:border-red-800",
+  non_inventory_candidate:
+    "bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300 border-slate-200 dark:border-slate-700",
+};
+
+function itemStatusBadge(status: string) {
+  return (
+    <Badge
+      className={cn(
+        "text-xs py-0 px-1.5 h-5 font-normal border",
+        STATUS_CLASSES[status] ?? "",
+      )}
+    >
+      {STATUS_LABELS[status] ?? status}
+    </Badge>
+  );
+}
+
+function VerifyMatchesDialog({
+  open,
+  onOpenChange,
+  proposals,
+  analysisItems,
+  products,
+  onApply,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  proposals: MatchingProposalsFE;
+  analysisItems: ParsedInvoiceItemFE[];
+  products: Array<{ _id: string; name: string; sku?: string | null }>;
+  onApply: (items: LineItem[]) => void;
+}) {
+  const { t } = useTranslation();
+
+  // Per-item decision: productId string → accept that product, "skip" → omit from result
+  const [decisions, setDecisions] = useState<Record<number, string>>({});
+
+  // Reset decisions whenever proposals change (e.g. on re-match)
+  useEffect(() => {
+    const init: Record<number, string> = {};
+    proposals.items.forEach((item, idx) => {
+      if (item.status === "matched" && item.matched) {
+        init[idx] = item.matched.productId;
+      } else {
+        init[idx] = "skip";
+      }
+    });
+    setDecisions(init);
+  }, [proposals]);
+
+  const acceptedCount = Object.values(decisions).filter((d) => d !== "skip").length;
+
+  const handleApply = () => {
+    const lineItems: LineItem[] = [];
+    proposals.items.forEach((item, idx) => {
+      const productId = decisions[idx];
+      if (!productId || productId === "skip") return;
+      const ai = analysisItems[idx];
+      lineItems.push({
+        id: crypto.randomUUID(),
+        productId,
+        quantity: ai?.quantity != null ? String(ai.quantity) : "1",
+        unitPrice: ai?.unitPrice != null ? String(ai.unitPrice) : "",
+        vatCode: ai?.vatCode ?? "",
+        unitPriceGross: ai?.unitPriceGross != null ? String(ai.unitPriceGross) : "",
+        lastEdited:
+          ai?.unitPrice != null ? "net" : ai?.unitPriceGross != null ? "gross" : null,
+        lotNumber: ai?.lotNumber ?? "",
+        expiryDate: ai?.expiryDate ?? "",
+      });
+    });
+    onApply(lineItems);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl flex flex-col max-h-[90vh]">
+        <DialogHeader>
+          <DialogTitle>
+            {t("gabinet.deliveries.verify.title", "Weryfikacja dopasowania pozycji")}
+          </DialogTitle>
+          <DialogDescription>
+            {t(
+              "gabinet.deliveries.verify.description",
+              "Sprawdź dopasowania pozycji faktury do produktów. Potwierdź lub zmień każde dopasowanie, a następnie kliknij Zastosuj.",
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto space-y-2 pr-1 -mr-1">
+          {proposals.items.map((item, idx) => {
+            const decision = decisions[idx] ?? "skip";
+            const isSkipped = decision === "skip";
+            const ai = analysisItems[idx];
+            // Build candidate list: for "matched" put the matched product first
+            const candidates: ProductCandidate[] =
+              item.status === "matched" && item.matched
+                ? [item.matched, ...(item.suggestions ?? [])]
+                : item.suggestions ?? [];
+
+            return (
+              <div
+                key={idx}
+                className={cn(
+                  "rounded-md border p-3 space-y-2 transition-opacity",
+                  isSkipped && item.status !== "non_inventory_candidate" ? "opacity-60" : "",
+                  isSkipped && item.status === "non_inventory_candidate" ? "opacity-40" : "",
+                )}
+              >
+                {/* Item header: invoice name + status badge + quantity/price hint */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium">{item.invoiceName}</span>
+                      {itemStatusBadge(item.status)}
+                    </div>
+                    {ai && (ai.quantity != null || ai.unitPriceGross != null || ai.unitPrice != null) && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {ai.quantity != null && (
+                          <span>
+                            {ai.quantity} {ai.unit ?? "szt."}
+                          </span>
+                        )}
+                        {ai.quantity != null &&
+                          (ai.unitPriceGross != null || ai.unitPrice != null) && (
+                            <span> · </span>
+                          )}
+                        {(ai.unitPriceGross != null || ai.unitPrice != null) && (
+                          <span>
+                            {fmtMoney(ai.unitPriceGross ?? ai.unitPrice!)} zł/szt.
+                            {ai.unitPriceGross != null ? " brutto" : " netto"}
+                          </span>
+                        )}
+                        {ai.lotNumber && <span> · LOT: {ai.lotNumber}</span>}
+                      </p>
+                    )}
+                  </div>
+                  {/* Skip / restore toggle */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDecisions((prev) => {
+                        if (isSkipped) {
+                          // Restore: pick first candidate or first product
+                          const restore =
+                            candidates[0]?.productId ?? products[0]?._id ?? "skip";
+                          return { ...prev, [idx]: restore };
+                        }
+                        return { ...prev, [idx]: "skip" };
+                      })
+                    }
+                    className={cn(
+                      "flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors",
+                      isSkipped
+                        ? "hover:bg-muted hover:text-foreground"
+                        : "hover:bg-destructive/10 hover:text-destructive",
+                    )}
+                    title={
+                      isSkipped
+                        ? t("gabinet.deliveries.verify.restore", "Przywróć")
+                        : t("gabinet.deliveries.verify.skip", "Pomiń pozycję")
+                    }
+                  >
+                    {isSkipped ? (
+                      <Plus className="h-3.5 w-3.5" variant="stroke" />
+                    ) : (
+                      <X className="h-3.5 w-3.5" variant="stroke" />
+                    )}
+                  </button>
+                </div>
+
+                {/* Non-inventory hint */}
+                {item.status === "non_inventory_candidate" && item.handlingHint && (
+                  <p className="text-xs text-muted-foreground italic flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3 shrink-0" variant="stroke" />
+                    {item.handlingHint}
+                  </p>
+                )}
+
+                {/* Product picker — hidden when item is skipped */}
+                {!isSkipped && (
+                  <Select
+                    value={decision}
+                    onValueChange={(v) => setDecisions((prev) => ({ ...prev, [idx]: v }))}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue
+                        placeholder={t(
+                          "gabinet.deliveries.verify.selectProduct",
+                          "Wybierz produkt…",
+                        )}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/* Candidates (matched/suggested) first */}
+                      {candidates.length > 0 && (
+                        <>
+                          {candidates.map((c) => (
+                            <SelectItem key={c.productId} value={c.productId}>
+                              {c.productName}
+                              {c.matchReason === "exact_name" && (
+                                <span className="ml-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+                                  ✓
+                                </span>
+                              )}
+                            </SelectItem>
+                          ))}
+                          <div className="my-1 border-t" />
+                        </>
+                      )}
+                      {/* All active stockable products */}
+                      {products.map((p) => (
+                        <SelectItem key={p._id} value={p._id}>
+                          {p.name}
+                          {p.sku ? ` (${p.sku})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <DialogFooter className="flex-col gap-2 border-t pt-4 sm:flex-row sm:items-center">
+          <p className="flex-1 text-xs text-muted-foreground">
+            {t(
+              "gabinet.deliveries.verify.summary",
+              "{{accepted}} z {{total}} pozycji zostanie dodanych do dostawy",
+              { accepted: acceptedCount, total: proposals.items.length },
+            )}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
+            {t("common.cancel", "Anuluj")}
+          </Button>
+          <Button
+            type="button"
+            onClick={handleApply}
+            disabled={acceptedCount === 0}
+          >
+            {t("gabinet.deliveries.verify.apply", "Zastosuj ({{count}})", {
+              count: acceptedCount,
+            })}
           </Button>
         </DialogFooter>
       </DialogContent>

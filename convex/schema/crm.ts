@@ -397,6 +397,13 @@ export function createCrmTables({
     totalValue: v.optional(v.number()),
     // Denormalized SUM(line_value_gross) across all items (#2975).
     totalValueGross: v.optional(v.number()),
+    // Uploaded invoice pages from 'Add from invoice' workflow (#3016).
+    // Ordered array of Convex storage IDs; NULL for manually created deliveries.
+    invoicePages: v.optional(v.array(v.object({
+      storageId: v.id("_storage"),
+      mimeType: v.string(),
+      position: v.number(),
+    }))),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

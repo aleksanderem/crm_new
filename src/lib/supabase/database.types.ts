@@ -49,7 +49,18 @@
  *   • 00042_gabinet_employees_nullable_user_id.sql
  *   • 00043_reminder_channel_settings.sql
  *   • 00044_scope_entities_jsonb.sql
+ *   • 00045_backfill_scope_entities_appointment_docs.sql
+ *   • 00046_form_documents_org_entity_type_idx.sql
+ *   • 00047_gabinet_appointments_variant_id.sql
+ *   • 00048_gabinet_appointments_stock_deducted.sql
+ *   • 00049_product_stock_movements_location_idx.sql
  *   • 00050_product_purchase_price.sql
+ *   • 00051_warehouse_deliveries.sql
+ *   • 00052_product_stock_movements_unit_price.sql
+ *   • 00053_warehouse_deliveries_total_value.sql
+ *   • 00054_delivery_items_prices.sql
+ *   • 00055_stock_levels_avg_cost.sql
+ *   • 00056_product_stock_movements_avg_cost_after.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -4735,6 +4746,7 @@ export interface Database {
           price_at_booking: number | null;
           reminder_overrides: string | null;
           variant_id: string | null;
+          stock_deducted: boolean;
         };
         Insert: {
           id?: string;
@@ -4783,6 +4795,7 @@ export interface Database {
           price_at_booking?: number | null;
           reminder_overrides?: string | null;
           variant_id?: string | null;
+          stock_deducted?: boolean;
         };
         Update: {
           id?: string;
@@ -4831,6 +4844,7 @@ export interface Database {
           price_at_booking?: number | null;
           reminder_overrides?: string | null;
           variant_id?: string | null;
+          stock_deducted?: boolean;
         };
         Relationships: [
           {
@@ -4915,6 +4929,13 @@ export interface Database {
             columns: ["package_usage_id"];
             isOneToOne: false;
             referencedRelation: "gabinet_package_usage";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_appointments_variant_id_fkey";
+            columns: ["variant_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatment_variants";
             referencedColumns: ["id"];
           },
         ];
@@ -6565,8 +6586,8 @@ export interface Database {
           product_id: string;
           location_id: string | null;
           quantity: number;
-          avg_cost: number | null;
           updated_at: number;
+          avg_cost: number | null;
         };
         Insert: {
           id?: string;
@@ -6574,8 +6595,8 @@ export interface Database {
           product_id: string;
           location_id?: string | null;
           quantity?: number;
-          avg_cost?: number | null;
           updated_at: number;
+          avg_cost?: number | null;
         };
         Update: {
           id?: string;
@@ -6583,8 +6604,8 @@ export interface Database {
           product_id?: string;
           location_id?: string | null;
           quantity?: number;
-          avg_cost?: number | null;
           updated_at?: number;
+          avg_cost?: number | null;
         };
         Relationships: [
           {
@@ -6622,10 +6643,10 @@ export interface Database {
           source_type: string | null;
           source_id: string | null;
           note: string | null;
-          unit_price: number | null;
-          avg_cost_after: number | null;
           performed_by: string;
           created_at: number;
+          unit_price: number | null;
+          avg_cost_after: number | null;
         };
         Insert: {
           id?: string;
@@ -6638,10 +6659,10 @@ export interface Database {
           source_type?: string | null;
           source_id?: string | null;
           note?: string | null;
-          unit_price?: number | null;
-          avg_cost_after?: number | null;
           performed_by: string;
           created_at: number;
+          unit_price?: number | null;
+          avg_cost_after?: number | null;
         };
         Update: {
           id?: string;
@@ -6654,10 +6675,10 @@ export interface Database {
           source_type?: string | null;
           source_id?: string | null;
           note?: string | null;
-          unit_price?: number | null;
-          avg_cost_after?: number | null;
           performed_by?: string;
           created_at?: number;
+          unit_price?: number | null;
+          avg_cost_after?: number | null;
         };
         Relationships: [
           {
@@ -6862,6 +6883,153 @@ export interface Database {
             columns: ["location_id"];
             isOneToOne: false;
             referencedRelation: "gabinet_locations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      warehouse_deliveries: {
+        Row: {
+          id: string;
+          organization_id: string;
+          supplier_name: string | null;
+          invoice_number: string | null;
+          delivery_date: string | null;
+          location_id: string | null;
+          notes: string | null;
+          status: string;
+          created_by: string;
+          created_at: number;
+          updated_at: number;
+          total_value: number | null;
+          total_value_gross: number | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          supplier_name?: string | null;
+          invoice_number?: string | null;
+          delivery_date?: string | null;
+          location_id?: string | null;
+          notes?: string | null;
+          status?: string;
+          created_by: string;
+          created_at: number;
+          updated_at: number;
+          total_value?: number | null;
+          total_value_gross?: number | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          supplier_name?: string | null;
+          invoice_number?: string | null;
+          delivery_date?: string | null;
+          location_id?: string | null;
+          notes?: string | null;
+          status?: string;
+          created_by?: string;
+          created_at?: number;
+          updated_at?: number;
+          total_value?: number | null;
+          total_value_gross?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "warehouse_deliveries_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "warehouse_deliveries_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_locations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "warehouse_deliveries_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      warehouse_delivery_items: {
+        Row: {
+          id: string;
+          organization_id: string;
+          delivery_id: string;
+          product_id: string;
+          quantity: number;
+          unit_price: number | null;
+          vat_rate: number | null;
+          movement_id: string | null;
+          created_at: number;
+          unit_price_gross: number | null;
+          line_value_net: number | null;
+          line_value_gross: number | null;
+          vat_code: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          delivery_id: string;
+          product_id: string;
+          quantity: number;
+          unit_price?: number | null;
+          vat_rate?: number | null;
+          movement_id?: string | null;
+          created_at: number;
+          unit_price_gross?: number | null;
+          line_value_net?: number | null;
+          line_value_gross?: number | null;
+          vat_code?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          delivery_id?: string;
+          product_id?: string;
+          quantity?: number;
+          unit_price?: number | null;
+          vat_rate?: number | null;
+          movement_id?: string | null;
+          created_at?: number;
+          unit_price_gross?: number | null;
+          line_value_net?: number | null;
+          line_value_gross?: number | null;
+          vat_code?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "warehouse_delivery_items_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "warehouse_delivery_items_delivery_id_fkey";
+            columns: ["delivery_id"];
+            isOneToOne: false;
+            referencedRelation: "warehouse_deliveries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "warehouse_delivery_items_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "warehouse_delivery_items_movement_id_fkey";
+            columns: ["movement_id"];
+            isOneToOne: false;
+            referencedRelation: "product_stock_movements";
             referencedColumns: ["id"];
           },
         ];

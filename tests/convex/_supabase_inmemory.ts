@@ -151,8 +151,9 @@ function createInMemoryRawClient() {
 
 class InMemoryRawQuery {
   private table: string;
-  private mode: "select" | "update" | "delete" = "select";
+  private mode: "select" | "update" | "delete" | "upsert" = "select";
   private updatePayload: Record<string, unknown> | null = null;
+  private upsertPayload: Record<string, unknown>[] | null = null;
   private filters: Array<(row: Row) => boolean> = [];
 
   constructor(table: string) {
@@ -166,6 +167,22 @@ class InMemoryRawQuery {
       camelValues[snakeToCamel(k)] = v;
     }
     this.updatePayload = camelValues;
+    return this;
+  }
+
+  upsert(
+    payload: Record<string, unknown> | Record<string, unknown>[],
+    _opts?: Record<string, unknown>,
+  ) {
+    this.mode = "upsert";
+    const rows = Array.isArray(payload) ? payload : [payload];
+    this.upsertPayload = rows.map((row) => {
+      const camel: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(row)) {
+        camel[snakeToCamel(k)] = v;
+      }
+      return camel;
+    });
     return this;
   }
 
@@ -206,6 +223,20 @@ class InMemoryRawQuery {
 
   private _execute(): { data: Row[]; error: null | { message: string } } {
     const t = getTable(this.table);
+
+    if (this.mode === "upsert" && this.upsertPayload) {
+      const upserted: Row[] = [];
+      for (const camelRow of this.upsertPayload) {
+        const id = camelRow.id ? String(camelRow.id) : randomId();
+        const existing = t.get(id);
+        const next: Row = { ...(existing ?? {}), ...camelRow, id };
+        delete (next as any)._id;
+        t.set(id, next);
+        upserted.push({ ...next });
+      }
+      return { data: upserted, error: null };
+    }
+
     const matched: Row[] = [];
     for (const row of t.values()) {
       if (this.filters.every((f) => f(row))) {

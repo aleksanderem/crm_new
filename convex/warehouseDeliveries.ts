@@ -719,6 +719,205 @@ export const saveItemDecisions = action({
   },
 });
 
+// ---------------------------------------------------------------------------
+// postDeliveryFromDecisions (#3073)
+// ---------------------------------------------------------------------------
+// Posts an existing draft delivery by building delivery lines from the
+// approved itemDecisions (persisted by saveItemDecisions).
+//
+// Validation:
+//   - all decisions must be resolved (non-null)
+//   - create_later decisions block posting — they must be changed first
+// Line creation:
+//   - accepted / choose_product → delivery line with OCR quantity + price data
+//   - non_inventory → skipped (no stock movement, no line)
+// Idempotency: delivery already posted → throws; UI disables during request.
+
+interface ItemDecisionData {
+  type: "accepted" | "choose_product" | "create_later" | "non_inventory";
+  productId?: string;
+  createLaterType?: string;
+}
+
+interface ItemDecisionsData {
+  decidedAt: number;
+  items: (ItemDecisionData | null)[];
+}
+
+export const postDeliveryFromDecisions = action({
+  args: {
+    organizationId: v.id("organizations"),
+    deliveryId: v.string(),
+  },
+  handler: async (ctx, args): Promise<{ movementsCreated: number }> => {
+    const auth = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_inventory", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+    const delivery = await db.get<DeliveryRow>("warehouseDeliveries", args.deliveryId);
+    if (!delivery || String(delivery.organizationId) !== String(args.organizationId)) {
+      throw new Error("Delivery not found");
+    }
+    if (delivery.status === "posted") {
+      throw new Error("Delivery is already posted");
+    }
+
+    const decisions = delivery.itemDecisions as ItemDecisionsData | null;
+    if (!decisions || !Array.isArray(decisions.items) || decisions.items.length === 0) {
+      throw new Error("No item decisions found. Verify all invoice items before posting.");
+    }
+
+    const analysis = delivery.analysisResult as StoredAnalysisResult | null;
+    const analysisItems: ParsedInvoiceItem[] =
+      analysis && Array.isArray(analysis.items)
+        ? (analysis.items as ParsedInvoiceItem[])
+        : [];
+
+    // Validate: all decisions complete, none are create_later
+    const blocking: string[] = [];
+    for (let i = 0; i < decisions.items.length; i++) {
+      const d = decisions.items[i];
+      const name = analysisItems[i]?.productName ?? `#${i + 1}`;
+      if (!d) {
+        blocking.push(`"${name}"`);
+      } else if (d.type === "create_later") {
+        blocking.push(`"${name}" (utwórz później)`);
+      } else if ((d.type === "accepted" || d.type === "choose_product") && !d.productId) {
+        blocking.push(`"${name}" (brak produktu)`);
+      }
+    }
+    if (blocking.length > 0) {
+      throw new Error(
+        `Nie można zaksięgować dostawy. Nierozwiązane pozycje: ${blocking.join(", ")}.`,
+      );
+    }
+
+    // Build delivery lines — skip non_inventory, use OCR data for the rest
+    const inventoryLines: Array<{
+      productId: string;
+      quantity: number;
+      unitPrice: number | null;
+      vatRate: number | null;
+      vatCode: string | null;
+      unitPriceGross: number | null;
+      lineValueNet: number | null;
+      lineValueGross: number | null;
+      lotNumber: string | null;
+      expiryDate: string | null;
+    }> = [];
+
+    for (let i = 0; i < decisions.items.length; i++) {
+      const d = decisions.items[i]!;
+      if (d.type === "non_inventory") continue;
+
+      const ai = analysisItems[i];
+      const qty = (ai?.quantity != null && ai.quantity > 0) ? ai.quantity : 1;
+      const unitPrice = ai?.unitPrice ?? null;
+      const vatRate = ai?.vatRate ?? null;
+      const vatCode = ai?.vatCode ?? null;
+      const unitPriceGross = ai?.unitPriceGross ?? null;
+      const lineValueNet =
+        unitPrice !== null ? Math.round(qty * unitPrice * 100) / 100 : null;
+      const lineValueGross =
+        unitPriceGross !== null ? Math.round(qty * unitPriceGross * 100) / 100 : null;
+
+      inventoryLines.push({
+        productId: d.productId!,
+        quantity: qty,
+        unitPrice,
+        vatRate,
+        vatCode,
+        unitPriceGross,
+        lineValueNet,
+        lineValueGross,
+        lotNumber: ai?.lotNumber ?? null,
+        expiryDate: ai?.expiryDate ?? null,
+      });
+    }
+
+    const now = Date.now();
+
+    // Replace existing items with lines derived from decisions
+    const existingItems = await db
+      .query<DeliveryItemRow>("warehouseDeliveryItems")
+      .eq("deliveryId", args.deliveryId)
+      .collect();
+    for (const item of existingItems) {
+      await db.delete("warehouseDeliveryItems", String(item._id));
+    }
+
+    for (const line of inventoryLines) {
+      await db.insert("warehouseDeliveryItems", {
+        organizationId: String(args.organizationId),
+        deliveryId: args.deliveryId,
+        productId: line.productId,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        vatRate: line.vatRate,
+        vatCode: line.vatCode,
+        unitPriceGross: line.unitPriceGross,
+        lineValueNet: line.lineValueNet,
+        lineValueGross: line.lineValueGross,
+        lotNumber: line.lotNumber,
+        expiryDate: line.expiryDate,
+        movementId: null,
+        createdAt: now,
+      });
+    }
+
+    // Update header totals
+    const { net: totalValue, gross: totalValueGross } = computeTotals(inventoryLines);
+    await db.patch("warehouseDeliveries", args.deliveryId, {
+      totalValue,
+      totalValueGross,
+      updatedAt: now,
+    });
+
+    // Create stock movements
+    const newItems = await db
+      .query<DeliveryItemRow>("warehouseDeliveryItems")
+      .eq("deliveryId", args.deliveryId)
+      .collect();
+
+    const locationId = delivery.locationId ? String(delivery.locationId) : null;
+    const noteText = delivery.invoiceNumber
+      ? `Delivery ${delivery.invoiceNumber}`
+      : null;
+
+    for (const item of newItems) {
+      const { movementId } = await applyMovementInternal({
+        organizationId: String(args.organizationId),
+        productId: String(item.productId),
+        locationId,
+        delta: Number(item.quantity),
+        reason: "warehouse_receive",
+        sourceType: "warehouse_delivery",
+        sourceId: args.deliveryId,
+        note: noteText,
+        unitPrice: item.unitPrice != null ? Number(item.unitPrice) : undefined,
+        lotNumber: item.lotNumber ? String(item.lotNumber) : undefined,
+        expiryDate: item.expiryDate ? String(item.expiryDate) : undefined,
+        performedBy: String(auth.userId),
+      });
+      await db.patch("warehouseDeliveryItems", String(item._id), { movementId });
+    }
+
+    await db.patch("warehouseDeliveries", args.deliveryId, {
+      status: "posted",
+      updatedAt: Date.now(),
+    });
+
+    return { movementsCreated: newItems.length };
+  },
+});
+
 export const postDelivery = action({
   args: {
     organizationId: v.id("organizations"),

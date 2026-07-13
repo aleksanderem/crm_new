@@ -272,6 +272,8 @@ function DeliveriesPage() {
   const matchDeliveryItemsAction = useAction(api.warehouseDeliveries.matchDeliveryItems);
   // @ts-ignore
   const saveItemDecisionsAction = useAction(api.warehouseDeliveries.saveItemDecisions);
+  // @ts-ignore
+  const postDeliveryFromDecisionsAction = useAction(api.warehouseDeliveries.postDeliveryFromDecisions);
 
   const queryKey = ["warehouseDeliveries.list", organizationId];
 
@@ -1546,7 +1548,7 @@ function DeliveriesPage() {
         />
       )}
 
-      {/* Item decisions dialog (#3055) */}
+      {/* Item decisions dialog (#3055, #3073) */}
       {decisionsProposals != null && decisionsDeliveryId != null && (
         <ItemDecisionsDialog
           open={decisionsOpen}
@@ -1565,6 +1567,12 @@ function DeliveriesPage() {
             void queryClient.invalidateQueries({ queryKey });
           }}
           saveAction={saveItemDecisionsAction as (args: { organizationId: typeof organizationId; deliveryId: string; decisions: unknown }) => Promise<void>}
+          postDeliveryAction={postDeliveryFromDecisionsAction as (args: { organizationId: typeof organizationId; deliveryId: string }) => Promise<{ movementsCreated: number }>}
+          onPosted={() => {
+            void queryClient.invalidateQueries({ queryKey });
+            void queryClient.invalidateQueries({ queryKey: ["supabase", "productStockLevels"] });
+            void queryClient.invalidateQueries({ queryKey: ["supabase", "productStockMovements"] });
+          }}
         />
       )}
     </div>
@@ -2260,6 +2268,8 @@ function ItemDecisionsDialog({
   products,
   onSave,
   saveAction,
+  postDeliveryAction,
+  onPosted,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -2271,9 +2281,12 @@ function ItemDecisionsDialog({
   products: Array<{ _id: string; name: string; sku?: string | null }>;
   onSave: (decisions: ItemDecisions) => void;
   saveAction: (args: { organizationId: Id<"organizations">; deliveryId: string; decisions: unknown }) => Promise<void>;
+  postDeliveryAction?: (args: { organizationId: Id<"organizations">; deliveryId: string }) => Promise<{ movementsCreated: number }>;
+  onPosted?: () => void;
 }) {
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
+  const [posting, setPosting] = useState(false);
 
   const initDecisions = useCallback((): (ItemDecision | null)[] => {
     if (savedDecisions && Array.isArray(savedDecisions.items) && savedDecisions.items.length === proposals.items.length) {
@@ -2316,6 +2329,11 @@ function ItemDecisionsDialog({
     [decisions],
   );
 
+  const hasCreateLater = useMemo(
+    () => decisions.some((d) => d?.type === "create_later"),
+    [decisions],
+  );
+
   const handleSave = async () => {
     if (unresolvedIndices.length > 0) return;
     setSaving(true);
@@ -2334,6 +2352,29 @@ function ItemDecisionsDialog({
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePostFromDecisions = async () => {
+    if (!postDeliveryAction || unresolvedIndices.length > 0 || hasCreateLater) return;
+    setPosting(true);
+    try {
+      const saved: ItemDecisions = { decidedAt: Date.now(), items: decisions };
+      await saveAction({ organizationId, deliveryId, decisions: saved });
+      onSave(saved);
+      await postDeliveryAction({ organizationId, deliveryId });
+      onPosted?.();
+      onOpenChange(false);
+      toast.success(t("gabinet.deliveries.decisions.postSuccess", "Dostawa zatwierdzona. Stany magazynowe zaktualizowane."));
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.deliveries.decisions.postError",
+          defaultValue: "Nie udało się zatwierdzić dostawy.",
+        }),
+      );
+    } finally {
+      setPosting(false);
     }
   };
 
@@ -2537,23 +2578,47 @@ function ItemDecisionsDialog({
             </span>
           </div>
         )}
+        {hasCreateLater && unresolvedIndices.length === 0 && (
+          <div className="flex items-start gap-2 rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-800 dark:border-violet-800 dark:bg-violet-900/20 dark:text-violet-300">
+            <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" variant="stroke" />
+            <span>
+              {t(
+                "gabinet.deliveries.decisions.createLaterBlocking",
+                "Pozycje oznaczone „Utwórz później" blokują zatwierdzenie dostawy. Zmień decyzję na inną, aby odblokować zaksięgowanie.",
+              )}
+            </span>
+          </div>
+        )}
 
         <DialogFooter className="border-t pt-4">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
+            disabled={saving || posting}
           >
             {t("common.cancel", "Anuluj")}
           </Button>
           <Button
             type="button"
+            variant="outline"
             onClick={handleSave}
-            disabled={saving || unresolvedIndices.length > 0}
+            disabled={saving || posting || unresolvedIndices.length > 0}
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" variant="stroke" />}
             {t("gabinet.deliveries.decisions.save", "Zapisz decyzje")}
           </Button>
+          {postDeliveryAction && (
+            <Button
+              type="button"
+              onClick={handlePostFromDecisions}
+              disabled={posting || saving || unresolvedIndices.length > 0 || hasCreateLater}
+            >
+              {posting && <Loader2 className="mr-2 h-4 w-4 animate-spin" variant="stroke" />}
+              <CheckCircle className="mr-2 h-4 w-4" variant="stroke" />
+              {t("gabinet.deliveries.decisions.post", "Zatwierdź dostawę")}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

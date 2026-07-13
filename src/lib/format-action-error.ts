@@ -255,7 +255,12 @@ function cleanConvexMessage(raw: string): string {
   let msg = raw;
 
   // Drop the leading "[CONVEX ...] [Request ID: ...] Server Error" banner.
-  msg = msg.replace(/^\s*\[CONVEX[^\]]*\][^\n]*\n?/i, "");
+  // Require a trailing \n so that single-line errors (e.g. "Connection lost
+  // while action was in flight") whose payload sits on the same line as the
+  // [CONVEX ...] token are NOT consumed here — the fallback strip below then
+  // removes only the bracket, leaving the payload intact.
+  msg = msg.replace(/^\s*\[CONVEX[^\]]*\]\s*(?:\[Request ID:[^\]]*\])?\s*(?:Server Error)?\s*\n/i, "");
+  msg = msg.replace(/^\s*\[CONVEX[^\]]*\]\s*/i, "");
   msg = msg.replace(/^\s*\[Request ID:[^\]]*\][^\n]*\n?/i, "");
   msg = msg.replace(/^\s*Server Error\s*\n?/i, "");
 

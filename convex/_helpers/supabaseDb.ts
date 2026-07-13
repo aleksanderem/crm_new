@@ -355,6 +355,11 @@ class SupabaseQueryBuilder<T = Record<string, unknown>> {
     return this;
   }
 
+  in(field: string, values: unknown[]) {
+    this.filters.push((q) => q.in(toSnakeCase(field), values));
+    return this;
+  }
+
   order(field: string, ascending = true) {
     this.orderBy.push({ field: toSnakeCase(field), ascending });
     return this;

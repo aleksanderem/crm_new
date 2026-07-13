@@ -421,6 +421,9 @@ export function createCrmTables({
     analysisResult: v.optional(v.any()),
     analysisCompletedAt: v.optional(v.number()),
     analysisError: v.optional(v.string()),
+    // Item-to-product matching proposals (#3050). Stored as MatchingProposals
+    // JSONB. Overwritten on each re-run; never touches analysisResult.
+    matchingProposals: v.optional(v.any()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

@@ -12,6 +12,7 @@ const TABLE_MAP: Record<string, string> = {
   productStockMovements: "product_stock_movements",
   warehouseDeliveries: "warehouse_deliveries",
   warehouseDeliveryItems: "warehouse_delivery_items",
+  deliveryNameMappings: "delivery_name_mappings",
   calls: "calls",
   notes: "notes",
   activities: "activities",

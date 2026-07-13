@@ -16,7 +16,7 @@ import { applyMovementInternal } from "./inventory";
 import type { SupabaseRow } from "./_helpers/supabaseRows";
 import { getDocumentAnalyzer } from "./_ai/documentAnalyzer";
 import type { DocumentPage, ParsedInvoice, ParsedInvoiceItem } from "./_ai/documentAnalyzer";
-import { matchInvoiceItems } from "./_ai/invoiceMatching";
+import { matchInvoiceItems, normalizeName } from "./_ai/invoiceMatching";
 import type { MatchingProposals, ProductForMatching } from "./_ai/invoiceMatching";
 
 type DeliveryRow = SupabaseRow<"warehouseDeliveries">;
@@ -636,7 +636,41 @@ export const matchDeliveryItems = action({
       productName: String(p.name),
     }));
 
-    const proposals = matchInvoiceItems(invoiceItems, products);
+    // Load saved name mappings and build a normalized-name → productId Map
+    // for priority #1 matching (#3053).
+    const mappingRows = await db
+      .query("deliveryNameMappings")
+      .eq("organizationId", String(args.organizationId))
+      .collect();
+    const savedMappings = new Map<string, string>(
+      mappingRows.map((m) => [
+        normalizeName(String(m.invoiceName)),
+        String(m.productId),
+      ]),
+    );
+
+    const proposals = matchInvoiceItems(invoiceItems, products, savedMappings);
+
+    // Write back exact-name matches as saved mappings so future deliveries use
+    // priority #1 for the same invoice names.  Saved-mapping results are skipped
+    // (they are already persisted); other statuses produce no match to save.
+    for (const item of proposals.items) {
+      if (item.status !== "matched" || !item.matched) continue;
+      if (item.matched.matchReason === "saved_mapping") continue;
+      const existing = await db
+        .query("deliveryNameMappings")
+        .eq("organizationId", String(args.organizationId))
+        .eq("invoiceName", item.invoiceName)
+        .first();
+      if (!existing) {
+        await db.insert("deliveryNameMappings", {
+          organizationId: String(args.organizationId),
+          invoiceName: item.invoiceName,
+          productId: item.matched.productId,
+          createdAt: Date.now(),
+        });
+      }
+    }
 
     await db.patch("warehouseDeliveries", args.deliveryId, {
       matchingProposals: proposals,

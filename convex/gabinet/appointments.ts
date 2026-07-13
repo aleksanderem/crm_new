@@ -2239,7 +2239,7 @@ export const updateStatus = action({
 
               // FEFO lot tracking (#2992): deduct from earliest-expiry lots first.
               // Falls back to a single untracked movement when no lots exist.
-              const lots = await selectFefoLotsForProduct(productId, orgId);
+              const lots = await selectFefoLotsForProduct(productId, orgId, (appt.locationId ?? null) as string | null);
               if (lots.length === 0) {
                 const result = await applyMovementInternal({ ...baseMovement, delta: -totalNeeded });
                 if (result.warning === "negative_stock") stockWarnings.push(productId);

@@ -268,8 +268,8 @@ export async function applyMovementInternal(
 // ---------------------------------------------------------------------------
 // FEFO lot selection — used by appointment settlement to deduct lot stock in
 // First-Expired-First-Out order. Returns batches sorted by expiry_date ASC
-// (null expiry last) with quantity > 0. Aggregates across all locations since
-// appointment deductions don't specify a location.
+// (null expiry last) with quantity > 0. Scoped to the given locationId so that
+// lot balances at location A are not consumed by appointments at location B.
 // ---------------------------------------------------------------------------
 
 export interface FefoLot {
@@ -281,18 +281,27 @@ export interface FefoLot {
 export async function selectFefoLotsForProduct(
   productId: string,
   organizationId: string,
+  locationId: string | null,
 ): Promise<FefoLot[]> {
   const db = createSupabaseDb();
 
-  // Pull every movement that carries a lot_number for this product.
-  // warehouse_receive rows are positive; appointment_use rows (once wired) are
-  // negative. Summing deltas gives net quantity remaining per lot.
-  const { data, error } = await db.raw()
+  // Pull every movement that carries a lot_number for this product at this location.
+  // warehouse_receive rows are positive; appointment_use rows are negative.
+  // Summing deltas gives net quantity remaining per lot at the location.
+  let query = db.raw()
     .from("product_stock_movements")
     .select("lot_number, expiry_date, delta")
     .eq("organization_id", organizationId)
     .eq("product_id", productId)
     .not("lot_number", "is", null);
+
+  if (locationId !== null) {
+    query = query.eq("location_id", locationId);
+  } else {
+    query = query.is("location_id", null);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw new Error(`selectFefoLotsForProduct: ${error.message}`);
 

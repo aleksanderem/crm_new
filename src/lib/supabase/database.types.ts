@@ -6622,6 +6622,8 @@ export interface Database {
           source_type: string | null;
           source_id: string | null;
           note: string | null;
+          unit_price: number | null;
+          avg_cost_after: number | null;
           performed_by: string;
           created_at: number;
         };
@@ -6636,6 +6638,8 @@ export interface Database {
           source_type?: string | null;
           source_id?: string | null;
           note?: string | null;
+          unit_price?: number | null;
+          avg_cost_after?: number | null;
           performed_by: string;
           created_at: number;
         };
@@ -6650,6 +6654,8 @@ export interface Database {
           source_type?: string | null;
           source_id?: string | null;
           note?: string | null;
+          unit_price?: number | null;
+          avg_cost_after?: number | null;
           performed_by?: string;
           created_at?: number;
         };

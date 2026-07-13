@@ -253,6 +253,7 @@ export async function applyMovementInternal(
     sourceId: params.sourceId ?? null,
     note: params.note ?? null,
     unitPrice: snapshotPrice,
+    ...(newAvgCost !== null ? { avgCostAfter: newAvgCost } : {}),
     performedBy: params.performedBy,
     createdAt: now,
   });

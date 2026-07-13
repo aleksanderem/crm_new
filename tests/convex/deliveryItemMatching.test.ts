@@ -17,6 +17,7 @@ import {
 } from "../../convex/_ai/invoiceMatching";
 import type { ParsedInvoiceItem } from "../../convex/_ai/documentAnalyzer";
 import type { MatchingProposals } from "../../convex/_ai/invoiceMatching";
+import { makeInvoiceItem } from "./_delivery_helpers";
 
 // matchDeliveryItems does not use the document analyzer, but warehouseDeliveries.ts
 // statically imports getDocumentAnalyzer which chains to openai (not installed in tests).
@@ -30,28 +31,12 @@ vi.mock("../../convex/_ai/documentAnalyzer", () => ({
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeItem(productName: string): ParsedInvoiceItem {
-  return {
-    productName,
-    quantity: 1,
-    unit: "szt",
-    unitPrice: null,
-    vatRate: null,
-    vatCode: null,
-    unitPriceGross: null,
-    lineValueNet: null,
-    lineValueGross: null,
-    lotNumber: null,
-    expiryDate: null,
-  };
-}
-
 const SAMPLE_ANALYSIS_RESULT = {
   supplierName: "ACME Sp. z o.o.",
   invoiceNumber: "FV/2024/001",
   invoiceDate: "2024-01-15",
   items: [
-    makeItem("Rękawiczki nitrylowe"),
+    makeInvoiceItem("Rękawiczki nitrylowe"),
   ],
   confidence: 0.92,
 };
@@ -59,7 +44,7 @@ const SAMPLE_ANALYSIS_RESULT = {
 async function seedDeliveryWithAnalysis(
   organizationId: string,
   userId: string,
-  items: ParsedInvoiceItem[] = [makeItem("Rękawiczki nitrylowe")],
+  items: ParsedInvoiceItem[] = [makeInvoiceItem("Rękawiczki nitrylowe")],
 ): Promise<string> {
   const db = createSupabaseDb();
   return db.insert("warehouseDeliveries", {
@@ -140,7 +125,7 @@ describe("isNonInventoryCandidate", () => {
 describe("matchInvoiceItems — exact match", () => {
   test("returns status=matched when one product has an identical normalized name", () => {
     const result = matchInvoiceItems(
-      [makeItem("Rękawiczki nitrylowe")],
+      [makeInvoiceItem("Rękawiczki nitrylowe")],
       [{ productId: "p1", productName: "Rękawiczki nitrylowe" }],
     );
     expect(result.items).toHaveLength(1);
@@ -152,7 +137,7 @@ describe("matchInvoiceItems — exact match", () => {
 
   test("exact match is case- and whitespace-insensitive", () => {
     const result = matchInvoiceItems(
-      [makeItem("rękawiczki  nitrylowe")],
+      [makeInvoiceItem("rękawiczki  nitrylowe")],
       [{ productId: "p1", productName: "Rękawiczki nitrylowe" }],
     );
     expect(result.items[0].status).toBe("matched");
@@ -162,7 +147,7 @@ describe("matchInvoiceItems — exact match", () => {
 describe("matchInvoiceItems — variant/capacity difference → suggestions not matched", () => {
   test("Stylage XL 1 ml vs Stylage M 1 ml produces suggestions", () => {
     const result = matchInvoiceItems(
-      [makeItem("Stylage XL 1 ml")],
+      [makeInvoiceItem("Stylage XL 1 ml")],
       [
         { productId: "p1", productName: "Stylage M 1 ml" },
         { productId: "p2", productName: "Stylage L 1 ml" },
@@ -177,7 +162,7 @@ describe("matchInvoiceItems — variant/capacity difference → suggestions not 
 
   test("Stylage XL 1 ml does not auto-match Stylage M 1 ml as 'matched'", () => {
     const result = matchInvoiceItems(
-      [makeItem("Stylage XL 1 ml")],
+      [makeInvoiceItem("Stylage XL 1 ml")],
       [{ productId: "p1", productName: "Stylage M 1 ml" }],
     );
     expect(result.items[0].status).not.toBe("matched");
@@ -187,7 +172,7 @@ describe("matchInvoiceItems — variant/capacity difference → suggestions not 
 describe("matchInvoiceItems — multiple similar products → suggestions", () => {
   test("returns status=suggestions with all candidates when multiple products share high similarity", () => {
     const result = matchInvoiceItems(
-      [makeItem("Juvederm Ultra 2 ml")],
+      [makeInvoiceItem("Juvederm Ultra 2 ml")],
       [
         { productId: "p1", productName: "Juvederm Ultra 1 ml" },
         { productId: "p2", productName: "Juvederm Ultra 2 ml" },
@@ -201,7 +186,7 @@ describe("matchInvoiceItems — multiple similar products → suggestions", () =
 
   test("returns suggestions when invoice name partially matches multiple products", () => {
     const result = matchInvoiceItems(
-      [makeItem("Juvederm Ultra")],
+      [makeInvoiceItem("Juvederm Ultra")],
       [
         { productId: "p1", productName: "Juvederm Ultra 1 ml" },
         { productId: "p2", productName: "Juvederm Ultra 2 ml" },
@@ -215,7 +200,7 @@ describe("matchInvoiceItems — multiple similar products → suggestions", () =
 describe("matchInvoiceItems — no match", () => {
   test("returns status=unmatched when no product is similar", () => {
     const result = matchInvoiceItems(
-      [makeItem("Całkowicie nieznany preparat XYZ")],
+      [makeInvoiceItem("Całkowicie nieznany preparat XYZ")],
       [{ productId: "p1", productName: "Rękawiczki nitrylowe" }],
     );
     expect(result.items[0].status).toBe("unmatched");
@@ -224,32 +209,32 @@ describe("matchInvoiceItems — no match", () => {
   });
 
   test("returns unmatched when product list is empty", () => {
-    const result = matchInvoiceItems([makeItem("Stylage XL 1 ml")], []);
+    const result = matchInvoiceItems([makeInvoiceItem("Stylage XL 1 ml")], []);
     expect(result.items[0].status).toBe("unmatched");
   });
 });
 
 describe("matchInvoiceItems — non-inventory candidate", () => {
   test("returns status=non_inventory_candidate for transport line with no product match", () => {
-    const result = matchInvoiceItems([makeItem("Transport")], []);
+    const result = matchInvoiceItems([makeInvoiceItem("Transport")], []);
     expect(result.items[0].status).toBe("non_inventory_candidate");
     expect(result.items[0].handlingHint).toBeDefined();
   });
 
   test("dostawa is detected as non_inventory_candidate", () => {
-    const result = matchInvoiceItems([makeItem("Dostawa ekspresowa")], []);
+    const result = matchInvoiceItems([makeInvoiceItem("Dostawa ekspresowa")], []);
     expect(result.items[0].status).toBe("non_inventory_candidate");
   });
 
   test("rabat is detected as non_inventory_candidate", () => {
-    const result = matchInvoiceItems([makeItem("Rabat 5%")], []);
+    const result = matchInvoiceItems([makeInvoiceItem("Rabat 5%")], []);
     expect(result.items[0].status).toBe("non_inventory_candidate");
   });
 
   test("product named 'Transport' that exists in catalog still matches", () => {
     // If the org has a product literally called "Transport", exact match wins
     const result = matchInvoiceItems(
-      [makeItem("Transport")],
+      [makeInvoiceItem("Transport")],
       [{ productId: "p1", productName: "Transport" }],
     );
     expect(result.items[0].status).toBe("matched");
@@ -274,7 +259,7 @@ describe("matchDeliveryItems action — re-run does not change analysisResult", 
     const deliveryId = await seedDeliveryWithAnalysis(
       String(organizationId),
       String(userId),
-      [makeItem("Rękawiczki nitrylowe")],
+      [makeInvoiceItem("Rękawiczki nitrylowe")],
     );
 
     // First run
@@ -329,7 +314,7 @@ describe("matchInvoiceItems — saved mappings are priority #1", () => {
   test("saved mapping wins over exact name match", () => {
     const savedMappings = new Map([["rękawiczki nitrylowe", "p-saved"]]);
     const result = matchInvoiceItems(
-      [makeItem("Rękawiczki nitrylowe")],
+      [makeInvoiceItem("Rękawiczki nitrylowe")],
       [
         { productId: "p-saved", productName: "Rękawiczki nitrylowe" },
         { productId: "p-catalog", productName: "Rękawiczki nitrylowe" },
@@ -345,7 +330,7 @@ describe("matchInvoiceItems — saved mappings are priority #1", () => {
     const savedMappings = new Map([["stylage xl 1 ml", "p-deleted"]]);
     // p-deleted is not in the active products list
     const result = matchInvoiceItems(
-      [makeItem("Stylage XL 1 ml")],
+      [makeInvoiceItem("Stylage XL 1 ml")],
       [{ productId: "p-current", productName: "Stylage XL 1 ml" }],
       savedMappings,
     );
@@ -358,7 +343,7 @@ describe("matchInvoiceItems — saved mappings are priority #1", () => {
   test("saved mapping normalises the key (case and whitespace)", () => {
     const savedMappings = new Map([["rękawiczki nitrylowe", "p1"]]);
     const result = matchInvoiceItems(
-      [makeItem("  RĘKAWICZKI  NITRYLOWE  ")],
+      [makeInvoiceItem("  RĘKAWICZKI  NITRYLOWE  ")],
       [{ productId: "p1", productName: "Rękawiczki nitrylowe" }],
       savedMappings,
     );
@@ -380,7 +365,7 @@ describe("matchDeliveryItems action — saved name mappings persistence", () => 
     const deliveryId = await seedDeliveryWithAnalysis(
       String(organizationId),
       String(userId),
-      [makeItem("Rękawiczki nitrylowe")],
+      [makeInvoiceItem("Rękawiczki nitrylowe")],
     );
 
     await t
@@ -410,7 +395,7 @@ describe("matchDeliveryItems action — saved name mappings persistence", () => 
     const deliveryId = await seedDeliveryWithAnalysis(
       String(organizationId),
       String(userId),
-      [makeItem("Rękawiczki nitrylowe")],
+      [makeInvoiceItem("Rękawiczki nitrylowe")],
     );
 
     // First run writes the mapping
@@ -425,7 +410,7 @@ describe("matchDeliveryItems action — saved name mappings persistence", () => 
     const deliveryId2 = await seedDeliveryWithAnalysis(
       String(organizationId),
       String(userId),
-      [makeItem("Rękawiczki nitrylowe")],
+      [makeInvoiceItem("Rękawiczki nitrylowe")],
     );
 
     const proposals2 = (await t

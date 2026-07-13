@@ -405,7 +405,7 @@ export const removeSchedulePeriod = action({
     effectiveFrom: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -717,7 +717,7 @@ export const removeEmployeeSchedule = action({
     scheduleId: v.string(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );

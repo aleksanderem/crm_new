@@ -151,7 +151,7 @@ export const update = action({
   },
   handler: async (ctx, args) => {
     try {
-    const authResult = await ctx.runQuery(
+    await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -201,7 +201,7 @@ export const remove = action({
     leaveTypeId: v.string(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -289,7 +289,7 @@ export const initializeBalance = action({
     totalDays: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -348,7 +348,7 @@ export const adjustBalance = action({
     usedDays: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -381,7 +381,7 @@ export const initializeAllBalances = action({
     year: v.number(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );

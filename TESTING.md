@@ -52,6 +52,61 @@ Error: SUPABASE_URL not configured
 
 …it almost always means vitest was invoked from the wrong cwd or with the wrong config, so `tests/convex/_setup.ts` never ran and the real `createServiceRoleClient` is being called instead of the in-memory stub. Re-run via `npm run test:unit` (or one of the alternatives above). It is not an environment problem — the test suite never needs a real `SUPABASE_URL`.
 
+## Keeping `convex/_generated/api.d.ts` in sync
+
+Convex codegen writes every module file under `convex/` into `convex/_generated/api.d.ts` as an `import type * as …` line. This file is checked into the repo and must be updated manually whenever you add or remove a Convex module — `npx convex dev` / `npx convex codegen` regenerates it automatically, but both commands require a live Convex deployment that is unavailable in CI.
+
+### Detecting drift
+
+The CI typecheck job runs `npm run check:convex-codegen`, which compares the module files on disk against the imports in `api.d.ts` and exits non-zero if anything is missing or orphaned. You can run the same check locally before pushing:
+
+```sh
+npm run check:convex-codegen
+```
+
+When it fails it prints a clear list:
+
+```
+convex/_generated/api.d.ts is out of sync with convex/.
+
+Missing from api.d.ts (file exists under convex/, no import):
+  - gabinet/myNewModule
+
+Orphan in api.d.ts (imported but file is gone or excluded):
+  - gabinet/deletedModule
+```
+
+### Manual update procedure
+
+For each **missing** module printed above, add a line to `convex/_generated/api.d.ts` in the alphabetically correct position among the existing `import type * as …` lines:
+
+```ts
+import type * as <identifier> from "../<path>.js";
+```
+
+The `<identifier>` follows the same convention Convex codegen uses: take the relative path (without extension), replace every `/` with `_`, and keep any leading underscores from directory or file names. Examples:
+
+| File added under `convex/` | Path key | Identifier |
+|---|---|---|
+| `gabinet/myNewModule.ts` | `gabinet/myNewModule` | `gabinet_myNewModule` |
+| `_ai/newProvider.ts` | `_ai/newProvider` | `_ai_newProvider` |
+| `crm/_registry.ts` | `crm/_registry` | `crm__registry` |
+| `topLevel.ts` | `topLevel` | `topLevel` |
+
+For each **orphan** (file deleted or renamed), remove the corresponding `import type * as …` line.
+
+After editing, re-run `npm run check:convex-codegen` to confirm the file is in sync, then commit `convex/_generated/api.d.ts` alongside your new module file.
+
+### What counts as a module file
+
+The check script mirrors Convex's own filter rules. A file is a module if it:
+
+- has extension `.ts`, `.tsx`, `.js`, or `.jsx`
+- is not inside `_generated/`
+- does not start with `.` or `#`
+- is not `schema.ts` / `schema.js`
+- has at most one `.` in its basename (so `*.config.ts`, `*.test.ts`, `*.d.ts` are all excluded)
+
 ## Fake timers + convex-test: restrict `toFake`
 
 If your test uses `vi.useFakeTimers()` alongside convex-test scheduled functions (e.g. `t.finishAllScheduledFunctions(() => vi.runAllTimers())`), you MUST pass an explicit `toFake` list:

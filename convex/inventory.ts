@@ -154,6 +154,8 @@ interface ApplyMovementParams {
   sourceId?: string | null;
   note?: string | null;
   unitPrice?: number | null;
+  lotNumber?: string | null;
+  expiryDate?: string | null;
   performedBy: string;
 }
 
@@ -254,6 +256,8 @@ export async function applyMovementInternal(
     note: params.note ?? null,
     unitPrice: snapshotPrice,
     ...(newAvgCost !== null ? { avgCostAfter: newAvgCost } : {}),
+    ...(params.lotNumber ? { lotNumber: params.lotNumber } : {}),
+    ...(params.expiryDate ? { expiryDate: params.expiryDate } : {}),
     performedBy: params.performedBy,
     createdAt: now,
   });

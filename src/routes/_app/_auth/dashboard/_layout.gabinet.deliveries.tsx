@@ -85,6 +85,8 @@ interface LineItem {
   vatCode: string;
   unitPriceGross: string;  // gross
   lastEdited: "net" | "gross" | null;
+  lotNumber: string;
+  expiryDate: string;
 }
 
 function newLine(): LineItem {
@@ -96,6 +98,8 @@ function newLine(): LineItem {
     vatCode: "",
     unitPriceGross: "",
     lastEdited: null,
+    lotNumber: "",
+    expiryDate: "",
   };
 }
 
@@ -162,6 +166,35 @@ function DeliveriesPage() {
     [productsData],
   );
 
+  // Read-only view panel state (posted deliveries)
+  const [viewPanelOpen, setViewPanelOpen] = useState(false);
+  const [viewDelivery, setViewDelivery] = useState<{
+    delivery: Record<string, unknown>;
+    items: Array<Record<string, unknown>>;
+  } | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
+
+  const handleViewOpen = async (id: string) => {
+    setViewLoading(true);
+    try {
+      const result = await getDeliveryAction({ organizationId, deliveryId: id }) as {
+        delivery: Record<string, unknown>;
+        items: Array<Record<string, unknown>>;
+      };
+      setViewDelivery(result);
+      setViewPanelOpen(true);
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.deliveries.loadError",
+          defaultValue: "Nie udało się załadować dostawy.",
+        }),
+      );
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
   // Create/edit panel state
   const [panelOpen, setPanelOpen] = useState(false);
   const [editDeliveryId, setEditDeliveryId] = useState<string | null>(null);
@@ -218,6 +251,8 @@ function DeliveriesPage() {
               vatCode: item.vatCode ? String(item.vatCode) : "",
               unitPriceGross: item.unitPriceGross != null ? String(item.unitPriceGross) : "",
               lastEdited: item.unitPrice != null ? "net" : (item.unitPriceGross != null ? "gross" : null),
+              lotNumber: item.lotNumber ? String(item.lotNumber) : "",
+              expiryDate: item.expiryDate ? String(item.expiryDate) : "",
             }))
           : [newLine()],
       );
@@ -301,6 +336,25 @@ function DeliveriesPage() {
 
   const handleSave = async () => {
     if (!canSubmit) return;
+
+    // Detect duplicate LOT within this delivery before submitting
+    const lotSeen = new Set<string>();
+    for (const l of validItems) {
+      if (l.lotNumber.trim()) {
+        const key = `${l.productId}::${l.lotNumber.trim()}`;
+        if (lotSeen.has(key)) {
+          toast.error(
+            t("gabinet.deliveries.duplicateLot", {
+              lot: l.lotNumber.trim(),
+              defaultValue: `Numer LOT "${l.lotNumber.trim()}" powtarza się dla tego samego produktu w tej dostawie.`,
+            }),
+          );
+          return;
+        }
+        lotSeen.add(key);
+      }
+    }
+
     setSubmitting(true);
     try {
       const resolvedLocation =
@@ -319,6 +373,8 @@ function DeliveriesPage() {
           unitPriceGross: grossP,
           lineValueNet: netP !== undefined ? round2(qty * netP) : undefined,
           lineValueGross: grossP !== undefined ? round2(qty * grossP) : undefined,
+          lotNumber: l.lotNumber.trim() || undefined,
+          expiryDate: l.expiryDate.trim() || undefined,
         };
       });
 
@@ -494,7 +550,7 @@ function DeliveriesPage() {
                     </td>
                     <td className="px-4 py-3">{statusBadge(status, t)}</td>
                     <td className="px-4 py-3 text-right">
-                      {status === "draft" && (
+                      {status === "draft" ? (
                         <div className="flex items-center justify-end gap-2">
                           <Button
                             size="sm"
@@ -524,6 +580,16 @@ function DeliveriesPage() {
                             {t("gabinet.deliveries.cancelAction", "Usuń")}
                           </Button>
                         </div>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleViewOpen(id)}
+                          disabled={viewLoading}
+                          className="gap-1.5"
+                        >
+                          {t("gabinet.deliveries.viewAction", "Podgląd")}
+                        </Button>
                       )}
                     </td>
                   </tr>
@@ -649,92 +715,107 @@ function DeliveriesPage() {
               </div>
               <div className="divide-y">
                 {items.map((line) => (
-                  <div
-                    key={line.id}
-                    className="grid grid-cols-[1fr_65px_85px_82px_82px_28px] items-center gap-1 px-3 py-2"
-                  >
-                    <Select
-                      value={line.productId}
-                      onValueChange={(v) => updateLine(line.id, "productId", v)}
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder={t("gabinet.deliveries.selectProduct", "Wybierz…")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {stockableProducts.map((p) => (
-                          <SelectItem key={p._id} value={p._id}>
-                            {p.name}
-                            {p.sku ? ` (${p.sku})` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div key={line.id} className="px-3 py-2 space-y-1.5">
+                    {/* Row 1: product + qty + prices + delete */}
+                    <div className="grid grid-cols-[1fr_65px_85px_82px_82px_28px] items-center gap-1">
+                      <Select
+                        value={line.productId}
+                        onValueChange={(v) => updateLine(line.id, "productId", v)}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder={t("gabinet.deliveries.selectProduct", "Wybierz…")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {stockableProducts.map((p) => (
+                            <SelectItem key={p._id} value={p._id}>
+                              {p.name}
+                              {p.sku ? ` (${p.sku})` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
 
-                    <Input
-                      className="h-8 text-right text-xs tabular-nums"
-                      placeholder="0"
-                      inputMode="decimal"
-                      value={line.quantity}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v))
-                          updateLine(line.id, "quantity", v);
-                      }}
-                    />
+                      <Input
+                        className="h-8 text-right text-xs tabular-nums"
+                        placeholder="0"
+                        inputMode="decimal"
+                        value={line.quantity}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v))
+                            updateLine(line.id, "quantity", v);
+                        }}
+                      />
 
-                    {/* Net price — user can enter net and gross is auto-computed */}
-                    <Input
-                      className="h-8 text-right text-xs tabular-nums"
-                      placeholder="—"
-                      inputMode="decimal"
-                      value={line.unitPrice}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v))
-                          updateLine(line.id, "unitPrice", v);
-                      }}
-                    />
+                      <Input
+                        className="h-8 text-right text-xs tabular-nums"
+                        placeholder="—"
+                        inputMode="decimal"
+                        value={line.unitPrice}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v))
+                            updateLine(line.id, "unitPrice", v);
+                        }}
+                      />
 
-                    <Select
-                      value={line.vatCode}
-                      onValueChange={(v) => updateLine(line.id, "vatCode", v as VatCode)}
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="VAT" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {VAT_OPTIONS.map((o) => (
-                          <SelectItem key={o.code} value={o.code}>
-                            {o.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <Select
+                        value={line.vatCode}
+                        onValueChange={(v) => updateLine(line.id, "vatCode", v as VatCode)}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="VAT" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {VAT_OPTIONS.map((o) => (
+                            <SelectItem key={o.code} value={o.code}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
 
-                    {/* Gross price — user can enter gross and net is auto-computed */}
-                    <Input
-                      className="h-8 text-right text-xs tabular-nums"
-                      placeholder="—"
-                      inputMode="decimal"
-                      value={line.unitPriceGross}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v))
-                          updateLine(line.id, "unitPriceGross", v);
-                      }}
-                    />
+                      <Input
+                        className="h-8 text-right text-xs tabular-nums"
+                        placeholder="—"
+                        inputMode="decimal"
+                        value={line.unitPriceGross}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v))
+                            updateLine(line.id, "unitPriceGross", v);
+                        }}
+                      />
 
-                    <button
-                      type="button"
-                      onClick={() => removeLine(line.id)}
-                      disabled={items.length === 1}
-                      className={cn(
-                        "flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors",
-                        items.length > 1 ? "hover:bg-destructive/10 hover:text-destructive" : "opacity-30 cursor-default",
-                      )}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" variant="stroke" />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => removeLine(line.id)}
+                        disabled={items.length === 1}
+                        className={cn(
+                          "flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors",
+                          items.length > 1 ? "hover:bg-destructive/10 hover:text-destructive" : "opacity-30 cursor-default",
+                        )}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" variant="stroke" />
+                      </button>
+                    </div>
+
+                    {/* Row 2: LOT number + expiry date (optional) */}
+                    <div className="grid grid-cols-2 gap-1">
+                      <Input
+                        className="h-7 text-xs"
+                        placeholder={t("gabinet.deliveries.lotNumber", "Nr LOT (opcjonalnie)")}
+                        value={line.lotNumber}
+                        onChange={(e) => updateLine(line.id, "lotNumber", e.target.value)}
+                      />
+                      <Input
+                        className="h-7 text-xs"
+                        type="date"
+                        title={t("gabinet.deliveries.expiryDate", "Termin ważności")}
+                        value={line.expiryDate}
+                        onChange={(e) => updateLine(line.id, "expiryDate", e.target.value)}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -785,6 +866,128 @@ function DeliveriesPage() {
               : t("gabinet.deliveries.saveDelivery", "Zapisz dostawę")}
           </Button>
         </div>
+      </SidePanel>
+
+      {/* Read-only view panel for posted deliveries */}
+      <SidePanel
+        open={viewPanelOpen}
+        onOpenChange={(o) => {
+          setViewPanelOpen(o);
+          if (!o) setViewDelivery(null);
+        }}
+        title={t("gabinet.deliveries.viewDelivery", "Podgląd dostawy")}
+        description={t("gabinet.deliveries.viewDeliveryDesc", "Szczegóły zaksięgowanej dostawy (tylko do odczytu).")}
+      >
+        {viewDelivery && (() => {
+          const d = viewDelivery.delivery;
+          const viewItems = viewDelivery.items;
+          const supplier = d.supplierName ? String(d.supplierName) : null;
+          const invoice = d.invoiceNumber ? String(d.invoiceNumber) : null;
+          const delivDate = d.deliveryDate ? String(d.deliveryDate) : null;
+          const viewNotes = d.notes ? String(d.notes) : null;
+          const viewGross = typeof d.totalValueGross === "number" ? d.totalValueGross : null;
+          const viewNet = typeof d.totalValue === "number" ? d.totalValue : null;
+          const locationLabel = locations.find(
+            (loc) => loc._id === String(d.locationId ?? "")
+          )?.name ?? null;
+
+          return (
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {supplier && (
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-muted-foreground">{t("gabinet.deliveries.supplierName", "Dostawca")}</p>
+                    <p className="font-medium">{supplier}</p>
+                  </div>
+                )}
+                {invoice && (
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-muted-foreground">{t("gabinet.deliveries.invoiceNumber", "Nr faktury")}</p>
+                    <p className="font-medium">{invoice}</p>
+                  </div>
+                )}
+                {delivDate && (
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-muted-foreground">{t("gabinet.deliveries.deliveryDate", "Data dostawy")}</p>
+                    <p className="font-medium">{delivDate}</p>
+                  </div>
+                )}
+                {locationLabel && (
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-muted-foreground">{t("gabinet.deliveries.location", "Lokalizacja")}</p>
+                    <p className="font-medium">{locationLabel}</p>
+                  </div>
+                )}
+              </div>
+
+              {viewNotes && (
+                <div className="space-y-0.5 text-sm">
+                  <p className="text-xs text-muted-foreground">{t("gabinet.deliveries.notes", "Uwagi")}</p>
+                  <p className="whitespace-pre-line">{viewNotes}</p>
+                </div>
+              )}
+
+              <div className="rounded-md border">
+                <div className="grid grid-cols-[1fr_55px_70px] gap-1 border-b bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">
+                  <span>{t("gabinet.deliveries.colProduct", "Produkt")}</span>
+                  <span className="text-right">{t("gabinet.deliveries.colQty", "Ilość")}</span>
+                  <span className="text-right">{t("gabinet.deliveries.colUnitPriceGross", "Cena brutto")}</span>
+                </div>
+                <div className="divide-y">
+                  {viewItems.map((item, idx) => {
+                    const product = stockableProducts.find(
+                      (p) => p._id === String(item.productId ?? ""),
+                    );
+                    const lotNumber = item.lotNumber ? String(item.lotNumber) : null;
+                    const expiryDate = item.expiryDate ? String(item.expiryDate) : null;
+                    return (
+                      <div key={idx} className="px-3 py-2 space-y-0.5">
+                        <div className="grid grid-cols-[1fr_55px_70px] gap-1 items-start text-sm">
+                          <span className="font-medium">
+                            {product?.name ?? String(item.productId ?? "")}
+                            {product?.sku ? <span className="ml-1 text-xs text-muted-foreground">({product.sku})</span> : null}
+                          </span>
+                          <span className="text-right tabular-nums">
+                            {item.quantity != null ? String(item.quantity) : "—"}
+                          </span>
+                          <span className="text-right tabular-nums">
+                            {item.unitPriceGross != null
+                              ? fmtMoney(Number(item.unitPriceGross))
+                              : item.unitPrice != null
+                                ? fmtMoney(Number(item.unitPrice))
+                                : "—"}
+                          </span>
+                        </div>
+                        {(lotNumber || expiryDate) && (
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                            {lotNumber && <span>LOT: <span className="font-medium text-foreground">{lotNumber}</span></span>}
+                            {expiryDate && <span>{t("gabinet.deliveries.expiryDate", "Termin ważności")}: <span className="font-medium text-foreground">{expiryDate}</span></span>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {(viewNet !== null || viewGross !== null) && (
+                  <div className="border-t bg-muted/20 px-3 py-2.5 space-y-1">
+                    {viewNet !== null && (
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>{t("gabinet.deliveries.totalNet", "Suma netto")}</span>
+                        <span className="tabular-nums font-medium">{fmtMoney(viewNet)}</span>
+                      </div>
+                    )}
+                    {viewGross !== null && (
+                      <div className="flex justify-between text-xs font-semibold">
+                        <span>{t("gabinet.deliveries.totalGross", "Suma brutto")}</span>
+                        <span className="tabular-nums">{fmtMoney(viewGross)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </SidePanel>
 
       {/* Post delivery confirmation */}

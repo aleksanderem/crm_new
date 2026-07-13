@@ -370,6 +370,8 @@ export function createCrmTables({
     note: v.optional(v.string()),
     unitPrice: v.optional(v.number()),
     avgCostAfter: v.optional(v.number()),
+    lotNumber: v.optional(v.string()),        // LOT/batch number (#2989)
+    expiryDate: v.optional(v.string()),       // ISO date YYYY-MM-DD (#2989)
     performedBy: v.id("users"),
     createdAt: v.number(),
   })
@@ -416,6 +418,8 @@ export function createCrmTables({
     unitPriceGross: v.optional(v.number()),   // gross unit price (#2975)
     lineValueNet: v.optional(v.number()),     // qty × unitPrice (#2975)
     lineValueGross: v.optional(v.number()),   // qty × unitPriceGross (#2975)
+    lotNumber: v.optional(v.string()),        // LOT/batch number (#2989)
+    expiryDate: v.optional(v.string()),       // ISO date YYYY-MM-DD (#2989)
     movementId: v.optional(v.string()),
     createdAt: v.number(),
   })

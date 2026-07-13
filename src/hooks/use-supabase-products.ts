@@ -31,6 +31,13 @@ export interface MappedStockMovement {
   createdAt: number;
 }
 
+export interface LotBatch {
+  lotNumber: string;
+  expiryDate: string | null;
+  locationId: string | null;
+  quantity: number;
+}
+
 import { useMemo } from "react";
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { useSupabase } from "@/components/supabase-provider";
@@ -245,6 +252,61 @@ export function useSupabaseProductStockMovements(
           createdAt: Number(row.created_at),
         };
       });
+    },
+    enabled: enabled && isReady && !!organizationId && !!productId,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Product LOT Batches (#2989)
+//
+// Reads all warehouse_receive movements with a lot_number for one product,
+// aggregates them by (location_id, lot_number, expiry_date), and returns
+// only batches with quantity > 0 (positive net delta).
+// ---------------------------------------------------------------------------
+
+export function useSupabaseProductLotBatches(
+  organizationId: string,
+  productId: string | null,
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  return useQuery<LotBatch[], Error>({
+    queryKey: ["supabase", "productLotBatches", organizationId, productId ?? ""],
+    queryFn: async (): Promise<LotBatch[]> => {
+      if (!client || !productId) return [];
+
+      const { data, error } = await client
+        .from("product_stock_movements")
+        .select("location_id, lot_number, expiry_date, delta")
+        .eq("organization_id", organizationId)
+        .eq("product_id", productId)
+        .not("lot_number", "is", null);
+
+      if (error) throw error;
+
+      type Row = { location_id: string | null; lot_number: string; expiry_date: string | null; delta: number };
+      const rows = (data ?? []) as Row[];
+
+      const map = new Map<string, LotBatch>();
+      for (const row of rows) {
+        const key = `${row.location_id ?? ""}::${row.lot_number}::${row.expiry_date ?? ""}`;
+        const existing = map.get(key);
+        if (existing) {
+          existing.quantity += Number(row.delta);
+        } else {
+          map.set(key, {
+            lotNumber: row.lot_number,
+            expiryDate: row.expiry_date,
+            locationId: row.location_id,
+            quantity: Number(row.delta),
+          });
+        }
+      }
+
+      return Array.from(map.values()).filter((b) => b.quantity > 0);
     },
     enabled: enabled && isReady && !!organizationId && !!productId,
   });

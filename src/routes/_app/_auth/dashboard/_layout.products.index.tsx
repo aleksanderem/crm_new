@@ -10,6 +10,8 @@ import {
   useSupabaseProductsList,
   useSupabaseUsedProductIds,
   useSupabaseProductStockTotals,
+  useSupabaseProductLotBatches,
+  type LotBatch,
 } from "@/hooks/use-supabase-products";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
@@ -19,7 +21,7 @@ import { SidePanel } from "@/components/crm/side-panel";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History, ClipboardList } from "@/lib/ez-icons";
+import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History, ClipboardList, Archive } from "@/lib/ez-icons";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
@@ -38,6 +40,7 @@ import { formatActionError } from "@/lib/format-action-error";
 import { cn } from "@/lib/utils";
 import { ProductForm, type ProductFormData, type ProductSection, PRODUCT_SECTIONS } from "@/components/forms/product-form";
 import { WarehouseInventoryDialog } from "@/components/gabinet/warehouse-inventory-dialog";
+import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 
 type ProductsNudgeFilter = "unused" | "low_stock";
 
@@ -223,6 +226,7 @@ function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [stockAdjustProduct, setStockAdjustProduct] = useState<Product | null>(null);
   const [stockHistoryProduct, setStockHistoryProduct] = useState<Product | null>(null);
+  const [lotBatchesProduct, setLotBatchesProduct] = useState<Product | null>(null);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
 
@@ -231,6 +235,12 @@ function ProductsPage() {
     enabled: nudgeFilter === "unused",
   });
   const { totalsByProductId } = useSupabaseProductStockTotals(organizationId);
+  const { data: locations = [] } = useSupabaseGabinetLocationsList(String(organizationId), { activeOnly: false });
+  const { data: lotBatches = [], isLoading: lotBatchesLoading } = useSupabaseProductLotBatches(
+    organizationId,
+    lotBatchesProduct?._id ?? null,
+    { enabled: !!lotBatchesProduct },
+  );
 
   // Compute per-product stock status for filtering and display
   const productStockStatus = useMemo(() => {
@@ -599,6 +609,11 @@ function ProductsPage() {
         icon: <History className="h-4 w-4" variant="stroke" />,
         onClick: () => setStockHistoryProduct(row),
       });
+      actions.push({
+        label: t("products.stock.lots.action", { defaultValue: "Partie" }),
+        icon: <Archive className="h-4 w-4" variant="stroke" />,
+        onClick: () => setLotBatchesProduct(row),
+      });
     }
     actions.push(
       {
@@ -902,6 +917,65 @@ function ProductsPage() {
         organizationId={organizationId}
         product={stockHistoryProduct}
       />
+
+      {/* LOT batches read-only panel (#2989) */}
+      <SidePanel
+        open={!!lotBatchesProduct}
+        onOpenChange={(open) => {
+          if (!open) setLotBatchesProduct(null);
+        }}
+        title={t("products.stock.lots.panelTitle", { defaultValue: "Aktywne partie (LOT)" })}
+        description={lotBatchesProduct
+          ? t("products.stock.lots.panelDesc", { name: lotBatchesProduct.name, defaultValue: `Partie produktu: ${lotBatchesProduct.name}` })
+          : undefined
+        }
+      >
+        {lotBatchesLoading ? (
+          <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+            {t("common.loading", "Ładowanie…")}
+          </div>
+        ) : lotBatches.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-12 text-center">
+            <Archive className="h-6 w-6 text-muted-foreground/40" variant="stroke" />
+            <p className="text-sm text-muted-foreground">
+              {t("products.stock.lots.empty", { defaultValue: "Brak aktywnych partii z numerem LOT." })}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {(lotBatches as LotBatch[]).map((batch, idx) => {
+              const locationName = batch.locationId
+                ? locations.find((l) => l._id === batch.locationId)?.name ?? batch.locationId
+                : null;
+              const unit = lotBatchesProduct?.stockUnit?.trim() ?? "";
+              return (
+                <div key={idx} className="rounded-md border px-4 py-3 text-sm space-y-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-medium">{batch.lotNumber}</div>
+                    <div className="tabular-nums font-semibold shrink-0">
+                      {batch.quantity}{unit ? ` ${unit}` : ""}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                    {batch.expiryDate && (
+                      <span>
+                        {t("gabinet.deliveries.expiryDate", "Termin ważności")}:{" "}
+                        <span className="text-foreground">{batch.expiryDate}</span>
+                      </span>
+                    )}
+                    {locationName && (
+                      <span>
+                        {t("gabinet.deliveries.location", "Lokalizacja")}:{" "}
+                        <span className="text-foreground">{locationName}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </SidePanel>
 
       <TagsManagerSlideout
         isOpen={tagsSlideoutOpen}

@@ -265,6 +265,68 @@ export async function applyMovementInternal(
   return { movementId, balanceAfter: newBalance, warning };
 }
 
+// ---------------------------------------------------------------------------
+// FEFO lot selection — used by appointment settlement to deduct lot stock in
+// First-Expired-First-Out order. Returns batches sorted by expiry_date ASC
+// (null expiry last) with quantity > 0. Aggregates across all locations since
+// appointment deductions don't specify a location.
+// ---------------------------------------------------------------------------
+
+export interface FefoLot {
+  lotNumber: string;
+  expiryDate: string | null;
+  quantity: number;
+}
+
+export async function selectFefoLotsForProduct(
+  productId: string,
+  organizationId: string,
+): Promise<FefoLot[]> {
+  const db = createSupabaseDb();
+
+  // Pull every movement that carries a lot_number for this product.
+  // warehouse_receive rows are positive; appointment_use rows (once wired) are
+  // negative. Summing deltas gives net quantity remaining per lot.
+  const { data, error } = await db.raw()
+    .from("product_stock_movements")
+    .select("lot_number, expiry_date, delta")
+    .eq("organization_id", organizationId)
+    .eq("product_id", productId)
+    .not("lot_number", "is", null);
+
+  if (error) throw new Error(`selectFefoLotsForProduct: ${error.message}`);
+
+  type Row = { lot_number: string; expiry_date: string | null; delta: number };
+  const rows = (data ?? []) as Row[];
+
+  const map = new Map<string, FefoLot>();
+  for (const row of rows) {
+    const key = `${row.lot_number}::${row.expiry_date ?? ""}`;
+    const existing = map.get(key);
+    if (existing) {
+      existing.quantity += Number(row.delta);
+    } else {
+      map.set(key, {
+        lotNumber: row.lot_number,
+        expiryDate: row.expiry_date,
+        quantity: Number(row.delta),
+      });
+    }
+  }
+
+  const batches = Array.from(map.values()).filter((b) => b.quantity > 0);
+
+  // Sort FEFO: earliest expiry first, lots without expiry date last.
+  batches.sort((a, b) => {
+    if (a.expiryDate === null && b.expiryDate === null) return 0;
+    if (a.expiryDate === null) return 1;
+    if (b.expiryDate === null) return -1;
+    return a.expiryDate < b.expiryDate ? -1 : a.expiryDate > b.expiryDate ? 1 : 0;
+  });
+
+  return batches;
+}
+
 async function loadStockSummary(
   productId: string,
   organizationId: string,

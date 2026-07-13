@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Plus, Trash2, TruckIcon, Loader2, CheckCircle } from "@/lib/ez-icons";
 import { formatActionError } from "@/lib/format-action-error";
-import { useSupabaseProductsList } from "@/hooks/use-supabase-products";
+import { useSupabaseProductsList, useSupabaseProductStockTotals } from "@/hooks/use-supabase-products";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import { cn } from "@/lib/utils";
 
@@ -160,6 +160,7 @@ function DeliveriesPage() {
 
   const { data: productsData = [] } = useSupabaseProductsList(String(organizationId));
   const { data: locations = [] } = useSupabaseGabinetLocationsList(String(organizationId), { activeOnly: true });
+  const { totalsByProductId } = useSupabaseProductStockTotals(String(organizationId));
 
   const stockableProducts = useMemo(
     () => productsData.filter((p) => p.isActive && p.trackStock),
@@ -799,6 +800,19 @@ function DeliveriesPage() {
                         <Trash2 className="h-3.5 w-3.5" variant="stroke" />
                       </button>
                     </div>
+
+                    {/* Stock-before-delivery hint */}
+                    {line.productId && (() => {
+                      const stockEntry = totalsByProductId.get(line.productId);
+                      if (!stockEntry) return null;
+                      const product = stockableProducts.find((p) => p._id === line.productId);
+                      const unit = product?.stockUnit ?? "szt.";
+                      return (
+                        <p className="text-xs text-muted-foreground px-0.5">
+                          {t("gabinet.deliveries.stockBefore", "Stan przed dostawą")}: {stockEntry.total.toLocaleString("pl-PL")} {unit}
+                        </p>
+                      );
+                    })()}
 
                     {/* Row 2: LOT number + expiry date (optional) */}
                     <div className="grid grid-cols-2 gap-1">

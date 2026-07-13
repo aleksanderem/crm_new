@@ -143,6 +143,53 @@ function fmtMoney(n: number) {
   return n.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function InvoicePageViewer({
+  pages,
+  t,
+}: {
+  pages: Array<{ url: string | null; mimeType: string; position: number }>;
+  t: ReturnType<typeof useTranslation>["t"];
+}) {
+  return (
+    <div className="space-y-2">
+      {pages.map((page, idx) => {
+        if (!page.url) return null;
+        const isImage = page.mimeType.startsWith("image/");
+        return (
+          <a
+            key={idx}
+            href={page.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block rounded-md border overflow-hidden hover:border-ring transition-colors"
+            title={`${t("gabinet.deliveries.invoicePage", "Strona")} ${page.position + 1}`}
+          >
+            {isImage ? (
+              <img
+                src={page.url}
+                alt={`${t("gabinet.deliveries.invoicePage", "Strona")} ${page.position + 1}`}
+                className="w-full object-contain"
+              />
+            ) : (
+              <div className="flex items-center gap-3 px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors">
+                <FileText className="h-8 w-8 text-muted-foreground shrink-0" variant="stroke" />
+                <div>
+                  <p className="font-medium text-sm">
+                    {t("gabinet.deliveries.invoicePdf", "Faktura PDF")}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("gabinet.deliveries.openInNewTab", "Kliknij, aby otworzyć")}
+                  </p>
+                </div>
+              </div>
+            )}
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
 function DeliveriesPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
@@ -220,6 +267,7 @@ function DeliveriesPage() {
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<LineItem[]>([newLine()]);
   const [submitting, setSubmitting] = useState(false);
+  const [editInvoicePageUrls, setEditInvoicePageUrls] = useState<Array<{ url: string | null; mimeType: string; position: number }>>([]);
 
   // Post delivery confirmation
   const [postTarget, setPostTarget] = useState<{ id: string; label: string } | null>(null);
@@ -242,6 +290,7 @@ function DeliveriesPage() {
     setLocationId(NO_LOCATION);
     setNotes("");
     setItems([newLine()]);
+    setEditInvoicePageUrls([]);
   }, []);
 
   const handleEditOpen = async (id: string) => {
@@ -250,6 +299,7 @@ function DeliveriesPage() {
       const result = await getDeliveryAction({ organizationId, deliveryId: id }) as {
         delivery: Record<string, unknown>;
         items: Array<Record<string, unknown>>;
+        invoicePageUrls: Array<{ url: string | null; mimeType: string; position: number }>;
       };
       const d = result.delivery;
       setEditDeliveryId(id);
@@ -273,6 +323,7 @@ function DeliveriesPage() {
             }))
           : [newLine()],
       );
+      setEditInvoicePageUrls(result.invoicePageUrls ?? []);
       setPanelOpen(true);
     } catch (e) {
       toast.error(
@@ -580,11 +631,10 @@ function DeliveriesPage() {
                       <div className="flex items-center gap-2">
                         {statusBadge(status, t)}
                         {Array.isArray(d.invoicePages) && (d.invoicePages as unknown[]).length > 0 && (
-                          <span
-                            title={t("gabinet.deliveries.hasInvoiceDoc", "Zeskanowana faktura")}
-                            className="text-sky-600 dark:text-sky-400"
-                          >
-                            <FileText className="h-3.5 w-3.5" variant="stroke" />
+                          <span className="inline-flex items-center gap-1 text-xs text-sky-600 dark:text-sky-400">
+                            <FileText className="h-3.5 w-3.5 shrink-0" variant="stroke" />
+                            {t("gabinet.deliveries.invoiceBadge", "Faktura")}
+                            {" · "}{(d.invoicePages as unknown[]).length}&nbsp;{t("gabinet.deliveries.invoiceBadgePages", "str.")}
                           </span>
                         )}
                       </div>
@@ -908,6 +958,15 @@ function DeliveriesPage() {
             )}
           </div>
 
+          {editInvoicePageUrls.length > 0 && (
+            <div className="space-y-2 text-sm">
+              <p className="text-xs font-medium text-muted-foreground">
+                {t("gabinet.deliveries.sourceDocument", "Dokument źródłowy")}
+              </p>
+              <InvoicePageViewer pages={editInvoicePageUrls} t={t} />
+            </div>
+          )}
+
           <Button
             className="w-full"
             disabled={!canSubmit}
@@ -982,40 +1041,10 @@ function DeliveriesPage() {
 
               {viewDelivery.invoicePageUrls.length > 0 && (
                 <div className="space-y-2 text-sm">
-                  <p className="text-xs text-muted-foreground">
-                    {t("gabinet.deliveries.invoicePages", "Zeskanowana faktura")}
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {t("gabinet.deliveries.sourceDocument", "Dokument źródłowy")}
                   </p>
-                  <div className="flex flex-wrap gap-2">
-                    {viewDelivery.invoicePageUrls.map((page, idx) => {
-                      if (!page.url) return null;
-                      const isImage = page.mimeType.startsWith("image/");
-                      return (
-                        <a
-                          key={idx}
-                          href={page.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex flex-col items-center gap-1 rounded-md border p-1.5 hover:bg-muted/50 transition-colors"
-                          title={`${t("gabinet.deliveries.invoicePage", "Strona")} ${page.position + 1}`}
-                        >
-                          {isImage ? (
-                            <img
-                              src={page.url}
-                              alt={`${t("gabinet.deliveries.invoicePage", "Strona")} ${page.position + 1}`}
-                              className="h-16 w-12 object-cover rounded"
-                            />
-                          ) : (
-                            <div className="flex h-16 w-12 items-center justify-center rounded bg-muted">
-                              <FileText className="h-6 w-6 text-muted-foreground" variant="stroke" />
-                            </div>
-                          )}
-                          <span className="text-xs text-muted-foreground">
-                            {t("gabinet.deliveries.invoicePageNum", "s.")} {page.position + 1}
-                          </span>
-                        </a>
-                      );
-                    })}
-                  </div>
+                  <InvoicePageViewer pages={viewDelivery.invoicePageUrls} t={t} />
                 </div>
               )}
 

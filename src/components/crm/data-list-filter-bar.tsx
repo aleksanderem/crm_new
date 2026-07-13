@@ -484,8 +484,9 @@ export function DataListFilterBar({
           </Button>
         )}
         {onColumnSettingsOpen && (
-          <button type="button" className="group relative inline-flex h-max cursor-pointer items-center justify-center rounded-lg border border-border-primary bg-bg-primary px-2 py-1.5 text-fg-quaternary shadow-xs hover:bg-bg-primary_hover hover:text-fg-tertiary" onClick={onColumnSettingsOpen}>
+          <button type="button" className="group relative inline-flex h-max cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-border-primary bg-bg-primary px-3 py-1.5 text-sm text-fg-quaternary shadow-xs hover:bg-bg-primary_hover hover:text-fg-tertiary" onClick={onColumnSettingsOpen}>
             <Columns03 className="size-4 stroke-[2px]" />
+            <span>{t("table.showColumns", { defaultValue: "Show columns" })}</span>
           </button>
         )}
         {!onColumnSettingsOpen && columnDefs && columnDefs.length > 0 && onToggleColumn && (

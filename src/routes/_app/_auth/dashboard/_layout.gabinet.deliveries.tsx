@@ -42,6 +42,12 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Trash2, TruckIcon, Loader2, CheckCircle, ChevronUp, ChevronDown, FileText, Sparkles, RefreshCw, AlertCircle, X } from "@/lib/ez-icons";
 import { formatActionError } from "@/lib/format-action-error";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useSupabaseProductsList, useSupabaseProductStockTotals } from "@/hooks/use-supabase-products";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import { cn } from "@/lib/utils";
@@ -789,6 +795,14 @@ function DeliveriesPage() {
                 const createdAt = typeof d.createdAt === "number" ? d.createdAt : null;
                 const delivDate = d.deliveryDate ? String(d.deliveryDate) : null;
                 const label = invoice ?? supplier ?? id.slice(0, 8);
+                const rowItemDecisions =
+                  d.itemDecisions != null && typeof d.itemDecisions === "object"
+                    ? (d.itemDecisions as ItemDecisions)
+                    : null;
+                const hasCreateLater =
+                  rowItemDecisions != null &&
+                  Array.isArray(rowItemDecisions.items) &&
+                  rowItemDecisions.items.some((item) => item?.type === "create_later");
                 const displayValue =
                   typeof d.totalValueGross === "number"
                     ? d.totalValueGross
@@ -846,15 +860,41 @@ function DeliveriesPage() {
                               {t("gabinet.deliveries.checkItemsAction", "Sprawdź pozycje")}
                             </Button>
                           )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setPostTarget({ id, label })}
-                            className="gap-1.5"
-                          >
-                            <CheckCircle className="h-3.5 w-3.5" variant="stroke" />
-                            {t("gabinet.deliveries.postAction", "Zaksięguj")}
-                          </Button>
+                          {hasCreateLater ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled
+                                      className="gap-1.5 pointer-events-none"
+                                    >
+                                      <CheckCircle className="h-3.5 w-3.5" variant="stroke" />
+                                      {t("gabinet.deliveries.postAction", "Zaksięguj")}
+                                    </Button>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {t(
+                                    "gabinet.deliveries.postBlockedCreateLater",
+                                    "Najpierw rozwiąż pozycje „Utwórz później" w weryfikacji faktury.",
+                                  )}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setPostTarget({ id, label })}
+                              className="gap-1.5"
+                            >
+                              <CheckCircle className="h-3.5 w-3.5" variant="stroke" />
+                              {t("gabinet.deliveries.postAction", "Zaksięguj")}
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="ghost"

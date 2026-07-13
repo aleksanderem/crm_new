@@ -125,7 +125,7 @@ export const documentTables = {
     entityType: v.string(),
     entityId: v.string(),
     // Additional scope entities that provided auto-fill data
-    scopeEntities: v.optional(v.string()),
+    scopeEntities: v.optional(v.any()),
     // Status
     status: formDocumentStatusValidator,
     // Signature data

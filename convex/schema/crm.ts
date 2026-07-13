@@ -367,6 +367,7 @@ export function createCrmTables({
     sourceType: v.optional(v.string()),
     sourceId: v.optional(v.string()),
     note: v.optional(v.string()),
+    unitPrice: v.optional(v.number()),
     performedBy: v.id("users"),
     createdAt: v.number(),
   })

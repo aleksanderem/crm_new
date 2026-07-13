@@ -194,6 +194,7 @@ export const postDelivery = action({
         sourceType: "warehouse_delivery",
         sourceId: args.deliveryId,
         note: noteText,
+        unitPrice: item.unitPrice != null ? Number(item.unitPrice) : undefined,
         performedBy: String(auth.userId),
       });
       await db.patch("warehouseDeliveryItems", String(item._id), { movementId });

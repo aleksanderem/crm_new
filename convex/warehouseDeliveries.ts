@@ -681,6 +681,44 @@ export const matchDeliveryItems = action({
   },
 });
 
+// ---------------------------------------------------------------------------
+// saveItemDecisions (#3055)
+// ---------------------------------------------------------------------------
+// Persists user decisions from the verification screen onto the draft delivery.
+// Writes only itemDecisions — never touches analysisResult or matchingProposals.
+
+export const saveItemDecisions = action({
+  args: {
+    organizationId: v.id("organizations"),
+    deliveryId: v.string(),
+    decisions: v.any(),
+  },
+  handler: async (ctx, args): Promise<void> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_inventory", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+    const delivery = await db.get<DeliveryRow>("warehouseDeliveries", args.deliveryId);
+    if (!delivery || String(delivery.organizationId) !== String(args.organizationId)) {
+      throw new Error("Delivery not found");
+    }
+    if (delivery.status === "posted") {
+      throw new Error("Cannot modify a posted delivery");
+    }
+
+    await db.patch("warehouseDeliveries", args.deliveryId, {
+      itemDecisions: args.decisions,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
 export const postDelivery = action({
   args: {
     organizationId: v.id("organizations"),

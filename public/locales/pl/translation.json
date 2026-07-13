@@ -409,6 +409,7 @@
   "table": {
     "columns": "Kolumny",
     "toggleColumns": "Przełącz kolumny",
+    "showColumns": "Pokaż kolumny",
     "noResults": "Brak wyników",
     "recordCount": "{{count}} rekordów",
     "recordCount_one": "{{count}} rekord",

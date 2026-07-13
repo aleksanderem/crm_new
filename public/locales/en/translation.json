@@ -409,6 +409,7 @@
   "table": {
     "columns": "Columns",
     "toggleColumns": "Toggle columns",
+    "showColumns": "Show columns",
     "noResults": "No results found",
     "recordCount": "{{count}} records",
     "recordCount_one": "{{count}} record",

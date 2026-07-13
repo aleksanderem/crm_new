@@ -587,6 +587,124 @@ export const backfillEmployees = internalAction({
 // Run all backfills in dependency order
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Backfill avg_cost_after for pre-migration warehouse_receive movements (#2984)
+//
+// Movements created before migration 00056 have avg_cost_after = NULL.
+// This action replays all warehouse_receive movements in chronological order
+// per (product_id, location_id) group, computing the running weighted-average
+// net purchase price and writing it back to each NULL row.
+//
+// Already-populated rows (from movements created after the migration) are used
+// as accurate checkpoints so the replay can be run incrementally.  The action
+// is idempotent: re-running it on rows that already have avg_cost_after set is
+// a no-op for those rows.
+// ---------------------------------------------------------------------------
+
+type MovementForBackfill = {
+  id: string;
+  product_id: string;
+  location_id: string | null;
+  delta: number;
+  balance_after: number;
+  unit_price: number;
+  avg_cost_after: number | null;
+  created_at: number;
+};
+
+export const backfillStockMovementAvgCost = internalAction({
+  args: { organizationId: v.id("organizations") },
+  handler: async (
+    _ctx,
+    args,
+  ): Promise<{ updated: number; skipped: number; errors: string[] }> => {
+    const client = createServiceRoleClient();
+    const errors: string[] = [];
+    let updated = 0;
+    let skipped = 0;
+
+    // Paginate through all eligible warehouse_receive movements for this org.
+    const PAGE = 1000;
+    let allMovements: MovementForBackfill[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await client
+        .from("product_stock_movements")
+        .select(
+          "id, product_id, location_id, delta, balance_after, unit_price, avg_cost_after, created_at",
+        )
+        .eq("organization_id", String(args.organizationId))
+        .eq("reason", "warehouse_receive")
+        .not("unit_price", "is", null)
+        .gt("delta", 0)
+        .not("balance_after", "is", null)
+        .order("created_at", { ascending: true })
+        .range(from, from + PAGE - 1);
+
+      if (error) {
+        return { updated: 0, skipped: 0, errors: [error.message] };
+      }
+      if (!data || data.length === 0) break;
+      allMovements = allMovements.concat(data as MovementForBackfill[]);
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+
+    if (allMovements.length === 0) {
+      return { updated: 0, skipped: 0, errors: [] };
+    }
+
+    // Group by (product_id, location_id). Already sorted by created_at ASC.
+    const groups = new Map<string, MovementForBackfill[]>();
+    for (const m of allMovements) {
+      const key = `${m.product_id}::${m.location_id ?? ""}`;
+      const arr = groups.get(key);
+      if (arr) {
+        arr.push(m);
+      } else {
+        groups.set(key, [m]);
+      }
+    }
+
+    for (const group of groups.values()) {
+      let prevAvg: number | null = null;
+
+      for (const movement of group) {
+        if (movement.avg_cost_after !== null) {
+          // Already populated — treat as a reliable checkpoint.
+          prevAvg = movement.avg_cost_after;
+          continue;
+        }
+
+        const prevBalance = movement.balance_after - movement.delta;
+        let newAvg: number;
+        if (prevBalance <= 0 || prevAvg === null) {
+          newAvg = movement.unit_price;
+        } else {
+          newAvg =
+            (prevBalance * prevAvg + movement.delta * movement.unit_price) /
+            (prevBalance + movement.delta);
+        }
+
+        const { error: updateError } = await client
+          .from("product_stock_movements")
+          .update({ avg_cost_after: newAvg })
+          .eq("id", movement.id);
+
+        if (updateError) {
+          errors.push(`movement ${movement.id}: ${updateError.message}`);
+          skipped++;
+        } else {
+          updated++;
+          prevAvg = newAvg;
+        }
+      }
+    }
+
+    return { updated, skipped, errors };
+  },
+});
+
 export const backfillAll = internalAction({
   args: { organizationId: v.id("organizations") },
   handler: async (

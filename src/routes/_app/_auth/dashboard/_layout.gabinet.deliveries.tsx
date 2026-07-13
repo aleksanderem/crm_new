@@ -123,6 +123,18 @@ function statusBadge(status: string, t: ReturnType<typeof useTranslation>["t"]) 
   );
 }
 
+function getExpiryStatus(dateStr: string | null): "expired" | "expiring_soon" | "ok" | null {
+  if (!dateStr) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const expiry = new Date(dateStr);
+  if (expiry < today) return "expired";
+  const soon = new Date(today);
+  soon.setDate(today.getDate() + 30);
+  if (expiry <= soon) return "expiring_soon";
+  return "ok";
+}
+
 function formatDate(ms: number | null | undefined) {
   if (!ms) return "—";
   return new Date(ms).toLocaleDateString("pl-PL");
@@ -975,7 +987,18 @@ function DeliveriesPage() {
                         {(lotNumber || expiryDate) && (
                           <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                             {lotNumber && <span>LOT: <span className="font-medium text-foreground">{lotNumber}</span></span>}
-                            {expiryDate && <span>{t("gabinet.deliveries.expiryDate", "Termin ważności")}: <span className="font-medium text-foreground">{expiryDate}</span></span>}
+                            {expiryDate && (() => {
+                              const expiryStatus = getExpiryStatus(expiryDate);
+                              const expiryClass =
+                                expiryStatus === "expired"
+                                  ? "font-medium text-destructive"
+                                  : expiryStatus === "expiring_soon"
+                                    ? "font-medium text-amber-600 dark:text-amber-400"
+                                    : "font-medium text-foreground";
+                              return (
+                                <span>{t("gabinet.deliveries.expiryDate", "Termin ważności")}: <span className={expiryClass}>{expiryDate}</span></span>
+                              );
+                            })()}
                           </div>
                         )}
                       </div>

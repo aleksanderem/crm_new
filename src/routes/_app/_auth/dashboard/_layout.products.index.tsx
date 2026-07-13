@@ -71,6 +71,18 @@ function formatCurrency(amount: number): string {
 // Returns the stock status for a product given its current total and min stock
 type StockStatus = "ok" | "low" | "out" | "untracked";
 
+function getExpiryStatus(dateStr: string | null): "expired" | "expiring_soon" | "ok" | null {
+  if (!dateStr) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const expiry = new Date(dateStr);
+  if (expiry < today) return "expired";
+  const soon = new Date(today);
+  soon.setDate(today.getDate() + 30);
+  if (expiry <= soon) return "expiring_soon";
+  return "ok";
+}
+
 function getStockStatus(
   trackStock: boolean | undefined,
   total: number,
@@ -957,12 +969,21 @@ function ProductsPage() {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                    {batch.expiryDate && (
-                      <span>
-                        {t("gabinet.deliveries.expiryDate", "Termin ważności")}:{" "}
-                        <span className="text-foreground">{batch.expiryDate}</span>
-                      </span>
-                    )}
+                    {batch.expiryDate && (() => {
+                      const expiryStatus = getExpiryStatus(batch.expiryDate);
+                      const expiryClass =
+                        expiryStatus === "expired"
+                          ? "text-destructive font-semibold"
+                          : expiryStatus === "expiring_soon"
+                            ? "text-amber-600 dark:text-amber-400 font-semibold"
+                            : "text-foreground";
+                      return (
+                        <span>
+                          {t("gabinet.deliveries.expiryDate", "Termin ważności")}:{" "}
+                          <span className={expiryClass}>{batch.expiryDate}</span>
+                        </span>
+                      );
+                    })()}
                     {locationName && (
                       <span>
                         {t("gabinet.deliveries.location", "Lokalizacja")}:{" "}

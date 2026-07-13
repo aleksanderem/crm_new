@@ -114,12 +114,12 @@ export function WarehouseInventoryDialog({
 
   const historicalStockQuery = useQuery({
     queryKey: ["stockSnapshot", organizationId, selectedDate, resolvedLocationId ?? "null"],
-    queryFn: async (): Promise<Map<string, number>> => {
+    queryFn: async (): Promise<{ stockMap: Map<string, number>; avgCostMap: Map<string, number> }> => {
       if (!client) throw new Error("Supabase client not ready");
       const endMs = new Date(selectedDate + "T23:59:59.999").getTime();
       let q = client
         .from("product_stock_movements")
-        .select("product_id, balance_after")
+        .select("product_id, balance_after, avg_cost_after")
         .eq("organization_id", organizationId)
         .lte("created_at", endMs)
         .order("created_at", { ascending: false });
@@ -130,13 +130,17 @@ export function WarehouseInventoryDialog({
       }
       const { data, error } = await q;
       if (error) throw error;
-      const map = new Map<string, number>();
-      for (const row of (data ?? []) as { product_id: string; balance_after: number | null }[]) {
-        if (!map.has(row.product_id) && row.balance_after != null) {
-          map.set(row.product_id, Number(row.balance_after));
+      const stockMap = new Map<string, number>();
+      const avgCostMap = new Map<string, number>();
+      for (const row of (data ?? []) as { product_id: string; balance_after: number | null; avg_cost_after: number | null }[]) {
+        if (!stockMap.has(row.product_id) && row.balance_after != null) {
+          stockMap.set(row.product_id, Number(row.balance_after));
+        }
+        if (!avgCostMap.has(row.product_id) && row.avg_cost_after != null) {
+          avgCostMap.set(row.product_id, Number(row.avg_cost_after));
         }
       }
-      return map;
+      return { stockMap, avgCostMap };
     },
     enabled: isHistoricalMode && isReady,
   });
@@ -518,10 +522,10 @@ export function WarehouseInventoryDialog({
                 </thead>
                 <tbody>
                   {trackedProducts.map((product) => {
-                    const qty = historicalStockQuery.data?.get(product._id) ?? 0;
+                    const qty = historicalStockQuery.data?.stockMap.get(product._id) ?? 0;
                     const unit = product.stockUnit?.trim() ?? "";
                     const u = unit ? ` ${unit}` : "";
-                    const avgCost = avgCostByProductId.get(product._id) ?? null;
+                    const avgCost = historicalStockQuery.data?.avgCostMap.get(product._id) ?? avgCostByProductId.get(product._id) ?? null;
                     const valueNet = avgCost != null ? qty * avgCost : null;
                     return (
                       <tr key={product._id} className="border-b last:border-0">
@@ -704,8 +708,17 @@ export function WarehouseInventoryDialog({
       organizationName={org?.name}
       selectedDate={selectedDate}
       products={trackedProducts}
-      historicalStock={historicalStockQuery.data ?? new Map()}
-      avgCostByProductId={avgCostByProductId}
+      historicalStock={historicalStockQuery.data?.stockMap ?? new Map()}
+      avgCostByProductId={
+        historicalStockQuery.data
+          ? new Map(
+              trackedProducts.map((p) => [
+                p._id,
+                historicalStockQuery.data!.avgCostMap.get(p._id) ?? avgCostByProductId.get(p._id) ?? null,
+              ]),
+            )
+          : avgCostByProductId
+      }
       locationName={
         resolvedLocationId
           ? (locations.find((l) => l._id === resolvedLocationId)?.name ?? null)

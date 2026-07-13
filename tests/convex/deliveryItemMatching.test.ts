@@ -313,6 +313,125 @@ describe("matchDeliveryItems action — re-run does not change analysisResult", 
   });
 });
 
+// ---------------------------------------------------------------------------
+// Part B2 — saved name mappings (#3053)
+// ---------------------------------------------------------------------------
+
+describe("matchInvoiceItems — saved mappings are priority #1", () => {
+  test("saved mapping wins over exact name match", () => {
+    const savedMappings = new Map([["rękawiczki nitrylowe", "p-saved"]]);
+    const result = matchInvoiceItems(
+      [makeItem("Rękawiczki nitrylowe")],
+      [
+        { productId: "p-saved", productName: "Rękawiczki nitrylowe" },
+        { productId: "p-catalog", productName: "Rękawiczki nitrylowe" },
+      ],
+      savedMappings,
+    );
+    expect(result.items[0].status).toBe("matched");
+    expect(result.items[0].matched?.matchReason).toBe("saved_mapping");
+    expect(result.items[0].matched?.productId).toBe("p-saved");
+  });
+
+  test("saved mapping is skipped when mapped product is no longer active", () => {
+    const savedMappings = new Map([["stylage xl 1 ml", "p-deleted"]]);
+    // p-deleted is not in the active products list
+    const result = matchInvoiceItems(
+      [makeItem("Stylage XL 1 ml")],
+      [{ productId: "p-current", productName: "Stylage XL 1 ml" }],
+      savedMappings,
+    );
+    // Falls through to exact name match since saved product is gone
+    expect(result.items[0].status).toBe("matched");
+    expect(result.items[0].matched?.matchReason).toBe("exact_name");
+    expect(result.items[0].matched?.productId).toBe("p-current");
+  });
+
+  test("saved mapping normalises the key (case and whitespace)", () => {
+    const savedMappings = new Map([["rękawiczki nitrylowe", "p1"]]);
+    const result = matchInvoiceItems(
+      [makeItem("  RĘKAWICZKI  NITRYLOWE  ")],
+      [{ productId: "p1", productName: "Rękawiczki nitrylowe" }],
+      savedMappings,
+    );
+    expect(result.items[0].status).toBe("matched");
+    expect(result.items[0].matched?.matchReason).toBe("saved_mapping");
+  });
+});
+
+describe("matchDeliveryItems action — saved name mappings persistence", () => {
+  test("exact-name match is written to deliveryNameMappings on first run", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+
+    const productId = await seedProduct(
+      String(organizationId),
+      String(userId),
+      "Rękawiczki nitrylowe",
+    );
+    const deliveryId = await seedDeliveryWithAnalysis(
+      String(organizationId),
+      String(userId),
+      [makeItem("Rękawiczki nitrylowe")],
+    );
+
+    await t
+      .withIdentity(identity)
+      .action(api.warehouseDeliveries.matchDeliveryItems, {
+        organizationId,
+        deliveryId,
+      });
+
+    const db = createSupabaseDb();
+    const mappings = await db
+      .query("deliveryNameMappings")
+      .eq("organizationId", String(organizationId))
+      .collect();
+    expect(mappings).toHaveLength(1);
+    expect(String((mappings[0] as Record<string, unknown>).invoiceName)).toBe(
+      "Rękawiczki nitrylowe",
+    );
+    expect(String((mappings[0] as Record<string, unknown>).productId)).toBe(productId);
+  });
+
+  test("second run returns saved_mapping matchReason", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+
+    await seedProduct(String(organizationId), String(userId), "Rękawiczki nitrylowe");
+    const deliveryId = await seedDeliveryWithAnalysis(
+      String(organizationId),
+      String(userId),
+      [makeItem("Rękawiczki nitrylowe")],
+    );
+
+    // First run writes the mapping
+    await t
+      .withIdentity(identity)
+      .action(api.warehouseDeliveries.matchDeliveryItems, {
+        organizationId,
+        deliveryId,
+      });
+
+    // Second delivery with the same invoice name
+    const deliveryId2 = await seedDeliveryWithAnalysis(
+      String(organizationId),
+      String(userId),
+      [makeItem("Rękawiczki nitrylowe")],
+    );
+
+    const proposals2 = (await t
+      .withIdentity(identity)
+      .action(api.warehouseDeliveries.matchDeliveryItems, {
+        organizationId,
+        deliveryId: deliveryId2,
+      })) as MatchingProposals;
+
+    expect(proposals2.items[0].status).toBe("matched");
+    expect(proposals2.items[0].matched?.matchReason).toBe("saved_mapping");
+  });
+});
+
 describe("matchDeliveryItems action — throws when analysis not completed", () => {
   test("throws if analysisStatus is not completed", async () => {
     const t = createTestCtx();

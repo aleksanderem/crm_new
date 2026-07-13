@@ -454,6 +454,19 @@ export function createCrmTables({
     .index("by_org", ["organizationId"])
     .index("by_product", ["productId"]),
 
+  // Saved invoice-name → product mappings for delivery item matching (#3053).
+  // matchDeliveryItems reads these as priority #1 and writes back auto-confirmed
+  // exact-name matches.  One mapping per (org, invoiceName) — enforced by the
+  // unique index in the Supabase migration.
+  deliveryNameMappings: defineTable({
+    organizationId: v.id("organizations"),
+    invoiceName: v.string(),
+    productId: v.id("products"),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_org_and_name", ["organizationId", "invoiceName"]),
+
   dealProducts: defineTable({
     organizationId: v.id("organizations"),
     dealId: v.id("leads"),

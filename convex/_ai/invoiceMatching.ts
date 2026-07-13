@@ -24,7 +24,7 @@ import type { ParsedInvoiceItem } from "./documentAnalyzer";
 export interface ProductCandidate {
   productId: string;
   productName: string;
-  matchReason: "exact_name" | "similar_name";
+  matchReason: "saved_mapping" | "exact_name" | "similar_name";
 }
 
 export type ItemMatchStatus =
@@ -133,6 +133,9 @@ const SUGGESTION_THRESHOLD = 0.5;
 export function matchInvoiceItems(
   items: ParsedInvoiceItem[],
   products: ProductForMatching[],
+  // Priority #1: previously saved invoice-name → product-id mappings (#3053).
+  // Keys are normalized invoice names; values are product IDs.
+  savedMappings: ReadonlyMap<string, string> = new Map(),
 ): MatchingProposals {
   // Pre-compute normalized names once — avoids repeated work per item.
   const indexed = products.map((p) => {
@@ -143,6 +146,24 @@ export function matchInvoiceItems(
   const results: ItemMatchResult[] = items.map((item) => {
     const normalizedInvoice = normalizeName(item.productName);
     const invoiceTokens = tokenize(normalizedInvoice);
+
+    // Step 0 — saved name mapping (priority #1 per spec)
+    // Only returns a match if the mapped product is still active in the catalog.
+    const savedProductId = savedMappings.get(normalizedInvoice);
+    if (savedProductId !== undefined) {
+      const savedProduct = indexed.find((p) => p.productId === savedProductId);
+      if (savedProduct) {
+        return {
+          invoiceName: item.productName,
+          status: "matched" as const,
+          matched: {
+            productId: savedProduct.productId,
+            productName: savedProduct.productName,
+            matchReason: "saved_mapping" as const,
+          },
+        };
+      }
+    }
 
     // Step 1 — exact match after normalization
     const exactMatches = indexed.filter(

@@ -424,6 +424,10 @@ export function createCrmTables({
     // Item-to-product matching proposals (#3050). Stored as MatchingProposals
     // JSONB. Overwritten on each re-run; never touches analysisResult.
     matchingProposals: v.optional(v.any()),
+    // Per-item user decisions from the verification screen (#3055).
+    // Stored as ItemDecisions JSONB. Written by saveItemDecisions; never
+    // overwritten by the OCR analysis or matching engine.
+    itemDecisions: v.optional(v.any()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

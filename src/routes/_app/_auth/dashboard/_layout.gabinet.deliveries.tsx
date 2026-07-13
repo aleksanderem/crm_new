@@ -151,6 +151,31 @@ interface ParsedInvoiceItemFE {
   expiryDate: string | null;
 }
 
+// ---------------------------------------------------------------------------
+// Types for item decisions (#3055)
+// ---------------------------------------------------------------------------
+
+type DecisionType = "accepted" | "choose_product" | "create_later" | "non_inventory";
+type CreateLaterType = "treatment_product" | "disposable" | "sale_product" | "consumable";
+
+interface ItemDecision {
+  type: DecisionType;
+  productId?: string;
+  createLaterType?: CreateLaterType;
+}
+
+interface ItemDecisions {
+  decidedAt: number;
+  items: (ItemDecision | null)[];
+}
+
+function isDecisionComplete(d: ItemDecision | null): boolean {
+  if (!d) return false;
+  if (d.type === "non_inventory") return true;
+  if (d.type === "create_later") return !!d.createLaterType;
+  return !!d.productId;
+}
+
 function statusBadge(status: string, t: ReturnType<typeof useTranslation>["t"]) {
   if (status === "posted") {
     return (
@@ -245,6 +270,8 @@ function DeliveriesPage() {
   const analyzeDeliveryInvoiceAction = useAction(api.warehouseDeliveries.analyzeDeliveryInvoice);
   // @ts-ignore
   const matchDeliveryItemsAction = useAction(api.warehouseDeliveries.matchDeliveryItems);
+  // @ts-ignore
+  const saveItemDecisionsAction = useAction(api.warehouseDeliveries.saveItemDecisions);
 
   const queryKey = ["warehouseDeliveries.list", organizationId];
 
@@ -322,9 +349,17 @@ function DeliveriesPage() {
   const [editAnalysisStatus, setEditAnalysisStatus] = useState<string | null>(null);
   const [editAnalysisItems, setEditAnalysisItems] = useState<ParsedInvoiceItemFE[]>([]);
   const [editProposals, setEditProposals] = useState<MatchingProposalsFE | null>(null);
+  const [editItemDecisions, setEditItemDecisions] = useState<ItemDecisions | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [matching, setMatching] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
+
+  // Item decisions dialog state (can be opened from both list row and edit panel)
+  const [decisionsOpen, setDecisionsOpen] = useState(false);
+  const [decisionsDeliveryId, setDecisionsDeliveryId] = useState<string | null>(null);
+  const [decisionsProposals, setDecisionsProposals] = useState<MatchingProposalsFE | null>(null);
+  const [decisionsAnalysisItems, setDecisionsAnalysisItems] = useState<ParsedInvoiceItemFE[]>([]);
+  const [decisionsSaved, setDecisionsSaved] = useState<ItemDecisions | null>(null);
 
   const isEditMode = editDeliveryId !== null;
 
@@ -340,6 +375,7 @@ function DeliveriesPage() {
     setEditAnalysisStatus(null);
     setEditAnalysisItems([]);
     setEditProposals(null);
+    setEditItemDecisions(null);
   }, []);
 
   const handleEditOpen = async (id: string) => {
@@ -390,6 +426,11 @@ function DeliveriesPage() {
           ? (d.matchingProposals as MatchingProposalsFE)
           : null,
       );
+      setEditItemDecisions(
+        d.itemDecisions != null && typeof d.itemDecisions === "object"
+          ? (d.itemDecisions as ItemDecisions)
+          : null,
+      );
 
       setPanelOpen(true);
     } catch (e) {
@@ -402,6 +443,21 @@ function DeliveriesPage() {
     } finally {
       setEditLoading(false);
     }
+  };
+
+  const handleOpenDecisions = (d: Record<string, unknown>) => {
+    const proposals = d.matchingProposals as MatchingProposalsFE | null;
+    if (!proposals) return;
+    const ar = d.analysisResult as Record<string, unknown> | null;
+    const aiItems = Array.isArray(ar?.items) ? (ar!.items as ParsedInvoiceItemFE[]) : [];
+    const saved = d.itemDecisions != null && typeof d.itemDecisions === "object"
+      ? (d.itemDecisions as ItemDecisions)
+      : null;
+    setDecisionsDeliveryId(String(d._id ?? d.id ?? ""));
+    setDecisionsProposals(proposals);
+    setDecisionsAnalysisItems(aiItems);
+    setDecisionsSaved(saved);
+    setDecisionsOpen(true);
   };
 
   const handleAnalyze = async () => {
@@ -777,6 +833,17 @@ function DeliveriesPage() {
                           >
                             {t("gabinet.deliveries.editAction", "Edytuj")}
                           </Button>
+                          {d.matchingProposals != null && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenDecisions(d)}
+                              className="gap-1.5"
+                            >
+                              <Sparkles className="h-3.5 w-3.5" variant="stroke" />
+                              {t("gabinet.deliveries.checkItemsAction", "Sprawdź pozycje")}
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"
@@ -1193,18 +1260,36 @@ function DeliveriesPage() {
                 </div>
               </div>
 
-              {/* Step 3 — review */}
+              {/* Step 3 — review & decide */}
               {editProposals != null && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="h-8 text-xs w-full"
-                  onClick={() => setVerifyOpen(true)}
-                >
-                  <CheckCircle className="mr-1.5 h-3.5 w-3.5" variant="stroke" />
-                  {t("gabinet.deliveries.aiImport.review", "Weryfikuj i importuj pozycje")}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="h-8 text-xs flex-1"
+                    onClick={() => setVerifyOpen(true)}
+                  >
+                    <CheckCircle className="mr-1.5 h-3.5 w-3.5" variant="stroke" />
+                    {t("gabinet.deliveries.aiImport.review", "Importuj pozycje")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs flex-1"
+                    onClick={() => {
+                      setDecisionsDeliveryId(editDeliveryId);
+                      setDecisionsProposals(editProposals);
+                      setDecisionsAnalysisItems(editAnalysisItems);
+                      setDecisionsSaved(editItemDecisions);
+                      setDecisionsOpen(true);
+                    }}
+                  >
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5" variant="stroke" />
+                    {t("gabinet.deliveries.aiImport.checkItems", "Sprawdź pozycje")}
+                  </Button>
+                </div>
               )}
             </div>
           )}
@@ -1458,6 +1543,28 @@ function DeliveriesPage() {
           onApply={(newItems) => {
             setItems(newItems.length > 0 ? newItems : [newLine()]);
           }}
+        />
+      )}
+
+      {/* Item decisions dialog (#3055) */}
+      {decisionsProposals != null && decisionsDeliveryId != null && (
+        <ItemDecisionsDialog
+          open={decisionsOpen}
+          onOpenChange={setDecisionsOpen}
+          deliveryId={decisionsDeliveryId}
+          organizationId={organizationId}
+          proposals={decisionsProposals}
+          analysisItems={decisionsAnalysisItems}
+          savedDecisions={decisionsSaved}
+          products={stockableProducts}
+          onSave={(saved) => {
+            setDecisionsSaved(saved);
+            if (editDeliveryId === decisionsDeliveryId) {
+              setEditItemDecisions(saved);
+            }
+            void queryClient.invalidateQueries({ queryKey });
+          }}
+          saveAction={saveItemDecisionsAction as (args: { organizationId: typeof organizationId; deliveryId: string; decisions: unknown }) => Promise<void>}
         />
       )}
     </div>
@@ -2072,6 +2179,380 @@ function VerifyMatchesDialog({
             {t("gabinet.deliveries.verify.apply", "Zastosuj ({{count}})", {
               count: acceptedCount,
             })}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ItemDecisionsDialog (#3055)
+// ---------------------------------------------------------------------------
+// Verification screen for saving per-item decisions separately from
+// analysisResult and matchingProposals.
+
+const CREATE_LATER_OPTIONS: Array<{ value: CreateLaterType; label: string }> = [
+  { value: "treatment_product", label: "Preparat do zabiegu" },
+  { value: "disposable", label: "Materiał jednorazowy" },
+  { value: "sale_product", label: "Produkt do sprzedaży" },
+  { value: "consumable", label: "Materiał eksploatacyjny" },
+];
+
+const DECISION_LABELS: Record<DecisionType, string> = {
+  accepted: "Dopasuj",
+  choose_product: "Wybierz inny",
+  create_later: "Utwórz później",
+  non_inventory: "Niemagazynowa",
+};
+
+function decisionBadge(d: ItemDecision | null) {
+  if (!d) {
+    return (
+      <Badge className="text-xs py-0 px-1.5 h-5 font-normal border bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800">
+        Wymaga decyzji
+      </Badge>
+    );
+  }
+  if (d.type === "non_inventory") {
+    return (
+      <Badge className="text-xs py-0 px-1.5 h-5 font-normal border bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300 border-slate-200 dark:border-slate-700">
+        Niemagazynowa
+      </Badge>
+    );
+  }
+  if (d.type === "create_later") {
+    if (!d.createLaterType) {
+      return (
+        <Badge className="text-xs py-0 px-1.5 h-5 font-normal border bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800">
+          Wybierz typ
+        </Badge>
+      );
+    }
+    return (
+      <Badge className="text-xs py-0 px-1.5 h-5 font-normal border bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300 border-violet-200 dark:border-violet-800">
+        Do utworzenia
+      </Badge>
+    );
+  }
+  if (!d.productId) {
+    return (
+      <Badge className="text-xs py-0 px-1.5 h-5 font-normal border bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800">
+        Wybierz produkt
+      </Badge>
+    );
+  }
+  return (
+    <Badge className="text-xs py-0 px-1.5 h-5 font-normal border bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800">
+      Potwierdzona
+    </Badge>
+  );
+}
+
+function ItemDecisionsDialog({
+  open,
+  onOpenChange,
+  deliveryId,
+  organizationId,
+  proposals,
+  analysisItems,
+  savedDecisions,
+  products,
+  onSave,
+  saveAction,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  deliveryId: string;
+  organizationId: Id<"organizations">;
+  proposals: MatchingProposalsFE;
+  analysisItems: ParsedInvoiceItemFE[];
+  savedDecisions: ItemDecisions | null;
+  products: Array<{ _id: string; name: string; sku?: string | null }>;
+  onSave: (decisions: ItemDecisions) => void;
+  saveAction: (args: { organizationId: Id<"organizations">; deliveryId: string; decisions: unknown }) => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const [saving, setSaving] = useState(false);
+
+  const initDecisions = useCallback((): (ItemDecision | null)[] => {
+    if (savedDecisions && Array.isArray(savedDecisions.items) && savedDecisions.items.length === proposals.items.length) {
+      return savedDecisions.items as (ItemDecision | null)[];
+    }
+    return proposals.items.map((item) => {
+      if (item.status === "matched" && item.matched) {
+        return { type: "accepted" as const, productId: item.matched.productId };
+      }
+      if (item.status === "non_inventory_candidate") {
+        return null;
+      }
+      return null;
+    });
+  }, [proposals, savedDecisions]);
+
+  const [decisions, setDecisions] = useState<(ItemDecision | null)[]>(initDecisions);
+
+  useEffect(() => {
+    if (open) setDecisions(initDecisions());
+  }, [open, initDecisions]);
+
+  const setDecision = (idx: number, d: ItemDecision | null) => {
+    setDecisions((prev) => prev.map((v, i) => (i === idx ? d : v)));
+  };
+
+  const counts = useMemo(() => {
+    let confirmed = 0, createLater = 0, nonInventory = 0, unresolved = 0;
+    for (const d of decisions) {
+      if (!isDecisionComplete(d)) { unresolved++; continue; }
+      if (d!.type === "non_inventory") nonInventory++;
+      else if (d!.type === "create_later") createLater++;
+      else confirmed++;
+    }
+    return { confirmed, createLater, nonInventory, unresolved };
+  }, [decisions]);
+
+  const unresolvedIndices = useMemo(
+    () => decisions.map((d, i) => (!isDecisionComplete(d) ? i : -1)).filter((i) => i >= 0),
+    [decisions],
+  );
+
+  const handleSave = async () => {
+    if (unresolvedIndices.length > 0) return;
+    setSaving(true);
+    try {
+      const saved: ItemDecisions = { decidedAt: Date.now(), items: decisions };
+      await saveAction({ organizationId, deliveryId, decisions: saved });
+      onSave(saved);
+      onOpenChange(false);
+      toast.success(t("gabinet.deliveries.decisions.saveSuccess", "Decyzje zapisane."));
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.deliveries.decisions.saveError",
+          defaultValue: "Nie udało się zapisać decyzji.",
+        }),
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl flex flex-col max-h-[90vh]">
+        <DialogHeader>
+          <DialogTitle>
+            {t("gabinet.deliveries.decisions.title", "Weryfikacja pozycji faktury")}
+          </DialogTitle>
+          <DialogDescription>
+            {t(
+              "gabinet.deliveries.decisions.description",
+              "Przypisz decyzję do każdej pozycji faktury. Decyzje są zapisywane osobno od dopasowania i danych OCR.",
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Summary bar */}
+        <div className="flex flex-wrap gap-3 rounded-md bg-muted/30 px-3 py-2 text-xs">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+            {t("gabinet.deliveries.decisions.confirmed", "Potwierdzone")}: <strong>{counts.confirmed}</strong>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2 w-2 rounded-full bg-violet-500" />
+            {t("gabinet.deliveries.decisions.createLater", "Do utworzenia")}: <strong>{counts.createLater}</strong>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2 w-2 rounded-full bg-slate-400" />
+            {t("gabinet.deliveries.decisions.nonInventory", "Niemagazynowe")}: <strong>{counts.nonInventory}</strong>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+            {t("gabinet.deliveries.decisions.unresolved", "Bez decyzji")}: <strong>{counts.unresolved}</strong>
+          </span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto space-y-2 pr-1 -mr-1">
+          {proposals.items.map((item, idx) => {
+            const ai = analysisItems[idx];
+            const decision = decisions[idx] ?? null;
+            const candidates: ProductCandidate[] =
+              item.status === "matched" && item.matched
+                ? [item.matched, ...(item.suggestions ?? [])]
+                : item.suggestions ?? [];
+            const availableTypes: DecisionType[] =
+              item.status === "unmatched"
+                ? ["choose_product", "create_later", "non_inventory"]
+                : ["accepted", "choose_product", "create_later", "non_inventory"];
+
+            return (
+              <div key={idx} className="rounded-md border p-3 space-y-2">
+                {/* Item header */}
+                <div className="flex items-start justify-between gap-2 flex-wrap">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium">{item.invoiceName}</span>
+                      {itemStatusBadge(item.status)}
+                      {decisionBadge(decision)}
+                    </div>
+                    {ai && (ai.quantity != null || ai.unitPriceGross != null || ai.unitPrice != null) && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {ai.quantity != null && (
+                          <span>{ai.quantity}{ai.unit ? ` ${ai.unit}` : " szt."}</span>
+                        )}
+                        {ai.quantity != null && (ai.unitPriceGross != null || ai.unitPrice != null) && (
+                          <span> · </span>
+                        )}
+                        {(ai.unitPriceGross != null || ai.unitPrice != null) && (
+                          <span>
+                            {fmtMoney(ai.unitPriceGross ?? ai.unitPrice!)} zł/szt.
+                            {ai.vatCode ? ` (VAT ${ai.vatCode})` : ""}
+                          </span>
+                        )}
+                      </p>
+                    )}
+                    {item.status === "non_inventory_candidate" && item.handlingHint && (
+                      <p className="text-xs text-muted-foreground italic mt-0.5 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3 shrink-0" variant="stroke" />
+                        {item.handlingHint}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Decision type selector */}
+                <div className="flex flex-wrap gap-1">
+                  {availableTypes.map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => {
+                        if (type === "non_inventory") {
+                          setDecision(idx, { type: "non_inventory" });
+                        } else if (type === "create_later") {
+                          setDecision(idx, { type: "create_later" });
+                        } else if (type === "accepted") {
+                          setDecision(idx, {
+                            type: "accepted",
+                            productId: candidates[0]?.productId ?? "",
+                          });
+                        } else {
+                          setDecision(idx, { type: "choose_product", productId: "" });
+                        }
+                      }}
+                      className={cn(
+                        "rounded border px-2 py-0.5 text-xs transition-colors",
+                        decision?.type === type
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-foreground border-input hover:bg-muted",
+                      )}
+                    >
+                      {DECISION_LABELS[type]}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Product selector for accepted / choose_product */}
+                {(decision?.type === "accepted" || decision?.type === "choose_product") && (
+                  <Select
+                    value={decision.productId ?? ""}
+                    onValueChange={(v) =>
+                      setDecision(idx, { ...decision, productId: v })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue
+                        placeholder={t(
+                          "gabinet.deliveries.decisions.selectProduct",
+                          "Wybierz produkt…",
+                        )}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {candidates.length > 0 && (
+                        <>
+                          {candidates.map((c) => (
+                            <SelectItem key={c.productId} value={c.productId}>
+                              {c.productName}
+                              {c.matchReason === "exact_name" || c.matchReason === "saved_mapping" ? (
+                                <span className="ml-1.5 text-xs text-emerald-600 dark:text-emerald-400">✓</span>
+                              ) : null}
+                            </SelectItem>
+                          ))}
+                          <div className="my-1 border-t" />
+                        </>
+                      )}
+                      {products.map((p) => (
+                        <SelectItem key={p._id} value={p._id}>
+                          {p.name}{p.sku ? ` (${p.sku})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {/* Product type selector for create_later */}
+                {decision?.type === "create_later" && (
+                  <Select
+                    value={decision.createLaterType ?? ""}
+                    onValueChange={(v) =>
+                      setDecision(idx, { ...decision, createLaterType: v as CreateLaterType })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue
+                        placeholder={t(
+                          "gabinet.deliveries.decisions.selectProductType",
+                          "Wybierz typ produktu…",
+                        )}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CREATE_LATER_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {unresolvedIndices.length > 0 && (
+          <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+            <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" variant="stroke" />
+            <span>
+              {t(
+                "gabinet.deliveries.decisions.unresolvedWarning",
+                "Pozycje bez decyzji: {{items}}. Uzupełnij wszystkie decyzje przed zapisem.",
+                {
+                  items: unresolvedIndices
+                    .map((i) => proposals.items[i]?.invoiceName ?? `#${i + 1}`)
+                    .join(", "),
+                },
+              )}
+            </span>
+          </div>
+        )}
+
+        <DialogFooter className="border-t pt-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
+            {t("common.cancel", "Anuluj")}
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || unresolvedIndices.length > 0}
+          >
+            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" variant="stroke" />}
+            {t("gabinet.deliveries.decisions.save", "Zapisz decyzje")}
           </Button>
         </DialogFooter>
       </DialogContent>

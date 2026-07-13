@@ -10,6 +10,7 @@
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { applyMovementInternal } from "./inventory";
 import type { SupabaseRow } from "./_helpers/supabaseRows";
@@ -56,6 +57,18 @@ export interface DeliveryWithItems {
   items: DeliveryItemRow[];
 }
 
+export interface InvoicePageUrl {
+  url: string | null;
+  mimeType: string;
+  position: number;
+}
+
+export interface DeliveryWithUrls {
+  delivery: DeliveryRow;
+  items: DeliveryItemRow[];
+  invoicePageUrls: InvoicePageUrl[];
+}
+
 // ---------------------------------------------------------------------------
 // Reads
 // ---------------------------------------------------------------------------
@@ -93,7 +106,7 @@ export const getDelivery = action({
     organizationId: v.id("organizations"),
     deliveryId: v.string(),
   },
-  handler: async (ctx, args): Promise<DeliveryWithItems> => {
+  handler: async (ctx, args): Promise<DeliveryWithUrls> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -112,7 +125,21 @@ export const getDelivery = action({
       .query<DeliveryItemRow>("warehouseDeliveryItems")
       .eq("deliveryId", args.deliveryId)
       .collect();
-    return { delivery, items };
+
+    const rawPages = Array.isArray(delivery.invoicePages)
+      ? (delivery.invoicePages as Array<{ storageId: string; mimeType: string; position: number }>)
+          .slice()
+          .sort((a, b) => a.position - b.position)
+      : [];
+    const invoicePageUrls: InvoicePageUrl[] = await Promise.all(
+      rawPages.map(async (p) => ({
+        url: await ctx.storage.getUrl(p.storageId as unknown as Id<"_storage">),
+        mimeType: p.mimeType,
+        position: p.position,
+      })),
+    );
+
+    return { delivery, items, invoicePageUrls };
   },
 });
 

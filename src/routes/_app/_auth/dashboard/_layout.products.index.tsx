@@ -75,7 +75,10 @@ function getExpiryStatus(dateStr: string | null): "expired" | "expiring_soon" | 
   if (!dateStr) return null;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const expiry = new Date(dateStr);
+  const parts = dateStr.split("-").map(Number);
+  if (parts.length !== 3) return null;
+  // Parse as local midnight so the expiry day itself is never flagged as expired
+  const expiry = new Date(parts[0], parts[1] - 1, parts[2]);
   if (expiry < today) return "expired";
   const soon = new Date(today);
   soon.setDate(today.getDate() + 30);
@@ -971,16 +974,26 @@ function ProductsPage() {
                   <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
                     {batch.expiryDate && (() => {
                       const expiryStatus = getExpiryStatus(batch.expiryDate);
-                      const expiryClass =
+                      const dateClass =
                         expiryStatus === "expired"
                           ? "text-destructive font-semibold"
                           : expiryStatus === "expiring_soon"
                             ? "text-amber-600 dark:text-amber-400 font-semibold"
                             : "text-foreground";
                       return (
-                        <span>
-                          {t("gabinet.deliveries.expiryDate", "Termin ważności")}:{" "}
-                          <span className={expiryClass}>{batch.expiryDate}</span>
+                        <span className="flex flex-wrap items-center gap-1">
+                          <span>{t("gabinet.deliveries.expiryDate", "Termin ważności")}:</span>
+                          <span className={dateClass}>{batch.expiryDate}</span>
+                          {expiryStatus === "expired" && (
+                            <Badge variant="destructive" className="text-xs px-1.5 py-0 h-4">
+                              {t("products.stock.lots.expired", "Po terminie")}
+                            </Badge>
+                          )}
+                          {expiryStatus === "expiring_soon" && (
+                            <Badge className="text-xs px-1.5 py-0 h-4 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800">
+                              {t("products.stock.lots.expiringSoon", "Ważność do 30 dni")}
+                            </Badge>
+                          )}
                         </span>
                       );
                     })()}

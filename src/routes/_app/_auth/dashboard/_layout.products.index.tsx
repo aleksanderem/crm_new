@@ -20,6 +20,7 @@ import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { SidePanel } from "@/components/crm/side-panel";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History, ClipboardList, Archive } from "@/lib/ez-icons";
@@ -188,6 +189,7 @@ function ProductsPage() {
     setActiveSection(section);
     try { localStorage.setItem("products:section", section); } catch { /* ignore */ }
   };
+  const [showNeedsOrdering, setShowNeedsOrdering] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
@@ -286,6 +288,13 @@ function ProductsPage() {
     if (activeSection !== "all") {
       data = data.filter((p) => p.productSection === activeSection);
     }
+    if (showNeedsOrdering) {
+      data = data.filter((p) => {
+        if (!p.trackStock || p.minStock == null) return false;
+        const total = totalsByProductId.get(p._id)?.total ?? 0;
+        return total <= p.minStock;
+      });
+    }
     data = applyFilters(data);
     data = applyFilterConditions(data, activeFilters);
     if (searchValue.trim()) {
@@ -299,7 +308,7 @@ function ProductsPage() {
       );
     }
     return data;
-  }, [activeViewId, allProducts, applyFilters, activeFilters, searchValue, nudgeFilter, usedProductIds, activeSection, productStockStatus]);
+  }, [activeViewId, allProducts, applyFilters, activeFilters, searchValue, nudgeFilter, usedProductIds, activeSection, productStockStatus, showNeedsOrdering, totalsByProductId]);
 
   const createProduct = useAction(api.products.create);
   const updateProduct = useAction(api.products.update);
@@ -779,6 +788,25 @@ function ProductsPage() {
           </Button>
         </div>
       )}
+
+      <div className="flex items-center gap-2.5 rounded-md border bg-card px-3 py-2 text-sm">
+        <Switch
+          id="needs-ordering-toggle"
+          checked={showNeedsOrdering}
+          onCheckedChange={setShowNeedsOrdering}
+        />
+        <label
+          htmlFor="needs-ordering-toggle"
+          className="cursor-pointer select-none text-sm font-medium"
+        >
+          {t("products.filters.needsOrdering", { defaultValue: "Pokaż tylko produkty wymagające zamówienia" })}
+        </label>
+        {showNeedsOrdering && (
+          <span className="ml-1 text-xs text-muted-foreground">
+            ({t("products.filters.needsOrderingHint", { count: products.length, defaultValue: `${products.length} pozycji` })})
+          </span>
+        )}
+      </div>
 
       <DataListFilterBar
         views={views}

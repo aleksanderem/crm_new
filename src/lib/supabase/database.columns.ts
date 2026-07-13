@@ -61,6 +61,12 @@
  *   • 00054_delivery_items_prices.sql
  *   • 00055_stock_levels_avg_cost.sql
  *   • 00056_product_stock_movements_avg_cost_after.sql
+ *   • 00057_lot_tracking.sql
+ *   • 00058_delivery_invoice_pages.sql
+ *   • 00059_delivery_analysis_status.sql
+ *   • 00060_delivery_matching_proposals.sql
+ *   • 00061_delivery_name_mappings.sql
+ *   • 00062_delivery_item_decisions.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  */
@@ -164,7 +170,8 @@ export type TableName =
   | "gabinet_payment_methods"
   | "gabinet_employee_locations"
   | "warehouse_deliveries"
-  | "warehouse_delivery_items";
+  | "warehouse_delivery_items"
+  | "delivery_name_mappings";
 
 /**
  * Column names per table, as a runtime-checkable Set.
@@ -263,10 +270,11 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   automation_run_steps: new Set(["id", "organization_id", "run_id", "rule_id", "action_index", "action_type", "idempotency_key", "status", "recipient", "recipient_name", "linked_entity_type", "linked_entity_id", "rendered_subject", "rendered_body", "metadata_snapshot", "error_message", "email_event_log_id", "appointment_sms_event_id", "processed_at", "created_at", "updated_at"]),
   document_components: new Set(["id", "organization_id", "scope", "created_by", "name", "description", "category", "content_json", "protected", "position_constraint", "version", "is_active", "created_at", "updated_at"]),
   product_stock_levels: new Set(["id", "organization_id", "product_id", "location_id", "quantity", "updated_at", "avg_cost"]),
-  product_stock_movements: new Set(["id", "organization_id", "product_id", "location_id", "delta", "balance_after", "reason", "source_type", "source_id", "note", "performed_by", "created_at", "unit_price", "avg_cost_after"]),
+  product_stock_movements: new Set(["id", "organization_id", "product_id", "location_id", "delta", "balance_after", "reason", "source_type", "source_id", "note", "performed_by", "created_at", "unit_price", "avg_cost_after", "lot_number", "expiry_date"]),
   gabinet_treatment_products: new Set(["id", "organization_id", "treatment_id", "product_id", "product_section", "quantity", "unit", "created_at", "updated_at"]),
   gabinet_payment_methods: new Set(["id", "organization_id", "key", "name", "is_system", "is_active", "order", "available_for_settlement", "available_for_sales", "available_for_refund", "locks_amount_to_treatment_price", "is_package_coverage", "created_by", "created_at", "updated_at"]),
   gabinet_employee_locations: new Set(["id", "organization_id", "employee_id", "location_id", "is_primary", "created_at"]),
-  warehouse_deliveries: new Set(["id", "organization_id", "supplier_name", "invoice_number", "delivery_date", "location_id", "notes", "status", "created_by", "created_at", "updated_at", "total_value", "total_value_gross"]),
-  warehouse_delivery_items: new Set(["id", "organization_id", "delivery_id", "product_id", "quantity", "unit_price", "vat_rate", "movement_id", "created_at", "unit_price_gross", "line_value_net", "line_value_gross", "vat_code"]),
+  warehouse_deliveries: new Set(["id", "organization_id", "supplier_name", "invoice_number", "delivery_date", "location_id", "notes", "status", "created_by", "created_at", "updated_at", "total_value", "total_value_gross", "invoice_pages", "analysis_status", "analysis_result", "analysis_completed_at", "analysis_error", "matching_proposals", "item_decisions"]),
+  warehouse_delivery_items: new Set(["id", "organization_id", "delivery_id", "product_id", "quantity", "unit_price", "vat_rate", "movement_id", "created_at", "unit_price_gross", "line_value_net", "line_value_gross", "vat_code", "lot_number", "expiry_date"]),
+  delivery_name_mappings: new Set(["id", "organization_id", "invoice_name", "product_id", "created_at"]),
 };

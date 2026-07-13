@@ -62,6 +62,11 @@
  *   • 00055_stock_levels_avg_cost.sql
  *   • 00056_product_stock_movements_avg_cost_after.sql
  *   • 00057_lot_tracking.sql
+ *   • 00058_delivery_invoice_pages.sql
+ *   • 00059_delivery_analysis_status.sql
+ *   • 00060_delivery_matching_proposals.sql
+ *   • 00061_delivery_name_mappings.sql
+ *   • 00062_delivery_item_decisions.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -6909,6 +6914,13 @@ export interface Database {
           updated_at: number;
           total_value: number | null;
           total_value_gross: number | null;
+          invoice_pages: unknown | null;
+          analysis_status: string | null;
+          analysis_result: unknown | null;
+          analysis_completed_at: number | null;
+          analysis_error: string | null;
+          matching_proposals: unknown | null;
+          item_decisions: unknown | null;
         };
         Insert: {
           id?: string;
@@ -6924,6 +6936,13 @@ export interface Database {
           updated_at: number;
           total_value?: number | null;
           total_value_gross?: number | null;
+          invoice_pages?: unknown | null;
+          analysis_status?: string | null;
+          analysis_result?: unknown | null;
+          analysis_completed_at?: number | null;
+          analysis_error?: string | null;
+          matching_proposals?: unknown | null;
+          item_decisions?: unknown | null;
         };
         Update: {
           id?: string;
@@ -6939,6 +6958,13 @@ export interface Database {
           updated_at?: number;
           total_value?: number | null;
           total_value_gross?: number | null;
+          invoice_pages?: unknown | null;
+          analysis_status?: string | null;
+          analysis_result?: unknown | null;
+          analysis_completed_at?: number | null;
+          analysis_error?: string | null;
+          matching_proposals?: unknown | null;
+          item_decisions?: unknown | null;
         };
         Relationships: [
           {
@@ -7043,6 +7069,45 @@ export interface Database {
             columns: ["movement_id"];
             isOneToOne: false;
             referencedRelation: "product_stock_movements";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      delivery_name_mappings: {
+        Row: {
+          id: string;
+          organization_id: string;
+          invoice_name: string;
+          product_id: string;
+          created_at: number;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          invoice_name: string;
+          product_id: string;
+          created_at: number;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          invoice_name?: string;
+          product_id?: string;
+          created_at?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "delivery_name_mappings_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "delivery_name_mappings_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
             referencedColumns: ["id"];
           },
         ];

@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
 import { useAction } from "convex/react";
 import { makeFunctionReference } from "convex/server";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { useSupabase } from "@/components/supabase-provider";
 import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
 import {
@@ -72,6 +73,10 @@ function parseActual(input: string): number | null {
   return v;
 }
 
+function toLocalDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export function WarehouseInventoryDialog({
   open,
   onOpenChange,
@@ -82,18 +87,53 @@ export function WarehouseInventoryDialog({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const adjustStock = useAction(adjustStockRef);
+  const { client, isReady } = useSupabase();
   const { data: locations = [] } = useSupabaseGabinetLocationsList(
     organizationId,
     { activeOnly: true },
   );
 
+  const todayStr = toLocalDateStr(new Date());
+
   const [step, setStep] = useState<Step>("count");
   const [counts, setCounts] = useState<Map<string, string>>(new Map());
   const [locationId, setLocationId] = useState<string>(NO_LOCATION_VALUE);
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resolvedLocationId: string | null =
     locationId === NO_LOCATION_VALUE ? null : locationId;
+
+  const isHistoricalMode = selectedDate < todayStr;
+
+  const historicalStockQuery = useQuery({
+    queryKey: ["stockSnapshot", organizationId, selectedDate, resolvedLocationId ?? "null"],
+    queryFn: async (): Promise<Map<string, number>> => {
+      if (!client) throw new Error("Supabase client not ready");
+      const endMs = new Date(selectedDate + "T23:59:59.999").getTime();
+      let q = client
+        .from("product_stock_movements")
+        .select("product_id, balance_after")
+        .eq("organization_id", organizationId)
+        .lte("created_at", endMs)
+        .order("created_at", { ascending: false });
+      if (resolvedLocationId !== null) {
+        q = q.eq("location_id", resolvedLocationId);
+      } else {
+        q = (q as typeof q).is("location_id", null);
+      }
+      const { data, error } = await q;
+      if (error) throw error;
+      const map = new Map<string, number>();
+      for (const row of (data ?? []) as { product_id: string; balance_after: number | null }[]) {
+        if (!map.has(row.product_id) && row.balance_after != null) {
+          map.set(row.product_id, Number(row.balance_after));
+        }
+      }
+      return map;
+    },
+    enabled: isHistoricalMode && isReady,
+  });
 
   function getStockForLocation(stock: ProductStockTotal | undefined): number {
     if (!stock) return 0;
@@ -143,6 +183,7 @@ export function WarehouseInventoryDialog({
       setStep("count");
       setCounts(new Map());
       setLocationId(NO_LOCATION_VALUE);
+      setSelectedDate(toLocalDateStr(new Date()));
     }
     onOpenChange(nextOpen);
   };
@@ -360,41 +401,120 @@ export function WarehouseInventoryDialog({
             })}
           </DialogTitle>
           <DialogDescription>
-            {t("inventory.count.description", {
-              defaultValue:
-                "Wpisz rzeczywiste stany dla produktów, które chcesz zliczyć. Puste pola zostaną pominięte.",
-            })}
+            {isHistoricalMode
+              ? t("inventory.history.description", {
+                  defaultValue:
+                    "Widok tylko do odczytu. Stany odtworzone na podstawie historii ruchów magazynowych.",
+                })
+              : t("inventory.count.description", {
+                  defaultValue:
+                    "Wpisz rzeczywiste stany dla produktów, które chcesz zliczyć. Puste pola zostaną pominięte.",
+                })}
           </DialogDescription>
         </DialogHeader>
 
-        {locations.length > 0 && (
-          <div className="space-y-1.5 px-1">
-            <Label htmlFor="inventory-location">
-              {t("inventory.count.locationLabel", {
-                defaultValue: "Lokalizacja",
-              })}
+        <div className="space-y-3 px-1">
+          <div className="space-y-1.5">
+            <Label htmlFor="inventory-date">
+              {t("inventory.count.dateLabel", { defaultValue: "Stan na dzień" })}
             </Label>
-            <Select value={locationId} onValueChange={(v) => { setLocationId(v); setCounts(new Map()); }}>
-              <SelectTrigger id="inventory-location">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NO_LOCATION_VALUE}>
-                  {t("inventory.count.locationNone", {
-                    defaultValue: "Bez lokalizacji",
-                  })}
-                </SelectItem>
-                {locations.map((loc) => (
-                  <SelectItem key={loc._id} value={loc._id}>
-                    {loc.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Input
+              id="inventory-date"
+              type="date"
+              max={todayStr}
+              value={selectedDate}
+              onChange={(e) => {
+                const val = e.target.value || todayStr;
+                setSelectedDate(val);
+                setStep("count");
+                setCounts(new Map());
+              }}
+            />
           </div>
-        )}
 
-        {trackedProducts.length === 0 ? (
+          {locations.length > 0 && (
+            <div className="space-y-1.5">
+              <Label htmlFor="inventory-location">
+                {t("inventory.count.locationLabel", {
+                  defaultValue: "Lokalizacja",
+                })}
+              </Label>
+              <Select value={locationId} onValueChange={(v) => { setLocationId(v); setCounts(new Map()); }}>
+                <SelectTrigger id="inventory-location">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_LOCATION_VALUE}>
+                    {t("inventory.count.locationNone", {
+                      defaultValue: "Bez lokalizacji",
+                    })}
+                  </SelectItem>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc._id} value={loc._id}>
+                      {loc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+
+        {isHistoricalMode ? (
+          historicalStockQuery.isLoading ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              {t("common.loading", { defaultValue: "Ładowanie…" })}
+            </p>
+          ) : historicalStockQuery.isError ? (
+            <p className="py-8 text-center text-sm text-destructive">
+              {t("inventory.history.error", {
+                defaultValue: "Błąd ładowania danych historycznych.",
+              })}
+            </p>
+          ) : trackedProducts.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              {t("inventory.count.noProducts", {
+                defaultValue: "Brak aktywnych produktów ze śledzeniem stanu.",
+              })}
+            </p>
+          ) : (
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 z-10 bg-background">
+                  <tr className="border-b">
+                    <th className="px-3 py-2 text-left font-medium">
+                      {t("common.name")}
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium">
+                      {t("inventory.count.unit", { defaultValue: "Jedn." })}
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium">
+                      {t("inventory.history.stockOnDate", { defaultValue: "Stan" })}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {trackedProducts.map((product) => {
+                    const qty = historicalStockQuery.data?.get(product._id) ?? 0;
+                    const unit = product.stockUnit?.trim() ?? "";
+                    const u = unit ? ` ${unit}` : "";
+                    return (
+                      <tr key={product._id} className="border-b last:border-0">
+                        <td className="px-3 py-2 font-medium">{product.name}</td>
+                        <td className="px-3 py-2 text-right text-muted-foreground">
+                          {unit || "—"}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {qty}{u}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : trackedProducts.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             {t("inventory.count.noProducts", {
               defaultValue:
@@ -501,13 +621,15 @@ export function WarehouseInventoryDialog({
           >
             {t("common.cancel")}
           </Button>
-          <Button
-            type="button"
-            onClick={() => setStep("confirm")}
-            disabled={counts.size === 0}
-          >
-            {t("inventory.count.next", { defaultValue: "Dalej" })}
-          </Button>
+          {!isHistoricalMode && (
+            <Button
+              type="button"
+              onClick={() => setStep("confirm")}
+              disabled={counts.size === 0}
+            >
+              {t("inventory.count.next", { defaultValue: "Dalej" })}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

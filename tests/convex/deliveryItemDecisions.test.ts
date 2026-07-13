@@ -14,6 +14,7 @@ import { describe, expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
 import { createTestCtx, seedTestUser } from "../../convex/_test_helpers";
 import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
+import { makeInvoiceItem } from "./_delivery_helpers";
 
 // saveItemDecisions does not use the document analyzer, but warehouseDeliveries.ts
 // statically imports getDocumentAnalyzer which chains to openai (not installed in tests).
@@ -59,19 +60,7 @@ const SAMPLE_ANALYSIS_RESULT = {
   supplierName: "ACME Sp. z o.o.",
   invoiceNumber: "FV/2024/099",
   invoiceDate: "2024-03-10",
-  items: SAMPLE_PROPOSALS.items.map((i) => ({
-    productName: i.invoiceName,
-    quantity: 1,
-    unit: "szt",
-    unitPrice: null,
-    vatRate: null,
-    vatCode: null,
-    unitPriceGross: null,
-    lineValueNet: null,
-    lineValueGross: null,
-    lotNumber: null,
-    expiryDate: null,
-  })),
+  items: SAMPLE_PROPOSALS.items.map((i) => makeInvoiceItem(i.invoiceName)),
   confidence: 0.91,
 };
 

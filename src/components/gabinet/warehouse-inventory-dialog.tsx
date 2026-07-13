@@ -93,7 +93,9 @@ export function WarehouseInventoryDialog({
     { activeOnly: true },
   );
 
-  const todayStr = toLocalDateStr(new Date());
+  // Stable within one open session; recomputes when the dialog opens so re-renders
+  // after midnight don't drift todayStr away from the selectedDate initial value.
+  const todayStr = useMemo(() => toLocalDateStr(new Date()), [open]);
 
   const [step, setStep] = useState<Step>("count");
   const [counts, setCounts] = useState<Map<string, string>>(new Map());

@@ -334,6 +334,7 @@ export function createCrmTables({
     productId: v.id("products"),
     locationId: v.optional(v.id("gabinetLocations")),
     quantity: v.number(),
+    avgCost: v.optional(v.number()),
     updatedAt: v.number(),
   })
     .index("by_org", ["organizationId"])

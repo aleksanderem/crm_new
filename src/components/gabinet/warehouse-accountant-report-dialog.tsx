@@ -24,6 +24,7 @@ interface ReportBodyProps {
   generatedAt: string;
   products: MappedProduct[];
   historicalStock: Map<string, number>;
+  avgCostByProductId: Map<string, number | null>;
 }
 
 function ReportBody({
@@ -33,6 +34,7 @@ function ReportBody({
   generatedAt,
   products,
   historicalStock,
+  avgCostByProductId,
 }: ReportBodyProps) {
   const { t } = useTranslation();
   const noPrice = t("inventory.accountantReport.noPrice", {
@@ -101,13 +103,13 @@ function ReportBody({
               {t("inventory.history.stockOnDate", { defaultValue: "Stan" })}
             </th>
             <th className="px-2 py-2 text-right font-semibold">
-              {t("inventory.accountantReport.purchasePrice", {
-                defaultValue: "Cena zakupu",
+              {t("inventory.accountantReport.avgCostNet", {
+                defaultValue: "Śr. cena zakupu netto",
               })}
             </th>
             <th className="px-2 py-2 text-right font-semibold">
-              {t("inventory.accountantReport.value", {
-                defaultValue: "Wartość",
+              {t("inventory.accountantReport.valueNet", {
+                defaultValue: "Wartość netto",
               })}
             </th>
           </tr>
@@ -116,8 +118,8 @@ function ReportBody({
           {products.map((product, idx) => {
             const qty = historicalStock.get(product._id) ?? 0;
             const unit = product.stockUnit?.trim() || "—";
-            const hasPrice = product.purchasePrice != null;
-            const value = hasPrice ? qty * product.purchasePrice! : null;
+            const avgCost = avgCostByProductId.get(product._id) ?? null;
+            const value = avgCost != null ? qty * avgCost : null;
             return (
               <tr
                 key={product._id}
@@ -130,8 +132,8 @@ function ReportBody({
                 <td className="px-2 py-1.5 text-right">{unit}</td>
                 <td className="px-2 py-1.5 text-right tabular-nums">{qty}</td>
                 <td className="px-2 py-1.5 text-right tabular-nums">
-                  {hasPrice
-                    ? formatPricePLN(product.purchasePrice!)
+                  {avgCost != null
+                    ? formatPricePLN(avgCost)
                     : <span className="text-muted-foreground">{noPrice}</span>}
                 </td>
                 <td className="px-2 py-1.5 text-right tabular-nums">
@@ -157,18 +159,21 @@ function ReportBody({
         </div>
         <div className="mt-1">
           <span className="font-semibold">
-            {t("inventory.accountantReport.totalValue", {
-              defaultValue: "Łączna wartość",
+            {t("inventory.accountantReport.totalValueNet", {
+              defaultValue: "Łączna wartość magazynu netto",
             })}
             :
           </span>{" "}
           {(() => {
-            const total = products.reduce((sum, p) => {
-              if (p.purchasePrice == null) return sum;
+            let total = 0;
+            let hasAnyPrice = false;
+            for (const p of products) {
+              const avgCost = avgCostByProductId.get(p._id) ?? null;
+              if (avgCost == null) continue;
+              hasAnyPrice = true;
               const qty = historicalStock.get(p._id) ?? 0;
-              return sum + qty * p.purchasePrice;
-            }, 0);
-            const hasAnyPrice = products.some((p) => p.purchasePrice != null);
+              total += qty * avgCost;
+            }
             return hasAnyPrice
               ? <span className="font-semibold">{formatPricePLN(total)}</span>
               : <span className="text-muted-foreground">{t("inventory.accountantReport.notAvailable", { defaultValue: "niedostępna (brak cen zakupu)" })}</span>;
@@ -203,6 +208,7 @@ export interface WarehouseAccountantReportDialogProps {
   selectedDate: string;
   products: MappedProduct[];
   historicalStock: Map<string, number>;
+  avgCostByProductId: Map<string, number | null>;
   locationName?: string | null;
 }
 
@@ -213,6 +219,7 @@ export function WarehouseAccountantReportDialog({
   selectedDate,
   products,
   historicalStock,
+  avgCostByProductId,
   locationName,
 }: WarehouseAccountantReportDialogProps) {
   const { t } = useTranslation();
@@ -226,6 +233,7 @@ export function WarehouseAccountantReportDialog({
     generatedAt,
     products,
     historicalStock,
+    avgCostByProductId,
   };
 
   const handlePrint = () => {

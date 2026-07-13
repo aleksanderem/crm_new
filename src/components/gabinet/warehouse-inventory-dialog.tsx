@@ -154,6 +154,16 @@ export function WarehouseInventoryDialog({
     [products],
   );
 
+  const avgCostByProductId = useMemo(() => {
+    const map = new Map<string, number | null>();
+    for (const p of trackedProducts) {
+      const stock = totalsByProductId.get(p._id);
+      const loc = stock?.byLocation.find((l) => l.locationId === resolvedLocationId);
+      map.set(p._id, loc?.avgCost ?? null);
+    }
+    return map;
+  }, [trackedProducts, totalsByProductId, resolvedLocationId]);
+
   const diffs: DiffRow[] = useMemo(() => {
     const result: DiffRow[] = [];
     for (const p of trackedProducts) {
@@ -400,7 +410,7 @@ export function WarehouseInventoryDialog({
   return (
     <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col">
+      <DialogContent className="flex max-h-[90vh] max-w-4xl flex-col">
         <DialogHeader>
           <DialogTitle>
             {t("inventory.count.title", {
@@ -498,6 +508,12 @@ export function WarehouseInventoryDialog({
                     <th className="px-3 py-2 text-right font-medium">
                       {t("inventory.history.stockOnDate", { defaultValue: "Stan" })}
                     </th>
+                    <th className="px-3 py-2 text-right font-medium">
+                      {t("inventory.count.avgCostNet", { defaultValue: "Śr. cena netto" })}
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium">
+                      {t("inventory.count.valueNet", { defaultValue: "Wartość netto" })}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -505,6 +521,8 @@ export function WarehouseInventoryDialog({
                     const qty = historicalStockQuery.data?.get(product._id) ?? 0;
                     const unit = product.stockUnit?.trim() ?? "";
                     const u = unit ? ` ${unit}` : "";
+                    const avgCost = avgCostByProductId.get(product._id) ?? null;
+                    const valueNet = avgCost != null ? qty * avgCost : null;
                     return (
                       <tr key={product._id} className="border-b last:border-0">
                         <td className="px-3 py-2 font-medium">{product.name}</td>
@@ -513,6 +531,16 @@ export function WarehouseInventoryDialog({
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums">
                           {qty}{u}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                          {avgCost != null
+                            ? avgCost.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " zł"
+                            : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {valueNet != null
+                            ? valueNet.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " zł"
+                            : "—"}
                         </td>
                       </tr>
                     );
@@ -545,6 +573,12 @@ export function WarehouseInventoryDialog({
                     })}
                   </th>
                   <th className="px-3 py-2 text-right font-medium">
+                    {t("inventory.count.avgCostNet", { defaultValue: "Śr. cena netto" })}
+                  </th>
+                  <th className="px-3 py-2 text-right font-medium">
+                    {t("inventory.count.valueNet", { defaultValue: "Wartość netto" })}
+                  </th>
+                  <th className="px-3 py-2 text-right font-medium">
                     {t("inventory.count.actual", {
                       defaultValue: "Rzeczywisty",
                     })}
@@ -564,6 +598,8 @@ export function WarehouseInventoryDialog({
                   const delta = actual !== null ? actual - systemStock : null;
                   const unit = product.stockUnit?.trim() ?? "";
                   const u = unit ? ` ${unit}` : "";
+                  const avgCost = avgCostByProductId.get(product._id) ?? null;
+                  const valueNet = avgCost != null ? systemStock * avgCost : null;
                   return (
                     <tr key={product._id} className="border-b last:border-0">
                       <td className="px-3 py-2 font-medium">{product.name}</td>
@@ -573,6 +609,16 @@ export function WarehouseInventoryDialog({
                       <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                         {systemStock}
                         {u}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                        {avgCost != null
+                          ? avgCost.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " zł"
+                          : "—"}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                        {valueNet != null
+                          ? valueNet.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " zł"
+                          : "—"}
                       </td>
                       <td className="px-3 py-2">
                         <Input
@@ -659,6 +705,7 @@ export function WarehouseInventoryDialog({
       selectedDate={selectedDate}
       products={trackedProducts}
       historicalStock={historicalStockQuery.data ?? new Map()}
+      avgCostByProductId={avgCostByProductId}
       locationName={
         resolvedLocationId
           ? (locations.find((l) => l._id === resolvedLocationId)?.name ?? null)

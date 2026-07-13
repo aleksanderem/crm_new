@@ -6565,6 +6565,7 @@ export interface Database {
           product_id: string;
           location_id: string | null;
           quantity: number;
+          avg_cost: number | null;
           updated_at: number;
         };
         Insert: {
@@ -6573,6 +6574,7 @@ export interface Database {
           product_id: string;
           location_id?: string | null;
           quantity?: number;
+          avg_cost?: number | null;
           updated_at: number;
         };
         Update: {
@@ -6581,6 +6583,7 @@ export interface Database {
           product_id?: string;
           location_id?: string | null;
           quantity?: number;
+          avg_cost?: number | null;
           updated_at?: number;
         };
         Relationships: [

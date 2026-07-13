@@ -194,12 +194,35 @@ export async function applyMovementInternal(
     warning = "negative_stock";
   }
 
+  // Weighted average net purchase price — updated only on warehouse receipts
+  // with a known net price. Guards: no update on manual adjustments,
+  // appointment use, etc. Division by zero prevented by the previousBalance ≤ 0
+  // branch which resets to the new delivery price outright.
+  let newAvgCost: number | null = null;
+  if (
+    params.reason === "warehouse_receive" &&
+    params.unitPrice != null &&
+    resolvedDelta > 0
+  ) {
+    const existingAvgCost =
+      level?.avgCost != null ? Number(level.avgCost) : null;
+    if (!level || previousBalance <= 0 || existingAvgCost == null) {
+      newAvgCost = params.unitPrice;
+    } else {
+      const denom = previousBalance + resolvedDelta;
+      newAvgCost =
+        (previousBalance * existingAvgCost + resolvedDelta * params.unitPrice) /
+        denom;
+    }
+  }
+
   const now = Date.now();
 
   if (trackStock) {
     if (level) {
       await db.patch("productStockLevels", String(level._id), {
         quantity: newBalance,
+        ...(newAvgCost !== null ? { avgCost: newAvgCost } : {}),
         updatedAt: now,
       });
     } else {
@@ -208,6 +231,7 @@ export async function applyMovementInternal(
         productId: params.productId,
         locationId: params.locationId,
         quantity: newBalance,
+        ...(newAvgCost !== null ? { avgCost: newAvgCost } : {}),
         updatedAt: now,
       });
     }

@@ -63,7 +63,8 @@ export const getStockSummary = action({
 export const listMovements = action({
   args: {
     organizationId: v.id("organizations"),
-    productId: v.string(),
+    productId: v.optional(v.string()),
+    reason: v.optional(REASON_VALIDATOR),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args): Promise<StockMovementRow[]> => {
@@ -78,13 +79,16 @@ export const listMovements = action({
 
     const db = createSupabaseDb();
     const limit = Math.max(1, Math.min(args.limit ?? 100, 500));
-    return await db
+    let query = db
       .query<StockMovementRow>("productStockMovements")
-      .eq("organizationId", String(args.organizationId))
-      .eq("productId", args.productId)
-      .order("createdAt", false)
-      .take(limit)
-      .collect();
+      .eq("organizationId", String(args.organizationId));
+    if (args.productId) {
+      query = query.eq("productId", args.productId);
+    }
+    if (args.reason) {
+      query = query.eq("reason", args.reason);
+    }
+    return await query.order("createdAt", false).take(limit).collect();
   },
 });
 

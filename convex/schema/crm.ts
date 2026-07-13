@@ -388,6 +388,9 @@ export function createCrmTables({
     locationId: v.optional(v.id("gabinetLocations")),
     notes: v.optional(v.string()),
     status: v.union(v.literal("draft"), v.literal("posted")),
+    // Denormalized SUM(quantity × unit_price) across all items (#2968).
+    // NULL when no items carried a unit_price.
+    totalValue: v.optional(v.number()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

@@ -345,6 +345,9 @@ function DeliveriesPage() {
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                   {t("gabinet.deliveries.col.invoice", "Nr faktury")}
                 </th>
+                <th className="px-4 py-3 text-right font-medium text-muted-foreground">
+                  {t("gabinet.deliveries.col.totalValue", "Wartość")}
+                </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                   {t("gabinet.deliveries.col.status", "Status")}
                 </th>
@@ -372,6 +375,11 @@ function DeliveriesPage() {
                     </td>
                     <td className="px-4 py-3">
                       {invoice ?? <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {typeof d.totalValue === "number"
+                        ? d.totalValue.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                        : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="px-4 py-3">{statusBadge(status, t)}</td>
                     <td className="px-4 py-3 text-right">

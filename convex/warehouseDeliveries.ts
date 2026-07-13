@@ -17,6 +17,20 @@ import type { SupabaseRow } from "./_helpers/supabaseRows";
 type DeliveryRow = SupabaseRow<"warehouseDeliveries">;
 type DeliveryItemRow = SupabaseRow<"warehouseDeliveryItems">;
 
+function computeTotalValue(
+  items: Array<{ quantity: number; unitPrice?: number | null }>,
+): number | null {
+  let total = 0;
+  let hasPrice = false;
+  for (const item of items) {
+    if (item.unitPrice != null) {
+      total += item.quantity * item.unitPrice;
+      hasPrice = true;
+    }
+  }
+  return hasPrice ? total : null;
+}
+
 export interface DeliveryWithItems {
   delivery: DeliveryRow;
   items: DeliveryItemRow[];
@@ -119,6 +133,8 @@ export const createDelivery = action({
     const db = createSupabaseDb();
     const now = Date.now();
 
+    const totalValue = computeTotalValue(args.items);
+
     const deliveryId = await db.insert("warehouseDeliveries", {
       organizationId: String(args.organizationId),
       supplierName: args.supplierName ?? null,
@@ -127,6 +143,7 @@ export const createDelivery = action({
       locationId: args.locationId ?? null,
       notes: args.notes ?? null,
       status: "draft",
+      totalValue,
       createdBy: String(auth.userId),
       createdAt: now,
       updatedAt: now,
@@ -184,19 +201,21 @@ export const updateDelivery = action({
       throw new Error("Only draft deliveries can be edited");
     }
 
-    await db.patch("warehouseDeliveries", args.deliveryId, {
+    const headerPatch: Record<string, unknown> = {
       supplierName: args.supplierName ?? null,
       invoiceNumber: args.invoiceNumber ?? null,
       deliveryDate: args.deliveryDate ?? null,
       locationId: args.locationId ?? null,
       notes: args.notes ?? null,
       updatedAt: Date.now(),
-    });
+    };
 
     if (args.items !== undefined) {
       if (args.items.length === 0) {
         throw new Error("Delivery must have at least one item");
       }
+      headerPatch.totalValue = computeTotalValue(args.items);
+
       const existing = await db
         .query<DeliveryItemRow>("warehouseDeliveryItems")
         .eq("deliveryId", args.deliveryId)
@@ -218,6 +237,8 @@ export const updateDelivery = action({
         });
       }
     }
+
+    await db.patch("warehouseDeliveries", args.deliveryId, headerPatch);
   },
 });
 

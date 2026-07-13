@@ -90,7 +90,11 @@ function DeliveriesPage() {
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen
   const listDeliveriesAction = useAction(api.warehouseDeliveries.listDeliveries);
   // @ts-ignore
+  const getDeliveryAction = useAction(api.warehouseDeliveries.getDelivery);
+  // @ts-ignore
   const createDeliveryAction = useAction(api.warehouseDeliveries.createDelivery);
+  // @ts-ignore
+  const updateDeliveryAction = useAction(api.warehouseDeliveries.updateDelivery);
   // @ts-ignore
   const postDeliveryAction = useAction(api.warehouseDeliveries.postDelivery);
 
@@ -110,8 +114,10 @@ function DeliveriesPage() {
     [productsData],
   );
 
-  // Create panel state
+  // Create/edit panel state
   const [panelOpen, setPanelOpen] = useState(false);
+  const [editDeliveryId, setEditDeliveryId] = useState<string | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
   const [supplierName, setSupplierName] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
@@ -124,7 +130,10 @@ function DeliveriesPage() {
   const [postTarget, setPostTarget] = useState<{ id: string; label: string } | null>(null);
   const [posting, setPosting] = useState(false);
 
+  const isEditMode = editDeliveryId !== null;
+
   const resetPanel = useCallback(() => {
+    setEditDeliveryId(null);
     setSupplierName("");
     setInvoiceNumber("");
     setDeliveryDate("");
@@ -132,6 +141,44 @@ function DeliveriesPage() {
     setNotes("");
     setItems([newLine()]);
   }, []);
+
+  const handleEditOpen = async (id: string) => {
+    setEditLoading(true);
+    try {
+      const result = await getDeliveryAction({ organizationId, deliveryId: id }) as {
+        delivery: Record<string, unknown>;
+        items: Array<Record<string, unknown>>;
+      };
+      const d = result.delivery;
+      setEditDeliveryId(id);
+      setSupplierName(d.supplierName ? String(d.supplierName) : "");
+      setInvoiceNumber(d.invoiceNumber ? String(d.invoiceNumber) : "");
+      setDeliveryDate(d.deliveryDate ? String(d.deliveryDate) : "");
+      setLocationId(d.locationId ? String(d.locationId) : NO_LOCATION);
+      setNotes(d.notes ? String(d.notes) : "");
+      setItems(
+        result.items.length > 0
+          ? result.items.map((item) => ({
+              id: crypto.randomUUID(),
+              productId: String(item.productId ?? ""),
+              quantity: item.quantity != null ? String(item.quantity) : "",
+              unitPrice: item.unitPrice != null ? String(item.unitPrice) : "",
+              vatRate: item.vatRate != null ? String(item.vatRate) : "",
+            }))
+          : [newLine()],
+      );
+      setPanelOpen(true);
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.deliveries.loadError",
+          defaultValue: "Nie udało się załadować dostawy.",
+        }),
+      );
+    } finally {
+      setEditLoading(false);
+    }
+  };
 
   const addLine = () => setItems((prev) => [...prev, newLine()]);
 
@@ -151,35 +198,53 @@ function DeliveriesPage() {
 
   const canSubmit = validItems.length > 0 && !submitting;
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
     try {
       const resolvedLocation =
         locationId !== NO_LOCATION ? (locationId as Id<"gabinetLocations">) : undefined;
-      await createDeliveryAction({
-        organizationId,
-        supplierName: supplierName.trim() || undefined,
-        invoiceNumber: invoiceNumber.trim() || undefined,
-        deliveryDate: deliveryDate || undefined,
-        locationId: resolvedLocation,
-        notes: notes.trim() || undefined,
-        items: validItems.map((l) => ({
-          productId: l.productId,
-          quantity: parseNum(l.quantity)!,
-          unitPrice: parseNum(l.unitPrice) ?? undefined,
-          vatRate: parseNum(l.vatRate) ?? undefined,
-        })),
-      });
-      toast.success(t("gabinet.deliveries.createSuccess", "Dostawa utworzona."));
+      const itemsPayload = validItems.map((l) => ({
+        productId: l.productId,
+        quantity: parseNum(l.quantity)!,
+        unitPrice: parseNum(l.unitPrice) ?? undefined,
+        vatRate: parseNum(l.vatRate) ?? undefined,
+      }));
+
+      if (isEditMode) {
+        await updateDeliveryAction({
+          organizationId,
+          deliveryId: editDeliveryId!,
+          supplierName: supplierName.trim() || undefined,
+          invoiceNumber: invoiceNumber.trim() || undefined,
+          deliveryDate: deliveryDate || undefined,
+          locationId: resolvedLocation,
+          notes: notes.trim() || undefined,
+          items: itemsPayload,
+        });
+        toast.success(t("gabinet.deliveries.updateSuccess", "Dostawa zaktualizowana."));
+      } else {
+        await createDeliveryAction({
+          organizationId,
+          supplierName: supplierName.trim() || undefined,
+          invoiceNumber: invoiceNumber.trim() || undefined,
+          deliveryDate: deliveryDate || undefined,
+          locationId: resolvedLocation,
+          notes: notes.trim() || undefined,
+          items: itemsPayload,
+        });
+        toast.success(t("gabinet.deliveries.createSuccess", "Dostawa utworzona."));
+      }
       void queryClient.invalidateQueries({ queryKey });
       setPanelOpen(false);
       resetPanel();
     } catch (e) {
       toast.error(
         formatActionError(e, t, {
-          key: "gabinet.deliveries.createError",
-          defaultValue: "Nie udało się utworzyć dostawy.",
+          key: isEditMode ? "gabinet.deliveries.updateError" : "gabinet.deliveries.createError",
+          defaultValue: isEditMode
+            ? "Nie udało się zaktualizować dostawy."
+            : "Nie udało się utworzyć dostawy.",
         }),
       );
     } finally {
@@ -285,15 +350,26 @@ function DeliveriesPage() {
                     <td className="px-4 py-3">{statusBadge(status, t)}</td>
                     <td className="px-4 py-3 text-right">
                       {status === "draft" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setPostTarget({ id, label })}
-                          className="gap-1.5"
-                        >
-                          <CheckCircle className="h-3.5 w-3.5" variant="stroke" />
-                          {t("gabinet.deliveries.postAction", "Zaksięguj")}
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEditOpen(id)}
+                            disabled={editLoading}
+                            className="gap-1.5"
+                          >
+                            {t("gabinet.deliveries.editAction", "Edytuj")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setPostTarget({ id, label })}
+                            className="gap-1.5"
+                          >
+                            <CheckCircle className="h-3.5 w-3.5" variant="stroke" />
+                            {t("gabinet.deliveries.postAction", "Zaksięguj")}
+                          </Button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -311,7 +387,11 @@ function DeliveriesPage() {
           setPanelOpen(o);
           if (!o) resetPanel();
         }}
-        title={t("gabinet.deliveries.newDelivery", "Nowa dostawa")}
+        title={
+          isEditMode
+            ? t("gabinet.deliveries.editDelivery", "Edytuj dostawę")
+            : t("gabinet.deliveries.newDelivery", "Nowa dostawa")
+        }
         description={t(
           "gabinet.deliveries.newDeliveryDesc",
           "Wypełnij dane dostawy. Po zapisaniu możesz ją zaksięgować, co zaktualizuje stany magazynowe.",
@@ -500,10 +580,12 @@ function DeliveriesPage() {
           <Button
             className="w-full"
             disabled={!canSubmit}
-            onClick={handleCreate}
+            onClick={handleSave}
           >
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" variant="stroke" />}
-            {t("gabinet.deliveries.saveDelivery", "Zapisz dostawę")}
+            {isEditMode
+              ? t("gabinet.deliveries.saveChanges", "Zapisz zmiany")
+              : t("gabinet.deliveries.saveDelivery", "Zapisz dostawę")}
           </Button>
         </div>
       </SidePanel>

@@ -8,10 +8,14 @@
  * @module
  */
 
+import type * as _ai_documentAnalyzer from "../_ai/documentAnalyzer.js";
+import type * as _ai_invoiceMatching from "../_ai/invoiceMatching.js";
+import type * as _ai_providers_openaiDocumentAnalyzer from "../_ai/providers/openaiDocumentAnalyzer.js";
 import type * as _helpers_activities from "../_helpers/activities.js";
 import type * as _helpers_activityEnvelope from "../_helpers/activityEnvelope.js";
 import type * as _helpers_auth from "../_helpers/auth.js";
 import type * as _helpers_authAction from "../_helpers/authAction.js";
+import type * as _helpers_formatCurrency from "../_helpers/formatCurrency.js";
 import type * as _helpers_gabinetRolePermissions from "../_helpers/gabinetRolePermissions.js";
 import type * as _helpers_html from "../_helpers/html.js";
 import type * as _helpers_logged from "../_helpers/logged.js";
@@ -50,10 +54,12 @@ import type * as documentInstances from "../documentInstances.js";
 import type * as documentTemplateFields from "../documentTemplateFields.js";
 import type * as documentTemplates from "../documentTemplates.js";
 import type * as documents from "../documents.js";
+import type * as documents__helpers_patientBindings from "../documents/_helpers/patientBindings.js";
 import type * as documents_completeMissingData from "../documents/completeMissingData.js";
 import type * as documents_components from "../documents/components.js";
 import type * as documents_documents from "../documents/documents.js";
 import type * as documents_generate from "../documents/generate.js";
+import type * as documents_intakeSummary from "../documents/intakeSummary.js";
 import type * as documents_resolveComponents from "../documents/resolveComponents.js";
 import type * as documents_scopeResolver from "../documents/scopeResolver.js";
 import type * as documents_scopeResolver_supabase from "../documents/scopeResolver_supabase.js";
@@ -90,6 +96,7 @@ import type * as gabinet_appointmentSms from "../gabinet/appointmentSms.js";
 import type * as gabinet_appointmentWorkflow from "../gabinet/appointmentWorkflow.js";
 import type * as gabinet_appointments from "../gabinet/appointments.js";
 import type * as gabinet_documentDataSources from "../gabinet/documentDataSources.js";
+import type * as gabinet_employeeLocations from "../gabinet/employeeLocations.js";
 import type * as gabinet_employees from "../gabinet/employees.js";
 import type * as gabinet_equipment from "../gabinet/equipment.js";
 import type * as gabinet_inventory from "../gabinet/inventory.js";
@@ -133,7 +140,6 @@ import type * as migrations_backfillCreditEarned from "../migrations/backfillCre
 import type * as migrations_backfillMailProviders from "../migrations/backfillMailProviders.js";
 import type * as migrations_backfillTreatmentCategories from "../migrations/backfillTreatmentCategories.js";
 import type * as migrations_emailTemplateMigrations from "../migrations/emailTemplateMigrations.js";
-import type * as migrations_migrateGabinetDocuments from "../migrations/migrateGabinetDocuments.js";
 import type * as notes from "../notes.js";
 import type * as notifications from "../notifications.js";
 import type * as nudges from "../nudges.js";
@@ -185,6 +191,7 @@ import type * as supabase_syncAudit from "../supabase/syncAudit.js";
 import type * as supabase_users from "../supabase/users.js";
 import type * as supabase_usersHelpers from "../supabase/usersHelpers.js";
 import type * as tagDefinitions from "../tagDefinitions.js";
+import type * as warehouseDeliveries from "../warehouseDeliveries.js";
 
 import type {
   ApiFromModules,
@@ -193,10 +200,14 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "_ai/documentAnalyzer": typeof _ai_documentAnalyzer;
+  "_ai/invoiceMatching": typeof _ai_invoiceMatching;
+  "_ai/providers/openaiDocumentAnalyzer": typeof _ai_providers_openaiDocumentAnalyzer;
   "_helpers/activities": typeof _helpers_activities;
   "_helpers/activityEnvelope": typeof _helpers_activityEnvelope;
   "_helpers/auth": typeof _helpers_auth;
   "_helpers/authAction": typeof _helpers_authAction;
+  "_helpers/formatCurrency": typeof _helpers_formatCurrency;
   "_helpers/gabinetRolePermissions": typeof _helpers_gabinetRolePermissions;
   "_helpers/html": typeof _helpers_html;
   "_helpers/logged": typeof _helpers_logged;
@@ -235,10 +246,12 @@ declare const fullApi: ApiFromModules<{
   documentTemplateFields: typeof documentTemplateFields;
   documentTemplates: typeof documentTemplates;
   documents: typeof documents;
+  "documents/_helpers/patientBindings": typeof documents__helpers_patientBindings;
   "documents/completeMissingData": typeof documents_completeMissingData;
   "documents/components": typeof documents_components;
   "documents/documents": typeof documents_documents;
   "documents/generate": typeof documents_generate;
+  "documents/intakeSummary": typeof documents_intakeSummary;
   "documents/resolveComponents": typeof documents_resolveComponents;
   "documents/scopeResolver": typeof documents_scopeResolver;
   "documents/scopeResolver_supabase": typeof documents_scopeResolver_supabase;
@@ -275,6 +288,7 @@ declare const fullApi: ApiFromModules<{
   "gabinet/appointmentWorkflow": typeof gabinet_appointmentWorkflow;
   "gabinet/appointments": typeof gabinet_appointments;
   "gabinet/documentDataSources": typeof gabinet_documentDataSources;
+  "gabinet/employeeLocations": typeof gabinet_employeeLocations;
   "gabinet/employees": typeof gabinet_employees;
   "gabinet/equipment": typeof gabinet_equipment;
   "gabinet/inventory": typeof gabinet_inventory;
@@ -318,7 +332,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/backfillMailProviders": typeof migrations_backfillMailProviders;
   "migrations/backfillTreatmentCategories": typeof migrations_backfillTreatmentCategories;
   "migrations/emailTemplateMigrations": typeof migrations_emailTemplateMigrations;
-  "migrations/migrateGabinetDocuments": typeof migrations_migrateGabinetDocuments;
   notes: typeof notes;
   notifications: typeof notifications;
   nudges: typeof nudges;
@@ -370,6 +383,7 @@ declare const fullApi: ApiFromModules<{
   "supabase/users": typeof supabase_users;
   "supabase/usersHelpers": typeof supabase_usersHelpers;
   tagDefinitions: typeof tagDefinitions;
+  warehouseDeliveries: typeof warehouseDeliveries;
 }>;
 
 /**

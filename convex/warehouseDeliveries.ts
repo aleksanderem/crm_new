@@ -149,6 +149,78 @@ export const createDelivery = action({
   },
 });
 
+export const updateDelivery = action({
+  args: {
+    organizationId: v.id("organizations"),
+    deliveryId: v.string(),
+    supplierName: v.optional(v.string()),
+    invoiceNumber: v.optional(v.string()),
+    deliveryDate: v.optional(v.string()),
+    locationId: v.optional(v.id("gabinetLocations")),
+    notes: v.optional(v.string()),
+    items: v.optional(v.array(v.object({
+      productId: v.string(),
+      quantity: v.number(),
+      unitPrice: v.optional(v.number()),
+      vatRate: v.optional(v.number()),
+    }))),
+  },
+  handler: async (ctx, args): Promise<void> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_inventory", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+    const delivery = await db.get<DeliveryRow>("warehouseDeliveries", args.deliveryId);
+    if (!delivery || String(delivery.organizationId) !== String(args.organizationId)) {
+      throw new Error("Delivery not found");
+    }
+    if (delivery.status !== "draft") {
+      throw new Error("Only draft deliveries can be edited");
+    }
+
+    await db.patch("warehouseDeliveries", args.deliveryId, {
+      supplierName: args.supplierName ?? null,
+      invoiceNumber: args.invoiceNumber ?? null,
+      deliveryDate: args.deliveryDate ?? null,
+      locationId: args.locationId ?? null,
+      notes: args.notes ?? null,
+      updatedAt: Date.now(),
+    });
+
+    if (args.items !== undefined) {
+      if (args.items.length === 0) {
+        throw new Error("Delivery must have at least one item");
+      }
+      const existing = await db
+        .query<DeliveryItemRow>("warehouseDeliveryItems")
+        .eq("deliveryId", args.deliveryId)
+        .collect();
+      for (const item of existing) {
+        await db.delete("warehouseDeliveryItems", String(item._id));
+      }
+      const now = Date.now();
+      for (const item of args.items) {
+        await db.insert("warehouseDeliveryItems", {
+          organizationId: String(args.organizationId),
+          deliveryId: args.deliveryId,
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice ?? null,
+          vatRate: item.vatRate ?? null,
+          movementId: null,
+          createdAt: now,
+        });
+      }
+    }
+  },
+});
+
 export const postDelivery = action({
   args: {
     organizationId: v.id("organizations"),

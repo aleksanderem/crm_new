@@ -391,6 +391,8 @@ export function createCrmTables({
     // Denormalized SUM(quantity × unit_price) across all items (#2968).
     // NULL when no items carried a unit_price.
     totalValue: v.optional(v.number()),
+    // Denormalized SUM(line_value_gross) across all items (#2975).
+    totalValueGross: v.optional(v.number()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -406,8 +408,12 @@ export function createCrmTables({
     deliveryId: v.id("warehouseDeliveries"),
     productId: v.id("products"),
     quantity: v.number(),
-    unitPrice: v.optional(v.number()),
-    vatRate: v.optional(v.number()),
+    unitPrice: v.optional(v.number()),       // net unit price
+    vatRate: v.optional(v.number()),          // numeric %, e.g. 23
+    vatCode: v.optional(v.string()),          // "23"|"8"|"5"|"0"|"zw"|"np"
+    unitPriceGross: v.optional(v.number()),   // gross unit price (#2975)
+    lineValueNet: v.optional(v.number()),     // qty × unitPrice (#2975)
+    lineValueGross: v.optional(v.number()),   // qty × unitPriceGross (#2975)
     movementId: v.optional(v.string()),
     createdAt: v.number(),
   })

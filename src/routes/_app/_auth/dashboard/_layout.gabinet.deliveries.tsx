@@ -45,16 +45,58 @@ export const Route = createFileRoute(
 
 const NO_LOCATION = "__none__";
 
+const VAT_OPTIONS = [
+  { code: "23", label: "23%", rate: 23 },
+  { code: "8",  label: "8%",  rate: 8 },
+  { code: "5",  label: "5%",  rate: 5 },
+  { code: "0",  label: "0%",  rate: 0 },
+  { code: "zw", label: "zw.", rate: 0 },
+  { code: "np", label: "np.", rate: 0 },
+] as const;
+
+type VatCode = typeof VAT_OPTIONS[number]["code"];
+
+function vatRate(code: string): number | undefined {
+  return VAT_OPTIONS.find((o) => o.code === code)?.rate;
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+function grossFromNet(net: number, code: string): string {
+  const rate = vatRate(code);
+  if (rate === undefined) return "";
+  return String(round2(net * (1 + rate / 100)));
+}
+
+function netFromGross(gross: number, code: string): string {
+  const rate = vatRate(code);
+  if (rate === undefined) return "";
+  if (rate === 0) return String(gross);
+  return String(round2(gross / (1 + rate / 100)));
+}
+
 interface LineItem {
   id: string;
   productId: string;
   quantity: string;
-  unitPrice: string;
-  vatRate: string;
+  unitPrice: string;       // net
+  vatCode: string;
+  unitPriceGross: string;  // gross
+  lastEdited: "net" | "gross" | null;
 }
 
 function newLine(): LineItem {
-  return { id: crypto.randomUUID(), productId: "", quantity: "", unitPrice: "", vatRate: "" };
+  return {
+    id: crypto.randomUUID(),
+    productId: "",
+    quantity: "",
+    unitPrice: "",
+    vatCode: "",
+    unitPriceGross: "",
+    lastEdited: null,
+  };
 }
 
 function parseNum(s: string): number | null {
@@ -80,6 +122,10 @@ function statusBadge(status: string, t: ReturnType<typeof useTranslation>["t"]) 
 function formatDate(ms: number | null | undefined) {
   if (!ms) return "—";
   return new Date(ms).toLocaleDateString("pl-PL");
+}
+
+function fmtMoney(n: number) {
+  return n.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function DeliveriesPage() {
@@ -169,7 +215,9 @@ function DeliveriesPage() {
               productId: String(item.productId ?? ""),
               quantity: item.quantity != null ? String(item.quantity) : "",
               unitPrice: item.unitPrice != null ? String(item.unitPrice) : "",
-              vatRate: item.vatRate != null ? String(item.vatRate) : "",
+              vatCode: item.vatCode ? String(item.vatCode) : "",
+              unitPriceGross: item.unitPriceGross != null ? String(item.unitPriceGross) : "",
+              lastEdited: item.unitPrice != null ? "net" : (item.unitPriceGross != null ? "gross" : null),
             }))
           : [newLine()],
       );
@@ -191,16 +239,63 @@ function DeliveriesPage() {
   const removeLine = (id: string) =>
     setItems((prev) => prev.length > 1 ? prev.filter((l) => l.id !== id) : prev);
 
-  const updateLine = (id: string, field: keyof LineItem, value: string) =>
-    setItems((prev) => prev.map((l) => (l.id === id ? { ...l, [field]: value } : l)));
+  // Smart updateLine: auto-computes the counterpart price when one price or vatCode changes.
+  // lastEdited tracks which price field the user last touched, preventing feedback loops.
+  const updateLine = useCallback((id: string, field: keyof LineItem, value: string) => {
+    setItems((prev) =>
+      prev.map((l) => {
+        if (l.id !== id) return l;
+        const updated = { ...l, [field]: value };
+
+        if (field === "unitPrice") {
+          updated.lastEdited = "net";
+          const net = parseNum(value);
+          if (net !== null && updated.vatCode) {
+            updated.unitPriceGross = grossFromNet(net, updated.vatCode);
+          }
+        } else if (field === "unitPriceGross") {
+          updated.lastEdited = "gross";
+          const gross = parseNum(value);
+          if (gross !== null && updated.vatCode) {
+            updated.unitPrice = netFromGross(gross, updated.vatCode);
+          }
+        } else if (field === "vatCode") {
+          if (updated.lastEdited === "net") {
+            const net = parseNum(updated.unitPrice);
+            if (net !== null && value) {
+              updated.unitPriceGross = grossFromNet(net, value);
+            }
+          } else if (updated.lastEdited === "gross") {
+            const gross = parseNum(updated.unitPriceGross);
+            if (gross !== null && value) {
+              updated.unitPrice = netFromGross(gross, value);
+            }
+          }
+        }
+
+        return updated;
+      }),
+    );
+  }, []);
 
   const validItems = useMemo(
-    () =>
-      items.filter(
-        (l) => l.productId && (parseNum(l.quantity) ?? 0) > 0,
-      ),
+    () => items.filter((l) => l.productId && (parseNum(l.quantity) ?? 0) > 0),
     [items],
   );
+
+  const totals = useMemo(() => {
+    let net = 0, gross = 0;
+    let hasNet = false, hasGross = false;
+    for (const l of validItems) {
+      const qty = parseNum(l.quantity);
+      const netP = parseNum(l.unitPrice);
+      const grossP = parseNum(l.unitPriceGross);
+      if (qty !== null && netP !== null) { net += qty * netP; hasNet = true; }
+      if (qty !== null && grossP !== null) { gross += qty * grossP; hasGross = true; }
+    }
+    if (!hasNet && !hasGross) return null;
+    return { net: hasNet ? round2(net) : null, gross: hasGross ? round2(gross) : null };
+  }, [validItems]);
 
   const canSubmit = validItems.length > 0 && !submitting;
 
@@ -210,12 +305,22 @@ function DeliveriesPage() {
     try {
       const resolvedLocation =
         locationId !== NO_LOCATION ? (locationId as Id<"gabinetLocations">) : undefined;
-      const itemsPayload = validItems.map((l) => ({
-        productId: l.productId,
-        quantity: parseNum(l.quantity)!,
-        unitPrice: parseNum(l.unitPrice) ?? undefined,
-        vatRate: parseNum(l.vatRate) ?? undefined,
-      }));
+      const itemsPayload = validItems.map((l) => {
+        const qty = parseNum(l.quantity)!;
+        const netP = parseNum(l.unitPrice) ?? undefined;
+        const grossP = parseNum(l.unitPriceGross) ?? undefined;
+        const vRate = l.vatCode ? vatRate(l.vatCode) : undefined;
+        return {
+          productId: l.productId,
+          quantity: qty,
+          unitPrice: netP,
+          vatRate: vRate,
+          vatCode: l.vatCode || undefined,
+          unitPriceGross: grossP,
+          lineValueNet: netP !== undefined ? round2(qty * netP) : undefined,
+          lineValueGross: grossP !== undefined ? round2(qty * grossP) : undefined,
+        };
+      });
 
       if (isEditMode) {
         await updateDeliveryAction({
@@ -346,7 +451,7 @@ function DeliveriesPage() {
                   {t("gabinet.deliveries.col.invoice", "Nr faktury")}
                 </th>
                 <th className="px-4 py-3 text-right font-medium text-muted-foreground">
-                  {t("gabinet.deliveries.col.totalValue", "Wartość")}
+                  {t("gabinet.deliveries.col.totalValueGross", "Wartość brutto")}
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                   {t("gabinet.deliveries.col.status", "Status")}
@@ -365,6 +470,12 @@ function DeliveriesPage() {
                 const createdAt = typeof d.createdAt === "number" ? d.createdAt : null;
                 const delivDate = d.deliveryDate ? String(d.deliveryDate) : null;
                 const label = invoice ?? supplier ?? id.slice(0, 8);
+                const displayValue =
+                  typeof d.totalValueGross === "number"
+                    ? d.totalValueGross
+                    : typeof d.totalValue === "number"
+                      ? d.totalValue
+                      : null;
                 return (
                   <tr key={id} className="border-b last:border-0 hover:bg-muted/30">
                     <td className="px-4 py-3 text-muted-foreground">
@@ -377,8 +488,8 @@ function DeliveriesPage() {
                       {invoice ?? <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">
-                      {typeof d.totalValue === "number"
-                        ? d.totalValue.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                      {displayValue !== null
+                        ? fmtMoney(displayValue)
                         : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="px-4 py-3">{statusBadge(status, t)}</td>
@@ -527,19 +638,20 @@ function DeliveriesPage() {
             </div>
 
             <div className="rounded-md border">
-              {/* header */}
-              <div className="grid grid-cols-[1fr_80px_90px_70px_32px] gap-1.5 border-b bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">
+              {/* column headers */}
+              <div className="grid grid-cols-[1fr_65px_85px_82px_82px_28px] gap-1 border-b bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">
                 <span>{t("gabinet.deliveries.colProduct", "Produkt")}</span>
                 <span className="text-right">{t("gabinet.deliveries.colQty", "Ilość")}</span>
-                <span className="text-right">{t("gabinet.deliveries.colUnitPrice", "Cena jedn.")}</span>
-                <span className="text-right">{t("gabinet.deliveries.colVat", "VAT %")}</span>
+                <span className="text-right">{t("gabinet.deliveries.colUnitPriceNet", "Cena netto")}</span>
+                <span className="text-center">{t("gabinet.deliveries.colVat", "VAT")}</span>
+                <span className="text-right">{t("gabinet.deliveries.colUnitPriceGross", "Cena brutto")}</span>
                 <span />
               </div>
               <div className="divide-y">
                 {items.map((line) => (
                   <div
                     key={line.id}
-                    className="grid grid-cols-[1fr_80px_90px_70px_32px] items-center gap-1.5 px-3 py-2"
+                    className="grid grid-cols-[1fr_65px_85px_82px_82px_28px] items-center gap-1 px-3 py-2"
                   >
                     <Select
                       value={line.productId}
@@ -570,6 +682,7 @@ function DeliveriesPage() {
                       }}
                     />
 
+                    {/* Net price — user can enter net and gross is auto-computed */}
                     <Input
                       className="h-8 text-right text-xs tabular-nums"
                       placeholder="—"
@@ -582,15 +695,32 @@ function DeliveriesPage() {
                       }}
                     />
 
+                    <Select
+                      value={line.vatCode}
+                      onValueChange={(v) => updateLine(line.id, "vatCode", v as VatCode)}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="VAT" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {VAT_OPTIONS.map((o) => (
+                          <SelectItem key={o.code} value={o.code}>
+                            {o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {/* Gross price — user can enter gross and net is auto-computed */}
                     <Input
                       className="h-8 text-right text-xs tabular-nums"
-                      placeholder="23"
+                      placeholder="—"
                       inputMode="decimal"
-                      value={line.vatRate}
+                      value={line.unitPriceGross}
                       onChange={(e) => {
                         const v = e.target.value;
                         if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v))
-                          updateLine(line.id, "vatRate", v);
+                          updateLine(line.id, "unitPriceGross", v);
                       }}
                     />
 
@@ -608,6 +738,30 @@ function DeliveriesPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Delivery totals summary */}
+              {totals !== null && (
+                <div className="border-t bg-muted/20 px-3 py-2.5 space-y-1">
+                  {totals.net !== null && (
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{t("gabinet.deliveries.totalNet", "Suma netto")}</span>
+                      <span className="tabular-nums font-medium">{fmtMoney(totals.net)}</span>
+                    </div>
+                  )}
+                  {totals.net !== null && totals.gross !== null && (
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{t("gabinet.deliveries.totalVat", "VAT")}</span>
+                      <span className="tabular-nums font-medium">{fmtMoney(round2(totals.gross - totals.net))}</span>
+                    </div>
+                  )}
+                  {totals.gross !== null && (
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span>{t("gabinet.deliveries.totalGross", "Suma brutto")}</span>
+                      <span className="tabular-nums">{fmtMoney(totals.gross)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {stockableProducts.length === 0 && (

@@ -17,18 +17,22 @@ import type { SupabaseRow } from "./_helpers/supabaseRows";
 type DeliveryRow = SupabaseRow<"warehouseDeliveries">;
 type DeliveryItemRow = SupabaseRow<"warehouseDeliveryItems">;
 
-function computeTotalValue(
-  items: Array<{ quantity: number; unitPrice?: number | null }>,
-): number | null {
-  let total = 0;
-  let hasPrice = false;
+function computeTotals(
+  items: Array<{ quantity: number; unitPrice?: number | null; unitPriceGross?: number | null }>,
+): { net: number | null; gross: number | null } {
+  let net = 0, gross = 0;
+  let hasNet = false, hasGross = false;
   for (const item of items) {
     if (item.unitPrice != null) {
-      total += item.quantity * item.unitPrice;
-      hasPrice = true;
+      net += item.quantity * item.unitPrice;
+      hasNet = true;
+    }
+    if (item.unitPriceGross != null) {
+      gross += item.quantity * item.unitPriceGross;
+      hasGross = true;
     }
   }
-  return hasPrice ? total : null;
+  return { net: hasNet ? net : null, gross: hasGross ? gross : null };
 }
 
 export interface DeliveryWithItems {
@@ -113,6 +117,10 @@ export const createDelivery = action({
       quantity: v.number(),
       unitPrice: v.optional(v.number()),
       vatRate: v.optional(v.number()),
+      vatCode: v.optional(v.string()),
+      unitPriceGross: v.optional(v.number()),
+      lineValueNet: v.optional(v.number()),
+      lineValueGross: v.optional(v.number()),
     })),
   },
   handler: async (ctx, args): Promise<{ deliveryId: string }> => {
@@ -133,7 +141,7 @@ export const createDelivery = action({
     const db = createSupabaseDb();
     const now = Date.now();
 
-    const totalValue = computeTotalValue(args.items);
+    const { net: totalValue, gross: totalValueGross } = computeTotals(args.items);
 
     const deliveryId = await db.insert("warehouseDeliveries", {
       organizationId: String(args.organizationId),
@@ -144,6 +152,7 @@ export const createDelivery = action({
       notes: args.notes ?? null,
       status: "draft",
       totalValue,
+      totalValueGross,
       createdBy: String(auth.userId),
       createdAt: now,
       updatedAt: now,
@@ -157,6 +166,10 @@ export const createDelivery = action({
         quantity: item.quantity,
         unitPrice: item.unitPrice ?? null,
         vatRate: item.vatRate ?? null,
+        vatCode: item.vatCode ?? null,
+        unitPriceGross: item.unitPriceGross ?? null,
+        lineValueNet: item.lineValueNet ?? null,
+        lineValueGross: item.lineValueGross ?? null,
         movementId: null,
         createdAt: now,
       });
@@ -180,6 +193,10 @@ export const updateDelivery = action({
       quantity: v.number(),
       unitPrice: v.optional(v.number()),
       vatRate: v.optional(v.number()),
+      vatCode: v.optional(v.string()),
+      unitPriceGross: v.optional(v.number()),
+      lineValueNet: v.optional(v.number()),
+      lineValueGross: v.optional(v.number()),
     }))),
   },
   handler: async (ctx, args): Promise<void> => {
@@ -214,7 +231,9 @@ export const updateDelivery = action({
       if (args.items.length === 0) {
         throw new Error("Delivery must have at least one item");
       }
-      headerPatch.totalValue = computeTotalValue(args.items);
+      const { net: totalValue, gross: totalValueGross } = computeTotals(args.items);
+      headerPatch.totalValue = totalValue;
+      headerPatch.totalValueGross = totalValueGross;
 
       const existing = await db
         .query<DeliveryItemRow>("warehouseDeliveryItems")
@@ -232,6 +251,10 @@ export const updateDelivery = action({
           quantity: item.quantity,
           unitPrice: item.unitPrice ?? null,
           vatRate: item.vatRate ?? null,
+          vatCode: item.vatCode ?? null,
+          unitPriceGross: item.unitPriceGross ?? null,
+          lineValueNet: item.lineValueNet ?? null,
+          lineValueGross: item.lineValueGross ?? null,
           movementId: null,
           createdAt: now,
         });

@@ -2151,7 +2151,7 @@ export const updateStatus = action({
             // preserving per-LOT granularity so lot quantities are restored correctly.
             const { data: useMovements } = await db.raw()
               .from("product_stock_movements")
-              .select("product_id, delta, lot_number, expiry_date")
+              .select("product_id, delta, lot_number, expiry_date, location_id")
               .eq("source_type", "appointment")
               .eq("source_id", args.appointmentId)
               .eq("reason", "appointment_use");
@@ -2160,13 +2160,14 @@ export const updateStatus = action({
               delta: number;
               lot_number: string | null;
               expiry_date: string | null;
+              location_id: string | null;
             }>;
             for (const mv of movements) {
               try {
                 await applyMovementInternal({
                   organizationId: String(args.organizationId),
                   productId: mv.product_id,
-                  locationId: null,
+                  locationId: mv.location_id ?? null,
                   delta: -Number(mv.delta), // original delta was negative; negating restores stock
                   reason: "appointment_return",
                   sourceType: "appointment",
@@ -2229,7 +2230,7 @@ export const updateStatus = action({
               const baseMovement = {
                 organizationId: orgId,
                 productId,
-                locationId: null as null,
+                locationId: (appt.locationId ?? null) as string | null,
                 reason: "appointment_use" as const,
                 sourceType: "appointment",
                 sourceId: args.appointmentId,

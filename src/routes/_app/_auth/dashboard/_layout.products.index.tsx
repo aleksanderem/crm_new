@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { getExpiryStatus } from "@/lib/expiry-utils";
 import { useAction } from "convex/react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
@@ -71,20 +72,7 @@ function formatCurrency(amount: number): string {
 // Returns the stock status for a product given its current total and min stock
 type StockStatus = "ok" | "low" | "out" | "untracked";
 
-function getExpiryStatus(dateStr: string | null): "expired" | "expiring_soon" | "ok" | null {
-  if (!dateStr) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const parts = dateStr.split("-").map(Number);
-  if (parts.length !== 3) return null;
-  // Parse as local midnight so the expiry day itself is never flagged as expired
-  const expiry = new Date(parts[0], parts[1] - 1, parts[2]);
-  if (expiry < today) return "expired";
-  const soon = new Date(today);
-  soon.setDate(today.getDate() + 30);
-  if (expiry <= soon) return "expiring_soon";
-  return "ok";
-}
+
 
 function getStockStatus(
   trackStock: boolean | undefined,

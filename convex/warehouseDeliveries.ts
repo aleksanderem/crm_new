@@ -328,6 +328,60 @@ export const cancelDelivery = action({
   },
 });
 
+// Creates a draft delivery pre-linked to uploaded invoice pages (#3016).
+// Unlike createDelivery, items are not required — the invoice content will be
+// filled in manually or via OCR in a subsequent step.
+export const createDeliveryFromInvoice = action({
+  args: {
+    organizationId: v.id("organizations"),
+    pages: v.array(v.object({
+      storageId: v.string(),
+      mimeType: v.string(),
+      position: v.number(),
+    })),
+    supplierName: v.optional(v.string()),
+    invoiceNumber: v.optional(v.string()),
+    deliveryDate: v.optional(v.string()),
+    locationId: v.optional(v.id("gabinetLocations")),
+  },
+  handler: async (ctx, args): Promise<{ deliveryId: string }> => {
+    const auth = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_inventory", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    if (args.pages.length === 0) {
+      throw new Error("At least one invoice page is required");
+    }
+
+    const db = createSupabaseDb();
+    const now = Date.now();
+
+    const deliveryId = await db.insert("warehouseDeliveries", {
+      organizationId: String(args.organizationId),
+      supplierName: args.supplierName ?? null,
+      invoiceNumber: args.invoiceNumber ?? null,
+      deliveryDate: args.deliveryDate ?? null,
+      locationId: args.locationId ?? null,
+      notes: null,
+      status: "draft",
+      totalValue: null,
+      totalValueGross: null,
+      invoicePages: args.pages,
+      createdBy: String(auth.userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return { deliveryId };
+  },
+});
+
 export const postDelivery = action({
   args: {
     organizationId: v.id("organizations"),

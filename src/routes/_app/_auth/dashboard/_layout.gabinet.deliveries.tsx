@@ -183,6 +183,7 @@ function DeliveriesPage() {
   const [viewDelivery, setViewDelivery] = useState<{
     delivery: Record<string, unknown>;
     items: Array<Record<string, unknown>>;
+    invoicePageUrls: Array<{ url: string | null; mimeType: string; position: number }>;
   } | null>(null);
   const [viewLoading, setViewLoading] = useState(false);
 
@@ -192,6 +193,7 @@ function DeliveriesPage() {
       const result = await getDeliveryAction({ organizationId, deliveryId: id }) as {
         delivery: Record<string, unknown>;
         items: Array<Record<string, unknown>>;
+        invoicePageUrls: Array<{ url: string | null; mimeType: string; position: number }>;
       };
       setViewDelivery(result);
       setViewPanelOpen(true);
@@ -569,7 +571,19 @@ function DeliveriesPage() {
                         ? fmtMoney(displayValue)
                         : <span className="text-muted-foreground">—</span>}
                     </td>
-                    <td className="px-4 py-3">{statusBadge(status, t)}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {statusBadge(status, t)}
+                        {Array.isArray(d.invoicePages) && (d.invoicePages as unknown[]).length > 0 && (
+                          <span
+                            title={t("gabinet.deliveries.hasInvoiceDoc", "Zeskanowana faktura")}
+                            className="text-sky-600 dark:text-sky-400"
+                          >
+                            <FileText className="h-3.5 w-3.5" variant="stroke" />
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-right">
                       {status === "draft" ? (
                         <div className="flex items-center justify-end gap-2">
@@ -958,6 +972,45 @@ function DeliveriesPage() {
                 <div className="space-y-0.5 text-sm">
                   <p className="text-xs text-muted-foreground">{t("gabinet.deliveries.notes", "Uwagi")}</p>
                   <p className="whitespace-pre-line">{viewNotes}</p>
+                </div>
+              )}
+
+              {viewDelivery.invoicePageUrls.length > 0 && (
+                <div className="space-y-2 text-sm">
+                  <p className="text-xs text-muted-foreground">
+                    {t("gabinet.deliveries.invoicePages", "Zeskanowana faktura")}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {viewDelivery.invoicePageUrls.map((page, idx) => {
+                      if (!page.url) return null;
+                      const isImage = page.mimeType.startsWith("image/");
+                      return (
+                        <a
+                          key={idx}
+                          href={page.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex flex-col items-center gap-1 rounded-md border p-1.5 hover:bg-muted/50 transition-colors"
+                          title={`${t("gabinet.deliveries.invoicePage", "Strona")} ${page.position + 1}`}
+                        >
+                          {isImage ? (
+                            <img
+                              src={page.url}
+                              alt={`${t("gabinet.deliveries.invoicePage", "Strona")} ${page.position + 1}`}
+                              className="h-16 w-12 object-cover rounded"
+                            />
+                          ) : (
+                            <div className="flex h-16 w-12 items-center justify-center rounded bg-muted">
+                              <FileText className="h-6 w-6 text-muted-foreground" variant="stroke" />
+                            </div>
+                          )}
+                          <span className="text-xs text-muted-foreground">
+                            {t("gabinet.deliveries.invoicePageNum", "s.")} {page.position + 1}
+                          </span>
+                        </a>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 

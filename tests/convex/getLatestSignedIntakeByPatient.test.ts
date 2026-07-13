@@ -194,7 +194,7 @@ describe("documents.getLatestSignedIntakeByPatient", () => {
         responseData,
         entityType: "appointment",
         entityId: "appt-uuid-123",
-        scopeEntities: JSON.stringify({ patient: String(patientId) }),
+        scopeEntities: { patient: String(patientId) },
         status: "signed",
         signedAt,
         createdBy: userId,

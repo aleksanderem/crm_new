@@ -462,8 +462,13 @@ function DeliveriesPage() {
     if (!cancelTarget) return;
     setCancelling(true);
     try {
-      await cancelDeliveryAction({ organizationId, deliveryId: cancelTarget.id });
+      const result = await cancelDeliveryAction({ organizationId, deliveryId: cancelTarget.id });
       toast.success(t("gabinet.deliveries.cancelSuccess", "Dostawa usunięta."));
+      if (result?.warnings?.length) {
+        for (const w of result.warnings) {
+          toast.warning(w);
+        }
+      }
       void queryClient.invalidateQueries({ queryKey });
     } catch (e) {
       toast.error(

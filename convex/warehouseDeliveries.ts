@@ -325,7 +325,7 @@ export const cancelDelivery = action({
     organizationId: v.id("organizations"),
     deliveryId: v.string(),
   },
-  handler: async (ctx, args): Promise<void> => {
+  handler: async (ctx, args): Promise<{ warnings: string[] }> => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -352,14 +352,31 @@ export const cancelDelivery = action({
       await db.delete("warehouseDeliveryItems", String(item._id));
     }
 
+    // Best-effort: delete each invoice page from storage. Failures are collected
+    // and returned as warnings rather than aborting the cancellation — a stuck
+    // delivery is worse than an orphaned file that can be cleaned up manually.
     const invoicePages = Array.isArray(delivery.invoicePages)
       ? (delivery.invoicePages as Array<{ storageId: string }>)
       : [];
+    const failedStorageIds: string[] = [];
     for (const page of invoicePages) {
-      await ctx.storage.delete(page.storageId as unknown as Id<"_storage">);
+      try {
+        await ctx.storage.delete(page.storageId as unknown as Id<"_storage">);
+      } catch {
+        failedStorageIds.push(page.storageId);
+      }
     }
 
     await db.delete("warehouseDeliveries", args.deliveryId);
+
+    const warnings: string[] = failedStorageIds.length > 0
+      ? [
+          `Nie udało się usunąć ${failedStorageIds.length} z ${invoicePages.length} pliku/plików faktury ze storage.` +
+          ` ID: ${failedStorageIds.join(", ")}`,
+        ]
+      : [];
+
+    return { warnings };
   },
 });
 

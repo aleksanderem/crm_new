@@ -456,6 +456,39 @@ img {
   .print-accountant-report td {
     display: table-cell;
   }
+
+  /* Shopping list — see warehouse-shopping-list-dialog.tsx */
+  .print-shopping-list,
+  .print-shopping-list * {
+    visibility: visible !important;
+    display: block;
+  }
+  .print-shopping-list {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white;
+    color: black;
+  }
+  .print-shopping-list table {
+    display: table;
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .print-shopping-list thead {
+    display: table-header-group;
+  }
+  .print-shopping-list tbody {
+    display: table-row-group;
+  }
+  .print-shopping-list tr {
+    display: table-row;
+  }
+  .print-shopping-list th,
+  .print-shopping-list td {
+    display: table-cell;
+  }
 }
 /*
 ---break---

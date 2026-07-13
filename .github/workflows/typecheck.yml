@@ -29,3 +29,6 @@ jobs:
 
       - name: Typecheck convex/
         run: npx tsc -p convex/tsconfig.json
+
+      - name: Check convex/_generated/api.d.ts is in sync
+        run: npm run check:convex-codegen

@@ -1,13 +1,14 @@
-// AI/OCR integration adapter layer (#3026).
+// AI/OCR integration adapter layer (#3026, #3038).
 //
-// Defines the contract any future OCR/AI provider must satisfy and exports a
-// factory (`getDocumentAnalyzer`) that callers use to obtain the active
-// implementation. The warehouse module depends ONLY on the types and factory
-// here — it never imports a concrete provider directly.
+// Defines the contract any OCR/AI provider must satisfy and exports a factory
+// (`getDocumentAnalyzer`) that callers use to obtain the active implementation.
+// The warehouse module depends ONLY on the types and factory here — it never
+// imports a concrete provider directly.
 //
-// Current implementation: NullDocumentAnalyzer (not_implemented placeholder).
-// To wire up a real provider in a later phase: implement DocumentAnalyzer and
-// return it from getDocumentAnalyzer. No changes elsewhere are required.
+// Current implementation: OpenAIDocumentAnalyzer when OPENAI_API_KEY is set,
+// NullDocumentAnalyzer otherwise.
+
+import { OpenAIDocumentAnalyzer } from "./providers/openaiDocumentAnalyzer";
 
 // ---------------------------------------------------------------------------
 // Input — ordered pages that together form one invoice document (#3035).
@@ -122,11 +123,25 @@ class NullDocumentAnalyzer implements DocumentAnalyzer {
 }
 
 // ---------------------------------------------------------------------------
+// Storage fetcher — passed by the calling action so the provider can read
+// file bytes server-side without touching public URLs.
+// ---------------------------------------------------------------------------
+
+export type StorageFetcher = (storageId: string) => Promise<Blob | null>;
+
+// ---------------------------------------------------------------------------
 // Factory — the single entry point for all callers.
 // ---------------------------------------------------------------------------
 
-// Returns the currently configured DocumentAnalyzer. Swap the return value here
-// when plugging in a real OCR/AI provider — no other file needs to change.
-export function getDocumentAnalyzer(): DocumentAnalyzer {
+// Returns OpenAIDocumentAnalyzer when OPENAI_API_KEY is configured, otherwise
+// NullDocumentAnalyzer. The model can be overridden via OPENAI_INVOICE_MODEL.
+// `fetchFile` is provided by the calling action (ctx.storage.get) so the
+// provider can fetch bytes server-side without exposing public URLs.
+export function getDocumentAnalyzer(fetchFile: StorageFetcher): DocumentAnalyzer {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (apiKey) {
+    const model = process.env.OPENAI_INVOICE_MODEL ?? "gpt-4o";
+    return new OpenAIDocumentAnalyzer(apiKey, model, fetchFile);
+  }
   return new NullDocumentAnalyzer();
 }

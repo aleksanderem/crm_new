@@ -407,6 +407,20 @@ export function createCrmTables({
       mimeType: v.string(),
       position: v.number(),
     }))),
+    // AI/OCR invoice analysis fields (#3045).
+    // analysisStatus: null=never run, pending=queued, processing=running,
+    //   completed=success, failed=error.
+    // analysisResult: ParsedInvoice without rawText, stored as JSONB.
+    // On re-analysis failure the previous successful result is preserved.
+    analysisStatus: v.optional(v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed"),
+    )),
+    analysisResult: v.optional(v.any()),
+    analysisCompletedAt: v.optional(v.number()),
+    analysisError: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

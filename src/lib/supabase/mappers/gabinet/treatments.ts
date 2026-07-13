@@ -29,7 +29,7 @@ export interface MappedGabinetTreatment {
   treatmentCount?: number;
   packageId?: string;
   parameters?: unknown;
-  requiredDocumentTemplateIds?: string[];
+  requiredDocumentTemplateIds?: string[] | null;
   requiredFormTemplates?: unknown;
   shortDescription?: string;
   image?: string;

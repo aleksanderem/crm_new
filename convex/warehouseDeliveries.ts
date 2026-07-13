@@ -914,6 +914,39 @@ export const postDeliveryFromDecisions = action({
       updatedAt: Date.now(),
     });
 
+    // Save name mappings from approved decisions (#3077).
+    // Only runs after a successful post; skips non_inventory, create_later, and
+    // null decisions. Upserts so a manual override replaces the previous mapping.
+    const mappingNow = Date.now();
+    for (let i = 0; i < decisions.items.length; i++) {
+      const d = decisions.items[i]!;
+      if (d.type !== "accepted" && d.type !== "choose_product") continue;
+      if (!d.productId) continue;
+      const ai = analysisItems[i];
+      if (!ai?.productName) continue;
+
+      const existing = await db
+        .query("deliveryNameMappings")
+        .eq("organizationId", String(args.organizationId))
+        .eq("invoiceName", ai.productName)
+        .first();
+
+      if (!existing) {
+        await db.insert("deliveryNameMappings", {
+          organizationId: String(args.organizationId),
+          invoiceName: ai.productName,
+          productId: d.productId,
+          createdAt: mappingNow,
+        });
+      } else if (String(existing.productId) !== String(d.productId)) {
+        // User chose a different product — update the existing mapping.
+        await db.patch("deliveryNameMappings", String(existing._id), {
+          productId: d.productId,
+        });
+      }
+      // Same productId as existing mapping → no-op; avoids redundant writes.
+    }
+
     return { movementsCreated: newItems.length };
   },
 });

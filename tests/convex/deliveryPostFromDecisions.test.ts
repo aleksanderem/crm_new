@@ -18,9 +18,11 @@ import {
   PRODUCT_A_ID,
   PRODUCT_B_ID,
   SAMPLE_ANALYSIS,
+  makeInvoiceItem,
   seedDeliveryWithDecisions,
   seedProducts,
 } from "./_delivery_helpers";
+import type { MatchingProposals } from "../../convex/_ai/invoiceMatching";
 
 // postDeliveryFromDecisions statically imports getDocumentAnalyzer which
 // chains to openai (not installed in tests).  Mock it out.
@@ -381,5 +383,301 @@ describe("postDeliveryFromDecisions — scenario 8: permission check", () => {
           deliveryId,
         }),
     ).rejects.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Scenario 9 — name mapping learning from approved decisions (#3077)
+// ---------------------------------------------------------------------------
+
+describe("postDeliveryFromDecisions — scenario 9: name mapping learning", () => {
+  test("accepted and choose_product decisions save name mappings after successful post", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await seedProducts(String(organizationId));
+    const deliveryId = await seedDeliveryWithDecisions(String(organizationId), String(userId));
+
+    await t.withIdentity(identity).action(api.warehouseDeliveries.postDeliveryFromDecisions, {
+      organizationId,
+      deliveryId,
+    });
+
+    const db = createSupabaseDb();
+    const mappings = (await db
+      .query("deliveryNameMappings")
+      .eq("organizationId", String(organizationId))
+      .collect()) as Array<Record<string, unknown>>;
+
+    // "Rękawiczki nitrylowe" (accepted) and "Stylage XL 1 ml" (choose_product) → saved
+    // "Transport" (non_inventory) → not saved
+    expect(mappings).toHaveLength(2);
+    const names = mappings.map((m) => String(m.invoiceName));
+    expect(names).toContain("Rękawiczki nitrylowe");
+    expect(names).toContain("Stylage XL 1 ml");
+    expect(names).not.toContain("Transport");
+  });
+
+  test("non_inventory decision does not create a name mapping", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await seedProducts(String(organizationId));
+
+    const deliveryId = await seedDeliveryWithDecisions(String(organizationId), String(userId), {
+      decisions: [
+        { type: "non_inventory" },
+        { type: "non_inventory" },
+        { type: "non_inventory" },
+      ],
+    });
+
+    await t.withIdentity(identity).action(api.warehouseDeliveries.postDeliveryFromDecisions, {
+      organizationId,
+      deliveryId,
+    });
+
+    const db = createSupabaseDb();
+    const mappings = await db
+      .query("deliveryNameMappings")
+      .eq("organizationId", String(organizationId))
+      .collect();
+
+    expect(mappings).toHaveLength(0);
+  });
+
+  test("unresolved (null) decision blocks posting and no mapping is saved", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await seedProducts(String(organizationId));
+
+    const deliveryId = await seedDeliveryWithDecisions(String(organizationId), String(userId), {
+      decisions: [
+        { type: "accepted", productId: PRODUCT_A_ID },
+        null,
+        { type: "non_inventory" },
+      ],
+    });
+
+    await expect(
+      t.withIdentity(identity).action(api.warehouseDeliveries.postDeliveryFromDecisions, {
+        organizationId,
+        deliveryId,
+      }),
+    ).rejects.toThrow(/nierozwiązane pozycje/i);
+
+    const db = createSupabaseDb();
+    const mappings = await db
+      .query("deliveryNameMappings")
+      .eq("organizationId", String(organizationId))
+      .collect();
+
+    expect(mappings).toHaveLength(0);
+  });
+
+  test("create_later decision blocks posting and no mapping is saved", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await seedProducts(String(organizationId));
+
+    const deliveryId = await seedDeliveryWithDecisions(String(organizationId), String(userId), {
+      decisions: [
+        { type: "accepted", productId: PRODUCT_A_ID },
+        { type: "create_later", createLaterType: "treatment_product" },
+        { type: "non_inventory" },
+      ],
+    });
+
+    await expect(
+      t.withIdentity(identity).action(api.warehouseDeliveries.postDeliveryFromDecisions, {
+        organizationId,
+        deliveryId,
+      }),
+    ).rejects.toThrow(/utwórz później/i);
+
+    const db = createSupabaseDb();
+    const mappings = await db
+      .query("deliveryNameMappings")
+      .eq("organizationId", String(organizationId))
+      .collect();
+
+    expect(mappings).toHaveLength(0);
+  });
+
+  test("manual override: posting with a different product updates the existing mapping", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await seedProducts(String(organizationId));
+
+    // First delivery: "Rękawiczki nitrylowe" → PRODUCT_A_ID
+    const deliveryId1 = await seedDeliveryWithDecisions(String(organizationId), String(userId), {
+      decisions: [
+        { type: "accepted", productId: PRODUCT_A_ID },
+        { type: "non_inventory" },
+        { type: "non_inventory" },
+      ],
+    });
+    await t.withIdentity(identity).action(api.warehouseDeliveries.postDeliveryFromDecisions, {
+      organizationId,
+      deliveryId: deliveryId1,
+    });
+
+    // Second delivery: same invoice name "Rękawiczki nitrylowe" → PRODUCT_B_ID (override)
+    const deliveryId2 = await seedDeliveryWithDecisions(String(organizationId), String(userId), {
+      decisions: [
+        { type: "choose_product", productId: PRODUCT_B_ID },
+        { type: "non_inventory" },
+        { type: "non_inventory" },
+      ],
+    });
+    await t.withIdentity(identity).action(api.warehouseDeliveries.postDeliveryFromDecisions, {
+      organizationId,
+      deliveryId: deliveryId2,
+    });
+
+    const db = createSupabaseDb();
+    const mappings = (await db
+      .query("deliveryNameMappings")
+      .eq("organizationId", String(organizationId))
+      .eq("invoiceName", "Rękawiczki nitrylowe")
+      .collect()) as Array<Record<string, unknown>>;
+
+    expect(mappings).toHaveLength(1);
+    expect(String(mappings[0].productId)).toBe(PRODUCT_B_ID);
+  });
+
+  test("mapping is org-scoped: posting in org1 does not create mappings for org2", async () => {
+    const t = createTestCtx();
+    const { organizationId: org1, userId: user1, identity: identity1 } = await seedTestUser(t);
+    const { organizationId: org2 } = await seedTestUser(t);
+
+    await seedProducts(String(org1));
+    const deliveryId = await seedDeliveryWithDecisions(String(org1), String(user1));
+
+    await t.withIdentity(identity1).action(api.warehouseDeliveries.postDeliveryFromDecisions, {
+      organizationId: org1,
+      deliveryId,
+    });
+
+    const db = createSupabaseDb();
+    const org2Mappings = await db
+      .query("deliveryNameMappings")
+      .eq("organizationId", String(org2))
+      .collect();
+
+    expect(org2Mappings).toHaveLength(0);
+  });
+
+  test("posting two deliveries with same invoice names does not create duplicate mappings", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await seedProducts(String(organizationId));
+
+    const deliveryId1 = await seedDeliveryWithDecisions(String(organizationId), String(userId));
+    await t.withIdentity(identity).action(api.warehouseDeliveries.postDeliveryFromDecisions, {
+      organizationId,
+      deliveryId: deliveryId1,
+    });
+
+    const deliveryId2 = await seedDeliveryWithDecisions(String(organizationId), String(userId));
+    await t.withIdentity(identity).action(api.warehouseDeliveries.postDeliveryFromDecisions, {
+      organizationId,
+      deliveryId: deliveryId2,
+    });
+
+    const db = createSupabaseDb();
+    const mappings = await db
+      .query("deliveryNameMappings")
+      .eq("organizationId", String(organizationId))
+      .collect();
+
+    // Still exactly 2 (one per inventory invoice name), no duplicates
+    expect(mappings).toHaveLength(2);
+  });
+
+  test("future matchDeliveryItems uses the mapping saved by postDeliveryFromDecisions", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await seedProducts(String(organizationId));
+
+    // Invoice name that has no exact or fuzzy match to any product name
+    // "Rękawiczki latex" vs "Rękawiczki nitrylowe": Jaccard = 1/3 < 0.5 → unmatched
+    const invoiceName = "Rękawiczki latex";
+
+    const db = createSupabaseDb();
+    const deliveryId1 = await db.insert("warehouseDeliveries", {
+      organizationId: String(organizationId),
+      supplierName: "ACME",
+      invoiceNumber: "FV/2024/200",
+      deliveryDate: null,
+      locationId: null,
+      notes: null,
+      status: "draft",
+      totalValue: null,
+      totalValueGross: null,
+      invoicePages: [{ storageId: "store-p1", mimeType: "image/jpeg", position: 0 }],
+      analysisStatus: "completed",
+      analysisResult: {
+        supplierName: "ACME",
+        invoiceNumber: "FV/2024/200",
+        invoiceDate: null,
+        items: [makeInvoiceItem(invoiceName)],
+        confidence: 0.9,
+      },
+      analysisCompletedAt: Date.now(),
+      analysisError: null,
+      matchingProposals: null,
+      itemDecisions: {
+        decidedAt: Date.now(),
+        items: [{ type: "choose_product", productId: PRODUCT_A_ID }],
+      },
+      createdBy: String(userId),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    await t.withIdentity(identity).action(api.warehouseDeliveries.postDeliveryFromDecisions, {
+      organizationId,
+      deliveryId: deliveryId1,
+    });
+
+    // Second delivery with the same invoice name — matching should now use the saved mapping
+    const deliveryId2 = await db.insert("warehouseDeliveries", {
+      organizationId: String(organizationId),
+      supplierName: "ACME",
+      invoiceNumber: "FV/2024/201",
+      deliveryDate: null,
+      locationId: null,
+      notes: null,
+      status: "draft",
+      totalValue: null,
+      totalValueGross: null,
+      invoicePages: [{ storageId: "store-p2", mimeType: "image/jpeg", position: 0 }],
+      analysisStatus: "completed",
+      analysisResult: {
+        supplierName: "ACME",
+        invoiceNumber: "FV/2024/201",
+        invoiceDate: null,
+        items: [makeInvoiceItem(invoiceName)],
+        confidence: 0.9,
+      },
+      analysisCompletedAt: Date.now(),
+      analysisError: null,
+      matchingProposals: null,
+      itemDecisions: null,
+      createdBy: String(userId),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    const proposals = (await t
+      .withIdentity(identity)
+      .action(api.warehouseDeliveries.matchDeliveryItems, {
+        organizationId,
+        deliveryId: deliveryId2,
+      })) as MatchingProposals;
+
+    expect(proposals.items).toHaveLength(1);
+    expect(proposals.items[0].status).toBe("matched");
+    expect(proposals.items[0].matched?.matchReason).toBe("saved_mapping");
+    expect(proposals.items[0].matched?.productId).toBe(PRODUCT_A_ID);
   });
 });

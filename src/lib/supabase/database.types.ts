@@ -61,6 +61,7 @@
  *   • 00054_delivery_items_prices.sql
  *   • 00055_stock_levels_avg_cost.sql
  *   • 00056_product_stock_movements_avg_cost_after.sql
+ *   • 00057_lot_tracking.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -6647,6 +6648,8 @@ export interface Database {
           created_at: number;
           unit_price: number | null;
           avg_cost_after: number | null;
+          lot_number: string | null;
+          expiry_date: string | null;
         };
         Insert: {
           id?: string;
@@ -6663,6 +6666,8 @@ export interface Database {
           created_at: number;
           unit_price?: number | null;
           avg_cost_after?: number | null;
+          lot_number?: string | null;
+          expiry_date?: string | null;
         };
         Update: {
           id?: string;
@@ -6679,6 +6684,8 @@ export interface Database {
           created_at?: number;
           unit_price?: number | null;
           avg_cost_after?: number | null;
+          lot_number?: string | null;
+          expiry_date?: string | null;
         };
         Relationships: [
           {
@@ -6972,6 +6979,8 @@ export interface Database {
           line_value_net: number | null;
           line_value_gross: number | null;
           vat_code: string | null;
+          lot_number: string | null;
+          expiry_date: string | null;
         };
         Insert: {
           id?: string;
@@ -6987,6 +6996,8 @@ export interface Database {
           line_value_net?: number | null;
           line_value_gross?: number | null;
           vat_code?: string | null;
+          lot_number?: string | null;
+          expiry_date?: string | null;
         };
         Update: {
           id?: string;
@@ -7002,6 +7013,8 @@ export interface Database {
           line_value_net?: number | null;
           line_value_gross?: number | null;
           vat_code?: string | null;
+          lot_number?: string | null;
+          expiry_date?: string | null;
         };
         Relationships: [
           {

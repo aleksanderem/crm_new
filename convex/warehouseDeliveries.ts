@@ -17,6 +17,22 @@ import type { SupabaseRow } from "./_helpers/supabaseRows";
 type DeliveryRow = SupabaseRow<"warehouseDeliveries">;
 type DeliveryItemRow = SupabaseRow<"warehouseDeliveryItems">;
 
+// Throws if the same (productId, lotNumber) pair appears more than once within
+// a single delivery. Cross-delivery duplicates are allowed per issue #2989.
+function checkDuplicateLot(
+  items: Array<{ productId: string; lotNumber?: string | null }>,
+): void {
+  const seen = new Set<string>();
+  for (const item of items) {
+    if (!item.lotNumber) continue;
+    const key = `${item.productId}::${item.lotNumber}`;
+    if (seen.has(key)) {
+      throw new Error(`Duplicate LOT "${item.lotNumber}" for the same product within this delivery`);
+    }
+    seen.add(key);
+  }
+}
+
 function computeTotals(
   items: Array<{ quantity: number; unitPrice?: number | null; unitPriceGross?: number | null }>,
 ): { net: number | null; gross: number | null } {
@@ -121,6 +137,8 @@ export const createDelivery = action({
       unitPriceGross: v.optional(v.number()),
       lineValueNet: v.optional(v.number()),
       lineValueGross: v.optional(v.number()),
+      lotNumber: v.optional(v.string()),
+      expiryDate: v.optional(v.string()),
     })),
   },
   handler: async (ctx, args): Promise<{ deliveryId: string }> => {
@@ -137,6 +155,9 @@ export const createDelivery = action({
     if (args.items.length === 0) {
       throw new Error("Delivery must have at least one item");
     }
+
+    // Block duplicate LOT within the same delivery (same product + same lot number)
+    checkDuplicateLot(args.items);
 
     const db = createSupabaseDb();
     const now = Date.now();
@@ -170,6 +191,8 @@ export const createDelivery = action({
         unitPriceGross: item.unitPriceGross ?? null,
         lineValueNet: item.lineValueNet ?? null,
         lineValueGross: item.lineValueGross ?? null,
+        lotNumber: item.lotNumber ?? null,
+        expiryDate: item.expiryDate ?? null,
         movementId: null,
         createdAt: now,
       });
@@ -197,6 +220,8 @@ export const updateDelivery = action({
       unitPriceGross: v.optional(v.number()),
       lineValueNet: v.optional(v.number()),
       lineValueGross: v.optional(v.number()),
+      lotNumber: v.optional(v.string()),
+      expiryDate: v.optional(v.string()),
     }))),
   },
   handler: async (ctx, args): Promise<void> => {
@@ -231,6 +256,7 @@ export const updateDelivery = action({
       if (args.items.length === 0) {
         throw new Error("Delivery must have at least one item");
       }
+      checkDuplicateLot(args.items);
       const { net: totalValue, gross: totalValueGross } = computeTotals(args.items);
       headerPatch.totalValue = totalValue;
       headerPatch.totalValueGross = totalValueGross;
@@ -255,6 +281,8 @@ export const updateDelivery = action({
           unitPriceGross: item.unitPriceGross ?? null,
           lineValueNet: item.lineValueNet ?? null,
           lineValueGross: item.lineValueGross ?? null,
+          lotNumber: item.lotNumber ?? null,
+          expiryDate: item.expiryDate ?? null,
           movementId: null,
           createdAt: now,
         });
@@ -346,6 +374,8 @@ export const postDelivery = action({
         sourceId: args.deliveryId,
         note: noteText,
         unitPrice: item.unitPrice != null ? Number(item.unitPrice) : undefined,
+        lotNumber: item.lotNumber ? String(item.lotNumber) : undefined,
+        expiryDate: item.expiryDate ? String(item.expiryDate) : undefined,
         performedBy: String(auth.userId),
       });
       await db.patch("warehouseDeliveryItems", String(item._id), { movementId });

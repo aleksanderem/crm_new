@@ -97,6 +97,8 @@ function DeliveriesPage() {
   const updateDeliveryAction = useAction(api.warehouseDeliveries.updateDelivery);
   // @ts-ignore
   const postDeliveryAction = useAction(api.warehouseDeliveries.postDelivery);
+  // @ts-ignore
+  const cancelDeliveryAction = useAction(api.warehouseDeliveries.cancelDelivery);
 
   const queryKey = ["warehouseDeliveries.list", organizationId];
 
@@ -129,6 +131,10 @@ function DeliveriesPage() {
   // Post delivery confirmation
   const [postTarget, setPostTarget] = useState<{ id: string; label: string } | null>(null);
   const [posting, setPosting] = useState(false);
+
+  // Cancel delivery confirmation
+  const [cancelTarget, setCancelTarget] = useState<{ id: string; label: string } | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   const isEditMode = editDeliveryId !== null;
 
@@ -274,6 +280,26 @@ function DeliveriesPage() {
     }
   };
 
+  const handleCancelConfirm = async () => {
+    if (!cancelTarget) return;
+    setCancelling(true);
+    try {
+      await cancelDeliveryAction({ organizationId, deliveryId: cancelTarget.id });
+      toast.success(t("gabinet.deliveries.cancelSuccess", "Dostawa usunięta."));
+      void queryClient.invalidateQueries({ queryKey });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.deliveries.cancelError",
+          defaultValue: "Nie udało się usunąć dostawy.",
+        }),
+      );
+    } finally {
+      setCancelling(false);
+      setCancelTarget(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -368,6 +394,15 @@ function DeliveriesPage() {
                           >
                             <CheckCircle className="h-3.5 w-3.5" variant="stroke" />
                             {t("gabinet.deliveries.postAction", "Zaksięguj")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setCancelTarget({ id, label })}
+                            className="gap-1.5 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" variant="stroke" />
+                            {t("gabinet.deliveries.cancelAction", "Usuń")}
                           </Button>
                         </div>
                       )}
@@ -614,6 +649,39 @@ function DeliveriesPage() {
             <AlertDialogAction onClick={handlePostConfirm} disabled={posting}>
               {posting && <Loader2 className="mr-2 h-4 w-4 animate-spin" variant="stroke" />}
               {t("gabinet.deliveries.postConfirm", "Zaksięguj")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel delivery confirmation */}
+      <AlertDialog
+        open={!!cancelTarget}
+        onOpenChange={(o) => { if (!o) setCancelTarget(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("gabinet.deliveries.cancelTitle", "Usunąć roboczą dostawę?")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                "gabinet.deliveries.cancelDescription",
+                "Dostawa zostanie trwale usunięta. Nie ma to wpływu na stany magazynowe, ponieważ dostawa nie została jeszcze zaksięgowana.",
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelling}>
+              {t("common.back", "Wróć")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelConfirm}
+              disabled={cancelling}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {cancelling && <Loader2 className="mr-2 h-4 w-4 animate-spin" variant="stroke" />}
+              {t("gabinet.deliveries.cancelConfirm", "Usuń dostawę")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

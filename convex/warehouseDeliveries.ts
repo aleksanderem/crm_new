@@ -221,6 +221,41 @@ export const updateDelivery = action({
   },
 });
 
+export const cancelDelivery = action({
+  args: {
+    organizationId: v.id("organizations"),
+    deliveryId: v.string(),
+  },
+  handler: async (ctx, args): Promise<void> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_inventory", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+    const delivery = await db.get<DeliveryRow>("warehouseDeliveries", args.deliveryId);
+    if (!delivery || String(delivery.organizationId) !== String(args.organizationId)) {
+      throw new Error("Delivery not found");
+    }
+    if (delivery.status !== "draft") {
+      throw new Error("Only draft deliveries can be cancelled");
+    }
+
+    const items = await db
+      .query<DeliveryItemRow>("warehouseDeliveryItems")
+      .eq("deliveryId", args.deliveryId)
+      .collect();
+    for (const item of items) {
+      await db.delete("warehouseDeliveryItems", String(item._id));
+    }
+    await db.delete("warehouseDeliveries", args.deliveryId);
+  },
+});
+
 export const postDelivery = action({
   args: {
     organizationId: v.id("organizations"),

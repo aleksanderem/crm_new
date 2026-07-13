@@ -6,7 +6,7 @@
 //           persisted and that re-running replaces only matchingProposals (not
 //           analysisResult).
 
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
 import { createTestCtx, seedTestUser } from "../../convex/_test_helpers";
 import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
@@ -17,6 +17,14 @@ import {
 } from "../../convex/_ai/invoiceMatching";
 import type { ParsedInvoiceItem } from "../../convex/_ai/documentAnalyzer";
 import type { MatchingProposals } from "../../convex/_ai/invoiceMatching";
+
+// matchDeliveryItems does not use the document analyzer, but warehouseDeliveries.ts
+// statically imports getDocumentAnalyzer which chains to openai (not installed in tests).
+// Mock it to avoid the missing-package error, matching the pattern in
+// deliveryInvoiceAnalysis.test.ts and deliveryItemDecisions.test.ts.
+vi.mock("../../convex/_ai/documentAnalyzer", () => ({
+  getDocumentAnalyzer: () => ({ analyzeInvoice: vi.fn() }),
+}));
 
 // ---------------------------------------------------------------------------
 // Helpers

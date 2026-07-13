@@ -351,6 +351,14 @@ export const cancelDelivery = action({
     for (const item of items) {
       await db.delete("warehouseDeliveryItems", String(item._id));
     }
+
+    const invoicePages = Array.isArray(delivery.invoicePages)
+      ? (delivery.invoicePages as Array<{ storageId: string }>)
+      : [];
+    for (const page of invoicePages) {
+      await ctx.storage.delete(page.storageId as unknown as Id<"_storage">);
+    }
+
     await db.delete("warehouseDeliveries", args.deliveryId);
   },
 });

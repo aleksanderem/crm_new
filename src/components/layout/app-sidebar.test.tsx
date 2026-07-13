@@ -20,6 +20,7 @@ vi.mock("@convex-dev/react-query", () => ({
 
 vi.mock("@cvx/_generated/api", () => ({
   api: {
+    app: { getCurrentUser: {} },
     productSubscriptions: { getActiveProducts: {} },
     gabinet: { scheduling: { listLeaves: {} } },
   },
@@ -109,8 +110,10 @@ vi.mock("@/components/sidebar-widgets/day-timeline", () => ({
 vi.mock("@/modules/registry", () => {
   const crmModule = {
     id: "crm",
+    productKey: "crm",
     workspaceRoot: "/dashboard/leads",
     settingsRoots: [],
+    settingsNav: [],
     primaryNav: [],
     pageContexts: [
       {
@@ -121,7 +124,7 @@ vi.mock("@/modules/registry", () => {
       },
     ],
     fallbackPageContextKey: "leads",
-    workspace: { id: "crm", label: "CRM" },
+    workspace: { id: "crm", nameKey: "nav.workspace.crm", descKey: "", href: "/dashboard/leads" },
   };
 
   return {

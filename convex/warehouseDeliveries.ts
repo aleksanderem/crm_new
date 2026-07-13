@@ -14,6 +14,8 @@ import type { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { applyMovementInternal } from "./inventory";
 import type { SupabaseRow } from "./_helpers/supabaseRows";
+import { getDocumentAnalyzer } from "./_ai/documentAnalyzer";
+import type { DocumentPage, ParsedInvoice } from "./_ai/documentAnalyzer";
 
 type DeliveryRow = SupabaseRow<"warehouseDeliveries">;
 type DeliveryItemRow = SupabaseRow<"warehouseDeliveryItems">;
@@ -431,6 +433,144 @@ export const createDeliveryFromInvoice = action({
     });
 
     return { deliveryId };
+  },
+});
+
+// ParsedInvoice stored on the delivery — rawText is debug-only and is never
+// persisted as business data per issue #3045.
+export type StoredAnalysisResult = Omit<ParsedInvoice, "rawText">;
+
+// ---------------------------------------------------------------------------
+// Invoice analysis
+// ---------------------------------------------------------------------------
+
+// Runs AI/OCR analysis on all invoice pages attached to a draft delivery and
+// persists the result.  Safe to re-run: a fresh success replaces the previous
+// result; a failure preserves the last successful result if one exists.
+export const analyzeDeliveryInvoice = action({
+  args: {
+    organizationId: v.id("organizations"),
+    deliveryId: v.string(),
+  },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<
+    | { status: "completed"; result: StoredAnalysisResult }
+    | { status: "failed"; error: string }
+  > => {
+    // 1. Auth + permission
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = (await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_inventory",
+        action: "edit",
+      },
+    )) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    // 2. Load and validate delivery
+    const db = createSupabaseDb();
+    const delivery = await db.get<DeliveryRow>(
+      "warehouseDeliveries",
+      args.deliveryId,
+    );
+    if (
+      !delivery ||
+      String(delivery.organizationId) !== String(args.organizationId)
+    ) {
+      throw new Error("Delivery not found");
+    }
+    if (delivery.status !== "draft") {
+      throw new Error("Only draft deliveries can be analyzed");
+    }
+
+    const rawPages = Array.isArray(delivery.invoicePages)
+      ? (delivery.invoicePages as Array<{
+          storageId: string;
+          mimeType: string;
+          position: number;
+        }>)
+      : [];
+    if (rawPages.length === 0) {
+      throw new Error("Delivery has no invoice pages to analyze");
+    }
+
+    // 3. Capture previous successful result before overwriting status
+    const prevResult: StoredAnalysisResult | null =
+      delivery.analysisStatus === "completed" &&
+      delivery.analysisResult != null
+        ? (delivery.analysisResult as StoredAnalysisResult)
+        : null;
+
+    // 4. Mark as processing
+    await db.patch("warehouseDeliveries", args.deliveryId, {
+      analysisStatus: "processing",
+      updatedAt: Date.now(),
+    });
+
+    // 5. Sort pages by position and invoke the analyzer
+    const pages: DocumentPage[] = rawPages
+      .slice()
+      .sort((a, b) => a.position - b.position);
+
+    const analyzer = getDocumentAnalyzer(
+      (id) => ctx.storage.get(id as unknown as Id<"_storage">),
+    );
+
+    const analysisResult = await analyzer.analyzeInvoice(pages);
+    const now = Date.now();
+
+    // 6. Persist result
+    if (analysisResult.status === "ok") {
+      // Strip rawText — it is debug-only and must not be stored as business data
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { rawText: _discard, ...stored } = analysisResult.data;
+      await db.patch("warehouseDeliveries", args.deliveryId, {
+        analysisStatus: "completed",
+        analysisResult: stored,
+        analysisCompletedAt: now,
+        analysisError: null,
+        updatedAt: now,
+      });
+      return { status: "completed", result: stored };
+    }
+
+    // Map all non-ok outcomes to a user-facing error message
+    let errorMessage: string;
+    switch (analysisResult.status) {
+      case "not_implemented":
+        errorMessage = "AI analysis provider is not configured";
+        break;
+      case "no_pages":
+        errorMessage = "No invoice pages to analyze";
+        break;
+      case "unsupported_format":
+        errorMessage = `Unsupported file format: ${analysisResult.mimeType}`;
+        break;
+      case "error":
+        errorMessage = analysisResult.message;
+        break;
+      default:
+        errorMessage = "Unknown analysis error";
+    }
+
+    // On failure: preserve the last successful result if one exists
+    const failurePatch: Record<string, unknown> = {
+      analysisStatus: "failed",
+      analysisError: errorMessage,
+      updatedAt: now,
+    };
+    if (prevResult === null) {
+      failurePatch.analysisResult = null;
+    }
+    await db.patch("warehouseDeliveries", args.deliveryId, failurePatch);
+
+    return { status: "failed", error: errorMessage };
   },
 });
 

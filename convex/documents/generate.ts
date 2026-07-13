@@ -245,7 +245,7 @@ export const getPriorResponseData = action({
         return true;
       // Appointment-linked doc with scopeEntities.patient
       if (doc.scopeEntities) {
-        const scope = doc.scopeEntities as Record<string, unknown>;
+        const scope = doc.scopeEntities as unknown as Record<string, unknown>;
         return String(scope?.patient) === resolvedPatientId;
       }
       return false;

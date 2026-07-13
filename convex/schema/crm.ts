@@ -374,6 +374,43 @@ export function createCrmTables({
     .index("by_product", ["productId", "createdAt"])
     .index("by_source", ["sourceType", "sourceId"]),
 
+  // Warehouse delivery document (#2961).  Header table for a goods-receipt
+  // event; groups multiple product receipts from one supplier into a single
+  // document with invoice number and VAT support.  Status 'draft' means items
+  // are still editable; 'posted' means stock movements have been created and
+  // the record is read-only.
+  warehouseDeliveries: defineTable({
+    organizationId: v.id("organizations"),
+    supplierName: v.optional(v.string()),
+    invoiceNumber: v.optional(v.string()),
+    deliveryDate: v.optional(v.string()),
+    locationId: v.optional(v.id("gabinetLocations")),
+    notes: v.optional(v.string()),
+    status: v.union(v.literal("draft"), v.literal("posted")),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId", "createdAt"])
+    .index("by_orgAndStatus", ["organizationId", "status"]),
+
+  // One row per product within a warehouse delivery.  `movementId` is filled
+  // in when the parent delivery is posted and links this line back to the
+  // product_stock_movements audit trail.
+  warehouseDeliveryItems: defineTable({
+    organizationId: v.id("organizations"),
+    deliveryId: v.id("warehouseDeliveries"),
+    productId: v.id("products"),
+    quantity: v.number(),
+    unitPrice: v.optional(v.number()),
+    vatRate: v.optional(v.number()),
+    movementId: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_delivery", ["deliveryId"])
+    .index("by_org", ["organizationId"])
+    .index("by_product", ["productId"]),
+
   dealProducts: defineTable({
     organizationId: v.id("organizations"),
     dealId: v.id("leads"),

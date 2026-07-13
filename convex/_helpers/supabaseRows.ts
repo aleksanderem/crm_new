@@ -29,6 +29,8 @@ export type AppointmentWorkflowHistoryRow = SupabaseRow<"appointmentWorkflowHist
 export type PaymentRow = SupabaseRow<"payments">;
 export type NoteRow = SupabaseRow<"notes">;
 export type EmailRow = SupabaseRow<"emails">;
+export type WarehouseDeliveryRow = SupabaseRow<"warehouseDeliveries">;
+export type WarehouseDeliveryItemRow = SupabaseRow<"warehouseDeliveryItems">;
 
 // Envelope returned by Supabase-backed list actions that imitate the Convex
 // pagination contract. The cursor encodes the next page offset as a decimal

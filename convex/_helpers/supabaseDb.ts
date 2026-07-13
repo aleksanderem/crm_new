@@ -10,6 +10,8 @@ const TABLE_MAP: Record<string, string> = {
   products: "products",
   productStockLevels: "product_stock_levels",
   productStockMovements: "product_stock_movements",
+  warehouseDeliveries: "warehouse_deliveries",
+  warehouseDeliveryItems: "warehouse_delivery_items",
   calls: "calls",
   notes: "notes",
   activities: "activities",

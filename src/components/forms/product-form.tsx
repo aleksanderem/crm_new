@@ -94,6 +94,7 @@ export interface ProductFormData {
   manufacturer?: string | null;
   catalogNumber?: string | null;
   stockNote?: string | null;
+  purchasePrice?: number | null;
 }
 
 interface ProductFormProps {
@@ -140,6 +141,9 @@ export function ProductForm({
   const [manufacturer, setManufacturer] = useState(initialData?.manufacturer ?? "");
   const [catalogNumber, setCatalogNumber] = useState(initialData?.catalogNumber ?? "");
   const [stockNote, setStockNote] = useState(initialData?.stockNote ?? "");
+  const [purchasePrice, setPurchasePrice] = useState(
+    initialData?.purchasePrice != null ? String(initialData.purchasePrice) : "",
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,6 +164,11 @@ export function ProductForm({
       const parsed = parseFloat(minStock.replace(",", "."));
       return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
     })();
+    const normalizedPurchasePrice = (() => {
+      if (!purchasePrice.trim()) return null;
+      const parsed = parseFloat(purchasePrice.replace(",", "."));
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+    })();
     onSubmit({
       name,
       description: description || null,
@@ -178,6 +187,7 @@ export function ProductForm({
       manufacturer: manufacturer.trim() || null,
       catalogNumber: catalogNumber.trim() || null,
       stockNote: stockNote.trim() || null,
+      purchasePrice: normalizedPurchasePrice,
     });
   };
 
@@ -337,6 +347,24 @@ export function ProductForm({
                     placeholder="0"
                   />
                 </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>
+                  {t("products.stock.purchasePriceLabel", { defaultValue: "Cena zakupu brutto" })}
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={purchasePrice}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) setPurchasePrice(v);
+                  }}
+                  placeholder={t("products.stock.purchasePricePlaceholder", { defaultValue: "np. 120,00" })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("products.stock.purchasePriceHelp", { defaultValue: "Używana do wyliczenia wartości magazynu. Opcjonalna." })}
+                </p>
               </div>
               {isCreate && (
                 <div className="space-y-1.5">

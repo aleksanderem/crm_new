@@ -49,6 +49,7 @@
  *   • 00042_gabinet_employees_nullable_user_id.sql
  *   • 00043_reminder_channel_settings.sql
  *   • 00044_scope_entities_jsonb.sql
+ *   • 00050_product_purchase_price.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -1859,6 +1860,7 @@ export interface Database {
           manufacturer: string | null;
           catalog_number: string | null;
           stock_note: string | null;
+          purchase_price: number | null;
         };
         Insert: {
           id?: string;
@@ -1882,6 +1884,7 @@ export interface Database {
           manufacturer?: string | null;
           catalog_number?: string | null;
           stock_note?: string | null;
+          purchase_price?: number | null;
         };
         Update: {
           id?: string;
@@ -1905,6 +1908,7 @@ export interface Database {
           manufacturer?: string | null;
           catalog_number?: string | null;
           stock_note?: string | null;
+          purchase_price?: number | null;
         };
         Relationships: [
           {

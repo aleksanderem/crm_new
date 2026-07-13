@@ -38,6 +38,7 @@ export const create = action({
     manufacturer: v.optional(v.union(v.string(), v.null())),
     catalogNumber: v.optional(v.union(v.string(), v.null())),
     stockNote: v.optional(v.union(v.string(), v.null())),
+    purchasePrice: v.optional(v.union(v.number(), v.null())),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runQuery(
@@ -81,6 +82,8 @@ export const create = action({
     if (args.manufacturer != null) insertRow.manufacturer = args.manufacturer;
     if (args.catalogNumber != null) insertRow.catalogNumber = args.catalogNumber;
     if (args.stockNote != null) insertRow.stockNote = args.stockNote;
+    // migration 00050
+    if (args.purchasePrice != null) insertRow.purchasePrice = args.purchasePrice;
 
     const productId = await db.insert("products", insertRow);
 
@@ -156,6 +159,7 @@ export const update = action({
     manufacturer: v.optional(v.union(v.string(), v.null())),
     catalogNumber: v.optional(v.union(v.string(), v.null())),
     stockNote: v.optional(v.union(v.string(), v.null())),
+    purchasePrice: v.optional(v.union(v.number(), v.null())),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runQuery(
@@ -203,6 +207,7 @@ export const update = action({
     if (updates.manufacturer !== undefined) patchPayload.manufacturer = updates.manufacturer;
     if (updates.catalogNumber !== undefined) patchPayload.catalogNumber = updates.catalogNumber;
     if (updates.stockNote !== undefined) patchPayload.stockNote = updates.stockNote;
+    if (updates.purchasePrice !== undefined) patchPayload.purchasePrice = updates.purchasePrice;
 
     await db.patch("products", productId, patchPayload);
 

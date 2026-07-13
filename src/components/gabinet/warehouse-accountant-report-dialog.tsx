@@ -10,6 +10,13 @@ import {
 } from "@/components/ui/dialog";
 import type { MappedProduct } from "@/lib/supabase/mappers/products";
 
+function formatPricePLN(value: number): string {
+  return value.toLocaleString("pl-PL", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }) + " zł";
+}
+
 interface ReportBodyProps {
   organizationName: string | undefined;
   locationName: string | null | undefined;
@@ -109,6 +116,8 @@ function ReportBody({
           {products.map((product, idx) => {
             const qty = historicalStock.get(product._id) ?? 0;
             const unit = product.stockUnit?.trim() || "—";
+            const hasPrice = product.purchasePrice != null;
+            const value = hasPrice ? qty * product.purchasePrice! : null;
             return (
               <tr
                 key={product._id}
@@ -120,11 +129,15 @@ function ReportBody({
                 <td className="px-2 py-1.5 font-medium">{product.name}</td>
                 <td className="px-2 py-1.5 text-right">{unit}</td>
                 <td className="px-2 py-1.5 text-right tabular-nums">{qty}</td>
-                <td className="px-2 py-1.5 text-right text-muted-foreground">
-                  {noPrice}
+                <td className="px-2 py-1.5 text-right tabular-nums">
+                  {hasPrice
+                    ? formatPricePLN(product.purchasePrice!)
+                    : <span className="text-muted-foreground">{noPrice}</span>}
                 </td>
-                <td className="px-2 py-1.5 text-right text-muted-foreground">
-                  {noPrice}
+                <td className="px-2 py-1.5 text-right tabular-nums">
+                  {value != null
+                    ? formatPricePLN(value)
+                    : <span className="text-muted-foreground">{noPrice}</span>}
                 </td>
               </tr>
             );
@@ -149,11 +162,17 @@ function ReportBody({
             })}
             :
           </span>{" "}
-          <span className="text-muted-foreground">
-            {t("inventory.accountantReport.notAvailable", {
-              defaultValue: "niedostępna (brak cen zakupu)",
-            })}
-          </span>
+          {(() => {
+            const total = products.reduce((sum, p) => {
+              if (p.purchasePrice == null) return sum;
+              const qty = historicalStock.get(p._id) ?? 0;
+              return sum + qty * p.purchasePrice;
+            }, 0);
+            const hasAnyPrice = products.some((p) => p.purchasePrice != null);
+            return hasAnyPrice
+              ? <span className="font-semibold">{formatPricePLN(total)}</span>
+              : <span className="text-muted-foreground">{t("inventory.accountantReport.notAvailable", { defaultValue: "niedostępna (brak cen zakupu)" })}</span>;
+          })()}
         </div>
       </div>
     </div>

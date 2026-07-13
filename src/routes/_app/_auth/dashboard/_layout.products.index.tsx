@@ -380,6 +380,7 @@ function ProductsPage() {
           manufacturer: data.manufacturer,
           catalogNumber: data.catalogNumber,
           stockNote: data.stockNote,
+          purchasePrice: data.purchasePrice,
         });
       } else {
         await createProduct({
@@ -401,6 +402,7 @@ function ProductsPage() {
           manufacturer: data.manufacturer,
           catalogNumber: data.catalogNumber,
           stockNote: data.stockNote,
+          purchasePrice: data.purchasePrice,
         });
       }
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.products.list(organizationId) });
@@ -488,6 +490,24 @@ function ProductsPage() {
       getSortValue: (item) => {
         if (!item.trackStock) return -Infinity;
         return totalsByProductId.get(item._id)?.total ?? 0;
+      },
+      sortable: true,
+    },
+    {
+      id: "value",
+      label: t("products.stock.valueColumn", { defaultValue: "Wartość" }),
+      headerClassName: "whitespace-normal leading-tight",
+      render: (item) => {
+        if (!item.trackStock) return <span className="text-muted-foreground">—</span>;
+        if (item.purchasePrice == null) {
+          return <span className="text-muted-foreground">{t("inventory.accountantReport.noPrice", { defaultValue: "brak danych" })}</span>;
+        }
+        const qty = totalsByProductId.get(item._id)?.total ?? 0;
+        return <span>{formatCurrency(qty * item.purchasePrice)}</span>;
+      },
+      getSortValue: (item) => {
+        if (!item.trackStock || item.purchasePrice == null) return -Infinity;
+        return (totalsByProductId.get(item._id)?.total ?? 0) * item.purchasePrice;
       },
       sortable: true,
     },
@@ -842,6 +862,7 @@ function ProductsPage() {
             manufacturer: editingProduct.manufacturer ?? null,
             catalogNumber: editingProduct.catalogNumber ?? null,
             stockNote: editingProduct.stockNote ?? null,
+            purchasePrice: editingProduct.purchasePrice ?? null,
           } : undefined}
           defaultSection={!editingProduct && activeSection !== "all" ? activeSection : null}
           onSubmit={handleProductFormSubmit}

@@ -295,8 +295,7 @@ export const backfillSingleTreatment = internalAction({
         sort_order: t.sortOrder ?? null,
         treatment_count: t.treatmentCount ?? null,
         parameters: t.parameters ?? null,
-        required_document_template_ids:
-          t.requiredDocumentTemplateIds?.map(String) ?? null,
+        required_document_template_ids: null,
         required_form_templates: t.requiredFormTemplates ?? null,
         short_description: t.shortDescription ?? null,
         image: t.image ?? null,
@@ -509,8 +508,7 @@ export const backfillTreatments = internalAction({
       sort_order: t.sortOrder ?? null,
       treatment_count: t.treatmentCount ?? null,
       parameters: t.parameters ?? null,
-      required_document_template_ids:
-        t.requiredDocumentTemplateIds?.map(String) ?? null,
+      required_document_template_ids: null,
       required_form_templates: t.requiredFormTemplates ?? null,
       short_description: t.shortDescription ?? null,
       image: t.image ?? null,

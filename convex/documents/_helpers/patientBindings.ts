@@ -50,10 +50,16 @@ async function resolvePatientId(
   orgIdStr: string,
   doc: Record<string, unknown>,
 ): Promise<string | null> {
-  // Prefer the explicit scope link
-  if (typeof doc.scopeEntities === "string" && doc.scopeEntities) {
+  // Prefer the explicit scope link.
+  // scope_entities is JSONB since migration 00044 — Supabase returns an object,
+  // not a string. Handle both to stay compatible with any legacy string paths.
+  if (doc.scopeEntities) {
     try {
-      const scope = JSON.parse(doc.scopeEntities) as Record<string, unknown>;
+      const scope = (
+        typeof doc.scopeEntities === "string"
+          ? JSON.parse(doc.scopeEntities)
+          : doc.scopeEntities
+      ) as Record<string, unknown>;
       if (scope.patient) return String(scope.patient);
     } catch {
       // ignore malformed scope

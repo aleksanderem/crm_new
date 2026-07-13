@@ -153,6 +153,7 @@ interface ApplyMovementParams {
   sourceType?: string | null;
   sourceId?: string | null;
   note?: string | null;
+  unitPrice?: number | null;
   performedBy: string;
 }
 
@@ -212,6 +213,11 @@ export async function applyMovementInternal(
     }
   }
 
+  const snapshotPrice =
+    params.unitPrice != null
+      ? params.unitPrice
+      : (product.purchasePrice as number | null | undefined) ?? null;
+
   const movementId = await db.insert("productStockMovements", {
     organizationId: params.organizationId,
     productId: params.productId,
@@ -222,6 +228,7 @@ export async function applyMovementInternal(
     sourceType: params.sourceType ?? null,
     sourceId: params.sourceId ?? null,
     note: params.note ?? null,
+    unitPrice: snapshotPrice,
     performedBy: params.performedBy,
     createdAt: now,
   });

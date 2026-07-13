@@ -15,9 +15,12 @@ import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { applyMovementInternal } from "./inventory";
 import type { SupabaseRow } from "./_helpers/supabaseRows";
 import { getDocumentAnalyzer } from "./_ai/documentAnalyzer";
-import type { DocumentPage, ParsedInvoice } from "./_ai/documentAnalyzer";
+import type { DocumentPage, ParsedInvoice, ParsedInvoiceItem } from "./_ai/documentAnalyzer";
+import { matchInvoiceItems } from "./_ai/invoiceMatching";
+import type { MatchingProposals, ProductForMatching } from "./_ai/invoiceMatching";
 
 type DeliveryRow = SupabaseRow<"warehouseDeliveries">;
+type ProductRow = SupabaseRow<"products">;
 type DeliveryItemRow = SupabaseRow<"warehouseDeliveryItems">;
 
 // Throws if the same (productId, lotNumber) pair appears more than once within
@@ -571,6 +574,76 @@ export const analyzeDeliveryInvoice = action({
     await db.patch("warehouseDeliveries", args.deliveryId, failurePatch);
 
     return { status: "failed", error: errorMessage };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Invoice item → product matching (#3050)
+// ---------------------------------------------------------------------------
+
+// Matches each item from a completed invoice analysis against active products
+// in the organisation and saves the proposals on the delivery for use in the
+// verification screen.  Re-running replaces only matchingProposals — it never
+// touches analysisResult or posted deliveries.
+export const matchDeliveryItems = action({
+  args: {
+    organizationId: v.id("organizations"),
+    deliveryId: v.string(),
+  },
+  handler: async (ctx, args): Promise<MatchingProposals> => {
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = (await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_inventory", action: "edit" },
+    )) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+    const delivery = await db.get<DeliveryRow>(
+      "warehouseDeliveries",
+      args.deliveryId,
+    );
+    if (
+      !delivery ||
+      String(delivery.organizationId) !== String(args.organizationId)
+    ) {
+      throw new Error("Delivery not found");
+    }
+    if (delivery.status !== "draft") {
+      throw new Error("Only draft deliveries can be matched");
+    }
+    if (delivery.analysisStatus !== "completed" || !delivery.analysisResult) {
+      throw new Error(
+        "Invoice analysis must be completed before matching items",
+      );
+    }
+
+    const analysis = delivery.analysisResult as StoredAnalysisResult;
+    const invoiceItems = Array.isArray(analysis.items)
+      ? (analysis.items as ParsedInvoiceItem[])
+      : [];
+
+    const productRows = await db
+      .query<ProductRow>("products")
+      .eq("organizationId", String(args.organizationId))
+      .eq("isActive", true)
+      .collect();
+
+    const products: ProductForMatching[] = productRows.map((p) => ({
+      productId: String(p._id),
+      productName: String(p.name),
+    }));
+
+    const proposals = matchInvoiceItems(invoiceItems, products);
+
+    await db.patch("warehouseDeliveries", args.deliveryId, {
+      matchingProposals: proposals,
+      updatedAt: Date.now(),
+    });
+
+    return proposals;
   },
 });
 

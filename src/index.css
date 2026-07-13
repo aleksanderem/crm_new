@@ -423,6 +423,39 @@ img {
   .print-schedule td {
     display: table-cell;
   }
+
+  /* Accountant report — see warehouse-accountant-report-dialog.tsx */
+  .print-accountant-report,
+  .print-accountant-report * {
+    visibility: visible !important;
+    display: block;
+  }
+  .print-accountant-report {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white;
+    color: black;
+  }
+  .print-accountant-report table {
+    display: table;
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .print-accountant-report thead {
+    display: table-header-group;
+  }
+  .print-accountant-report tbody {
+    display: table-row-group;
+  }
+  .print-accountant-report tr {
+    display: table-row;
+  }
+  .print-accountant-report th,
+  .print-accountant-report td {
+    display: table-cell;
+  }
 }
 /*
 ---break---

@@ -25,6 +25,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
+import { useSupabaseOrganization } from "@/hooks/use-supabase-organizations";
+import { WarehouseAccountantReportDialog } from "@/components/gabinet/warehouse-accountant-report-dialog";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatActionError } from "@/lib/format-action-error";
 import { cn } from "@/lib/utils";
@@ -92,6 +94,7 @@ export function WarehouseInventoryDialog({
     organizationId,
     { activeOnly: true },
   );
+  const { data: org } = useSupabaseOrganization(organizationId);
 
   // Stable within one open session; recomputes when the dialog opens so re-renders
   // after midnight don't drift todayStr away from the selectedDate initial value.
@@ -102,6 +105,7 @@ export function WarehouseInventoryDialog({
   const [locationId, setLocationId] = useState<string>(NO_LOCATION_VALUE);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const resolvedLocationId: string | null =
     locationId === NO_LOCATION_VALUE ? null : locationId;
@@ -394,6 +398,7 @@ export function WarehouseInventoryDialog({
 
   // step === "count"
   return (
+    <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col">
         <DialogHeader>
@@ -623,6 +628,17 @@ export function WarehouseInventoryDialog({
           >
             {t("common.cancel")}
           </Button>
+          {isHistoricalMode && historicalStockQuery.isSuccess && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setReportOpen(true)}
+            >
+              {t("inventory.accountantReport.openButton", {
+                defaultValue: "Raport dla księgowej",
+              })}
+            </Button>
+          )}
           {!isHistoricalMode && (
             <Button
               type="button"
@@ -635,5 +651,20 @@ export function WarehouseInventoryDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <WarehouseAccountantReportDialog
+      open={reportOpen}
+      onOpenChange={setReportOpen}
+      organizationName={org?.name}
+      selectedDate={selectedDate}
+      products={trackedProducts}
+      historicalStock={historicalStockQuery.data ?? new Map()}
+      locationName={
+        resolvedLocationId
+          ? (locations.find((l) => l._id === resolvedLocationId)?.name ?? null)
+          : null
+      }
+    />
+    </>
   );
 }

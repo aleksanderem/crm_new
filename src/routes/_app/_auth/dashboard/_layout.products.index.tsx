@@ -737,25 +737,37 @@ function ProductsPage() {
           label={t("products.stats.total", { defaultValue: "Wszystkie pozycje" })}
           value={inventoryStats.total}
           active={activeViewId === "all" && !nudgeFilter}
-          onClick={() => onViewChange("all")}
+          onClick={() => {
+            if (nudgeFilter) navigate({ to: "/dashboard/products", search: { nudge: undefined } });
+            onViewChange("all");
+          }}
         />
         <StatCard
           label={t("products.sections.sale")}
           value={inventoryStats.bySale}
           active={activeViewId === "sale" && !nudgeFilter}
-          onClick={() => onViewChange("sale")}
+          onClick={() => {
+            if (nudgeFilter) navigate({ to: "/dashboard/products", search: { nudge: undefined } });
+            onViewChange("sale");
+          }}
         />
         <StatCard
           label={t("products.sections.treatment")}
           value={inventoryStats.byTreatment}
           active={activeViewId === "treatment" && !nudgeFilter}
-          onClick={() => onViewChange("treatment")}
+          onClick={() => {
+            if (nudgeFilter) navigate({ to: "/dashboard/products", search: { nudge: undefined } });
+            onViewChange("treatment");
+          }}
         />
         <StatCard
           label={t("products.sections.disposable")}
           value={inventoryStats.byDisposable}
           active={activeViewId === "disposable" && !nudgeFilter}
-          onClick={() => onViewChange("disposable")}
+          onClick={() => {
+            if (nudgeFilter) navigate({ to: "/dashboard/products", search: { nudge: undefined } });
+            onViewChange("disposable");
+          }}
         />
         <StatCard
           label={t("products.stats.belowMin", { defaultValue: "Poniżej min. stanu" })}
@@ -763,7 +775,10 @@ function ProductsPage() {
           highlight={inventoryStats.belowMin > 0}
           active={nudgeFilter === "low_stock"}
           onClick={inventoryStats.belowMin > 0
-            ? () => navigate({ to: "/dashboard/products", search: { nudge: "low_stock" } })
+            ? () => {
+                onViewChange("all");
+                navigate({ to: "/dashboard/products", search: { nudge: "low_stock" } });
+              }
             : undefined}
         />
       </div>

@@ -138,4 +138,71 @@ test.describe("CRM — Products", () => {
       await page.keyboard.press("Escape");
     }
   });
+
+  // Regression #3109: clicking a top tile must clear any previously active filter
+  test("clicking 'Poniżej min. stanu' tile clears the active section filter", async ({ page }) => {
+    await navigateTo(page, "/dashboard/products");
+    await assertNoErrorBoundary(page);
+
+    // Activate the "Materiały jednorazowe" section tile
+    const disposableTile = page
+      .locator("button")
+      .filter({ hasText: /Materiały jednorazowe/ })
+      .first();
+
+    if (!(await disposableTile.isVisible({ timeout: 5000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+    await disposableTile.click();
+    await page.waitForTimeout(500);
+
+    // Now click "Poniżej min. stanu" — it should clear the section filter
+    const belowMinTile = page
+      .locator("button")
+      .filter({ hasText: /Poniżej min\. stanu/ })
+      .first();
+
+    if (!(await belowMinTile.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    // Only proceed if the tile is enabled (belowMin > 0 or button is clickable)
+    const isDisabled = await belowMinTile.getAttribute("disabled");
+    if (isDisabled !== null) {
+      test.skip();
+      return;
+    }
+
+    await belowMinTile.click();
+    await page.waitForTimeout(500);
+
+    // URL must contain nudge=low_stock and page must have no errors
+    expect(page.url()).toContain("nudge=low_stock");
+    await assertNoErrorBoundary(page);
+  });
+
+  // Regression #3109: clicking a section tile while nudge filter is active must clear nudge
+  test("clicking section tile clears low_stock nudge filter", async ({ page }) => {
+    await navigateTo(page, "/dashboard/products?nudge=low_stock");
+    await assertNoErrorBoundary(page);
+
+    const disposableTile = page
+      .locator("button")
+      .filter({ hasText: /Materiały jednorazowe/ })
+      .first();
+
+    if (!(await disposableTile.isVisible({ timeout: 5000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await disposableTile.click();
+    await page.waitForTimeout(500);
+
+    // nudge=low_stock must be gone from the URL
+    expect(page.url()).not.toContain("nudge=low_stock");
+    await assertNoErrorBoundary(page);
+  });
 });

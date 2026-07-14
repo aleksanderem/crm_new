@@ -4,13 +4,17 @@ import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/ui/language-switcher";
 import {
   CalendarCheck,
+  ClipboardList,
   Download,
   Filter,
   Kanban,
   Phone,
   PlusCircle,
   Send,
+  ShoppingCart,
   Tag,
+  TruckIcon,
+  Upload,
   UserPlus,
 } from "@/lib/ez-icons";
 import { useSidebarActions } from "@/components/layout/sidebar-context";
@@ -61,10 +65,12 @@ const routeActions: Record<string, FooterAction[]> = {
     { labelKey: "nav.actions.composeEmail", icon: Send, href: "/dashboard/inbox" },
   ],
   products: [
-    { labelKey: "nav.actions.addProduct", icon: PlusCircle, quickCreate: "document" },
-    { labelKey: "nav.actions.exportCsv", icon: Download, href: "/dashboard/products" },
-    { labelKey: "nav.actions.manageTags", icon: Tag, action: "manageTags" },
-    { labelKey: "nav.actions.manageCategories", icon: Filter, action: "manageCategories" },
+    { labelKey: "nav.actions.addProduct", icon: PlusCircle, action: "addProduct" },
+    { labelKey: "nav.actions.addDelivery", icon: TruckIcon, action: "addDelivery" },
+    { labelKey: "nav.actions.openShoppingList", icon: ShoppingCart, action: "openShoppingList" },
+    { labelKey: "nav.actions.startInventory", icon: ClipboardList, action: "openInventory" },
+    { labelKey: "nav.actions.importCsv", icon: Upload, action: "importCsv" },
+    { labelKey: "nav.actions.exportCsv", icon: Download, action: "exportCsv" },
   ],
 };
 

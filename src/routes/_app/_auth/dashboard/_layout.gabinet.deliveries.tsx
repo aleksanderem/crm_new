@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { getExpiryStatus } from "@/lib/expiry-utils";
 import { useAction, useMutation } from "convex/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -56,6 +56,9 @@ export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/deliveries",
 )({
   component: DeliveriesPage,
+  validateSearch: (search: Record<string, unknown>): { action?: "create" } => ({
+    action: search.action === "create" ? "create" : undefined,
+  }),
 });
 
 const NO_LOCATION = "__none__";
@@ -266,6 +269,8 @@ function DeliveriesPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const queryClient = useQueryClient();
+  const routeNavigate = useNavigate();
+  const { action: actionParam } = useSearch({ from: "/_app/_auth/dashboard/_layout/gabinet/deliveries" });
 
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen
   const listDeliveriesAction = useAction(api.warehouseDeliveries.listDeliveries);
@@ -338,6 +343,21 @@ function DeliveriesPage() {
 
   // Create/edit panel state
   const [panelOpen, setPanelOpen] = useState(false);
+
+  // ?action=create navigates here from the sidebar quick-action and auto-opens
+  // the new-delivery panel (issue #3153). Clear the param after consuming so a
+  // refresh doesn't reopen it.
+  useEffect(() => {
+    if (actionParam === "create") {
+      setPanelOpen(true);
+      void routeNavigate({
+        to: "/dashboard/gabinet/deliveries",
+        search: { action: undefined },
+        replace: true,
+      });
+    }
+  }, [actionParam, routeNavigate]);
+
   const [editDeliveryId, setEditDeliveryId] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
   const [supplierName, setSupplierName] = useState("");

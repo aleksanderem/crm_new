@@ -22,7 +22,6 @@ import { useSidebarActions } from "@/components/layout/sidebar-context";
 import { usePermission } from "@/hooks/use-permission";
 import { useOrganization } from "@/components/org-context";
 import { SellTreatmentPanel } from "@/components/gabinet/sell-treatment-panel";
-import { AddDeliveryPanel } from "@/components/gabinet/add-delivery-panel";
 
 export function GabinetQuickActionsDropdown() {
   const { t } = useTranslation();
@@ -31,7 +30,6 @@ export function GabinetQuickActionsDropdown() {
   const { allowed: canManageLeaves } = usePermission("gabinet_settings", "edit");
   const { organizationId } = useOrganization();
   const [sellTreatmentOpen, setSellTreatmentOpen] = useState(false);
-  const [addDeliveryOpen, setAddDeliveryOpen] = useState(false);
 
   // "Umów wizytę" routes through the calendar so every appointment entry
   // point opens the same AppointmentDialog (issue #1506).
@@ -102,7 +100,7 @@ export function GabinetQuickActionsDropdown() {
         )}
         <DropdownMenuItem
           className="px-3 py-2.5 text-sm"
-          onSelect={() => setAddDeliveryOpen(true)}
+          onSelect={() => navigate({ to: "/dashboard/gabinet/deliveries", search: { action: "create" } })}
         >
           <TruckIcon className="text-foreground size-5 shrink-0" />
           {t("sidebar.gabinet.addDelivery", "Dodaj dostawę")}
@@ -120,11 +118,6 @@ export function GabinetQuickActionsDropdown() {
       organizationId={organizationId}
       open={sellTreatmentOpen}
       onOpenChange={setSellTreatmentOpen}
-    />
-    <AddDeliveryPanel
-      organizationId={organizationId}
-      open={addDeliveryOpen}
-      onOpenChange={setAddDeliveryOpen}
     />
     </>
   );

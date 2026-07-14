@@ -213,7 +213,10 @@
       "pendingSignatures": "Oczekujące podpisy",
       "filterByDate": "Filtruj wg daty",
       "viewTreatmentStats": "Statystyki zabiegów",
-      "viewRevenueReport": "Raport przychodów"
+      "viewRevenueReport": "Raport przychodów",
+      "openShoppingList": "Lista zakupowa",
+      "startInventory": "Rozpocznij inwentaryzację",
+      "addDelivery": "Dodaj dostawę"
     },
     "workspace": {
       "crm": "CRM",

@@ -132,6 +132,10 @@ export interface DataListFilterBarProps {
 
   // Extra elements rendered on the left side next to the view selector
   leftExtras?: React.ReactNode;
+
+  // Hide specific toolbar elements (e.g. when those actions live in the sidebar)
+  hideFiltersButton?: boolean;
+  hideAddViewButton?: boolean;
 }
 
 let filterIdCounter = 0;
@@ -181,6 +185,8 @@ export function DataListFilterBar({
   onTagsManage: _onTagsManage,
   onCategoriesManage: _onCategoriesManage,
   leftExtras,
+  hideFiltersButton = false,
+  hideAddViewButton = false,
 }: DataListFilterBarProps) {
   const { t } = useTranslation();
   const [internalFilterSlideoutOpen, setInternalFilterSlideoutOpen] =
@@ -422,7 +428,7 @@ export function DataListFilterBar({
             </Dropdown.Popover>
           </Dropdown.Root>
         )}
-        {onCreateView && canAddMore && (
+        {onCreateView && canAddMore && !hideAddViewButton && (
           <button
             type="button"
             onClick={openCreateDialog}
@@ -466,7 +472,7 @@ export function DataListFilterBar({
             </button>
           )}
         </div>
-        {hasFilterableFields && (
+        {hasFilterableFields && !hideFiltersButton && (
           <Button
             size="sm"
             color="secondary"
@@ -572,7 +578,7 @@ export function DataListFilterBar({
             </button>
           )}
         </div>
-        {hasFilterableFields && (
+        {hasFilterableFields && !hideFiltersButton && (
           <Button
             size="sm"
             color="secondary"

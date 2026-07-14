@@ -37,7 +37,10 @@ export function ProductsWidgets({ organizationId }: { organizationId: Id<"organi
         ]}
       />
 
-      {topProducts && topProducts.length > 0 && (
+      {/* TODO: Widget „Najlepsze produkty" został celowo ukryty. Kod pozostawiono do możliwego
+          wykorzystania w przyszłości jako panel statystyk, alertów lub AI Insights.
+          Aby przywrócić: usuń `false &&` z poniższego warunku. */}
+      {false && topProducts && topProducts.length > 0 && (
         <Card className="overflow-hidden gap-0 border-0 bg-blue-500 py-4 shadow-none">
           <CardHeader className="px-4">
             <span className="text-base font-medium text-white">

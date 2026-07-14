@@ -894,7 +894,7 @@
       "sale": "Produkty do sprzedaży",
       "treatment": "Preparaty zabiegowe",
       "disposable": "Materiały jednorazowe",
-      "label": "Rodzaj produktu",
+      "label": "Grupa przeznaczenia produktu",
       "placeholder": "Wybierz rodzaj produktu",
       "none": "Brak"
     },

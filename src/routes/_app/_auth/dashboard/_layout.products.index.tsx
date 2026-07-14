@@ -287,14 +287,14 @@ function ProductSimpleFilterPanel({
           </Label>
           {categories.length > 0 ? (
             <Select
-              value={draft.categoryId ?? ""}
-              onValueChange={(v) => setDraft(d => ({ ...d, categoryId: v || null }))}
+              value={draft.categoryId ?? "all"}
+              onValueChange={(v) => setDraft(d => ({ ...d, categoryId: v === "all" ? null : v }))}
             >
               <SelectTrigger className="h-9">
                 <SelectValue placeholder={t("products.simpleFilter.category.all", { defaultValue: "Wszystkie kategorie" })} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">
+                <SelectItem value="all">
                   {t("products.simpleFilter.category.all", { defaultValue: "Wszystkie kategorie" })}
                 </SelectItem>
                 {categories.map(cat => (
@@ -318,14 +318,14 @@ function ProductSimpleFilterPanel({
           </Label>
           {manufacturers.length > 0 ? (
             <Select
-              value={draft.manufacturer ?? ""}
-              onValueChange={(v) => setDraft(d => ({ ...d, manufacturer: v || null }))}
+              value={draft.manufacturer ?? "all"}
+              onValueChange={(v) => setDraft(d => ({ ...d, manufacturer: v === "all" ? null : v }))}
             >
               <SelectTrigger className="h-9">
                 <SelectValue placeholder={t("products.simpleFilter.manufacturer.all", { defaultValue: "Wszyscy dostawcy" })} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">
+                <SelectItem value="all">
                   {t("products.simpleFilter.manufacturer.all", { defaultValue: "Wszyscy dostawcy" })}
                 </SelectItem>
                 {manufacturers.map(m => (

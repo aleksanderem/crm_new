@@ -23,7 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History, ClipboardList, Archive, ShoppingCart } from "@/lib/ez-icons";
+import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History, Archive } from "@/lib/ez-icons";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
@@ -229,6 +229,8 @@ function ProductsPage() {
   useSidebarDispatch("openFilter", () => setFilterSlideoutOpen(true));
   useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
   useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
+  useSidebarDispatch("openShoppingList", () => setShoppingListOpen(true));
+  useSidebarDispatch("openInventory", () => setInventoryOpen(true));
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [stockAdjustProduct, setStockAdjustProduct] = useState<Product | null>(null);
   const [stockHistoryProduct, setStockHistoryProduct] = useState<Product | null>(null);
@@ -663,14 +665,6 @@ function ProductsPage() {
         description={t('products.description')}
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setShoppingListOpen(true)}>
-              <ShoppingCart className="mr-2 h-4 w-4" variant="stroke" />
-              {t("shoppingList.openButton", { defaultValue: "Lista zakupowa" })}
-            </Button>
-            <Button variant="outline" onClick={() => setInventoryOpen(true)}>
-              <ClipboardList className="mr-2 h-4 w-4" variant="stroke" />
-              {t("inventory.startButton", { defaultValue: "Rozpocznij inwentaryzację" })}
-            </Button>
             <Button onClick={openCreatePanel}>
               <Plus className="mr-2 h-4 w-4" variant="stroke" />
               {t('products.addProduct')}
@@ -836,6 +830,8 @@ function ProductsPage() {
         ]}
         onColumnSettingsOpen={() => setColumnSettingsOpen(true)}
         onFiltersChange={setActiveFilters}
+        hideFiltersButton
+        hideAddViewButton
       />
 
       <CrmDataTable

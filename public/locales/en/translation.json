@@ -213,7 +213,10 @@
       "pendingSignatures": "Pending Signatures",
       "filterByDate": "Filter by Date",
       "viewTreatmentStats": "Treatment Stats",
-      "viewRevenueReport": "Revenue Report"
+      "viewRevenueReport": "Revenue Report",
+      "openShoppingList": "Shopping list",
+      "startInventory": "Start inventory",
+      "addDelivery": "Add delivery"
     },
     "workspace": {
       "crm": "CRM",
@@ -2185,7 +2188,7 @@
     "logCall": "Log Call",
     "share": "Share",
     "bookAppointment": "Book Appointment",
-      "addEvent": "Add Event",
+    "addEvent": "Add Event",
     "addDocument": "Add Document",
     "download": "Download"
   },

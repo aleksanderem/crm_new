@@ -47,7 +47,6 @@ import { cn } from "@/lib/utils";
 import { ProductForm, type ProductFormData, type ProductSection, PRODUCT_SECTIONS } from "@/components/forms/product-form";
 import { WarehouseInventoryDialog } from "@/components/gabinet/warehouse-inventory-dialog";
 import { WarehouseShoppingListDialog } from "@/components/gabinet/warehouse-shopping-list-dialog";
-import { AddDeliveryPanel } from "@/components/gabinet/add-delivery-panel";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import {
   hasAnySimpleFilter,
@@ -587,7 +586,7 @@ function ProductsPage() {
   useSidebarDispatch("openShoppingList", () => setShoppingListOpen(true));
   useSidebarDispatch("openInventory", () => setInventoryOpen(true));
   useSidebarDispatch("addProduct", () => openCreatePanel());
-  useSidebarDispatch("addDelivery", () => setAddDeliveryOpen(true));
+  useSidebarDispatch("addDelivery", () => navigate({ to: "/dashboard/gabinet/deliveries", search: { action: "create" } }));
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [stockAdjustProduct, setStockAdjustProduct] = useState<Product | null>(null);
   const [stockCorrectionProduct, setStockCorrectionProduct] = useState<Product | null>(null);
@@ -595,7 +594,6 @@ function ProductsPage() {
   const [lotBatchesProduct, setLotBatchesProduct] = useState<Product | null>(null);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [shoppingListOpen, setShoppingListOpen] = useState(false);
-  const [addDeliveryOpen, setAddDeliveryOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
 
   const { data: allProducts = [], isLoading } = useSupabaseProductsList(organizationId);
@@ -1426,12 +1424,6 @@ function ProductsPage() {
           organizationId={organizationId}
         />
       </SidePanel>
-
-      <AddDeliveryPanel
-        organizationId={organizationId}
-        open={addDeliveryOpen}
-        onOpenChange={setAddDeliveryOpen}
-      />
 
       <WarehouseInventoryDialog
         open={inventoryOpen}

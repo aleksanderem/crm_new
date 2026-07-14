@@ -984,7 +984,9 @@
         "priceFrom": "Price: from {{from}} PLN",
         "priceTo": "Price: up to {{to}} PLN",
         "stockGt": "Stock > {{value}}",
-        "stockLt": "Stock < {{value}}"
+        "stockLt": "Stock < {{value}}",
+        "stockBelowMin": "Stock: below minimum",
+        "stockZero": "Stock: equal to 0"
       }
     }
   },

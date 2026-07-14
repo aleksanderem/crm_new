@@ -966,7 +966,10 @@
         "lt": "ze stanem mniejszym niż"
       },
       "price": {
-        "label": "Pokaż produkty w cenie zakupu"
+        "label": "Pokaż produkty w cenie zakupu",
+        "from": "od",
+        "to": "do",
+        "currency": "PLN"
       },
       "active": {
         "label": "Aktywność produktu",

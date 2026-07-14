@@ -965,7 +965,10 @@
         "lt": "with stock less than"
       },
       "price": {
-        "label": "Show products at purchase price"
+        "label": "Show products at purchase price",
+        "from": "from",
+        "to": "to",
+        "currency": "PLN"
       },
       "active": {
         "label": "Product activity",

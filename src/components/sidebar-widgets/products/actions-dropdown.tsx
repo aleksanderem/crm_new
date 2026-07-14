@@ -36,11 +36,11 @@ export function ProductsActionsDropdown() {
         </DropdownMenuItem>
         <DropdownMenuItem className="px-3 py-2.5 text-sm" onSelect={() => dispatch("importCsv")}>
           <Upload className="text-foreground size-5 shrink-0" />
-          {t("nav.actions.importCsv", "Importuj CSV")}
+          {t("nav.actions.importCsvProducts", "Dodaj produkty z pliku CSV")}
         </DropdownMenuItem>
         <DropdownMenuItem className="px-3 py-2.5 text-sm" onSelect={() => dispatch("exportCsv")}>
           <Download className="text-foreground size-5 shrink-0" />
-          {t("nav.actions.exportCsv", "Eksportuj CSV")}
+          {t("nav.actions.exportCsvProducts", "Pobierz produkty do pliku CSV")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

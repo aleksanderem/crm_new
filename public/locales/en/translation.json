@@ -157,6 +157,8 @@
       "composeEmail": "Compose Email",
       "importCsv": "Import CSV",
       "exportCsv": "Export CSV",
+      "importCsvProducts": "Add products from CSV file",
+      "exportCsvProducts": "Download products to CSV file",
       "viewKanban": "Kanban View",
       "markWon": "Mark as Won",
       "markLost": "Mark as Lost",

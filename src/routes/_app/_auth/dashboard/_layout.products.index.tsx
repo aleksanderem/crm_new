@@ -400,7 +400,7 @@ function ProductSimpleFilterPanel({
             {t("products.simpleFilter.price.label", { defaultValue: "Pokaż produkty w cenie zakupu" })}
           </Label>
           <div className="flex items-center gap-2">
-            <span className="whitespace-nowrap text-sm text-muted-foreground">od</span>
+            <span className="whitespace-nowrap text-sm text-muted-foreground">{t("products.simpleFilter.price.from", { defaultValue: "od" })}</span>
             <Input
               type="number"
               min={0}
@@ -409,7 +409,7 @@ function ProductSimpleFilterPanel({
               className="h-9 flex-1"
               placeholder="min."
             />
-            <span className="whitespace-nowrap text-sm text-muted-foreground">do</span>
+            <span className="whitespace-nowrap text-sm text-muted-foreground">{t("products.simpleFilter.price.to", { defaultValue: "do" })}</span>
             <Input
               type="number"
               min={0}
@@ -418,7 +418,7 @@ function ProductSimpleFilterPanel({
               className="h-9 flex-1"
               placeholder="maks."
             />
-            <span className="text-sm text-muted-foreground">PLN</span>
+            <span className="text-sm text-muted-foreground">{t("products.simpleFilter.price.currency", { defaultValue: "PLN" })}</span>
           </div>
         </div>
 

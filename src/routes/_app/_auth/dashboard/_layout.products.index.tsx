@@ -49,6 +49,13 @@ import { WarehouseInventoryDialog } from "@/components/gabinet/warehouse-invento
 import { WarehouseShoppingListDialog } from "@/components/gabinet/warehouse-shopping-list-dialog";
 import { AddDeliveryPanel } from "@/components/gabinet/add-delivery-panel";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
+import {
+  hasAnySimpleFilter,
+  applyStockFilter,
+  EMPTY_SIMPLE_FILTERS,
+  type SimpleFiltersState,
+  type StockStatus,
+} from "./products-filters";
 
 type ProductsNudgeFilter = "unused" | "low_stock";
 
@@ -77,10 +84,6 @@ function formatCurrency(amount: number): string {
 }
 
 // Returns the stock status for a product given its current total and min stock
-type StockStatus = "ok" | "low" | "out" | "untracked";
-
-
-
 function getStockStatus(
   trackStock: boolean | undefined,
   total: number,
@@ -164,40 +167,6 @@ function StatCard({ label, value, highlight, active, onClick }: {
       )}>{value}</span>
       <span className="text-xs text-muted-foreground">{label}</span>
     </button>
-  );
-}
-
-type SimpleFiltersState = {
-  productSection: string | null;
-  categoryId: string | null;
-  manufacturer: string | null;
-  isActive: "true" | "false" | null;
-  stockFilter: "below_min" | "zero" | "gt" | "lt" | null;
-  stockValue: string;
-  priceFrom: string;
-  priceTo: string;
-};
-
-const EMPTY_SIMPLE_FILTERS: SimpleFiltersState = {
-  productSection: null,
-  categoryId: null,
-  manufacturer: null,
-  isActive: null,
-  stockFilter: null,
-  stockValue: "",
-  priceFrom: "",
-  priceTo: "",
-};
-
-function hasAnySimpleFilter(f: SimpleFiltersState): boolean {
-  return (
-    f.productSection !== null ||
-    f.categoryId !== null ||
-    f.manufacturer !== null ||
-    f.isActive !== null ||
-    f.stockFilter !== null ||
-    f.priceFrom !== "" ||
-    f.priceTo !== ""
   );
 }
 
@@ -665,15 +634,7 @@ function ProductsPage() {
       });
     }
     data = applyFilters(data);
-    if (simpleFilters.stockFilter === "below_min") {
-      data = data.filter(p => { const s = productStockStatus.get(p._id); return s === "low" || s === "out"; });
-    } else if (simpleFilters.stockFilter === "zero") {
-      data = data.filter(p => p.trackStock && (totalsByProductId.get(p._id)?.total ?? 0) <= 0);
-    } else if (simpleFilters.stockFilter === "gt" && simpleFilters.stockValue) {
-      data = data.filter(p => p.trackStock && (totalsByProductId.get(p._id)?.total ?? 0) > Number(simpleFilters.stockValue));
-    } else if (simpleFilters.stockFilter === "lt" && simpleFilters.stockValue) {
-      data = data.filter(p => p.trackStock && (totalsByProductId.get(p._id)?.total ?? 0) < Number(simpleFilters.stockValue));
-    }
+    data = applyStockFilter(data, simpleFilters.stockFilter, simpleFilters.stockValue, productStockStatus, totalsByProductId);
     data = applyFilterConditions(data, [...simpleFilterConditions, ...activeFilters]);
     if (searchValue.trim()) {
       const q = searchValue.trim().toLowerCase();

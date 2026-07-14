@@ -979,7 +979,9 @@
         "manufacturer": "Supplier:",
         "priceRange": "Price: {{from}}–{{to}} PLN",
         "priceFrom": "Price: from {{from}} PLN",
-        "priceTo": "Price: up to {{to}} PLN"
+        "priceTo": "Price: up to {{to}} PLN",
+        "stockGt": "Stock > {{value}}",
+        "stockLt": "Stock < {{value}}"
       }
     }
   },

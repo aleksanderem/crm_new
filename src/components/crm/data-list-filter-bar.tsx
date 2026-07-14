@@ -129,6 +129,8 @@ export interface DataListFilterBarProps {
   // Tags & Categories management
   onTagsManage?: () => void;
   onCategoriesManage?: () => void;
+  /** When provided, renders the tags/categories button with this text label instead of icon-only. */
+  tagsButtonLabel?: string;
 
   // Extra elements rendered on the left side next to the view selector
   leftExtras?: React.ReactNode;
@@ -184,6 +186,7 @@ export function DataListFilterBar({
   dropdownActions = [],
   onTagsManage: _onTagsManage,
   onCategoriesManage: _onCategoriesManage,
+  tagsButtonLabel,
   leftExtras,
   hideFiltersButton = false,
   hideAddViewButton = false,
@@ -530,9 +533,11 @@ export function DataListFilterBar({
           <Dropdown.Root>
             <Button
               size="sm"
-              color="tertiary"
+              color={tagsButtonLabel ? "secondary" : "tertiary"}
               iconLeading={_onTagsManage && _onCategoriesManage ? Folder : (_onTagsManage ? Tag03 : Folder)}
-            />
+            >
+              {tagsButtonLabel ?? null}
+            </Button>
             <Dropdown.Popover>
               <Dropdown.Menu>
                 {_onTagsManage && (

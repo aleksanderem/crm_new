@@ -22,7 +22,7 @@ import { SidePanel } from "@/components/crm/side-panel";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History, Archive, RotateCcw } from "@/lib/ez-icons";
+import { Plus, Pencil, Trash2, Power, X, Package, AlertTriangle, History, Archive, RotateCcw } from "@/lib/ez-icons";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
@@ -863,10 +863,7 @@ function ProductsPage() {
         searchPlaceholder={t('products.searchPlaceholder')}
         onTagsManage={() => setTagsSlideoutOpen(true)}
         onCategoriesManage={() => setCategoriesSlideoutOpen(true)}
-        dropdownActions={[
-          { label: t("csv.export"), icon: <Download className="h-4 w-4" variant="stroke" />, onClick: handleExport },
-          { label: t("csv.import"), icon: <Upload className="h-4 w-4" variant="stroke" />, onClick: () => setImportOpen(true) },
-        ]}
+        tagsButtonLabel={t("products.categoriesAndTags", { defaultValue: "Kategorie i tagi" })}
         onColumnSettingsOpen={() => setColumnSettingsOpen(true)}
         onFiltersChange={setActiveFilters}
         hideFiltersButton

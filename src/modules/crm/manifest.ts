@@ -221,7 +221,7 @@ export const crmManifest: ModuleManifest = {
         },
         { labelKey: "nav.actions.openShoppingList", icon: ShoppingCart, dispatch: "openShoppingList" },
         { labelKey: "nav.actions.startInventory", icon: ClipboardList, dispatch: "openInventory" },
-        { labelKey: "nav.actions.addDelivery", icon: TruckIcon, href: "/dashboard/gabinet/deliveries" },
+        { labelKey: "nav.actions.addDelivery", icon: TruckIcon, dispatch: "addDelivery" },
         { labelKey: "nav.actions.importCsv", icon: Upload, dispatch: "importCsv" },
         { labelKey: "nav.actions.exportCsv", icon: Download, dispatch: "exportCsv" },
         { labelKey: "nav.actions.categoryFilter", icon: Tag, dispatch: "openFilter" },

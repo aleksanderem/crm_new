@@ -1009,6 +1009,7 @@ function ProductsPage() {
         organizationId={organizationId}
         products={allProducts}
         totalsByProductId={totalsByProductId}
+        plannedUsageByProductId={plannedUsageByProductId}
       />
 
       <ProductStockAdjustDialog

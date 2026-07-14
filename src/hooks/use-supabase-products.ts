@@ -311,3 +311,68 @@ export function useSupabaseProductLotBatches(
     enabled: enabled && isReady && !!organizationId && !!productId,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Product Last Delivery Info (#3111)
+//
+// Fetches the most recent warehouse_delivery_items row per product for the org,
+// joining warehouse_deliveries to get the supplier_name. Used in the shopping
+// list dialog to show "Dostawca" (group header) and "Ostatnia cena zakupu brutto".
+// Items are ordered newest-first so the first occurrence per product_id is the
+// most recent delivery.
+// ---------------------------------------------------------------------------
+
+export interface ProductLastDeliveryInfo {
+  supplierName: string | null;
+  unitPriceGross: number | null;
+}
+
+export function useSupabaseProductsLastDeliveryInfo(
+  organizationId: string,
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  const query = useQuery<
+    Array<{ product_id: string; unit_price_gross: number | null; supplier_name: string | null }>,
+    Error
+  >({
+    queryKey: ["supabase", "warehouseDeliveryItems", "lastPerProduct", organizationId],
+    queryFn: async () => {
+      if (!client) throw new Error("Supabase client not ready");
+      const { data, error } = await client
+        .from("warehouse_delivery_items")
+        .select("product_id, unit_price_gross, created_at, warehouse_deliveries(supplier_name)")
+        .eq("organization_id", organizationId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      type Row = {
+        product_id: string;
+        unit_price_gross: number | null;
+        warehouse_deliveries: { supplier_name: string | null } | null;
+      };
+      return ((data ?? []) as Row[]).map((row) => ({
+        product_id: row.product_id,
+        unit_price_gross: row.unit_price_gross != null ? Number(row.unit_price_gross) : null,
+        supplier_name: row.warehouse_deliveries?.supplier_name ?? null,
+      }));
+    },
+    enabled: enabled && isReady && !!organizationId,
+  });
+
+  const lastDeliveryByProductId = useMemo(() => {
+    const map = new Map<string, ProductLastDeliveryInfo>();
+    for (const row of query.data ?? []) {
+      if (!map.has(row.product_id)) {
+        map.set(row.product_id, {
+          supplierName: row.supplier_name,
+          unitPriceGross: row.unit_price_gross,
+        });
+      }
+    }
+    return map;
+  }, [query.data]);
+
+  return { ...query, lastDeliveryByProductId };
+}

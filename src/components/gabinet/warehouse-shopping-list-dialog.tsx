@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -222,6 +222,15 @@ export function WarehouseShoppingListDialog({
   });
   const [locationId, setLocationId] = useState<string>(NO_LOCATION_VALUE);
   const [quantities, setQuantities] = useState<Map<string, string>>(new Map());
+  const hasAutoSelectedRef = useRef(false);
+
+  // Auto-select the single location when locations data loads asynchronously after dialog opens.
+  useEffect(() => {
+    if (open && !hasAutoSelectedRef.current && locations.length === 1) {
+      hasAutoSelectedRef.current = true;
+      setLocationId(locations[0]._id);
+    }
+  }, [open, locations]);
 
   const resolvedLocationId: string | null = locationId === NO_LOCATION_VALUE ? null : locationId;
 
@@ -282,7 +291,10 @@ export function WarehouseShoppingListDialog({
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
-      setLocationId(NO_LOCATION_VALUE);
+      hasAutoSelectedRef.current = false;
+      const initial = locations.length === 1 ? locations[0]._id : NO_LOCATION_VALUE;
+      if (locations.length === 1) hasAutoSelectedRef.current = true;
+      setLocationId(initial);
       setQuantities(new Map());
     }
     onOpenChange(nextOpen);

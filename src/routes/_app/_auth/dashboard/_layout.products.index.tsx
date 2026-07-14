@@ -22,7 +22,7 @@ import { SidePanel } from "@/components/crm/side-panel";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History, Archive, ShoppingCart, TruckIcon, ClipboardList, RotateCcw } from "@/lib/ez-icons";
+import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History, Archive, RotateCcw } from "@/lib/ez-icons";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
@@ -221,6 +221,8 @@ function ProductsPage() {
   useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
   useSidebarDispatch("openShoppingList", () => setShoppingListOpen(true));
   useSidebarDispatch("openInventory", () => setInventoryOpen(true));
+  useSidebarDispatch("addProduct", () => openCreatePanel());
+  useSidebarDispatch("addDelivery", () => setAddDeliveryOpen(true));
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [stockAdjustProduct, setStockAdjustProduct] = useState<Product | null>(null);
   const [stockCorrectionProduct, setStockCorrectionProduct] = useState<Product | null>(null);
@@ -882,39 +884,6 @@ function ProductsPage() {
           if (product) openEditPanel(product);
         }}
       />
-
-      {/* Actions section — second access point for common warehouse operations */}
-      <div className="rounded-lg border bg-card p-4">
-        <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
-          {t("products.actionsSection.title", { defaultValue: "Akcje" })}
-        </h3>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={openCreatePanel}>
-            <Plus className="mr-2 h-4 w-4" variant="stroke" />
-            {t("products.addProduct")}
-          </Button>
-          <Button variant="outline" onClick={() => setAddDeliveryOpen(true)}>
-            <TruckIcon className="mr-2 h-4 w-4" variant="stroke" />
-            {t("nav.actions.addDelivery", { defaultValue: "Dodaj dostawę" })}
-          </Button>
-          <Button variant="outline" onClick={() => setShoppingListOpen(true)}>
-            <ShoppingCart className="mr-2 h-4 w-4" variant="stroke" />
-            {t("nav.actions.openShoppingList", { defaultValue: "Lista zakupowa" })}
-          </Button>
-          <Button variant="outline" onClick={() => setInventoryOpen(true)}>
-            <ClipboardList className="mr-2 h-4 w-4" variant="stroke" />
-            {t("nav.actions.startInventory", { defaultValue: "Rozpocznij inwentaryzację" })}
-          </Button>
-          <Button variant="outline" onClick={() => setImportOpen(true)}>
-            <Upload className="mr-2 h-4 w-4" variant="stroke" />
-            {t("csv.import")}
-          </Button>
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="mr-2 h-4 w-4" variant="stroke" />
-            {t("csv.export")}
-          </Button>
-        </div>
-      </div>
 
       <CsvImportDialog
         organizationId={organizationId}

@@ -824,6 +824,7 @@ function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
   const showDatePicker = /^\/(dashboard)\/?$/.test(pathname)
     || /^\/dashboard\/(activities|calls|leads|pipelines)/.test(pathname);
   const showAgendaStrip = !pathname.startsWith("/dashboard/gabinet");
+  const showCrmHeader = !pathname.startsWith("/dashboard/products");
 
   const [lastDispatch, setLastDispatch] = useState<{ id: string; seq: number } | null>(null);
   const dispatchSeqRef = useRef(0);
@@ -874,7 +875,7 @@ function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
 
             {/* Column 3: Main content */}
             <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-              <header className="bg-card sticky top-0 z-50 flex min-h-20 items-center justify-between gap-6 border-b px-4 py-2 sm:px-6">
+              {showCrmHeader && <header className="bg-card sticky top-0 z-50 flex min-h-20 items-center justify-between gap-6 border-b px-4 py-2 sm:px-6">
                 <div className="flex items-center gap-4">
                   <HeaderBackButton />
                   <SidebarTrigger className="[&_svg]:!size-4 [&_easier-icon]:!size-4" />
@@ -978,7 +979,7 @@ function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-              </header>
+              </header>}
 
               {showAgendaStrip && firstOrg && user && (
                 <AgendaStrip organizationId={firstOrg._id} userId={user._id} />

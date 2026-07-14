@@ -50,6 +50,9 @@ describe("postDeliveryFromDecisions — scenario 1: inventory items create deliv
 
     // 2 inventory items (accepted + choose_product); 1 non_inventory skipped
     expect(result.movementsCreated).toBe(2);
+    expect(result.nonInventorySkipped).toBe(1);
+    expect(result.autoMatchedCount).toBe(1); // only "accepted" counts as auto-matched
+    expect(result.newMappingsLearned).toBe(2); // first post learns both inventory names
 
     const db = createSupabaseDb();
     const items = (await db
@@ -140,6 +143,9 @@ describe("postDeliveryFromDecisions — scenario 2: non-inventory items excluded
       });
 
     expect(result.movementsCreated).toBe(0);
+    expect(result.nonInventorySkipped).toBe(3);
+    expect(result.autoMatchedCount).toBe(0);
+    expect(result.newMappingsLearned).toBe(0);
 
     const db = createSupabaseDb();
     const items = (await db
@@ -679,5 +685,69 @@ describe("postDeliveryFromDecisions — scenario 9: name mapping learning", () =
     expect(proposals.items[0].status).toBe("matched");
     expect(proposals.items[0].matched?.matchReason).toBe("saved_mapping");
     expect(proposals.items[0].matched?.productId).toBe(PRODUCT_A_ID);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Scenario 10 — completion summary stats (#3081)
+// ---------------------------------------------------------------------------
+
+describe("postDeliveryFromDecisions — scenario 10: completion summary stats", () => {
+  test("returns correct autoMatchedCount for accepted vs choose_product decisions", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await seedProducts(String(organizationId));
+
+    // accepted=1, choose_product=1, non_inventory=1
+    const deliveryId = await seedDeliveryWithDecisions(String(organizationId), String(userId));
+
+    const result = await t.withIdentity(identity).action(
+      api.warehouseDeliveries.postDeliveryFromDecisions,
+      { organizationId, deliveryId },
+    );
+
+    expect(result.autoMatchedCount).toBe(1);
+  });
+
+  test("returns newMappingsLearned=0 on second post of same invoice names (no duplicates)", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await seedProducts(String(organizationId));
+
+    const deliveryId1 = await seedDeliveryWithDecisions(String(organizationId), String(userId));
+    const r1 = await t.withIdentity(identity).action(
+      api.warehouseDeliveries.postDeliveryFromDecisions,
+      { organizationId, deliveryId: deliveryId1 },
+    );
+    expect(r1.newMappingsLearned).toBe(2); // first post learns 2 inventory names
+
+    const deliveryId2 = await seedDeliveryWithDecisions(String(organizationId), String(userId));
+    const r2 = await t.withIdentity(identity).action(
+      api.warehouseDeliveries.postDeliveryFromDecisions,
+      { organizationId, deliveryId: deliveryId2 },
+    );
+    expect(r2.newMappingsLearned).toBe(0); // same names already mapped → no new learnings
+  });
+
+  test("nonInventorySkipped matches the number of non_inventory decisions", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await seedProducts(String(organizationId));
+
+    const deliveryId = await seedDeliveryWithDecisions(String(organizationId), String(userId), {
+      decisions: [
+        { type: "accepted", productId: PRODUCT_A_ID },
+        { type: "non_inventory" },
+        { type: "non_inventory" },
+      ],
+    });
+
+    const result = await t.withIdentity(identity).action(
+      api.warehouseDeliveries.postDeliveryFromDecisions,
+      { organizationId, deliveryId },
+    );
+
+    expect(result.movementsCreated).toBe(1);
+    expect(result.nonInventorySkipped).toBe(2);
   });
 });

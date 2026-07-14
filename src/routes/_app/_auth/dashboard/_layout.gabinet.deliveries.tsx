@@ -175,6 +175,13 @@ interface ItemDecisions {
   items: (ItemDecision | null)[];
 }
 
+interface PostDeliveryResult {
+  movementsCreated: number;
+  nonInventorySkipped: number;
+  autoMatchedCount: number;
+  newMappingsLearned: number;
+}
+
 function isDecisionComplete(d: ItemDecision | null): boolean {
   if (!d) return false;
   if (d.type === "non_inventory") return true;
@@ -1607,7 +1614,7 @@ function DeliveriesPage() {
             void queryClient.invalidateQueries({ queryKey });
           }}
           saveAction={saveItemDecisionsAction as (args: { organizationId: typeof organizationId; deliveryId: string; decisions: unknown }) => Promise<void>}
-          postDeliveryAction={postDeliveryFromDecisionsAction as (args: { organizationId: typeof organizationId; deliveryId: string }) => Promise<{ movementsCreated: number }>}
+          postDeliveryAction={postDeliveryFromDecisionsAction as (args: { organizationId: typeof organizationId; deliveryId: string }) => Promise<PostDeliveryResult>}
           onPosted={() => {
             void queryClient.invalidateQueries({ queryKey });
             void queryClient.invalidateQueries({ queryKey: ["supabase", "productStockLevels"] });
@@ -2321,12 +2328,17 @@ function ItemDecisionsDialog({
   products: Array<{ _id: string; name: string; sku?: string | null }>;
   onSave: (decisions: ItemDecisions) => void;
   saveAction: (args: { organizationId: Id<"organizations">; deliveryId: string; decisions: unknown }) => Promise<void>;
-  postDeliveryAction?: (args: { organizationId: Id<"organizations">; deliveryId: string }) => Promise<{ movementsCreated: number }>;
+  postDeliveryAction?: (args: { organizationId: Id<"organizations">; deliveryId: string }) => Promise<PostDeliveryResult>;
   onPosted?: () => void;
 }) {
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
   const [posting, setPosting] = useState(false);
+  const [postSummary, setPostSummary] = useState<PostDeliveryResult | null>(null);
+
+  useEffect(() => {
+    if (!open) setPostSummary(null);
+  }, [open]);
 
   const initDecisions = useCallback((): (ItemDecision | null)[] => {
     if (savedDecisions && Array.isArray(savedDecisions.items) && savedDecisions.items.length === proposals.items.length) {
@@ -2402,10 +2414,9 @@ function ItemDecisionsDialog({
       const saved: ItemDecisions = { decidedAt: Date.now(), items: decisions };
       await saveAction({ organizationId, deliveryId, decisions: saved });
       onSave(saved);
-      await postDeliveryAction({ organizationId, deliveryId });
+      const result = await postDeliveryAction({ organizationId, deliveryId });
       onPosted?.();
-      onOpenChange(false);
-      toast.success(t("gabinet.deliveries.decisions.postSuccess", "Dostawa zatwierdzona. Stany magazynowe zaktualizowane."));
+      setPostSummary(result);
     } catch (e) {
       toast.error(
         formatActionError(e, t, {
@@ -2417,6 +2428,60 @@ function ItemDecisionsDialog({
       setPosting(false);
     }
   };
+
+  if (postSummary) {
+    const manuallyMatched = postSummary.movementsCreated - postSummary.autoMatchedCount;
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-emerald-600" variant="stroke" />
+              {t("gabinet.deliveries.decisions.postDoneTitle", "Dostawa zaksięgowana")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("gabinet.deliveries.decisions.postDoneDesc", "Stany magazynowe zostały zaktualizowane.")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-1 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t("gabinet.deliveries.decisions.summaryImported", "Produktów dodanych do magazynu")}</span>
+              <span className="font-semibold tabular-nums">{postSummary.movementsCreated}</span>
+            </div>
+            {postSummary.autoMatchedCount > 0 && (
+              <div className="flex justify-between pl-4 text-xs text-muted-foreground">
+                <span>{t("gabinet.deliveries.decisions.summaryAutoMatched", "w tym dopasowanych automatycznie (AI)")}</span>
+                <span className="tabular-nums">{postSummary.autoMatchedCount}</span>
+              </div>
+            )}
+            {manuallyMatched > 0 && (
+              <div className="flex justify-between pl-4 text-xs text-muted-foreground">
+                <span>{t("gabinet.deliveries.decisions.summaryManualMatched", "w tym dopasowanych ręcznie")}</span>
+                <span className="tabular-nums">{manuallyMatched}</span>
+              </div>
+            )}
+            {postSummary.nonInventorySkipped > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("gabinet.deliveries.decisions.summaryNonInventory", "Pozycji niemagazynowych pominięto")}</span>
+                <span className="font-semibold tabular-nums">{postSummary.nonInventorySkipped}</span>
+              </div>
+            )}
+            {postSummary.newMappingsLearned > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("gabinet.deliveries.decisions.summaryNewMappings", "Nowych mapowań zapamiętano")}</span>
+                <span className="font-semibold tabular-nums">{postSummary.newMappingsLearned}</span>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" onClick={() => onOpenChange(false)}>
+              {t("common.close", "Zamknij")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

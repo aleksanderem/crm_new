@@ -22,7 +22,7 @@ import { SidePanel } from "@/components/crm/side-panel";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History, Archive } from "@/lib/ez-icons";
+import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History, Archive, ShoppingCart, TruckIcon, ClipboardList } from "@/lib/ez-icons";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
@@ -42,6 +42,7 @@ import { cn } from "@/lib/utils";
 import { ProductForm, type ProductFormData, type ProductSection, PRODUCT_SECTIONS } from "@/components/forms/product-form";
 import { WarehouseInventoryDialog } from "@/components/gabinet/warehouse-inventory-dialog";
 import { WarehouseShoppingListDialog } from "@/components/gabinet/warehouse-shopping-list-dialog";
+import { AddDeliveryPanel } from "@/components/gabinet/add-delivery-panel";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 
 type ProductsNudgeFilter = "unused" | "low_stock";
@@ -225,6 +226,7 @@ function ProductsPage() {
   const [lotBatchesProduct, setLotBatchesProduct] = useState<Product | null>(null);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [shoppingListOpen, setShoppingListOpen] = useState(false);
+  const [addDeliveryOpen, setAddDeliveryOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
 
   const { data: allProducts = [], isLoading } = useSupabaseProductsList(organizationId);
@@ -874,6 +876,39 @@ function ProductsPage() {
         }}
       />
 
+      {/* Actions section — second access point for common warehouse operations */}
+      <div className="rounded-lg border bg-card p-4">
+        <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
+          {t("products.actionsSection.title", { defaultValue: "Akcje" })}
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={openCreatePanel}>
+            <Plus className="mr-2 h-4 w-4" variant="stroke" />
+            {t("products.addProduct")}
+          </Button>
+          <Button variant="outline" onClick={() => setAddDeliveryOpen(true)}>
+            <TruckIcon className="mr-2 h-4 w-4" variant="stroke" />
+            {t("nav.actions.addDelivery", { defaultValue: "Dodaj dostawę" })}
+          </Button>
+          <Button variant="outline" onClick={() => setShoppingListOpen(true)}>
+            <ShoppingCart className="mr-2 h-4 w-4" variant="stroke" />
+            {t("nav.actions.openShoppingList", { defaultValue: "Lista zakupowa" })}
+          </Button>
+          <Button variant="outline" onClick={() => setInventoryOpen(true)}>
+            <ClipboardList className="mr-2 h-4 w-4" variant="stroke" />
+            {t("nav.actions.startInventory", { defaultValue: "Rozpocznij inwentaryzację" })}
+          </Button>
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" variant="stroke" />
+            {t("csv.import")}
+          </Button>
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="mr-2 h-4 w-4" variant="stroke" />
+            {t("csv.export")}
+          </Button>
+        </div>
+      </div>
+
       <CsvImportDialog
         organizationId={organizationId}
         entityType="products"
@@ -965,6 +1000,12 @@ function ProductsPage() {
           organizationId={organizationId}
         />
       </SidePanel>
+
+      <AddDeliveryPanel
+        organizationId={organizationId}
+        open={addDeliveryOpen}
+        onOpenChange={setAddDeliveryOpen}
+      />
 
       <WarehouseInventoryDialog
         open={inventoryOpen}

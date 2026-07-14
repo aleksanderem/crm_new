@@ -977,7 +977,10 @@
       "chips": {
         "section": "Grupa:",
         "category": "Kategoria:",
-        "manufacturer": "Dostawca:"
+        "manufacturer": "Dostawca:",
+        "priceRange": "Cena: {{from}}–{{to}} PLN",
+        "priceFrom": "Cena: od {{from}} PLN",
+        "priceTo": "Cena: do {{to}} PLN"
       }
     }
   },

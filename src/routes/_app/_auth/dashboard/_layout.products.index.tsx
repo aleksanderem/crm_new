@@ -1253,10 +1253,10 @@ function ProductsPage() {
           {(simpleFilters.priceFrom || simpleFilters.priceTo) && (
             <FilterChip onRemove={() => setSimpleFilters(f => ({ ...f, priceFrom: "", priceTo: "" }))}>
               {simpleFilters.priceFrom && simpleFilters.priceTo
-                ? `Cena: ${simpleFilters.priceFrom}–${simpleFilters.priceTo} PLN`
+                ? t("products.simpleFilter.chips.priceRange", { from: simpleFilters.priceFrom, to: simpleFilters.priceTo, defaultValue: `Cena: ${simpleFilters.priceFrom}–${simpleFilters.priceTo} PLN` })
                 : simpleFilters.priceFrom
-                  ? `Cena: od ${simpleFilters.priceFrom} PLN`
-                  : `Cena: do ${simpleFilters.priceTo} PLN`}
+                  ? t("products.simpleFilter.chips.priceFrom", { from: simpleFilters.priceFrom, defaultValue: `Cena: od ${simpleFilters.priceFrom} PLN` })
+                  : t("products.simpleFilter.chips.priceTo", { to: simpleFilters.priceTo, defaultValue: `Cena: do ${simpleFilters.priceTo} PLN` })}
             </FilterChip>
           )}
 

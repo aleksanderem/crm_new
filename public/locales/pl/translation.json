@@ -937,6 +937,48 @@
         "negativeWarning": "Stan magazynowy spadł poniżej zera. Sprawdź historię ruchów i skoryguj braki.",
         "error": "Nie udało się zaktualizować stanu magazynowego."
       }
+    },
+    "simpleFilter": {
+      "title": "Filtruj produkty",
+      "description": "Wybierz filtry, aby zawęzić listę produktów.",
+      "activeFilters": "Aktywne filtry:",
+      "advanced": "Filtry zaawansowane",
+      "section": {
+        "label": "Pokaż produkty z grupy",
+        "all": "Wszystkie grupy"
+      },
+      "category": {
+        "label": "Pokaż produkty z kategorii",
+        "all": "Wszystkie kategorie",
+        "empty": "Brak zdefiniowanych kategorii."
+      },
+      "manufacturer": {
+        "label": "Pokaż produkty od dostawcy",
+        "all": "Wszyscy dostawcy",
+        "empty": "Brak dostawców w produktach."
+      },
+      "stock": {
+        "label": "Pokaż produkty",
+        "all": "wszystkie stany",
+        "belowMin": "poniżej minimalnego stanu",
+        "zero": "ze stanem równym 0",
+        "gt": "ze stanem większym niż",
+        "lt": "ze stanem mniejszym niż"
+      },
+      "price": {
+        "label": "Pokaż produkty w cenie zakupu"
+      },
+      "active": {
+        "label": "Aktywność produktu",
+        "all": "wszystkie",
+        "active": "Aktywne",
+        "inactive": "Nieaktywne"
+      },
+      "chips": {
+        "section": "Grupa:",
+        "category": "Kategoria:",
+        "manufacturer": "Dostawca:"
+      }
     }
   },
   "calls": {

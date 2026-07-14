@@ -749,7 +749,12 @@ export const postDeliveryFromDecisions = action({
     organizationId: v.id("organizations"),
     deliveryId: v.string(),
   },
-  handler: async (ctx, args): Promise<{ movementsCreated: number }> => {
+  handler: async (ctx, args): Promise<{
+    movementsCreated: number;
+    nonInventorySkipped: number;
+    autoMatchedCount: number;
+    newMappingsLearned: number;
+  }> => {
     const auth = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -843,6 +848,13 @@ export const postDeliveryFromDecisions = action({
     }
 
     const now = Date.now();
+    let nonInventorySkipped = 0;
+    let autoMatchedCount = 0;
+    for (const d of decisions.items) {
+      if (!d) continue;
+      if (d.type === "non_inventory") nonInventorySkipped++;
+      else if (d.type === "accepted") autoMatchedCount++;
+    }
 
     // Replace existing items with lines derived from decisions
     const existingItems = await db
@@ -917,6 +929,7 @@ export const postDeliveryFromDecisions = action({
     // Save name mappings from approved decisions (#3077).
     // Only runs after a successful post; skips non_inventory, create_later, and
     // null decisions. Upserts so a manual override replaces the previous mapping.
+    let newMappingsLearned = 0;
     const mappingNow = Date.now();
     for (let i = 0; i < decisions.items.length; i++) {
       const d = decisions.items[i]!;
@@ -938,6 +951,7 @@ export const postDeliveryFromDecisions = action({
           productId: d.productId,
           createdAt: mappingNow,
         });
+        newMappingsLearned++;
       } else if (String(existing.productId) !== String(d.productId)) {
         // User chose a different product — update the existing mapping.
         await db.patch("deliveryNameMappings", String(existing._id), {
@@ -947,7 +961,7 @@ export const postDeliveryFromDecisions = action({
       // Same productId as existing mapping → no-op; avoids redundant writes.
     }
 
-    return { movementsCreated: newItems.length };
+    return { movementsCreated: newItems.length, nonInventorySkipped, autoMatchedCount, newMappingsLearned };
   },
 });
 

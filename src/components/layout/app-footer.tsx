@@ -125,6 +125,7 @@ export function AppFooter() {
   const { openQuickCreate, navigateTo, dispatch } = useSidebarActions();
 
   const isGabinetRoute = !!matchRoute({ to: "/dashboard/gabinet", fuzzy: true });
+  const isProductsRoute = !!matchRoute({ to: "/dashboard/products", fuzzy: true });
   const showGabinetQuickActions = isGabinetRoute;
 
   let actions: FooterAction[] = [];
@@ -141,6 +142,16 @@ export function AppFooter() {
     if (key) actions = routeActions[key] ?? [];
   }
 
+  const handleActionClick = (action: FooterAction) => {
+    if (action.quickCreate) {
+      openQuickCreate(action.quickCreate);
+    } else if (action.action) {
+      dispatch(action.action);
+    } else if (action.href) {
+      navigateTo(action.href, action.search);
+    }
+  };
+
   return (
     <footer className="bg-card sticky bottom-0 z-40 border-t">
       <div className="flex items-center justify-between gap-3 px-4 py-2 sm:px-6">
@@ -151,33 +162,49 @@ export function AppFooter() {
           <LanguageSwitcher />
         </div>
 
-        <div className="flex items-center gap-2 max-sm:min-w-0 max-sm:flex-1 max-sm:flex-nowrap max-sm:justify-end sm:flex-wrap">
-          {actions.map((action) => {
-            const label = t(action.labelKey);
-            return (
-              <Button
-                key={action.labelKey}
-                variant="outline"
-                size="sm"
-                aria-label={label}
-                className="h-7 text-xs shrink-0 max-sm:h-8 max-sm:w-8 max-sm:p-0"
-                onClick={() => {
-                  if (action.quickCreate) {
-                    openQuickCreate(action.quickCreate);
-                  } else if (action.action) {
-                    dispatch(action.action);
-                  } else if (action.href) {
-                    navigateTo(action.href, action.search);
-                  }
-                }}
-              >
-                <action.icon className="h-3.5 w-3.5 sm:mr-1" />
-                <span className="max-sm:sr-only">{label}</span>
-              </Button>
-            );
-          })}
-          {showGabinetQuickActions && <GabinetQuickActionsDropdown />}
-        </div>
+        {isProductsRoute && actions.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/50 px-3 py-1.5">
+            <span className="shrink-0 border-r border-border pr-2 text-xs font-semibold text-muted-foreground">
+              {t("nav.actions.sectionLabel", { defaultValue: "Akcje" })}
+            </span>
+            {actions.map((action) => {
+              const label = t(action.labelKey);
+              return (
+                <Button
+                  key={action.labelKey}
+                  variant="outline"
+                  size="sm"
+                  aria-label={label}
+                  className="h-7 shrink-0 text-xs"
+                  onClick={() => handleActionClick(action)}
+                >
+                  <action.icon className="mr-1 h-3.5 w-3.5" />
+                  {label}
+                </Button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 max-sm:min-w-0 max-sm:flex-1 max-sm:flex-nowrap max-sm:justify-end sm:flex-wrap">
+            {actions.map((action) => {
+              const label = t(action.labelKey);
+              return (
+                <Button
+                  key={action.labelKey}
+                  variant="outline"
+                  size="sm"
+                  aria-label={label}
+                  className="h-7 text-xs shrink-0 max-sm:h-8 max-sm:w-8 max-sm:p-0"
+                  onClick={() => handleActionClick(action)}
+                >
+                  <action.icon className="h-3.5 w-3.5 sm:mr-1" />
+                  <span className="max-sm:sr-only">{label}</span>
+                </Button>
+              );
+            })}
+            {showGabinetQuickActions && <GabinetQuickActionsDropdown />}
+          </div>
+        )}
       </div>
     </footer>
   );

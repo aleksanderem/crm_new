@@ -1243,8 +1243,8 @@ function ProductsPage() {
 
           {simpleFilters.stockFilter && (
             <FilterChip onRemove={() => setSimpleFilters(f => ({ ...f, stockFilter: null, stockValue: "" }))}>
-              {simpleFilters.stockFilter === "below_min" && t("products.simpleFilter.stock.belowMin", { defaultValue: "Stan: poniżej minimum" })}
-              {simpleFilters.stockFilter === "zero" && t("products.simpleFilter.stock.zero", { defaultValue: "Stan: równy 0" })}
+              {simpleFilters.stockFilter === "below_min" && t("products.simpleFilter.chips.stockBelowMin", { defaultValue: "Stan: poniżej minimum" })}
+              {simpleFilters.stockFilter === "zero" && t("products.simpleFilter.chips.stockZero", { defaultValue: "Stan: równy 0" })}
               {simpleFilters.stockFilter === "gt" && t("products.simpleFilter.chips.stockGt", { value: simpleFilters.stockValue })}
               {simpleFilters.stockFilter === "lt" && t("products.simpleFilter.chips.stockLt", { value: simpleFilters.stockValue })}
             </FilterChip>

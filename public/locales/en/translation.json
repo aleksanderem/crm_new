@@ -936,6 +936,48 @@
         "negativeWarning": "Stock went negative. Review the movement history and correct shortages.",
         "error": "Could not update stock."
       }
+    },
+    "simpleFilter": {
+      "title": "Filter products",
+      "description": "Select filters to narrow down the product list.",
+      "activeFilters": "Active filters:",
+      "advanced": "Advanced filters",
+      "section": {
+        "label": "Show products from group",
+        "all": "All groups"
+      },
+      "category": {
+        "label": "Show products from category",
+        "all": "All categories",
+        "empty": "No categories defined."
+      },
+      "manufacturer": {
+        "label": "Show products by supplier",
+        "all": "All suppliers",
+        "empty": "No suppliers in products."
+      },
+      "stock": {
+        "label": "Show products",
+        "all": "all stock levels",
+        "belowMin": "below minimum stock",
+        "zero": "with stock equal to 0",
+        "gt": "with stock greater than",
+        "lt": "with stock less than"
+      },
+      "price": {
+        "label": "Show products at purchase price"
+      },
+      "active": {
+        "label": "Product activity",
+        "all": "all",
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "chips": {
+        "section": "Group:",
+        "category": "Category:",
+        "manufacturer": "Supplier:"
+      }
     }
   },
   "calls": {

@@ -4,21 +4,19 @@ import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/ui/language-switcher";
 import {
   CalendarCheck,
-  ClipboardList,
   Download,
   Filter,
   Kanban,
   Phone,
   PlusCircle,
   Send,
-  ShoppingCart,
   Tag,
   TruckIcon,
-  Upload,
   UserPlus,
 } from "@/lib/ez-icons";
 import { useSidebarActions } from "@/components/layout/sidebar-context";
 import { GabinetQuickActionsDropdown } from "@/components/sidebar-widgets/gabinet/quick-actions-dropdown";
+import { ProductsActionsDropdown } from "@/components/sidebar-widgets/products/actions-dropdown";
 
 interface FooterAction {
   labelKey: string;
@@ -67,10 +65,6 @@ const routeActions: Record<string, FooterAction[]> = {
   products: [
     { labelKey: "nav.actions.addProduct", icon: PlusCircle, action: "addProduct" },
     { labelKey: "nav.actions.addDelivery", icon: TruckIcon, action: "addDelivery" },
-    { labelKey: "nav.actions.openShoppingList", icon: ShoppingCart, action: "openShoppingList" },
-    { labelKey: "nav.actions.startInventory", icon: ClipboardList, action: "openInventory" },
-    { labelKey: "nav.actions.importCsv", icon: Upload, action: "importCsv" },
-    { labelKey: "nav.actions.exportCsv", icon: Download, action: "exportCsv" },
   ],
 };
 
@@ -125,8 +119,8 @@ export function AppFooter() {
   const { openQuickCreate, navigateTo, dispatch } = useSidebarActions();
 
   const isGabinetRoute = !!matchRoute({ to: "/dashboard/gabinet", fuzzy: true });
-  const isProductsRoute = !!matchRoute({ to: "/dashboard/products", fuzzy: true });
   const showGabinetQuickActions = isGabinetRoute;
+  const showProductsActionsDropdown = !!matchRoute({ to: "/dashboard/products", fuzzy: true });
 
   let actions: FooterAction[] = [];
 
@@ -162,49 +156,26 @@ export function AppFooter() {
           <LanguageSwitcher />
         </div>
 
-        {isProductsRoute && actions.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/50 px-3 py-1.5">
-            <span className="shrink-0 border-r border-border pr-2 text-xs font-semibold text-muted-foreground">
-              {t("nav.actions.sectionLabel", { defaultValue: "Akcje" })}
-            </span>
-            {actions.map((action) => {
-              const label = t(action.labelKey);
-              return (
-                <Button
-                  key={action.labelKey}
-                  variant="outline"
-                  size="sm"
-                  aria-label={label}
-                  className="h-7 shrink-0 text-xs"
-                  onClick={() => handleActionClick(action)}
-                >
-                  <action.icon className="mr-1 h-3.5 w-3.5" />
-                  {label}
-                </Button>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 max-sm:min-w-0 max-sm:flex-1 max-sm:flex-nowrap max-sm:justify-end sm:flex-wrap">
-            {actions.map((action) => {
-              const label = t(action.labelKey);
-              return (
-                <Button
-                  key={action.labelKey}
-                  variant="outline"
-                  size="sm"
-                  aria-label={label}
-                  className="h-7 text-xs shrink-0 max-sm:h-8 max-sm:w-8 max-sm:p-0"
-                  onClick={() => handleActionClick(action)}
-                >
-                  <action.icon className="h-3.5 w-3.5 sm:mr-1" />
-                  <span className="max-sm:sr-only">{label}</span>
-                </Button>
-              );
-            })}
-            {showGabinetQuickActions && <GabinetQuickActionsDropdown />}
-          </div>
-        )}
+        <div className="flex items-center gap-2 max-sm:min-w-0 max-sm:flex-1 max-sm:flex-nowrap max-sm:justify-end sm:flex-wrap">
+          {actions.map((action) => {
+            const label = t(action.labelKey);
+            return (
+              <Button
+                key={action.labelKey}
+                variant="outline"
+                size="sm"
+                aria-label={label}
+                className="h-7 text-xs shrink-0 max-sm:h-8 max-sm:w-8 max-sm:p-0"
+                onClick={() => handleActionClick(action)}
+              >
+                <action.icon className="h-3.5 w-3.5 sm:mr-1" />
+                <span className="max-sm:sr-only">{label}</span>
+              </Button>
+            );
+          })}
+          {showProductsActionsDropdown && <ProductsActionsDropdown />}
+          {showGabinetQuickActions && <GabinetQuickActionsDropdown />}
+        </div>
       </div>
     </footer>
   );

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Tag01, XClose } from "@untitledui/icons";
 import { styles as buttonStyles } from "@untitled/base/buttons/button";
@@ -45,6 +45,12 @@ export function TagsPicker({
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [searchActive, setSearchActive] = useState(false);
+
+  useEffect(() => {
+    if (!open) setSearchActive(false);
+  }, [open]);
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
@@ -144,11 +150,26 @@ export function TagsPicker({
         >
           <div className="p-2">
             <Input
+              ref={searchRef}
               size="sm"
               placeholder={t("tags.search", { defaultValue: "Szukaj..." })}
               value={search}
               onChange={setSearch}
               autoFocus={!isTouchDevice}
+              isReadOnly={isTouchDevice && !searchActive}
+              onClick={
+                isTouchDevice && !searchActive
+                  ? () => {
+                      const el = searchRef.current;
+                      if (el) {
+                        el.readOnly = false;
+                        el.blur();
+                        el.focus();
+                      }
+                      setSearchActive(true);
+                    }
+                  : undefined
+              }
             />
           </div>
           <div className="max-h-48 min-h-0 overflow-y-auto px-1 pb-1">

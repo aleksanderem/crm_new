@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useAction } from "convex/react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -81,6 +81,12 @@ export function CategoryPicker({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [addingNew, setAddingNew] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [searchActive, setSearchActive] = useState(false);
+
+  useEffect(() => {
+    if (!open) setSearchActive(false);
+  }, [open]);
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState<string>(TAG_COLOR_PALETTE[0]);
   const [isCreating, setIsCreating] = useState(false);
@@ -219,11 +225,26 @@ export function CategoryPicker({
         >
           <div className="p-2">
             <Input
+              ref={searchRef}
               size="sm"
               placeholder={t("categories.search", { defaultValue: "Szukaj..." })}
               value={search}
               onChange={setSearch}
               autoFocus={!isTouchDevice}
+              isReadOnly={isTouchDevice && !searchActive}
+              onClick={
+                isTouchDevice && !searchActive
+                  ? () => {
+                      const el = searchRef.current;
+                      if (el) {
+                        el.readOnly = false;
+                        el.blur();
+                        el.focus();
+                      }
+                      setSearchActive(true);
+                    }
+                  : undefined
+              }
             />
           </div>
           <div className="max-h-48 min-h-0 overflow-y-auto px-1 pb-1">

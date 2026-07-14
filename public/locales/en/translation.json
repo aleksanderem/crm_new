@@ -885,7 +885,8 @@
     },
     "views": {
       "all": "All Products",
-      "active": "Active Products"
+      "active": "Active Products",
+      "needsOrdering": "Products Requiring Ordering"
     },
     "sections": {
       "all": "All",

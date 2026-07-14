@@ -886,7 +886,8 @@
     },
     "views": {
       "all": "Wszystkie produkty",
-      "active": "Aktywne produkty"
+      "active": "Aktywne produkty",
+      "needsOrdering": "Produkty wymagające zamówienia"
     },
     "sections": {
       "all": "Wszystkie",

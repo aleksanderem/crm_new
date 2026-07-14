@@ -20,7 +20,6 @@ import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
 import { SidePanel } from "@/components/crm/side-panel";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History, Archive } from "@/lib/ez-icons";
@@ -171,26 +170,15 @@ function ProductsPage() {
   const systemViews: SavedView[] = useMemo(() => [
     { id: "all", name: t('products.views.all'), isSystem: true, isDefault: true },
     { id: "active", name: t('products.views.active'), isSystem: true, isDefault: false },
+    { id: "needs_ordering", name: t('products.views.needsOrdering', { defaultValue: "Produkty wymagające zamówienia" }), isSystem: true, isDefault: false },
+    { id: "treatment", name: t('products.sections.treatment'), isSystem: true, isDefault: false },
+    { id: "disposable", name: t('products.sections.disposable'), isSystem: true, isDefault: false },
+    { id: "sale", name: t('products.sections.sale'), isSystem: true, isDefault: false },
   ], [t]);
 
   const {
     views, activeViewId, onViewChange, onCreateView, onDeleteView, applyFilters,
   } = useSavedViews({ organizationId, entityType: "product", systemViews });
-  const [activeSection, setActiveSection] = useState<ProductSection | "all">(() => {
-    try {
-      const stored = localStorage.getItem("products:section");
-      if (stored === "all" || (PRODUCT_SECTIONS as readonly string[]).includes(stored ?? "")) {
-        return stored as ProductSection | "all";
-      }
-    } catch { /* ignore */ }
-    return "all";
-  });
-
-  const handleSectionChange = (section: ProductSection | "all") => {
-    setActiveSection(section);
-    try { localStorage.setItem("products:section", section); } catch { /* ignore */ }
-  };
-  const [showNeedsOrdering, setShowNeedsOrdering] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [savedViewsDialogOpen, setSavedViewsDialogOpen] = useState(false);
@@ -289,10 +277,10 @@ function ProductsPage() {
         return status === "low" || status === "out";
       });
     }
-    if (activeSection !== "all") {
-      data = data.filter((p) => p.productSection === activeSection);
+    if ((PRODUCT_SECTIONS as readonly string[]).includes(activeViewId)) {
+      data = data.filter((p) => p.productSection === activeViewId);
     }
-    if (showNeedsOrdering) {
+    if (activeViewId === "needs_ordering") {
       data = data.filter((p) => {
         if (!p.trackStock || p.minStock == null) return false;
         const total = totalsByProductId.get(p._id)?.total ?? 0;
@@ -312,7 +300,7 @@ function ProductsPage() {
       );
     }
     return data;
-  }, [activeViewId, allProducts, applyFilters, activeFilters, searchValue, nudgeFilter, usedProductIds, activeSection, productStockStatus, showNeedsOrdering, totalsByProductId]);
+  }, [activeViewId, allProducts, applyFilters, activeFilters, searchValue, nudgeFilter, usedProductIds, productStockStatus, totalsByProductId]);
 
   const createProduct = useAction(api.products.create);
   const updateProduct = useAction(api.products.update);
@@ -737,26 +725,26 @@ function ProductsPage() {
         <StatCard
           label={t("products.stats.total", { defaultValue: "Wszystkie pozycje" })}
           value={inventoryStats.total}
-          active={activeSection === "all" && !nudgeFilter}
-          onClick={() => handleSectionChange("all")}
+          active={activeViewId === "all" && !nudgeFilter}
+          onClick={() => onViewChange("all")}
         />
         <StatCard
           label={t("products.sections.sale")}
           value={inventoryStats.bySale}
-          active={activeSection === "sale" && !nudgeFilter}
-          onClick={() => handleSectionChange("sale")}
+          active={activeViewId === "sale" && !nudgeFilter}
+          onClick={() => onViewChange("sale")}
         />
         <StatCard
           label={t("products.sections.treatment")}
           value={inventoryStats.byTreatment}
-          active={activeSection === "treatment" && !nudgeFilter}
-          onClick={() => handleSectionChange("treatment")}
+          active={activeViewId === "treatment" && !nudgeFilter}
+          onClick={() => onViewChange("treatment")}
         />
         <StatCard
           label={t("products.sections.disposable")}
           value={inventoryStats.byDisposable}
-          active={activeSection === "disposable" && !nudgeFilter}
-          onClick={() => handleSectionChange("disposable")}
+          active={activeViewId === "disposable" && !nudgeFilter}
+          onClick={() => onViewChange("disposable")}
         />
         <StatCard
           label={t("products.stats.belowMin", { defaultValue: "Poniżej min. stanu" })}
@@ -847,25 +835,6 @@ function ProductsPage() {
           </Button>
         </div>
       )}
-
-      <div className="flex items-center gap-2.5 rounded-md border bg-card px-3 py-2 text-sm">
-        <Switch
-          id="needs-ordering-toggle"
-          checked={showNeedsOrdering}
-          onCheckedChange={setShowNeedsOrdering}
-        />
-        <label
-          htmlFor="needs-ordering-toggle"
-          className="cursor-pointer select-none text-sm font-medium"
-        >
-          {t("products.filters.needsOrdering", { defaultValue: "Pokaż tylko produkty wymagające zamówienia" })}
-        </label>
-        {showNeedsOrdering && (
-          <span className="ml-1 text-xs text-muted-foreground">
-            ({t("products.filters.needsOrderingHint", { count: products.length, defaultValue: `${products.length} pozycji` })})
-          </span>
-        )}
-      </div>
 
       <DataListFilterBar
         views={views}
@@ -984,7 +953,7 @@ function ProductsPage() {
             stockNote: editingProduct.stockNote ?? null,
             purchasePrice: editingProduct.purchasePrice ?? null,
           } : undefined}
-          defaultSection={!editingProduct && activeSection !== "all" ? activeSection : null}
+          defaultSection={!editingProduct && (PRODUCT_SECTIONS as readonly string[]).includes(activeViewId) ? activeViewId as ProductSection : null}
           onSubmit={handleProductFormSubmit}
           onCancel={() => {
             setPanelOpen(false);

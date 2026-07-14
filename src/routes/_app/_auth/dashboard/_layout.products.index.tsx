@@ -22,11 +22,12 @@ import { SidePanel } from "@/components/crm/side-panel";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History, Archive, ShoppingCart, TruckIcon, ClipboardList } from "@/lib/ez-icons";
+import { Plus, Pencil, Trash2, Power, Upload, Download, X, Package, AlertTriangle, History, Archive, ShoppingCart, TruckIcon, ClipboardList, RotateCcw } from "@/lib/ez-icons";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
 import { ProductStockAdjustDialog } from "@/components/forms/product-stock-adjust-dialog";
+import { ProductStockCorrectionDialog } from "@/components/forms/product-stock-correction-dialog";
 import { ProductStockHistoryDialog } from "@/components/forms/product-stock-history-dialog";
 import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
 import { Id } from "@cvx/_generated/dataModel";
@@ -222,6 +223,7 @@ function ProductsPage() {
   useSidebarDispatch("openInventory", () => setInventoryOpen(true));
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [stockAdjustProduct, setStockAdjustProduct] = useState<Product | null>(null);
+  const [stockCorrectionProduct, setStockCorrectionProduct] = useState<Product | null>(null);
   const [stockHistoryProduct, setStockHistoryProduct] = useState<Product | null>(null);
   const [lotBatchesProduct, setLotBatchesProduct] = useState<Product | null>(null);
   const [inventoryOpen, setInventoryOpen] = useState(false);
@@ -670,6 +672,11 @@ function ProductsPage() {
         onClick: () => setStockAdjustProduct(row),
       });
       actions.push({
+        label: t("products.stock.correction.action", { defaultValue: "Korekta stanu" }),
+        icon: <RotateCcw className="h-4 w-4" variant="stroke" />,
+        onClick: () => setStockCorrectionProduct(row),
+      });
+      actions.push({
         label: t("products.stock.history.action", { defaultValue: "Historia operacji" }),
         icon: <History className="h-4 w-4" variant="stroke" />,
         onClick: () => setStockHistoryProduct(row),
@@ -1030,6 +1037,15 @@ function ProductsPage() {
         }}
         organizationId={organizationId}
         product={stockAdjustProduct}
+      />
+
+      <ProductStockCorrectionDialog
+        open={!!stockCorrectionProduct}
+        onOpenChange={(open) => {
+          if (!open) setStockCorrectionProduct(null);
+        }}
+        organizationId={organizationId}
+        product={stockCorrectionProduct}
       />
 
       <ProductStockHistoryDialog

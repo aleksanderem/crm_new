@@ -204,7 +204,7 @@ function ProductsPage() {
   const filterableFields = useMemo((): FieldDef[] => [
     { id: "name", label: t('products.name'), type: "text" },
     { id: "sku", label: t('products.sku'), type: "text" },
-    { id: "unitPrice", label: t('products.unitPrice'), type: "number" },
+    { id: "unitPrice", label: t("products.purchasePriceNet", { defaultValue: "Cena zakupu netto" }), type: "number" },
     { id: "taxRate", label: t('products.taxRate'), type: "number" },
     {
       id: "isActive", label: t('common.active'), type: "select",
@@ -470,6 +470,7 @@ function ProductsPage() {
   };
 
   const columns: CrmColumn<Product>[] = [
+    // SEKCJA 1 – Identyfikacja produktu
     {
       id: "name",
       label: t('common.name'),
@@ -487,15 +488,15 @@ function ProductsPage() {
       },
     },
     {
-      id: "sku",
-      label: t('products.sku'),
-      render: (item) => item.sku ?? "—",
+      id: "categoryId",
+      label: t('common.category', { defaultValue: "Kategoria" }),
+      render: (item) => {
+        if (!item.categoryId) return "—";
+        const cat = categories.find((c) => c._id === item.categoryId);
+        return cat ? <Badge variant="secondary" className="text-xs">{cat.name}</Badge> : "—";
+      },
     },
-    {
-      id: "manufacturer",
-      label: t("products.manufacturer", { defaultValue: "Producent" }),
-      render: (item) => item.manufacturer ?? "—",
-    },
+    // SEKCJA 2 – Stan magazynowy
     {
       id: "stock",
       label: t('products.stock.column', { defaultValue: "Stan" }),
@@ -516,24 +517,6 @@ function ProductsPage() {
       getSortValue: (item) => {
         if (!item.trackStock) return -Infinity;
         return totalsByProductId.get(item._id)?.total ?? 0;
-      },
-      sortable: true,
-    },
-    {
-      id: "value",
-      label: t("products.stock.valueColumn", { defaultValue: "Wartość" }),
-      headerClassName: "whitespace-normal leading-tight",
-      render: (item) => {
-        if (!item.trackStock) return <span className="text-muted-foreground">—</span>;
-        if (item.purchasePrice == null) {
-          return <span className="text-muted-foreground">{t("inventory.accountantReport.noPrice", { defaultValue: "brak danych" })}</span>;
-        }
-        const qty = totalsByProductId.get(item._id)?.total ?? 0;
-        return <span>{formatCurrency(qty * item.purchasePrice)}</span>;
-      },
-      getSortValue: (item) => {
-        if (!item.trackStock || item.purchasePrice == null) return -Infinity;
-        return (totalsByProductId.get(item._id)?.total ?? 0) * item.purchasePrice;
       },
       sortable: true,
     },
@@ -572,19 +555,28 @@ function ProductsPage() {
       getSortValue: (item) => item.minStock ?? -Infinity,
       sortable: true,
     },
-    {
-      id: "catalogNumber",
-      label: t("products.catalogNumber", { defaultValue: "Nr katalogowy" }),
-      headerClassName: "whitespace-normal leading-tight",
-      render: (item) => item.catalogNumber ?? "—",
-    },
+    // SEKCJA 3 – Finanse
     {
       id: "unitPrice",
-      label: t('products.unitPrice'),
+      label: t("products.purchasePriceNet", { defaultValue: "Cena zakupu netto" }),
       headerClassName: "whitespace-normal leading-tight",
       sortable: true,
       render: (item) => formatCurrency(item.unitPrice),
       getSortValue: (item) => item.unitPrice,
+    },
+    {
+      id: "purchasePriceGross",
+      label: t("products.purchasePriceGross", { defaultValue: "Cena zakupu brutto" }),
+      headerClassName: "whitespace-normal leading-tight",
+      sortable: true,
+      render: (item) => {
+        if (item.taxExempt || item.taxRate == null) return formatCurrency(item.unitPrice);
+        return formatCurrency(item.unitPrice * (1 + item.taxRate / 100));
+      },
+      getSortValue: (item) => {
+        if (item.taxExempt || item.taxRate == null) return item.unitPrice;
+        return item.unitPrice * (1 + item.taxRate / 100);
+      },
     },
     {
       id: "taxRate",
@@ -597,13 +589,80 @@ function ProductsPage() {
       },
     },
     {
+      id: "value",
+      label: t("products.stock.valueColumn", { defaultValue: "Wartość magazynu" }),
+      headerClassName: "whitespace-normal leading-tight",
+      render: (item) => {
+        if (!item.trackStock) return <span className="text-muted-foreground">—</span>;
+        if (item.purchasePrice == null) {
+          return <span className="text-muted-foreground">{t("inventory.accountantReport.noPrice", { defaultValue: "brak danych" })}</span>;
+        }
+        const qty = totalsByProductId.get(item._id)?.total ?? 0;
+        return <span>{formatCurrency(qty * item.purchasePrice)}</span>;
+      },
+      getSortValue: (item) => {
+        if (!item.trackStock || item.purchasePrice == null) return -Infinity;
+        return (totalsByProductId.get(item._id)?.total ?? 0) * item.purchasePrice;
+      },
+      sortable: true,
+    },
+    // SEKCJA 4 – Informacje dodatkowe
+    {
+      id: "manufacturer",
+      label: t("products.manufacturer", { defaultValue: "Producent" }),
+      render: (item) => item.manufacturer ?? "—",
+    },
+    {
+      id: "sku",
+      label: t('products.sku'),
+      render: (item) => item.sku ?? "—",
+    },
+    {
+      id: "catalogNumber",
+      label: t("products.catalogNumber", { defaultValue: "Nr katalogowy" }),
+      headerClassName: "whitespace-normal leading-tight",
+      render: (item) => item.catalogNumber ?? "—",
+    },
+    {
+      id: "tagIds",
+      label: t('common.tags', { defaultValue: "Tagi" }),
+      render: (item) => {
+        if (!item.tagIds?.length) return "—";
+        return (
+          <span className="flex flex-wrap gap-1">
+            {item.tagIds.map((id) => {
+              const tag = tags.find((tg) => tg._id === id);
+              return tag ? (
+                <Badge key={id} variant="secondary" className="text-xs">{tag.name}</Badge>
+              ) : null;
+            })}
+          </span>
+        );
+      },
+    },
+    {
       id: "isActive",
       label: t('common.active'),
       render: (item) => item.isActive ? "✓" : "—",
     },
+    {
+      id: "createdAt",
+      label: t('common.created'),
+      sortable: true,
+      render: (item) => new Date(item.createdAt).toLocaleDateString("pl-PL"),
+      getSortValue: (item) => item.createdAt,
+    },
   ];
 
-  const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
+  const { allColumns, defaultHidden: autoDefaultHidden } = useAllColumns(columns, filterableFields);
+  const defaultHidden = useMemo(() => {
+    const d = new Set(autoDefaultHidden);
+    d.add("categoryId");
+    d.add("tagIds");
+    d.add("createdAt");
+    d.add("purchasePriceGross");
+    return d;
+  }, [autoDefaultHidden]);
   const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "products");
 
   const rowActions = (row: Product) => {
@@ -858,28 +917,41 @@ function ProductsPage() {
         onOpenChange={setColumnSettingsOpen}
         title={t("common.columnSettings", "Ustawienia kolumn")}
       >
-        <div className="space-y-1 py-2">
-          {allColumns
-            .filter((col) => !["actions"].includes(col.id))
-            .map((col) => {
-              const isVisible = !hiddenColumnIds.has(col.id);
-              return (
-                <button
-                  key={col.id}
-                  type="button"
-                  className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left hover:bg-muted/50 transition-colors"
-                  onClick={() => toggleColumn(col.id)}
-                >
-                  <Checkbox
-                    checked={isVisible}
-                    className="pointer-events-none"
-                    aria-hidden
-                  />
-                  <span className="text-sm font-medium">{col.label ?? col.id}</span>
-                </button>
-              );
-            })}
-        </div>
+        {[
+          { label: t("products.columnSections.identification", { defaultValue: "Identyfikacja produktu" }), ids: ["name", "productSection", "categoryId"] },
+          { label: t("products.columnSections.stock", { defaultValue: "Stan magazynowy" }), ids: ["stock", "plannedUsage", "minStock"] },
+          { label: t("products.columnSections.finance", { defaultValue: "Finanse" }), ids: ["unitPrice", "purchasePriceGross", "taxRate", "value"] },
+          { label: t("products.columnSections.additional", { defaultValue: "Informacje dodatkowe" }), ids: ["manufacturer", "sku", "catalogNumber", "tagIds", "isActive", "createdAt"] },
+        ].map((section) => {
+          const sectionCols = section.ids
+            .map((id) => allColumns.find((c) => c.id === id))
+            .filter((col): col is CrmColumn<Product> => col != null);
+          return (
+            <div key={section.label} className="py-2">
+              <p className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {section.label}
+              </p>
+              {sectionCols.map((col) => {
+                const isVisible = !hiddenColumnIds.has(col.id);
+                return (
+                  <button
+                    key={col.id}
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left hover:bg-muted/50 transition-colors"
+                    onClick={() => toggleColumn(col.id)}
+                  >
+                    <Checkbox
+                      checked={isVisible}
+                      className="pointer-events-none"
+                      aria-hidden
+                    />
+                    <span className="text-sm font-medium">{col.label ?? col.id}</span>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })}
       </SidePanel>
 
       <SidePanel

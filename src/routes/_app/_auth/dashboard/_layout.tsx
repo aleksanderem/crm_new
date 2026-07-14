@@ -779,7 +779,7 @@ function DashboardLayoutInner({ user, firstOrg, orgs, onOrgSwitch }: DashboardLa
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const showDatePicker = /^\/(dashboard)\/?$/.test(pathname)
     || /^\/dashboard\/(activities|calls|leads|pipelines)/.test(pathname);
-  const showAgendaStrip = !pathname.startsWith("/dashboard/gabinet");
+  const showAgendaStrip = !pathname.startsWith("/dashboard/gabinet") && !pathname.startsWith("/dashboard/products");
 
   const [lastDispatch, setLastDispatch] = useState<{ id: string; seq: number } | null>(null);
   const dispatchSeqRef = useRef(0);

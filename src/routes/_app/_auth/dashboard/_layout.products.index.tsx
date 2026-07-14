@@ -248,12 +248,17 @@ function ProductSimpleFilterPanel({
               ["treatment", t("products.sections.treatment")],
               ["disposable", t("products.sections.disposable")],
             ] as [string, string][]).map(([value, label]) => (
-              <div key={value || "all"} className="flex items-center gap-2">
+              <label
+                key={value || "all"}
+                htmlFor={`sf-section-${value || "all"}`}
+                className={cn(
+                  "flex items-center gap-2 rounded-md px-2 py-1.5 -mx-2 cursor-pointer text-sm leading-none transition-colors hover:bg-accent",
+                  (draft.productSection ?? "") === value && "bg-accent"
+                )}
+              >
                 <RadioGroupItem value={value} id={`sf-section-${value || "all"}`} />
-                <label htmlFor={`sf-section-${value || "all"}`} className="cursor-pointer text-sm leading-none">
-                  {label}
-                </label>
-              </div>
+                {label}
+              </label>
             ))}
           </RadioGroup>
         </div>
@@ -339,29 +344,45 @@ function ProductSimpleFilterPanel({
             }}
             className="space-y-2"
           >
-            <div className="flex items-center gap-2">
+            <label
+              htmlFor="sf-stock-all"
+              className={cn(
+                "flex items-center gap-2 rounded-md px-2 py-1.5 -mx-2 cursor-pointer text-sm leading-none transition-colors hover:bg-accent",
+                (draft.stockFilter ?? "") === "" && "bg-accent"
+              )}
+            >
               <RadioGroupItem value="" id="sf-stock-all" />
-              <label htmlFor="sf-stock-all" className="cursor-pointer text-sm leading-none">
-                {t("products.simpleFilter.stock.all", { defaultValue: "wszystkie stany" })}
-              </label>
-            </div>
-            <div className="flex items-center gap-2">
+              {t("products.simpleFilter.stock.all", { defaultValue: "wszystkie stany" })}
+            </label>
+            <label
+              htmlFor="sf-stock-below-min"
+              className={cn(
+                "flex items-center gap-2 rounded-md px-2 py-1.5 -mx-2 cursor-pointer text-sm leading-none transition-colors hover:bg-accent",
+                draft.stockFilter === "below_min" && "bg-accent"
+              )}
+            >
               <RadioGroupItem value="below_min" id="sf-stock-below-min" />
-              <label htmlFor="sf-stock-below-min" className="cursor-pointer text-sm leading-none">
-                {t("products.simpleFilter.stock.belowMin", { defaultValue: "poniżej minimalnego stanu" })}
-              </label>
-            </div>
-            <div className="flex items-center gap-2">
+              {t("products.simpleFilter.stock.belowMin", { defaultValue: "poniżej minimalnego stanu" })}
+            </label>
+            <label
+              htmlFor="sf-stock-zero"
+              className={cn(
+                "flex items-center gap-2 rounded-md px-2 py-1.5 -mx-2 cursor-pointer text-sm leading-none transition-colors hover:bg-accent",
+                draft.stockFilter === "zero" && "bg-accent"
+              )}
+            >
               <RadioGroupItem value="zero" id="sf-stock-zero" />
-              <label htmlFor="sf-stock-zero" className="cursor-pointer text-sm leading-none">
-                {t("products.simpleFilter.stock.zero", { defaultValue: "ze stanem równym 0" })}
-              </label>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
+              {t("products.simpleFilter.stock.zero", { defaultValue: "ze stanem równym 0" })}
+            </label>
+            <label
+              htmlFor="sf-stock-gt"
+              className={cn(
+                "flex flex-wrap items-center gap-2 rounded-md px-2 py-1.5 -mx-2 cursor-pointer text-sm leading-none transition-colors hover:bg-accent",
+                draft.stockFilter === "gt" && "bg-accent"
+              )}
+            >
               <RadioGroupItem value="gt" id="sf-stock-gt" />
-              <label htmlFor="sf-stock-gt" className="cursor-pointer text-sm leading-none">
-                {t("products.simpleFilter.stock.gt", { defaultValue: "ze stanem większym niż" })}
-              </label>
+              {t("products.simpleFilter.stock.gt", { defaultValue: "ze stanem większym niż" })}
               {draft.stockFilter === "gt" && (
                 <Input
                   type="number"
@@ -372,12 +393,16 @@ function ProductSimpleFilterPanel({
                   placeholder="0"
                 />
               )}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
+            </label>
+            <label
+              htmlFor="sf-stock-lt"
+              className={cn(
+                "flex flex-wrap items-center gap-2 rounded-md px-2 py-1.5 -mx-2 cursor-pointer text-sm leading-none transition-colors hover:bg-accent",
+                draft.stockFilter === "lt" && "bg-accent"
+              )}
+            >
               <RadioGroupItem value="lt" id="sf-stock-lt" />
-              <label htmlFor="sf-stock-lt" className="cursor-pointer text-sm leading-none">
-                {t("products.simpleFilter.stock.lt", { defaultValue: "ze stanem mniejszym niż" })}
-              </label>
+              {t("products.simpleFilter.stock.lt", { defaultValue: "ze stanem mniejszym niż" })}
               {draft.stockFilter === "lt" && (
                 <Input
                   type="number"
@@ -388,7 +413,7 @@ function ProductSimpleFilterPanel({
                   placeholder="0"
                 />
               )}
-            </div>
+            </label>
           </RadioGroup>
         </div>
 
@@ -439,12 +464,17 @@ function ProductSimpleFilterPanel({
               ["true", t("products.simpleFilter.active.active", { defaultValue: "aktywne" })],
               ["false", t("products.simpleFilter.active.inactive", { defaultValue: "nieaktywne" })],
             ] as [string, string][]).map(([value, label]) => (
-              <div key={value || "all"} className="flex items-center gap-2">
+              <label
+                key={value || "all"}
+                htmlFor={`sf-active-${value || "all"}`}
+                className={cn(
+                  "flex items-center gap-2 rounded-md px-2 py-1.5 -mx-2 cursor-pointer text-sm leading-none transition-colors hover:bg-accent",
+                  (draft.isActive ?? "") === value && "bg-accent"
+                )}
+              >
                 <RadioGroupItem value={value} id={`sf-active-${value || "all"}`} />
-                <label htmlFor={`sf-active-${value || "all"}`} className="cursor-pointer text-sm leading-none">
-                  {label}
-                </label>
-              </div>
+                {label}
+              </label>
             ))}
           </RadioGroup>
         </div>

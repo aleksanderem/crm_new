@@ -13,6 +13,10 @@ import {
 import { cx } from "@/lib/utils/cx";
 import { Id } from "@cvx/_generated/dataModel";
 
+const isTouchDevice =
+  typeof window !== "undefined" &&
+  ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+
 interface TagDef {
   _id: Id<"tagDefinitions">;
   name: string;
@@ -134,6 +138,9 @@ export function TagsPicker({
           style={{
             maxHeight: "var(--radix-popover-content-available-height)",
           }}
+          onOpenAutoFocus={(e) => {
+            if (isTouchDevice) e.preventDefault();
+          }}
         >
           <div className="p-2">
             <Input
@@ -141,7 +148,7 @@ export function TagsPicker({
               placeholder={t("tags.search", { defaultValue: "Szukaj..." })}
               value={search}
               onChange={setSearch}
-              autoFocus
+              autoFocus={!isTouchDevice}
             />
           </div>
           <div className="max-h-48 min-h-0 overflow-y-auto px-1 pb-1">

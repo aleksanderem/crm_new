@@ -893,7 +893,7 @@
       "sale": "Sales Products",
       "treatment": "Treatment Preparations",
       "disposable": "Disposable Materials",
-      "label": "Product type",
+      "label": "Product destination group",
       "placeholder": "Select product type",
       "none": "None"
     },

@@ -234,7 +234,7 @@ export function ProductForm({
           </div>
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <Label>{t("products.sections.label", { defaultValue: "Rodzaj produktu" })}</Label>
+          <Label>{t("products.sections.label", { defaultValue: "Grupa przeznaczenia produktu" })}</Label>
           <Select value={productSection || "none"} onValueChange={(v) => setProductSection(v === "none" ? "" : v as ProductSection)}>
             <SelectTrigger className={!productSection ? "border-purple-300 bg-purple-50/50 dark:border-purple-700 dark:bg-purple-950/20" : ""}>
               <SelectValue placeholder={t("products.sections.placeholder", { defaultValue: "Wybierz rodzaj produktu" })} />

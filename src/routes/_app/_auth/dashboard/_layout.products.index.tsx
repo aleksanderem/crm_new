@@ -473,7 +473,7 @@ function ProductsPage() {
     },
     {
       id: "productSection",
-      label: t("products.sections.label", { defaultValue: "Rodzaj produktu" }),
+      label: t("products.sections.label", { defaultValue: "Grupa przeznaczenia produktu" }),
       render: (item) => {
         if (!item.productSection) return "—";
         return t(`products.sections.${item.productSection}`, { defaultValue: item.productSection });

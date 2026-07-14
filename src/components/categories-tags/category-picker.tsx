@@ -19,6 +19,8 @@ import { Id } from "@cvx/_generated/dataModel";
 import type { EntityType } from "@cvx/schema";
 import { TAG_COLOR_PALETTE } from "./color-palette";
 
+const isTouchDevice = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+
 interface CategoryDef {
   _id: Id<"categoryDefinitions">;
   name: string;
@@ -216,7 +218,7 @@ export function CategoryPicker({
               placeholder={t("categories.search", { defaultValue: "Szukaj..." })}
               value={search}
               onChange={setSearch}
-              autoFocus
+              autoFocus={!isTouchDevice}
             />
           </div>
           <div className="max-h-48 min-h-0 overflow-y-auto px-1 pb-1">

@@ -909,7 +909,7 @@ function DeliveriesPage() {
                                 <TooltipContent>
                                   {t(
                                     "gabinet.deliveries.postBlockedCreateLater",
-                                    "Najpierw rozwiąż pozycje „Utwórz później" w weryfikacji faktury.",
+                                    "Najpierw rozwiąż pozycje „Utwórz później” w weryfikacji faktury.",
                                   )}
                                 </TooltipContent>
                               </Tooltip>
@@ -2726,7 +2726,7 @@ function ItemDecisionsDialog({
             <span>
               {t(
                 "gabinet.deliveries.decisions.createLaterBlocking",
-                "Pozycje oznaczone „Utwórz później" blokują zatwierdzenie dostawy. Zmień decyzję na inną, aby odblokować zaksięgowanie.",
+                "Pozycje oznaczone „Utwórz później” blokują zatwierdzenie dostawy. Zmień decyzję na inną, aby odblokować zaksięgowanie.",
               )}
             </span>
           </div>

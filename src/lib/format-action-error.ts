@@ -316,8 +316,10 @@ function cleanConvexMessage(raw: string): string {
         if (!trimmed) return false;
         if (/^Called by client\s*$/i.test(trimmed)) return false;
         // Drop stack frames ("at fn (file:N:N)" or bare "at fn") but keep
-        // validator detail lines like "at path 'foo.bar'".
+        // validator detail lines like "at path 'foo.bar'" and
+        // "at argument 'fieldName': ..." (ArgumentValidationError).
         if (/^at\s+path\b/i.test(trimmed)) return true;
+        if (/^at\s+argument\b/i.test(trimmed)) return true;
         if (/^at\s+\S/i.test(trimmed)) return false;
         return true;
       })

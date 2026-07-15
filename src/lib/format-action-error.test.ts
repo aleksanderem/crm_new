@@ -92,6 +92,39 @@ describe("extractFieldValidationDetail", () => {
     expect(detail).toBeNull();
   });
 
+  it("extracts column from unique constraint with _key suffix", () => {
+    const detail = extractFieldValidationDetail(
+      'duplicate key value violates unique constraint "products_sku_key"',
+    );
+    expect(detail).toEqual({
+      rawField: "sku",
+      fieldLabel: "SKU",
+      reason: "taka wartość już istnieje",
+    });
+  });
+
+  it("extracts column from unique constraint with _idx suffix", () => {
+    const detail = extractFieldValidationDetail(
+      'duplicate key value violates unique constraint "products_org_sku_idx"',
+    );
+    expect(detail).toEqual({
+      rawField: "sku",
+      fieldLabel: "SKU",
+      reason: "taka wartość już istnieje",
+    });
+  });
+
+  it("falls back to raw constraint name and 'Pole' label when unique constraint column cannot be identified", () => {
+    const detail = extractFieldValidationDetail(
+      'duplicate key value violates unique constraint "some_unknown_uniqueness_constraint_key"',
+    );
+    expect(detail).toEqual({
+      rawField: "some_unknown_uniqueness_constraint_key",
+      fieldLabel: "Pole",
+      reason: "taka wartość już istnieje",
+    });
+  });
+
   it("extracts field from Convex 'Validator error: Missing required field' (issue #1941)", () => {
     const detail = extractFieldValidationDetail(
       "Validator error: Missing required field `name` in object",

@@ -30,6 +30,18 @@ const COLUMN_LABEL_MAP: Record<string, string> = {
   reminder_overrides: "Konfiguracja przypomnień",
   send_reminder: "Przypomnienia",
   reminder_hours_before: "Czas przypomnienia",
+  // Products (#3180)
+  sku: "SKU",
+  unit_price: "Cena netto",
+  is_active: "Aktywność",
+  track_stock: "Śledzenie stanu magazynowego",
+  stock_unit: "Jednostka",
+  product_section: "Typ produktu",
+  min_stock: "Minimalny stan",
+  manufacturer: "Producent",
+  catalog_number: "Nr katalogowy",
+  stock_note: "Notatka magazynowa",
+  purchase_price: "Cena zakupu",
 };
 
 function humanFieldLabel(rawField: string): string {
@@ -117,6 +129,30 @@ export function extractFieldValidationDetail(
       rawField: "string",
       fieldLabel: "Tekst",
       reason: "wartość jest za długa",
+    };
+  }
+
+  // Postgres: duplicate key value violates unique constraint "X" — extract field
+  // name from the index name (e.g. "products_org_sku_idx" → "sku").
+  const uniqueCon = msg.match(/duplicate key value violates unique constraint "([^"]+)"/i);
+  if (uniqueCon) {
+    const constraintName = uniqueCon[1];
+    const withoutSuffix = constraintName.replace(/_key$/i, "").replace(/_idx$/i, "");
+    const knownCols = Object.keys(COLUMN_LABEL_MAP).sort((a, b) => b.length - a.length);
+    const matchedCol = knownCols.find(
+      (col) => withoutSuffix.endsWith(`_${col}`) || withoutSuffix === col,
+    );
+    if (matchedCol) {
+      return {
+        rawField: matchedCol,
+        fieldLabel: humanFieldLabel(matchedCol),
+        reason: "taka wartość już istnieje",
+      };
+    }
+    return {
+      rawField: constraintName,
+      fieldLabel: "Pole",
+      reason: "taka wartość już istnieje",
     };
   }
 

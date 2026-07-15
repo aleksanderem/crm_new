@@ -76,6 +76,7 @@ import { Route as AppAuthDashboardLayoutSettingsAutomationsRouteImport } from '.
 import { Route as AppAuthDashboardLayoutSettingsAuditLogRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.audit-log'
 import { Route as AppAuthDashboardLayoutSettingsActivityTypesRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.activity-types'
 import { Route as AppAuthDashboardLayoutLeadsLeadIdRouteImport } from './routes/_app/_auth/dashboard/_layout.leads.$leadId'
+import { Route as AppAuthDashboardLayoutGabinetDeliveriesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.deliveries'
 import { Route as AppAuthDashboardLayoutGabinetReportsRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.reports'
 import { Route as AppAuthDashboardLayoutGabinetDocumentsRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.documents'
 import { Route as AppAuthDashboardLayoutGabinetDocumentTemplatesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.document-templates'
@@ -498,6 +499,12 @@ const AppAuthDashboardLayoutLeadsLeadIdRoute =
       (d) => d.Route,
     ),
   )
+const AppAuthDashboardLayoutGabinetDeliveriesRoute =
+  AppAuthDashboardLayoutGabinetDeliveriesRouteImport.update({
+    id: '/gabinet/deliveries',
+    path: '/gabinet/deliveries',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
 const AppAuthDashboardLayoutGabinetReportsRoute =
   AppAuthDashboardLayoutGabinetReportsRouteImport.update({
     id: '/gabinet/reports',
@@ -781,6 +788,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/document-editor/new': typeof AppAuthDashboardLayoutDocumentEditorNewRoute
   '/dashboard/email-templates/$templateId': typeof AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute
   '/dashboard/email-templates/new': typeof AppAuthDashboardLayoutEmailTemplatesNewRoute
+  '/dashboard/gabinet/deliveries': typeof AppAuthDashboardLayoutGabinetDeliveriesRoute
   '/dashboard/gabinet/document-templates': typeof AppAuthDashboardLayoutGabinetDocumentTemplatesRoute
   '/dashboard/gabinet/documents': typeof AppAuthDashboardLayoutGabinetDocumentsRouteWithChildren
   '/dashboard/gabinet/reports': typeof AppAuthDashboardLayoutGabinetReportsRoute
@@ -881,6 +889,7 @@ export interface FileRoutesByTo {
   '/dashboard/document-editor/new': typeof AppAuthDashboardLayoutDocumentEditorNewRoute
   '/dashboard/email-templates/$templateId': typeof AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute
   '/dashboard/email-templates/new': typeof AppAuthDashboardLayoutEmailTemplatesNewRoute
+  '/dashboard/gabinet/deliveries': typeof AppAuthDashboardLayoutGabinetDeliveriesRoute
   '/dashboard/gabinet/document-templates': typeof AppAuthDashboardLayoutGabinetDocumentTemplatesRoute
   '/dashboard/gabinet/reports': typeof AppAuthDashboardLayoutGabinetReportsRoute
   '/dashboard/leads/$leadId': typeof AppAuthDashboardLayoutLeadsLeadIdRoute
@@ -985,6 +994,7 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/document-editor/new': typeof AppAuthDashboardLayoutDocumentEditorNewRoute
   '/_app/_auth/dashboard/_layout/email-templates/$templateId': typeof AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute
   '/_app/_auth/dashboard/_layout/email-templates/new': typeof AppAuthDashboardLayoutEmailTemplatesNewRoute
+  '/_app/_auth/dashboard/_layout/gabinet/deliveries': typeof AppAuthDashboardLayoutGabinetDeliveriesRoute
   '/_app/_auth/dashboard/_layout/gabinet/document-templates': typeof AppAuthDashboardLayoutGabinetDocumentTemplatesRoute
   '/_app/_auth/dashboard/_layout/gabinet/documents': typeof AppAuthDashboardLayoutGabinetDocumentsRouteWithChildren
   '/_app/_auth/dashboard/_layout/gabinet/reports': typeof AppAuthDashboardLayoutGabinetReportsRoute
@@ -1092,6 +1102,7 @@ export interface FileRouteTypes {
     | '/dashboard/document-editor/new'
     | '/dashboard/email-templates/$templateId'
     | '/dashboard/email-templates/new'
+    | '/dashboard/gabinet/deliveries'
     | '/dashboard/gabinet/document-templates'
     | '/dashboard/gabinet/documents'
     | '/dashboard/gabinet/reports'
@@ -1192,6 +1203,7 @@ export interface FileRouteTypes {
     | '/dashboard/document-editor/new'
     | '/dashboard/email-templates/$templateId'
     | '/dashboard/email-templates/new'
+    | '/dashboard/gabinet/deliveries'
     | '/dashboard/gabinet/document-templates'
     | '/dashboard/gabinet/reports'
     | '/dashboard/leads/$leadId'
@@ -1295,6 +1307,7 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/document-editor/new'
     | '/_app/_auth/dashboard/_layout/email-templates/$templateId'
     | '/_app/_auth/dashboard/_layout/email-templates/new'
+    | '/_app/_auth/dashboard/_layout/gabinet/deliveries'
     | '/_app/_auth/dashboard/_layout/gabinet/document-templates'
     | '/_app/_auth/dashboard/_layout/gabinet/documents'
     | '/_app/_auth/dashboard/_layout/gabinet/reports'
@@ -1842,6 +1855,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutLeadsLeadIdRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
+    '/_app/_auth/dashboard/_layout/gabinet/deliveries': {
+      id: '/_app/_auth/dashboard/_layout/gabinet/deliveries'
+      path: '/gabinet/deliveries'
+      fullPath: '/dashboard/gabinet/deliveries'
+      preLoaderRoute: typeof AppAuthDashboardLayoutGabinetDeliveriesRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
     '/_app/_auth/dashboard/_layout/gabinet/reports': {
       id: '/_app/_auth/dashboard/_layout/gabinet/reports'
       path: '/gabinet/reports'
@@ -2370,6 +2390,8 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
       AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute,
     AppAuthDashboardLayoutEmailTemplatesNewRoute:
       AppAuthDashboardLayoutEmailTemplatesNewRoute,
+    AppAuthDashboardLayoutGabinetDeliveriesRoute:
+      AppAuthDashboardLayoutGabinetDeliveriesRoute,
     AppAuthDashboardLayoutGabinetDocumentTemplatesRoute:
       AppAuthDashboardLayoutGabinetDocumentTemplatesRoute,
     AppAuthDashboardLayoutGabinetDocumentsRoute:

@@ -122,6 +122,7 @@ export function ProductForm({
   const { t } = useTranslation();
   const isCreate = !initialData;
   const [name, setName] = useState(initialData?.name ?? "");
+  const [nameError, setNameError] = useState("");
   const [description, setDescription] = useState(initialData?.description ?? "");
   const [sku, setSku] = useState(initialData?.sku ?? generateSku());
   const [unitPrice, setUnitPrice] = useState(String(initialData?.unitPrice ?? ""));
@@ -147,6 +148,12 @@ export function ProductForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setNameError(t("products.form.nameRequired", { defaultValue: "Nazwa produktu jest wymagana." }));
+      return;
+    }
+    setNameError("");
     const isExempt = taxRate === "zw";
     const numericTaxRate = !isExempt
       ? Number.isFinite(parseFloat(taxRate))
@@ -170,7 +177,7 @@ export function ProductForm({
       return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
     })();
     onSubmit({
-      name,
+      name: trimmedName,
       description: description || null,
       sku,
       unitPrice: parseFloat(normalizedUnitPrice) || 0,
@@ -200,10 +207,13 @@ export function ProductForm({
           </Label>
           <Input
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (nameError) setNameError("");
+            }}
             placeholder={t("products.form.namePlaceholder")}
-            required
           />
+          {nameError && <p className="text-sm text-destructive">{nameError}</p>}
         </div>
         <div className="space-y-1.5">
           <Label>{t("products.form.sku")}</Label>

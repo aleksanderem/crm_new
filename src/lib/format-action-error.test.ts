@@ -264,4 +264,23 @@ describe("formatTreatmentError", () => {
     });
     expect(msg).toContain("Cena");
   });
+
+  it("surfaces field when Convex emits 'at argument' on a follow-up line (issue #3187)", () => {
+    // ArgumentValidationError traces include lines like
+    // `at argument 'price': Expected number, got null` which
+    // cleanConvexMessage previously dropped (caught by the bare `^at\s+\S`
+    // filter before the `at argument` guard was added).
+    const err = new Error(
+      "[CONVEX A(gabinet/treatments:create)] [Request ID: xx] Server Error\n" +
+        "Uncaught ArgumentValidationError: Value does not match validator\n" +
+        "    at argument 'price': Expected `number`, got `null`\n" +
+        "    at handler (../convex/gabinet/treatments.ts:42:13)\n" +
+        "  Called by client",
+    );
+    const msg = formatTreatmentError(err, t, {
+      key: "gabinet.treatments.errors.createFailed",
+      defaultValue: "Nie udało się utworzyć zabiegu.",
+    });
+    expect(msg).toContain("Cena");
+  });
 });

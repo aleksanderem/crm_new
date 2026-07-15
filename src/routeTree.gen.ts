@@ -42,6 +42,7 @@ import { Route as AppAuthDashboardLayoutDocumentEditorRouteImport } from './rout
 import { Route as AppAuthDashboardLayoutCheckoutRouteImport } from './routes/_app/_auth/dashboard/_layout.checkout'
 import { Route as AppAuthDashboardLayoutCalendarPreviewRouteImport } from './routes/_app/_auth/dashboard/_layout.calendar-preview'
 import { Route as AppAuthDashboardLayoutCalendarRouteImport } from './routes/_app/_auth/dashboard/_layout.calendar'
+import { Route as AppAuthDashboardLayoutNotificationsRouteImport } from './routes/_app/_auth/dashboard/_layout.notifications'
 import { Route as AppAuthDashboardLayoutSettingsIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.index'
 import { Route as AppAuthDashboardLayoutProductsIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.products.index'
 import { Route as AppAuthDashboardLayoutPipelinesIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.pipelines.index'
@@ -288,6 +289,12 @@ const AppAuthDashboardLayoutCalendarRoute =
   AppAuthDashboardLayoutCalendarRouteImport.update({
     id: '/calendar',
     path: '/calendar',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+const AppAuthDashboardLayoutNotificationsRoute =
+  AppAuthDashboardLayoutNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 const AppAuthDashboardLayoutSettingsIndexRoute =
@@ -769,6 +776,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/calendar': typeof AppAuthDashboardLayoutCalendarRoute
   '/dashboard/calendar-preview': typeof AppAuthDashboardLayoutCalendarPreviewRoute
   '/dashboard/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
+  '/dashboard/notifications': typeof AppAuthDashboardLayoutNotificationsRoute
   '/dashboard/document-editor': typeof AppAuthDashboardLayoutDocumentEditorRouteWithChildren
   '/dashboard/documents': typeof AppAuthDashboardLayoutDocumentsRouteWithChildren
   '/dashboard/settings': typeof AppAuthDashboardLayoutSettingsRouteWithChildren
@@ -871,6 +879,7 @@ export interface FileRoutesByTo {
   '/dashboard/calendar': typeof AppAuthDashboardLayoutCalendarRoute
   '/dashboard/calendar-preview': typeof AppAuthDashboardLayoutCalendarPreviewRoute
   '/dashboard/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
+  '/dashboard/notifications': typeof AppAuthDashboardLayoutNotificationsRoute
   '/dashboard/document-editor': typeof AppAuthDashboardLayoutDocumentEditorRouteWithChildren
   '/dashboard/setup': typeof AppAuthDashboardLayoutSetupRoute
   '/onboarding/username': typeof AppAuthOnboardingLayoutUsernameRoute
@@ -973,6 +982,7 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/calendar': typeof AppAuthDashboardLayoutCalendarRoute
   '/_app/_auth/dashboard/_layout/calendar-preview': typeof AppAuthDashboardLayoutCalendarPreviewRoute
   '/_app/_auth/dashboard/_layout/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
+  '/_app/_auth/dashboard/_layout/notifications': typeof AppAuthDashboardLayoutNotificationsRoute
   '/_app/_auth/dashboard/_layout/document-editor': typeof AppAuthDashboardLayoutDocumentEditorRouteWithChildren
   '/_app/_auth/dashboard/_layout/documents': typeof AppAuthDashboardLayoutDocumentsRouteWithChildren
   '/_app/_auth/dashboard/_layout/settings': typeof AppAuthDashboardLayoutSettingsRouteWithChildren
@@ -1080,6 +1090,7 @@ export interface FileRouteTypes {
     | '/dashboard/calendar'
     | '/dashboard/calendar-preview'
     | '/dashboard/checkout'
+    | '/dashboard/notifications'
     | '/dashboard/document-editor'
     | '/dashboard/documents'
     | '/dashboard/settings'
@@ -1182,6 +1193,7 @@ export interface FileRouteTypes {
     | '/dashboard/calendar'
     | '/dashboard/calendar-preview'
     | '/dashboard/checkout'
+    | '/dashboard/notifications'
     | '/dashboard/document-editor'
     | '/dashboard/setup'
     | '/onboarding/username'
@@ -1283,6 +1295,7 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/calendar'
     | '/_app/_auth/dashboard/_layout/calendar-preview'
     | '/_app/_auth/dashboard/_layout/checkout'
+    | '/_app/_auth/dashboard/_layout/notifications'
     | '/_app/_auth/dashboard/_layout/document-editor'
     | '/_app/_auth/dashboard/_layout/documents'
     | '/_app/_auth/dashboard/_layout/settings'
@@ -1588,6 +1601,13 @@ declare module '@tanstack/react-router' {
       path: '/checkout'
       fullPath: '/dashboard/checkout'
       preLoaderRoute: typeof AppAuthDashboardLayoutCheckoutRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
+    '/_app/_auth/dashboard/_layout/notifications': {
+      id: '/_app/_auth/dashboard/_layout/notifications'
+      path: '/notifications'
+      fullPath: '/dashboard/notifications'
+      preLoaderRoute: typeof AppAuthDashboardLayoutNotificationsRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
     '/_app/_auth/dashboard/_layout/calendar-preview': {
@@ -2304,6 +2324,7 @@ interface AppAuthDashboardLayoutRouteChildren {
   AppAuthDashboardLayoutCalendarRoute: typeof AppAuthDashboardLayoutCalendarRoute
   AppAuthDashboardLayoutCalendarPreviewRoute: typeof AppAuthDashboardLayoutCalendarPreviewRoute
   AppAuthDashboardLayoutCheckoutRoute: typeof AppAuthDashboardLayoutCheckoutRoute
+  AppAuthDashboardLayoutNotificationsRoute: typeof AppAuthDashboardLayoutNotificationsRoute
   AppAuthDashboardLayoutDocumentEditorRoute: typeof AppAuthDashboardLayoutDocumentEditorRouteWithChildren
   AppAuthDashboardLayoutDocumentsRoute: typeof AppAuthDashboardLayoutDocumentsRouteWithChildren
   AppAuthDashboardLayoutSettingsRoute: typeof AppAuthDashboardLayoutSettingsRouteWithChildren
@@ -2354,6 +2375,8 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
     AppAuthDashboardLayoutCalendarPreviewRoute:
       AppAuthDashboardLayoutCalendarPreviewRoute,
     AppAuthDashboardLayoutCheckoutRoute: AppAuthDashboardLayoutCheckoutRoute,
+    AppAuthDashboardLayoutNotificationsRoute:
+      AppAuthDashboardLayoutNotificationsRoute,
     AppAuthDashboardLayoutDocumentEditorRoute:
       AppAuthDashboardLayoutDocumentEditorRouteWithChildren,
     AppAuthDashboardLayoutDocumentsRoute:

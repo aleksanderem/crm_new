@@ -372,6 +372,7 @@ function DeliveriesPage() {
   // Post delivery confirmation
   const [postTarget, setPostTarget] = useState<{ id: string; label: string } | null>(null);
   const [posting, setPosting] = useState(false);
+  const [postResult, setPostResult] = useState<{ movementsCreated: number } | null>(null);
 
   // Cancel delivery confirmation
   const [cancelTarget, setCancelTarget] = useState<{ id: string; label: string } | null>(null);
@@ -711,11 +712,11 @@ function DeliveriesPage() {
     if (!postTarget) return;
     setPosting(true);
     try {
-      await postDeliveryAction({ organizationId, deliveryId: postTarget.id });
-      toast.success(t("gabinet.deliveries.postSuccess", "Dostawa zaksięgowana. Stany magazynowe zaktualizowane."));
+      const result = await postDeliveryAction({ organizationId, deliveryId: postTarget.id }) as { movementsCreated: number };
       void queryClient.invalidateQueries({ queryKey });
       void queryClient.invalidateQueries({ queryKey: ["supabase", "productStockLevels"] });
       void queryClient.invalidateQueries({ queryKey: ["supabase", "productStockMovements"] });
+      setPostResult(result);
     } catch (e) {
       toast.error(
         formatActionError(e, t, {
@@ -1562,6 +1563,34 @@ function DeliveriesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Post delivery result summary */}
+      <Dialog open={!!postResult} onOpenChange={(o) => { if (!o) setPostResult(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-emerald-600" variant="stroke" />
+              {t("gabinet.deliveries.postDoneTitle", "Dostawa zaksięgowana")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("gabinet.deliveries.postDoneDesc", "Stany magazynowe zostały zaktualizowane.")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-1 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">
+                {t("gabinet.deliveries.decisions.summaryImported", "Produktów dodanych do magazynu")}
+              </span>
+              <span className="font-semibold tabular-nums">{postResult?.movementsCreated}</span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" onClick={() => setPostResult(null)}>
+              {t("common.close", "Zamknij")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Cancel delivery confirmation */}
       <AlertDialog

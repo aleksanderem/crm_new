@@ -67,6 +67,7 @@
  *   • 00060_delivery_matching_proposals.sql
  *   • 00061_delivery_name_mappings.sql
  *   • 00062_delivery_item_decisions.sql
+ *   • 00063_document_analysis_jobs.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  */
@@ -171,7 +172,8 @@ export type TableName =
   | "gabinet_employee_locations"
   | "warehouse_deliveries"
   | "warehouse_delivery_items"
-  | "delivery_name_mappings";
+  | "delivery_name_mappings"
+  | "document_analysis_jobs";
 
 /**
  * Column names per table, as a runtime-checkable Set.
@@ -277,4 +279,5 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   warehouse_deliveries: new Set(["id", "organization_id", "supplier_name", "invoice_number", "delivery_date", "location_id", "notes", "status", "created_by", "created_at", "updated_at", "total_value", "total_value_gross", "invoice_pages", "analysis_status", "analysis_result", "analysis_completed_at", "analysis_error", "matching_proposals", "item_decisions"]),
   warehouse_delivery_items: new Set(["id", "organization_id", "delivery_id", "product_id", "quantity", "unit_price", "vat_rate", "movement_id", "created_at", "unit_price_gross", "line_value_net", "line_value_gross", "vat_code", "lot_number", "expiry_date"]),
   delivery_name_mappings: new Set(["id", "organization_id", "invoice_name", "product_id", "created_at"]),
+  document_analysis_jobs: new Set(["id", "organization_id", "kind", "pages", "context", "status", "result_json", "error_message", "created_by", "created_at", "updated_at", "completed_at"]),
 };

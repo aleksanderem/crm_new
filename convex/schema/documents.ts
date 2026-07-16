@@ -166,4 +166,27 @@ export const documentTables = {
     .index("by_orgAndStatus", ["organizationId", "status"])
     .index("by_template", ["templateId"])
     .index("by_signingToken", ["signingToken"]),
+
+  // Generic AI document-analysis jobs (spec 2026-07-16). One row per analysis
+  // request for kinds that have no natural host row (e.g. a template that does
+  // not exist yet). Deliveries keep their own inline analysis fields.
+  documentAnalysisJobs: defineTable({
+    organizationId: v.id("organizations"),
+    kind: v.string(), // registry id: "form_template" | ...
+    pages: v.array(v.object({
+      storageId: v.string(),
+      mimeType: v.string(),
+      position: v.number(),
+    })),
+    context: v.optional(v.union(v.string(), v.null())), // JSON string, kind-specific
+    status: v.union(v.literal("pending"), v.literal("running"), v.literal("ok"), v.literal("error")),
+    resultJson: v.optional(v.union(v.string(), v.null())),
+    errorMessage: v.optional(v.union(v.string(), v.null())),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.union(v.number(), v.null())),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndKind", ["organizationId", "kind"]),
 };

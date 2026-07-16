@@ -67,6 +67,7 @@
  *   • 00060_delivery_matching_proposals.sql
  *   • 00061_delivery_name_mappings.sql
  *   • 00062_delivery_item_decisions.sql
+ *   • 00063_document_analysis_jobs.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -7108,6 +7109,66 @@ export interface Database {
             columns: ["product_id"];
             isOneToOne: false;
             referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      document_analysis_jobs: {
+        Row: {
+          id: string;
+          organization_id: string;
+          kind: string;
+          pages: unknown;
+          context: string | null;
+          status: string;
+          result_json: string | null;
+          error_message: string | null;
+          created_by: string;
+          created_at: number;
+          updated_at: number;
+          completed_at: number | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          kind: string;
+          pages: unknown;
+          context?: string | null;
+          status: string;
+          result_json?: string | null;
+          error_message?: string | null;
+          created_by: string;
+          created_at: number;
+          updated_at: number;
+          completed_at?: number | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          kind?: string;
+          pages?: unknown;
+          context?: string | null;
+          status?: string;
+          result_json?: string | null;
+          error_message?: string | null;
+          created_by?: string;
+          created_at?: number;
+          updated_at?: number;
+          completed_at?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "document_analysis_jobs_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "document_analysis_jobs_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
             referencedColumns: ["id"];
           },
         ];

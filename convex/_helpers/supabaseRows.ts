@@ -6,6 +6,7 @@ import type { Doc, TableNames } from "../_generated/dataModel";
 // `undefined`; consumers that read those fields should coalesce with `??`.
 export type SupabaseRow<T extends TableNames> = Omit<Doc<T>, "_creationTime">;
 
+export type DocumentAnalysisJobRow = SupabaseRow<"documentAnalysisJobs">;
 export type FormDocumentRow = SupabaseRow<"formDocuments">;
 export type FormTemplateRow = SupabaseRow<"formTemplates">;
 export type GabinetTreatmentRow = SupabaseRow<"gabinetTreatments">;

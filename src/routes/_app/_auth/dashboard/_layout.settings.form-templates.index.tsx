@@ -66,6 +66,7 @@ import {
 } from "@/lib/ez-icons";
 import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
+import { TemplateScanDialog } from "@/components/documents/template-scan-dialog";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/form-templates/",
@@ -543,6 +544,7 @@ export function FormTemplatesListPage() {
   const navigate = useNavigate();
 
   const [search, setSearch] = useState("");
+  const [scanOpen, setScanOpen] = useState(false);
   const [deletingTemplate, setDeletingTemplate] =
     useState<FormTemplateRecord | null>(null);
   const [seedConfirmOpen, setSeedConfirmOpen] = useState(false);
@@ -852,6 +854,9 @@ export function FormTemplatesListPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <Button size="sm" variant="outline" onClick={() => setScanOpen(true)}>
+              {t("settings.formTemplates.scanNew", "Nowy ze skanu")}
+            </Button>
             <Button size="sm" variant="outline" asChild>
               <Link to="/dashboard/document-editor/new">
                 <Plus className="mr-2 h-4 w-4" variant="stroke" />
@@ -1050,6 +1055,9 @@ export function FormTemplatesListPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Scan dialog */}
+      <TemplateScanDialog open={scanOpen} onOpenChange={setScanOpen} />
     </div>
   );
 }

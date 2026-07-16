@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { z } from "zod";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -26,6 +27,9 @@ import { buildPatientVariableBindings } from "@/lib/documents/variable-bindings"
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/form-templates/new",
 )({
+  validateSearch: z.object({
+    analysisJobId: z.string().optional(),
+  }),
   component: NewFormTemplatePage,
 });
 

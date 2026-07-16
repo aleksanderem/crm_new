@@ -10,7 +10,10 @@
 
 import type * as _ai_documentAnalyzer from "../_ai/documentAnalyzer.js";
 import type * as _ai_invoiceMatching from "../_ai/invoiceMatching.js";
+import type * as _ai_kinds_formTemplate from "../_ai/kinds/formTemplate.js";
+import type * as _ai_kinds_invoice from "../_ai/kinds/invoice.js";
 import type * as _ai_providers_openaiDocumentAnalyzer from "../_ai/providers/openaiDocumentAnalyzer.js";
+import type * as _ai_registry from "../_ai/registry.js";
 import type * as _helpers_activities from "../_helpers/activities.js";
 import type * as _helpers_activityEnvelope from "../_helpers/activityEnvelope.js";
 import type * as _helpers_auth from "../_helpers/auth.js";
@@ -49,6 +52,7 @@ import type * as customFields from "../customFields.js";
 import type * as dashboard from "../dashboard.js";
 import type * as dev_emails from "../dev/emails.js";
 import type * as dev_helpers from "../dev/helpers.js";
+import type * as documentAnalysisJobs from "../documentAnalysisJobs.js";
 import type * as documentDataSources from "../documentDataSources.js";
 import type * as documentInstances from "../documentInstances.js";
 import type * as documentTemplateFields from "../documentTemplateFields.js";
@@ -202,7 +206,10 @@ import type {
 declare const fullApi: ApiFromModules<{
   "_ai/documentAnalyzer": typeof _ai_documentAnalyzer;
   "_ai/invoiceMatching": typeof _ai_invoiceMatching;
+  "_ai/kinds/formTemplate": typeof _ai_kinds_formTemplate;
+  "_ai/kinds/invoice": typeof _ai_kinds_invoice;
   "_ai/providers/openaiDocumentAnalyzer": typeof _ai_providers_openaiDocumentAnalyzer;
+  "_ai/registry": typeof _ai_registry;
   "_helpers/activities": typeof _helpers_activities;
   "_helpers/activityEnvelope": typeof _helpers_activityEnvelope;
   "_helpers/auth": typeof _helpers_auth;
@@ -241,6 +248,7 @@ declare const fullApi: ApiFromModules<{
   dashboard: typeof dashboard;
   "dev/emails": typeof dev_emails;
   "dev/helpers": typeof dev_helpers;
+  documentAnalysisJobs: typeof documentAnalysisJobs;
   documentDataSources: typeof documentDataSources;
   documentInstances: typeof documentInstances;
   documentTemplateFields: typeof documentTemplateFields;

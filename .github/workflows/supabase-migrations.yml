@@ -13,6 +13,10 @@ on:
     # migrations AND trigger the Netlify deploy. Path-filtering would let
     # pushes that touch only the frontend skip the deploy gate, defeating
     # the ordering this workflow exists to enforce (#951).
+  # Manual trigger to apply pending migrations on demand — e.g. to recover
+  # from drift without waiting for or forcing an unrelated push to main. Only
+  # the `apply` job runs on dispatch (the Netlify deploy stays push-gated).
+  workflow_dispatch:
 
 jobs:
   # On PR: verify that the migrations already on main are applied to the
@@ -46,7 +50,7 @@ jobs:
   # can't be applied, so a broken schema does not get a frontend in front of it.
   apply:
     name: Apply pending migrations
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

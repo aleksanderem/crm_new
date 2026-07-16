@@ -1,7 +1,8 @@
 import { describe, expect, test, vi, beforeEach } from "vitest";
 import { OpenAIDocumentAnalyzer } from "../../convex/_ai/providers/openaiDocumentAnalyzer";
-import { getDocumentAnalyzer } from "../../convex/_ai/documentAnalyzer";
-import type { DocumentPage } from "../../convex/_ai/documentAnalyzer";
+import { getDocumentTransport, analyzeDocument } from "../../convex/_ai/documentAnalyzer";
+import type { DocumentPage, DocumentTransport } from "../../convex/_ai/documentAnalyzer";
+import { invoiceKind } from "../../convex/_ai/kinds/invoice";
 
 // ---------------------------------------------------------------------------
 // Hoist mock helpers so they can be referenced inside vi.mock()
@@ -74,6 +75,10 @@ const MINIMAL_VALID_RESPONSE = JSON.stringify({
   confidence: 0.95,
 });
 
+// Helper: runs invoice analysis through the full analyzeDocument pipeline
+const analyzeInvoice = (t: { run: DocumentTransport["run"] }, pages: DocumentPage[]) =>
+  analyzeDocument(t as DocumentTransport, invoiceKind, pages);
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -82,28 +87,28 @@ beforeEach(() => {
 // Factory — no configuration
 // ---------------------------------------------------------------------------
 
-describe("getDocumentAnalyzer — no configuration", () => {
+describe("getDocumentTransport — no configuration", () => {
   test("returns not_implemented when OPENAI_API_KEY is absent", async () => {
     vi.stubEnv("OPENAI_API_KEY", "");
-    const analyzer = getDocumentAnalyzer(NOOP_FETCHER);
+    const transport = getDocumentTransport(NOOP_FETCHER);
     const page: DocumentPage = { storageId: "x", mimeType: "image/jpeg", position: 1 };
-    const result = await analyzer.analyzeInvoice([page]);
+    const result = await analyzeInvoice(transport, [page]);
     expect(result.status).toBe("not_implemented");
     vi.unstubAllEnvs();
   });
 
-  test("NullDocumentAnalyzer returns no_pages for empty pages", async () => {
+  test("NullDocumentTransport returns no_pages for empty pages", async () => {
     vi.stubEnv("OPENAI_API_KEY", "");
-    const analyzer = getDocumentAnalyzer(NOOP_FETCHER);
-    const result = await analyzer.analyzeInvoice([]);
+    const transport = getDocumentTransport(NOOP_FETCHER);
+    const result = await analyzeInvoice(transport, []);
     expect(result.status).toBe("no_pages");
     vi.unstubAllEnvs();
   });
 
-  test("NullDocumentAnalyzer returns unsupported_format for unknown MIME", async () => {
+  test("NullDocumentTransport returns unsupported_format for unknown MIME", async () => {
     vi.stubEnv("OPENAI_API_KEY", "");
-    const analyzer = getDocumentAnalyzer(NOOP_FETCHER);
-    const result = await analyzer.analyzeInvoice([
+    const transport = getDocumentTransport(NOOP_FETCHER);
+    const result = await analyzeInvoice(transport, [
       { storageId: "x", mimeType: "image/gif", position: 1 },
     ]);
     expect(result.status).toBe("unsupported_format");
@@ -121,14 +126,14 @@ describe("getDocumentAnalyzer — no configuration", () => {
 describe("OpenAIDocumentAnalyzer — pre-call validation", () => {
   test("returns no_pages when pages array is empty", async () => {
     const analyzer = new OpenAIDocumentAnalyzer("sk-test", "gpt-4o", NOOP_FETCHER);
-    const result = await analyzer.analyzeInvoice([]);
+    const result = await analyzeInvoice(analyzer, []);
     expect(result.status).toBe("no_pages");
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
   test("returns unsupported_format for unknown MIME type", async () => {
     const analyzer = new OpenAIDocumentAnalyzer("sk-test", "gpt-4o", NOOP_FETCHER);
-    const result = await analyzer.analyzeInvoice([
+    const result = await analyzeInvoice(analyzer, [
       { storageId: "x", mimeType: "image/tiff", position: 1 },
     ]);
     expect(result.status).toBe("unsupported_format");
@@ -140,7 +145,7 @@ describe("OpenAIDocumentAnalyzer — pre-call validation", () => {
 
   test("returns error when file is not found in storage", async () => {
     const analyzer = new OpenAIDocumentAnalyzer("sk-test", "gpt-4o", NOOP_FETCHER);
-    const result = await analyzer.analyzeInvoice(makePages(["image/jpeg"]));
+    const result = await analyzeInvoice(analyzer, makePages(["image/jpeg"]));
     expect(result.status).toBe("error");
     if (result.status === "error") {
       expect(result.message).toMatch(/not found/i);
@@ -153,7 +158,7 @@ describe("OpenAIDocumentAnalyzer — pre-call validation", () => {
       throw new Error("Storage unavailable");
     };
     const analyzer = new OpenAIDocumentAnalyzer("sk-test", "gpt-4o", throwingFetcher);
-    const result = await analyzer.analyzeInvoice(makePages(["image/jpeg"]));
+    const result = await analyzeInvoice(analyzer, makePages(["image/jpeg"]));
     expect(result.status).toBe("error");
     if (result.status === "error") {
       expect(result.message).toContain("Storage unavailable");
@@ -176,7 +181,7 @@ describe("OpenAIDocumentAnalyzer — correct mapping from model response", () =>
       "gpt-4o",
       fakeFetcher(makeBlob()),
     );
-    const result = await analyzer.analyzeInvoice(makePages(["image/jpeg"]));
+    const result = await analyzeInvoice(analyzer, makePages(["image/jpeg"]));
 
     expect(result.status).toBe("ok");
     if (result.status !== "ok") return;
@@ -235,7 +240,7 @@ describe("OpenAIDocumentAnalyzer — correct mapping from model response", () =>
       "gpt-4o",
       fakeFetcher(makeBlob()),
     );
-    const result = await analyzer.analyzeInvoice(makePages(["image/png"]));
+    const result = await analyzeInvoice(analyzer, makePages(["image/png"]));
 
     expect(result.status).toBe("ok");
     if (result.status !== "ok") return;
@@ -267,7 +272,7 @@ describe("OpenAIDocumentAnalyzer — multi-page invoice", () => {
       { storageId: "page-3", mimeType: "image/png", position: 3 },
     ];
 
-    const result = await analyzer.analyzeInvoice(pages);
+    const result = await analyzeInvoice(analyzer, pages);
     expect(result.status).toBe("ok");
 
     // Model must have been called exactly once with all three pages as content
@@ -290,7 +295,7 @@ describe("OpenAIDocumentAnalyzer — multi-page invoice", () => {
     };
 
     const analyzer = new OpenAIDocumentAnalyzer("sk-test", "gpt-4o", trackingFetcher);
-    await analyzer.analyzeInvoice([
+    await analyzeInvoice(analyzer, [
       { storageId: "c", mimeType: "image/jpeg", position: 3 },
       { storageId: "a", mimeType: "image/jpeg", position: 1 },
       { storageId: "b", mimeType: "image/jpeg", position: 2 },
@@ -309,7 +314,7 @@ describe("OpenAIDocumentAnalyzer — multi-page invoice", () => {
       "gpt-4o",
       fakeFetcher(makeBlob()),
     );
-    const result = await analyzer.analyzeInvoice([
+    const result = await analyzeInvoice(analyzer, [
       { storageId: "pdf", mimeType: "application/pdf", position: 1 },
       { storageId: "img", mimeType: "image/jpeg", position: 2 },
     ]);
@@ -338,7 +343,7 @@ describe("OpenAIDocumentAnalyzer — error handling", () => {
       "gpt-4o",
       fakeFetcher(makeBlob()),
     );
-    const result = await analyzer.analyzeInvoice(makePages(["image/jpeg"]));
+    const result = await analyzeInvoice(analyzer, makePages(["image/jpeg"]));
 
     expect(result.status).toBe("error");
     if (result.status === "error") {
@@ -356,7 +361,7 @@ describe("OpenAIDocumentAnalyzer — error handling", () => {
       "gpt-4o",
       fakeFetcher(makeBlob()),
     );
-    const result = await analyzer.analyzeInvoice(makePages(["image/jpeg"]));
+    const result = await analyzeInvoice(analyzer, makePages(["image/jpeg"]));
 
     expect(result.status).toBe("error");
     if (result.status === "error") {
@@ -374,7 +379,7 @@ describe("OpenAIDocumentAnalyzer — error handling", () => {
       "gpt-4o",
       fakeFetcher(makeBlob()),
     );
-    const result = await analyzer.analyzeInvoice(makePages(["image/jpeg"]));
+    const result = await analyzeInvoice(analyzer, makePages(["image/jpeg"]));
 
     expect(result.status).toBe("error");
     if (result.status === "error") {
@@ -390,7 +395,7 @@ describe("OpenAIDocumentAnalyzer — error handling", () => {
       "gpt-4o",
       fakeFetcher(makeBlob()),
     );
-    const result = await analyzer.analyzeInvoice(makePages(["image/jpeg"]));
+    const result = await analyzeInvoice(analyzer, makePages(["image/jpeg"]));
 
     expect(result.status).toBe("error");
     if (result.status === "error") {
@@ -406,7 +411,7 @@ describe("OpenAIDocumentAnalyzer — error handling", () => {
       "gpt-4o",
       fakeFetcher(makeBlob()),
     );
-    const result = await analyzer.analyzeInvoice(makePages(["image/jpeg"]));
+    const result = await analyzeInvoice(analyzer, makePages(["image/jpeg"]));
 
     expect(result.status).toBe("error");
     if (result.status === "error") {

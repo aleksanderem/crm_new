@@ -9,7 +9,7 @@ import { createTestCtx, seedTestUser } from "../../convex/_test_helpers";
 import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
 
 // ---------------------------------------------------------------------------
-// Mock getDocumentAnalyzer so tests control what the analyzer returns without
+// Mock documentAnalyzer so tests control what the analyzer returns without
 // touching real OpenAI or Convex file storage.
 // ---------------------------------------------------------------------------
 
@@ -18,7 +18,8 @@ const { mockAnalyzeInvoice } = vi.hoisted(() => ({
 }));
 
 vi.mock("../../convex/_ai/documentAnalyzer", () => ({
-  getDocumentAnalyzer: () => ({ analyzeInvoice: mockAnalyzeInvoice }),
+  getDocumentTransport: () => ({}),
+  analyzeDocument: mockAnalyzeInvoice,
 }));
 
 // ---------------------------------------------------------------------------
@@ -133,7 +134,8 @@ describe("analyzeDeliveryInvoice — multi-page success (#3045)", () => {
 
     // Analyzer was called once with pages sorted by position
     expect(mockAnalyzeInvoice).toHaveBeenCalledTimes(1);
-    const passedPages = mockAnalyzeInvoice.mock.calls[0][0] as Array<{
+    // analyzeDocument(transport, kind, pages) — pages is arg index 2
+    const passedPages = mockAnalyzeInvoice.mock.calls[0][2] as Array<{
       position: number;
     }>;
     expect(passedPages.map((p) => p.position)).toEqual([1, 2]);

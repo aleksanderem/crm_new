@@ -81,7 +81,7 @@ export function TemplateScanDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!analyzing) onOpenChange(o); }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!analyzing) { if (!o) setFiles([]); onOpenChange(o); } }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{t("settings.formTemplates.scanTitle", "Nowy szablon ze skanu")}</DialogTitle>
@@ -105,7 +105,7 @@ export function TemplateScanDialog({
           ))}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={analyzing}>
+          <Button variant="outline" onClick={() => { setFiles([]); onOpenChange(false); }} disabled={analyzing}>
             {t("common.cancel", "Anuluj")}
           </Button>
           <Button onClick={() => void handleAnalyze()} disabled={analyzing || ready.length === 0}>

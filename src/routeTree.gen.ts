@@ -37,12 +37,12 @@ import { Route as AppAuthDashboardLayoutIndexRouteImport } from './routes/_app/_
 import { Route as AppAuthOnboardingLayoutUsernameRouteImport } from './routes/_app/_auth/onboarding/_layout.username'
 import { Route as AppAuthDashboardLayoutSetupRouteImport } from './routes/_app/_auth/dashboard/_layout.setup'
 import { Route as AppAuthDashboardLayoutSettingsRouteImport } from './routes/_app/_auth/dashboard/_layout.settings'
+import { Route as AppAuthDashboardLayoutNotificationsRouteImport } from './routes/_app/_auth/dashboard/_layout.notifications'
 import { Route as AppAuthDashboardLayoutDocumentsRouteImport } from './routes/_app/_auth/dashboard/_layout.documents'
 import { Route as AppAuthDashboardLayoutDocumentEditorRouteImport } from './routes/_app/_auth/dashboard/_layout.document-editor'
 import { Route as AppAuthDashboardLayoutCheckoutRouteImport } from './routes/_app/_auth/dashboard/_layout.checkout'
 import { Route as AppAuthDashboardLayoutCalendarPreviewRouteImport } from './routes/_app/_auth/dashboard/_layout.calendar-preview'
 import { Route as AppAuthDashboardLayoutCalendarRouteImport } from './routes/_app/_auth/dashboard/_layout.calendar'
-import { Route as AppAuthDashboardLayoutNotificationsRouteImport } from './routes/_app/_auth/dashboard/_layout.notifications'
 import { Route as AppAuthDashboardLayoutSettingsIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.index'
 import { Route as AppAuthDashboardLayoutProductsIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.products.index'
 import { Route as AppAuthDashboardLayoutPipelinesIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.pipelines.index'
@@ -80,6 +80,7 @@ import { Route as AppAuthDashboardLayoutLeadsLeadIdRouteImport } from './routes/
 import { Route as AppAuthDashboardLayoutGabinetReportsRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.reports'
 import { Route as AppAuthDashboardLayoutGabinetDocumentsRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.documents'
 import { Route as AppAuthDashboardLayoutGabinetDocumentTemplatesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.document-templates'
+import { Route as AppAuthDashboardLayoutGabinetDeliveriesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.deliveries'
 import { Route as AppAuthDashboardLayoutEmailTemplatesNewRouteImport } from './routes/_app/_auth/dashboard/_layout.email-templates.new'
 import { Route as AppAuthDashboardLayoutEmailTemplatesTemplateIdRouteImport } from './routes/_app/_auth/dashboard/_layout.email-templates.$templateId'
 import { Route as AppAuthDashboardLayoutDocumentEditorNewRouteImport } from './routes/_app/_auth/dashboard/_layout.document-editor.new'
@@ -105,13 +106,13 @@ import { Route as AppAuthDashboardLayoutSettingsAutomationsRuleIdRouteImport } f
 import { Route as AppAuthDashboardLayoutGabinetTreatmentsTreatmentIdRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.treatments.$treatmentId'
 import { Route as AppAuthDashboardLayoutGabinetSettingsTimetableRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.timetable'
 import { Route as AppAuthDashboardLayoutGabinetSettingsSchedulingRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.scheduling'
+import { Route as AppAuthDashboardLayoutGabinetSettingsRolesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.roles'
 import { Route as AppAuthDashboardLayoutGabinetSettingsRemindersRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.reminders'
 import { Route as AppAuthDashboardLayoutGabinetSettingsLocationsRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.locations'
 import { Route as AppAuthDashboardLayoutGabinetSettingsLeavesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.leaves'
 import { Route as AppAuthDashboardLayoutGabinetSettingsLeaveTypesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.leave-types'
 import { Route as AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.leave-balances'
 import { Route as AppAuthDashboardLayoutGabinetSettingsEquipmentRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.equipment'
-import { Route as AppAuthDashboardLayoutGabinetSettingsRolesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.roles'
 import { Route as AppAuthDashboardLayoutGabinetPatientsPatientIdRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.patients.$patientId'
 import { Route as AppAuthDashboardLayoutGabinetEmployeesEmployeeIdRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.employees.$employeeId'
 import { Route as AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId'
@@ -261,6 +262,12 @@ const AppAuthDashboardLayoutSettingsRoute =
     path: '/settings',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
+const AppAuthDashboardLayoutNotificationsRoute =
+  AppAuthDashboardLayoutNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
 const AppAuthDashboardLayoutDocumentsRoute =
   AppAuthDashboardLayoutDocumentsRouteImport.update({
     id: '/documents',
@@ -289,12 +296,6 @@ const AppAuthDashboardLayoutCalendarRoute =
   AppAuthDashboardLayoutCalendarRouteImport.update({
     id: '/calendar',
     path: '/calendar',
-    getParentRoute: () => AppAuthDashboardLayoutRoute,
-  } as any)
-const AppAuthDashboardLayoutNotificationsRoute =
-  AppAuthDashboardLayoutNotificationsRouteImport.update({
-    id: '/notifications',
-    path: '/notifications',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 const AppAuthDashboardLayoutSettingsIndexRoute =
@@ -527,6 +528,12 @@ const AppAuthDashboardLayoutGabinetDocumentTemplatesRoute =
     path: '/gabinet/document-templates',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
+const AppAuthDashboardLayoutGabinetDeliveriesRoute =
+  AppAuthDashboardLayoutGabinetDeliveriesRouteImport.update({
+    id: '/gabinet/deliveries',
+    path: '/gabinet/deliveries',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
 const AppAuthDashboardLayoutEmailTemplatesNewRoute =
   AppAuthDashboardLayoutEmailTemplatesNewRouteImport.update({
     id: '/email-templates/new',
@@ -685,6 +692,12 @@ const AppAuthDashboardLayoutGabinetSettingsSchedulingRoute =
     path: '/gabinet/settings/scheduling',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
+const AppAuthDashboardLayoutGabinetSettingsRolesRoute =
+  AppAuthDashboardLayoutGabinetSettingsRolesRouteImport.update({
+    id: '/gabinet/settings/roles',
+    path: '/gabinet/settings/roles',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
 const AppAuthDashboardLayoutGabinetSettingsRemindersRoute =
   AppAuthDashboardLayoutGabinetSettingsRemindersRouteImport.update({
     id: '/gabinet/settings/reminders',
@@ -719,12 +732,6 @@ const AppAuthDashboardLayoutGabinetSettingsEquipmentRoute =
   AppAuthDashboardLayoutGabinetSettingsEquipmentRouteImport.update({
     id: '/gabinet/settings/equipment',
     path: '/gabinet/settings/equipment',
-    getParentRoute: () => AppAuthDashboardLayoutRoute,
-  } as any)
-const AppAuthDashboardLayoutGabinetSettingsRolesRoute =
-  AppAuthDashboardLayoutGabinetSettingsRolesRouteImport.update({
-    id: '/gabinet/settings/roles',
-    path: '/gabinet/settings/roles',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 const AppAuthDashboardLayoutGabinetPatientsPatientIdRoute =
@@ -776,9 +783,9 @@ export interface FileRoutesByFullPath {
   '/dashboard/calendar': typeof AppAuthDashboardLayoutCalendarRoute
   '/dashboard/calendar-preview': typeof AppAuthDashboardLayoutCalendarPreviewRoute
   '/dashboard/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
-  '/dashboard/notifications': typeof AppAuthDashboardLayoutNotificationsRoute
   '/dashboard/document-editor': typeof AppAuthDashboardLayoutDocumentEditorRouteWithChildren
   '/dashboard/documents': typeof AppAuthDashboardLayoutDocumentsRouteWithChildren
+  '/dashboard/notifications': typeof AppAuthDashboardLayoutNotificationsRoute
   '/dashboard/settings': typeof AppAuthDashboardLayoutSettingsRouteWithChildren
   '/dashboard/setup': typeof AppAuthDashboardLayoutSetupRoute
   '/onboarding/username': typeof AppAuthOnboardingLayoutUsernameRoute
@@ -789,6 +796,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/document-editor/new': typeof AppAuthDashboardLayoutDocumentEditorNewRoute
   '/dashboard/email-templates/$templateId': typeof AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute
   '/dashboard/email-templates/new': typeof AppAuthDashboardLayoutEmailTemplatesNewRoute
+  '/dashboard/gabinet/deliveries': typeof AppAuthDashboardLayoutGabinetDeliveriesRoute
   '/dashboard/gabinet/document-templates': typeof AppAuthDashboardLayoutGabinetDocumentTemplatesRoute
   '/dashboard/gabinet/documents': typeof AppAuthDashboardLayoutGabinetDocumentsRouteWithChildren
   '/dashboard/gabinet/reports': typeof AppAuthDashboardLayoutGabinetReportsRoute
@@ -879,8 +887,8 @@ export interface FileRoutesByTo {
   '/dashboard/calendar': typeof AppAuthDashboardLayoutCalendarRoute
   '/dashboard/calendar-preview': typeof AppAuthDashboardLayoutCalendarPreviewRoute
   '/dashboard/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
-  '/dashboard/notifications': typeof AppAuthDashboardLayoutNotificationsRoute
   '/dashboard/document-editor': typeof AppAuthDashboardLayoutDocumentEditorRouteWithChildren
+  '/dashboard/notifications': typeof AppAuthDashboardLayoutNotificationsRoute
   '/dashboard/setup': typeof AppAuthDashboardLayoutSetupRoute
   '/onboarding/username': typeof AppAuthOnboardingLayoutUsernameRoute
   '/dashboard': typeof AppAuthDashboardLayoutIndexRoute
@@ -890,6 +898,7 @@ export interface FileRoutesByTo {
   '/dashboard/document-editor/new': typeof AppAuthDashboardLayoutDocumentEditorNewRoute
   '/dashboard/email-templates/$templateId': typeof AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute
   '/dashboard/email-templates/new': typeof AppAuthDashboardLayoutEmailTemplatesNewRoute
+  '/dashboard/gabinet/deliveries': typeof AppAuthDashboardLayoutGabinetDeliveriesRoute
   '/dashboard/gabinet/document-templates': typeof AppAuthDashboardLayoutGabinetDocumentTemplatesRoute
   '/dashboard/gabinet/reports': typeof AppAuthDashboardLayoutGabinetReportsRoute
   '/dashboard/leads/$leadId': typeof AppAuthDashboardLayoutLeadsLeadIdRoute
@@ -982,9 +991,9 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/calendar': typeof AppAuthDashboardLayoutCalendarRoute
   '/_app/_auth/dashboard/_layout/calendar-preview': typeof AppAuthDashboardLayoutCalendarPreviewRoute
   '/_app/_auth/dashboard/_layout/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
-  '/_app/_auth/dashboard/_layout/notifications': typeof AppAuthDashboardLayoutNotificationsRoute
   '/_app/_auth/dashboard/_layout/document-editor': typeof AppAuthDashboardLayoutDocumentEditorRouteWithChildren
   '/_app/_auth/dashboard/_layout/documents': typeof AppAuthDashboardLayoutDocumentsRouteWithChildren
+  '/_app/_auth/dashboard/_layout/notifications': typeof AppAuthDashboardLayoutNotificationsRoute
   '/_app/_auth/dashboard/_layout/settings': typeof AppAuthDashboardLayoutSettingsRouteWithChildren
   '/_app/_auth/dashboard/_layout/setup': typeof AppAuthDashboardLayoutSetupRoute
   '/_app/_auth/onboarding/_layout/username': typeof AppAuthOnboardingLayoutUsernameRoute
@@ -995,6 +1004,7 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/document-editor/new': typeof AppAuthDashboardLayoutDocumentEditorNewRoute
   '/_app/_auth/dashboard/_layout/email-templates/$templateId': typeof AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute
   '/_app/_auth/dashboard/_layout/email-templates/new': typeof AppAuthDashboardLayoutEmailTemplatesNewRoute
+  '/_app/_auth/dashboard/_layout/gabinet/deliveries': typeof AppAuthDashboardLayoutGabinetDeliveriesRoute
   '/_app/_auth/dashboard/_layout/gabinet/document-templates': typeof AppAuthDashboardLayoutGabinetDocumentTemplatesRoute
   '/_app/_auth/dashboard/_layout/gabinet/documents': typeof AppAuthDashboardLayoutGabinetDocumentsRouteWithChildren
   '/_app/_auth/dashboard/_layout/gabinet/reports': typeof AppAuthDashboardLayoutGabinetReportsRoute
@@ -1090,9 +1100,9 @@ export interface FileRouteTypes {
     | '/dashboard/calendar'
     | '/dashboard/calendar-preview'
     | '/dashboard/checkout'
-    | '/dashboard/notifications'
     | '/dashboard/document-editor'
     | '/dashboard/documents'
+    | '/dashboard/notifications'
     | '/dashboard/settings'
     | '/dashboard/setup'
     | '/onboarding/username'
@@ -1103,6 +1113,7 @@ export interface FileRouteTypes {
     | '/dashboard/document-editor/new'
     | '/dashboard/email-templates/$templateId'
     | '/dashboard/email-templates/new'
+    | '/dashboard/gabinet/deliveries'
     | '/dashboard/gabinet/document-templates'
     | '/dashboard/gabinet/documents'
     | '/dashboard/gabinet/reports'
@@ -1193,8 +1204,8 @@ export interface FileRouteTypes {
     | '/dashboard/calendar'
     | '/dashboard/calendar-preview'
     | '/dashboard/checkout'
-    | '/dashboard/notifications'
     | '/dashboard/document-editor'
+    | '/dashboard/notifications'
     | '/dashboard/setup'
     | '/onboarding/username'
     | '/dashboard'
@@ -1204,6 +1215,7 @@ export interface FileRouteTypes {
     | '/dashboard/document-editor/new'
     | '/dashboard/email-templates/$templateId'
     | '/dashboard/email-templates/new'
+    | '/dashboard/gabinet/deliveries'
     | '/dashboard/gabinet/document-templates'
     | '/dashboard/gabinet/reports'
     | '/dashboard/leads/$leadId'
@@ -1295,9 +1307,9 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/calendar'
     | '/_app/_auth/dashboard/_layout/calendar-preview'
     | '/_app/_auth/dashboard/_layout/checkout'
-    | '/_app/_auth/dashboard/_layout/notifications'
     | '/_app/_auth/dashboard/_layout/document-editor'
     | '/_app/_auth/dashboard/_layout/documents'
+    | '/_app/_auth/dashboard/_layout/notifications'
     | '/_app/_auth/dashboard/_layout/settings'
     | '/_app/_auth/dashboard/_layout/setup'
     | '/_app/_auth/onboarding/_layout/username'
@@ -1308,6 +1320,7 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/document-editor/new'
     | '/_app/_auth/dashboard/_layout/email-templates/$templateId'
     | '/_app/_auth/dashboard/_layout/email-templates/new'
+    | '/_app/_auth/dashboard/_layout/gabinet/deliveries'
     | '/_app/_auth/dashboard/_layout/gabinet/document-templates'
     | '/_app/_auth/dashboard/_layout/gabinet/documents'
     | '/_app/_auth/dashboard/_layout/gabinet/reports'
@@ -1582,6 +1595,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
+    '/_app/_auth/dashboard/_layout/notifications': {
+      id: '/_app/_auth/dashboard/_layout/notifications'
+      path: '/notifications'
+      fullPath: '/dashboard/notifications'
+      preLoaderRoute: typeof AppAuthDashboardLayoutNotificationsRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
     '/_app/_auth/dashboard/_layout/documents': {
       id: '/_app/_auth/dashboard/_layout/documents'
       path: '/documents'
@@ -1601,13 +1621,6 @@ declare module '@tanstack/react-router' {
       path: '/checkout'
       fullPath: '/dashboard/checkout'
       preLoaderRoute: typeof AppAuthDashboardLayoutCheckoutRouteImport
-      parentRoute: typeof AppAuthDashboardLayoutRoute
-    }
-    '/_app/_auth/dashboard/_layout/notifications': {
-      id: '/_app/_auth/dashboard/_layout/notifications'
-      path: '/notifications'
-      fullPath: '/dashboard/notifications'
-      preLoaderRoute: typeof AppAuthDashboardLayoutNotificationsRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
     '/_app/_auth/dashboard/_layout/calendar-preview': {
@@ -1883,6 +1896,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutGabinetDocumentTemplatesRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
+    '/_app/_auth/dashboard/_layout/gabinet/deliveries': {
+      id: '/_app/_auth/dashboard/_layout/gabinet/deliveries'
+      path: '/gabinet/deliveries'
+      fullPath: '/dashboard/gabinet/deliveries'
+      preLoaderRoute: typeof AppAuthDashboardLayoutGabinetDeliveriesRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
     '/_app/_auth/dashboard/_layout/email-templates/new': {
       id: '/_app/_auth/dashboard/_layout/email-templates/new'
       path: '/email-templates/new'
@@ -2058,6 +2078,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutGabinetSettingsSchedulingRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
+    '/_app/_auth/dashboard/_layout/gabinet/settings/roles': {
+      id: '/_app/_auth/dashboard/_layout/gabinet/settings/roles'
+      path: '/gabinet/settings/roles'
+      fullPath: '/dashboard/gabinet/settings/roles'
+      preLoaderRoute: typeof AppAuthDashboardLayoutGabinetSettingsRolesRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
     '/_app/_auth/dashboard/_layout/gabinet/settings/reminders': {
       id: '/_app/_auth/dashboard/_layout/gabinet/settings/reminders'
       path: '/gabinet/settings/reminders'
@@ -2098,13 +2125,6 @@ declare module '@tanstack/react-router' {
       path: '/gabinet/settings/equipment'
       fullPath: '/dashboard/gabinet/settings/equipment'
       preLoaderRoute: typeof AppAuthDashboardLayoutGabinetSettingsEquipmentRouteImport
-      parentRoute: typeof AppAuthDashboardLayoutRoute
-    }
-    '/_app/_auth/dashboard/_layout/gabinet/settings/roles': {
-      id: '/_app/_auth/dashboard/_layout/gabinet/settings/roles'
-      path: '/gabinet/settings/roles'
-      fullPath: '/dashboard/gabinet/settings/roles'
-      preLoaderRoute: typeof AppAuthDashboardLayoutGabinetSettingsRolesRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
     '/_app/_auth/dashboard/_layout/gabinet/patients/$patientId': {
@@ -2324,9 +2344,9 @@ interface AppAuthDashboardLayoutRouteChildren {
   AppAuthDashboardLayoutCalendarRoute: typeof AppAuthDashboardLayoutCalendarRoute
   AppAuthDashboardLayoutCalendarPreviewRoute: typeof AppAuthDashboardLayoutCalendarPreviewRoute
   AppAuthDashboardLayoutCheckoutRoute: typeof AppAuthDashboardLayoutCheckoutRoute
-  AppAuthDashboardLayoutNotificationsRoute: typeof AppAuthDashboardLayoutNotificationsRoute
   AppAuthDashboardLayoutDocumentEditorRoute: typeof AppAuthDashboardLayoutDocumentEditorRouteWithChildren
   AppAuthDashboardLayoutDocumentsRoute: typeof AppAuthDashboardLayoutDocumentsRouteWithChildren
+  AppAuthDashboardLayoutNotificationsRoute: typeof AppAuthDashboardLayoutNotificationsRoute
   AppAuthDashboardLayoutSettingsRoute: typeof AppAuthDashboardLayoutSettingsRouteWithChildren
   AppAuthDashboardLayoutSetupRoute: typeof AppAuthDashboardLayoutSetupRoute
   AppAuthDashboardLayoutIndexRoute: typeof AppAuthDashboardLayoutIndexRoute
@@ -2334,6 +2354,7 @@ interface AppAuthDashboardLayoutRouteChildren {
   AppAuthDashboardLayoutContactsContactIdRoute: typeof AppAuthDashboardLayoutContactsContactIdRoute
   AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute: typeof AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute
   AppAuthDashboardLayoutEmailTemplatesNewRoute: typeof AppAuthDashboardLayoutEmailTemplatesNewRoute
+  AppAuthDashboardLayoutGabinetDeliveriesRoute: typeof AppAuthDashboardLayoutGabinetDeliveriesRoute
   AppAuthDashboardLayoutGabinetDocumentTemplatesRoute: typeof AppAuthDashboardLayoutGabinetDocumentTemplatesRoute
   AppAuthDashboardLayoutGabinetDocumentsRoute: typeof AppAuthDashboardLayoutGabinetDocumentsRouteWithChildren
   AppAuthDashboardLayoutGabinetReportsRoute: typeof AppAuthDashboardLayoutGabinetReportsRoute
@@ -2375,12 +2396,12 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
     AppAuthDashboardLayoutCalendarPreviewRoute:
       AppAuthDashboardLayoutCalendarPreviewRoute,
     AppAuthDashboardLayoutCheckoutRoute: AppAuthDashboardLayoutCheckoutRoute,
-    AppAuthDashboardLayoutNotificationsRoute:
-      AppAuthDashboardLayoutNotificationsRoute,
     AppAuthDashboardLayoutDocumentEditorRoute:
       AppAuthDashboardLayoutDocumentEditorRouteWithChildren,
     AppAuthDashboardLayoutDocumentsRoute:
       AppAuthDashboardLayoutDocumentsRouteWithChildren,
+    AppAuthDashboardLayoutNotificationsRoute:
+      AppAuthDashboardLayoutNotificationsRoute,
     AppAuthDashboardLayoutSettingsRoute:
       AppAuthDashboardLayoutSettingsRouteWithChildren,
     AppAuthDashboardLayoutSetupRoute: AppAuthDashboardLayoutSetupRoute,
@@ -2393,6 +2414,8 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
       AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute,
     AppAuthDashboardLayoutEmailTemplatesNewRoute:
       AppAuthDashboardLayoutEmailTemplatesNewRoute,
+    AppAuthDashboardLayoutGabinetDeliveriesRoute:
+      AppAuthDashboardLayoutGabinetDeliveriesRoute,
     AppAuthDashboardLayoutGabinetDocumentTemplatesRoute:
       AppAuthDashboardLayoutGabinetDocumentTemplatesRoute,
     AppAuthDashboardLayoutGabinetDocumentsRoute:

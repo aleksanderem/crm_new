@@ -42,6 +42,8 @@ export const createJob = action({
       throw new Error(`Unknown analysis kind: ${args.kind}`);
     }
 
+    if (args.pages.length === 0) throw new Error("No pages to analyze");
+
     const db = createSupabaseDb();
     const now = Date.now();
     const jobId = await db.insert("documentAnalysisJobs", {

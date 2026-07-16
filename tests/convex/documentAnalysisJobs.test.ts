@@ -30,6 +30,16 @@ describe("documentAnalysisJobs", () => {
     ).rejects.toThrow(/unknown analysis kind/i);
   });
 
+  test("createJob rejects empty pages", async () => {
+    const t = createTestCtx();
+    const { organizationId, identity } = await seedTestUser(t);
+    await expect(
+      t.withIdentity(identity).action(api.documentAnalysisJobs.createJob, {
+        organizationId, kind: "form_template", pages: [],
+      }),
+    ).rejects.toThrow(/no pages/i);
+  });
+
   test("runJob without provider records error status on the job (retryable)", async () => {
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);

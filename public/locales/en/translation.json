@@ -1670,7 +1670,18 @@
       "seedAlreadyLoaded": "All example templates are already loaded",
       "seedSuccess": "Loaded {{count}} templates",
       "migrateFolders": "Assign folders to templates",
-      "migrateSuccess": "Assigned folders to {{count}} templates"
+      "migrateSuccess": "Assigned folders to {{count}} templates",
+      "scanNew": "New from scan",
+      "scanTitle": "New template from scan",
+      "scanDescription": "Upload a scan or PDF of an existing form. AI reconstructs the content and detects fillable fields — you verify the result in the editor.",
+      "scanUploading": "Uploading…",
+      "scanUploadError": "Error",
+      "scanUnsupportedType": "Supported formats: PDF, JPG, PNG",
+      "scanAnalyze": "Analyze ({{count}})",
+      "scanAnalyzing": "Analyzing…",
+      "scanFailed": "Analysis failed: {{error}}",
+      "scanBanner": "Template generated from a scan — verify detected fields before saving. Analysis confidence: {{confidence}}%",
+      "scanLoadFailed": "Failed to load the analysis result"
     },
     "documentComponents": {
       "errors": {

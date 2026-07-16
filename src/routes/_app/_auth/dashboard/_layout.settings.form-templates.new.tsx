@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { z } from "zod";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
@@ -22,10 +23,17 @@ import { ArrowLeft, ChevronDown, ChevronUp } from "@/lib/ez-icons";
 import { toast } from "sonner";
 import { DocumentTemplateEditor } from "@/components/documents/document-template-editor";
 import { buildPatientVariableBindings } from "@/lib/documents/variable-bindings";
+import {
+  parsedTemplateToTipTap,
+  type ParsedFormTemplateInput,
+} from "@/lib/documents/analysis-to-template";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/form-templates/new",
 )({
+  validateSearch: z.object({
+    analysisJobId: z.string().optional(),
+  }),
   component: NewFormTemplatePage,
 });
 
@@ -111,6 +119,41 @@ function NewFormTemplatePage() {
   const [contentJson, setContentJson] = useState("{}");
 
   const createTemplate = useAction(api.documents.templates.create);
+  const getJob = useAction(api.documentAnalysisJobs.getJob);
+
+  const { analysisJobId } = Route.useSearch();
+  const [scanConfidence, setScanConfidence] = useState<number | null>(null);
+  const [scanLoaded, setScanLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!analysisJobId || scanLoaded) return;
+    setScanLoaded(true);
+    void (async () => {
+      try {
+        const job = await getJob({ organizationId, jobId: analysisJobId });
+        if (!job || job.status !== "ok" || !job.resultJson) {
+          toast.error(
+            t(
+              "settings.formTemplates.scanLoadFailed",
+              "Nie udało się wczytać wyniku analizy",
+            ),
+          );
+          return;
+        }
+        const parsed = JSON.parse(job.resultJson) as ParsedFormTemplateInput;
+        setContentJson(parsedTemplateToTipTap(parsed));
+        if (parsed.title) setName(parsed.title);
+        setScanConfidence(parsed.confidence);
+      } catch {
+        toast.error(
+          t(
+            "settings.formTemplates.scanLoadFailed",
+            "Nie udało się wczytać wyniku analizy",
+          ),
+        );
+      }
+    })();
+  }, [analysisJobId, scanLoaded, getJob, organizationId, t]);
 
   const toggleModule = (mod: Module) => {
     setModules((prev) =>
@@ -387,6 +430,17 @@ function NewFormTemplatePage() {
           </CardContent>
         )}
       </Card>
+
+      {/* Scan banner */}
+      {analysisJobId && scanConfidence !== null && (
+        <div className="mb-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+          {t(
+            "settings.formTemplates.scanBanner",
+            "Szablon wygenerowany ze skanu — zweryfikuj wykryte pola przed zapisem. Pewność analizy: {{confidence}}%",
+            { confidence: Math.round(scanConfidence * 100) },
+          )}
+        </div>
+      )}
 
       {/* Document editor — takes remaining viewport height */}
       <div className="min-h-0 flex-1">

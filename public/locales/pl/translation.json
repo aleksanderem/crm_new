@@ -1673,7 +1673,18 @@
       "seedAlreadyLoaded": "Wszystkie przykładowe szablony są już załadowane",
       "seedSuccess": "Załadowano {{count}} szablonów",
       "migrateFolders": "Przypisz foldery do szablonów",
-      "migrateSuccess": "Przypisano foldery do {{count}} szablonów"
+      "migrateSuccess": "Przypisano foldery do {{count}} szablonów",
+      "scanNew": "Nowy ze skanu",
+      "scanTitle": "Nowy szablon ze skanu",
+      "scanDescription": "Wgraj skan lub PDF istniejącego formularza. AI odtworzy treść i wykryje pola do wypełnienia — wynik zweryfikujesz w edytorze.",
+      "scanUploading": "Wgrywanie…",
+      "scanUploadError": "Błąd",
+      "scanUnsupportedType": "Obsługiwane formaty: PDF, JPG, PNG",
+      "scanAnalyze": "Analizuj ({{count}})",
+      "scanAnalyzing": "Analizuję…",
+      "scanFailed": "Analiza nie powiodła się: {{error}}",
+      "scanBanner": "Szablon wygenerowany ze skanu — zweryfikuj wykryte pola przed zapisem. Pewność analizy: {{confidence}}%",
+      "scanLoadFailed": "Nie udało się wczytać wyniku analizy"
     },
     "documentComponents": {
       "errors": {

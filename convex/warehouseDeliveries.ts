@@ -14,8 +14,9 @@ import type { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { applyMovementInternal } from "./inventory";
 import type { SupabaseRow } from "./_helpers/supabaseRows";
-import { getDocumentAnalyzer } from "./_ai/documentAnalyzer";
+import { getDocumentTransport, analyzeDocument } from "./_ai/documentAnalyzer";
 import type { DocumentPage, ParsedInvoice, ParsedInvoiceItem } from "./_ai/documentAnalyzer";
+import { invoiceKind } from "./_ai/kinds/invoice";
 import { matchInvoiceItems, normalizeName } from "./_ai/invoiceMatching";
 import type { MatchingProposals, ProductForMatching } from "./_ai/invoiceMatching";
 
@@ -521,11 +522,11 @@ export const analyzeDeliveryInvoice = action({
       .slice()
       .sort((a, b) => a.position - b.position);
 
-    const analyzer = getDocumentAnalyzer(
-      (id) => ctx.storage.get(id as unknown as Id<"_storage">),
+    const transport = getDocumentTransport(
+      (id: string) => ctx.storage.get(id as unknown as Id<"_storage">),
     );
 
-    const analysisResult = await analyzer.analyzeInvoice(pages);
+    const analysisResult = await analyzeDocument(transport, invoiceKind, pages);
     const now = Date.now();
 
     // 6. Persist result

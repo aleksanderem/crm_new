@@ -1385,7 +1385,7 @@ function ProductsPage() {
         {[
           { label: t("products.columnSections.identification", { defaultValue: "Identyfikacja produktu" }), ids: ["name", "productSection", "categoryId"] },
           { label: t("products.columnSections.stock", { defaultValue: "Stan magazynowy" }), ids: ["stock", "plannedUsage", "minStock"] },
-          { label: t("products.columnSections.finance", { defaultValue: "Finanse" }), ids: ["unitPrice", "purchasePriceGross", "taxRate", "value"] },
+          { label: t("products.columnSections.finance", { defaultValue: "Zakup" }), ids: ["unitPrice", "purchasePriceGross", "taxRate", "value"] },
           { label: t("products.columnSections.sales", { defaultValue: "Sprzedaż" }), ids: ["salePriceGross", "salePriceNet"] },
           { label: t("products.columnSections.additional", { defaultValue: "Informacje dodatkowe" }), ids: ["manufacturer", "sku", "catalogNumber", "tagIds", "isActive", "createdAt"] },
         ].map((section) => {

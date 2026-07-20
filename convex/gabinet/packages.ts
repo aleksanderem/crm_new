@@ -485,13 +485,26 @@ export const _purchaseTreatmentSideEffects = internalMutation({
   },
 });
 
+function generateVoucherCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "GIFT-";
+  for (let i = 0; i < 8; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
 export const purchasePackage = action({
   args: {
     organizationId: v.id("organizations"),
-    patientId: v.string(),
+    patientId: v.optional(v.string()),
     packageId: v.string(),
     paidAmount: v.number(),
     paymentMethod: v.optional(v.string()),
+    isGift: v.optional(v.boolean()),
+    giftRecipientName: v.optional(v.string()),
+    giftRecipientPhone: v.optional(v.string()),
+    giftRecipientEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runQuery(
@@ -504,6 +517,9 @@ export const purchasePackage = action({
       { organizationId: args.organizationId, feature: "gabinet_packages", action: "create" },
     ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
+
+    const isGift = args.isGift === true;
+    if (!isGift && !args.patientId) throw new Error("patientId is required for non-gift packages");
 
     const now = Date.now();
     const db = createSupabaseDb();
@@ -524,22 +540,45 @@ export const purchasePackage = action({
       totalCount: t.quantity,
     }));
 
+    // Generate a unique voucher code for gift packages, retrying on collision
+    let voucherCode: string | null = null;
+    if (isGift) {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const candidate = generateVoucherCode();
+        const existing = await db
+          .query("gabinetPackageUsage")
+          .eq("organizationId", String(args.organizationId))
+          .eq("voucherCode", candidate)
+          .first();
+        if (!existing) {
+          voucherCode = candidate;
+          break;
+        }
+      }
+      if (!voucherCode) throw new Error("Could not generate unique voucher code");
+    }
+
     const usageId = await db.insert("gabinetPackageUsage", {
       organizationId: String(args.organizationId),
-      patientId: args.patientId,
+      patientId: args.patientId ?? null,
       packageId: args.packageId,
       purchasedAt: now,
       expiresAt,
-      status: "active",
+      status: isGift ? "unassigned" : "active",
       treatmentsUsed,
       paidAmount: args.paidAmount,
       paymentMethod: args.paymentMethod ?? null,
+      isGift: isGift || null,
+      voucherCode,
+      giftRecipientName: args.giftRecipientName ?? null,
+      giftRecipientPhone: args.giftRecipientPhone ?? null,
+      giftRecipientEmail: args.giftRecipientEmail ?? null,
       createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
 
-    // Side effects: activity envelope + loyalty points
+    // Side effects: activity envelope
     try {
       await ctx.runMutation(internal.gabinet.packages._purchaseSideEffects, {
         usageId,
@@ -557,9 +596,9 @@ export const purchasePackage = action({
       console.error("[packages.purchasePackage] Side effects FAILED for usage", usageId, ":", e);
     }
 
-    // Award loyalty points directly in Supabase
+    // Award loyalty points only when assigned to a real patient
     const loyaltyPointsAwarded = (pkg.loyaltyPointsAwarded as number | undefined) ?? 0;
-    if (loyaltyPointsAwarded > 0) {
+    if (loyaltyPointsAwarded > 0 && args.patientId) {
       const loyalty = await db
         .query("gabinetLoyaltyPoints")
         .eq("organizationId", String(args.organizationId))
@@ -611,7 +650,7 @@ export const _purchaseSideEffects = internalMutation({
     organizationId: v.id("organizations"),
     packageId: v.string(),
     packageName: v.string(),
-    patientId: v.string(),
+    patientId: v.optional(v.string()),
     paidAmount: v.number(),
     paymentMethod: v.optional(v.string()),
     loyaltyPointsAwarded: v.number(),
@@ -619,12 +658,21 @@ export const _purchaseSideEffects = internalMutation({
     createdAt: v.number(),
   },
   handler: async (ctx, args) => {
+    const targets: Array<{ entityType: string; entityId: string }> = [
+      { entityType: "gabinetPackage", entityId: args.packageId },
+    ];
+    if (args.patientId) {
+      targets.push({ entityType: "gabinetPatient", entityId: args.patientId });
+    }
+
     await publishActivityEnvelope(ctx, {
       organizationId: args.organizationId,
       action: "package_assigned",
       performedBy: args.createdBy as Id<"users">,
       module: "gabinet",
-      summary: `Assigned package ${args.packageName} to patient`,
+      summary: args.patientId
+        ? `Assigned package ${args.packageName} to patient`
+        : `Sold package ${args.packageName} as gift`,
       occurredAt: args.createdAt,
       actor: {
         type: "user",
@@ -638,16 +686,7 @@ export const _purchaseSideEffects = internalMutation({
         paymentMethod: args.paymentMethod,
       },
       eventKey: `gabinet:package:${args.usageId}:package_assigned`,
-      targets: [
-        {
-          entityType: "gabinetPackage",
-          entityId: args.packageId,
-        },
-        {
-          entityType: "gabinetPatient",
-          entityId: args.patientId,
-        },
-      ],
+      targets,
     });
   },
 });

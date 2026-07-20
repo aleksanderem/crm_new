@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { SidePanel } from "@/components/crm/side-panel";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -32,6 +33,8 @@ interface SellPackagePanelProps {
   onOpenChange: (open: boolean) => void;
 }
 
+type SaleMode = "patient" | "gift";
+
 export function SellPackagePanel({
   organizationId,
   open,
@@ -51,8 +54,12 @@ export function SellPackagePanel({
     [treatmentsData],
   );
 
+  const [saleMode, setSaleMode] = useState<SaleMode>("patient");
   const [patientId, setPatientId] = useState<string>("");
   const [packageId, setPackageId] = useState<string>("");
+  const [giftRecipientName, setGiftRecipientName] = useState("");
+  const [giftRecipientPhone, setGiftRecipientPhone] = useState("");
+  const [giftRecipientEmail, setGiftRecipientEmail] = useState("");
 
   const selectedPkg = useMemo(
     () => (packagesData ?? []).find((p) => p._id === packageId),
@@ -85,13 +92,18 @@ export function SellPackagePanel({
   } = usePackagePaymentForm(selectedPkg?.totalPrice ?? 0);
 
   const reset = () => {
+    setSaleMode("patient");
     setPatientId("");
     setPackageId("");
+    setGiftRecipientName("");
+    setGiftRecipientPhone("");
+    setGiftRecipientEmail("");
     resetPaymentForm();
   };
 
   const handleSubmit = async () => {
-    if (!patientId || !packageId || !selectedPkg) return;
+    if (!packageId || !selectedPkg) return;
+    if (saleMode === "patient" && !patientId) return;
     if (splitPayment) {
       if (splitMissingAmount) {
         toast.error(
@@ -124,14 +136,21 @@ export function SellPackagePanel({
     setSubmitting(true);
     try {
       const currency = selectedPkg.currency ?? "PLN";
+      const isGift = saleMode === "gift";
       const usagePaymentMethod = splitPayment ? "split" : paymentMethod;
       const usageId = await purchasePackage({
         organizationId,
-        patientId,
+        patientId: isGift ? undefined : patientId,
         packageId,
         paidAmount: selectedPkg.totalPrice,
         paymentMethod: usagePaymentMethod,
+        isGift,
+        giftRecipientName: isGift && giftRecipientName ? giftRecipientName : undefined,
+        giftRecipientPhone: isGift && giftRecipientPhone ? giftRecipientPhone : undefined,
+        giftRecipientEmail: isGift && giftRecipientEmail ? giftRecipientEmail : undefined,
       });
+
+      const paymentPatientId = isGift ? undefined : (patientId as Id<"gabinetPatients">);
 
       if (splitPayment) {
         const parts: Array<{ method: typeof firstSplitMethod; amount: number }> = [];
@@ -142,7 +161,7 @@ export function SellPackagePanel({
         for (const part of parts) {
           await createPayment({
             organizationId,
-            patientId: patientId as Id<"gabinetPatients">,
+            patientId: paymentPatientId,
             packageUsageId: usageId,
             amount: part.amount,
             currency,
@@ -153,7 +172,7 @@ export function SellPackagePanel({
       } else {
         await createPayment({
           organizationId,
-          patientId,
+          patientId: paymentPatientId,
           packageUsageId: usageId,
           amount: selectedPkg.totalPrice,
           currency,
@@ -182,6 +201,12 @@ export function SellPackagePanel({
     }
   };
 
+  const canSubmit =
+    !!packageId &&
+    !submitting &&
+    (saleMode === "gift" || !!patientId) &&
+    !(splitPayment && (splitMissingAmount || splitMismatch || splitSameMethod));
+
   return (
     <SidePanel
       open={open}
@@ -192,26 +217,96 @@ export function SellPackagePanel({
       title={t("nav.actions.assignPackage")}
     >
       <div className="space-y-4">
+        {/* Sale mode toggle */}
         <div className="space-y-1.5">
-          <Label>{t("gabinet.packages.selectPatient", "Patient")}</Label>
-          <Select value={patientId} onValueChange={setPatientId}>
-            <SelectTrigger>
-              <SelectValue
-                placeholder={t(
-                  "gabinet.packages.selectPatientPlaceholder",
-                  "Select a patient...",
-                )}
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {(patientsData ?? []).map((p) => (
-                <SelectItem key={p._id} value={p._id}>
-                  {p.firstName} {p.lastName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label>{t("gabinet.packages.saleMode", "Tryb sprzedaży")}</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant={saleMode === "patient" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSaleMode("patient")}
+            >
+              {t("gabinet.packages.saleModePatient", "Istniejący klient")}
+            </Button>
+            <Button
+              type="button"
+              variant={saleMode === "gift" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSaleMode("gift")}
+            >
+              {t("gabinet.packages.saleModeGift", "Sprzedaj jako prezent")}
+            </Button>
+          </div>
         </div>
+
+        {/* Patient selector — only in patient mode */}
+        {saleMode === "patient" && (
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.packages.selectPatient", "Patient")}</Label>
+            <Select value={patientId} onValueChange={setPatientId}>
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={t(
+                    "gabinet.packages.selectPatientPlaceholder",
+                    "Select a patient...",
+                  )}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {(patientsData ?? []).map((p) => (
+                  <SelectItem key={p._id} value={p._id}>
+                    {p.firstName} {p.lastName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Gift recipient details — only in gift mode */}
+        {saleMode === "gift" && (
+          <div className="rounded-lg border p-3 space-y-3">
+            <p className="text-sm font-medium text-muted-foreground">
+              {t("gabinet.packages.giftRecipientDetails", "Dane osoby obdarowanej (opcjonalnie)")}
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="gift-recipient-name">
+                {t("gabinet.packages.giftRecipientName", "Imię i nazwisko")}
+              </Label>
+              <Input
+                id="gift-recipient-name"
+                value={giftRecipientName}
+                onChange={(e) => setGiftRecipientName(e.target.value)}
+                placeholder={t("gabinet.packages.giftRecipientNamePlaceholder", "np. Jan Kowalski")}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="gift-recipient-phone">
+                {t("gabinet.packages.giftRecipientPhone", "Numer telefonu")}
+              </Label>
+              <Input
+                id="gift-recipient-phone"
+                type="tel"
+                value={giftRecipientPhone}
+                onChange={(e) => setGiftRecipientPhone(e.target.value)}
+                placeholder={t("gabinet.packages.giftRecipientPhonePlaceholder", "np. +48 123 456 789")}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="gift-recipient-email">
+                {t("gabinet.packages.giftRecipientEmail", "Adres e-mail")}
+              </Label>
+              <Input
+                id="gift-recipient-email"
+                type="email"
+                value={giftRecipientEmail}
+                onChange={(e) => setGiftRecipientEmail(e.target.value)}
+                placeholder={t("gabinet.packages.giftRecipientEmailPlaceholder", "np. jan@example.com")}
+              />
+            </div>
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <Label>{t("gabinet.packages.selectPackage")}</Label>
@@ -319,18 +414,15 @@ export function SellPackagePanel({
 
         <Button
           className="w-full"
-          disabled={
-            !patientId ||
-            !packageId ||
-            submitting ||
-            (splitPayment && (splitMissingAmount || splitMismatch || splitSameMethod))
-          }
+          disabled={!canSubmit}
           onClick={handleSubmit}
         >
           {submitting && (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" variant="stroke" />
           )}
-          {t("gabinet.packages.purchaseButton")}
+          {saleMode === "gift"
+            ? t("gabinet.packages.purchaseGiftButton", "Sprzedaj jako prezent")
+            : t("gabinet.packages.purchaseButton")}
         </Button>
       </div>
     </SidePanel>

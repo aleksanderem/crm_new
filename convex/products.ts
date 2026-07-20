@@ -211,8 +211,8 @@ export const update = action({
     if (updates.manufacturer !== undefined) patchPayload.manufacturer = updates.manufacturer;
     if (updates.catalogNumber !== undefined) patchPayload.catalogNumber = updates.catalogNumber;
     if (updates.stockNote !== undefined) patchPayload.stockNote = updates.stockNote;
-    if (updates.purchasePrice !== undefined) patchPayload.purchasePrice = updates.purchasePrice;
-    if (updates.salePrice !== undefined) patchPayload.salePrice = updates.salePrice;
+    if (updates.purchasePrice != null) patchPayload.purchasePrice = updates.purchasePrice;
+    if (updates.salePrice != null) patchPayload.salePrice = updates.salePrice;
 
     await db.patch("products", productId, patchPayload);
 

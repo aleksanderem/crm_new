@@ -167,10 +167,38 @@ export function ProductForm({
 
   const handleTaxRateChange = (newRate: string) => {
     setTaxRate(newRate);
-    const parsedGross = parseFloat(salePrice.replace(",", "."));
-    if (Number.isFinite(parsedGross) && parsedGross >= 0) {
-      const multiplier = getTaxMultiplier(newRate);
-      setSalePriceNet(String(Math.round((parsedGross / multiplier) * 100) / 100));
+    const multiplier = getTaxMultiplier(newRate);
+    // Sale: keep gross, update net
+    const parsedSaleGross = parseFloat(salePrice.replace(",", "."));
+    if (Number.isFinite(parsedSaleGross) && parsedSaleGross >= 0) {
+      setSalePriceNet(String(Math.round((parsedSaleGross / multiplier) * 100) / 100));
+    }
+    // Purchase: keep net (unitPrice), update gross (purchasePrice)
+    const parsedPurchaseNet = parseFloat(unitPrice.replace(",", "."));
+    if (Number.isFinite(parsedPurchaseNet) && parsedPurchaseNet >= 0) {
+      setPurchasePrice(String(Math.round(parsedPurchaseNet * multiplier * 100) / 100));
+    }
+  };
+
+  const handleUnitPriceChange = (v: string) => {
+    if (v !== "" && !/^[0-9]*[.,]?[0-9]*$/.test(v)) return;
+    setUnitPrice(v);
+    const parsed = parseFloat(v.replace(",", "."));
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      const multiplier = getTaxMultiplier(taxRate);
+      setPurchasePrice(String(Math.round(parsed * multiplier * 100) / 100));
+    } else {
+      setPurchasePrice("");
+    }
+  };
+
+  const handlePurchasePriceChange = (v: string) => {
+    if (v !== "" && !/^[0-9]*[.,]?[0-9]*$/.test(v)) return;
+    setPurchasePrice(v);
+    const parsed = parseFloat(v.replace(",", "."));
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      const multiplier = getTaxMultiplier(taxRate);
+      setUnitPrice(String(Math.round((parsed / multiplier) * 100) / 100));
     }
   };
 
@@ -336,10 +364,7 @@ export function ProductForm({
             type="text"
             inputMode="decimal"
             value={unitPrice}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) setUnitPrice(v);
-            }}
+            onChange={(e) => handleUnitPriceChange(e.target.value)}
             placeholder="0.00"
             required
           />
@@ -367,10 +392,7 @@ export function ProductForm({
             type="text"
             inputMode="decimal"
             value={purchasePrice}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) setPurchasePrice(v);
-            }}
+            onChange={(e) => handlePurchasePriceChange(e.target.value)}
             placeholder={t("products.stock.purchasePricePlaceholder", { defaultValue: "np. 120,00" })}
           />
           <p className="text-xs text-muted-foreground">

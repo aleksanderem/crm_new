@@ -60,6 +60,12 @@ function initialTaxRateFormValue(
   return String(taxRate);
 }
 
+function getTaxMultiplier(taxRateStr: string): number {
+  if (taxRateStr === "zw") return 1;
+  const rate = parseFloat(taxRateStr);
+  return Number.isFinite(rate) ? 1 + rate / 100 : 1;
+}
+
 interface TagDef {
   _id: Id<"tagDefinitions">;
   name: string;
@@ -149,6 +155,48 @@ export function ProductForm({
   const [salePrice, setSalePrice] = useState(
     initialData?.salePrice != null ? String(initialData.salePrice) : "",
   );
+  const [salePriceNet, setSalePriceNet] = useState(() => {
+    if (initialData?.salePrice != null) {
+      const multiplier = getTaxMultiplier(
+        initialTaxRateFormValue(initialData?.taxRate, initialData?.taxExempt),
+      );
+      return String(Math.round((initialData.salePrice / multiplier) * 100) / 100);
+    }
+    return "";
+  });
+
+  const handleTaxRateChange = (newRate: string) => {
+    setTaxRate(newRate);
+    const parsedGross = parseFloat(salePrice.replace(",", "."));
+    if (Number.isFinite(parsedGross) && parsedGross >= 0) {
+      const multiplier = getTaxMultiplier(newRate);
+      setSalePriceNet(String(Math.round((parsedGross / multiplier) * 100) / 100));
+    }
+  };
+
+  const handleSalePriceGrossChange = (v: string) => {
+    if (v !== "" && !/^[0-9]*[.,]?[0-9]*$/.test(v)) return;
+    setSalePrice(v);
+    const parsed = parseFloat(v.replace(",", "."));
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      const multiplier = getTaxMultiplier(taxRate);
+      setSalePriceNet(String(Math.round((parsed / multiplier) * 100) / 100));
+    } else {
+      setSalePriceNet("");
+    }
+  };
+
+  const handleSalePriceNetChange = (v: string) => {
+    if (v !== "" && !/^[0-9]*[.,]?[0-9]*$/.test(v)) return;
+    setSalePriceNet(v);
+    const parsed = parseFloat(v.replace(",", "."));
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      const multiplier = getTaxMultiplier(taxRate);
+      setSalePrice(String(Math.round(parsed * multiplier * 100) / 100));
+    } else {
+      setSalePrice("");
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -298,7 +346,7 @@ export function ProductForm({
         </div>
         <div className="space-y-1.5">
           <Label>{t("products.form.taxRate")}</Label>
-          <Select value={taxRate} onValueChange={setTaxRate}>
+          <Select value={taxRate} onValueChange={handleTaxRateChange}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -335,22 +383,29 @@ export function ProductForm({
             {t("products.form.sections.sales", { defaultValue: "Sprzedaż" })}
           </p>
         </div>
-        <div className="space-y-1.5 sm:col-span-2">
+        <div className="space-y-1.5">
+          <Label>{t("products.form.salePriceNet", { defaultValue: "Cena sprzedaży netto" })}</Label>
+          <Input
+            type="text"
+            inputMode="decimal"
+            value={salePriceNet}
+            onChange={(e) => handleSalePriceNetChange(e.target.value)}
+            placeholder={t("products.form.salePriceNetPlaceholder", { defaultValue: "np. 121,95" })}
+          />
+        </div>
+        <div className="space-y-1.5">
           <Label>{t("products.form.salePrice", { defaultValue: "Cena sprzedaży brutto" })}</Label>
           <Input
             type="text"
             inputMode="decimal"
             value={salePrice}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) setSalePrice(v);
-            }}
+            onChange={(e) => handleSalePriceGrossChange(e.target.value)}
             placeholder={t("products.form.salePricePlaceholder", { defaultValue: "np. 150,00" })}
           />
-          <p className="text-xs text-muted-foreground">
-            {t("products.form.salePriceHelp", { defaultValue: "Cena brutto w złotych, po której sprzedajesz produkt. Opcjonalna." })}
-          </p>
         </div>
+        <p className="text-xs text-muted-foreground sm:col-span-2">
+          {t("products.form.salePriceHelp", { defaultValue: "Cena brutto w złotych, po której sprzedajesz produkt. Opcjonalna." })}
+        </p>
         <div className="flex items-center gap-2 self-end">
           <Switch checked={isActive} onCheckedChange={setIsActive} />
           <Label>{t("products.form.isActive")}</Label>

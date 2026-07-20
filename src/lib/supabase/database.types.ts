@@ -68,6 +68,7 @@
  *   • 00061_delivery_name_mappings.sql
  *   • 00062_delivery_item_decisions.sql
  *   • 00063_document_analysis_jobs.sql
+ *   • 00064_product_sale_price.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -1879,6 +1880,7 @@ export interface Database {
           catalog_number: string | null;
           stock_note: string | null;
           purchase_price: number | null;
+          sale_price: number | null;
         };
         Insert: {
           id?: string;
@@ -1903,6 +1905,7 @@ export interface Database {
           catalog_number?: string | null;
           stock_note?: string | null;
           purchase_price?: number | null;
+          sale_price?: number | null;
         };
         Update: {
           id?: string;
@@ -1927,6 +1930,7 @@ export interface Database {
           catalog_number?: string | null;
           stock_note?: string | null;
           purchase_price?: number | null;
+          sale_price?: number | null;
         };
         Relationships: [
           {

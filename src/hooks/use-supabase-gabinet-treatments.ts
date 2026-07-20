@@ -22,6 +22,7 @@ interface UseSupabaseGabinetTreatmentsListOptions {
   enabled?: boolean;
   limit?: number;
   sortOrder?: "asc" | "desc";
+  isActive?: boolean;
 }
 
 export function useSupabaseGabinetTreatmentsList(
@@ -29,19 +30,31 @@ export function useSupabaseGabinetTreatmentsList(
   options: UseSupabaseGabinetTreatmentsListOptions = {},
 ) {
   const { client, isReady } = useSupabase();
-  const { enabled = true, limit = 100, sortOrder = "desc" } = options;
+  const { enabled = true, limit, sortOrder = "desc", isActive } = options;
 
   return useQuery<MappedGabinetTreatment[], Error>({
-    queryKey: supabaseKeys.gabinetTreatments.list(organizationId),
+    queryKey: [
+      ...supabaseKeys.gabinetTreatments.list(organizationId),
+      { limit, isActive },
+    ],
     queryFn: async (): Promise<MappedGabinetTreatment[]> => {
       if (!client) throw new Error("Supabase client not ready");
 
-      const { data, error } = await client
+      let query = client
         .from("gabinet_treatments")
         .select("*")
         .eq("organization_id", organizationId)
-        .order("created_at", { ascending: sortOrder === "asc" })
-        .limit(limit);
+        .order("created_at", { ascending: sortOrder === "asc" });
+
+      if (isActive !== undefined) {
+        query = query.eq("is_active", isActive);
+      }
+
+      if (limit !== undefined) {
+        query = query.limit(limit);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return (data ?? []).map(mapGabinetTreatmentFromSupabase);

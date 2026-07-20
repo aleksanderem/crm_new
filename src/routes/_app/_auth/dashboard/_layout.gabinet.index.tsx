@@ -222,7 +222,7 @@ function GabinetDashboard() {
         const totalAllowed = u.treatmentsUsed.reduce((s, e) => s + e.totalCount, 0);
         return {
           ...u,
-          patientName: patientMap.get(u.patientId) ?? t("common.unknown"),
+          patientName: patientMap.get(u.patientId ?? "") ?? t("common.unknown"),
           packageName: packageNameMap.get(u.packageId) ?? t("gabinet.dashboard.package", "Pakiet"),
           totalUsed,
           totalAllowed,

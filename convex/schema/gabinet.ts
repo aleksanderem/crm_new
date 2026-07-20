@@ -519,7 +519,7 @@ export function createGabinetTables({
 
   gabinetPackageUsage: defineTable({
     organizationId: v.id("organizations"),
-    patientId: v.id("gabinetPatients"),
+    patientId: v.optional(v.id("gabinetPatients")),
     packageId: v.id("gabinetTreatmentPackages"),
     purchasedAt: v.number(),
     expiresAt: v.optional(v.number()),
@@ -534,6 +534,11 @@ export function createGabinetTables({
     ),
     paidAmount: v.number(),
     paymentMethod: v.optional(v.string()),
+    isGift: v.optional(v.boolean()),
+    voucherCode: v.optional(v.string()),
+    giftRecipientName: v.optional(v.string()),
+    giftRecipientPhone: v.optional(v.string()),
+    giftRecipientEmail: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

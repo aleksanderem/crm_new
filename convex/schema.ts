@@ -460,6 +460,7 @@ export const gabinetPackageUsageStatusValidator = v.union(
   v.literal("completed"),
   v.literal("expired"),
   v.literal("cancelled"),
+  v.literal("unassigned"),
 );
 export type GabinetPackageUsageStatus = Infer<
   typeof gabinetPackageUsageStatusValidator

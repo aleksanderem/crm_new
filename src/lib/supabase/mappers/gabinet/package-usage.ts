@@ -20,7 +20,7 @@ export interface MappedGabinetPackageUsage {
   _id: string;
   _creationTime: number;
   organizationId: string;
-  patientId: string;
+  patientId: string | null;
   packageId: string;
   purchasedAt: number;
   expiresAt?: number;
@@ -28,6 +28,11 @@ export interface MappedGabinetPackageUsage {
   treatmentsUsed: PackageTreatmentUsageEntry[];
   paidAmount: number;
   paymentMethod?: string;
+  isGift?: boolean;
+  voucherCode?: string;
+  giftRecipientName?: string;
+  giftRecipientPhone?: string;
+  giftRecipientEmail?: string;
   createdBy: string;
   createdAt: number;
   updatedAt: number;
@@ -47,7 +52,13 @@ export function mapGabinetPackageUsageFromSupabase(
   return {
     ...base,
     _creationTime: base.createdAt,
+    patientId: row.patient_id ?? null,
     treatmentsUsed: (row.treatments_used ?? []) as PackageTreatmentUsageEntry[],
+    isGift: row.is_gift ?? undefined,
+    voucherCode: row.voucher_code ?? undefined,
+    giftRecipientName: row.gift_recipient_name ?? undefined,
+    giftRecipientPhone: row.gift_recipient_phone ?? undefined,
+    giftRecipientEmail: row.gift_recipient_email ?? undefined,
   };
 }
 

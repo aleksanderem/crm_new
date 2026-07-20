@@ -5027,7 +5027,7 @@ export interface Database {
         Row: {
           id: string;
           organization_id: string;
-          patient_id: string;
+          patient_id: string | null;
           package_id: string;
           purchased_at: number;
           expires_at: number | null;
@@ -5035,6 +5035,11 @@ export interface Database {
           treatments_used: unknown;
           paid_amount: number;
           payment_method: string | null;
+          is_gift: boolean | null;
+          voucher_code: string | null;
+          gift_recipient_name: string | null;
+          gift_recipient_phone: string | null;
+          gift_recipient_email: string | null;
           created_by: string;
           created_at: number;
           updated_at: number;
@@ -5042,7 +5047,7 @@ export interface Database {
         Insert: {
           id?: string;
           organization_id: string;
-          patient_id: string;
+          patient_id?: string | null;
           package_id: string;
           purchased_at: number;
           expires_at?: number | null;
@@ -5050,6 +5055,11 @@ export interface Database {
           treatments_used: unknown;
           paid_amount: number;
           payment_method?: string | null;
+          is_gift?: boolean | null;
+          voucher_code?: string | null;
+          gift_recipient_name?: string | null;
+          gift_recipient_phone?: string | null;
+          gift_recipient_email?: string | null;
           created_by: string;
           created_at: number;
           updated_at: number;
@@ -5057,7 +5067,7 @@ export interface Database {
         Update: {
           id?: string;
           organization_id?: string;
-          patient_id?: string;
+          patient_id?: string | null;
           package_id?: string;
           purchased_at?: number;
           expires_at?: number | null;
@@ -5065,6 +5075,11 @@ export interface Database {
           treatments_used?: unknown;
           paid_amount?: number;
           payment_method?: string | null;
+          is_gift?: boolean | null;
+          voucher_code?: string | null;
+          gift_recipient_name?: string | null;
+          gift_recipient_phone?: string | null;
+          gift_recipient_email?: string | null;
           created_by?: string;
           created_at?: number;
           updated_at?: number;

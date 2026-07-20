@@ -2197,6 +2197,40 @@ export const updateStatus = action({
       }
     }
 
+    // Package return: when reverting from completed or no_show, restore one
+    // package entry. Uses the same CAS pattern as stock return above.
+    // Closes #3206.
+    if (
+      (appt.status === "completed" || appt.status === "no_show") &&
+      appt.packageDeducted === true &&
+      appt.packageUsageId
+    ) {
+      const { data: pkgReturnCasRows } = await db.raw()
+        .from("gabinet_appointments")
+        .update({ package_deducted: false })
+        .eq("id", args.appointmentId)
+        .eq("package_deducted", true)
+        .select("id");
+      const wonPkgReturnRace =
+        Array.isArray(pkgReturnCasRows) && pkgReturnCasRows.length === 1;
+      if (wonPkgReturnRace) {
+        try {
+          await returnPackageEntry(db, {
+            packageUsageId: String(appt.packageUsageId),
+            treatmentId: String(appt.treatmentId),
+            variantId: appt.variantId ? String(appt.variantId) : undefined,
+          });
+        } catch (e) {
+          console.error(
+            "[updateStatus] package entry return FAILED for appointment",
+            args.appointmentId,
+            ":",
+            e,
+          );
+        }
+      }
+    }
+
     // Auto-deduct stock on visit completion. Guard against double-deduction
     // using an atomic CAS update (WHERE stock_deducted = false). Two concurrent
     // updateStatus calls can both read stockDeducted=false from the earlier
@@ -2275,6 +2309,38 @@ export const updateStatus = action({
         } catch (e) {
           console.error(
             "[updateStatus] warehouse auto-deduction FAILED for appointment",
+            args.appointmentId,
+            ":",
+            e,
+          );
+        }
+      }
+    }
+
+    // Package deduction: completed and no_show both consume one entry. CAS on
+    // package_deducted prevents double-deduction on concurrent calls or on
+    // completed → rescheduled → completed round-trips. Closes #3206.
+    if (
+      (args.status === "completed" || args.status === "no_show") &&
+      appt.packageUsageId
+    ) {
+      const { data: pkgCasRows } = await db.raw()
+        .from("gabinet_appointments")
+        .update({ package_deducted: true })
+        .eq("id", args.appointmentId)
+        .eq("package_deducted", false)
+        .select("id");
+      const wonPkgRace = Array.isArray(pkgCasRows) && pkgCasRows.length === 1;
+      if (wonPkgRace) {
+        try {
+          await deductPackageEntry(db, {
+            packageUsageId: String(appt.packageUsageId),
+            treatmentId: String(appt.treatmentId),
+            variantId: appt.variantId ? String(appt.variantId) : undefined,
+          });
+        } catch (e) {
+          console.error(
+            "[updateStatus] package entry deduction FAILED for appointment",
             args.appointmentId,
             ":",
             e,
@@ -2778,6 +2844,51 @@ async function resolveAutoPackageUsageSupabase(
   return usageId;
 }
 
+async function deductPackageEntry(
+  db: ReturnType<typeof createSupabaseDb>,
+  args: { packageUsageId: string; treatmentId: string; variantId?: string },
+) {
+  const now = Date.now();
+  const usage = await db.get("gabinetPackageUsage", args.packageUsageId);
+  if (!usage || usage.status !== "active") return;
+  const matchesTreatment = (t: any) =>
+    t.treatmentId === args.treatmentId &&
+    (args.variantId == null || t.variantId === args.variantId);
+  const entry = (usage.treatmentsUsed as any[]).find(matchesTreatment);
+  if (!entry || entry.usedCount >= entry.totalCount) return;
+  const updatedTreatments = (usage.treatmentsUsed as any[]).map((t) =>
+    matchesTreatment(t) ? { ...t, usedCount: t.usedCount + 1 } : t,
+  );
+  const allUsed = updatedTreatments.every((t: any) => t.usedCount >= t.totalCount);
+  await db.patch("gabinetPackageUsage", args.packageUsageId, {
+    treatmentsUsed: updatedTreatments,
+    status: allUsed ? "completed" : "active",
+    updatedAt: now,
+  });
+}
+
+async function returnPackageEntry(
+  db: ReturnType<typeof createSupabaseDb>,
+  args: { packageUsageId: string; treatmentId: string; variantId?: string },
+) {
+  const now = Date.now();
+  const usage = await db.get("gabinetPackageUsage", args.packageUsageId);
+  if (!usage) return;
+  const matchesTreatment = (t: any) =>
+    t.treatmentId === args.treatmentId &&
+    (args.variantId == null || t.variantId === args.variantId);
+  const entry = (usage.treatmentsUsed as any[]).find(matchesTreatment);
+  if (!entry || entry.usedCount <= 0) return;
+  const updatedTreatments = (usage.treatmentsUsed as any[]).map((t) =>
+    matchesTreatment(t) ? { ...t, usedCount: Math.max(0, t.usedCount - 1) } : t,
+  );
+  await db.patch("gabinetPackageUsage", args.packageUsageId, {
+    treatmentsUsed: updatedTreatments,
+    status: usage.status === "completed" ? "active" : (usage.status as string),
+    updatedAt: now,
+  });
+}
+
 /**
  * When an appointment is completed, award loyalty points based on
  * treatment price and deduct from linked package if applicable.
@@ -2810,37 +2921,8 @@ async function handleAppointmentCompletion(
     treatmentIdStr,
   );
 
-  // 1. Deduct from package if linked
-  if (args.packageUsageId) {
-    const packageUsageIdStr = String(args.packageUsageId);
-    const usage = await supabaseDb.get(
-      "gabinetPackageUsage",
-      packageUsageIdStr,
-    );
-    if (usage && usage.status === "active") {
-      const variantIdStr = args.variantId ? String(args.variantId) : undefined;
-      const matchesTreatment = (t: any) =>
-        t.treatmentId === treatmentIdStr && (variantIdStr == null || t.variantId === variantIdStr);
-      const entry = usage.treatmentsUsed.find(matchesTreatment);
-      if (entry && entry.usedCount < entry.totalCount) {
-        const updatedTreatments = usage.treatmentsUsed.map((t: any) =>
-          matchesTreatment(t) ? { ...t, usedCount: t.usedCount + 1 } : t,
-        );
-        const allUsed = updatedTreatments.every(
-          (t: any) => t.usedCount >= t.totalCount,
-        );
-        await supabaseDb.patch(
-          "gabinetPackageUsage",
-          packageUsageIdStr,
-          {
-            treatmentsUsed: updatedTreatments,
-            status: allUsed ? "completed" : "active",
-            updatedAt: now,
-          },
-        );
-      }
-    }
-  }
+  // Package deduction is handled by the updateStatus action with a CAS guard
+  // on package_deducted (same pattern as stock_deducted). Closes #3206.
 
   // 2. Award loyalty points (1 point per PLN of treatment price at booking)
   // Use priceAtBooking so points are consistent with the price the patient

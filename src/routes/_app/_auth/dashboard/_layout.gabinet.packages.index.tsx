@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { useSupabaseGabinetTreatmentPackagesList, useSupabaseGabinetPackageUsageActive } from "@/hooks/use-supabase-gabinet-packages";
+import { useSupabaseGabinetTreatmentPackagesList, useSupabaseGabinetPackageUsageActive, useSupabaseGabinetPackageUsageUnassigned } from "@/hooks/use-supabase-gabinet-packages";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
@@ -38,7 +38,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Plus, Trash2, Package, Pencil, X } from "@/lib/ez-icons";
+import { Plus, Trash2, Package, Pencil, X, Gift, Search } from "@/lib/ez-icons";
 import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -50,6 +50,8 @@ import { SellPackagePanel } from "@/components/gabinet/sell-package-panel";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import type { MappedGabinetTreatmentPackage } from "@/lib/supabase/mappers/gabinet/treatment-packages";
 import type { MappedGabinetPackageUsage } from "@/lib/supabase/mappers/gabinet/package-usage";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 
 // shadcn/studio statistics blocks
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -198,12 +200,22 @@ function PackagesIndex() {
     [packagesData, activeUsagesData],
   );
 
+  const { data: unassignedGiftData } = useSupabaseGabinetPackageUsageUnassigned(organizationId);
+  const { data: patientsData } = useSupabaseGabinetPatientsList(organizationId);
+
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+  const assignGiftPkg = useAction(api.gabinet.packages.assignGiftPackage);
+
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [expiringOnly, setExpiringOnly] = useState(false);
   const [assignPanelOpen, setAssignPanelOpen] = useState(false);
+  const [giftSearch, setGiftSearch] = useState("");
+  const [assigningGiftId, setAssigningGiftId] = useState<string | null>(null);
+  const [assignPatientId, setAssignPatientId] = useState("");
+  const [assignSubmitting, setAssignSubmitting] = useState(false);
 
   useSidebarDispatch("openFilter", () => setFilterPanelOpen(true));
   useSidebarDispatch("viewExpiring", () => setExpiringOnly(true));
@@ -348,6 +360,40 @@ function PackagesIndex() {
     }
   };
 
+  const handleAssignGift = async () => {
+    if (!assigningGiftId || !assignPatientId) return;
+    setAssignSubmitting(true);
+    try {
+      await assignGiftPkg({ organizationId, usageId: assigningGiftId, patientId: assignPatientId });
+      toast.success(t("gabinet.packages.giftAssigned", "Voucher przypisany do pacjenta."));
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPackageUsage.list(organizationId) });
+      setAssigningGiftId(null);
+      setAssignPatientId("");
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.packages.errors.assignFailed",
+          defaultValue: "Nie udało się przypisać vouchera.",
+        }),
+      );
+    } finally {
+      setAssignSubmitting(false);
+    }
+  };
+
+  const filteredGiftPackages = useMemo(() => {
+    const usages = unassignedGiftData ?? [];
+    if (!giftSearch.trim()) return usages;
+    const q = giftSearch.toLowerCase();
+    return usages.filter(
+      (u) =>
+        (u.voucherCode ?? "").toLowerCase().includes(q) ||
+        (u.giftRecipientName ?? "").toLowerCase().includes(q) ||
+        (u.giftRecipientPhone ?? "").toLowerCase().includes(q) ||
+        (u.giftRecipientEmail ?? "").toLowerCase().includes(q),
+    );
+  }, [unassignedGiftData, giftSearch]);
+
   const expiringPackageIds = useMemo(() => {
     const now = Date.now();
     const thirtyDays = 30 * 24 * 60 * 60 * 1000;
@@ -418,71 +464,89 @@ function PackagesIndex() {
         />
       </div>
 
-      {expiringOnly && !nudgeFilter && (
-        <div className="flex items-center justify-between rounded-md border bg-amber-50 dark:bg-amber-950/20 px-3 py-2 text-sm">
-          <span>
-            {t("gabinet.packages.expiringFilterActive", {
-              count: expiringPackageIds.size,
-              defaultValue: "Showing packages with usages expiring within 30 days ({{count}})",
-            })}
-          </span>
-          <Button variant="ghost" size="sm" onClick={() => setExpiringOnly(false)}>
-            {t("common.clearFilters")}
-          </Button>
-        </div>
-      )}
+      <Tabs defaultValue="catalog">
+        <TabsList>
+          <TabsTrigger value="catalog">
+            <Package className="mr-1.5 h-4 w-4" variant="stroke" />
+            {t("gabinet.packages.tabCatalog", "Katalog")}
+          </TabsTrigger>
+          <TabsTrigger value="gifts">
+            <Gift className="mr-1.5 h-4 w-4" variant="stroke" />
+            {t("gabinet.packages.tabGifts", "Vouchery")}
+            {(unassignedGiftData?.length ?? 0) > 0 && (
+              <Badge variant="secondary" className="ml-1.5 text-xs">
+                {unassignedGiftData!.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
 
-      {nudgeFilter && (
-        <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
-          <span>
-            {nudgeFilter === "expiring"
-              ? t("gabinet.packages.nudgeFilter.expiring", {
-                  defaultValue:
-                    "Pokazywane są pakiety z użyciami wygasającymi w ciągu 30 dni.",
-                })
-              : t("gabinet.packages.nudgeFilter.noUsage", {
-                  defaultValue:
-                    "Pokazywane są aktywne pakiety bez aktywnych użyć.",
+        <TabsContent value="catalog" className="mt-4 space-y-4">
+          {expiringOnly && !nudgeFilter && (
+            <div className="flex items-center justify-between rounded-md border bg-amber-50 dark:bg-amber-950/20 px-3 py-2 text-sm">
+              <span>
+                {t("gabinet.packages.expiringFilterActive", {
+                  count: expiringPackageIds.size,
+                  defaultValue: "Showing packages with usages expiring within 30 days ({{count}})",
                 })}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1 text-xs"
-            onClick={() =>
-              navigate({
-                to: "/dashboard/gabinet/packages",
-                search: { nudge: undefined },
-              })
-            }
-          >
-            <X className="h-3.5 w-3.5" variant="stroke" />
-            {t("common.clearFilters")}
-          </Button>
-        </div>
-      )}
+              </span>
+              <Button variant="ghost" size="sm" onClick={() => setExpiringOnly(false)}>
+                {t("common.clearFilters")}
+              </Button>
+            </div>
+          )}
 
-      <QuickActionBar
-        actions={[
-          {
-            label: t('quickActions.newPackage'),
-            icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: openCreate,
-            feature: "gabinet_packages",
-            action: "create",
-          },
-        ]}
-      />
+          {nudgeFilter && (
+            <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+              <span>
+                {nudgeFilter === "expiring"
+                  ? t("gabinet.packages.nudgeFilter.expiring", {
+                      defaultValue:
+                        "Pokazywane są pakiety z użyciami wygasającymi w ciągu 30 dni.",
+                    })
+                  : t("gabinet.packages.nudgeFilter.noUsage", {
+                      defaultValue:
+                        "Pokazywane są aktywne pakiety bez aktywnych użyć.",
+                    })}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 text-xs"
+                onClick={() =>
+                  navigate({
+                    to: "/dashboard/gabinet/packages",
+                    search: { nudge: undefined },
+                  })
+                }
+              >
+                <X className="h-3.5 w-3.5" variant="stroke" />
+                {t("common.clearFilters")}
+              </Button>
+            </div>
+          )}
 
-      {items.length === 0 ? (
-        <EmptyState
-          icon={Package}
-          title={t("gabinet.packages.emptyTitle")}
-          description={t("gabinet.packages.emptyDescription")}
-        />
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((pkg) => {
+          <QuickActionBar
+            actions={[
+              {
+                label: t('quickActions.newPackage'),
+                icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
+                onClick: openCreate,
+                feature: "gabinet_packages",
+                action: "create",
+              },
+            ]}
+          />
+
+          {items.length === 0 ? (
+            <EmptyState
+              icon={Package}
+              title={t("gabinet.packages.emptyTitle")}
+              description={t("gabinet.packages.emptyDescription")}
+            />
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {items.map((pkg) => {
             const usageDetail = activeUsageDetails[pkg._id];
             const activeCount = activeUsageCounts[pkg._id] ?? 0;
 
@@ -604,6 +668,76 @@ function PackagesIndex() {
           })}
         </div>
       )}
+        </TabsContent>
+
+        <TabsContent value="gifts" className="mt-4 space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" variant="stroke" />
+            <Input
+              className="pl-9"
+              placeholder={t("gabinet.packages.giftSearch", "Szukaj po kodzie vouchera, nazwisku lub e-mailu...")}
+              value={giftSearch}
+              onChange={(e) => setGiftSearch(e.target.value)}
+            />
+          </div>
+
+          {filteredGiftPackages.length === 0 ? (
+            <EmptyState
+              icon={Gift}
+              title={t("gabinet.packages.giftEmptyTitle", "Brak nieprzypisanych voucherów")}
+              description={t("gabinet.packages.giftEmptyDescription", "Sprzedane vouchery podarunkowe, które nie zostały jeszcze przypisane do pacjenta, pojawią się tutaj.")}
+            />
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredGiftPackages.map((usage) => {
+                const pkg = (packagesData ?? []).find((p) => p._id === usage.packageId);
+                return (
+                  <div key={usage._id} className="rounded-lg border p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h3 className="font-medium truncate">{pkg?.name ?? t("gabinet.packages.unknownPackage", "Nieznany pakiet")}</h3>
+                        {usage.voucherCode && (
+                          <p className="text-sm font-mono text-muted-foreground">{usage.voucherCode}</p>
+                        )}
+                      </div>
+                      <Badge variant="secondary" className="shrink-0">
+                        {t("gabinet.packages.unassigned", "Nieprzypisany")}
+                      </Badge>
+                    </div>
+
+                    {(usage.giftRecipientName || usage.giftRecipientPhone || usage.giftRecipientEmail) && (
+                      <div className="text-sm text-muted-foreground space-y-0.5">
+                        {usage.giftRecipientName && <p>{usage.giftRecipientName}</p>}
+                        {usage.giftRecipientPhone && <p>{usage.giftRecipientPhone}</p>}
+                        {usage.giftRecipientEmail && <p>{usage.giftRecipientEmail}</p>}
+                      </div>
+                    )}
+
+                    <div className="text-xs text-muted-foreground">
+                      {t("gabinet.packages.purchasedAt", "Zakupiono")}: {new Date(usage.purchasedAt).toLocaleDateString("pl-PL")}
+                      {usage.expiresAt && (
+                        <> · {t("gabinet.packages.expiresAt", "Ważny do")}: {new Date(usage.expiresAt).toLocaleDateString("pl-PL")}</>
+                      )}
+                    </div>
+
+                    <div className="text-sm font-semibold">{usage.paidAmount} PLN</div>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => { setAssigningGiftId(usage._id); setAssignPatientId(""); }}
+                    >
+                      <Gift className="mr-1.5 h-4 w-4" variant="stroke" />
+                      {t("gabinet.packages.assignToPatient", "Przypisz do pacjenta")}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <SidePanel
         open={panelOpen}
@@ -756,6 +890,41 @@ function PackagesIndex() {
         open={assignPanelOpen}
         onOpenChange={setAssignPanelOpen}
       />
+
+      <SidePanel
+        open={assigningGiftId !== null}
+        onOpenChange={(open) => { if (!open) { setAssigningGiftId(null); setAssignPatientId(""); } }}
+        title={t("gabinet.packages.assignGiftTitle", "Przypisz voucher do pacjenta")}
+        onSubmit={handleAssignGift}
+        isSubmitting={assignSubmitting}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {t("gabinet.packages.assignGiftDescription", "Wybierz pacjenta, do którego zostanie przypisany voucher. Pakiet stanie się aktywny dla wybranego pacjenta.")}
+          </p>
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.patients.patient", "Pacjent")}</Label>
+            <Select value={assignPatientId} onValueChange={setAssignPatientId}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("gabinet.packages.selectPatient", "Wybierz pacjenta...")} />
+              </SelectTrigger>
+              <SelectContent>
+                {(patientsData ?? []).length === 0 ? (
+                  <SelectItem value="__none__" disabled>
+                    {t("gabinet.packages.noPatientsFound", "Brak pacjentów")}
+                  </SelectItem>
+                ) : (
+                  (patientsData ?? []).map((p) => (
+                    <SelectItem key={p._id} value={p._id}>
+                      {p.firstName} {p.lastName}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </SidePanel>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>

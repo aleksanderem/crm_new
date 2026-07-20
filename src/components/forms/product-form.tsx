@@ -274,6 +274,12 @@ export function ProductForm({
             </p>
           )}
         </div>
+        {/* ─── Zakup ─── */}
+        <div className="sm:col-span-2 border-t pt-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            {t("products.form.sections.purchase", { defaultValue: "Zakup" })}
+          </p>
+        </div>
         <div className="space-y-1.5">
           <Label>
             {t("products.form.unitPrice")} <span className="text-destructive">*</span>
@@ -305,28 +311,50 @@ export function ProductForm({
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>
+            {t("products.stock.purchasePriceLabel", { defaultValue: "Cena zakupu brutto" })}
+          </Label>
+          <Input
+            type="text"
+            inputMode="decimal"
+            value={purchasePrice}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) setPurchasePrice(v);
+            }}
+            placeholder={t("products.stock.purchasePricePlaceholder", { defaultValue: "np. 120,00" })}
+          />
+          <p className="text-xs text-muted-foreground">
+            {t("products.stock.purchasePriceHelp", { defaultValue: "Używana do wyliczenia wartości magazynu. Opcjonalna." })}
+          </p>
+        </div>
+        {/* ─── Sprzedaż ─── */}
+        <div className="sm:col-span-2 border-t pt-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            {t("products.form.sections.sales", { defaultValue: "Sprzedaż" })}
+          </p>
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>{t("products.form.salePrice", { defaultValue: "Cena sprzedaży brutto" })}</Label>
+          <Input
+            type="text"
+            inputMode="decimal"
+            value={salePrice}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) setSalePrice(v);
+            }}
+            placeholder={t("products.form.salePricePlaceholder", { defaultValue: "np. 150,00" })}
+          />
+          <p className="text-xs text-muted-foreground">
+            {t("products.form.salePriceHelp", { defaultValue: "Cena brutto w złotych, po której sprzedajesz produkt. Opcjonalna." })}
+          </p>
+        </div>
         <div className="flex items-center gap-2 self-end">
           <Switch checked={isActive} onCheckedChange={setIsActive} />
           <Label>{t("products.form.isActive")}</Label>
         </div>
-        {productSection === "sale" && (
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label>{t("products.form.salePrice", { defaultValue: "Cena sprzedaży brutto" })}</Label>
-            <Input
-              type="text"
-              inputMode="decimal"
-              value={salePrice}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) setSalePrice(v);
-              }}
-              placeholder={t("products.form.salePricePlaceholder", { defaultValue: "np. 150,00" })}
-            />
-            <p className="text-xs text-muted-foreground">
-              {t("products.form.salePriceHelp", { defaultValue: "Cena brutto w złotych, po której sprzedajesz produkt. Opcjonalna." })}
-            </p>
-          </div>
-        )}
         {/* Stock tracking */}
         <div className="space-y-3 rounded-md border bg-muted/30 px-3 py-3 sm:col-span-2">
           <div className="flex items-start gap-2">
@@ -385,24 +413,6 @@ export function ProductForm({
                     placeholder="0"
                   />
                 </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label>
-                  {t("products.stock.purchasePriceLabel", { defaultValue: "Cena zakupu brutto" })}
-                </Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={purchasePrice}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) setPurchasePrice(v);
-                  }}
-                  placeholder={t("products.stock.purchasePricePlaceholder", { defaultValue: "np. 120,00" })}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t("products.stock.purchasePriceHelp", { defaultValue: "Używana do wyliczenia wartości magazynu. Opcjonalna." })}
-                </p>
               </div>
               {isCreate && (
                 <div className="space-y-1.5">

@@ -107,6 +107,7 @@ function TreatmentsIndex() {
   const removeTreatment = useAction(api.gabinet.treatments.remove);
   const getTreatmentProductsAction = useAction(api.gabinet.treatments.getTreatmentProducts);
   const setTreatmentProductsAction = useAction(api.gabinet.treatments.setTreatmentProducts);
+  const createPackage = useAction(api.gabinet.packages.create);
 
   const { allowed: canEdit } = usePermission("gabinet_treatments", "edit");
   const { allowed: canDelete } = usePermission("gabinet_treatments", "delete");
@@ -493,7 +494,7 @@ function TreatmentsIndex() {
       setIsSubmitting(true);
       setFieldErrors({});
       try {
-        const { products, materials, ...treatmentData } = formData;
+        const { products, materials, inlinePackageData, ...treatmentData } = formData;
         const allProductLinks = [
           ...(products ?? []).map((p) => ({
             productId: p.productId,
@@ -512,6 +513,7 @@ function TreatmentsIndex() {
         // step can reference it even if the main catch fires (it won't fire
         // after this point because we close the panel before the product step).
         let savedTreatmentId: string | null = null;
+        let isNewTreatment = false;
 
         if (editingTreatment) {
           await updateTreatment({
@@ -530,6 +532,7 @@ function TreatmentsIndex() {
             categoryId,
           });
           savedTreatmentId = newTreatmentId;
+          isNewTreatment = true;
         }
 
         // Main write succeeded — close the panel now so a product-link failure
@@ -539,6 +542,37 @@ function TreatmentsIndex() {
         setEditingTreatment(null);
         setTagIds([]);
         setCategoryId(undefined);
+
+        // Auto-create package from inline form data (create case only).
+        if (isNewTreatment && inlinePackageData && savedTreatmentId) {
+          try {
+            const newPackageId = await createPackage({
+              organizationId,
+              name: inlinePackageData.name,
+              treatments: [{ treatmentId: savedTreatmentId, quantity: inlinePackageData.count }],
+              totalPrice: inlinePackageData.totalPrice,
+              validityDays: inlinePackageData.validityDays ?? null,
+            });
+            await updateTreatment({
+              organizationId,
+              treatmentId: savedTreatmentId,
+              packageId: newPackageId,
+            });
+          } catch (pkgErr) {
+            void reportError(pkgErr, {
+              scope: "gabinet.treatments",
+              fnName: "createInlinePackage",
+              argsJson: JSON.stringify({ treatmentId: savedTreatmentId }),
+              organizationId,
+            });
+            toast.warning(
+              t("gabinet.treatments.errors.packageCreateFailed", {
+                defaultValue:
+                  "Zabieg zapisany. Nie udało się utworzyć pakietu — przejdź do zakładki \"Pakiety\" i utwórz ręcznie.",
+              }),
+            );
+          }
+        }
 
         // Save product/material links separately. Failure here does NOT mean
         // the treatment was lost — only that the ingredient recipe needs to be
@@ -607,7 +641,7 @@ function TreatmentsIndex() {
         setIsSubmitting(false);
       }
     },
-    [editingTreatment, createTreatment, updateTreatment, setTreatmentProductsAction, organizationId, tagIds, categoryId, t],
+    [editingTreatment, createTreatment, updateTreatment, setTreatmentProductsAction, createPackage, organizationId, tagIds, categoryId, t],
   );
 
   const handleBulkAction = useCallback(

@@ -770,6 +770,7 @@ function ProductsPage() {
           catalogNumber: data.catalogNumber,
           stockNote: data.stockNote,
           purchasePrice: data.purchasePrice,
+          salePrice: data.salePrice,
         });
       } else {
         await createProduct({
@@ -792,6 +793,7 @@ function ProductsPage() {
           catalogNumber: data.catalogNumber,
           stockNote: data.stockNote,
           purchasePrice: data.purchasePrice,
+          salePrice: data.salePrice,
         });
       }
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.products.list(organizationId) });
@@ -1411,6 +1413,7 @@ function ProductsPage() {
             catalogNumber: editingProduct.catalogNumber ?? null,
             stockNote: editingProduct.stockNote ?? null,
             purchasePrice: editingProduct.purchasePrice ?? null,
+            salePrice: editingProduct.salePrice ?? null,
           } : undefined}
           defaultSection={!editingProduct && (PRODUCT_SECTIONS as readonly string[]).includes(activeViewId) ? activeViewId as ProductSection : null}
           onSubmit={handleProductFormSubmit}

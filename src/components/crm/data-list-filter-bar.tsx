@@ -492,11 +492,39 @@ export function DataListFilterBar({
             </span>
           </Button>
         )}
+        {(_onTagsManage || _onCategoriesManage) && (
+          <Dropdown.Root>
+            <Button
+              size="sm"
+              color={tagsButtonLabel ? "secondary" : "tertiary"}
+              iconLeading={_onTagsManage && _onCategoriesManage ? Folder : (_onTagsManage ? Tag03 : Folder)}
+            >
+              {tagsButtonLabel ?? null}
+            </Button>
+            <Dropdown.Popover>
+              <Dropdown.Menu>
+                {_onTagsManage && (
+                  <Dropdown.Item
+                    label={t("common.tags", { defaultValue: "Tagi" })}
+                    icon={Tag03}
+                    onAction={_onTagsManage}
+                  />
+                )}
+                {_onCategoriesManage && (
+                  <Dropdown.Item
+                    label={t("common.category", { defaultValue: "Kategorie" })}
+                    icon={Folder}
+                    onAction={_onCategoriesManage}
+                  />
+                )}
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown.Root>
+        )}
         {onColumnSettingsOpen && (
-          <button type="button" className="group relative inline-flex h-max cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-border-primary bg-bg-primary px-3 py-1.5 text-sm text-fg-quaternary shadow-xs hover:bg-bg-primary_hover hover:text-fg-tertiary" onClick={onColumnSettingsOpen}>
-            <Columns03 className="size-4 stroke-[2px]" />
-            <span>{t("table.showColumns", { defaultValue: "Show columns" })}</span>
-          </button>
+          <Button size="sm" color="secondary" iconLeading={Columns03} onClick={onColumnSettingsOpen}>
+            {t("table.showColumns", { defaultValue: "Show columns" })}
+          </Button>
         )}
         {!onColumnSettingsOpen && columnDefs && columnDefs.length > 0 && onToggleColumn && (
           <Popover>
@@ -528,35 +556,6 @@ export function DataListFilterBar({
               })}
             </PopoverContent>
           </Popover>
-        )}
-        {(_onTagsManage || _onCategoriesManage) && (
-          <Dropdown.Root>
-            <Button
-              size="sm"
-              color={tagsButtonLabel ? "secondary" : "tertiary"}
-              iconLeading={_onTagsManage && _onCategoriesManage ? Folder : (_onTagsManage ? Tag03 : Folder)}
-            >
-              {tagsButtonLabel ?? null}
-            </Button>
-            <Dropdown.Popover>
-              <Dropdown.Menu>
-                {_onTagsManage && (
-                  <Dropdown.Item
-                    label={t("common.tags", { defaultValue: "Tagi" })}
-                    icon={Tag03}
-                    onAction={_onTagsManage}
-                  />
-                )}
-                {_onCategoriesManage && (
-                  <Dropdown.Item
-                    label={t("common.category", { defaultValue: "Kategorie" })}
-                    icon={Folder}
-                    onAction={_onCategoriesManage}
-                  />
-                )}
-              </Dropdown.Menu>
-            </Dropdown.Popover>
-          </Dropdown.Root>
         )}
         {renderMoreActions()}
       </div>

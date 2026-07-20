@@ -31,17 +31,36 @@ export function generateSku(): string {
 // product. The "zw" option is selected when the boolean is true; otherwise the
 // numeric percentage is used. Mirrors the gabinet treatment form.
 const STOCK_UNIT_OPTIONS = [
-  { value: "szt.", label: "szt. (sztuka)" },
-  { value: "op.", label: "op. (opakowanie)" },
-  { value: "kpl.", label: "kpl. (komplet)" },
+  { value: "szt.", label: "szt." },
+  { value: "ml", label: "ml" },
+  { value: "l", label: "l" },
+  { value: "g", label: "g" },
+  { value: "kg", label: "kg" },
+  { value: "op.", label: "op." },
   { value: "para", label: "para" },
-  { value: "ml", label: "ml (mililitr)" },
-  { value: "l", label: "l (litr)" },
-  { value: "g", label: "g (gram)" },
-  { value: "kg", label: "kg (kilogram)" },
-  { value: "m", label: "m (metr)" },
-  { value: "cm", label: "cm (centymetr)" },
+  { value: "zestaw", label: "zestaw" },
 ];
+
+// Normalize legacy values (e.g. "szt", "Szt" → "szt.") and detect custom ones.
+function normalizeStockUnit(value: string | null | undefined): {
+  selectValue: string;
+  customValue: string;
+} {
+  if (!value) return { selectValue: "", customValue: "" };
+  const v = value.trim();
+  // Normalize common "szt." variants
+  if (["szt", "Szt", "Szt.", "sztuka"].includes(v) || v.toLowerCase() === "szt.") {
+    return { selectValue: "szt.", customValue: "" };
+  }
+  // Exact match against known options (case-insensitive)
+  for (const opt of STOCK_UNIT_OPTIONS) {
+    if (opt.value.toLowerCase() === v.toLowerCase()) {
+      return { selectValue: opt.value, customValue: "" };
+    }
+  }
+  // Unknown value → "inne" with preserved text
+  return { selectValue: "inne", customValue: v };
+}
 
 const TAX_RATE_OPTIONS = [
   { value: "zw", label: "ZW" },
@@ -141,7 +160,9 @@ export function ProductForm({
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId ?? undefined);
   const [productSection, setProductSection] = useState<ProductSection | "">(initialData?.productSection ?? defaultSection ?? "");
   const [trackStock, setTrackStock] = useState(initialData?.trackStock ?? false);
-  const [stockUnit, setStockUnit] = useState(initialData?.stockUnit ?? "");
+  const _initialUnit = normalizeStockUnit(initialData?.stockUnit);
+  const [stockUnit, setStockUnit] = useState(_initialUnit.selectValue);
+  const [customStockUnit, setCustomStockUnit] = useState(_initialUnit.customValue);
   const [initialStock, setInitialStock] = useState("");
   const [minStock, setMinStock] = useState(
     initialData?.minStock != null ? String(initialData.minStock) : "",
@@ -273,7 +294,7 @@ export function ProductForm({
       categoryId: categoryId || null,
       productSection: productSection || null,
       trackStock,
-      stockUnit: stockUnit.trim() || null,
+      stockUnit: stockUnit === "inne" ? customStockUnit.trim() || null : stockUnit || null,
       initialStock: normalizedInitialStock,
       minStock: normalizedMinStock,
       manufacturer: manufacturer.trim() || null,
@@ -461,19 +482,28 @@ export function ProductForm({
                   <Label>
                     {t("products.stock.unitLabel", { defaultValue: "Jednostka" })}
                   </Label>
-                  <Input
-                    value={stockUnit}
-                    onChange={(e) => setStockUnit(e.target.value)}
-                    placeholder={t("products.stock.unitPlaceholder", { defaultValue: "szt., ml, g…" })}
-                    list="stock-unit-datalist"
-                  />
-                  <datalist id="stock-unit-datalist">
-                    {STOCK_UNIT_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </datalist>
+                  <Select value={stockUnit} onValueChange={setStockUnit}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("products.stock.unitPlaceholder", { defaultValue: "Wybierz jednostkę" })} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STOCK_UNIT_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="inne">
+                        {t("products.stock.unitOther", { defaultValue: "Inne" })}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {stockUnit === "inne" && (
+                    <Input
+                      value={customStockUnit}
+                      onChange={(e) => setCustomStockUnit(e.target.value)}
+                      placeholder={t("products.stock.customUnitPlaceholder", { defaultValue: "Wpisz własną jednostkę" })}
+                    />
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label>

@@ -322,6 +322,10 @@ export function createCrmTables({
     // Net purchase price per unit (#2956, migration 00050). Used to calculate
     // warehouse value. Distinct from unitPrice (the selling price).
     purchasePrice: v.optional(v.number()),
+    // Optional retail sale price per unit (#3201/#3203, migration 00064).
+    // Data-layer only for now — form/columns/validation wiring is a follow-up
+    // per the #3203 micro-task scoping.
+    salePrice: v.optional(v.number()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

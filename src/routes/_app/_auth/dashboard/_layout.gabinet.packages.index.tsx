@@ -176,12 +176,11 @@ function PackagesIndex() {
 
   // Supabase-backed queries (replacing convexQuery)
   const { data: packagesData } = useSupabaseGabinetTreatmentPackagesList(organizationId);
-  const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId);
+  const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId, { isActive: true });
   const { data: activeUsagesData } = useSupabaseGabinetPackageUsageActive(organizationId);
 
-  // Filter treatments to active-only (original Convex query was listActive)
   const treatments = useMemo(
-    () => (treatmentsData ?? []).filter((tr) => tr.isActive),
+    () => treatmentsData ?? [],
     [treatmentsData],
   );
 

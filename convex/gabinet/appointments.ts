@@ -2511,6 +2511,42 @@ export const applySmsReplyTransition = internalMutation({
     }
     await db.patch("gabinetAppointments", args.appointmentId, supabasePatch);
 
+    // Package deduction: mirror the CAS block in updateStatus so that if this
+    // function ever gains no_show/completed intents the deduction fires here
+    // too. Currently unreachable (intent is locked to confirm/cancel → targetStatus
+    // is always "confirmed"|"cancelled"). Cast to string so TS2367 doesn't fire
+    // and the guard becomes live automatically when the intent union is extended.
+    // Closes #3222.
+    const _targetStatusStr: string = targetStatus;
+    if (
+      (_targetStatusStr === "completed" || _targetStatusStr === "no_show") &&
+      appointment.packageUsageId
+    ) {
+      const { data: pkgCasRows } = await db.raw()
+        .from("gabinet_appointments")
+        .update({ package_deducted: true })
+        .eq("id", args.appointmentId)
+        .eq("package_deducted", false)
+        .select("id");
+      const wonPkgRace = Array.isArray(pkgCasRows) && pkgCasRows.length === 1;
+      if (wonPkgRace) {
+        try {
+          await deductPackageEntry(db, {
+            packageUsageId: String(appointment.packageUsageId),
+            treatmentId: String(appointment.treatmentId),
+            variantId: appointment.variantId ? String(appointment.variantId) : undefined,
+          });
+        } catch (e) {
+          console.error(
+            "[applySmsReplyTransition] package entry deduction FAILED for appointment",
+            args.appointmentId,
+            ":",
+            e,
+          );
+        }
+      }
+    }
+
     // --- Side effects (activity log, audit, notifications, automation) ---
     const appointmentProxy = {
       _id: args.appointmentId as Id<"gabinetAppointments">,

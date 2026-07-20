@@ -136,7 +136,6 @@ export function useSupabaseGabinetAllTreatmentVariants(
 
 interface UseSupabaseGabinetTreatmentVariantsOptions {
   enabled?: boolean;
-  limit?: number;
 }
 
 export function useSupabaseGabinetTreatmentVariants(
@@ -145,7 +144,7 @@ export function useSupabaseGabinetTreatmentVariants(
   options: UseSupabaseGabinetTreatmentVariantsOptions = {},
 ) {
   const { client, isReady } = useSupabase();
-  const { enabled = true, limit = 100 } = options;
+  const { enabled = true } = options;
 
   return useQuery<MappedGabinetTreatmentVariant[], Error>({
     queryKey: [
@@ -160,8 +159,7 @@ export function useSupabaseGabinetTreatmentVariants(
         .select("*")
         .eq("treatment_id", treatmentId)
         .eq("organization_id", organizationId)
-        .order("sort_order", { ascending: true })
-        .limit(limit);
+        .order("sort_order", { ascending: true });
 
       if (error) throw error;
       return (data ?? []).map(mapGabinetTreatmentVariantFromSupabase);

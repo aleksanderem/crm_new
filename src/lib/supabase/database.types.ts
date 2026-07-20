@@ -68,7 +68,9 @@
  *   • 00061_delivery_name_mappings.sql
  *   • 00062_delivery_item_decisions.sql
  *   • 00063_document_analysis_jobs.sql
- *   • 00064_product_sale_price.sql
+ *   • 00064_gabinet_appointments_package_deducted.sql
+ *   • 00065_gabinet_package_usage_gift.sql
+ *   • 00066_product_sale_price.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -4758,6 +4760,7 @@ export interface Database {
           reminder_overrides: string | null;
           variant_id: string | null;
           stock_deducted: boolean;
+          package_deducted: boolean;
         };
         Insert: {
           id?: string;
@@ -4807,6 +4810,7 @@ export interface Database {
           reminder_overrides?: string | null;
           variant_id?: string | null;
           stock_deducted?: boolean;
+          package_deducted?: boolean;
         };
         Update: {
           id?: string;
@@ -4856,6 +4860,7 @@ export interface Database {
           reminder_overrides?: string | null;
           variant_id?: string | null;
           stock_deducted?: boolean;
+          package_deducted?: boolean;
         };
         Relationships: [
           {
@@ -5039,14 +5044,14 @@ export interface Database {
           treatments_used: unknown;
           paid_amount: number;
           payment_method: string | null;
-          is_gift: boolean | null;
+          created_by: string;
+          created_at: number;
+          updated_at: number;
+          is_gift: boolean;
           voucher_code: string | null;
           gift_recipient_name: string | null;
           gift_recipient_phone: string | null;
           gift_recipient_email: string | null;
-          created_by: string;
-          created_at: number;
-          updated_at: number;
         };
         Insert: {
           id?: string;
@@ -5059,14 +5064,14 @@ export interface Database {
           treatments_used: unknown;
           paid_amount: number;
           payment_method?: string | null;
-          is_gift?: boolean | null;
+          created_by: string;
+          created_at: number;
+          updated_at: number;
+          is_gift?: boolean;
           voucher_code?: string | null;
           gift_recipient_name?: string | null;
           gift_recipient_phone?: string | null;
           gift_recipient_email?: string | null;
-          created_by: string;
-          created_at: number;
-          updated_at: number;
         };
         Update: {
           id?: string;
@@ -5079,14 +5084,14 @@ export interface Database {
           treatments_used?: unknown;
           paid_amount?: number;
           payment_method?: string | null;
-          is_gift?: boolean | null;
+          created_by?: string;
+          created_at?: number;
+          updated_at?: number;
+          is_gift?: boolean;
           voucher_code?: string | null;
           gift_recipient_name?: string | null;
           gift_recipient_phone?: string | null;
           gift_recipient_email?: string | null;
-          created_by?: string;
-          created_at?: number;
-          updated_at?: number;
         };
         Relationships: [
           {

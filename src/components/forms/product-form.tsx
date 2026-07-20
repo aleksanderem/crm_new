@@ -95,6 +95,7 @@ export interface ProductFormData {
   catalogNumber?: string | null;
   stockNote?: string | null;
   purchasePrice?: number | null;
+  salePrice?: number | null;
 }
 
 interface ProductFormProps {
@@ -145,6 +146,9 @@ export function ProductForm({
   const [purchasePrice, setPurchasePrice] = useState(
     initialData?.purchasePrice != null ? String(initialData.purchasePrice) : "",
   );
+  const [salePrice, setSalePrice] = useState(
+    initialData?.salePrice != null ? String(initialData.salePrice) : "",
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,6 +180,11 @@ export function ProductForm({
       const parsed = parseFloat(purchasePrice.replace(",", "."));
       return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
     })();
+    const normalizedSalePrice = (() => {
+      if (!salePrice.trim()) return null;
+      const parsed = parseFloat(salePrice.replace(",", "."));
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+    })();
     onSubmit({
       name: trimmedName,
       description: description || null,
@@ -195,6 +204,7 @@ export function ProductForm({
       catalogNumber: catalogNumber.trim() || null,
       stockNote: stockNote.trim() || null,
       purchasePrice: normalizedPurchasePrice,
+      salePrice: normalizedSalePrice,
     });
   };
 
@@ -299,6 +309,24 @@ export function ProductForm({
           <Switch checked={isActive} onCheckedChange={setIsActive} />
           <Label>{t("products.form.isActive")}</Label>
         </div>
+        {productSection === "sale" && (
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>{t("products.form.salePrice", { defaultValue: "Cena sprzedaży brutto" })}</Label>
+            <Input
+              type="text"
+              inputMode="decimal"
+              value={salePrice}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) setSalePrice(v);
+              }}
+              placeholder={t("products.form.salePricePlaceholder", { defaultValue: "np. 150,00" })}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t("products.form.salePriceHelp", { defaultValue: "Cena brutto w złotych, po której sprzedajesz produkt. Opcjonalna." })}
+            </p>
+          </div>
+        )}
         {/* Stock tracking */}
         <div className="space-y-3 rounded-md border bg-muted/30 px-3 py-3 sm:col-span-2">
           <div className="flex items-start gap-2">

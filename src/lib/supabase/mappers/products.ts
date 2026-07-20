@@ -26,6 +26,7 @@ export interface MappedProduct {
   catalogNumber?: string;
   stockNote?: string;
   purchasePrice?: number;
+  salePrice?: number;
   createdBy: string;
   createdAt: number;
   updatedAt: number;

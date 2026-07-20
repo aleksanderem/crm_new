@@ -45,7 +45,7 @@ export function SellTreatmentPanel({
   const createPayment = useAction(api.payments.create);
 
   const { data: patientsData } = useSupabaseGabinetPatientsList(organizationId);
-  const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId);
+  const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId, { isActive: true });
 
   const [patientId, setPatientId] = useState<string>("");
   const [treatmentId, setTreatmentId] = useState<string>("");
@@ -61,7 +61,7 @@ export function SellTreatmentPanel({
   const [submitting, setSubmitting] = useState(false);
 
   const activeTreatments = useMemo(
-    () => (treatmentsData ?? []).filter((tr) => tr.isActive),
+    () => treatmentsData ?? [],
     [treatmentsData],
   );
   const selectedTreatment = useMemo(

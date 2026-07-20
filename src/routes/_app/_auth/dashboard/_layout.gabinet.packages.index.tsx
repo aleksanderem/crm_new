@@ -52,6 +52,7 @@ import type { MappedGabinetTreatmentPackage } from "@/lib/supabase/mappers/gabin
 import type { MappedGabinetPackageUsage } from "@/lib/supabase/mappers/gabinet/package-usage";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
+import { PatientForm } from "@/components/forms/patient-form";
 
 // shadcn/studio statistics blocks
 import StatisticsOrderCard from "@/components/shadcn-studio/blocks/statistics-order-card";
@@ -205,6 +206,8 @@ function PackagesIndex() {
 
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const assignGiftPkg = useAction(api.gabinet.packages.assignGiftPackage);
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+  const createPatient = useAction(api.gabinet.patients.create);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -216,6 +219,8 @@ function PackagesIndex() {
   const [assigningGiftId, setAssigningGiftId] = useState<string | null>(null);
   const [assignPatientId, setAssignPatientId] = useState("");
   const [assignSubmitting, setAssignSubmitting] = useState(false);
+  const [createPatientPanelOpen, setCreatePatientPanelOpen] = useState(false);
+  const [creatingPatient, setCreatingPatient] = useState(false);
 
   useSidebarDispatch("openFilter", () => setFilterPanelOpen(true));
   useSidebarDispatch("viewExpiring", () => setExpiringOnly(true));
@@ -378,6 +383,41 @@ function PackagesIndex() {
       );
     } finally {
       setAssignSubmitting(false);
+    }
+  };
+
+  const handleCreatePatient = async (formData: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+    pesel?: string | null;
+    dateOfBirth?: string | null;
+    gender?: "male" | "female" | "other";
+    address?: { street?: string; city?: string; postalCode?: string } | null;
+    medicalNotes?: string | null;
+    allergies?: string | null;
+    bloodType?: string | null;
+    emergencyContactName?: string | null;
+    emergencyContactPhone?: string | null;
+    referralSource?: string | null;
+  }) => {
+    setCreatingPatient(true);
+    try {
+      const newId = await createPatient({ organizationId, ...formData });
+      setAssignPatientId(String(newId));
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(organizationId) });
+      setCreatePatientPanelOpen(false);
+      toast.success(t("gabinet.patients.created", { defaultValue: "Klient utworzony" }));
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.patients.errors.createFailed",
+          defaultValue: "Nie udało się utworzyć klienta.",
+        }),
+      );
+    } finally {
+      setCreatingPatient(false);
     }
   };
 
@@ -903,7 +943,19 @@ function PackagesIndex() {
             {t("gabinet.packages.assignGiftDescription", "Wybierz pacjenta, do którego zostanie przypisany voucher. Pakiet stanie się aktywny dla wybranego pacjenta.")}
           </p>
           <div className="space-y-1.5">
-            <Label>{t("gabinet.patients.patient", "Pacjent")}</Label>
+            <div className="flex items-center justify-between">
+              <Label>{t("gabinet.patients.patient", "Pacjent")}</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 text-xs"
+                onClick={() => setCreatePatientPanelOpen(true)}
+              >
+                <Plus className="h-3.5 w-3.5" variant="stroke" />
+                {t("gabinet.patients.createPatient", "Nowy pacjent")}
+              </Button>
+            </div>
             <Select value={assignPatientId} onValueChange={setAssignPatientId}>
               <SelectTrigger>
                 <SelectValue placeholder={t("gabinet.packages.selectPatient", "Wybierz pacjenta...")} />
@@ -924,6 +976,20 @@ function PackagesIndex() {
             </Select>
           </div>
         </div>
+      </SidePanel>
+
+      <SidePanel
+        open={createPatientPanelOpen}
+        onOpenChange={setCreatePatientPanelOpen}
+        title={t("gabinet.patients.createPatient", "Nowy pacjent")}
+        description={t("gabinet.patients.createDescription", "Wypełnij dane nowego pacjenta.")}
+      >
+        <PatientForm
+          onSubmit={handleCreatePatient}
+          onCancel={() => setCreatePatientPanelOpen(false)}
+          isSubmitting={creatingPatient}
+          organizationId={organizationId}
+        />
       </SidePanel>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

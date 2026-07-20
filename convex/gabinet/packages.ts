@@ -967,6 +967,86 @@ export const getPatientPackagesEnriched = action({
 
 // --- Enriched active usage counts with per-treatment breakdown ---
 
+export const assignGiftPackage = action({
+  args: {
+    organizationId: v.id("organizations"),
+    usageId: v.string(),
+    patientId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_packages", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+    const usage = await db.get("gabinetPackageUsage", args.usageId);
+    if (!usage || String(usage.organizationId) !== String(args.organizationId)) {
+      throw new Error("Package usage not found");
+    }
+    if (!(usage.isGift as boolean)) throw new Error("Package is not a gift");
+    if ((usage.status as string) !== "unassigned") throw new Error("Package is already assigned");
+
+    const now = Date.now();
+    await db.patch("gabinetPackageUsage", args.usageId, {
+      patientId: args.patientId,
+      status: "active",
+      updatedAt: now,
+    });
+
+    // Award loyalty points that were deferred at purchase time
+    const pkg = await db.get("gabinetTreatmentPackages", String(usage.packageId));
+    const loyaltyPointsAwarded = (pkg?.loyaltyPointsAwarded as number | undefined) ?? 0;
+    if (loyaltyPointsAwarded > 0) {
+      const loyalty = await db
+        .query("gabinetLoyaltyPoints")
+        .eq("organizationId", String(args.organizationId))
+        .eq("patientId", args.patientId)
+        .first();
+
+      const newBalance = ((loyalty?.balance as number) ?? 0) + loyaltyPointsAwarded;
+      const newLifetimeEarned = ((loyalty?.lifetimeEarned as number) ?? 0) + loyaltyPointsAwarded;
+
+      if (loyalty) {
+        await db.patch("gabinetLoyaltyPoints", String(loyalty._id), {
+          balance: newBalance,
+          lifetimeEarned: newLifetimeEarned,
+          updatedAt: now,
+        });
+      } else {
+        await db.insert("gabinetLoyaltyPoints", {
+          organizationId: String(args.organizationId),
+          patientId: args.patientId,
+          balance: newBalance,
+          lifetimeEarned: newLifetimeEarned,
+          lifetimeSpent: 0,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      await db.insert("gabinetLoyaltyTransactions", {
+        organizationId: String(args.organizationId),
+        patientId: args.patientId,
+        type: "earn",
+        points: loyaltyPointsAwarded,
+        reason: `Gift package assigned: ${(pkg?.name as string) ?? ""}`,
+        referenceType: "packageUsage",
+        referenceId: args.usageId,
+        balanceAfter: newBalance,
+        createdBy: String(authResult.userId),
+        createdAt: now,
+      });
+    }
+  },
+});
+
 export const getActiveUsageDetails = action({
   args: { organizationId: v.id("organizations") },
   handler: async (

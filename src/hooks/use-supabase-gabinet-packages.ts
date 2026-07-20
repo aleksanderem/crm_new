@@ -121,6 +121,43 @@ export function useSupabaseGabinetPackageUsageByPatient(
 }
 
 // ---------------------------------------------------------------------------
+// Package Usage — Unassigned Gift Packages (org-wide)
+// ---------------------------------------------------------------------------
+
+interface UseSupabaseGabinetPackageUsageUnassignedOptions {
+  enabled?: boolean;
+}
+
+export function useSupabaseGabinetPackageUsageUnassigned(
+  organizationId: string,
+  options: UseSupabaseGabinetPackageUsageUnassignedOptions = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  return useQuery<MappedGabinetPackageUsage[], Error>({
+    queryKey: [
+      ...supabaseKeys.gabinetPackageUsage.list(organizationId),
+      "unassigned",
+    ],
+    queryFn: async (): Promise<MappedGabinetPackageUsage[]> => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      const { data, error } = await client
+        .from("gabinet_package_usage")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .eq("status", "unassigned")
+        .order("purchased_at", { ascending: false });
+
+      if (error) throw error;
+      return (data ?? []).map(mapGabinetPackageUsageFromSupabase);
+    },
+    enabled: enabled && isReady && !!organizationId,
+  } satisfies UseQueryOptions<MappedGabinetPackageUsage[], Error>);
+}
+
+// ---------------------------------------------------------------------------
 // Package Usage — Active (org-wide, for stats)
 // ---------------------------------------------------------------------------
 

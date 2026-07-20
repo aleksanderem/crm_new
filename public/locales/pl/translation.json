@@ -905,7 +905,7 @@
       "namePlaceholder": "Wpisz nazwę produktu",
       "sku": "SKU",
       "skuPlaceholder": "np. PROD-001",
-      "unitPrice": "Cena jednostkowa",
+      "unitPrice": "Cena zakupu netto",
       "taxRate": "Stawka VAT (%)",
       "isActive": "Aktywny",
       "description": "Opis",

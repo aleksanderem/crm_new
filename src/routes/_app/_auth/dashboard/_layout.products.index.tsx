@@ -971,6 +971,39 @@ function ProductsPage() {
       },
       sortable: true,
     },
+    // SEKCJA – Sprzedaż
+    {
+      id: "salePriceGross",
+      label: t("products.salePriceGross", { defaultValue: "Cena sprzedaży brutto" }),
+      headerClassName: "whitespace-normal leading-tight",
+      sortable: true,
+      render: (item) => {
+        if (item.productSection !== "sale") return <span className="text-muted-foreground">—</span>;
+        if (item.salePrice == null) return <span className="text-muted-foreground">—</span>;
+        return formatCurrency(item.salePrice);
+      },
+      getSortValue: (item) => {
+        if (item.productSection !== "sale" || item.salePrice == null) return -Infinity;
+        return item.salePrice;
+      },
+    },
+    {
+      id: "salePriceNet",
+      label: t("products.salePriceNet", { defaultValue: "Cena sprzedaży netto" }),
+      headerClassName: "whitespace-normal leading-tight",
+      sortable: true,
+      render: (item) => {
+        if (item.productSection !== "sale") return <span className="text-muted-foreground">—</span>;
+        if (item.salePrice == null) return <span className="text-muted-foreground">—</span>;
+        if (item.taxExempt || item.taxRate == null) return formatCurrency(item.salePrice);
+        return formatCurrency(item.salePrice / (1 + item.taxRate / 100));
+      },
+      getSortValue: (item) => {
+        if (item.productSection !== "sale" || item.salePrice == null) return -Infinity;
+        if (item.taxExempt || item.taxRate == null) return item.salePrice;
+        return item.salePrice / (1 + item.taxRate / 100);
+      },
+    },
     // SEKCJA 4 – Informacje dodatkowe
     {
       id: "manufacturer",
@@ -1026,6 +1059,8 @@ function ProductsPage() {
     d.add("tagIds");
     d.add("createdAt");
     d.add("purchasePriceGross");
+    d.add("salePriceGross");
+    d.add("salePriceNet");
     return d;
   }, [autoDefaultHidden]);
   const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "products");
@@ -1351,6 +1386,7 @@ function ProductsPage() {
           { label: t("products.columnSections.identification", { defaultValue: "Identyfikacja produktu" }), ids: ["name", "productSection", "categoryId"] },
           { label: t("products.columnSections.stock", { defaultValue: "Stan magazynowy" }), ids: ["stock", "plannedUsage", "minStock"] },
           { label: t("products.columnSections.finance", { defaultValue: "Finanse" }), ids: ["unitPrice", "purchasePriceGross", "taxRate", "value"] },
+          { label: t("products.columnSections.sales", { defaultValue: "Sprzedaż" }), ids: ["salePriceGross", "salePriceNet"] },
           { label: t("products.columnSections.additional", { defaultValue: "Informacje dodatkowe" }), ids: ["manufacturer", "sku", "catalogNumber", "tagIds", "isActive", "createdAt"] },
         ].map((section) => {
           const sectionCols = section.ids

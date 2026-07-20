@@ -20,6 +20,7 @@ import {
 import { Loader2 } from "@/lib/ez-icons";
 import { useSupabaseGabinetTreatmentPackagesList } from "@/hooks/use-supabase-gabinet-packages";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
+import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatActionError } from "@/lib/format-action-error";
 import { formatCurrencyPLN } from "@/lib/format-currency";
@@ -45,6 +46,12 @@ export function SellPackagePanel({
 
   const { data: packagesData } = useSupabaseGabinetTreatmentPackagesList(organizationId);
   const { data: patientsData } = useSupabaseGabinetPatientsList(organizationId);
+  const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId);
+
+  const treatmentMap = useMemo(
+    () => new Map((treatmentsData ?? []).map((tr) => [tr._id, tr.name])),
+    [treatmentsData],
+  );
 
   const [patientId, setPatientId] = useState<string>("");
   const [packageId, setPackageId] = useState<string>("");
@@ -224,6 +231,36 @@ export function SellPackagePanel({
             </SelectContent>
           </Select>
         </div>
+
+        {selectedPkg && (
+          <div className="rounded-lg border p-3 space-y-2 text-sm">
+            <p className="font-medium">{selectedPkg.name}</p>
+            <div className="space-y-1">
+              {selectedPkg.treatments.map((tr) => (
+                <div
+                  key={tr.treatmentId}
+                  className="flex items-center justify-between text-xs"
+                >
+                  <span>{treatmentMap.get(tr.treatmentId) ?? t("common.unknown")}</span>
+                  <span className="text-muted-foreground">&times;{tr.quantity}</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-between border-t pt-1">
+              <span>{t("gabinet.packages.totalPrice")}</span>
+              <span className="font-bold">
+                {formatCurrencyPLN(selectedPkg.totalPrice, selectedPkg.currency ?? "PLN")}
+              </span>
+            </div>
+            {selectedPkg.validityDays && (
+              <p className="text-xs text-muted-foreground">
+                {t("gabinet.packages.validFor", "Ważny przez")}{" "}
+                {selectedPkg.validityDays}{" "}
+                {t("gabinet.packages.days", "dni")}
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <Label>{t("gabinet.packages.paymentMethod")}</Label>

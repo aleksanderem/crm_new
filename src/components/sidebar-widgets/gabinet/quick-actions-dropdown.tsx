@@ -22,6 +22,7 @@ import { useSidebarActions } from "@/components/layout/sidebar-context";
 import { usePermission } from "@/hooks/use-permission";
 import { useOrganization } from "@/components/org-context";
 import { SellTreatmentPanel } from "@/components/gabinet/sell-treatment-panel";
+import { SellPackagePanel } from "@/components/gabinet/sell-package-panel";
 
 export function GabinetQuickActionsDropdown() {
   const { t } = useTranslation();
@@ -30,6 +31,7 @@ export function GabinetQuickActionsDropdown() {
   const { allowed: canManageLeaves } = usePermission("gabinet_settings", "edit");
   const { organizationId } = useOrganization();
   const [sellTreatmentOpen, setSellTreatmentOpen] = useState(false);
+  const [sellPackageOpen, setSellPackageOpen] = useState(false);
 
   // "Umów wizytę" routes through the calendar so every appointment entry
   // point opens the same AppointmentDialog (issue #1506).
@@ -84,6 +86,13 @@ export function GabinetQuickActionsDropdown() {
         </DropdownMenuItem>
         <DropdownMenuItem
           className="px-3 py-2.5 text-sm"
+          onSelect={() => setSellPackageOpen(true)}
+        >
+          <Package className="text-foreground size-5 shrink-0" />
+          {t("sidebar.gabinet.sellPackage", "Sprzedaj pakiet")}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="px-3 py-2.5 text-sm"
           onSelect={() => openQuickCreate("package")}
         >
           <Package className="text-foreground size-5" />
@@ -118,6 +127,11 @@ export function GabinetQuickActionsDropdown() {
       organizationId={organizationId}
       open={sellTreatmentOpen}
       onOpenChange={setSellTreatmentOpen}
+    />
+    <SellPackagePanel
+      organizationId={organizationId}
+      open={sellPackageOpen}
+      onOpenChange={setSellPackageOpen}
     />
     </>
   );

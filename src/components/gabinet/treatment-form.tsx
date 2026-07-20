@@ -61,6 +61,12 @@ export interface TreatmentFormData {
   color?: string | null;
   treatmentCount?: number;
   packageId?: string | null;
+  inlinePackageData?: {
+    count: number;
+    totalPrice: number;
+    validityDays?: number | null;
+    name: string;
+  } | null;
   requiredFormTemplates?: RequiredFormTemplateValue[];
   products?: TreatmentProductLine[];
   materials?: TreatmentProductLine[];
@@ -137,6 +143,13 @@ export function TreatmentForm({
   const [selectedPackageId, setSelectedPackageId] = useState<string>(
     initialPackageId ?? "",
   );
+
+  const [pkgCount, setPkgCount] = useState("");
+  const [pkgTotalPrice, setPkgTotalPrice] = useState("");
+  const [pkgValidityAmount, setPkgValidityAmount] = useState("");
+  const [pkgValidityUnit, setPkgValidityUnit] = useState<"days" | "months">("months");
+  const [pkgName, setPkgName] = useState("");
+  const [pkgNameEdited, setPkgNameEdited] = useState(false);
 
   const [productLines, setProductLines] = useState<TreatmentProductLine[]>(
     initialData?.products ?? [],
@@ -283,7 +296,20 @@ export function TreatmentForm({
       aftercareInstructions: initialData?.aftercareInstructions ?? null,
       requiresApproval: requiresApproval || undefined,
       color: initialData?.color ?? null,
-      packageId: isPackage && selectedPackageId ? selectedPackageId : null,
+      packageId: isPackage && initialPackageId && selectedPackageId ? selectedPackageId : null,
+      inlinePackageData:
+        isPackage && !initialPackageId && pkgCount && pkgTotalPrice
+          ? {
+              count: parseInt(pkgCount, 10),
+              totalPrice: parseFloat(pkgTotalPrice.replace(",", ".")),
+              validityDays: pkgValidityAmount
+                ? pkgValidityUnit === "months"
+                  ? parseInt(pkgValidityAmount, 10) * 30
+                  : parseInt(pkgValidityAmount, 10)
+                : null,
+              name: pkgName.trim() || `${name} – ${pkgCount} zabiegów`,
+            }
+          : null,
       requiredFormTemplates,
       products: validProducts,
       materials: validMaterials,
@@ -311,7 +337,13 @@ export function TreatmentForm({
           </Label>
           <Input
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              const n = e.target.value;
+              setName(n);
+              if (isPackage && !initialPackageId && !pkgNameEdited) {
+                setPkgName(pkgCount ? `${n} – ${pkgCount} zabiegów` : "");
+              }
+            }}
             required
             aria-invalid={!!fieldErr("name")}
             className={fieldErr("name") ? errorClass : undefined}
@@ -356,6 +388,11 @@ export function TreatmentForm({
             className={fieldErr("price") ? errorClass : undefined}
           />
           {renderFieldError("price")}
+          {isPackage && !initialPackageId && (
+            <p className="text-xs text-muted-foreground">
+              {t("gabinet.treatments.pricePerSessionHint", "Cena jednej sesji zabiegu.")}
+            </p>
+          )}
         </div>
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.currency")}</Label>
@@ -398,6 +435,15 @@ export function TreatmentForm({
                 setIsPackage(next);
                 if (!next) {
                   setSelectedPackageId("");
+                  setPkgCount("");
+                  setPkgTotalPrice("");
+                  setPkgValidityAmount("");
+                  setPkgValidityUnit("months");
+                  setPkgName("");
+                  setPkgNameEdited(false);
+                } else if (!initialPackageId) {
+                  // Auto-generate name from current treatment name if already entered
+                  if (name) setPkgName(name + " – __ zabiegów");
                 }
               }}
             />
@@ -406,7 +452,7 @@ export function TreatmentForm({
             </Label>
           </div>
         </div>
-        {isPackage && (
+        {isPackage && !!initialPackageId && (
           <div className="space-y-1.5">
             <Label>{t("gabinet.treatments.linkedPackage", "Powiązany pakiet")}</Label>
             <Select
@@ -448,6 +494,114 @@ export function TreatmentForm({
                 "Wybierz pakiet z zakładki \"Pakiety\" — liczba zabiegów zostanie pobrana z pakietu.",
               )}
             </p>
+          </div>
+        )}
+        {isPackage && !initialPackageId && (
+          <div className="space-y-3 sm:col-span-2 rounded-md border p-3 bg-muted/30">
+            <p className="text-xs font-medium text-muted-foreground">
+              {t("gabinet.treatments.inlinePackageSection", "Dane pakietu")}
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>
+                  {t("gabinet.treatments.packageName", "Nazwa pakietu")}{" "}
+                  <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  value={pkgName}
+                  onChange={(e) => {
+                    setPkgName(e.target.value);
+                    setPkgNameEdited(true);
+                  }}
+                  placeholder={t(
+                    "gabinet.treatments.packageNamePlaceholder",
+                    "np. Peeling chemiczny – 5 zabiegów",
+                  )}
+                  required={isPackage && !initialPackageId}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>
+                  {t("gabinet.treatments.packageCount", "Liczba zabiegów w pakiecie")}{" "}
+                  <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min="2"
+                  step="1"
+                  value={pkgCount}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setPkgCount(val);
+                    if (!pkgNameEdited && name) {
+                      setPkgName(`${name} – ${val} zabiegów`);
+                    }
+                  }}
+                  onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
+                  placeholder="5"
+                  required={isPackage && !initialPackageId}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>
+                  {t("gabinet.treatments.packageTotalPrice", "Cena całego pakietu")}{" "}
+                  <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={pkgTotalPrice}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                      setPkgTotalPrice(v);
+                    }
+                  }}
+                  placeholder="0.00"
+                  required={isPackage && !initialPackageId}
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>
+                  {t("gabinet.treatments.packageValidity", "Okres ważności")}
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    value={pkgValidityAmount}
+                    onChange={(e) => setPkgValidityAmount(e.target.value)}
+                    onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
+                    placeholder={t("gabinet.treatments.packageValidityPlaceholder", "np. 6")}
+                    className="flex-1"
+                  />
+                  <Select
+                    value={pkgValidityUnit}
+                    onValueChange={(v) => setPkgValidityUnit(v as "days" | "months")}
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="months">
+                        {t("gabinet.treatments.packageValidityMonths", "miesięcy")}
+                      </SelectItem>
+                      <SelectItem value="days">
+                        {t("gabinet.treatments.packageValidityDays", "dni")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    "gabinet.treatments.packageValidityHint",
+                    "Opcjonalnie. Liczba miesięcy lub dni od zakupu, po których pakiet wygasa.",
+                  )}
+                </p>
+              </div>
+            </div>
           </div>
         )}
         <div className="space-y-1.5">

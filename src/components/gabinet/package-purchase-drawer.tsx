@@ -7,7 +7,6 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Sheet,
@@ -27,6 +26,8 @@ import { Loader2 } from "@/lib/ez-icons";
 import { PlateText } from "@/components/plate-text";
 import { formatActionError } from "@/lib/format-action-error";
 import { formatCurrencyPLN } from "@/lib/format-currency";
+import { usePackagePaymentForm } from "@/hooks/use-package-payment-form";
+import { PackageSplitPaymentSection } from "./package-split-payment-section";
 
 interface PackagePurchaseDrawerProps {
   patientId: string;
@@ -47,14 +48,7 @@ export function PackagePurchaseDrawer({
 
   const [selectedPkgId, setSelectedPkgId] = useState<string>("");
   const [paymentType, setPaymentType] = useState<"one_time" | "installment">("one_time");
-  const [paymentMethod, setPaymentMethod] = useState<string>("cash");
-  const [splitPayment, setSplitPayment] = useState(false);
-  const [firstSplitMethod, setFirstSplitMethod] = useState<"cash" | "card" | "transfer" | "other">("cash");
-  const [secondSplitMethod, setSecondSplitMethod] = useState<"cash" | "card" | "transfer" | "other">("card");
-  const [firstSplitAmount, setFirstSplitAmount] = useState<string>("");
-  const [secondSplitAmount, setSecondSplitAmount] = useState<string>("");
   const [installmentCount, setInstallmentCount] = useState<string>("2");
-  const [submitting, setSubmitting] = useState(false);
 
   const listActivePackages = useAction(api.gabinet.packages.listActive);
   const { data: activePackages } = useQuery({
@@ -90,34 +84,48 @@ export function PackagePurchaseDrawer({
     ? Math.round((installmentAmount + installmentRemainder) * 100) / 100
     : 0;
 
-  const parsedFirstSplit = Number.parseFloat(firstSplitAmount.replace(",", ".")) || 0;
-  const parsedSecondSplit = Number.parseFloat(secondSplitAmount.replace(",", ".")) || 0;
-  const splitTotal = Math.round((parsedFirstSplit + parsedSecondSplit) * 100) / 100;
-  const splitExpectedTotal = selectedPkg
+  const effectiveTotalForSplit = selectedPkg
     ? isInstallment
       ? firstInstallmentAmount
-      : Math.round(selectedPkg.totalPrice * 100) / 100
+      : selectedPkg.totalPrice
     : 0;
-  const splitMismatch = splitPayment && selectedPkg && splitTotal !== splitExpectedTotal;
-  const splitMissingMethod = splitPayment && parsedFirstSplit <= 0 && parsedSecondSplit <= 0;
-  const splitSameMethod = splitPayment && firstSplitMethod === secondSplitMethod;
+
+  const {
+    paymentMethod,
+    setPaymentMethod,
+    splitPayment,
+    setSplitPayment,
+    firstSplitMethod,
+    setFirstSplitMethod,
+    secondSplitMethod,
+    setSecondSplitMethod,
+    firstSplitAmount,
+    setFirstSplitAmount,
+    secondSplitAmount,
+    setSecondSplitAmount,
+    submitting,
+    setSubmitting,
+    parsedFirstSplit,
+    parsedSecondSplit,
+    splitTotal,
+    splitExpectedTotal,
+    splitMismatch,
+    splitMissingAmount,
+    splitSameMethod,
+    resetPaymentForm,
+  } = usePackagePaymentForm(effectiveTotalForSplit);
 
   const resetForm = () => {
     setSelectedPkgId("");
     setPaymentType("one_time");
-    setPaymentMethod("cash");
-    setSplitPayment(false);
-    setFirstSplitMethod("cash");
-    setSecondSplitMethod("card");
-    setFirstSplitAmount("");
-    setSecondSplitAmount("");
     setInstallmentCount("2");
+    resetPaymentForm();
   };
 
   const handlePurchase = async () => {
     if (!selectedPkg) return;
     if (splitPayment) {
-      if (splitMissingMethod) {
+      if (splitMissingAmount) {
         toast.error(
           t(
             "gabinet.packages.splitMissingAmount",
@@ -161,7 +169,7 @@ export function PackagePurchaseDrawer({
 
       if (isInstallment) {
         if (splitPayment) {
-          const parts: Array<{ method: "cash" | "card" | "transfer" | "other"; amount: number }> = [];
+          const parts: Array<{ method: typeof firstSplitMethod; amount: number }> = [];
           if (parsedFirstSplit > 0)
             parts.push({ method: firstSplitMethod, amount: parsedFirstSplit });
           if (parsedSecondSplit > 0)
@@ -201,7 +209,7 @@ export function PackagePurchaseDrawer({
           });
         }
       } else if (splitPayment) {
-        const parts: Array<{ method: "cash" | "card" | "transfer" | "other"; amount: number }> = [];
+        const parts: Array<{ method: typeof firstSplitMethod; amount: number }> = [];
         if (parsedFirstSplit > 0)
           parts.push({ method: firstSplitMethod, amount: parsedFirstSplit });
         if (parsedSecondSplit > 0)
@@ -421,97 +429,21 @@ export function PackagePurchaseDrawer({
           )}
 
           {splitPayment && (
-            <div className="rounded-lg border p-3 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-md border p-2 space-y-2">
-                  <Label className="text-xs font-medium">
-                    {t("gabinet.packages.firstMethod", "First method")}
-                  </Label>
-                  <Select
-                    value={firstSplitMethod}
-                    onValueChange={(v) =>
-                      setFirstSplitMethod(v as typeof firstSplitMethod)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">{t("gabinet.packages.paymentMethods.cash", "Cash")}</SelectItem>
-                      <SelectItem value="card">{t("gabinet.packages.paymentMethods.card", "Card")}</SelectItem>
-                      <SelectItem value="transfer">{t("gabinet.packages.paymentMethods.transfer", "Transfer")}</SelectItem>
-                      <SelectItem value="other">{t("gabinet.packages.paymentMethods.other", "Other")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    id="split-first-amount"
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    value={firstSplitAmount}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                        setFirstSplitAmount(v);
-                      }
-                    }}
-                  />
-                </div>
-                <div className="rounded-md border p-2 space-y-2">
-                  <Label className="text-xs font-medium">
-                    {t("gabinet.packages.secondMethod", "Second method")}
-                  </Label>
-                  <Select
-                    value={secondSplitMethod}
-                    onValueChange={(v) =>
-                      setSecondSplitMethod(v as typeof secondSplitMethod)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">{t("gabinet.packages.paymentMethods.cash", "Cash")}</SelectItem>
-                      <SelectItem value="card">{t("gabinet.packages.paymentMethods.card", "Card")}</SelectItem>
-                      <SelectItem value="transfer">{t("gabinet.packages.paymentMethods.transfer", "Transfer")}</SelectItem>
-                      <SelectItem value="other">{t("gabinet.packages.paymentMethods.other", "Other")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    id="split-second-amount"
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    value={secondSplitAmount}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                        setSecondSplitAmount(v);
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-              <div
-                className={`flex items-center justify-between text-xs ${
-                  splitMismatch || splitSameMethod ? "text-destructive" : "text-muted-foreground"
-                }`}
-              >
-                <span>
-                  {t("gabinet.packages.splitSum", "Sum")}: {splitTotal.toFixed(2)} /{" "}
-                  {formatCurrencyPLN(splitExpectedTotal, selectedPkg?.currency ?? "PLN")}
-                </span>
-                {splitSameMethod ? (
-                  <span>
-                    {t("gabinet.packages.splitSameMethod", "Methods must differ")}
-                  </span>
-                ) : splitMismatch ? (
-                  <span>
-                    {t("gabinet.packages.splitMismatch", "Must equal total")}
-                  </span>
-                ) : null}
-              </div>
-            </div>
+            <PackageSplitPaymentSection
+              firstSplitMethod={firstSplitMethod}
+              onFirstSplitMethodChange={setFirstSplitMethod}
+              secondSplitMethod={secondSplitMethod}
+              onSecondSplitMethodChange={setSecondSplitMethod}
+              firstSplitAmount={firstSplitAmount}
+              onFirstSplitAmountChange={setFirstSplitAmount}
+              secondSplitAmount={secondSplitAmount}
+              onSecondSplitAmountChange={setSecondSplitAmount}
+              splitTotal={splitTotal}
+              splitExpectedTotal={splitExpectedTotal}
+              splitMismatch={splitMismatch}
+              splitSameMethod={splitSameMethod}
+              currency={selectedPkg?.currency ?? "PLN"}
+            />
           )}
 
         </div>
@@ -522,7 +454,7 @@ export function PackagePurchaseDrawer({
             disabled={
               !selectedPkg ||
               submitting ||
-              (splitPayment && (splitMissingMethod || !!splitMismatch || splitSameMethod))
+              (splitPayment && (splitMissingAmount || !!splitMismatch || splitSameMethod))
             }
             onClick={handlePurchase}
           >

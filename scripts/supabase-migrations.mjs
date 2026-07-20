@@ -218,6 +218,26 @@ if (localMigrations.length === 0) {
   process.exit(0);
 }
 
+// Duplicate version numbers are fatal. Tracking is keyed by the version
+// prefix, so a second file sharing a number is silently treated as already
+// applied and its SQL never runs (bit us when two concurrently-merged PRs
+// both shipped an 00064). Fail loudly instead.
+{
+  const byVersion = new Map();
+  for (const m of localMigrations) {
+    if (byVersion.has(m.version)) {
+      console.error(
+        `::error::Duplicate migration version ${m.version}: ` +
+          `"${byVersion.get(m.version)}" and "${m.file}". ` +
+          `Tracking is keyed by version — the second file would be silently ` +
+          `skipped. Renumber one of them to the next free version.`,
+      );
+      process.exit(2);
+    }
+    byVersion.set(m.version, m.file);
+  }
+}
+
 console.log(`Using ${useHttp ? "HTTP (pg/query)" : "psql"} transport.`);
 
 await ensureTrackingTable();

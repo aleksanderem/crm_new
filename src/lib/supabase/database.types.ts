@@ -5041,6 +5041,8 @@ export interface Database {
           is_active: boolean;
           loyalty_points_awarded: number | null;
           auto_generated_for_treatment_id: string | null;
+          tag_ids: string[] | null;
+          category_id: string | null;
           created_by: string;
           created_at: number;
           updated_at: number;
@@ -5058,6 +5060,8 @@ export interface Database {
           is_active: boolean;
           loyalty_points_awarded?: number | null;
           auto_generated_for_treatment_id?: string | null;
+          tag_ids?: string[] | null;
+          category_id?: string | null;
           created_by: string;
           created_at: number;
           updated_at: number;
@@ -5075,6 +5079,8 @@ export interface Database {
           is_active?: boolean;
           loyalty_points_awarded?: number | null;
           auto_generated_for_treatment_id?: string | null;
+          tag_ids?: string[] | null;
+          category_id?: string | null;
           created_by?: string;
           created_at?: number;
           updated_at?: number;

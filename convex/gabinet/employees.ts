@@ -175,6 +175,7 @@ export const create = action({
     showInCalendar: v.optional(v.boolean()),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),
+    customFields: v.optional(v.array(v.any())),
   },
   handler: async (ctx, args) => {
     try {
@@ -251,6 +252,28 @@ export const create = action({
         });
       } catch (e) {
         console.error("[employees.create] Membership mirror FAILED:", e);
+      }
+    }
+
+    if (args.customFields && args.customFields.length > 0) {
+      for (const f of args.customFields) {
+        if (!f || typeof f !== "object") continue;
+        const defId = (f as Record<string, unknown>).fieldDefinitionId;
+        const val = (f as Record<string, unknown>).value;
+        if (typeof defId !== "string" || defId.length === 0) continue;
+        try {
+          await db.insert("customFieldValues", {
+            organizationId: String(args.organizationId),
+            fieldDefinitionId: defId,
+            entityType: "gabinetEmployee",
+            entityId: String(employeeId),
+            value: val ?? null,
+            createdAt: now,
+            updatedAt: now,
+          });
+        } catch (e) {
+          console.error("[employees.create] customField insert failed:", e);
+        }
       }
     }
 

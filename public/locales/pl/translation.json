@@ -3077,7 +3077,10 @@
         "baseSalary": "Wynagrodzenie podstawowe",
         "commissionPercent": "Prowizja %",
         "bankAccount": "Numer konta bankowego",
-        "noCompensationYet": "Brak danych o wynagrodzeniu."
+        "noCompensationYet": "Brak danych o wynagrodzeniu.",
+        "accountAccess": "Konto i dostęp",
+        "accountActive": "Aktywne",
+        "accountInactive": "Nieaktywne"
       },
       "schedule": {
         "hasOverrides": "Ten pracownik ma zdefiniowany indywidualny grafik.",

@@ -3057,7 +3057,10 @@
         "baseSalary": "Base Salary",
         "commissionPercent": "Commission %",
         "bankAccount": "Bank Account",
-        "noCompensationYet": "No compensation data added yet."
+        "noCompensationYet": "No compensation data added yet.",
+        "accountAccess": "Account & Access",
+        "accountActive": "Active",
+        "accountInactive": "Inactive"
       },
       "schedule": {
         "hasOverrides": "This employee has a custom schedule defined.",

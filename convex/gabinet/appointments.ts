@@ -2122,17 +2122,18 @@ export const updateStatus = action({
     }
 
     // Stock return: when reverting from "completed" to any other status, undo the
-    // auto-deductions created at completion time. Uses the same CAS pattern as
-    // the deduction guard below — atomically flips stock_deducted back to false;
-    // only the winner proceeds with creating return movements. Closes #3009.
-    if (appt.status === "completed" && appt.stockDeducted === true && appt.treatmentId) {
+    // auto-deductions created at completion time. CAS is now per-junction-row on
+    // gabinet_appointment_treatments.stock_deducted (#3366). The batch UPDATE
+    // atomically flips every deducted row back to false; only the first concurrent
+    // caller gets rows back and proceeds with creating return movements.
+    if (appt.status === "completed") {
       const { data: returnCasRows } = await db.raw()
-        .from("gabinet_appointments")
+        .from("gabinet_appointment_treatments")
         .update({ stock_deducted: false })
-        .eq("id", args.appointmentId)
+        .eq("appointment_id", args.appointmentId)
         .eq("stock_deducted", true)
         .select("id");
-      const wonReturnRace = Array.isArray(returnCasRows) && returnCasRows.length === 1;
+      const wonReturnRace = Array.isArray(returnCasRows) && returnCasRows.length > 0;
       if (wonReturnRace) {
         try {
           // Secondary guard: if appointment_return movements already exist for this
@@ -2231,29 +2232,32 @@ export const updateStatus = action({
       }
     }
 
-    // Auto-deduct stock on visit completion. Guard against double-deduction
-    // using an atomic CAS update (WHERE stock_deducted = false). Two concurrent
-    // updateStatus calls can both read stockDeducted=false from the earlier
-    // Supabase read, but only one can win the conditional UPDATE — Postgres row
-    // locking ensures only one writer updates a row matching the predicate.
-    // The loser gets 0 rows back and skips deduction entirely. Closes #2917.
-    // (Previous guard used !appt.stockDeducted from the stale read, which both
-    // concurrent calls saw as false, leading to double deduction.)
+    // Auto-deduct stock on visit completion. CAS guard now lives on
+    // gabinet_appointment_treatments.stock_deducted per junction row (#3366),
+    // replacing the old appointment-level stock_deducted flag. Each junction row
+    // represents one treatment; concurrent calls race per-row so only one winner
+    // per treatment deducts stock. Closes #2917, migrates guard from #3361.
     const stockWarnings: string[] = [];
-    if (args.status === "completed" && appt.treatmentId) {
-      const { data: casRows } = await db.raw()
-        .from("gabinet_appointments")
-        .update({ stock_deducted: true })
-        .eq("id", args.appointmentId)
-        .eq("stock_deducted", false)
-        .select("id");
-      const wonRace = Array.isArray(casRows) && casRows.length === 1;
-      if (wonRace) {
+    if (args.status === "completed") {
+      const { data: junctionRows } = await db.raw()
+        .from("gabinet_appointment_treatments")
+        .select("id, treatment_id")
+        .eq("appointment_id", args.appointmentId);
+      for (const jt of (junctionRows ?? []) as Array<{ id: string; treatment_id: string | null }>) {
+        if (!jt.treatment_id) continue;
+        const { data: casRows } = await db.raw()
+          .from("gabinet_appointment_treatments")
+          .update({ stock_deducted: true })
+          .eq("id", jt.id)
+          .eq("stock_deducted", false)
+          .select("id");
+        const wonRace = Array.isArray(casRows) && casRows.length === 1;
+        if (!wonRace) continue;
         try {
           const links = await db
             .query("gabinetTreatmentProducts")
             .eq("organizationId", String(args.organizationId))
-            .eq("treatmentId", String(appt.treatmentId))
+            .eq("treatmentId", jt.treatment_id)
             .collect();
           for (const link of links) {
             if (!link.quantity || Number(link.quantity) <= 0) continue;

@@ -234,21 +234,22 @@ export function useSupabaseScheduledActivitiesByDateRange(
         ),
       );
 
-      let apptMap = new Map<string, { status: string; patientId: string; treatmentId: string | null }>();
+      let apptMap = new Map<string, { status: string; patientId: string }>();
       let patientMap = new Map<string, string>();
       let treatmentMap = new Map<string, string>();
+      // appointment_id → primary treatment_id (lowest sort_order from junction table)
+      let apptTreatmentMap = new Map<string, string>();
 
       if (gabinetEntityIds.length > 0) {
         const { data: appts, error: apptErr } = await client
           .from("gabinet_appointments")
-          .select("id,status,patient_id,treatment_id")
+          .select("id,status,patient_id")
           .in("id", gabinetEntityIds);
         if (apptErr) throw apptErr;
         const apptRows = (appts ?? []) as Array<{
           id: string;
           status: string | null;
           patient_id: string;
-          treatment_id: string | null;
         }>;
         apptMap = new Map(
           apptRows.map((a) => [
@@ -256,7 +257,6 @@ export function useSupabaseScheduledActivitiesByDateRange(
             {
               status: a.status ?? "scheduled",
               patientId: a.patient_id,
-              treatmentId: a.treatment_id ?? null,
             },
           ]),
         );
@@ -280,13 +280,21 @@ export function useSupabaseScheduledActivitiesByDateRange(
           );
         }
 
-        const treatmentIds = Array.from(
-          new Set(
-            Array.from(apptMap.values())
-              .map((a) => a.treatmentId)
-              .filter((id): id is string => !!id),
-          ),
-        );
+        // Resolve treatment IDs from the junction table (supports multi-treatment appointments).
+        // Rows are ordered by sort_order; first row per appointment_id is the primary treatment.
+        const { data: junctionRows } = await client
+          .from("gabinet_appointment_treatments")
+          .select("appointment_id,treatment_id,sort_order")
+          .in("appointment_id", gabinetEntityIds)
+          .not("treatment_id", "is", null)
+          .order("sort_order", { ascending: true });
+        for (const row of ((junctionRows ?? []) as Array<{ appointment_id: string; treatment_id: string | null; sort_order: number }>)) {
+          if (row.treatment_id && !apptTreatmentMap.has(row.appointment_id)) {
+            apptTreatmentMap.set(row.appointment_id, row.treatment_id);
+          }
+        }
+
+        const treatmentIds = Array.from(new Set(Array.from(apptTreatmentMap.values())));
         if (treatmentIds.length > 0) {
           const { data: treatments } = await client
             .from("gabinet_treatments")
@@ -311,8 +319,9 @@ export function useSupabaseScheduledActivitiesByDateRange(
             metadata.status = appt.status;
             metadata.appointmentId = moduleRef.entityId;
             metadata.patientName = patientMap.get(appt.patientId) ?? undefined;
-            if (appt.treatmentId) {
-              metadata.treatmentName = treatmentMap.get(appt.treatmentId) ?? undefined;
+            const treatmentId = apptTreatmentMap.get(moduleRef.entityId);
+            if (treatmentId) {
+              metadata.treatmentName = treatmentMap.get(treatmentId) ?? undefined;
             }
           }
         }

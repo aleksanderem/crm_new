@@ -708,7 +708,7 @@ export const update = action({
 
     // Mirror role change (or isActive change) into Convex `gabinetMemberships`
     // so permission checks reflect the new role on the next call.
-    if (args.role !== undefined || args.isActive !== undefined) {
+    if ((args.role !== undefined || args.isActive !== undefined) && emp.userId) {
       const effectiveRole = args.role ?? (emp.role as string);
       const effectiveActive = args.isActive ?? Boolean(emp.isActive);
       await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
@@ -815,12 +815,14 @@ export const remove = action({
     }
 
     // Mark membership inactive so the gabinet-role overlay no longer applies.
-    await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
-      organizationId: args.organizationId,
-      userId: String(emp.userId),
-      gabinetRole: emp.role as string,
-      isActive: false,
-    });
+    if (emp.userId) {
+      await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
+        organizationId: args.organizationId,
+        userId: String(emp.userId),
+        gabinetRole: emp.role as string,
+        isActive: false,
+      });
+    }
   },
 });
 

@@ -839,6 +839,16 @@ function PatientDetail() {
           creditEarned = Math.round((amount - outstanding) * 100) / 100;
         }
       }
+      const discountRaw =
+        parseFloat(addPaymentDiscountValue.replace(",", ".")) || 0;
+      const discountAmount =
+        addPaymentDiscountType === "amount" && discountRaw > 0
+          ? discountRaw
+          : undefined;
+      const discountPercent =
+        addPaymentDiscountType === "percent" && discountRaw > 0
+          ? Math.min(discountRaw, 100)
+          : undefined;
       await createPaymentAction({
         organizationId,
         patientId,
@@ -848,6 +858,8 @@ function PatientDetail() {
         paymentMethod: addPaymentMethod,
         notes: addPaymentNotes.trim() ? addPaymentNotes.trim() : undefined,
         creditEarned: creditEarned > 0 ? creditEarned : undefined,
+        discountAmount,
+        discountPercent,
       });
       toast.success(t("gabinet.payments.created"));
       setAddPaymentOpen(false);

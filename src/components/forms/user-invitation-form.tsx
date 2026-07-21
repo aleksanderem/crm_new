@@ -28,9 +28,11 @@ type OrgRole = "owner" | "admin" | "member" | "viewer";
 type InviteModule = "none" | "gabinet";
 type GabinetRole =
   | "doctor"
+  | "cosmetologist"
   | "nurse"
   | "therapist"
   | "receptionist"
+  | "manager"
   | "admin"
   | "other";
 
@@ -42,9 +44,11 @@ const ROLES: { value: OrgRole; labelKey: string }[] = [
 
 const GABINET_ROLES: GabinetRole[] = [
   "doctor",
+  "cosmetologist",
   "nurse",
   "therapist",
   "receptionist",
+  "manager",
   "admin",
   "other",
 ];

@@ -55,6 +55,7 @@ const TABLE_MAP: Record<string, string> = {
   categoryDefinitions: "category_definitions",
   gabinetPatients: "gabinet_patients",
   gabinetAppointments: "gabinet_appointments",
+  gabinetAppointmentTreatments: "gabinet_appointment_treatments",
   gabinetTreatments: "gabinet_treatments",
   gabinetTreatmentVariants: "gabinet_treatment_variants",
   gabinetTreatmentProducts: "gabinet_treatment_products",

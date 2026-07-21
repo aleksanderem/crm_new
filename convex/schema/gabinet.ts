@@ -494,6 +494,24 @@ export function createGabinetTables({
     .index("by_orgAndRoomAndDate", ["organizationId", "roomId", "date"])
     .index("by_requiresCompletion", ["organizationId", "requiresCompletion"]),
 
+  // Junction table: appointment → treatment(s) (#3360).
+  // Backfilled from the scalar treatmentId/variantId/priceAtBooking columns
+  // on gabinetAppointments. New rows are written here by the multi-treatment
+  // model introduced in #3356.
+  gabinetAppointmentTreatments: defineTable({
+    organizationId: v.id("organizations"),
+    appointmentId: v.id("gabinetAppointments"),
+    treatmentId: v.optional(v.id("gabinetTreatments")),
+    variantId: v.optional(v.id("gabinetTreatmentVariants")),
+    priceAtBooking: v.optional(v.number()),
+    sortOrder: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_appointment", ["appointmentId"])
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndTreatment", ["organizationId", "treatmentId"]),
+
   // --- Gabinet: Packages & Loyalty (Phase 4) ---
 
   gabinetTreatmentPackages: defineTable({

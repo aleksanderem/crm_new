@@ -3426,6 +3426,8 @@ export interface Database {
           credit_earned: number | null;
           credit_applied: number | null;
           kind: string | null;
+          discount_amount: number | null;
+          discount_percent: number | null;
         };
         Insert: {
           id?: string;
@@ -3445,6 +3447,8 @@ export interface Database {
           credit_earned?: number | null;
           credit_applied?: number | null;
           kind?: string | null;
+          discount_amount?: number | null;
+          discount_percent?: number | null;
         };
         Update: {
           id?: string;
@@ -3464,6 +3468,8 @@ export interface Database {
           credit_earned?: number | null;
           credit_applied?: number | null;
           kind?: string | null;
+          discount_amount?: number | null;
+          discount_percent?: number | null;
         };
         Relationships: [
           {

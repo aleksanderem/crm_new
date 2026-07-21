@@ -403,6 +403,8 @@ export const update = action({
     amount: v.optional(v.number()),
     paymentMethod: v.optional(paymentMethodValidator),
     notes: v.optional(v.union(v.string(), v.null())),
+    discountAmount: v.optional(v.union(v.number(), v.null())),
+    discountPercent: v.optional(v.union(v.number(), v.null())),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runQuery(
@@ -432,6 +434,12 @@ export const update = action({
     }
     if (args.notes !== undefined) {
       updates.notes = args.notes;
+    }
+    if (args.discountAmount !== undefined) {
+      updates.discountAmount = args.discountAmount;
+    }
+    if (args.discountPercent !== undefined) {
+      updates.discountPercent = args.discountPercent;
     }
 
     await db.patch("payments", args.paymentId, updates);

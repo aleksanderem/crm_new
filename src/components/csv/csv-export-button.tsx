@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
@@ -10,13 +11,13 @@ import { Download } from "@/lib/ez-icons";
 import Papa from "papaparse";
 import { formatActionError } from "@/lib/format-action-error";
 
-type EntityType = "contacts" | "companies" | "leads" | "products" | "patients";
+type QueryEntityType = "contacts" | "companies" | "leads" | "patients";
+type EntityType = QueryEntityType | "products";
 
 const exportQueries = {
   contacts: api.csvExport.exportContacts,
   companies: api.csvExport.exportCompanies,
   leads: api.csvExport.exportLeads,
-  products: api.csvExport.exportProducts,
   patients: api.csvExport.exportPatients,
 } as const;
 
@@ -28,19 +29,31 @@ export function useCsvExport(
   const { t } = useTranslation();
   const [isExporting, setIsExporting] = useState(false);
 
+  // useQuery is always called (hook rules). When entityType=products the query
+  // is never used (enabled:false + runProductsExport handles it instead).
+  const queryType: QueryEntityType = entityType !== "products" ? entityType : "contacts";
   const { refetch } = useQuery({
-    ...convexQuery(exportQueries[entityType], { organizationId }),
+    ...convexQuery(exportQueries[queryType], { organizationId }),
     enabled: false,
   });
+
+  // Products data lives in Supabase; exportProducts is a Convex action that
+  // reads from Supabase via createSupabaseDb() rather than ctx.db.
+  const runProductsExport = useAction(api.csvExport.exportProducts);
 
   const handleExport = useCallback(async () => {
     setIsExporting(true);
     try {
-      const result = await refetch();
-      const rows = result.data;
+      let rows: Record<string, unknown>[] | undefined;
+      if (entityType === "products") {
+        rows = (await runProductsExport({ organizationId })) as Record<string, unknown>[];
+      } else {
+        const result = await refetch();
+        rows = result.data as Record<string, unknown>[] | undefined;
+      }
       if (!rows || rows.length === 0) return;
 
-      const csv = Papa.unparse(rows as Record<string, unknown>[]);
+      const csv = Papa.unparse(rows);
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -61,7 +74,7 @@ export function useCsvExport(
     } finally {
       setIsExporting(false);
     }
-  }, [refetch, entityType, fileNamePrefix, t]);
+  }, [refetch, runProductsExport, entityType, organizationId, fileNamePrefix, t]);
 
   return { handleExport, isExporting };
 }

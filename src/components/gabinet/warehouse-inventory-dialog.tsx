@@ -32,6 +32,12 @@ import { formatActionError } from "@/lib/format-action-error";
 import { cn } from "@/lib/utils";
 import type { MappedProduct } from "@/lib/supabase/mappers/products";
 import type { ProductStockTotal } from "@/hooks/use-supabase-products";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const NO_LOCATION_VALUE = "__none__";
 
@@ -525,7 +531,9 @@ export function WarehouseInventoryDialog({
                     const qty = historicalStockQuery.data?.stockMap.get(product._id) ?? 0;
                     const unit = product.stockUnit?.trim() ?? "";
                     const u = unit ? ` ${unit}` : "";
-                    const avgCost = historicalStockQuery.data?.avgCostMap.get(product._id) ?? avgCostByProductId.get(product._id) ?? null;
+                    const rawAvgCost = historicalStockQuery.data?.avgCostMap.get(product._id) ?? avgCostByProductId.get(product._id) ?? null;
+                    const avgCost = rawAvgCost ?? (product.purchasePrice != null && product.purchasePrice > 0 ? product.purchasePrice : null);
+                    const isEstimatedCost = rawAvgCost == null && avgCost != null;
                     const valueNet = avgCost != null ? qty * avgCost : null;
                     return (
                       <tr key={product._id} className="border-b last:border-0">
@@ -537,14 +545,44 @@ export function WarehouseInventoryDialog({
                           {qty}{u}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-                          {avgCost != null
-                            ? avgCost.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " zł"
-                            : "—"}
+                          {avgCost != null ? (
+                            isEstimatedCost ? (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="cursor-help italic text-muted-foreground/60">
+                                      ~{avgCost.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {t("inventory.count.estimatedFromCatalogPrice", { defaultValue: "Szacunkowa wartość na podstawie ceny katalogowej (brak danych z dostaw)" })}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            ) : (
+                              avgCost.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " zł"
+                            )
+                          ) : "—"}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums">
-                          {valueNet != null
-                            ? valueNet.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " zł"
-                            : "—"}
+                          {valueNet != null ? (
+                            isEstimatedCost ? (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="cursor-help italic text-muted-foreground/60">
+                                      ~{valueNet.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {t("inventory.count.estimatedFromCatalogPrice", { defaultValue: "Szacunkowa wartość na podstawie ceny katalogowej (brak danych z dostaw)" })}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            ) : (
+                              valueNet.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " zł"
+                            )
+                          ) : "—"}
                         </td>
                       </tr>
                     );
@@ -602,7 +640,9 @@ export function WarehouseInventoryDialog({
                   const delta = actual !== null ? actual - systemStock : null;
                   const unit = product.stockUnit?.trim() ?? "";
                   const u = unit ? ` ${unit}` : "";
-                  const avgCost = avgCostByProductId.get(product._id) ?? null;
+                  const rawAvgCost = avgCostByProductId.get(product._id) ?? null;
+                  const avgCost = rawAvgCost ?? (product.purchasePrice != null && product.purchasePrice > 0 ? product.purchasePrice : null);
+                  const isEstimatedCost = rawAvgCost == null && avgCost != null;
                   const valueNet = avgCost != null ? systemStock * avgCost : null;
                   return (
                     <tr key={product._id} className="border-b last:border-0">
@@ -615,14 +655,44 @@ export function WarehouseInventoryDialog({
                         {u}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-                        {avgCost != null
-                          ? avgCost.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " zł"
-                          : "—"}
+                        {avgCost != null ? (
+                          isEstimatedCost ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="cursor-help italic text-muted-foreground/60">
+                                    ~{avgCost.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {t("inventory.count.estimatedFromCatalogPrice", { defaultValue: "Szacunkowa wartość na podstawie ceny katalogowej (brak danych z dostaw)" })}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            avgCost.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " zł"
+                          )
+                        ) : "—"}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-                        {valueNet != null
-                          ? valueNet.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " zł"
-                          : "—"}
+                        {valueNet != null ? (
+                          isEstimatedCost ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="cursor-help italic text-muted-foreground/60">
+                                    ~{valueNet.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {t("inventory.count.estimatedFromCatalogPrice", { defaultValue: "Szacunkowa wartość na podstawie ceny katalogowej (brak danych z dostaw)" })}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            valueNet.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " zł"
+                          )
+                        ) : "—"}
                       </td>
                       <td className="px-3 py-2">
                         <Input
@@ -714,10 +784,15 @@ export function WarehouseInventoryDialog({
           ? new Map(
               trackedProducts.map((p) => [
                 p._id,
-                historicalStockQuery.data!.avgCostMap.get(p._id) ?? avgCostByProductId.get(p._id) ?? null,
+                historicalStockQuery.data!.avgCostMap.get(p._id) ?? avgCostByProductId.get(p._id) ?? (p.purchasePrice != null && p.purchasePrice > 0 ? p.purchasePrice : null),
               ]),
             )
-          : avgCostByProductId
+          : new Map(
+              trackedProducts.map((p) => [
+                p._id,
+                avgCostByProductId.get(p._id) ?? (p.purchasePrice != null && p.purchasePrice > 0 ? p.purchasePrice : null),
+              ]),
+            )
       }
       locationName={
         resolvedLocationId

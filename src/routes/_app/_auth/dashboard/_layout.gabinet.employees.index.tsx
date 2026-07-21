@@ -582,6 +582,7 @@ function CreateEmployeeSheet({
   const queryClient = useQueryClient();
   const createEmployee = useAction(api.gabinet.employees.create);
   const createInvitation = useAction(api.invitations.create);
+  const createWithPassword = useAction(api.gabinet.employees.createWithPassword);
   const [saving, setSaving] = useState(false);
 
   return (
@@ -599,24 +600,36 @@ function CreateEmployeeSheet({
             isSubmitting={saving}
             onCancel={onClose}
             onSubmit={async (data) => {
-              const shouldInvite = !!(data.grantSystemAccess && data.accessEmail);
               setSaving(true);
               try {
-                if (!shouldInvite) {
-                  await createEmployee({
+                if (data.accessMode === "password" && data.accessEmail && data.password) {
+                  await createWithPassword({
                     organizationId,
-                    ...data,
-                    userId: data.userId,
+                    email: data.accessEmail,
+                    password: data.password,
+                    teamRole: data.accessRole ?? "member",
+                    firstName: data.firstName,
+                    lastName: data.lastName,
+                    role: data.role,
+                    specialization: data.specialization,
+                    licenseNumber: data.licenseNumber,
+                    color: data.color,
+                    showInCalendar: data.showInCalendar,
+                    qualifiedTreatmentIds: data.qualifiedTreatmentIds as string[],
+                    tagIds: data.tagIds as string[] | undefined,
+                    categoryId: data.categoryId as string | undefined,
+                    customFields: data.customFields,
+                    locationId: data.locationId,
+                    locationRole: data.locationRole,
                   });
                   toast.success(t("common.created"));
                   void queryClient.invalidateQueries({
                     queryKey: supabaseKeys.gabinetEmployees.list(organizationId),
                   });
-                }
-                if (shouldInvite) {
+                } else if (data.grantSystemAccess && data.accessEmail) {
                   await createInvitation({
                     organizationId,
-                    email: data.accessEmail!,
+                    email: data.accessEmail,
                     role: data.accessRole ?? "member",
                     module: "gabinet",
                     moduleData: {
@@ -637,6 +650,16 @@ function CreateEmployeeSheet({
                   toast.success(t("team.invitationSent"));
                   void queryClient.invalidateQueries({
                     queryKey: supabaseKeys.invitations.list(organizationId),
+                  });
+                } else {
+                  await createEmployee({
+                    organizationId,
+                    ...data,
+                    userId: data.userId,
+                  });
+                  toast.success(t("common.created"));
+                  void queryClient.invalidateQueries({
+                    queryKey: supabaseKeys.gabinetEmployees.list(organizationId),
                   });
                 }
                 onClose();

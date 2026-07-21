@@ -8,6 +8,8 @@ import { gabinetEmployeeRoleValidator } from "../schema";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import type { GabinetEmployeeRow, SupabasePaginationResult } from "../_helpers/supabaseRows";
 import { Id } from "../_generated/dataModel";
+import { createAccount } from "@convex-dev/auth/server";
+import { checkSeatLimit } from "../_helpers/seatLimits";
 
 // Dual-write refs removed — Supabase is now primary for employee writes
 
@@ -954,5 +956,258 @@ export const _setQualifiedSideEffects = internalMutation({
       description: `Updated treatment qualifications (${args.treatmentCount} treatments)`,
       performedBy: updatedByUserId,
     });
+  },
+});
+
+/**
+ * Internal mutation: finalise team membership for a user created via manual
+ * password flow. Checks seat limit, prevents duplicate membership, derives a
+ * username, creates the teamMemberships row, and schedules Supabase mirrors.
+ * Called from `createWithPassword` action after the auth account is created.
+ */
+export const _finalisePasswordUser = internalMutation({
+  args: {
+    userId: v.string(),
+    email: v.string(),
+    name: v.optional(v.string()),
+    organizationId: v.id("organizations"),
+    teamRole: v.union(v.literal("admin"), v.literal("member"), v.literal("viewer")),
+    invitedBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = args.userId as Id<"users">;
+
+    const { canAddMore, currentSeats, seatLimit } = await checkSeatLimit(ctx, {
+      organizationId: args.organizationId,
+    });
+    if (!canAddMore) {
+      throw new Error(
+        `Seat limit reached (${currentSeats}/${seatLimit}). Upgrade your plan to add more team members.`,
+      );
+    }
+
+    const existing = await ctx.db
+      .query("teamMemberships")
+      .withIndex("by_orgAndUser", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", userId),
+      )
+      .unique();
+    if (existing) {
+      throw new Error("Ten użytkownik jest już członkiem tej organizacji.");
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found after account creation");
+
+    let effectiveUsername = user.username;
+    if (!user.username) {
+      const local = args.email.split("@")[0] ?? "";
+      const base = local.toLowerCase().replace(/[^a-z0-9]/g, "");
+      let candidate = (base || "user").slice(0, 16);
+      let suffix = 0;
+      while (
+        await ctx.db
+          .query("users")
+          .filter((q) => q.eq(q.field("username"), candidate))
+          .first()
+      ) {
+        suffix += 1;
+        candidate = `${(base || "user").slice(0, 14)}${suffix}`;
+        if (suffix > 50) break;
+      }
+      await ctx.db.patch(userId, { username: candidate });
+      effectiveUsername = candidate;
+    }
+
+    const joinedAt = Date.now();
+    const membershipId = await ctx.db.insert("teamMemberships", {
+      userId,
+      organizationId: args.organizationId,
+      role: args.teamRole,
+      invitedBy: args.invitedBy as Id<"users">,
+      joinedAt,
+    });
+
+    await ctx.scheduler.runAfter(0, internal.supabase.users.writeUserToSupabase, {
+      userId: String(userId),
+      email: args.email,
+      name: args.name,
+      username: effectiveUsername,
+      createdAt: Math.floor(user._creationTime),
+      updatedAt: Date.now(),
+    });
+
+    await ctx.scheduler.runAfter(
+      500,
+      internal.supabase.organizations.writeTeamMembershipToSupabase,
+      {
+        membershipId: String(membershipId),
+        userId: String(userId),
+        organizationId: String(args.organizationId),
+        role: args.teamRole,
+        invitedBy: args.invitedBy,
+        joinedAt,
+      },
+    );
+
+    return { userId: String(userId) };
+  },
+});
+
+/**
+ * Admin action: create a gabinet employee account using a manually set
+ * password. Creates the Convex auth account (hashed via Scrypt), team
+ * membership, and gabinet_employees row in one go. No invitation email
+ * is sent. The account is immediately active and the user can log in.
+ *
+ * Password strength is validated on the frontend; the backend only
+ * enforces a minimum length of 8 characters as a safety net.
+ */
+export const createWithPassword = action({
+  args: {
+    organizationId: v.id("organizations"),
+    email: v.string(),
+    password: v.string(),
+    teamRole: v.union(v.literal("admin"), v.literal("member"), v.literal("viewer")),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    role: gabinetEmployeeRoleValidator,
+    specialization: v.optional(v.string()),
+    licenseNumber: v.optional(v.string()),
+    color: v.optional(v.string()),
+    showInCalendar: v.optional(v.boolean()),
+    qualifiedTreatmentIds: v.optional(v.array(v.string())),
+    tagIds: v.optional(v.array(v.string())),
+    categoryId: v.optional(v.string()),
+    customFields: v.optional(v.array(v.any())),
+    locationId: v.optional(v.string()),
+    locationRole: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    if (args.password.length < 8) {
+      throw new Error("Hasło musi mieć co najmniej 8 znaków.");
+    }
+
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
+      throw new Error("Wymagane uprawnienia administratora.");
+    }
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const name =
+      [args.firstName, args.lastName].filter(Boolean).join(" ") || undefined;
+
+    const { user } = await createAccount(ctx, {
+      provider: "password",
+      account: { id: args.email, secret: args.password },
+      profile: { email: args.email, name },
+      shouldLinkViaEmail: false,
+      shouldLinkViaPhone: false,
+    });
+
+    const { userId } = await ctx.runMutation(
+      internal.gabinet.employees._finalisePasswordUser,
+      {
+        userId: String(user._id),
+        email: args.email,
+        name: user.name ?? name,
+        organizationId: args.organizationId,
+        teamRole: args.teamRole,
+        invitedBy: String(authResult.userId),
+      },
+    );
+
+    const db = createSupabaseDb();
+    const now = Date.now();
+
+    const employeeId = await db.insert("gabinetEmployees", {
+      organizationId: String(args.organizationId),
+      userId,
+      firstName: args.firstName ?? null,
+      lastName: args.lastName ?? null,
+      role: args.role,
+      specialization: args.specialization ?? null,
+      qualifiedTreatmentIds: args.qualifiedTreatmentIds ?? [],
+      licenseNumber: args.licenseNumber ?? null,
+      hireDate: null,
+      isActive: true,
+      color: args.color ?? null,
+      notes: null,
+      showInCalendar: args.showInCalendar ?? true,
+      tagIds: args.tagIds ?? null,
+      categoryId: args.categoryId ?? null,
+      createdBy: String(authResult.userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    if (args.locationId) {
+      const allowedRoles = [
+        "doctor", "cosmetologist", "nurse", "therapist",
+        "receptionist", "manager", "admin", "other",
+      ];
+      const locationRole =
+        args.locationRole && allowedRoles.includes(args.locationRole)
+          ? args.locationRole
+          : undefined;
+      try {
+        await db.insert("gabinetEmployeeLocations", {
+          organizationId: String(args.organizationId),
+          employeeId: String(employeeId),
+          locationId: args.locationId,
+          isPrimary: true,
+          role: locationRole,
+          createdAt: now,
+        });
+      } catch (e) {
+        console.error("[employees.createWithPassword] location insert failed:", e);
+      }
+    }
+
+    if (args.customFields && args.customFields.length > 0) {
+      for (const f of args.customFields) {
+        if (!f || typeof f !== "object") continue;
+        const defId = (f as Record<string, unknown>).fieldDefinitionId;
+        const val = (f as Record<string, unknown>).value;
+        if (typeof defId !== "string" || defId.length === 0) continue;
+        try {
+          await db.insert("customFieldValues", {
+            organizationId: String(args.organizationId),
+            fieldDefinitionId: defId,
+            entityType: "gabinetEmployee",
+            entityId: String(employeeId),
+            value: val ?? null,
+            createdAt: now,
+            updatedAt: now,
+          });
+        } catch (e) {
+          console.error("[employees.createWithPassword] customField insert failed:", e);
+        }
+      }
+    }
+
+    try {
+      await ctx.runMutation(internal.gabinet.employees._createSideEffects, {
+        employeeId: String(employeeId),
+        organizationId: args.organizationId,
+        createdBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error("[employees.createWithPassword] side effects failed:", e);
+    }
+
+    await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
+      organizationId: args.organizationId,
+      userId,
+      gabinetRole: args.role,
+      isActive: true,
+    });
+
+    return String(employeeId);
   },
 });

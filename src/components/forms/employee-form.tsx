@@ -63,8 +63,10 @@ export interface EmployeeFormData {
   categoryId?: Id<"categoryDefinitions">;
   customFields?: Array<{ fieldDefinitionId: string; value: unknown }>;
   grantSystemAccess?: boolean;
+  accessMode?: "invite" | "password";
   accessEmail?: string;
   accessRole?: "admin" | "member" | "viewer";
+  password?: string;
   locationId?: string;
   locationRole?: EmployeeRole;
 }
@@ -138,6 +140,9 @@ export function EmployeeForm({
   const [treatmentSearch, setTreatmentSearch] = useState("");
   const [accessEmail, setAccessEmail] = useState("");
   const [accessRole, setAccessRole] = useState<"admin" | "member" | "viewer">("member");
+  const [accessMode, setAccessMode] = useState<"invite" | "password">("invite");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [locationId, setLocationId] = useState<string | undefined>(undefined);
   const [locationRole, setLocationRole] = useState<EmployeeRole | undefined>(undefined);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
@@ -148,6 +153,29 @@ export function EmployeeForm({
     if (!q) return treatments;
     return treatments.filter((tr) => tr.name?.toLowerCase().includes(q));
   }, [treatments, treatmentSearch]);
+
+  const passwordError = (() => {
+    if (accessMode !== "password") return null;
+    if (!password) return null;
+    if (password.length < 8) return t("gabinet.employees.passwordTooShort", { defaultValue: "Hasło musi mieć co najmniej 8 znaków." });
+    if (!/[A-Z]/.test(password)) return t("gabinet.employees.passwordNoUppercase", { defaultValue: "Hasło musi zawierać co najmniej 1 wielką literę." });
+    if (!/[0-9]/.test(password)) return t("gabinet.employees.passwordNoDigit", { defaultValue: "Hasło musi zawierać co najmniej 1 cyfrę." });
+    return null;
+  })();
+
+  const confirmPasswordError = (() => {
+    if (accessMode !== "password") return null;
+    if (!confirmPassword) return null;
+    if (password !== confirmPassword) return t("gabinet.employees.passwordMismatch", { defaultValue: "Hasła nie są identyczne." });
+    return null;
+  })();
+
+  const isPasswordValid =
+    accessMode !== "password" ||
+    (password.length >= 8 &&
+      /[A-Z]/.test(password) &&
+      /[0-9]/.test(password) &&
+      password === confirmPassword);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,8 +204,10 @@ export function EmployeeForm({
       categoryId: categoryId || undefined,
       customFields: customFields.length > 0 ? customFields : undefined,
       grantSystemAccess: true,
+      accessMode,
       accessEmail: accessEmail.trim() || undefined,
       accessRole: accessRole,
+      password: accessMode === "password" ? password : undefined,
       locationId: locationId,
       locationRole: locationRole,
     });
@@ -413,6 +443,35 @@ export function EmployeeForm({
         </p>
 
         <div className="space-y-3">
+            {/* Access mode toggle */}
+            <div className="space-y-1.5">
+              <Label>{t("gabinet.employees.accessMethod", { defaultValue: "Sposób aktywacji konta" })}</Label>
+              <div className="flex gap-2">
+                <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+                  <input
+                    type="radio"
+                    name="accessMode"
+                    value="invite"
+                    checked={accessMode === "invite"}
+                    onChange={() => setAccessMode("invite")}
+                    className="accent-primary"
+                  />
+                  {t("gabinet.employees.accessModeInvite", { defaultValue: "Wyślij zaproszenie e-mailem" })}
+                </label>
+                <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+                  <input
+                    type="radio"
+                    name="accessMode"
+                    value="password"
+                    checked={accessMode === "password"}
+                    onChange={() => setAccessMode("password")}
+                    className="accent-primary"
+                  />
+                  {t("gabinet.employees.accessModePassword", { defaultValue: "Ustaw hasło ręcznie" })}
+                </label>
+              </div>
+            </div>
+
             <div className="space-y-1.5">
               <Label>
                 {t("gabinet.employees.accessEmail", { defaultValue: "Adres e-mail" })} <span className="text-destructive">*</span>
@@ -445,6 +504,48 @@ export function EmployeeForm({
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Password fields — only shown in manual password mode */}
+            {accessMode === "password" && (
+              <div className="space-y-3 pt-1">
+                <div className="space-y-1.5">
+                  <Label>
+                    {t("gabinet.employees.password", { defaultValue: "Hasło" })} <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                  />
+                  {passwordError && (
+                    <p className="text-xs text-destructive">{passwordError}</p>
+                  )}
+                  {!passwordError && (
+                    <p className="text-xs text-muted-foreground">
+                      {t("gabinet.employees.passwordHint", { defaultValue: "Min. 8 znaków, 1 wielka litera, 1 cyfra." })}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>
+                    {t("gabinet.employees.confirmPassword", { defaultValue: "Powtórz hasło" })} <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                  />
+                  {confirmPasswordError && (
+                    <p className="text-xs text-destructive">{confirmPasswordError}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {locations && locations.filter((l) => l.isActive).length > 0 && (
               <div className="space-y-1.5">
                 <Label>{t("settings.team.gabinetLocation")}</Label>
@@ -501,7 +602,8 @@ export function EmployeeForm({
           type="submit"
           disabled={
             isSubmitting ||
-            !accessEmail.trim()
+            !accessEmail.trim() ||
+            !isPasswordValid
           }
         >
           {isSubmitting

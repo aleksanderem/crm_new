@@ -959,6 +959,8 @@ function PackageSalesSection({
   patientMap,
   rangeLabel,
   currency,
+  startDate,
+  endDate,
 }: {
   usages: MappedGabinetPackageUsage[];
   isLoading: boolean;
@@ -969,6 +971,8 @@ function PackageSalesSection({
   patientMap: Map<string, string>;
   rangeLabel: string;
   currency: string;
+  startDate: string;
+  endDate: string;
 }) {
   const { t } = useTranslation();
   const [filterPackageId, setFilterPackageId] = useState("all");
@@ -986,6 +990,45 @@ function PackageSalesSection({
       avgPrice: filteredUsages.length > 0 ? total / filteredUsages.length : 0,
     };
   }, [filteredUsages]);
+
+  const groupBy = useMemo<"day" | "week" | "month">(() => {
+    const diffDays =
+      Math.ceil(
+        (new Date(endDate).getTime() - new Date(startDate).getTime()) /
+          (1000 * 60 * 60 * 24),
+      ) + 1;
+    return diffDays <= 14 ? "day" : diffDays <= 90 ? "week" : "month";
+  }, [startDate, endDate]);
+
+  const revenueByPeriod = useMemo(() => {
+    const buckets = new Map<string, { revenue: number; count: number }>();
+    for (const u of filteredUsages) {
+      const d = new Date(u.purchasedAt);
+      let key: string;
+      if (groupBy === "day") {
+        key = d.toISOString().split("T")[0];
+      } else if (groupBy === "week") {
+        const tmp = new Date(d);
+        tmp.setHours(0, 0, 0, 0);
+        tmp.setDate(tmp.getDate() + 4 - (tmp.getDay() || 7));
+        const yearStart = new Date(tmp.getFullYear(), 0, 1);
+        const weekNo = Math.ceil(((tmp.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+        key = `${d.getFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+      } else {
+        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      }
+      const prev = buckets.get(key) ?? { revenue: 0, count: 0 };
+      buckets.set(key, { revenue: prev.revenue + u.paidAmount, count: prev.count + 1 });
+    }
+    return Array.from(buckets.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([period, s]) => ({ period, revenue: s.revenue, count: s.count }));
+  }, [filteredUsages, groupBy]);
+
+  const packageRevenueChartConfig = useMemo(
+    () => ({ revenue: { label: t("gabinet.reports.revenue"), color: "var(--chart-1)" } }) satisfies ChartConfig,
+    [t],
+  );
 
   const perPackage = useMemo(() => {
     const m = new Map<string, { count: number; revenue: number }>();
@@ -1100,6 +1143,68 @@ function PackageSalesSection({
           </CardContent>
         </Card>
       </div>
+
+      {/* Revenue over time bar chart */}
+      {revenueByPeriod.length > 0 && (
+        <Card>
+          <CardHeader className="flex justify-between">
+            <div className="flex flex-col gap-1">
+              <span className="font-semibold">{t("gabinet.reports.packageRevenueOverTime")}</span>
+              <span className="text-muted-foreground text-sm">{rangeLabel}</span>
+            </div>
+            <CardMenu />
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <ChartContainer config={packageRevenueChartConfig} className="h-52 w-full min-w-[300px]">
+              <BarChart
+                accessibilityLayer
+                data={revenueByPeriod}
+                margin={{ top: 7, left: 4, right: 4 }}
+              >
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="period"
+                  tickLine={false}
+                  tickMargin={5}
+                  axisLine={false}
+                  tickFormatter={(value: string) => {
+                    if (groupBy === "day") {
+                      const d = new Date(value + "T12:00:00");
+                      return `${d.getDate()}/${d.getMonth() + 1}`;
+                    }
+                    if (groupBy === "week") {
+                      return value.split("-")[1];
+                    }
+                    const d = new Date(value + "-01T12:00:00");
+                    return `${d.getMonth() + 1}/${String(d.getFullYear()).slice(2)}`;
+                  }}
+                  className="text-sm"
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value: number) =>
+                    formatCurrencyPLN(value, currency, { fractionDigits: 0 })
+                  }
+                  width={80}
+                  className="text-xs"
+                />
+                <ChartTooltip
+                  cursor={false}
+                  content={
+                    <ChartTooltipContent
+                      formatter={(value) =>
+                        formatCurrencyPLN(Number(value), currency, { fractionDigits: 0 })
+                      }
+                    />
+                  }
+                />
+                <Bar dataKey="revenue" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      )}
 
       {filteredUsages.length === 0 ? (
         <Card>
@@ -1830,6 +1935,8 @@ function GabinetReports() {
         patientMap={patientMap}
         rangeLabel={rangeLabel}
         currency={defaultCurrency}
+        startDate={startDate}
+        endDate={endDate}
       />
 
       <SidePanel

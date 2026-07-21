@@ -3721,7 +3721,8 @@
       "perEmployeePackageSales": "By Employee",
       "perPatientPackageSales": "By Patient (top 10)",
       "filterByPackage": "Filter by package",
-      "allPackages": "All packages"
+      "allPackages": "All packages",
+      "packageRevenueOverTime": "Package Revenue Over Time"
     },
     "bodyChart": {
       "description": "Mark body areas related to the appointment",

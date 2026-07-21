@@ -61,6 +61,7 @@ export const getByToken = query({
         status: invitation.status,
         expiresAt: invitation.expiresAt,
         createdAt: invitation.createdAt,
+        module: invitation.module,
       },
       orgName: org?.name ?? null,
       inviterName: inviter?.name ?? null,

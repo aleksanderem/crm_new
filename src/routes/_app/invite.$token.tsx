@@ -48,7 +48,9 @@ function InviteAcceptPage() {
     try {
       const organizationId = await acceptInvitation({ token });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.teamMemberships.list(organizationId) });
-      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(organizationId) });
+      if (inviteData?.invitation.module === "gabinet") {
+        void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(organizationId) });
+      }
       setResult("accepted");
       setTimeout(() => {
         navigate({ to: "/dashboard" });

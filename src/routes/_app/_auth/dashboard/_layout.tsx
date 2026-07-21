@@ -646,7 +646,6 @@ function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
                       },
                     });
                     void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(orgId) });
-                    void queryClient.invalidateQueries({ queryKey: supabaseKeys.teamMemberships.list(orgId) });
                   }
                   opts.onSuccess();
                 } catch (e) {

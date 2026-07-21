@@ -636,9 +636,6 @@ function CreateEmployeeSheet({
                   void queryClient.invalidateQueries({
                     queryKey: supabaseKeys.invitations.list(organizationId),
                   });
-                  void queryClient.invalidateQueries({
-                    queryKey: supabaseKeys.teamMemberships.list(organizationId),
-                  });
                 }
                 onClose();
               } catch (e) {

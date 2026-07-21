@@ -3711,7 +3711,17 @@
         "card": "Card",
         "transfer": "Transfer",
         "other": "Other"
-      }
+      },
+      "packageSales": "Package Sales",
+      "totalPackagesSold": "Packages Sold",
+      "totalPackageRevenue": "Package Revenue",
+      "avgPackagePrice": "Avg. Package Price",
+      "noPackageSales": "No package sales in this period",
+      "perPackageBreakdown": "By Package Type",
+      "perEmployeePackageSales": "By Employee",
+      "perPatientPackageSales": "By Patient (top 10)",
+      "filterByPackage": "Filter by package",
+      "allPackages": "All packages"
     },
     "bodyChart": {
       "description": "Mark body areas related to the appointment",

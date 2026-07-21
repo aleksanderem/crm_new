@@ -10,6 +10,12 @@ import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-t
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
+import {
+  useSupabaseGabinetTreatmentPackagesList,
+  useSupabaseGabinetPackageUsageByDateRange,
+} from "@/hooks/use-supabase-gabinet-packages";
+import type { MappedGabinetPackageUsage } from "@/lib/supabase/mappers/gabinet/package-usage";
+import type { MappedGabinetTreatmentPackage } from "@/lib/supabase/mappers/gabinet/treatment-packages";
 import { useOrganization } from "@/components/org-context";
 import { usePermission } from "@/hooks/use-permission";
 import { formatCurrencyPLN } from "@/lib/format-currency";
@@ -941,6 +947,245 @@ function TopTreatmentsByRevenue({
   );
 }
 
+/* ─── Package Sales Section ─── */
+
+function PackageSalesSection({
+  usages,
+  isLoading: sectionLoading,
+  packages,
+  packageNameMap,
+  employeeMap,
+  patientMap,
+  rangeLabel,
+  currency,
+}: {
+  usages: MappedGabinetPackageUsage[];
+  isLoading: boolean;
+  packages: MappedGabinetTreatmentPackage[];
+  packageNameMap: Map<string, string>;
+  employeeMap: Map<string, string>;
+  patientMap: Map<string, string>;
+  rangeLabel: string;
+  currency: string;
+}) {
+  const { t } = useTranslation();
+  const [filterPackageId, setFilterPackageId] = useState("all");
+
+  const filteredUsages = useMemo(
+    () => (filterPackageId === "all" ? usages : usages.filter((u) => u.packageId === filterPackageId)),
+    [usages, filterPackageId],
+  );
+
+  const { totalSold, totalRevenue, avgPrice } = useMemo(() => {
+    const total = filteredUsages.reduce((s, u) => s + u.paidAmount, 0);
+    return {
+      totalSold: filteredUsages.length,
+      totalRevenue: total,
+      avgPrice: filteredUsages.length > 0 ? total / filteredUsages.length : 0,
+    };
+  }, [filteredUsages]);
+
+  const perPackage = useMemo(() => {
+    const m = new Map<string, { count: number; revenue: number }>();
+    for (const u of filteredUsages) {
+      const prev = m.get(u.packageId) ?? { count: 0, revenue: 0 };
+      m.set(u.packageId, { count: prev.count + 1, revenue: prev.revenue + u.paidAmount });
+    }
+    return Array.from(m.entries())
+      .map(([id, s]) => ({ id, name: packageNameMap.get(id) ?? id, count: s.count, revenue: s.revenue }))
+      .sort((a, b) => b.revenue - a.revenue);
+  }, [filteredUsages, packageNameMap]);
+
+  const perEmployee = useMemo(() => {
+    const m = new Map<string, { count: number; revenue: number }>();
+    for (const u of filteredUsages) {
+      const prev = m.get(u.createdBy) ?? { count: 0, revenue: 0 };
+      m.set(u.createdBy, { count: prev.count + 1, revenue: prev.revenue + u.paidAmount });
+    }
+    return Array.from(m.entries())
+      .map(([userId, s]) => ({ name: employeeMap.get(userId) ?? userId, count: s.count, revenue: s.revenue }))
+      .sort((a, b) => b.revenue - a.revenue);
+  }, [filteredUsages, employeeMap]);
+
+  const perPatient = useMemo(() => {
+    const m = new Map<string, { count: number; revenue: number }>();
+    for (const u of filteredUsages) {
+      if (!u.patientId) continue;
+      const prev = m.get(u.patientId) ?? { count: 0, revenue: 0 };
+      m.set(u.patientId, { count: prev.count + 1, revenue: prev.revenue + u.paidAmount });
+    }
+    return Array.from(m.entries())
+      .map(([id, s]) => ({ name: patientMap.get(id) ?? id, count: s.count, revenue: s.revenue }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10);
+  }, [filteredUsages, patientMap]);
+
+  const maxPackageRevenue = useMemo(
+    () => Math.max(...perPackage.map((p) => p.revenue), 1),
+    [perPackage],
+  );
+
+  if (sectionLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-7 w-48" />
+        <div className="grid gap-4 sm:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-lg" />
+          ))}
+        </div>
+        <div className="grid gap-6 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-52 rounded-lg" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold">{t("gabinet.reports.packageSales")}</h2>
+          <p className="text-muted-foreground text-sm">{rangeLabel}</p>
+        </div>
+        <Select value={filterPackageId} onValueChange={setFilterPackageId}>
+          <SelectTrigger className="w-52" aria-label={t("gabinet.reports.filterByPackage")}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("gabinet.reports.allPackages")}</SelectItem>
+            {packages.map((p) => (
+              <SelectItem key={p._id} value={p._id}>
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-muted-foreground text-sm">{t("gabinet.reports.totalPackagesSold")}</p>
+            <p className="mt-1 text-2xl font-bold">{totalSold}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-muted-foreground text-sm">{t("gabinet.reports.totalPackageRevenue")}</p>
+            <p className="mt-1 text-2xl font-bold">
+              {formatCurrencyPLN(totalRevenue, currency, { fractionDigits: 0 })}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-muted-foreground text-sm">{t("gabinet.reports.avgPackagePrice")}</p>
+            <p className="mt-1 text-2xl font-bold">
+              {formatCurrencyPLN(avgPrice, currency, { fractionDigits: 0 })}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {filteredUsages.length === 0 ? (
+        <Card>
+          <CardContent className="flex items-center justify-center py-12">
+            <span className="text-muted-foreground text-sm">{t("gabinet.reports.noPackageSales")}</span>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Per package breakdown */}
+          <Card>
+            <CardHeader className="flex justify-between border-b">
+              <span className="font-semibold">{t("gabinet.reports.perPackageBreakdown")}</span>
+              <CardMenu />
+            </CardHeader>
+            <CardContent className="space-y-3 pt-4">
+              {perPackage.map((item) => {
+                const pct = Math.round((item.revenue / maxPackageRevenue) * 100);
+                return (
+                  <div key={item.id} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="max-w-[55%] truncate font-medium">{item.name}</span>
+                      <div className="ml-2 flex shrink-0 items-center gap-2">
+                        <span className="text-muted-foreground">{item.count}×</span>
+                        <span className="font-semibold">
+                          {formatCurrencyPLN(item.revenue, currency, { fractionDigits: 0 })}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="bg-muted h-1.5 overflow-hidden rounded-full">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${pct}%`, backgroundColor: "var(--primary)" }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+
+          {/* Per employee breakdown */}
+          <Card>
+            <CardHeader className="flex justify-between border-b">
+              <span className="font-semibold">{t("gabinet.reports.perEmployeePackageSales")}</span>
+              <CardMenu />
+            </CardHeader>
+            <CardContent className="space-y-3 pt-4">
+              {perEmployee.length === 0 ? (
+                <span className="text-muted-foreground text-sm">{t("common.noResults")}</span>
+              ) : (
+                perEmployee.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm">
+                    <span className="max-w-[55%] truncate font-medium">{item.name}</span>
+                    <div className="ml-2 flex shrink-0 items-center gap-2">
+                      <span className="text-muted-foreground">{item.count}×</span>
+                      <span className="font-semibold">
+                        {formatCurrencyPLN(item.revenue, currency, { fractionDigits: 0 })}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Per patient breakdown (top 10) */}
+          <Card>
+            <CardHeader className="flex justify-between border-b">
+              <span className="font-semibold">{t("gabinet.reports.perPatientPackageSales")}</span>
+              <CardMenu />
+            </CardHeader>
+            <CardContent className="space-y-3 pt-4">
+              {perPatient.length === 0 ? (
+                <span className="text-muted-foreground text-sm">{t("common.noResults")}</span>
+              ) : (
+                perPatient.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm">
+                    <span className="max-w-[55%] truncate font-medium">{item.name}</span>
+                    <div className="ml-2 flex shrink-0 items-center gap-2">
+                      <span className="text-muted-foreground">{item.count}×</span>
+                      <span className="font-semibold">
+                        {formatCurrencyPLN(item.revenue, currency, { fractionDigits: 0 })}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Main Page ─── */
 
 function GabinetReports() {
@@ -1033,6 +1278,12 @@ function GabinetReports() {
       locationId: selectedLocationId,
     });
 
+  const { data: packageUsages, isLoading: loadingPackageUsages } =
+    useSupabaseGabinetPackageUsageByDateRange(organizationId, startDate, endDate);
+
+  const { data: packagesListData, isLoading: loadingPackagesList } =
+    useSupabaseGabinetTreatmentPackagesList(organizationId);
+
   const isLoading =
     loadingAppointments || loadingTreatments || loadingPatients || loadingEmployees || loadingGratisBarter || loadingActualPayments;
 
@@ -1057,6 +1308,24 @@ function GabinetReports() {
       ])
     );
   }, [employees]);
+
+  // Patient map: patientId → full name
+  const patientMap = useMemo(() => {
+    if (!patients) return new Map<string, string>();
+    return new Map(
+      patients.map((p) => [
+        p._id,
+        [p.firstName, p.lastName].filter(Boolean).join(" ") || p._id,
+      ])
+    );
+  }, [patients]);
+
+  // Package name map: packageId → name
+  const packageNameMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of packagesListData ?? []) m.set(p._id, p.name);
+    return m;
+  }, [packagesListData]);
 
   // Treatment stats: count + estimated revenue (completed only, gratis/barter excluded from revenue)
   const treatmentStats = useMemo(() => {
@@ -1289,6 +1558,21 @@ function GabinetReports() {
     for (const pm of paymentMethodBreakdown) {
       rows.push({ section: "payment_method", metric: pm.method, value: pm.count, revenue: pm.total });
     }
+    // Package sales — per package and per employee
+    const pkgSalesMap = new Map<string, { count: number; revenue: number }>();
+    const empPkgSalesMap = new Map<string, { count: number; revenue: number }>();
+    for (const u of packageUsages ?? []) {
+      const prevPkg = pkgSalesMap.get(u.packageId) ?? { count: 0, revenue: 0 };
+      pkgSalesMap.set(u.packageId, { count: prevPkg.count + 1, revenue: prevPkg.revenue + u.paidAmount });
+      const prevEmp = empPkgSalesMap.get(u.createdBy) ?? { count: 0, revenue: 0 };
+      empPkgSalesMap.set(u.createdBy, { count: prevEmp.count + 1, revenue: prevEmp.revenue + u.paidAmount });
+    }
+    for (const [pkgId, stats] of pkgSalesMap) {
+      rows.push({ section: "package_sales_by_package", metric: packageNameMap.get(pkgId) ?? pkgId, value: stats.count, revenue: stats.revenue });
+    }
+    for (const [userId, stats] of empPkgSalesMap) {
+      rows.push({ section: "package_sales_by_employee", metric: employeeMap.get(userId) ?? userId, value: stats.count, revenue: stats.revenue });
+    }
     const csv = Papa.unparse(rows as unknown as Record<string, unknown>[]);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -1317,6 +1601,9 @@ function GabinetReports() {
     dailyStats,
     employeeStats,
     paymentMethodBreakdown,
+    packageUsages,
+    packageNameMap,
+    employeeMap,
     startDate,
     endDate,
     t,
@@ -1504,6 +1791,18 @@ function GabinetReports() {
 
       {/* Daily Appointment Volume */}
       <DailyVolumeChart data={dailyStats} rangeLabel={rangeLabel} />
+
+      {/* Package Sales */}
+      <PackageSalesSection
+        usages={packageUsages ?? []}
+        isLoading={loadingPackageUsages || loadingPackagesList}
+        packages={packagesListData ?? []}
+        packageNameMap={packageNameMap}
+        employeeMap={employeeMap}
+        patientMap={patientMap}
+        rangeLabel={rangeLabel}
+        currency={defaultCurrency}
+      />
 
       <SidePanel
         open={dateFilterPanelOpen}

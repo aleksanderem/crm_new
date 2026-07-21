@@ -158,6 +158,48 @@ export function useSupabaseGabinetPackageUsageUnassigned(
 }
 
 // ---------------------------------------------------------------------------
+// Package Usage — By Date Range (for sales reporting)
+// ---------------------------------------------------------------------------
+
+interface UseSupabaseGabinetPackageUsageByDateRangeOptions {
+  enabled?: boolean;
+}
+
+export function useSupabaseGabinetPackageUsageByDateRange(
+  organizationId: string,
+  startDate: string,
+  endDate: string,
+  options: UseSupabaseGabinetPackageUsageByDateRangeOptions = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  return useQuery<MappedGabinetPackageUsage[], Error>({
+    queryKey: [
+      ...supabaseKeys.gabinetPackageUsage.list(organizationId),
+      "byDateRange",
+      startDate,
+      endDate,
+    ],
+    queryFn: async (): Promise<MappedGabinetPackageUsage[]> => {
+      if (!client) throw new Error("Supabase client not ready");
+      const startTs = new Date(startDate + "T00:00:00.000Z").getTime();
+      const endTs = new Date(endDate + "T23:59:59.999Z").getTime();
+      const { data, error } = await client
+        .from("gabinet_package_usage")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .gte("purchased_at", startTs)
+        .lte("purchased_at", endTs)
+        .order("purchased_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map(mapGabinetPackageUsageFromSupabase);
+    },
+    enabled: enabled && isReady && !!organizationId && !!startDate && !!endDate,
+  } satisfies UseQueryOptions<MappedGabinetPackageUsage[], Error>);
+}
+
+// ---------------------------------------------------------------------------
 // Package Usage — Active (org-wide, for stats)
 // ---------------------------------------------------------------------------
 

@@ -150,13 +150,14 @@ function buildActiveUsageDetails(
 function derivePackageKpis(
   packages: MappedGabinetTreatmentPackage[],
   activeUsages: MappedGabinetPackageUsage[],
-): { totalPackages: number; activePackages: number; expiringPackages: number } {
+): { totalPackages: number; activePackages: number; soldActiveUsages: number; expiringPackages: number } {
   const now = Date.now();
   const thirtyDays = 30 * 24 * 60 * 60 * 1000;
 
   return {
     totalPackages: packages.length,
     activePackages: packages.filter((p) => p.isActive).length,
+    soldActiveUsages: activeUsages.length,
     expiringPackages: activeUsages.filter(
       (u) => u.expiresAt != null && u.expiresAt > now && u.expiresAt <= now + thirtyDays,
     ).length,
@@ -489,7 +490,7 @@ function PackagesIndex() {
         <StatisticsProfitCard
           title={t("gabinet.packages.activePackages", "Aktywne wykupione")}
           description={t("gabinet.packages.inUse", "W użyciu")}
-          value={String(pkgKpis.activePackages)}
+          value={String(pkgKpis.soldActiveUsages)}
           changePercentage={t("gabinet.packages.byPatients", "u klientów")}
         />
         <StatisticsImpressionCard

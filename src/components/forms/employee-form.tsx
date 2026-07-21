@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
@@ -18,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
+import { CustomFieldFormSection } from "@/components/custom-fields/custom-field-form-section";
 import { Search } from "@/lib/ez-icons";
 
 const ROLES = ["doctor", "cosmetologist", "nurse", "therapist", "receptionist", "manager", "admin", "other"] as const;
@@ -59,6 +61,7 @@ export interface EmployeeFormData {
   qualifiedTreatmentIds: Id<"gabinetTreatments">[];
   tagIds?: Id<"tagDefinitions">[];
   categoryId?: Id<"categoryDefinitions">;
+  customFields?: Array<{ fieldDefinitionId: string; value: unknown }>;
   grantSystemAccess?: boolean;
   accessEmail?: string;
   accessRole?: "admin" | "member" | "viewer";
@@ -91,6 +94,25 @@ export function EmployeeForm({
     enabled: !!organizationId,
   });
 
+  const { data: customFieldDefs } = useQuery(
+    convexQuery(
+      api.customFields.getDefinitions,
+      organizationId
+        ? { organizationId, entityType: "gabinetEmployee" as const }
+        : "skip",
+    ),
+  ) as {
+    data: Array<{
+      _id: string;
+      name: string;
+      fieldKey: string;
+      fieldType: any;
+      options?: string[];
+      isRequired?: boolean;
+      group?: string;
+    }> | undefined;
+  };
+
   const [firstName, setFirstName] = useState(initialData?.firstName ?? "");
   const [lastName, setLastName] = useState(initialData?.lastName ?? "");
   const [role, setRole] = useState<EmployeeRole>(initialData?.role ?? "doctor");
@@ -109,6 +131,7 @@ export function EmployeeForm({
   const [grantSystemAccess, setGrantSystemAccess] = useState(false);
   const [accessEmail, setAccessEmail] = useState("");
   const [accessRole, setAccessRole] = useState<"admin" | "member" | "viewer">("member");
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
 
   const filteredTreatments = useMemo(() => {
     if (!treatments) return [];
@@ -121,6 +144,13 @@ export function EmployeeForm({
     e.preventDefault();
 
     const isClinicalRole = role !== "receptionist" && role !== "manager";
+
+    const customFields = (customFieldDefs ?? [])
+      .map((def) => ({
+        fieldDefinitionId: def._id,
+        value: customFieldValues[def.fieldKey],
+      }))
+      .filter((f) => f.value !== undefined && f.value !== "");
 
     onSubmit({
       firstName: firstName || undefined,
@@ -135,6 +165,7 @@ export function EmployeeForm({
         : [],
       tagIds: tagIds.length > 0 ? tagIds : undefined,
       categoryId: categoryId || undefined,
+      customFields: customFields.length > 0 ? customFields : undefined,
       grantSystemAccess: grantSystemAccess || undefined,
       accessEmail: grantSystemAccess ? (accessEmail.trim() || undefined) : undefined,
       accessRole: grantSystemAccess ? accessRole : undefined,
@@ -348,6 +379,18 @@ export function EmployeeForm({
             onChange={setCategoryId}
             organizationId={organizationId}
             entityType="gabinetEmployee"
+          />
+        </div>
+      )}
+
+      {customFieldDefs && customFieldDefs.length > 0 && (
+        <div className="space-y-2 pt-2 border-t">
+          <CustomFieldFormSection
+            definitions={customFieldDefs as any}
+            values={customFieldValues}
+            onChange={(fieldKey, value) =>
+              setCustomFieldValues((prev) => ({ ...prev, [fieldKey]: value }))
+            }
           />
         </div>
       )}

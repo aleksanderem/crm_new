@@ -133,6 +133,11 @@ export const create = action({
     // exceed the patient's current available balance.
     creditEarned: v.optional(v.number()),
     creditApplied: v.optional(v.number()),
+    // Discount applied at point of sale (issue #3383).
+    // discountAmount: absolute discount value in the payment currency.
+    // discountPercent: percentage discount (0–100).
+    discountAmount: v.optional(v.number()),
+    discountPercent: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runQuery(
@@ -201,6 +206,10 @@ export const create = action({
     };
     if (creditEarned !== null) insertRow.creditEarned = creditEarned;
     if (creditApplied !== null) insertRow.creditApplied = creditApplied;
+    if (args.discountAmount !== undefined && args.discountAmount > 0)
+      insertRow.discountAmount = args.discountAmount;
+    if (args.discountPercent !== undefined && args.discountPercent > 0)
+      insertRow.discountPercent = args.discountPercent;
 
     const paymentId = await db.insert("payments", insertRow);
 

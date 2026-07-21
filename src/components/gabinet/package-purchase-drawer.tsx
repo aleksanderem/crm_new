@@ -189,6 +189,17 @@ export function PackagePurchaseDrawer({
         soldByEmployeeId: soldByEmployeeId || undefined,
       });
 
+      const discountFields =
+        discountAmount > 0
+          ? {
+              discountAmount,
+              discountPercent:
+                discountType === "percent"
+                  ? parsedDiscountValue
+                  : Math.round((discountAmount / basePrice) * 10000) / 100,
+            }
+          : {};
+
       if (isInstallment) {
         if (splitPayment) {
           const parts: Array<{ method: typeof firstSplitMethod; amount: number }> = [];
@@ -196,7 +207,8 @@ export function PackagePurchaseDrawer({
             parts.push({ method: firstSplitMethod, amount: parsedFirstSplit });
           if (parsedSecondSplit > 0)
             parts.push({ method: secondSplitMethod, amount: parsedSecondSplit });
-          for (const part of parts) {
+          for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
             await createPayment({
               organizationId,
               patientId: patientId as Id<"gabinetPatients">,
@@ -205,6 +217,7 @@ export function PackagePurchaseDrawer({
               currency,
               paymentMethod: part.method,
               notes: `Package: ${selectedPkg.name} (installment 1/${parsedInstallmentCount} split: ${part.method})`,
+              ...(i === 0 ? discountFields : {}),
             });
           }
         } else {
@@ -216,6 +229,7 @@ export function PackagePurchaseDrawer({
             currency,
             paymentMethod: paymentMethod as "cash" | "card" | "transfer" | "other",
             notes: `Package: ${selectedPkg.name} (installment 1/${parsedInstallmentCount})`,
+            ...discountFields,
           });
         }
         for (let i = 2; i <= parsedInstallmentCount; i++) {
@@ -236,7 +250,8 @@ export function PackagePurchaseDrawer({
           parts.push({ method: firstSplitMethod, amount: parsedFirstSplit });
         if (parsedSecondSplit > 0)
           parts.push({ method: secondSplitMethod, amount: parsedSecondSplit });
-        for (const part of parts) {
+        for (let i = 0; i < parts.length; i++) {
+          const part = parts[i];
           await createPayment({
             organizationId,
             patientId: patientId as Id<"gabinetPatients">,
@@ -245,6 +260,7 @@ export function PackagePurchaseDrawer({
             currency,
             paymentMethod: part.method,
             notes: `Package: ${selectedPkg.name} (split: ${part.method})`,
+            ...(i === 0 ? discountFields : {}),
           });
         }
       } else {
@@ -256,6 +272,7 @@ export function PackagePurchaseDrawer({
           currency,
           paymentMethod: paymentMethod as "cash" | "card" | "transfer",
           notes: `Package: ${selectedPkg.name}`,
+          ...discountFields,
         });
       }
 

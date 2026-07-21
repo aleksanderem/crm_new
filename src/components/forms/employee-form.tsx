@@ -65,6 +65,8 @@ export interface EmployeeFormData {
   grantSystemAccess?: boolean;
   accessEmail?: string;
   accessRole?: "admin" | "member" | "viewer";
+  locationId?: string;
+  locationRole?: EmployeeRole;
 }
 
 interface EmployeeFormProps {
@@ -93,6 +95,13 @@ export function EmployeeForm({
     queryFn: () => listActiveTreatments({ organizationId }),
     enabled: !!organizationId,
   });
+
+  const listLocationsAction = useAction(api.gabinet.locations.listLocations);
+  const { data: locations } = useQuery({
+    queryKey: ["gabinet.locations.listLocations", organizationId],
+    queryFn: () => listLocationsAction({ organizationId }),
+    enabled: !!organizationId,
+  }) as { data: Array<{ _id: string; name: string; isActive: boolean }> | undefined };
 
   const { data: customFieldDefs } = useQuery(
     convexQuery(
@@ -131,6 +140,8 @@ export function EmployeeForm({
   const [grantSystemAccess, setGrantSystemAccess] = useState(false);
   const [accessEmail, setAccessEmail] = useState("");
   const [accessRole, setAccessRole] = useState<"admin" | "member" | "viewer">("member");
+  const [locationId, setLocationId] = useState<string | undefined>(undefined);
+  const [locationRole, setLocationRole] = useState<EmployeeRole | undefined>(undefined);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
 
   const filteredTreatments = useMemo(() => {
@@ -169,6 +180,8 @@ export function EmployeeForm({
       grantSystemAccess: grantSystemAccess || undefined,
       accessEmail: grantSystemAccess ? (accessEmail.trim() || undefined) : undefined,
       accessRole: grantSystemAccess ? accessRole : undefined,
+      locationId: grantSystemAccess ? locationId : undefined,
+      locationRole: grantSystemAccess ? locationRole : undefined,
     });
   };
 
@@ -445,6 +458,51 @@ export function EmployeeForm({
                 </SelectContent>
               </Select>
             </div>
+            {locations && locations.filter((l) => l.isActive).length > 0 && (
+              <div className="space-y-1.5">
+                <Label>{t("settings.team.gabinetLocation")}</Label>
+                <Select
+                  value={locationId ?? "none"}
+                  onValueChange={(v) => {
+                    setLocationId(v === "none" ? undefined : v);
+                    if (v === "none") setLocationRole(undefined);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("settings.team.gabinetLocationPlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t("settings.team.gabinetLocationNone")}</SelectItem>
+                    {locations.filter((l) => l.isActive).map((loc) => (
+                      <SelectItem key={loc._id} value={loc._id}>
+                        {loc.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {locationId && (
+              <div className="space-y-1.5">
+                <Label>{t("settings.team.gabinetLocationRole")}</Label>
+                <Select
+                  value={locationRole ?? "none"}
+                  onValueChange={(v) => setLocationRole(v === "none" ? undefined : v as EmployeeRole)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("settings.team.gabinetLocationRolePlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t("settings.team.gabinetLocationRoleNone")}</SelectItem>
+                    {ROLES.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {t(`gabinet.employees.roles.${r}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         )}
       </div>

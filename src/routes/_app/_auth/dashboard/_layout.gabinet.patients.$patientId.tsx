@@ -189,6 +189,9 @@ function PatientDetail() {
     "cash" | "card" | "transfer" | "package" | "other"
   >("cash");
   const [paymentEditNotes, setPaymentEditNotes] = useState("");
+  const [paymentEditAppointmentId, setPaymentEditAppointmentId] = useState<string | null>(null);
+  const [paymentEditDiscountType, setPaymentEditDiscountType] = useState<"amount" | "percent">("amount");
+  const [paymentEditDiscountValue, setPaymentEditDiscountValue] = useState("");
   const [isPaymentEditSubmitting, setIsPaymentEditSubmitting] = useState(false);
 
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
@@ -618,6 +621,9 @@ function PatientDetail() {
     amount: number;
     paymentMethod: string;
     notes?: string;
+    appointmentId?: string;
+    discountAmount?: number;
+    discountPercent?: number;
   }) => {
     setEditingPaymentId(payment._id);
     setPaymentEditAmount(String(payment.amount));
@@ -637,12 +643,25 @@ function PatientDetail() {
         : "cash",
     );
     setPaymentEditNotes(payment.notes ?? "");
+    setPaymentEditAppointmentId(payment.appointmentId ?? null);
+    if (payment.discountPercent && payment.discountPercent > 0) {
+      setPaymentEditDiscountType("percent");
+      setPaymentEditDiscountValue(String(payment.discountPercent));
+    } else if (payment.discountAmount && payment.discountAmount > 0) {
+      setPaymentEditDiscountType("amount");
+      setPaymentEditDiscountValue(String(payment.discountAmount));
+    } else {
+      setPaymentEditDiscountType("amount");
+      setPaymentEditDiscountValue("");
+    }
   };
 
   const closeEditPaymentDialog = () => {
     setEditingPaymentId(null);
     setPaymentEditAmount("");
     setPaymentEditNotes("");
+    setPaymentEditAppointmentId(null);
+    setPaymentEditDiscountValue("");
   };
 
   const handleUpdatePayment = async () => {
@@ -653,6 +672,9 @@ function PatientDetail() {
       toast.error(t("gabinet.payments.amountRequired"));
       return;
     }
+    const discountVal = parseFloat(paymentEditDiscountValue.replace(",", ".")) || 0;
+    const discountAmount = paymentEditDiscountValue && paymentEditDiscountType === "amount" && discountVal > 0 ? discountVal : null;
+    const discountPercent = paymentEditDiscountValue && paymentEditDiscountType === "percent" && discountVal > 0 ? discountVal : null;
     setIsPaymentEditSubmitting(true);
     try {
       await updatePaymentAction({
@@ -661,6 +683,8 @@ function PatientDetail() {
         amount,
         paymentMethod: paymentEditMethod,
         notes: paymentEditNotes.trim() ? paymentEditNotes.trim() : null,
+        discountAmount,
+        discountPercent,
       });
       toast.success(t("gabinet.payments.updated"));
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.payments.all });
@@ -1692,6 +1716,9 @@ function PatientDetail() {
                                             paymentMethod:
                                               payment.paymentMethod,
                                             notes: payment.notes,
+                                            appointmentId: payment.appointmentId,
+                                            discountAmount: payment.discountAmount,
+                                            discountPercent: payment.discountPercent,
                                           });
                                         }}
                                       >
@@ -2045,6 +2072,74 @@ function PatientDetail() {
                 </SelectContent>
               </Select>
             </div>
+            {paymentEditAppointmentId && (() => {
+              const apt = (patientAppointments ?? []).find(
+                (a) => a._id === paymentEditAppointmentId,
+              );
+              const treatmentPrice = apt?.treatmentId
+                ? (treatmentsData?.find((tr) => tr._id === apt.treatmentId)?.price ?? 0)
+                : 0;
+              if (treatmentPrice <= 0) return null;
+              return (
+                <div>
+                  <Label>{t("gabinet.payments.discount")}</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Select
+                      value={paymentEditDiscountType}
+                      onValueChange={(v) => {
+                        setPaymentEditDiscountType(v as "amount" | "percent");
+                        setPaymentEditDiscountValue("");
+                        setPaymentEditAmount(treatmentPrice.toFixed(2));
+                      }}
+                    >
+                      <SelectTrigger className="w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="amount">
+                          {t("gabinet.payments.discountTypeAmount")}
+                        </SelectItem>
+                        <SelectItem value="percent">
+                          {t("gabinet.payments.discountTypePercent")}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="relative flex-1">
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        value={paymentEditDiscountValue}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                            setPaymentEditDiscountValue(v);
+                            const parsed = parseFloat(v.replace(",", ".")) || 0;
+                            const disc =
+                              paymentEditDiscountType === "amount"
+                                ? Math.min(parsed, treatmentPrice)
+                                : Math.round(
+                                    (treatmentPrice * Math.min(parsed, 100)) /
+                                      100 *
+                                      100,
+                                  ) / 100;
+                            setPaymentEditAmount(
+                              Math.max(0, treatmentPrice - disc).toFixed(2),
+                            );
+                          }
+                        }}
+                        placeholder={paymentEditDiscountType === "percent" ? "0" : "0.00"}
+                        className={paymentEditDiscountType === "percent" ? "pr-8" : ""}
+                      />
+                      {paymentEditDiscountType === "percent" && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                          %
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
             <div>
               <Label>{t("common.notes")}</Label>
               <Input

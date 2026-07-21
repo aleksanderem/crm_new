@@ -26,6 +26,8 @@ export interface MappedPayment {
   creditEarned?: number;
   creditApplied?: number;
   kind?: string;
+  discountAmount?: number;
+  discountPercent?: number;
   _source: "supabase";
 }
 

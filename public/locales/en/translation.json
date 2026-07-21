@@ -3902,7 +3902,11 @@
         "requestRefundDialogDesc": "You don't have permission to refund credit. Your request will be sent to an organization admin.",
         "requestRefundConfirm": "Send request",
         "refundRequestSent": "Refund authorization request sent to admin."
-      }
+      },
+      "discount": "Discount",
+      "discountTypeAmount": "Fixed (PLN)",
+      "discountTypePercent": "Percentage (%)",
+      "discountedPrice": "Price after discount"
     },
     "schedules": {
       "break": "Break",

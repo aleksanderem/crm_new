@@ -210,6 +210,8 @@ function PatientDetail() {
   const [addPaymentAppointmentId, setAddPaymentAppointmentId] =
     useState<string>("");
   const [isAddPaymentSubmitting, setIsAddPaymentSubmitting] = useState(false);
+  const [addPaymentDiscountType, setAddPaymentDiscountType] = useState<"amount" | "percent">("amount");
+  const [addPaymentDiscountValue, setAddPaymentDiscountValue] = useState("");
 
   // Cancel-payment confirm state.
   const [cancellingPaymentId, setCancellingPaymentId] = useState<string | null>(
@@ -759,6 +761,8 @@ function PatientDetail() {
     setAddPaymentMethod("cash");
     setAddPaymentNotes("");
     setAddPaymentAppointmentId("");
+    setAddPaymentDiscountType("amount");
+    setAddPaymentDiscountValue("");
     setAddPaymentOpen(true);
   };
 
@@ -823,6 +827,8 @@ function PatientDetail() {
       });
       toast.success(t("gabinet.payments.created"));
       setAddPaymentOpen(false);
+      setAddPaymentDiscountType("amount");
+      setAddPaymentDiscountValue("");
       await refetchPatientCredit();
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.payments.all });
     } catch (e) {
@@ -2242,9 +2248,11 @@ function PatientDetail() {
               </Label>
               <Select
                 value={addPaymentAppointmentId || "none"}
-                onValueChange={(v) =>
-                  setAddPaymentAppointmentId(v === "none" ? "" : v)
-                }
+                onValueChange={(v) => {
+                  setAddPaymentAppointmentId(v === "none" ? "" : v);
+                  setAddPaymentDiscountType("amount");
+                  setAddPaymentDiscountValue("");
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -2286,6 +2294,88 @@ function PatientDetail() {
                 </p>
               )}
             </div>
+            {addPaymentAppointmentId && (() => {
+              const apt = (patientAppointments ?? []).find(
+                (a) => a._id === addPaymentAppointmentId,
+              );
+              const aptTreatmentPrice = apt?.treatmentId
+                ? (treatmentsData?.find((tr) => tr._id === apt.treatmentId)?.price ?? 0)
+                : 0;
+              const paidForVisit = (patientPayments ?? [])
+                .filter(
+                  (p) =>
+                    p.appointmentId === addPaymentAppointmentId &&
+                    p.status === "completed",
+                )
+                .reduce(
+                  (sum, p) =>
+                    sum +
+                    (p.amount ?? 0) +
+                    ((p as { creditApplied?: number | null }).creditApplied ?? 0),
+                  0,
+                );
+              const outstandingForVisit = Math.max(0, aptTreatmentPrice - paidForVisit);
+              if (outstandingForVisit <= 0) return null;
+              return (
+                <div>
+                  <Label>{t("gabinet.payments.discount")}</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Select
+                      value={addPaymentDiscountType}
+                      onValueChange={(v) => {
+                        setAddPaymentDiscountType(v as "amount" | "percent");
+                        setAddPaymentDiscountValue("");
+                      }}
+                    >
+                      <SelectTrigger className="w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="amount">
+                          {t("gabinet.payments.discountTypeAmount")}
+                        </SelectItem>
+                        <SelectItem value="percent">
+                          {t("gabinet.payments.discountTypePercent")}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="relative flex-1">
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        value={addPaymentDiscountValue}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                            setAddPaymentDiscountValue(v);
+                            const parsed = parseFloat(v.replace(",", ".")) || 0;
+                            const disc =
+                              addPaymentDiscountType === "amount"
+                                ? Math.min(parsed, outstandingForVisit)
+                                : Math.round(
+                                    (outstandingForVisit *
+                                      Math.min(parsed, 100)) /
+                                      100 *
+                                      100,
+                                  ) / 100;
+                            setAddPaymentAmount(
+                              Math.max(0, outstandingForVisit - disc).toFixed(2),
+                            );
+                          }
+                        }}
+                        placeholder={addPaymentDiscountType === "percent" ? "0" : "0.00"}
+                        className={addPaymentDiscountType === "percent" ? "pr-8" : ""}
+                      />
+                      {addPaymentDiscountType === "percent" && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                          %
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
             <div>
               <Label>{t("common.notes")}</Label>
               <Input

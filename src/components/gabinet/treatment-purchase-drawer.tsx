@@ -59,6 +59,8 @@ export function TreatmentPurchaseDrawer({
   const [secondSplitAmount, setSecondSplitAmount] = useState<string>("");
   const [installmentCount, setInstallmentCount] = useState<string>("2");
   const [submitting, setSubmitting] = useState(false);
+  const [discountType, setDiscountType] = useState<"amount" | "percent">("amount");
+  const [discountValue, setDiscountValue] = useState<string>("");
 
   const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
   const { data: treatments } = useQuery({
@@ -79,14 +81,23 @@ export function TreatmentPurchaseDrawer({
   );
   const currency = selectedTreatment?.currency ?? "PLN";
 
+  const parsedDiscountValue = Number.parseFloat(discountValue.replace(",", ".")) || 0;
+  const discountAmount =
+    totalPrice > 0
+      ? discountType === "amount"
+        ? Math.min(parsedDiscountValue, totalPrice)
+        : Math.round((totalPrice * Math.min(parsedDiscountValue, 100)) / 100 * 100) / 100
+      : 0;
+  const finalPrice = Math.round(Math.max(0, totalPrice - discountAmount) * 100) / 100;
+
   const isOneTime = paymentType === "one_time";
   const isInstallment = paymentType === "installment";
 
   const parsedInstallmentCount = Math.max(2, Math.min(4, Number.parseInt(installmentCount, 10) || 2));
   const installmentAmount =
-    selectedTreatment ? Math.round((totalPrice / parsedInstallmentCount) * 100) / 100 : 0;
+    selectedTreatment ? Math.round((finalPrice / parsedInstallmentCount) * 100) / 100 : 0;
   const installmentRemainder = selectedTreatment
-    ? Math.round((totalPrice - installmentAmount * parsedInstallmentCount) * 100) / 100
+    ? Math.round((finalPrice - installmentAmount * parsedInstallmentCount) * 100) / 100
     : 0;
   const firstInstallmentAmount = selectedTreatment
     ? Math.round((installmentAmount + installmentRemainder) * 100) / 100
@@ -98,7 +109,7 @@ export function TreatmentPurchaseDrawer({
   const splitExpectedTotal = selectedTreatment
     ? isInstallment
       ? firstInstallmentAmount
-      : Math.round(totalPrice * 100) / 100
+      : Math.round(finalPrice * 100) / 100
     : 0;
   const splitMismatch = splitPayment && selectedTreatment && splitTotal !== splitExpectedTotal;
   const splitMissingAmount = splitPayment && parsedFirstSplit <= 0 && parsedSecondSplit <= 0;
@@ -115,6 +126,8 @@ export function TreatmentPurchaseDrawer({
     setFirstSplitAmount("");
     setSecondSplitAmount("");
     setInstallmentCount("2");
+    setDiscountType("amount");
+    setDiscountValue("");
   };
 
   const handlePurchase = async () => {
@@ -153,7 +166,7 @@ export function TreatmentPurchaseDrawer({
         patientId,
         treatmentId: selectedTreatment._id,
         sessionCount: parsedSessionCount,
-        paidAmount: totalPrice,
+        paidAmount: finalPrice,
         paymentMethod: usagePaymentMethod,
       });
 
@@ -222,7 +235,7 @@ export function TreatmentPurchaseDrawer({
           organizationId,
           patientId: patientId as Id<"gabinetPatients">,
           packageUsageId: usageId,
-          amount: totalPrice,
+          amount: finalPrice,
           currency,
           paymentMethod,
           notes: `Treatment: ${treatmentName}`,
@@ -320,12 +333,61 @@ export function TreatmentPurchaseDrawer({
                 </span>
                 <span>&times;{parsedSessionCount}</span>
               </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">
+                  {t("gabinet.payments.discount")}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <div className="flex rounded-md border overflow-hidden text-xs">
+                    <button
+                      type="button"
+                      onClick={() => { setDiscountType("amount"); setDiscountValue(""); }}
+                      className={`px-2 py-0.5 transition-colors ${discountType === "amount" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+                    >
+                      PLN
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setDiscountType("percent"); setDiscountValue(""); }}
+                      className={`px-2 py-0.5 transition-colors ${discountType === "percent" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+                    >
+                      %
+                    </button>
+                  </div>
+                  <div className="relative w-20">
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={discountValue}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                          setDiscountValue(v);
+                        }
+                      }}
+                      placeholder="0"
+                      className={`h-7 text-xs ${discountType === "percent" ? "pr-5" : ""}`}
+                    />
+                    {discountType === "percent" && (
+                      <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">%</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {discountAmount > 0 && (
+                <div className="flex items-center justify-between text-xs text-destructive">
+                  <span>{t("gabinet.payments.discount")}</span>
+                  <span>- {formatCurrencyPLN(discountAmount, currency)}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between pt-1 border-t text-sm">
                 <span className="font-medium">
-                  {t("gabinet.packages.totalPrice", "Cena całkowita")}
+                  {discountAmount > 0
+                    ? t("gabinet.payments.discountedPrice")
+                    : t("gabinet.packages.totalPrice", "Cena całkowita")}
                 </span>
                 <span className="font-bold">
-                  {formatCurrencyPLN(totalPrice, currency)}
+                  {formatCurrencyPLN(finalPrice, currency)}
                 </span>
               </div>
             </div>

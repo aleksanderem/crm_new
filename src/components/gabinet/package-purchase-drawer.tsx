@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Sheet,
@@ -50,6 +51,8 @@ export function PackagePurchaseDrawer({
   const [selectedPkgId, setSelectedPkgId] = useState<string>("");
   const [paymentType, setPaymentType] = useState<"one_time" | "installment">("one_time");
   const [installmentCount, setInstallmentCount] = useState<string>("2");
+  const [discountType, setDiscountType] = useState<"amount" | "percent">("amount");
+  const [discountValue, setDiscountValue] = useState<string>("");
 
   const listActivePackages = useAction(api.gabinet.packages.listActive);
   const { data: activePackages } = useQuery({
@@ -71,15 +74,25 @@ export function PackagePurchaseDrawer({
 
   const selectedPkg = (activePackages ?? []).find((p) => p._id === selectedPkgId);
 
+  const basePrice = selectedPkg?.totalPrice ?? 0;
+  const parsedDiscountValue = Number.parseFloat(discountValue.replace(",", ".")) || 0;
+  const discountAmount =
+    basePrice > 0
+      ? discountType === "amount"
+        ? Math.min(parsedDiscountValue, basePrice)
+        : Math.round((basePrice * Math.min(parsedDiscountValue, 100)) / 100 * 100) / 100
+      : 0;
+  const finalPrice = Math.round(Math.max(0, basePrice - discountAmount) * 100) / 100;
+
   const isOneTime = paymentType === "one_time";
   const isInstallment = paymentType === "installment";
 
   const parsedInstallmentCount = Math.max(2, Math.min(4, Number.parseInt(installmentCount, 10) || 2));
   const installmentAmount = selectedPkg
-    ? Math.round((selectedPkg.totalPrice / parsedInstallmentCount) * 100) / 100
+    ? Math.round((finalPrice / parsedInstallmentCount) * 100) / 100
     : 0;
   const installmentRemainder = selectedPkg
-    ? Math.round((selectedPkg.totalPrice - installmentAmount * parsedInstallmentCount) * 100) / 100
+    ? Math.round((finalPrice - installmentAmount * parsedInstallmentCount) * 100) / 100
     : 0;
   const firstInstallmentAmount = selectedPkg
     ? Math.round((installmentAmount + installmentRemainder) * 100) / 100
@@ -88,7 +101,7 @@ export function PackagePurchaseDrawer({
   const effectiveTotalForSplit = selectedPkg
     ? isInstallment
       ? firstInstallmentAmount
-      : selectedPkg.totalPrice
+      : finalPrice
     : 0;
 
   const {
@@ -120,6 +133,8 @@ export function PackagePurchaseDrawer({
     setSelectedPkgId("");
     setPaymentType("one_time");
     setInstallmentCount("2");
+    setDiscountType("amount");
+    setDiscountValue("");
     resetPaymentForm();
   };
 
@@ -164,7 +179,7 @@ export function PackagePurchaseDrawer({
         organizationId,
         patientId,
         packageId: selectedPkg._id,
-        paidAmount: selectedPkg.totalPrice,
+        paidAmount: finalPrice,
         paymentMethod: usagePaymentMethod,
       });
 
@@ -231,7 +246,7 @@ export function PackagePurchaseDrawer({
           organizationId,
           patientId: patientId as Id<"gabinetPatients">,
           packageUsageId: usageId,
-          amount: selectedPkg.totalPrice,
+          amount: finalPrice,
           currency,
           paymentMethod: paymentMethod as "cash" | "card" | "transfer",
           notes: `Package: ${selectedPkg.name}`,
@@ -306,9 +321,60 @@ export function PackagePurchaseDrawer({
                   </div>
                 ))}
               </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">
+                  {t("gabinet.payments.discount")}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <div className="flex rounded-md border overflow-hidden text-xs">
+                    <button
+                      type="button"
+                      onClick={() => { setDiscountType("amount"); setDiscountValue(""); }}
+                      className={`px-2 py-0.5 transition-colors ${discountType === "amount" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+                    >
+                      PLN
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setDiscountType("percent"); setDiscountValue(""); }}
+                      className={`px-2 py-0.5 transition-colors ${discountType === "percent" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+                    >
+                      %
+                    </button>
+                  </div>
+                  <div className="relative w-20">
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={discountValue}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                          setDiscountValue(v);
+                        }
+                      }}
+                      placeholder="0"
+                      className={`h-7 text-xs ${discountType === "percent" ? "pr-5" : ""}`}
+                    />
+                    {discountType === "percent" && (
+                      <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">%</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {discountAmount > 0 && (
+                <div className="flex items-center justify-between text-xs text-destructive">
+                  <span>{t("gabinet.payments.discount")}</span>
+                  <span>- {formatCurrencyPLN(discountAmount, selectedPkg.currency ?? "PLN")}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between pt-1 border-t text-sm">
-                <span className="font-medium">{t("gabinet.packages.totalPrice")}</span>
-                <span className="font-bold">{selectedPkg.totalPrice} {selectedPkg.currency ?? "PLN"}</span>
+                <span className="font-medium">
+                  {discountAmount > 0
+                    ? t("gabinet.payments.discountedPrice")
+                    : t("gabinet.packages.totalPrice")}
+                </span>
+                <span className="font-bold">{formatCurrencyPLN(finalPrice, selectedPkg.currency ?? "PLN")}</span>
               </div>
               {selectedPkg.validityDays && (
                 <p className="text-xs text-muted-foreground">

@@ -3923,7 +3923,11 @@
         "requestRefundDialogDesc": "Nie masz uprawnień do bezpośrednich zwrotów. Twoja prośba trafi do administratora organizacji.",
         "requestRefundConfirm": "Wyślij prośbę",
         "refundRequestSent": "Prośba o autoryzację zwrotu wysłana do administratora."
-      }
+      },
+      "discount": "Rabat",
+      "discountTypeAmount": "Kwotowy (PLN)",
+      "discountTypePercent": "Procentowy (%)",
+      "discountedPrice": "Cena po rabacie"
     },
     "schedules": {
       "break": "Przerwa",

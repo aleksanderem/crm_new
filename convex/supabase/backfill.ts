@@ -427,6 +427,8 @@ export const backfillAppointments = internalAction({
       organization_id: a.organizationId,
       patient_id: String(a.patientId),
       treatment_id: a.treatmentId ? String(a.treatmentId) : null,
+      variant_id: a.variantId ? String(a.variantId) : null,
+      price_at_booking: a.priceAtBooking ?? null,
       employee_id: String(a.employeeId),
       date: a.date,
       start_time: a.startTime,

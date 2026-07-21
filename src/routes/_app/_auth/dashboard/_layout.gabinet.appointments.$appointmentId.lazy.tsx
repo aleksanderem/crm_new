@@ -2160,7 +2160,9 @@ function AppointmentDetail() {
                                   variant={
                                     payment.status === "completed"
                                       ? "default"
-                                      : "secondary"
+                                      : payment.status === "refunded"
+                                        ? "destructive"
+                                        : "secondary"
                                   }
                                 >
                                   {t(

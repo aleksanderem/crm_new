@@ -40,7 +40,7 @@ export interface CrmColumn<TData> {
 
 interface RowAction<TData> {
   label: string;
-  onClick: (item: TData) => void;
+  onClick: (item: TData) => void | Promise<void>;
   icon?: React.ReactNode;
 }
 
@@ -294,7 +294,7 @@ export function CrmDataTable<TData>({
                                   <Dropdown.Item
                                     key={a.label}
                                     label={a.label}
-                                    onAction={() => a.onClick(item)}
+                                    onAction={async () => { await a.onClick(item); }}
                                   />
                                 ))}
                               </Dropdown.Menu>

@@ -137,7 +137,6 @@ export function EmployeeForm({
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
   const [treatmentSearch, setTreatmentSearch] = useState("");
-  const [grantSystemAccess, setGrantSystemAccess] = useState(false);
   const [accessEmail, setAccessEmail] = useState("");
   const [accessRole, setAccessRole] = useState<"admin" | "member" | "viewer">("member");
   const [locationId, setLocationId] = useState<string | undefined>(undefined);
@@ -177,11 +176,11 @@ export function EmployeeForm({
       tagIds: tagIds.length > 0 ? tagIds : undefined,
       categoryId: categoryId || undefined,
       customFields: customFields.length > 0 ? customFields : undefined,
-      grantSystemAccess: grantSystemAccess || undefined,
-      accessEmail: grantSystemAccess ? (accessEmail.trim() || undefined) : undefined,
-      accessRole: grantSystemAccess ? accessRole : undefined,
-      locationId: grantSystemAccess ? locationId : undefined,
-      locationRole: grantSystemAccess ? locationRole : undefined,
+      grantSystemAccess: true,
+      accessEmail: accessEmail.trim() || undefined,
+      accessRole: accessRole,
+      locationId: locationId,
+      locationRole: locationRole,
     });
   };
 
@@ -413,19 +412,8 @@ export function EmployeeForm({
         <p className="text-sm font-medium">
           {t("gabinet.employees.systemAccess", { defaultValue: "Dostęp do systemu" })}
         </p>
-        <label className="flex items-start gap-3 cursor-pointer">
-          <Checkbox
-            className="mt-0.5 h-5 w-5"
-            checked={grantSystemAccess}
-            onCheckedChange={(checked) => setGrantSystemAccess(checked === true)}
-          />
-          <span className="text-sm leading-none pt-0.5">
-            {t("gabinet.employees.grantSystemAccess", { defaultValue: "Nadaj dostęp do systemu" })}
-          </span>
-        </label>
 
-        {grantSystemAccess && (
-          <div className="mt-3 space-y-3 border-t pt-3">
+        <div className="space-y-3">
             <div className="space-y-1.5">
               <Label>
                 {t("gabinet.employees.accessEmail", { defaultValue: "Adres e-mail" })} <span className="text-destructive">*</span>
@@ -503,8 +491,7 @@ export function EmployeeForm({
                 </Select>
               </div>
             )}
-          </div>
-        )}
+        </div>
       </div>
 
       <div className="flex justify-end gap-2 pt-2">
@@ -515,7 +502,7 @@ export function EmployeeForm({
           type="submit"
           disabled={
             isSubmitting ||
-            (grantSystemAccess && !accessEmail.trim())
+            !accessEmail.trim()
           }
         >
           {isSubmitting

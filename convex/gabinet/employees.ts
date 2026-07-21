@@ -179,6 +179,10 @@ export const create = action({
   },
   handler: async (ctx, args) => {
     try {
+    if (!args.userId) {
+      throw new Error("Tworzenie pracownika bez konta użytkownika jest niedozwolone. Wyślij zaproszenie e-mail.");
+    }
+
     // --- Auth + permissions (via internal queries) ---
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,

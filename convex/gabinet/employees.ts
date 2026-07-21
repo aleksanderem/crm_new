@@ -334,6 +334,9 @@ export const _createFromInvitation = internalAction({
       // Still honour any locationId on the re-invite so the new assignment is not silently dropped.
       const d2 = (args.data ?? {}) as Record<string, unknown>;
       const locationId2 = typeof d2.locationId === "string" && d2.locationId.length > 0 ? d2.locationId : null;
+      const allowedRoles2 = ["doctor", "cosmetologist", "nurse", "therapist", "receptionist", "manager", "admin", "other"];
+      const locationRole2Raw = typeof d2.locationRole === "string" ? d2.locationRole : null;
+      const locationRole2 = locationRole2Raw && allowedRoles2.includes(locationRole2Raw) ? locationRole2Raw : undefined;
       if (locationId2) {
         try {
           const existingLocation = await db
@@ -347,6 +350,7 @@ export const _createFromInvitation = internalAction({
               employeeId: existingEmployeeId,
               locationId: locationId2,
               isPrimary: false,
+              role: locationRole2,
               createdAt: Date.now(),
             });
           }
@@ -396,6 +400,8 @@ export const _createFromInvitation = internalAction({
 
     // Location assignment — moduleData.locationId seeds the primary location.
     const locationId = asString(d.locationId);
+    const locationRoleRaw = asString(d.locationRole);
+    const locationRole = locationRoleRaw && allowedRoles.includes(locationRoleRaw) ? locationRoleRaw : undefined;
     if (locationId) {
       try {
         await db.insert("gabinetEmployeeLocations", {
@@ -403,6 +409,7 @@ export const _createFromInvitation = internalAction({
           employeeId: String(employeeId),
           locationId,
           isPrimary: true,
+          role: locationRole,
           createdAt: now,
         });
       } catch (e) {

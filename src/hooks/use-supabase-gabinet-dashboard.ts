@@ -295,17 +295,34 @@ export function useSupabaseGabinetTopTreatments(organizationId: string, location
     queryFn: async () => {
       if (!client) throw new Error("Supabase client not ready");
 
-      let apptQuery = client
-        .from("gabinet_appointments")
+      // When filtering by location, resolve appointment IDs first (junction table has no location_id)
+      let appointmentIds: string[] | null = null;
+      if (locationId) {
+        const locRes = await client
+          .from("gabinet_appointments")
+          .select("id")
+          .eq("organization_id", organizationId)
+          .eq("location_id", locationId);
+        if (locRes.error) throw locRes.error;
+        appointmentIds = ((locRes.data ?? []) as { id: string }[]).map((r) => r.id);
+      }
+
+      let junctionQuery = client
+        .from("gabinet_appointment_treatments")
         .select("treatment_id")
         .eq("organization_id", organizationId)
         .not("treatment_id", "is", null);
 
-      if (locationId) apptQuery = apptQuery.eq("location_id", locationId);
+      if (appointmentIds !== null) {
+        junctionQuery = junctionQuery.in(
+          "appointment_id",
+          appointmentIds.length ? appointmentIds : [""],
+        );
+      }
 
-      // Fetch appointment treatment_ids and treatment names in parallel
+      // Fetch treatment_ids and treatment names in parallel
       const [apptRes, treatRes] = await Promise.all([
-        apptQuery,
+        junctionQuery,
         client
           .from("gabinet_treatments")
           .select("id, name")

@@ -202,7 +202,7 @@ export async function applyMovementInternal(
   // branch which resets to the new delivery price outright.
   let newAvgCost: number | null = null;
   if (
-    params.reason === "warehouse_receive" &&
+    (params.reason === "warehouse_receive" || params.reason === "initial") &&
     params.unitPrice != null &&
     resolvedDelta > 0
   ) {

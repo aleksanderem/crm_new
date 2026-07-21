@@ -1,6 +1,8 @@
-import { query } from "./_generated/server";
+import { query, action } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { requireOrgAdmin } from "./_helpers/auth";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 export const exportContacts = query({
   args: { organizationId: v.id("organizations") },
@@ -109,19 +111,22 @@ export const exportPatients = query({
   },
 });
 
-export const exportProducts = query({
+export const exportProducts = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const products = await ctx.db
+    const db = createSupabaseDb();
+    const products = await db
       .query("products")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", args.organizationId)
       .collect();
 
     return products.map((p) => ({
       name: p.name,
-      sku: p.sku,
+      sku: p.sku ?? "",
       unitPrice: p.unitPrice.toString(),
       taxRate: p.taxExempt ? "ZW" : p.taxRate != null ? p.taxRate.toString() : "",
       isActive: p.isActive ? "Yes" : "No",

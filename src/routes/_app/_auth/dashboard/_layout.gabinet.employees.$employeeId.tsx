@@ -42,6 +42,14 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { PlateText, plateJsonToText } from "@/components/plate-text";
 import {
@@ -55,6 +63,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -133,6 +142,7 @@ function EmployeeDetail() {
   const removeSchedulePeriod = useAction(api.gabinet.scheduling.removeSchedulePeriod);
   const trackView = useAction(api.recentlyViewed.track);
   const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
+  const changeEmployeePassword = useAction(api.gabinet.employees.changeEmployeePassword);
 
   // Supabase cache invalidation helpers
   const invalidateEmployeeCache = () => {
@@ -150,6 +160,11 @@ function EmployeeDetail() {
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [treatmentSearch, setTreatmentSearch] = useState("");
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changePasswordSubmitting, setChangePasswordSubmitting] = useState(false);
+  const [changePasswordError, setChangePasswordError] = useState<string | null>(null);
   const [newNote, setNewNote] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
 
@@ -376,6 +391,39 @@ function EmployeeDetail() {
     }
   };
 
+  const validatePasswordForm = (): string | null => {
+    if (newPassword.length < 8) return t("gabinet.employees.passwordTooShort");
+    if (!/[A-Z]/.test(newPassword)) return t("gabinet.employees.passwordNeedsUppercase");
+    if (!/[0-9]/.test(newPassword)) return t("gabinet.employees.passwordNeedsDigit");
+    if (newPassword !== confirmPassword) return t("gabinet.employees.passwordMismatch");
+    return null;
+  };
+
+  const handleChangePassword = async () => {
+    const validationError = validatePasswordForm();
+    if (validationError) {
+      setChangePasswordError(validationError);
+      return;
+    }
+    setChangePasswordSubmitting(true);
+    setChangePasswordError(null);
+    try {
+      await changeEmployeePassword({
+        organizationId,
+        employeeId,
+        newPassword,
+      });
+      toast.success(t("gabinet.employees.changePasswordSuccess"));
+      setChangePasswordOpen(false);
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (e) {
+      setChangePasswordError(formatActionError(e));
+    } finally {
+      setChangePasswordSubmitting(false);
+    }
+  };
+
   const handleAddTreatment = async (treatmentId: string) => {
     if (!employee) return;
     const updated = [...employee.qualifiedTreatmentIds, treatmentId] as Id<"gabinetTreatments">[];
@@ -511,6 +559,22 @@ function EmployeeDetail() {
           <Pencil className="mr-2 h-4 w-4" variant="stroke" />
           {t("gabinet.employees.editEmployee")}
         </DropdownMenuItem>
+        {(role === "admin" || role === "owner") && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => {
+                setNewPassword("");
+                setConfirmPassword("");
+                setChangePasswordError(null);
+                setChangePasswordOpen(true);
+              }}
+            >
+              {t("gabinet.employees.changePassword")}
+            </DropdownMenuItem>
+          </>
+        )}
+        <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={handleDeactivate}
           className="text-destructive focus:text-destructive"
@@ -820,6 +884,69 @@ function EmployeeDetail() {
         onToggleComplete={handleToggleActivityComplete}
         isSubmitting={isSubmitting}
       />
+
+      {/* Change password dialog */}
+      <Dialog
+        open={changePasswordOpen}
+        onOpenChange={(open) => {
+          if (!changePasswordSubmitting) setChangePasswordOpen(open);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("gabinet.employees.changePasswordTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("gabinet.employees.changePasswordDescription")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="new-password">{t("gabinet.employees.newPassword")}</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => {
+                  setNewPassword(e.target.value);
+                  setChangePasswordError(null);
+                }}
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">{t("gabinet.employees.confirmPassword")}</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  setChangePasswordError(null);
+                }}
+                autoComplete="new-password"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t("gabinet.employees.passwordRequirements")}
+            </p>
+            {changePasswordError && (
+              <p className="text-sm text-destructive">{changePasswordError}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setChangePasswordOpen(false)}
+              disabled={changePasswordSubmitting}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button onClick={handleChangePassword} disabled={changePasswordSubmitting}>
+              {t("common.save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

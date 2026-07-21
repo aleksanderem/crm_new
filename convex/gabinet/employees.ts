@@ -1,4 +1,4 @@
-import { action, internalAction, internalMutation } from "../_generated/server";
+import { action, internalAction, internalMutation, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { internal } from "../_generated/api";
@@ -8,7 +8,7 @@ import { gabinetEmployeeRoleValidator } from "../schema";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import type { GabinetEmployeeRow, SupabasePaginationResult } from "../_helpers/supabaseRows";
 import { Id } from "../_generated/dataModel";
-import { createAccount } from "@convex-dev/auth/server";
+import { createAccount, modifyAccountCredentials } from "@convex-dev/auth/server";
 import { checkSeatLimit } from "../_helpers/seatLimits";
 
 // Dual-write refs removed — Supabase is now primary for employee writes
@@ -1209,5 +1209,45 @@ export const createWithPassword = action({
     });
 
     return String(employeeId);
+  },
+});
+
+export const _getUserEmailById = internalQuery({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId as Id<"users">);
+    return user?.email ?? null;
+  },
+});
+
+export const changeEmployeePassword = action({
+  args: {
+    organizationId: v.id("organizations"),
+    employeeId: v.string(),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
+      throw new Error("Wymagane uprawnienia administratora.");
+    }
+    if (args.newPassword.length < 8) {
+      throw new Error("Hasło musi mieć co najmniej 8 znaków.");
+    }
+    const db = createSupabaseDb();
+    const employee = await db.get("gabinetEmployees", args.employeeId);
+    if (!employee) throw new Error("Pracownik nie istnieje.");
+    if (!employee.userId) throw new Error("Pracownik nie ma powiązanego konta użytkownika.");
+    const email = await ctx.runQuery(internal.gabinet.employees._getUserEmailById, {
+      userId: String(employee.userId),
+    });
+    if (!email) throw new Error("Nie znaleziono adresu e-mail użytkownika.");
+    await modifyAccountCredentials(ctx, {
+      provider: "password",
+      account: { id: email, secret: args.newPassword },
+    });
   },
 });

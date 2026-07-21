@@ -606,17 +606,22 @@ function GabinetDocumentsPage() {
     });
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!docToDelete) return;
     try {
-      removeDocument({
+      await removeDocument({
         organizationId,
         documentId: docToDelete as any,
       });
+      await queryClient.invalidateQueries({
+        queryKey: supabaseKeys.formDocuments.all,
+      });
       setDeleteDialogOpen(false);
       setDocToDelete(null);
+      toast.success(t("gabinet.formDocuments.deleteSuccess", "Dokument został usunięty"));
     } catch (error) {
-      console.error("Failed to delete document:", error);
+      const message = error instanceof Error ? error.message : t("common.error", "Wystąpił błąd");
+      toast.error(message);
     }
   };
 
@@ -625,18 +630,29 @@ function GabinetDocumentsPage() {
     setDeleteDialogOpen(true);
   };
 
-  const handleBulkDelete = (items: any[]) => {
+  const handleBulkDelete = async (items: any[]) => {
     if (!items.length) return;
-    items.forEach((item) => {
+    let errorCount = 0;
+    for (const item of items) {
       try {
-        removeDocument({
+        await removeDocument({
           organizationId,
           documentId: item._id as any,
         });
-      } catch (error) {
-        console.error("Failed to delete document:", error);
+      } catch {
+        errorCount++;
       }
+    }
+    await queryClient.invalidateQueries({
+      queryKey: supabaseKeys.formDocuments.all,
     });
+    const successCount = items.length - errorCount;
+    if (successCount > 0) {
+      toast.success(t("gabinet.formDocuments.bulkDeleteSuccess", "Usunięto {{count}} dokumentów", { count: successCount }));
+    }
+    if (errorCount > 0) {
+      toast.error(t("gabinet.formDocuments.bulkDeleteError", "Nie udało się usunąć {{count}} dokumentów", { count: errorCount }));
+    }
   };
 
   // --- Render ---

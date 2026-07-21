@@ -3732,7 +3732,17 @@
         "card": "Karta",
         "transfer": "Przelew",
         "other": "Inne"
-      }
+      },
+      "packageSales": "Sprzedaż pakietów",
+      "totalPackagesSold": "Sprzedanych pakietów",
+      "totalPackageRevenue": "Przychód z pakietów",
+      "avgPackagePrice": "Śr. cena pakietu",
+      "noPackageSales": "Brak sprzedaży pakietów w tym okresie",
+      "perPackageBreakdown": "Wg. rodzaju pakietu",
+      "perEmployeePackageSales": "Wg. pracownika",
+      "perPatientPackageSales": "Wg. pacjenta (top 10)",
+      "filterByPackage": "Filtruj wg pakietu",
+      "allPackages": "Wszystkie pakiety"
     },
     "bodyChart": {
       "description": "Zaznacz obszary ciała powiązane z wizytą",

@@ -5044,7 +5044,7 @@ export interface Database {
           treatments_used: unknown;
           paid_amount: number;
           payment_method: string | null;
-          is_gift: boolean | null;
+          is_gift: boolean;
           voucher_code: string | null;
           gift_recipient_name: string | null;
           gift_recipient_phone: string | null;
@@ -5052,11 +5052,6 @@ export interface Database {
           created_by: string;
           created_at: number;
           updated_at: number;
-          is_gift: boolean;
-          voucher_code: string | null;
-          gift_recipient_name: string | null;
-          gift_recipient_phone: string | null;
-          gift_recipient_email: string | null;
         };
         Insert: {
           id?: string;
@@ -5069,7 +5064,7 @@ export interface Database {
           treatments_used: unknown;
           paid_amount: number;
           payment_method?: string | null;
-          is_gift?: boolean | null;
+          is_gift?: boolean;
           voucher_code?: string | null;
           gift_recipient_name?: string | null;
           gift_recipient_phone?: string | null;
@@ -5077,11 +5072,6 @@ export interface Database {
           created_by: string;
           created_at: number;
           updated_at: number;
-          is_gift?: boolean;
-          voucher_code?: string | null;
-          gift_recipient_name?: string | null;
-          gift_recipient_phone?: string | null;
-          gift_recipient_email?: string | null;
         };
         Update: {
           id?: string;
@@ -5094,7 +5084,7 @@ export interface Database {
           treatments_used?: unknown;
           paid_amount?: number;
           payment_method?: string | null;
-          is_gift?: boolean | null;
+          is_gift?: boolean;
           voucher_code?: string | null;
           gift_recipient_name?: string | null;
           gift_recipient_phone?: string | null;
@@ -5102,11 +5092,6 @@ export interface Database {
           created_by?: string;
           created_at?: number;
           updated_at?: number;
-          is_gift?: boolean;
-          voucher_code?: string | null;
-          gift_recipient_name?: string | null;
-          gift_recipient_phone?: string | null;
-          gift_recipient_email?: string | null;
         };
         Relationships: [
           {

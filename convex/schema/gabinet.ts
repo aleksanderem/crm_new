@@ -265,7 +265,9 @@ export function createGabinetTables({
 
   gabinetEmployees: defineTable({
     organizationId: v.id("organizations"),
-    userId: v.id("users"),
+    // Nullable: employees can exist without a linked system user account.
+    // Migration 00042 dropped the NOT NULL constraint in Postgres to support this.
+    userId: v.optional(v.id("users")),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     role: gabinetEmployeeRoleValidator,

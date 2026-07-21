@@ -71,6 +71,9 @@
  *   • 00064_gabinet_appointments_package_deducted.sql
  *   • 00065_gabinet_package_usage_gift.sql
  *   • 00066_product_sale_price.sql
+ *   • 00067_gabinet_employee_locations_role.sql
+ *   • 00068_gabinet_package_usage_by_package_idx.sql
+ *   • 00069_gabinet_appointment_treatments.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -4949,6 +4952,71 @@ export interface Database {
           },
           {
             foreignKeyName: "gabinet_appointments_variant_id_fkey";
+            columns: ["variant_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatment_variants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      gabinet_appointment_treatments: {
+        Row: {
+          id: string;
+          organization_id: string;
+          appointment_id: string;
+          treatment_id: string | null;
+          variant_id: string | null;
+          price_at_booking: number | null;
+          sort_order: number;
+          created_at: number;
+          updated_at: number;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          appointment_id: string;
+          treatment_id?: string | null;
+          variant_id?: string | null;
+          price_at_booking?: number | null;
+          sort_order?: number;
+          created_at: number;
+          updated_at: number;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          appointment_id?: string;
+          treatment_id?: string | null;
+          variant_id?: string | null;
+          price_at_booking?: number | null;
+          sort_order?: number;
+          created_at?: number;
+          updated_at?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_appointment_treatments_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_appointment_treatments_appointment_id_fkey";
+            columns: ["appointment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_appointments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_appointment_treatments_treatment_id_fkey";
+            columns: ["treatment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_appointment_treatments_variant_id_fkey";
             columns: ["variant_id"];
             isOneToOne: false;
             referencedRelation: "gabinet_treatment_variants";

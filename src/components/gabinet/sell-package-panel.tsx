@@ -60,11 +60,30 @@ export function SellPackagePanel({
   const [giftRecipientName, setGiftRecipientName] = useState("");
   const [giftRecipientPhone, setGiftRecipientPhone] = useState("");
   const [giftRecipientEmail, setGiftRecipientEmail] = useState("");
+  const [paymentType, setPaymentType] = useState<"one_time" | "installment">("one_time");
+  const [installmentCount, setInstallmentCount] = useState<string>("2");
 
   const selectedPkg = useMemo(
     () => (packagesData ?? []).find((p) => p._id === packageId),
     [packagesData, packageId],
   );
+
+  const isInstallment = paymentType === "installment";
+  const parsedInstallmentCount = Math.max(2, Math.min(4, Number.parseInt(installmentCount, 10) || 2));
+  const installmentAmount = selectedPkg
+    ? Math.round((selectedPkg.totalPrice / parsedInstallmentCount) * 100) / 100
+    : 0;
+  const installmentRemainder = selectedPkg
+    ? Math.round((selectedPkg.totalPrice - installmentAmount * parsedInstallmentCount) * 100) / 100
+    : 0;
+  const firstInstallmentAmount = selectedPkg
+    ? Math.round((installmentAmount + installmentRemainder) * 100) / 100
+    : 0;
+  const effectiveTotalForSplit = selectedPkg
+    ? isInstallment
+      ? firstInstallmentAmount
+      : selectedPkg.totalPrice
+    : 0;
 
   const {
     paymentMethod,
@@ -89,7 +108,7 @@ export function SellPackagePanel({
     splitMissingAmount,
     splitSameMethod,
     resetPaymentForm,
-  } = usePackagePaymentForm(selectedPkg?.totalPrice ?? 0);
+  } = usePackagePaymentForm(effectiveTotalForSplit);
 
   const reset = () => {
     setSaleMode("patient");
@@ -98,6 +117,8 @@ export function SellPackagePanel({
     setGiftRecipientName("");
     setGiftRecipientPhone("");
     setGiftRecipientEmail("");
+    setPaymentType("one_time");
+    setInstallmentCount("2");
     resetPaymentForm();
   };
 
@@ -137,7 +158,9 @@ export function SellPackagePanel({
     try {
       const currency = selectedPkg.currency ?? "PLN";
       const isGift = saleMode === "gift";
-      const usagePaymentMethod = splitPayment ? "split" : paymentMethod;
+      let usagePaymentMethod: string = paymentMethod;
+      if (splitPayment && !isInstallment) usagePaymentMethod = "split";
+      if (isInstallment) usagePaymentMethod = "installment";
       const usageId = await purchasePackage({
         organizationId,
         patientId: isGift ? undefined : patientId,
@@ -152,7 +175,48 @@ export function SellPackagePanel({
 
       const paymentPatientId = isGift ? undefined : (patientId as Id<"gabinetPatients">);
 
-      if (splitPayment) {
+      if (isInstallment) {
+        if (splitPayment) {
+          const parts: Array<{ method: typeof firstSplitMethod; amount: number }> = [];
+          if (parsedFirstSplit > 0)
+            parts.push({ method: firstSplitMethod, amount: parsedFirstSplit });
+          if (parsedSecondSplit > 0)
+            parts.push({ method: secondSplitMethod, amount: parsedSecondSplit });
+          for (const part of parts) {
+            await createPayment({
+              organizationId,
+              patientId: paymentPatientId,
+              packageUsageId: usageId,
+              amount: part.amount,
+              currency,
+              paymentMethod: part.method,
+              notes: `Package: ${selectedPkg.name} (installment 1/${parsedInstallmentCount} split: ${part.method})`,
+            });
+          }
+        } else {
+          await createPayment({
+            organizationId,
+            patientId: paymentPatientId,
+            packageUsageId: usageId,
+            amount: firstInstallmentAmount,
+            currency,
+            paymentMethod: paymentMethod as "cash" | "card" | "transfer" | "other",
+            notes: `Package: ${selectedPkg.name} (installment 1/${parsedInstallmentCount})`,
+          });
+        }
+        for (let i = 2; i <= parsedInstallmentCount; i++) {
+          await createPayment({
+            organizationId,
+            patientId: paymentPatientId,
+            packageUsageId: usageId,
+            amount: installmentAmount,
+            currency,
+            paymentMethod: paymentMethod as "cash" | "card" | "transfer" | "other",
+            notes: `Package: ${selectedPkg.name} (installment ${i}/${parsedInstallmentCount})`,
+            status: "pending",
+          });
+        }
+      } else if (splitPayment) {
         const parts: Array<{ method: typeof firstSplitMethod; amount: number }> = [];
         if (parsedFirstSplit > 0)
           parts.push({ method: firstSplitMethod, amount: parsedFirstSplit });
@@ -358,12 +422,56 @@ export function SellPackagePanel({
           </div>
         )}
 
+        {/* Payment type toggle */}
+        <div
+          role="radiogroup"
+          aria-label={t("gabinet.packages.paymentType", "Payment type")}
+          className="grid grid-cols-2 gap-2"
+        >
+          <button
+            type="button"
+            role="radio"
+            aria-checked={!isInstallment}
+            onClick={() => setPaymentType("one_time")}
+            className={`rounded-lg border p-3 text-left transition-colors ${
+              !isInstallment
+                ? "border-primary bg-primary/5 ring-1 ring-primary"
+                : "border-border hover:bg-accent"
+            }`}
+          >
+            <p className="text-sm font-medium">
+              {t("gabinet.packages.paymentTypeOneTime", "One-time payment")}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {t("gabinet.packages.paymentTypeOneTimeHint", "Pay full amount now")}
+            </p>
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={isInstallment}
+            onClick={() => setPaymentType("installment")}
+            className={`rounded-lg border p-3 text-left transition-colors ${
+              isInstallment
+                ? "border-primary bg-primary/5 ring-1 ring-primary"
+                : "border-border hover:bg-accent"
+            }`}
+          >
+            <p className="text-sm font-medium">
+              {t("gabinet.packages.paymentTypeInstallment", "Installments")}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {t("gabinet.packages.paymentTypeInstallmentHint", "Split into scheduled installments")}
+            </p>
+          </button>
+        </div>
+
         <div className="space-y-1.5">
           <Label>{t("gabinet.packages.paymentMethod")}</Label>
           <Select
             value={paymentMethod}
             onValueChange={(v) => setPaymentMethod(v as typeof paymentMethod)}
-            disabled={splitPayment}
+            disabled={!isInstallment && splitPayment}
           >
             <SelectTrigger>
               <SelectValue />
@@ -391,8 +499,49 @@ export function SellPackagePanel({
             checked={splitPayment}
             onCheckedChange={(v) => setSplitPayment(v === true)}
           />
-          {t("gabinet.packages.splitPayment", "Podziel płatność")}
+          {isInstallment
+            ? t("gabinet.packages.splitFirstInstallment", "Split first installment")
+            : t("gabinet.packages.splitPayment", "Podziel płatność")}
         </Label>
+
+        {isInstallment && selectedPkg && (
+          <div className="rounded-lg border p-3 space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="sell-installment-count" className="text-xs font-medium">
+                {t("gabinet.packages.installmentCount", "Number of installments")}
+              </Label>
+              <Select
+                value={installmentCount}
+                onValueChange={setInstallmentCount}
+              >
+                <SelectTrigger id="sell-installment-count">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[2, 3, 4].map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">
+                {t("gabinet.packages.installmentAmount", "Per installment")}
+              </span>
+              <span className="font-medium">
+                {formatCurrencyPLN(installmentAmount, selectedPkg.currency ?? "PLN")}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t(
+                "gabinet.packages.installmentNote",
+                "The first installment is collected now; remaining installments are recorded as pending and can be marked paid later.",
+              )}
+            </p>
+          </div>
+        )}
 
         {splitPayment && (
           <PackageSplitPaymentSection

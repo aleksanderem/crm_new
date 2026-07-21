@@ -377,48 +377,50 @@ export function ProductForm({
             {t("products.form.sections.purchase", { defaultValue: "Zakup" })}
           </p>
         </div>
-        <div className="space-y-1.5">
-          <Label>
-            {t("products.form.unitPrice")} <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            type="text"
-            inputMode="decimal"
-            value={unitPrice}
-            onChange={(e) => handleUnitPriceChange(e.target.value)}
-            placeholder="0.00"
-            required
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label>{t("products.form.taxRate")}</Label>
-          <Select value={taxRate} onValueChange={handleTaxRateChange}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TAX_RATE_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5 sm:col-span-2">
-          <Label>
-            {t("products.stock.purchasePriceLabel", { defaultValue: "Cena zakupu brutto" })}
-          </Label>
-          <Input
-            type="text"
-            inputMode="decimal"
-            value={purchasePrice}
-            onChange={(e) => handlePurchasePriceChange(e.target.value)}
-            placeholder={t("products.stock.purchasePricePlaceholder", { defaultValue: "np. 120,00" })}
-          />
-          <p className="text-xs text-muted-foreground">
-            {t("products.stock.purchasePriceHelp", { defaultValue: "Używana do wyliczenia wartości magazynu. Opcjonalna." })}
-          </p>
+        <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="space-y-1.5">
+            <Label>
+              {t("products.form.unitPrice")} <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              type="text"
+              inputMode="decimal"
+              value={unitPrice}
+              onChange={(e) => handleUnitPriceChange(e.target.value)}
+              placeholder="0.00"
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("products.form.taxRate")}</Label>
+            <Select value={taxRate} onValueChange={handleTaxRateChange}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TAX_RATE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>
+              {t("products.stock.purchasePriceLabel", { defaultValue: "Cena zakupu brutto" })}
+            </Label>
+            <Input
+              type="text"
+              inputMode="decimal"
+              value={purchasePrice}
+              onChange={(e) => handlePurchasePriceChange(e.target.value)}
+              placeholder={t("products.stock.purchasePricePlaceholder", { defaultValue: "np. 120,00" })}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t("products.stock.purchasePriceHelp", { defaultValue: "Używana do wyliczenia wartości magazynu. Opcjonalna." })}
+            </p>
+          </div>
         </div>
         {/* ─── Sprzedaż ─── */}
         <div className="sm:col-span-2 border-t pt-3">

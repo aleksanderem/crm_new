@@ -370,24 +370,43 @@ export function useSupabaseGabinetWeeklyRevenue(organizationId: string, location
     queryFn: async () => {
       if (!client) throw new Error("Supabase client not ready");
 
-      let query = client
+      // Step 1: fetch qualifying appointments (id + date) for the date window.
+      let apptQuery = client
         .from("gabinet_appointments")
-        .select("date, price_at_booking, status")
+        .select("id, date")
         .eq("organization_id", organizationId)
         .gte("date", startDate)
         .not("status", "in", '("cancelled","no_show")')
         .order("date");
 
-      if (locationId) query = query.eq("location_id", locationId);
+      if (locationId) apptQuery = apptQuery.eq("location_id", locationId);
 
-      const { data, error } = await query;
+      const apptRes = await apptQuery;
+      if (apptRes.error) throw apptRes.error;
 
-      if (error) throw error;
-      const rows = (data ?? []) as Pick<AppointmentRow, "date" | "price_at_booking" | "status">[];
+      const appointments = (apptRes.data ?? []) as Pick<AppointmentRow, "id" | "date">[];
+      const appointmentIds = appointments.map((a) => a.id);
+      const appointmentDateMap = new Map(appointments.map((a) => [a.id, a.date]));
 
+      // Step 2: sum price_at_booking from the junction table (one row per treatment per appointment).
+      let treatmentRows: { appointment_id: string; price_at_booking: number | null }[] = [];
+      if (appointmentIds.length > 0) {
+        const treatRes = await client
+          .from("gabinet_appointment_treatments")
+          .select("appointment_id, price_at_booking")
+          .eq("organization_id", organizationId)
+          .in("appointment_id", appointmentIds);
+        if (treatRes.error) throw treatRes.error;
+        treatmentRows = (treatRes.data ?? []) as { appointment_id: string; price_at_booking: number | null }[];
+      }
+
+      // Step 3: aggregate revenue per date.
       const revenueByDate = new Map<string, number>();
-      for (const r of rows) {
-        revenueByDate.set(r.date, (revenueByDate.get(r.date) ?? 0) + (r.price_at_booking ?? 0));
+      for (const t of treatmentRows) {
+        const date = appointmentDateMap.get(t.appointment_id);
+        if (date) {
+          revenueByDate.set(date, (revenueByDate.get(date) ?? 0) + (t.price_at_booking ?? 0));
+        }
       }
 
       const days: { day: string; revenue: number }[] = [];

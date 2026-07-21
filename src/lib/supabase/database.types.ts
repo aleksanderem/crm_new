@@ -75,6 +75,7 @@
  *   • 00068_gabinet_package_usage_by_package_idx.sql
  *   • 00069_gabinet_appointment_treatments.sql
  *   • 00070_appointment_treatments_deduction_flags.sql
+ *   • 00071_drop_appointment_deduction_flags.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -4763,8 +4764,6 @@ export interface Database {
           price_at_booking: number | null;
           reminder_overrides: string | null;
           variant_id: string | null;
-          stock_deducted: boolean;
-          package_deducted: boolean;
         };
         Insert: {
           id?: string;
@@ -4813,8 +4812,6 @@ export interface Database {
           price_at_booking?: number | null;
           reminder_overrides?: string | null;
           variant_id?: string | null;
-          stock_deducted?: boolean;
-          package_deducted?: boolean;
         };
         Update: {
           id?: string;
@@ -4863,8 +4860,6 @@ export interface Database {
           price_at_booking?: number | null;
           reminder_overrides?: string | null;
           variant_id?: string | null;
-          stock_deducted?: boolean;
-          package_deducted?: boolean;
         };
         Relationships: [
           {

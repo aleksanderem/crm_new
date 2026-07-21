@@ -242,6 +242,10 @@ function AppointmentDetail() {
   const [patientCreditBalance, setPatientCreditBalance] = useState<number | null>(
     null,
   );
+  const [paymentPackageId, setPaymentPackageId] = useState<string | null>(null);
+  const [paymentPackageItems, setPaymentPackageItems] = useState<
+    Array<{ treatmentId: string; variantId?: string; treatmentName: string; remaining: number; qty: number }>
+  >([]);
 
   // Body chart state
 
@@ -887,6 +891,8 @@ function AppointmentDetail() {
   const openPaymentDialog = async () => {
     setPaymentDialogOpen(true);
     setPaymentUseBalance(false);
+    setPaymentPackageId(null);
+    setPaymentPackageItems([]);
     if (patient?._id) {
       try {
         const credit = await getPatientCreditAction({
@@ -933,6 +939,24 @@ function AppointmentDetail() {
 
     setIsPaymentSubmitting(true);
     try {
+      if (paymentMethod === "package" && paymentPackageId) {
+        const pkgItems = paymentPackageItems
+          .filter((it) => it.qty > 0)
+          .map((it) => ({
+            treatmentId: it.treatmentId,
+            ...(it.variantId ? { variantId: it.variantId } : {}),
+            quantity: it.qty,
+          }));
+        if (pkgItems.length > 0) {
+          await usePackageTreatmentsBatch({
+            organizationId,
+            usageId: paymentPackageId,
+            items: pkgItems,
+            appointmentId,
+          });
+        }
+      }
+
       await createPayment({
         organizationId,
         patientId: patient!._id,
@@ -957,6 +981,8 @@ function AppointmentDetail() {
       setPaymentAmount("");
       setPaymentNote("");
       setPaymentUseBalance(false);
+      setPaymentPackageId(null);
+      setPaymentPackageItems([]);
       refetch();
       // Refresh credit balance for any further dialog opens.
       if (patient?._id) {
@@ -2369,6 +2395,10 @@ function AppointmentDetail() {
                   if (v === "gratis" || v === "barter") {
                     setPaymentAmount(treatmentPrice.toFixed(2));
                   }
+                  if (v !== "package") {
+                    setPaymentPackageId(null);
+                    setPaymentPackageItems([]);
+                  }
                 }}
               >
                 <SelectTrigger>
@@ -2399,6 +2429,89 @@ function AppointmentDetail() {
                 </SelectContent>
               </Select>
             </div>
+            {paymentMethod === "package" && (
+              <div className="space-y-3 rounded-md border p-3">
+                <div>
+                  <Label>{t("gabinet.packages.selectPackage")}</Label>
+                  {patientPackageUsage.filter((p) => p.status === "active").length === 0 ? (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {t("gabinet.packages.noActivePackages")}
+                    </p>
+                  ) : (
+                    <Select
+                      value={paymentPackageId ?? ""}
+                      onValueChange={(pkgId) => {
+                        setPaymentPackageId(pkgId);
+                        const pkg = patientPackageUsage.find((p) => p._id === pkgId);
+                        setPaymentPackageItems(
+                          (pkg?.treatmentsUsed ?? [])
+                            .filter((e) => (e.usedCount ?? 0) < (e.totalCount ?? 0))
+                            .map((e) => ({
+                              treatmentId: e.treatmentId,
+                              variantId: (e as any).variantId ?? undefined,
+                              treatmentName: e.treatmentName ?? t("gabinet.packages.treatment"),
+                              remaining: (e.totalCount ?? 0) - (e.usedCount ?? 0),
+                              qty: 0,
+                            }))
+                        );
+                      }}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder={t("gabinet.packages.selectPackagePlaceholder")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {patientPackageUsage
+                          .filter((pkg) => pkg.status === "active")
+                          .map((pkg) => (
+                            <SelectItem key={pkg._id} value={pkg._id}>
+                              {pkg.packageName ?? t("gabinet.packages.package")}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+                {paymentPackageId && (
+                  <div className="space-y-2">
+                    {paymentPackageItems.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        {t("gabinet.packages.allTreatmentsExhausted")}
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-xs font-medium text-muted-foreground">
+                          {t("gabinet.packages.perTreatmentProgress")}
+                        </p>
+                        {paymentPackageItems.map((item, idx) => (
+                          <div key={item.treatmentId} className="flex items-center gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{item.treatmentName}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {t("gabinet.packages.availableRemaining", { remaining: item.remaining })}
+                              </p>
+                            </div>
+                            <Input
+                              type="number"
+                              inputMode="numeric"
+                              className="w-20"
+                              min={0}
+                              max={item.remaining}
+                              value={item.qty}
+                              onChange={(e) => {
+                                const val = Math.max(0, Math.min(item.remaining, parseInt(e.target.value) || 0));
+                                setPaymentPackageItems((prev) =>
+                                  prev.map((it, i) => (i === idx ? { ...it, qty: val } : it))
+                                );
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             <div>
               <Label>{t("common.notes")}</Label>
               <RichTextEditor

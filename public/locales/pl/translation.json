@@ -3742,7 +3742,8 @@
       "perEmployeePackageSales": "Wg. pracownika",
       "perPatientPackageSales": "Wg. pacjenta (top 10)",
       "filterByPackage": "Filtruj wg pakietu",
-      "allPackages": "Wszystkie pakiety"
+      "allPackages": "Wszystkie pakiety",
+      "packageRevenueOverTime": "Przychód z pakietów w czasie"
     },
     "bodyChart": {
       "description": "Zaznacz obszary ciała powiązane z wizytą",

@@ -162,7 +162,7 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">
-              {t("gabinet.packages.patientPackages", "Packages")}
+              {t("gabinet.packages.patientPackages", "Karnety")}
             </CardTitle>
             <Button variant="ghost" size="sm" className="h-7" onClick={() => setPurchaseOpen(true)}>
               <Plus className="mr-1 h-[17px] w-[17px]" variant="stroke" />
@@ -175,7 +175,7 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
             <div className="flex flex-col items-center justify-center py-6 text-center">
               <Package className="h-8 w-8 text-muted-foreground/40 mb-2" />
               <p className="text-sm text-muted-foreground">
-                {t("gabinet.packages.noPatientPackages", "No packages purchased")}
+                {t("gabinet.packages.noPatientPackages", "Brak zakupionych karnetów")}
               </p>
             </div>
           ) : (

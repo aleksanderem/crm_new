@@ -4027,6 +4027,11 @@
         "employees": "Pracownicy",
         "payments": "Płatności",
         "reports": "Raporty",
+        "financial_reports": "Raporty finansowe",
+        "purchase_prices": "Ceny zakupu",
+        "photos": "Zdjęcia",
+        "online_booking": "Rezerwacje online",
+        "inventory": "Magazyn",
         "settings": "Ustawienia",
         "dashboard": "Pulpit"
       }

@@ -130,6 +130,7 @@
       "packages": "Packages",
       "documents": "Communication",
       "employees": "Employees",
+      "deliveries": "Deliveries",
       "reports": "Reports",
       "scheduling": "Working Hours",
       "leaves": "Leaves",

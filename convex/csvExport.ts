@@ -1,17 +1,30 @@
-import { query, action } from "./_generated/server";
+import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
-import { requireOrgAdmin } from "./_helpers/auth";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 
-export const exportContacts = query({
+async function requireOrgAdminAction(
+  ctx: { runQuery: Function },
+  organizationId: string,
+) {
+  const { role } = await ctx.runQuery(
+    internal._helpers.authAction.verifyOrgAccess,
+    { organizationId },
+  );
+  if (role !== "owner" && role !== "admin") {
+    throw new Error("Admin access required");
+  }
+}
+
+export const exportContacts = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    await requireOrgAdminAction(ctx, args.organizationId);
 
-    const contacts = await ctx.db
+    const db = createSupabaseDb();
+    const contacts = await db
       .query("contacts")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", args.organizationId)
       .collect();
 
     return contacts.map((c) => ({
@@ -21,21 +34,22 @@ export const exportContacts = query({
       phone: c.phone ?? "",
       title: c.title ?? "",
       source: c.source ?? "",
-      tags: (c.tags ?? []).join("; "),
+      tags: ((c.tags as string[] | null) ?? []).join("; "),
       notes: c.notes ?? "",
-      createdAt: new Date(c.createdAt).toISOString(),
+      createdAt: new Date(c.createdAt as number).toISOString(),
     }));
   },
 });
 
-export const exportCompanies = query({
+export const exportCompanies = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    await requireOrgAdminAction(ctx, args.organizationId);
 
-    const companies = await ctx.db
+    const db = createSupabaseDb();
+    const companies = await db
       .query("companies")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", args.organizationId)
       .collect();
 
     return companies.map((c) => ({
@@ -45,26 +59,27 @@ export const exportCompanies = query({
       size: c.size ?? "",
       website: c.website ?? "",
       phone: c.phone ?? "",
-      street: c.address?.street ?? "",
-      city: c.address?.city ?? "",
-      state: c.address?.state ?? "",
-      zip: c.address?.zip ?? "",
-      country: c.address?.country ?? "",
-      tags: (c.tags ?? []).join("; "),
+      street: (c.address as { street?: string } | null)?.street ?? "",
+      city: (c.address as { city?: string } | null)?.city ?? "",
+      state: (c.address as { state?: string } | null)?.state ?? "",
+      zip: (c.address as { zip?: string } | null)?.zip ?? "",
+      country: (c.address as { country?: string } | null)?.country ?? "",
+      tags: ((c.tags as string[] | null) ?? []).join("; "),
       notes: c.notes ?? "",
-      createdAt: new Date(c.createdAt).toISOString(),
+      createdAt: new Date(c.createdAt as number).toISOString(),
     }));
   },
 });
 
-export const exportLeads = query({
+export const exportLeads = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    await requireOrgAdminAction(ctx, args.organizationId);
 
-    const leads = await ctx.db
+    const db = createSupabaseDb();
+    const leads = await db
       .query("leads")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", args.organizationId)
       .collect();
 
     return leads.map((l) => ({
@@ -74,24 +89,25 @@ export const exportLeads = query({
       status: l.status,
       priority: l.priority ?? "",
       expectedCloseDate: l.expectedCloseDate
-        ? new Date(l.expectedCloseDate).toISOString()
+        ? new Date(l.expectedCloseDate as number).toISOString()
         : "",
       source: l.source ?? "",
       notes: l.notes ?? "",
-      tags: (l.tags ?? []).join("; "),
-      createdAt: new Date(l.createdAt).toISOString(),
+      tags: ((l.tags as string[] | null) ?? []).join("; "),
+      createdAt: new Date(l.createdAt as number).toISOString(),
     }));
   },
 });
 
-export const exportPatients = query({
+export const exportPatients = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    await requireOrgAdminAction(ctx, args.organizationId);
 
-    const patients = await ctx.db
+    const db = createSupabaseDb();
+    const patients = await db
       .query("gabinetPatients")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", args.organizationId)
       .collect();
 
     return patients.map((p) => ({
@@ -106,7 +122,7 @@ export const exportPatients = query({
       allergies: p.allergies ?? "",
       status: p.isActive ? "active" : "inactive",
       referralSource: p.referralSource ?? "",
-      createdAt: new Date(p.createdAt).toISOString(),
+      createdAt: new Date(p.createdAt as number).toISOString(),
     }));
   },
 });

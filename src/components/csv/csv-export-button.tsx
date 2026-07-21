@@ -1,7 +1,5 @@
 import { useState, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
@@ -11,15 +9,7 @@ import { Download } from "@/lib/ez-icons";
 import Papa from "papaparse";
 import { formatActionError } from "@/lib/format-action-error";
 
-type QueryEntityType = "contacts" | "companies" | "leads" | "patients";
-type EntityType = QueryEntityType | "products";
-
-const exportQueries = {
-  contacts: api.csvExport.exportContacts,
-  companies: api.csvExport.exportCompanies,
-  leads: api.csvExport.exportLeads,
-  patients: api.csvExport.exportPatients,
-} as const;
+type EntityType = "contacts" | "companies" | "leads" | "patients" | "products";
 
 export function useCsvExport(
   organizationId: Id<"organizations">,
@@ -29,27 +19,27 @@ export function useCsvExport(
   const { t } = useTranslation();
   const [isExporting, setIsExporting] = useState(false);
 
-  // useQuery is always called (hook rules). When entityType=products the query
-  // is never used (enabled:false + runProductsExport handles it instead).
-  const queryType: QueryEntityType = entityType !== "products" ? entityType : "contacts";
-  const { refetch } = useQuery({
-    ...convexQuery(exportQueries[queryType], { organizationId }),
-    enabled: false,
-  });
-
-  // Products data lives in Supabase; exportProducts is a Convex action that
-  // reads from Supabase via createSupabaseDb() rather than ctx.db.
+  const runContactsExport = useAction(api.csvExport.exportContacts);
+  const runCompaniesExport = useAction(api.csvExport.exportCompanies);
+  const runLeadsExport = useAction(api.csvExport.exportLeads);
+  const runPatientsExport = useAction(api.csvExport.exportPatients);
   const runProductsExport = useAction(api.csvExport.exportProducts);
 
   const handleExport = useCallback(async () => {
     setIsExporting(true);
     try {
-      let rows: Record<string, unknown>[] | undefined;
-      if (entityType === "products") {
-        rows = (await runProductsExport({ organizationId })) as Record<string, unknown>[];
+      const args = { organizationId };
+      let rows: Record<string, unknown>[];
+      if (entityType === "contacts") {
+        rows = (await runContactsExport(args)) as Record<string, unknown>[];
+      } else if (entityType === "companies") {
+        rows = (await runCompaniesExport(args)) as Record<string, unknown>[];
+      } else if (entityType === "leads") {
+        rows = (await runLeadsExport(args)) as Record<string, unknown>[];
+      } else if (entityType === "patients") {
+        rows = (await runPatientsExport(args)) as Record<string, unknown>[];
       } else {
-        const result = await refetch();
-        rows = result.data as Record<string, unknown>[] | undefined;
+        rows = (await runProductsExport(args)) as Record<string, unknown>[];
       }
       if (!rows || rows.length === 0) return;
 
@@ -74,7 +64,17 @@ export function useCsvExport(
     } finally {
       setIsExporting(false);
     }
-  }, [refetch, runProductsExport, entityType, organizationId, fileNamePrefix, t]);
+  }, [
+    runContactsExport,
+    runCompaniesExport,
+    runLeadsExport,
+    runPatientsExport,
+    runProductsExport,
+    entityType,
+    organizationId,
+    fileNamePrefix,
+    t,
+  ]);
 
   return { handleExport, isExporting };
 }

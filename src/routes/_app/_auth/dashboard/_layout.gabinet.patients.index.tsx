@@ -517,8 +517,18 @@ function PatientsIndex() {
   const handleBulkAction = useCallback(
     async (action: string, selectedRows: Patient[]) => {
       if (action === "delete") {
-        for (const row of selectedRows) {
-          await removePatient({ organizationId, patientId: row._id as Id<"gabinetPatients"> });
+        try {
+          for (const row of selectedRows) {
+            await removePatient({ organizationId, patientId: row._id as Id<"gabinetPatients"> });
+          }
+          toast.success(t("common.deleted"));
+        } catch (e) {
+          toast.error(
+            formatActionError(e, t, {
+              key: "gabinet.patients.errors.deleteFailed",
+              defaultValue: "Nie udało się usunąć pacjenta.",
+            }),
+          );
         }
       } else if (action === "merge") {
         if (selectedRows.length !== 2) {
@@ -556,7 +566,17 @@ function PatientsIndex() {
         icon: <Trash2 className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
           if (window.confirm(t("gabinet.patients.confirmDelete"))) {
-            await removePatient({ organizationId, patientId: row._id as Id<"gabinetPatients"> });
+            try {
+              await removePatient({ organizationId, patientId: row._id as Id<"gabinetPatients"> });
+              toast.success(t("common.deleted"));
+            } catch (e) {
+              toast.error(
+                formatActionError(e, t, {
+                  key: "gabinet.patients.errors.deleteFailed",
+                  defaultValue: "Nie udało się usunąć pacjenta.",
+                }),
+              );
+            }
           }
         },
       },

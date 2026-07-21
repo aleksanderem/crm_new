@@ -349,7 +349,17 @@ function EmployeesIndex() {
         icon: <Trash2 className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
           if (window.confirm(t("gabinet.employees.confirmDelete"))) {
-            await removeEmployee({ organizationId, employeeId: row._id as Id<"gabinetEmployees"> });
+            try {
+              await removeEmployee({ organizationId, employeeId: row._id as Id<"gabinetEmployees"> });
+              toast.success(t("common.deleted"));
+            } catch (e) {
+              toast.error(
+                formatActionError(e, t, {
+                  key: "gabinet.employees.errors.deleteFailed",
+                  defaultValue: "Nie udało się usunąć pracownika.",
+                }),
+              );
+            }
           }
         },
       },
@@ -360,8 +370,18 @@ function EmployeesIndex() {
   const handleBulkAction = useCallback(
     async (action: string, selectedRows: Employee[]) => {
       if (action === "delete") {
-        for (const row of selectedRows) {
-          await removeEmployee({ organizationId, employeeId: row._id as Id<"gabinetEmployees"> });
+        try {
+          for (const row of selectedRows) {
+            await removeEmployee({ organizationId, employeeId: row._id as Id<"gabinetEmployees"> });
+          }
+          toast.success(t("common.deleted"));
+        } catch (e) {
+          toast.error(
+            formatActionError(e, t, {
+              key: "gabinet.employees.errors.deleteFailed",
+              defaultValue: "Nie udało się usunąć pracownika.",
+            }),
+          );
         }
       } else if (action === "addEvent") {
         // EventDialog identifies employees by userId (it creates one
@@ -374,7 +394,7 @@ function EmployeesIndex() {
         if (first) navigate({ to: `/dashboard/gabinet/employees/${first._id}` });
       }
     },
-    [removeEmployee, organizationId, navigate]
+    [removeEmployee, organizationId, navigate, t]
   );
 
   return (

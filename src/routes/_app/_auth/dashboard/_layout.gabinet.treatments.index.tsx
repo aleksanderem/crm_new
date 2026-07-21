@@ -648,12 +648,22 @@ function TreatmentsIndex() {
   const handleBulkAction = useCallback(
     async (action: string, selectedRows: Treatment[]) => {
       if (action === "delete") {
-        for (const row of selectedRows) {
-          await removeTreatment({ organizationId, treatmentId: row._id as Id<"gabinetTreatments"> });
+        try {
+          for (const row of selectedRows) {
+            await removeTreatment({ organizationId, treatmentId: row._id as Id<"gabinetTreatments"> });
+          }
+          toast.success(t("common.deleted"));
+        } catch (e) {
+          toast.error(
+            formatTreatmentError(e, t, {
+              key: "gabinet.treatments.errors.deleteFailed",
+              defaultValue: "Nie udało się usunąć zabiegu.",
+            }),
+          );
         }
       }
     },
-    [removeTreatment, organizationId],
+    [removeTreatment, organizationId, t],
   );
 
   const rowActions = useCallback(
@@ -685,7 +695,17 @@ function TreatmentsIndex() {
               icon: <Trash2 className="h-4 w-4" variant="stroke" />,
               onClick: async () => {
                 if (window.confirm(t("gabinet.treatments.confirmDelete"))) {
-                  await removeTreatment({ organizationId, treatmentId: row._id as Id<"gabinetTreatments"> });
+                  try {
+                    await removeTreatment({ organizationId, treatmentId: row._id as Id<"gabinetTreatments"> });
+                    toast.success(t("common.deleted"));
+                  } catch (e) {
+                    toast.error(
+                      formatTreatmentError(e, t, {
+                        key: "gabinet.treatments.errors.deleteFailed",
+                        defaultValue: "Nie udało się usunąć zabiegu.",
+                      }),
+                    );
+                  }
                 }
               },
             },

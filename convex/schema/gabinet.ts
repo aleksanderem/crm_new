@@ -551,7 +551,8 @@ export function createGabinetTables({
     .index("by_org", ["organizationId"])
     .index("by_orgAndPatient", ["organizationId", "patientId"])
     .index("by_orgAndStatus", ["organizationId", "status"])
-    .index("by_orgPatientAndPackage", ["organizationId", "patientId", "packageId"]),
+    .index("by_orgPatientAndPackage", ["organizationId", "patientId", "packageId"])
+    .index("by_package", ["packageId"]),
 
   gabinetLoyaltyPoints: defineTable({
     organizationId: v.id("organizations"),

@@ -955,6 +955,7 @@ function PackageSalesSection({
   packages,
   packageNameMap,
   employeeMap,
+  employeeMapById,
   patientMap,
   rangeLabel,
   currency,
@@ -964,6 +965,7 @@ function PackageSalesSection({
   packages: MappedGabinetTreatmentPackage[];
   packageNameMap: Map<string, string>;
   employeeMap: Map<string, string>;
+  employeeMapById: Map<string, string>;
   patientMap: Map<string, string>;
   rangeLabel: string;
   currency: string;
@@ -997,15 +999,23 @@ function PackageSalesSection({
   }, [filteredUsages, packageNameMap]);
 
   const perEmployee = useMemo(() => {
-    const m = new Map<string, { count: number; revenue: number }>();
+    const m = new Map<string, { count: number; revenue: number; isByEmployeeId: boolean }>();
     for (const u of filteredUsages) {
-      const prev = m.get(u.createdBy) ?? { count: 0, revenue: 0 };
-      m.set(u.createdBy, { count: prev.count + 1, revenue: prev.revenue + u.paidAmount });
+      const key = u.soldByEmployeeId ?? u.createdBy;
+      const isByEmployeeId = !!u.soldByEmployeeId;
+      const prev = m.get(key) ?? { count: 0, revenue: 0, isByEmployeeId };
+      m.set(key, { count: prev.count + 1, revenue: prev.revenue + u.paidAmount, isByEmployeeId });
     }
     return Array.from(m.entries())
-      .map(([userId, s]) => ({ name: employeeMap.get(userId) ?? userId, count: s.count, revenue: s.revenue }))
+      .map(([key, s]) => ({
+        name: s.isByEmployeeId
+          ? (employeeMapById.get(key) ?? key)
+          : (employeeMap.get(key) ?? key),
+        count: s.count,
+        revenue: s.revenue,
+      }))
       .sort((a, b) => b.revenue - a.revenue);
-  }, [filteredUsages, employeeMap]);
+  }, [filteredUsages, employeeMap, employeeMapById]);
 
   const perPatient = useMemo(() => {
     const m = new Map<string, { count: number; revenue: number }>();
@@ -1298,13 +1308,24 @@ function GabinetReports() {
     );
   }, [treatments]);
 
-  // Employee map: userId → name
+  // Employee map: userId → name (for fallback attribution via createdBy)
   const employeeMap = useMemo(() => {
     if (!employees) return new Map<string, string>();
     return new Map(
       employees.map((e) => [
         e.userId,
         [e.firstName, e.lastName].filter(Boolean).join(" ") || e.userId,
+      ])
+    );
+  }, [employees]);
+
+  // Employee map: employeeId → name (for soldByEmployeeId attribution)
+  const employeeMapById = useMemo(() => {
+    if (!employees) return new Map<string, string>();
+    return new Map(
+      employees.map((e) => [
+        e._id,
+        [e.firstName, e.lastName].filter(Boolean).join(" ") || e._id,
       ])
     );
   }, [employees]);
@@ -1560,18 +1581,23 @@ function GabinetReports() {
     }
     // Package sales — per package and per employee
     const pkgSalesMap = new Map<string, { count: number; revenue: number }>();
-    const empPkgSalesMap = new Map<string, { count: number; revenue: number }>();
+    const empPkgSalesMap = new Map<string, { count: number; revenue: number; isByEmployeeId: boolean }>();
     for (const u of packageUsages ?? []) {
       const prevPkg = pkgSalesMap.get(u.packageId) ?? { count: 0, revenue: 0 };
       pkgSalesMap.set(u.packageId, { count: prevPkg.count + 1, revenue: prevPkg.revenue + u.paidAmount });
-      const prevEmp = empPkgSalesMap.get(u.createdBy) ?? { count: 0, revenue: 0 };
-      empPkgSalesMap.set(u.createdBy, { count: prevEmp.count + 1, revenue: prevEmp.revenue + u.paidAmount });
+      const empKey = u.soldByEmployeeId ?? u.createdBy;
+      const isByEmployeeId = !!u.soldByEmployeeId;
+      const prevEmp = empPkgSalesMap.get(empKey) ?? { count: 0, revenue: 0, isByEmployeeId };
+      empPkgSalesMap.set(empKey, { count: prevEmp.count + 1, revenue: prevEmp.revenue + u.paidAmount, isByEmployeeId });
     }
     for (const [pkgId, stats] of pkgSalesMap) {
       rows.push({ section: "package_sales_by_package", metric: packageNameMap.get(pkgId) ?? pkgId, value: stats.count, revenue: stats.revenue });
     }
-    for (const [userId, stats] of empPkgSalesMap) {
-      rows.push({ section: "package_sales_by_employee", metric: employeeMap.get(userId) ?? userId, value: stats.count, revenue: stats.revenue });
+    for (const [key, stats] of empPkgSalesMap) {
+      const name = stats.isByEmployeeId
+        ? (employeeMapById.get(key) ?? key)
+        : (employeeMap.get(key) ?? key);
+      rows.push({ section: "package_sales_by_employee", metric: name, value: stats.count, revenue: stats.revenue });
     }
     const csv = Papa.unparse(rows as unknown as Record<string, unknown>[]);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -1604,6 +1630,7 @@ function GabinetReports() {
     packageUsages,
     packageNameMap,
     employeeMap,
+    employeeMapById,
     startDate,
     endDate,
     t,
@@ -1799,6 +1826,7 @@ function GabinetReports() {
         packages={packagesListData ?? []}
         packageNameMap={packageNameMap}
         employeeMap={employeeMap}
+        employeeMapById={employeeMapById}
         patientMap={patientMap}
         rangeLabel={rangeLabel}
         currency={defaultCurrency}

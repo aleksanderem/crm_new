@@ -29,6 +29,7 @@ import { formatActionError } from "@/lib/format-action-error";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { usePackagePaymentForm } from "@/hooks/use-package-payment-form";
 import { PackageSplitPaymentSection } from "./package-split-payment-section";
+import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 
 interface PackagePurchaseDrawerProps {
   patientId: string;
@@ -49,10 +50,13 @@ export function PackagePurchaseDrawer({
   const createPayment = useAction(api.payments.create);
 
   const [selectedPkgId, setSelectedPkgId] = useState<string>("");
+  const [soldByEmployeeId, setSoldByEmployeeId] = useState<string>("");
   const [paymentType, setPaymentType] = useState<"one_time" | "installment">("one_time");
   const [installmentCount, setInstallmentCount] = useState<string>("2");
   const [discountType, setDiscountType] = useState<"amount" | "percent">("amount");
   const [discountValue, setDiscountValue] = useState<string>("");
+
+  const { data: employeesData } = useSupabaseGabinetEmployeesList(String(organizationId), { activeOnly: true, enabled: open });
 
   const listActivePackages = useAction(api.gabinet.packages.listActive);
   const { data: activePackages } = useQuery({
@@ -131,6 +135,7 @@ export function PackagePurchaseDrawer({
 
   const resetForm = () => {
     setSelectedPkgId("");
+    setSoldByEmployeeId("");
     setPaymentType("one_time");
     setInstallmentCount("2");
     setDiscountType("amount");
@@ -181,6 +186,7 @@ export function PackagePurchaseDrawer({
         packageId: selectedPkg._id,
         paidAmount: finalPrice,
         paymentMethod: usagePaymentMethod,
+        soldByEmployeeId: soldByEmployeeId || undefined,
       });
 
       if (isInstallment) {
@@ -289,6 +295,24 @@ export function PackagePurchaseDrawer({
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto py-4 space-y-5">
+          {(employeesData ?? []).length > 0 && (
+            <div className="space-y-1.5">
+              <Label>{t("gabinet.packages.soldBy", "Sprzedał/a")}</Label>
+              <Select value={soldByEmployeeId} onValueChange={setSoldByEmployeeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t("gabinet.packages.soldByPlaceholder", "Wybierz pracownika (opcjonalnie)")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {(employeesData ?? []).map((e) => (
+                    <SelectItem key={e._id} value={e._id}>
+                      {[e.firstName, e.lastName].filter(Boolean).join(" ") || e._id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label>{t("gabinet.packages.selectPackage", "Package")}</Label>
             <Select value={selectedPkgId} onValueChange={setSelectedPkgId}>

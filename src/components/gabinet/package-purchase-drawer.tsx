@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
@@ -43,6 +43,7 @@ export function PackagePurchaseDrawer({
   onOpenChange,
 }: PackagePurchaseDrawerProps) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const purchasePackage = useAction(api.gabinet.packages.purchasePackage);
   const createPayment = useAction(api.payments.create);
 
@@ -238,6 +239,12 @@ export function PackagePurchaseDrawer({
       }
 
       toast.success(t("gabinet.packages.purchased", "Package purchased successfully"));
+      await queryClient.invalidateQueries({
+        queryKey: ["gabinet.packages.getPatientPackages", organizationId, patientId],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["gabinet.packages.listActive", organizationId],
+      });
       resetForm();
       onOpenChange(false);
     } catch (e) {

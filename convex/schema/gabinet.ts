@@ -505,6 +505,11 @@ export function createGabinetTables({
     variantId: v.optional(v.id("gabinetTreatmentVariants")),
     priceAtBooking: v.optional(v.number()),
     sortOrder: v.number(),
+    // Per-treatment deduction flags (#3361). Replace the appointment-level
+    // stockDeducted / packageDeducted booleans which become ambiguous when an
+    // appointment has multiple treatments.
+    stockDeducted: v.optional(v.boolean()),
+    packageDeducted: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

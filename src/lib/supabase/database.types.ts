@@ -74,6 +74,7 @@
  *   • 00067_gabinet_employee_locations_role.sql
  *   • 00068_gabinet_package_usage_by_package_idx.sql
  *   • 00069_gabinet_appointment_treatments.sql
+ *   • 00070_appointment_treatments_deduction_flags.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -4968,6 +4969,8 @@ export interface Database {
           variant_id: string | null;
           price_at_booking: number | null;
           sort_order: number;
+          stock_deducted: boolean;
+          package_deducted: boolean;
           created_at: number;
           updated_at: number;
         };
@@ -4979,6 +4982,8 @@ export interface Database {
           variant_id?: string | null;
           price_at_booking?: number | null;
           sort_order?: number;
+          stock_deducted?: boolean;
+          package_deducted?: boolean;
           created_at: number;
           updated_at: number;
         };
@@ -4990,6 +4995,8 @@ export interface Database {
           variant_id?: string | null;
           price_at_booking?: number | null;
           sort_order?: number;
+          stock_deducted?: boolean;
+          package_deducted?: boolean;
           created_at?: number;
           updated_at?: number;
         };

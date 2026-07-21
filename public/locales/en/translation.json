@@ -4006,6 +4006,11 @@
         "employees": "Employees",
         "payments": "Payments",
         "reports": "Reports",
+        "financial_reports": "Financial Reports",
+        "purchase_prices": "Purchase Prices",
+        "photos": "Photos",
+        "online_booking": "Online Booking",
+        "inventory": "Inventory",
         "settings": "Settings",
         "dashboard": "Dashboard"
       }

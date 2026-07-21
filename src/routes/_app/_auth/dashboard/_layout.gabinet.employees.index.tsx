@@ -630,6 +630,8 @@ function CreateEmployeeSheet({
                       tagIds: data.tagIds,
                       categoryId: data.categoryId,
                       customFields: data.customFields,
+                      locationId: data.locationId,
+                      locationRole: data.locationRole,
                     },
                   });
                   toast.success(t("team.invitationSent"));

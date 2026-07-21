@@ -177,6 +177,7 @@ export function UserInvitationForm({
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(undefined);
   const [locationId, setLocationId] = useState<string | undefined>(undefined);
+  const [locationRole, setLocationRole] = useState<GabinetRole | undefined>(undefined);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
   const [showInCalendar, setShowInCalendar] = useState(true);
   const [treatmentSearch, setTreatmentSearch] = useState("");
@@ -238,6 +239,7 @@ export function UserInvitationForm({
         tagIds: tagIds.length > 0 ? tagIds : undefined,
         categoryId: categoryId || undefined,
         locationId: locationId || undefined,
+        locationRole: locationId ? locationRole : undefined,
         customFields: customFields.length > 0 ? customFields : undefined,
         showInCalendar,
       };
@@ -426,25 +428,51 @@ export function UserInvitationForm({
             </div>
 
             {locations && locations.filter((l) => l.isActive).length > 0 && (
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>{t("settings.team.gabinetLocation")}</Label>
-                <Select
-                  value={locationId ?? "none"}
-                  onValueChange={(v) => setLocationId(v === "none" ? undefined : v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("settings.team.gabinetLocationPlaceholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">{t("settings.team.gabinetLocationNone")}</SelectItem>
-                    {locations.filter((l) => l.isActive).map((loc) => (
-                      <SelectItem key={loc._id} value={loc._id}>
-                        {loc.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>{t("settings.team.gabinetLocation")}</Label>
+                  <Select
+                    value={locationId ?? "none"}
+                    onValueChange={(v) => {
+                      setLocationId(v === "none" ? undefined : v);
+                      if (v === "none") setLocationRole(undefined);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("settings.team.gabinetLocationPlaceholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">{t("settings.team.gabinetLocationNone")}</SelectItem>
+                      {locations.filter((l) => l.isActive).map((loc) => (
+                        <SelectItem key={loc._id} value={loc._id}>
+                          {loc.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {locationId && (
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>{t("settings.team.gabinetLocationRole")}</Label>
+                    <Select
+                      value={locationRole ?? "none"}
+                      onValueChange={(v) => setLocationRole(v === "none" ? undefined : v as GabinetRole)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t("settings.team.gabinetLocationRolePlaceholder")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{t("settings.team.gabinetLocationRoleNone")}</SelectItem>
+                        {GABINET_ROLES.map((r) => (
+                          <SelectItem key={r} value={r}>
+                            {t(`gabinet.employees.roles.${r}`)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

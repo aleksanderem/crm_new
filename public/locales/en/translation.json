@@ -1069,7 +1069,10 @@
       "gabinetSectionTitle": "Gabinet employee details",
       "gabinetLocation": "Primary location",
       "gabinetLocationPlaceholder": "Select a location",
-      "gabinetLocationNone": "No specific location"
+      "gabinetLocationNone": "No specific location",
+      "gabinetLocationRole": "Role at this location (optional override)",
+      "gabinetLocationRolePlaceholder": "Same as main role",
+      "gabinetLocationRoleNone": "Same as main role"
     },
     "pipelines": {
       "title": "Pipelines",

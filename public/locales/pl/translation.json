@@ -1070,7 +1070,10 @@
       "gabinetSectionTitle": "Dane pracownika Gabinetu",
       "gabinetLocation": "Główna lokalizacja",
       "gabinetLocationPlaceholder": "Wybierz lokalizację",
-      "gabinetLocationNone": "Brak konkretnej lokalizacji"
+      "gabinetLocationNone": "Brak konkretnej lokalizacji",
+      "gabinetLocationRole": "Rola w tej lokalizacji (opcjonalne nadpisanie)",
+      "gabinetLocationRolePlaceholder": "Taka sama jak rola główna",
+      "gabinetLocationRoleNone": "Taka sama jak rola główna"
     },
     "pipelines": {
       "title": "Pipeline",

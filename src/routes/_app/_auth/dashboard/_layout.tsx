@@ -642,6 +642,7 @@ function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
                         qualifiedTreatmentIds: data.qualifiedTreatmentIds,
                         tagIds: data.tagIds,
                         categoryId: data.categoryId,
+                        customFields: data.customFields,
                       },
                     });
                     void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(orgId) });

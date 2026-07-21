@@ -81,6 +81,7 @@ export interface GabinetModuleData {
   tagIds?: string[];
   categoryId?: string;
   locationId?: string;
+  locationRole?: GabinetRole;
   customFields?: Array<{ fieldDefinitionId: string; value: unknown }>;
   showInCalendar?: boolean;
 }

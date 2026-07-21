@@ -629,6 +629,7 @@ function CreateEmployeeSheet({
                       qualifiedTreatmentIds: data.qualifiedTreatmentIds,
                       tagIds: data.tagIds,
                       categoryId: data.categoryId,
+                      customFields: data.customFields,
                     },
                   });
                   toast.success(t("team.invitationSent"));

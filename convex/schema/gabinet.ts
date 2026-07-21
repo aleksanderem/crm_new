@@ -345,11 +345,14 @@ export function createGabinetTables({
   // An employee may work across multiple locations (multi-site clinic chains).
   // isPrimary marks the employee's default location for scheduling defaults and
   // calendar filtering.
+  // role: optional override — when set, the employee acts in this role at this
+  // location instead of their default role from gabinetEmployees.role.
   gabinetEmployeeLocations: defineTable({
     organizationId: v.id("organizations"),
     employeeId: v.id("gabinetEmployees"),
     locationId: v.id("gabinetLocations"),
     isPrimary: v.boolean(),
+    role: v.optional(gabinetEmployeeRoleValidator),
     createdAt: v.number(),
   })
     .index("by_org", ["organizationId"])

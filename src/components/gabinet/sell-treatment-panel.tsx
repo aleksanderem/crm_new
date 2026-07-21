@@ -175,6 +175,16 @@ export function SellTreatmentPanel({
       });
 
       const treatmentName = selectedTreatment.name;
+      const discountFields =
+        discountAmount > 0
+          ? {
+              discountAmount,
+              discountPercent:
+                discountType === "percent"
+                  ? parsedDiscountValue
+                  : Math.round((discountAmount / totalPrice) * 10000) / 100,
+            }
+          : {};
 
       if (isInstallment) {
         if (splitPayment) {
@@ -183,7 +193,8 @@ export function SellTreatmentPanel({
             parts.push({ method: firstSplitMethod, amount: parsedFirstSplit });
           if (parsedSecondSplit > 0)
             parts.push({ method: secondSplitMethod, amount: parsedSecondSplit });
-          for (const part of parts) {
+          for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
             await createPayment({
               organizationId,
               patientId: patientId as Id<"gabinetPatients">,
@@ -192,6 +203,7 @@ export function SellTreatmentPanel({
               currency,
               paymentMethod: part.method,
               notes: `Treatment: ${treatmentName} (installment 1/${parsedInstallmentCount} split: ${part.method})`,
+              ...(i === 0 ? discountFields : {}),
             });
           }
         } else {
@@ -203,6 +215,7 @@ export function SellTreatmentPanel({
             currency,
             paymentMethod,
             notes: `Treatment: ${treatmentName} (installment 1/${parsedInstallmentCount})`,
+            ...discountFields,
           });
         }
         for (let i = 2; i <= parsedInstallmentCount; i++) {
@@ -223,7 +236,8 @@ export function SellTreatmentPanel({
           parts.push({ method: firstSplitMethod, amount: parsedFirstSplit });
         if (parsedSecondSplit > 0)
           parts.push({ method: secondSplitMethod, amount: parsedSecondSplit });
-        for (const part of parts) {
+        for (let i = 0; i < parts.length; i++) {
+          const part = parts[i];
           await createPayment({
             organizationId,
             patientId: patientId as Id<"gabinetPatients">,
@@ -232,6 +246,7 @@ export function SellTreatmentPanel({
             currency,
             paymentMethod: part.method,
             notes: `Treatment: ${treatmentName} (split: ${part.method})`,
+            ...(i === 0 ? discountFields : {}),
           });
         }
       } else {
@@ -243,6 +258,7 @@ export function SellTreatmentPanel({
           currency,
           paymentMethod,
           notes: `Treatment: ${treatmentName}`,
+          ...discountFields,
         });
       }
 

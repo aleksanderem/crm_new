@@ -103,14 +103,13 @@ export function EmployeeForm({
     enabled: !!organizationId,
   }) as { data: Array<{ _id: string; name: string; isActive: boolean }> | undefined };
 
-  const { data: customFieldDefs } = useQuery(
-    convexQuery(
+  const { data: customFieldDefs } = useQuery({
+    ...convexQuery(
       api.customFields.getDefinitions,
-      organizationId
-        ? { organizationId, entityType: "gabinetEmployee" as const }
-        : "skip",
+      { organizationId: organizationId!, entityType: "gabinetEmployee" as const },
     ),
-  ) as {
+    enabled: !!organizationId,
+  }) as {
     data: Array<{
       _id: string;
       name: string;

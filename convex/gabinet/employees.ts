@@ -356,7 +356,7 @@ export const _createFromInvitation = internalAction({
       role: safeRole,
       specialization: asString(d.specialization),
       qualifiedTreatmentIds: asStringArray(d.qualifiedTreatmentIds) ?? [],
-      licenseNumber: null,
+      licenseNumber: asString(d.licenseNumber),
       hireDate: null,
       isActive: true,
       color: asString(d.color),

@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { useAction } from "convex/react";
 import { convexQuery, useConvexAuth } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
@@ -30,6 +31,7 @@ function InviteAcceptPage() {
     enabled: isAuthenticated,
   });
 
+  const queryClient = useQueryClient();
   const acceptInvitation = useAction(api.invitations.accept);
   const declineInvitation = useAction(api.invitations.decline);
 
@@ -44,7 +46,9 @@ function InviteAcceptPage() {
     setIsAccepting(true);
     setActionError(null);
     try {
-      await acceptInvitation({ token });
+      const organizationId = await acceptInvitation({ token });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.teamMemberships.list(organizationId) });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(organizationId) });
       setResult("accepted");
       setTimeout(() => {
         navigate({ to: "/dashboard" });

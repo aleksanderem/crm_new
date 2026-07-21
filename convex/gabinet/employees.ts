@@ -243,16 +243,12 @@ export const create = action({
     // --- Mirror role into Convex `gabinetMemberships` so checkPermission
     //     can resolve the user's gabinet-role (it can't reach Supabase). ---
     if (args.userId) {
-      try {
-        await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
-          organizationId: args.organizationId,
-          userId: args.userId,
-          gabinetRole: args.role,
-          isActive: true,
-        });
-      } catch (e) {
-        console.error("[employees.create] Membership mirror FAILED:", e);
-      }
+      await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        gabinetRole: args.role,
+        isActive: true,
+      });
     }
 
     if (args.customFields && args.customFields.length > 0) {
@@ -458,16 +454,12 @@ export const _createFromInvitation = internalAction({
     }
 
     // Mirror role for permission checks. See `_upsertMembership` for why.
-    try {
-      await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
-        organizationId: args.organizationId,
-        userId: args.userId,
-        gabinetRole: safeRole,
-        isActive: true,
-      });
-    } catch (e) {
-      console.error("[gabinet.employees._createFromInvitation] membership mirror failed:", e);
-    }
+    await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
+      organizationId: args.organizationId,
+      userId: args.userId,
+      gabinetRole: safeRole,
+      isActive: true,
+    });
 
     return { skipped: false, employeeId: String(employeeId) };
   },
@@ -717,18 +709,14 @@ export const update = action({
     // Mirror role change (or isActive change) into Convex `gabinetMemberships`
     // so permission checks reflect the new role on the next call.
     if (args.role !== undefined || args.isActive !== undefined) {
-      try {
-        const effectiveRole = args.role ?? (emp.role as string);
-        const effectiveActive = args.isActive ?? Boolean(emp.isActive);
-        await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
-          organizationId: args.organizationId,
-          userId: String(emp.userId),
-          gabinetRole: effectiveRole,
-          isActive: effectiveActive,
-        });
-      } catch (e) {
-        console.error("[employees.update] Membership mirror FAILED:", e);
-      }
+      const effectiveRole = args.role ?? (emp.role as string);
+      const effectiveActive = args.isActive ?? Boolean(emp.isActive);
+      await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
+        organizationId: args.organizationId,
+        userId: String(emp.userId),
+        gabinetRole: effectiveRole,
+        isActive: effectiveActive,
+      });
     }
 
     return employeeId;
@@ -827,16 +815,12 @@ export const remove = action({
     }
 
     // Mark membership inactive so the gabinet-role overlay no longer applies.
-    try {
-      await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
-        organizationId: args.organizationId,
-        userId: String(emp.userId),
-        gabinetRole: emp.role as string,
-        isActive: false,
-      });
-    } catch (e) {
-      console.error("[employees.remove] Membership mirror FAILED:", e);
-    }
+    await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
+      organizationId: args.organizationId,
+      userId: String(emp.userId),
+      gabinetRole: emp.role as string,
+      isActive: false,
+    });
   },
 });
 

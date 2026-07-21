@@ -168,6 +168,9 @@ function EmployeeDetail() {
   const [newNote, setNewNote] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
 
+  // Main navigation groups (preparatory layer for future micro-tasks)
+  const [activeNavGroup, setActiveNavGroup] = useState<string>("clientsAndVisits");
+
   // Feature 1: Appointments view mode (calendar vs list)
   const [appointmentsView, setAppointmentsView] = useState<"calendar" | "list">("calendar");
   const [calendarWeekStart, setCalendarWeekStart] = useState<string>(() => {
@@ -844,6 +847,13 @@ function EmployeeDetail() {
         sidebarExtra={sidebarExtra}
         tabs={tabs}
         defaultTab={t("gabinet.employees.tabs.agenda")}
+        beforeTabs={
+          <EmployeeNavGroups
+            activeGroup={activeNavGroup}
+            onGroupChange={setActiveNavGroup}
+            t={t}
+          />
+        }
       />
 
       {/* Edit employee drawer */}
@@ -940,6 +950,51 @@ function EmployeeDetail() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+// --- Employee main navigation groups ---
+
+const EMPLOYEE_NAV_GROUPS = [
+  "clientsAndVisits",
+  "schedule",
+  "employeeData",
+  "documentsAndAssets",
+  "accountAndAccess",
+] as const;
+
+function EmployeeNavGroups({
+  activeGroup,
+  onGroupChange,
+  t,
+}: {
+  activeGroup: string;
+  onGroupChange: (group: string) => void;
+  t: TFunction;
+}) {
+  return (
+    <div className="-mx-4 mb-1 overflow-x-auto px-4 scrollbar-none">
+      <div className="flex min-w-max gap-1 pb-1">
+        {EMPLOYEE_NAV_GROUPS.map((group) => {
+          const isActive = activeGroup === group;
+          return (
+            <button
+              key={group}
+              type="button"
+              onClick={() => onGroupChange(group)}
+              className={[
+                "shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              ].join(" ")}
+            >
+              {t(`gabinet.employees.navGroups.${group}`)}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

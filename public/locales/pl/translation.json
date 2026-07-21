@@ -3115,6 +3115,13 @@
         "createFailed": "Nie udało się dodać pracownika.",
         "saveFailed": "Nie udało się zapisać zmian pracownika.",
         "noteFailed": "Nie udało się dodać notatki."
+      },
+      "navGroups": {
+        "clientsAndVisits": "Klienci i wizyty",
+        "schedule": "Grafik",
+        "employeeData": "Dane pracownika",
+        "documentsAndAssets": "Dokumenty i mienie",
+        "accountAndAccess": "Konto i dostęp"
       }
     },
     "leaveTypes": {

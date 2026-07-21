@@ -3095,6 +3095,13 @@
         "createFailed": "Could not add the employee.",
         "saveFailed": "Could not save employee changes.",
         "noteFailed": "Could not add the note."
+      },
+      "navGroups": {
+        "clientsAndVisits": "Clients and Visits",
+        "schedule": "Schedule",
+        "employeeData": "Employee Data",
+        "documentsAndAssets": "Documents and Assets",
+        "accountAndAccess": "Account and Access"
       }
     },
     "leaveTypes": {

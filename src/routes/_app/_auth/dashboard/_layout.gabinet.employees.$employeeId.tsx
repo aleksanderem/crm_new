@@ -2172,11 +2172,20 @@ function DetailedDataTab({
                 employee.phone ? formatPhoneNumber(employee.phone) : undefined,
                 <Phone className="h-3.5 w-3.5" />,
               )}
-              {readOnlyField(
-                t("gabinet.employees.detailedData.email"),
-                employee.email || userEmail || undefined,
-                <Mail className="h-3.5 w-3.5" />,
-              )}
+              <div className="flex items-start gap-3 py-1.5">
+                <span className="mt-0.5 text-muted-foreground"><Mail className="h-3.5 w-3.5" /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground">{t("gabinet.employees.detailedData.email")}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-medium">{employee.email || userEmail || "—"}</p>
+                    {(role === "admin" || role === "owner") && userEmail && onChangePassword && (
+                      <Button variant="outline" size="sm" onClick={onChangePassword} className="shrink-0">
+                        {t("gabinet.employees.changePassword")}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
               {readOnlyField(
                 t("gabinet.employees.detailedData.dateOfBirth"),
                 employee.dateOfBirth ? formatBirthDate(employee.dateOfBirth) : undefined,
@@ -2190,26 +2199,6 @@ function DetailedDataTab({
                     .join(", "),
                   <MapPin className="h-3.5 w-3.5" />,
                 )}
-              {(role === "admin" || role === "owner") && (
-                <div className="col-span-2 border-t pt-3 mt-1 flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">{t("gabinet.employees.detailedData.accountAccess")}</p>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className="text-sm font-medium">{userEmail || "—"}</span>
-                      <Badge variant={employee.isActive ? "default" : "secondary"} className="text-xs h-5">
-                        {employee.isActive
-                          ? t("gabinet.employees.detailedData.accountActive")
-                          : t("gabinet.employees.detailedData.accountInactive")}
-                      </Badge>
-                    </div>
-                  </div>
-                  {onChangePassword && (
-                    <Button variant="outline" size="sm" onClick={onChangePassword} className="shrink-0">
-                      {t("gabinet.employees.changePassword")}
-                    </Button>
-                  )}
-                </div>
-              )}
             </div>
           )}
         </CardContent>

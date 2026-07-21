@@ -2199,21 +2199,21 @@ export const updateStatus = action({
     }
 
     // Package return: when reverting from completed or no_show, restore one
-    // package entry. Uses the same CAS pattern as stock return above.
-    // Closes #3206.
+    // package entry. CAS now lives on gabinet_appointment_treatments.package_deducted
+    // per junction row (#3367), replacing the old appointment-level flag.
     if (
       (appt.status === "completed" || appt.status === "no_show") &&
-      appt.packageDeducted === true &&
-      appt.packageUsageId
+      appt.packageUsageId &&
+      appt.treatmentId
     ) {
       const { data: pkgReturnCasRows } = await db.raw()
-        .from("gabinet_appointments")
+        .from("gabinet_appointment_treatments")
         .update({ package_deducted: false })
-        .eq("id", args.appointmentId)
+        .eq("appointment_id", args.appointmentId)
+        .eq("treatment_id", String(appt.treatmentId))
         .eq("package_deducted", true)
         .select("id");
-      const wonPkgReturnRace =
-        Array.isArray(pkgReturnCasRows) && pkgReturnCasRows.length === 1;
+      const wonPkgReturnRace = Array.isArray(pkgReturnCasRows) && pkgReturnCasRows.length > 0;
       if (wonPkgReturnRace) {
         try {
           await returnPackageEntry(db, {
@@ -2321,20 +2321,22 @@ export const updateStatus = action({
       }
     }
 
-    // Package deduction: completed and no_show both consume one entry. CAS on
-    // package_deducted prevents double-deduction on concurrent calls or on
-    // completed → rescheduled → completed round-trips. Closes #3206.
+    // Package deduction: completed and no_show both consume one entry. CAS now
+    // lives on gabinet_appointment_treatments.package_deducted per junction row
+    // (#3367), replacing the old appointment-level flag. Closes #3206.
     if (
       (args.status === "completed" || args.status === "no_show") &&
-      appt.packageUsageId
+      appt.packageUsageId &&
+      appt.treatmentId
     ) {
       const { data: pkgCasRows } = await db.raw()
-        .from("gabinet_appointments")
+        .from("gabinet_appointment_treatments")
         .update({ package_deducted: true })
-        .eq("id", args.appointmentId)
+        .eq("appointment_id", args.appointmentId)
+        .eq("treatment_id", String(appt.treatmentId))
         .eq("package_deducted", false)
         .select("id");
-      const wonPkgRace = Array.isArray(pkgCasRows) && pkgCasRows.length === 1;
+      const wonPkgRace = Array.isArray(pkgCasRows) && pkgCasRows.length > 0;
       if (wonPkgRace) {
         try {
           await deductPackageEntry(db, {
@@ -2520,19 +2522,22 @@ export const applySmsReplyTransition = internalMutation({
     // too. Currently unreachable (intent is locked to confirm/cancel → targetStatus
     // is always "confirmed"|"cancelled"). Cast to string so TS2367 doesn't fire
     // and the guard becomes live automatically when the intent union is extended.
-    // Closes #3222.
+    // CAS now lives on gabinet_appointment_treatments.package_deducted per
+    // junction row (#3367). Closes #3222.
     const _targetStatusStr: string = targetStatus;
     if (
       (_targetStatusStr === "completed" || _targetStatusStr === "no_show") &&
-      appointment.packageUsageId
+      appointment.packageUsageId &&
+      appointment.treatmentId
     ) {
       const { data: pkgCasRows } = await db.raw()
-        .from("gabinet_appointments")
+        .from("gabinet_appointment_treatments")
         .update({ package_deducted: true })
-        .eq("id", args.appointmentId)
+        .eq("appointment_id", args.appointmentId)
+        .eq("treatment_id", String(appointment.treatmentId))
         .eq("package_deducted", false)
         .select("id");
-      const wonPkgRace = Array.isArray(pkgCasRows) && pkgCasRows.length === 1;
+      const wonPkgRace = Array.isArray(pkgCasRows) && pkgCasRows.length > 0;
       if (wonPkgRace) {
         try {
           await deductPackageEntry(db, {

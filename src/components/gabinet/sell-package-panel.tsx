@@ -21,6 +21,7 @@ import { Loader2 } from "@/lib/ez-icons";
 import { useSupabaseGabinetTreatmentPackagesList } from "@/hooks/use-supabase-gabinet-packages";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
+import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatActionError } from "@/lib/format-action-error";
 import { formatCurrencyPLN } from "@/lib/format-currency";
@@ -48,6 +49,7 @@ export function SellPackagePanel({
   const { data: packagesData } = useSupabaseGabinetTreatmentPackagesList(organizationId);
   const { data: patientsData } = useSupabaseGabinetPatientsList(organizationId);
   const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId);
+  const { data: employeesData } = useSupabaseGabinetEmployeesList(String(organizationId), { activeOnly: true });
 
   const treatmentMap = useMemo(
     () => new Map((treatmentsData ?? []).map((tr) => [tr._id, tr.name])),
@@ -56,6 +58,7 @@ export function SellPackagePanel({
 
   const [saleMode, setSaleMode] = useState<SaleMode>("patient");
   const [patientId, setPatientId] = useState<string>("");
+  const [soldByEmployeeId, setSoldByEmployeeId] = useState<string>("");
   const [packageId, setPackageId] = useState<string>("");
   const [giftRecipientName, setGiftRecipientName] = useState("");
   const [giftRecipientPhone, setGiftRecipientPhone] = useState("");
@@ -113,6 +116,7 @@ export function SellPackagePanel({
   const reset = () => {
     setSaleMode("patient");
     setPatientId("");
+    setSoldByEmployeeId("");
     setPackageId("");
     setGiftRecipientName("");
     setGiftRecipientPhone("");
@@ -171,6 +175,7 @@ export function SellPackagePanel({
         giftRecipientName: isGift && giftRecipientName ? giftRecipientName : undefined,
         giftRecipientPhone: isGift && giftRecipientPhone ? giftRecipientPhone : undefined,
         giftRecipientEmail: isGift && giftRecipientEmail ? giftRecipientEmail : undefined,
+        soldByEmployeeId: soldByEmployeeId || undefined,
       });
 
       const paymentPatientId = isGift ? undefined : (patientId as Id<"gabinetPatients">);
@@ -369,6 +374,24 @@ export function SellPackagePanel({
                 placeholder={t("gabinet.packages.giftRecipientEmailPlaceholder", "np. jan@example.com")}
               />
             </div>
+          </div>
+        )}
+
+        {(employeesData ?? []).length > 0 && (
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.packages.soldBy", "Sprzedał/a")}</Label>
+            <Select value={soldByEmployeeId} onValueChange={setSoldByEmployeeId}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("gabinet.packages.soldByPlaceholder", "Wybierz pracownika (opcjonalnie)")} />
+              </SelectTrigger>
+              <SelectContent>
+                {(employeesData ?? []).map((e) => (
+                  <SelectItem key={e._id} value={e._id}>
+                    {[e.firstName, e.lastName].filter(Boolean).join(" ") || e._id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
 

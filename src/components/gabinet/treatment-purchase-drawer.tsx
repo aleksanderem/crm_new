@@ -26,6 +26,7 @@ import {
 import { Loader2 } from "@/lib/ez-icons";
 import { formatActionError } from "@/lib/format-action-error";
 import { formatCurrencyPLN } from "@/lib/format-currency";
+import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 
 interface TreatmentPurchaseDrawerProps {
   patientId: string;
@@ -49,6 +50,7 @@ export function TreatmentPurchaseDrawer({
   const createPayment = useAction(api.payments.create);
 
   const [selectedTreatmentId, setSelectedTreatmentId] = useState<string>("");
+  const [soldByEmployeeId, setSoldByEmployeeId] = useState<string>("");
   const [sessionCount, setSessionCount] = useState<string>("1");
   const [paymentType, setPaymentType] = useState<"one_time" | "installment">("one_time");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
@@ -61,6 +63,8 @@ export function TreatmentPurchaseDrawer({
   const [submitting, setSubmitting] = useState(false);
   const [discountType, setDiscountType] = useState<"amount" | "percent">("amount");
   const [discountValue, setDiscountValue] = useState<string>("");
+
+  const { data: employeesData } = useSupabaseGabinetEmployeesList(String(organizationId), { activeOnly: true, enabled: open });
 
   const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
   const { data: treatments } = useQuery({
@@ -117,6 +121,7 @@ export function TreatmentPurchaseDrawer({
 
   const resetForm = () => {
     setSelectedTreatmentId("");
+    setSoldByEmployeeId("");
     setSessionCount("1");
     setPaymentType("one_time");
     setPaymentMethod("cash");
@@ -168,6 +173,7 @@ export function TreatmentPurchaseDrawer({
         sessionCount: parsedSessionCount,
         paidAmount: finalPrice,
         paymentMethod: usagePaymentMethod,
+        soldByEmployeeId: soldByEmployeeId || undefined,
       });
 
       const treatmentName = selectedTreatment.name;
@@ -280,6 +286,24 @@ export function TreatmentPurchaseDrawer({
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto py-4 space-y-5">
+          {(employeesData ?? []).length > 0 && (
+            <div className="space-y-1.5">
+              <Label>{t("gabinet.packages.soldBy", "Sprzedał/a")}</Label>
+              <Select value={soldByEmployeeId} onValueChange={setSoldByEmployeeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t("gabinet.packages.soldByPlaceholder", "Wybierz pracownika (opcjonalnie)")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {(employeesData ?? []).map((e) => (
+                    <SelectItem key={e._id} value={e._id}>
+                      {[e.firstName, e.lastName].filter(Boolean).join(" ") || e._id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label>{t("gabinet.treatments.selectTreatment", "Zabieg")}</Label>
             <Select value={selectedTreatmentId} onValueChange={setSelectedTreatmentId}>

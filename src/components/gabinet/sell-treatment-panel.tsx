@@ -20,6 +20,7 @@ import {
 import { Loader2 } from "@/lib/ez-icons";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
+import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatActionError } from "@/lib/format-action-error";
 import { formatCurrencyPLN } from "@/lib/format-currency";
@@ -46,8 +47,10 @@ export function SellTreatmentPanel({
 
   const { data: patientsData } = useSupabaseGabinetPatientsList(organizationId);
   const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId, { isActive: true });
+  const { data: employeesData } = useSupabaseGabinetEmployeesList(String(organizationId), { activeOnly: true });
 
   const [patientId, setPatientId] = useState<string>("");
+  const [soldByEmployeeId, setSoldByEmployeeId] = useState<string>("");
   const [treatmentId, setTreatmentId] = useState<string>("");
   const [sessionCount, setSessionCount] = useState<string>("1");
   const [paymentType, setPaymentType] = useState<"one_time" | "installment">("one_time");
@@ -118,6 +121,7 @@ export function SellTreatmentPanel({
 
   const reset = useCallback(() => {
     setPatientId("");
+    setSoldByEmployeeId("");
     setTreatmentId("");
     setSessionCount("1");
     setPaymentType("one_time");
@@ -167,6 +171,7 @@ export function SellTreatmentPanel({
         sessionCount: parsedSessionCount,
         paidAmount: finalPrice,
         paymentMethod: usagePaymentMethod,
+        soldByEmployeeId: soldByEmployeeId || undefined,
       });
 
       const treatmentName = selectedTreatment.name;
@@ -289,6 +294,24 @@ export function SellTreatmentPanel({
             </SelectContent>
           </Select>
         </div>
+
+        {(employeesData ?? []).length > 0 && (
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.packages.soldBy", "Sprzedał/a")}</Label>
+            <Select value={soldByEmployeeId} onValueChange={setSoldByEmployeeId}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("gabinet.packages.soldByPlaceholder", "Wybierz pracownika (opcjonalnie)")} />
+              </SelectTrigger>
+              <SelectContent>
+                {(employeesData ?? []).map((e) => (
+                  <SelectItem key={e._id} value={e._id}>
+                    {[e.firstName, e.lastName].filter(Boolean).join(" ") || e._id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <Label>{t("gabinet.treatments.selectTreatment", "Zabieg")}</Label>

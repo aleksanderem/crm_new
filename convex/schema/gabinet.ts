@@ -567,6 +567,7 @@ export function createGabinetTables({
     giftRecipientName: v.optional(v.string()),
     giftRecipientPhone: v.optional(v.string()),
     giftRecipientEmail: v.optional(v.string()),
+    soldByEmployeeId: v.optional(v.id("gabinetEmployees")),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

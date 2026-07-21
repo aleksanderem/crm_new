@@ -346,6 +346,7 @@ export const purchaseTreatment = action({
     sessionCount: v.number(),
     paidAmount: v.number(),
     paymentMethod: v.optional(v.string()),
+    soldByEmployeeId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<string> => {
     const authResult = await ctx.runQuery(
@@ -414,6 +415,7 @@ export const purchaseTreatment = action({
       ],
       paidAmount: args.paidAmount,
       paymentMethod: args.paymentMethod ?? null,
+      soldByEmployeeId: args.soldByEmployeeId ?? null,
       createdBy: userIdStr,
       createdAt: now,
       updatedAt: now,
@@ -505,6 +507,7 @@ export const purchasePackage = action({
     giftRecipientName: v.optional(v.string()),
     giftRecipientPhone: v.optional(v.string()),
     giftRecipientEmail: v.optional(v.string()),
+    soldByEmployeeId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runQuery(
@@ -573,6 +576,7 @@ export const purchasePackage = action({
       giftRecipientName: args.giftRecipientName ?? null,
       giftRecipientPhone: args.giftRecipientPhone ?? null,
       giftRecipientEmail: args.giftRecipientEmail ?? null,
+      soldByEmployeeId: args.soldByEmployeeId ?? null,
       createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,

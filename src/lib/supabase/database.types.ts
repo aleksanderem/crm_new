@@ -76,6 +76,7 @@
  *   • 00069_gabinet_appointment_treatments.sql
  *   • 00070_appointment_treatments_deduction_flags.sql
  *   • 00071_drop_appointment_deduction_flags.sql
+ *   • 00072_gabinet_package_usage_sold_by_employee_id.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -5119,6 +5120,7 @@ export interface Database {
           gift_recipient_name: string | null;
           gift_recipient_phone: string | null;
           gift_recipient_email: string | null;
+          sold_by_employee_id: string | null;
           created_by: string;
           created_at: number;
           updated_at: number;
@@ -5139,6 +5141,7 @@ export interface Database {
           gift_recipient_name?: string | null;
           gift_recipient_phone?: string | null;
           gift_recipient_email?: string | null;
+          sold_by_employee_id?: string | null;
           created_by: string;
           created_at: number;
           updated_at: number;
@@ -5159,6 +5162,7 @@ export interface Database {
           gift_recipient_name?: string | null;
           gift_recipient_phone?: string | null;
           gift_recipient_email?: string | null;
+          sold_by_employee_id?: string | null;
           created_by?: string;
           created_at?: number;
           updated_at?: number;
@@ -5183,6 +5187,13 @@ export interface Database {
             columns: ["package_id"];
             isOneToOne: false;
             referencedRelation: "gabinet_treatment_packages";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_package_usage_sold_by_employee_id_fkey";
+            columns: ["sold_by_employee_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_employees";
             referencedColumns: ["id"];
           },
           {

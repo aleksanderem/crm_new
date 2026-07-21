@@ -33,6 +33,7 @@ export interface MappedGabinetPackageUsage {
   giftRecipientName?: string;
   giftRecipientPhone?: string;
   giftRecipientEmail?: string;
+  soldByEmployeeId?: string;
   createdBy: string;
   createdAt: number;
   updatedAt: number;
@@ -59,6 +60,7 @@ export function mapGabinetPackageUsageFromSupabase(
     giftRecipientName: row.gift_recipient_name ?? undefined,
     giftRecipientPhone: row.gift_recipient_phone ?? undefined,
     giftRecipientEmail: row.gift_recipient_email ?? undefined,
+    soldByEmployeeId: row.sold_by_employee_id ?? undefined,
   };
 }
 

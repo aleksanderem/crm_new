@@ -246,6 +246,8 @@ function AppointmentDetail() {
   const [paymentPackageItems, setPaymentPackageItems] = useState<
     Array<{ treatmentId: string; variantId?: string; treatmentName: string; remaining: number; qty: number }>
   >([]);
+  const [discountType, setDiscountType] = useState<"amount" | "percent">("amount");
+  const [discountValue, setDiscountValue] = useState("");
 
   // Body chart state
 
@@ -893,6 +895,8 @@ function AppointmentDetail() {
     setPaymentUseBalance(false);
     setPaymentPackageId(null);
     setPaymentPackageItems([]);
+    setDiscountType("amount");
+    setDiscountValue("");
     if (patient?._id) {
       try {
         const credit = await getPatientCreditAction({
@@ -983,6 +987,8 @@ function AppointmentDetail() {
       setPaymentUseBalance(false);
       setPaymentPackageId(null);
       setPaymentPackageItems([]);
+      setDiscountType("amount");
+      setDiscountValue("");
       refetch();
       // Refresh credit balance for any further dialog opens.
       if (patient?._id) {
@@ -2318,6 +2324,52 @@ function AppointmentDetail() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {!isFixedAmountMethod && outstanding > 0 && (
+              <div>
+                <Label>{t("gabinet.payments.discount")}</Label>
+                <div className="flex gap-2 mt-1">
+                  <Select
+                    value={discountType}
+                    onValueChange={(v) => {
+                      setDiscountType(v as "amount" | "percent");
+                      setDiscountValue("");
+                    }}
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="amount">{t("gabinet.payments.discountTypeAmount")}</SelectItem>
+                      <SelectItem value="percent">{t("gabinet.payments.discountTypePercent")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="relative flex-1">
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={discountValue}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                          setDiscountValue(v);
+                          const parsed = parseFloat(v.replace(",", ".")) || 0;
+                          const disc =
+                            discountType === "amount"
+                              ? Math.min(parsed, outstanding)
+                              : Math.round(outstanding * Math.min(parsed, 100) / 100 * 100) / 100;
+                          setPaymentAmount(Math.max(0, outstanding - disc).toFixed(2));
+                        }
+                      }}
+                      placeholder={discountType === "percent" ? "0" : "0.00"}
+                      className={discountType === "percent" ? "pr-8" : ""}
+                    />
+                    {discountType === "percent" && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">%</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
             <div>
               <Label>{t("gabinet.payments.amount")}</Label>
               <Input

@@ -893,8 +893,11 @@ export function AppointmentPreviewContent({
   const selectedPackageRemaining = selectedPackageEntry
     ? selectedPackageEntry.totalCount - selectedPackageEntry.usedCount
     : 0;
+  // True when the user picked "package" from the payment method dropdown
+  // (as opposed to checking the `settleUsePackage` checkbox).
+  const settleMethodIsPackage = !settleUsePackage && settleMethod === "package";
   const packageQuantityExceedsRemaining =
-    settleUsePackage &&
+    (settleUsePackage || (settleMethodIsPackage && eligiblePackageUsages.length > 0)) &&
     !!selectedPackageEntry &&
     settlePackageQuantity > selectedPackageRemaining;
 
@@ -985,7 +988,7 @@ export function AppointmentPreviewContent({
       );
       return;
     }
-    if (settleUsePackage) {
+    if (settleUsePackage || (settleMethodIsPackage && eligiblePackageUsages.length > 0)) {
       if (!settlePackageUsageId) {
         toast.error(
           t("gabinet.appointmentDetail.packageNotSelected", {
@@ -1068,7 +1071,7 @@ export function AppointmentPreviewContent({
       // before recording the payment row, so the visible package progress is
       // up-to-date by the time the dialog closes and the calendar refreshes.
       if (
-        settleUsePackage &&
+        (settleUsePackage || (settleMethodIsPackage && eligiblePackageUsages.length > 0)) &&
         settlePackageUsageId &&
         settlePackageQuantity > 0 &&
         appointment.treatmentId
@@ -1164,6 +1167,9 @@ export function AppointmentPreviewContent({
           currency: "PLN",
           paymentMethod: settleMethod,
           notes: settleNotes.trim() || undefined,
+          ...(settleMethodIsPackage && settlePackageUsageId
+            ? { packageUsageId: settlePackageUsageId }
+            : {}),
           ...(overpaymentAmount > 0
             ? { creditEarned: overpaymentAmount }
             : {}),
@@ -2254,6 +2260,103 @@ export function AppointmentPreviewContent({
             </div>
           )}
 
+          {settleMethodIsPackage && eligiblePackageUsages.length > 0 && (
+            <div className="space-y-2 rounded-md border p-2.5">
+              {eligiblePackageUsages.length > 1 && (
+                <div className="space-y-1">
+                  <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    {t("gabinet.appointmentDetail.choosePackage", {
+                      defaultValue: "Wybierz pakiet",
+                    })}
+                  </Label>
+                  <Select
+                    value={settlePackageUsageId}
+                    onValueChange={(v) => setSettlePackageUsageId(v)}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue
+                        placeholder={t(
+                          "gabinet.appointmentDetail.choosePackage",
+                          { defaultValue: "Wybierz pakiet" },
+                        )}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {eligiblePackageUsages.map((u) => {
+                        const entry = u.treatmentsUsed.find(
+                          (tu) =>
+                            tu.treatmentId ===
+                            String(appointment.treatmentId),
+                        );
+                        const remaining = entry
+                          ? entry.totalCount - entry.usedCount
+                          : 0;
+                        const total = entry?.totalCount ?? 0;
+                        const pkgLabel =
+                          u.packageName ?? t("gabinet.packages.package");
+                        return (
+                          <SelectItem key={u._id} value={u._id}>
+                            {`${pkgLabel} — ${remaining}/${total}`}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {selectedPackageUsage && (
+                <div className="text-[11px] text-muted-foreground">
+                  {t("gabinet.appointmentDetail.packageRemaining", {
+                    defaultValue:
+                      "{{name}} — pozostało {{remaining}} z {{total}}",
+                    name:
+                      selectedPackageUsage.packageName ??
+                      t("gabinet.packages.package"),
+                    remaining: selectedPackageRemaining,
+                    total: selectedPackageEntry?.totalCount ?? 0,
+                  })}
+                </div>
+              )}
+              <div className="space-y-1">
+                <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  {t("gabinet.appointmentDetail.unitsToDeduct", {
+                    defaultValue: "Ile sztuk zdjąć?",
+                  })}
+                </Label>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={
+                    selectedPackageEntry
+                      ? selectedPackageRemaining
+                      : undefined
+                  }
+                  value={settlePackageQuantity}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    if (Number.isFinite(v) && v >= 1) {
+                      setSettlePackageQuantity(v);
+                    } else if (e.target.value === "") {
+                      setSettlePackageQuantity(1);
+                    }
+                  }}
+                />
+                {packageQuantityExceedsRemaining && (
+                  <p className="text-[11px] text-destructive">
+                    {t(
+                      "gabinet.appointmentDetail.packageQuantityExceeds",
+                      {
+                        defaultValue:
+                          "Liczba sztuk przekracza pozostałą ilość w pakiecie.",
+                      },
+                    )}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {settleUsePackage && !settleSplitPayment && (
             <div className="rounded-md border border-blue-200 bg-blue-50 p-2.5 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200">
               {t("gabinet.payments.packageCoversVisitNote", {
@@ -2557,6 +2660,9 @@ export function AppointmentPreviewContent({
                 creditApplyExceedsBalance ||
                 packageQuantityExceedsRemaining ||
                 (settleUsePackage && !settlePackageUsageId) ||
+                (settleMethodIsPackage &&
+                  eligiblePackageUsages.length > 0 &&
+                  !settlePackageUsageId) ||
                 (settleSplitPayment &&
                   (splitMissingAmount || splitMismatch || splitSameMethod))
               }

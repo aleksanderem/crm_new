@@ -330,10 +330,39 @@ export const _createFromInvitation = internalAction({
       .eq("userId", args.userId)
       .collect();
     if (existing.length > 0) {
+      const existingEmployeeId = String(existing[0]._id);
       console.log(
         `[gabinet.employees._createFromInvitation] skip — employee already exists for user=${args.userId}`,
       );
-      return { skipped: true, employeeId: String(existing[0]._id) };
+
+      // Still honour any locationId on the re-invite so the new assignment is not silently dropped.
+      const d2 = (args.data ?? {}) as Record<string, unknown>;
+      const locationId2 = typeof d2.locationId === "string" && d2.locationId.length > 0 ? d2.locationId : null;
+      if (locationId2) {
+        try {
+          const existingLocation = await db
+            .query("gabinetEmployeeLocations")
+            .eq("employeeId", existingEmployeeId)
+            .eq("locationId", locationId2)
+            .collect();
+          if (existingLocation.length === 0) {
+            await db.insert("gabinetEmployeeLocations", {
+              organizationId: String(args.organizationId),
+              employeeId: existingEmployeeId,
+              locationId: locationId2,
+              isPrimary: false,
+              createdAt: Date.now(),
+            });
+          }
+        } catch (e) {
+          console.error(
+            `[gabinet.employees._createFromInvitation] location insert on re-invite failed:`,
+            e,
+          );
+        }
+      }
+
+      return { skipped: true, employeeId: existingEmployeeId };
     }
 
     const d = (args.data ?? {}) as Record<string, unknown>;

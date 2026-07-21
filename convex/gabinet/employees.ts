@@ -346,6 +346,25 @@ export const _createFromInvitation = internalAction({
       updatedAt: now,
     });
 
+    // Location assignment — moduleData.locationId seeds the primary location.
+    const locationId = asString(d.locationId);
+    if (locationId) {
+      try {
+        await db.insert("gabinetEmployeeLocations", {
+          organizationId: String(args.organizationId),
+          employeeId: String(employeeId),
+          locationId,
+          isPrimary: true,
+          createdAt: now,
+        });
+      } catch (e) {
+        console.error(
+          `[gabinet.employees._createFromInvitation] location insert failed:`,
+          e,
+        );
+      }
+    }
+
     // Custom fields (free-form per-org definitions) — moduleData.customFields
     // is expected to be an array of { fieldDefinitionId, value }. Matches the
     // shape `customFields.setValues` produces and what the renderer emits.

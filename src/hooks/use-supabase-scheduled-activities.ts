@@ -237,8 +237,8 @@ export function useSupabaseScheduledActivitiesByDateRange(
       let apptMap = new Map<string, { status: string; patientId: string }>();
       let patientMap = new Map<string, string>();
       let treatmentMap = new Map<string, string>();
-      // appointment_id → primary treatment_id (lowest sort_order from junction table)
-      let apptTreatmentMap = new Map<string, string>();
+      // appointment_id → all treatment IDs in sort_order
+      let apptTreatmentMap = new Map<string, string[]>();
 
       if (gabinetEntityIds.length > 0) {
         const { data: appts, error: apptErr } = await client
@@ -289,12 +289,14 @@ export function useSupabaseScheduledActivitiesByDateRange(
           .not("treatment_id", "is", null)
           .order("sort_order", { ascending: true });
         for (const row of ((junctionRows ?? []) as Array<{ appointment_id: string; treatment_id: string | null; sort_order: number }>)) {
-          if (row.treatment_id && !apptTreatmentMap.has(row.appointment_id)) {
-            apptTreatmentMap.set(row.appointment_id, row.treatment_id);
+          if (row.treatment_id) {
+            const existing = apptTreatmentMap.get(row.appointment_id) ?? [];
+            existing.push(row.treatment_id);
+            apptTreatmentMap.set(row.appointment_id, existing);
           }
         }
 
-        const treatmentIds = Array.from(new Set(Array.from(apptTreatmentMap.values())));
+        const treatmentIds = Array.from(new Set(Array.from(apptTreatmentMap.values()).flat()));
         if (treatmentIds.length > 0) {
           const { data: treatments } = await client
             .from("gabinet_treatments")
@@ -319,9 +321,15 @@ export function useSupabaseScheduledActivitiesByDateRange(
             metadata.status = appt.status;
             metadata.appointmentId = moduleRef.entityId;
             metadata.patientName = patientMap.get(appt.patientId) ?? undefined;
-            const treatmentId = apptTreatmentMap.get(moduleRef.entityId);
-            if (treatmentId) {
-              metadata.treatmentName = treatmentMap.get(treatmentId) ?? undefined;
+            const appointmentTreatmentIds = apptTreatmentMap.get(moduleRef.entityId);
+            if (appointmentTreatmentIds && appointmentTreatmentIds.length > 0) {
+              const treatments = appointmentTreatmentIds
+                .map((id) => ({ id, name: treatmentMap.get(id) ?? "" }))
+                .filter((t) => t.name);
+              if (treatments.length > 0) {
+                metadata.treatments = treatments;
+                metadata.treatmentName = treatments.map((t) => t.name).join(", ");
+              }
             }
           }
         }

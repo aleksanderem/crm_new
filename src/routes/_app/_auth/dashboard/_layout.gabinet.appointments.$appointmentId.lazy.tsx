@@ -417,7 +417,14 @@ function AppointmentDetail() {
     if (schedulingInitRef.current === detail.appointment._id) return;
     schedulingInitRef.current = detail.appointment._id;
     const appt = detail.appointment as Record<string, unknown>;
-    setEditTreatmentId(appt.treatmentId ? String(appt.treatmentId) : "");
+    const junctionTreatmentId = detail.treatments?.[0]?.treatmentId ?? null;
+    setEditTreatmentId(
+      junctionTreatmentId
+        ? junctionTreatmentId
+        : appt.treatmentId
+          ? String(appt.treatmentId)
+          : "",
+    );
     setEditDate((appt.date as string) ?? "");
     setEditStartTime(((appt.startTime as string) ?? "").slice(0, 5));
     setEditEndTime(((appt.endTime as string) ?? "").slice(0, 5));

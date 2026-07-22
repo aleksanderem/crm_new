@@ -443,7 +443,14 @@ export function AppointmentPreviewContent({
     setEndTime(appt.endTime.slice(0, 5));
     setNotes(appt.notes ?? "");
     setInternalNotes(appt.internalNotes ?? "");
-    setTreatmentId(appt.treatmentId ? String(appt.treatmentId) : "");
+    const junctionTreatmentId = detail.treatments?.[0]?.treatmentId ?? null;
+    setTreatmentId(
+      junctionTreatmentId
+        ? junctionTreatmentId
+        : appt.treatmentId
+          ? String(appt.treatmentId)
+          : "",
+    );
     setVariantId(appt.variantId ? String(appt.variantId) : "");
     setTagIds(
       (appt.tagIds ?? []).map((id) => id as Id<"tagDefinitions">),
@@ -463,9 +470,9 @@ export function AppointmentPreviewContent({
 
   const { appointment, patient, treatment } = detail;
   const initialStatus = appointment.status as AppointmentStatus;
-  const initialTreatmentId = appointment.treatmentId
-    ? String(appointment.treatmentId)
-    : "";
+  const initialTreatmentId =
+    detail.treatments?.[0]?.treatmentId ??
+    (appointment.treatmentId ? String(appointment.treatmentId) : "");
   const initialVariantId = appointment.variantId
     ? String(appointment.variantId)
     : "";

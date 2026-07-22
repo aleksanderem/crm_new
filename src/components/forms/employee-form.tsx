@@ -20,7 +20,7 @@ import {
 import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { CustomFieldFormSection } from "@/components/custom-fields/custom-field-form-section";
-import { Search } from "@/lib/ez-icons";
+import { Eye, Search } from "@/lib/ez-icons";
 
 const ROLES = ["doctor", "cosmetologist", "nurse", "therapist", "receptionist", "manager", "admin", "other"] as const;
 type EmployeeRole = (typeof ROLES)[number];
@@ -146,6 +146,8 @@ export function EmployeeForm({
   const [locationId, setLocationId] = useState<string | undefined>(undefined);
   const [locationRole, setLocationRole] = useState<EmployeeRole | undefined>(undefined);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const filteredTreatments = useMemo(() => {
     if (!treatments) return [];
@@ -512,13 +514,29 @@ export function EmployeeForm({
                   <Label>
                     {t("gabinet.employees.password", { defaultValue: "Hasło" })} <span className="text-destructive">*</span>
                   </Label>
-                  <Input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    autoComplete="new-password"
-                  />
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      autoComplete="new-password"
+                      className="pr-9"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? t("common.hidePassword", { defaultValue: "Ukryj hasło" }) : t("common.showPassword", { defaultValue: "Pokaż hasło" })}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <Eye className="h-4 w-4" variant="stroke" />
+                      {showPassword && (
+                        <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                          <span className="block h-px w-4 rotate-45 bg-current" />
+                        </span>
+                      )}
+                    </button>
+                  </div>
                   {passwordError && (
                     <p className="text-xs text-destructive">{passwordError}</p>
                   )}
@@ -532,13 +550,29 @@ export function EmployeeForm({
                   <Label>
                     {t("gabinet.employees.confirmPassword", { defaultValue: "Powtórz hasło" })} <span className="text-destructive">*</span>
                   </Label>
-                  <Input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    autoComplete="new-password"
-                  />
+                  <div className="relative">
+                    <Input
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="••••••••"
+                      autoComplete="new-password"
+                      className="pr-9"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((v) => !v)}
+                      aria-label={showConfirmPassword ? t("common.hidePassword", { defaultValue: "Ukryj hasło" }) : t("common.showPassword", { defaultValue: "Pokaż hasło" })}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <Eye className="h-4 w-4" variant="stroke" />
+                      {showConfirmPassword && (
+                        <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                          <span className="block h-px w-4 rotate-45 bg-current" />
+                        </span>
+                      )}
+                    </button>
+                  </div>
                   {confirmPasswordError && (
                     <p className="text-xs text-destructive">{confirmPasswordError}</p>
                   )}

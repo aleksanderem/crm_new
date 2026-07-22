@@ -676,7 +676,7 @@ export const purchasePackage = action({
       treatmentsUsed,
       paidAmount: args.paidAmount,
       paymentMethod: args.paymentMethod ?? null,
-      isGift: isGift || null,
+      isGift,
       voucherCode,
       giftRecipientName: args.giftRecipientName ?? null,
       giftRecipientPhone: args.giftRecipientPhone ?? null,

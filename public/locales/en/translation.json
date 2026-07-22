@@ -3069,7 +3069,7 @@
         "commissionPercent": "Commission %",
         "bankAccount": "Bank Account",
         "noCompensationYet": "No compensation data added yet.",
-        "bio": "Bio",
+        "bio": "Bio / Employee Description",
         "bioPlaceholder": "Short employee description...",
         "bioHint": "Max. 1000 characters",
         "profilePhoto": "Profile Photo",

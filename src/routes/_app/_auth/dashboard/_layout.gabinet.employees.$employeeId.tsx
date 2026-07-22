@@ -868,7 +868,11 @@ function EmployeeDetail() {
             tab.label === t("gabinet.employees.tabs.assignedItems")
         );
       case "accountAndAccess":
-        return tabs.filter(tab => tab.label === t("gabinet.employees.tabs.permissions", "Uprawnienia"));
+        return tabs.filter(
+          tab =>
+            tab.label === t("gabinet.employees.activity") ||
+            tab.label === t("gabinet.employees.tabs.permissions", "Uprawnienia")
+        );
       default:
         return [];
     }

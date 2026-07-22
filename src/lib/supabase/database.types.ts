@@ -4040,6 +4040,8 @@ export interface Database {
           show_in_calendar: boolean;
           assigned_items: unknown | null;
           location_id: string | null;
+          bio: string | null;
+          avatar_url: string | null;
         };
         Insert: {
           id?: string;
@@ -4078,6 +4080,8 @@ export interface Database {
           show_in_calendar?: boolean;
           assigned_items?: unknown | null;
           location_id?: string | null;
+          bio?: string | null;
+          avatar_url?: string | null;
         };
         Update: {
           id?: string;
@@ -4116,6 +4120,8 @@ export interface Database {
           show_in_calendar?: boolean;
           assigned_items?: unknown | null;
           location_id?: string | null;
+          bio?: string | null;
+          avatar_url?: string | null;
         };
         Relationships: [
           {

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction, useQuery as useConvexQuery, useMutation } from "convex/react";
@@ -38,7 +38,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Textarea } from "@/components/ui/textarea";
+import { useConvexUpload } from "@/hooks/use-convex-upload";
+import { useConvexMutation } from "@convex-dev/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -85,6 +88,7 @@ import {
   DollarSign,
   Star,
   FileText,
+  Upload,
 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import type { EmployeePatientStats } from "@cvx/gabinet/appointments";
@@ -930,6 +934,7 @@ function EmployeeDetail() {
         onBack={() => navigate({ to: "/dashboard/gabinet/employees" })}
         title={fullName}
         headerSubtitle={headerSubtitle}
+        avatarUrl={employee?.avatarUrl ?? undefined}
         avatarFallback={avatarFallback}
         actionsMenu={actionsMenu}
         fields={detailFields}
@@ -2003,6 +2008,33 @@ function DetailedDataTab({
     baseSalary: employee.baseSalary?.toString() ?? "",
     commissionPercent: employee.commissionPercent?.toString() ?? "",
     bankAccount: employee.bankAccount ?? "",
+    bio: employee.bio ?? "",
+  });
+
+  const photoFileRef = useRef<HTMLInputElement>(null);
+  const generateUploadUrl = useConvexMutation(api.app.generateUploadUrl);
+  const getStorageUrl = useConvexMutation(api.app.getStorageUrl);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const { startUpload } = useConvexUpload(generateUploadUrl, {
+    onUploadBegin: () => setPhotoUploading(true),
+    onUploadComplete: async (uploaded) => {
+      try {
+        const storageId = (uploaded[0].response as { storageId: string }).storageId;
+        const url = await getStorageUrl({ storageId: storageId as Id<"_storage"> });
+        if (url) {
+          await onUpdate({ organizationId, employeeId: employee._id, avatarUrl: url });
+        }
+      } catch {
+        toast.error(t("gabinet.employees.detailedData.profilePhoto") + ": upload failed");
+      } finally {
+        setPhotoUploading(false);
+        if (photoFileRef.current) photoFileRef.current.value = "";
+      }
+    },
+    onUploadError: () => {
+      setPhotoUploading(false);
+      toast.error(t("gabinet.employees.detailedData.profilePhoto") + ": upload failed");
+    },
   });
 
   // Certifications state
@@ -2048,6 +2080,7 @@ function DetailedDataTab({
       baseSalary: employee.baseSalary?.toString() ?? "",
       commissionPercent: employee.commissionPercent?.toString() ?? "",
       bankAccount: employee.bankAccount ?? "",
+      bio: employee.bio ?? "",
     });
     setCertifications(employee.certifications ?? []);
   }, [employee]);
@@ -2081,6 +2114,7 @@ function DetailedDataTab({
       baseSalary: employee.baseSalary?.toString() ?? "",
       commissionPercent: employee.commissionPercent?.toString() ?? "",
       bankAccount: employee.bankAccount ?? "",
+      bio: employee.bio ?? "",
     });
     setCertifications(employee.certifications ?? []);
   };
@@ -2108,6 +2142,7 @@ function DetailedDataTab({
                 postalCode: formData.addressPostalCode || undefined,
               }
             : null;
+        updatePayload.bio = formData.bio || null;
       } else if (section === "employment") {
         updatePayload.employmentType = (formData.employmentType || null) as EmploymentType | null;
         updatePayload.hireDate = formData.hireDate || null;
@@ -2238,6 +2273,61 @@ function DetailedDataTab({
             "personal",
             <User className="h-4 w-4" variant="stroke" />,
           )}
+
+          {/* Profile photo — always visible, independent of section edit state */}
+          <div className="flex items-center gap-4 mb-5 pb-5 border-b">
+            <div className="relative group shrink-0">
+              <Avatar className="h-20 w-20">
+                {employee.avatarUrl && <AvatarImage src={employee.avatarUrl} alt={employee.firstName ?? ""} className="object-cover" />}
+                <AvatarFallback className="text-2xl">
+                  {(employee.firstName?.[0] ?? "") + (employee.lastName?.[0] ?? "")}
+                </AvatarFallback>
+              </Avatar>
+              <label
+                htmlFor="employee-photo-upload"
+                className={[
+                  "absolute inset-0 rounded-full flex items-center justify-center",
+                  "bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer",
+                  photoUploading ? "opacity-100 cursor-not-allowed" : "",
+                ].join(" ")}
+              >
+                {photoUploading
+                  ? <span className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  : <Upload className="h-5 w-5 text-white" variant="stroke" />}
+              </label>
+              <input
+                ref={photoFileRef}
+                id="employee-photo-upload"
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                disabled={photoUploading}
+                onChange={(e) => {
+                  const files = Array.from(e.target.files ?? []);
+                  if (files.length > 0) startUpload(files);
+                }}
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium">{t("gabinet.employees.detailedData.profilePhoto")}</p>
+              <p className="text-xs text-muted-foreground">{t("gabinet.employees.detailedData.photoUploadHint")}</p>
+              {employee.avatarUrl && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                  disabled={photoUploading}
+                  onClick={async () => {
+                    await onUpdate({ organizationId, employeeId: employee._id, avatarUrl: null });
+                  }}
+                >
+                  {t("gabinet.employees.detailedData.removePhoto")}
+                </Button>
+              )}
+            </div>
+          </div>
+
           {editing === "personal" ? (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -2313,6 +2403,19 @@ function DetailedDataTab({
                   onChange={(e) => setFormData({ ...formData, addressCity: e.target.value })}
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label>{t("gabinet.employees.detailedData.bio")}</Label>
+                <Textarea
+                  value={formData.bio}
+                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                  placeholder={t("gabinet.employees.detailedData.bioPlaceholder")}
+                  maxLength={1000}
+                  className="min-h-[80px] resize-y"
+                />
+                <p className="text-xs text-muted-foreground text-right">
+                  {formData.bio.length}/1000
+                </p>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-x-8 gap-y-1">
@@ -2350,6 +2453,14 @@ function DetailedDataTab({
                     .join(", "),
                   <MapPin className="h-3.5 w-3.5" />,
                 )}
+              {employee.bio && (
+                <div className="col-span-2 flex items-start gap-3 py-1.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-muted-foreground">{t("gabinet.employees.detailedData.bio")}</p>
+                    <p className="text-sm font-medium whitespace-pre-wrap">{employee.bio}</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

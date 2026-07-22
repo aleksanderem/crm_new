@@ -76,6 +76,10 @@
  *   • 00069_gabinet_appointment_treatments.sql
  *   • 00070_appointment_treatments_deduction_flags.sql
  *   • 00071_drop_appointment_deduction_flags.sql
+ *   • 00072_gabinet_package_usage_sold_by_employee_id.sql
+ *   • 00072_gabinet_packages_tags_category.sql
+ *   • 00073_payments_discount_columns.sql
+ *   • 00074_gabinet_employees_bio_avatar.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  */
@@ -181,7 +185,8 @@ export type TableName =
   | "warehouse_deliveries"
   | "warehouse_delivery_items"
   | "delivery_name_mappings"
-  | "document_analysis_jobs";
+  | "document_analysis_jobs"
+  | "gabinet_appointment_treatments";
 
 /**
  * Column names per table, as a runtime-checkable Set.
@@ -250,7 +255,7 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   gabinet_equipment_transfers: new Set(["id", "organization_id", "equipment_id", "from_location_id", "to_location_id", "to_room_id", "transferred_by", "transferred_at", "notes"]),
   gabinet_treatments: new Set(["id", "organization_id", "name", "description", "category", "duration", "price", "currency", "tax_rate", "required_equipment", "required_equipment_ids", "contraindications", "preparation_instructions", "aftercare_instructions", "is_active", "requires_approval", "color", "sort_order", "treatment_count", "parameters", "required_document_template_ids", "required_form_templates", "short_description", "image", "tag_ids", "category_id", "created_by", "created_at", "updated_at", "tax_exempt", "package_id"]),
   gabinet_treatment_variants: new Set(["id", "organization_id", "treatment_id", "name", "price", "duration", "description", "short_description", "image", "is_active", "sort_order"]),
-  gabinet_employees: new Set(["id", "organization_id", "user_id", "first_name", "last_name", "role", "specialization", "qualified_treatment_ids", "license_number", "hire_date", "is_active", "color", "notes", "phone", "email", "date_of_birth", "pesel", "address", "employment_type", "end_date", "position", "department", "skills", "years_of_experience", "certifications", "base_salary", "commission_percent", "bank_account", "tag_ids", "category_id", "created_by", "created_at", "updated_at", "show_in_calendar", "assigned_items", "location_id"]),
+  gabinet_employees: new Set(["id", "organization_id", "user_id", "first_name", "last_name", "role", "specialization", "qualified_treatment_ids", "license_number", "hire_date", "is_active", "color", "notes", "phone", "email", "date_of_birth", "pesel", "address", "employment_type", "end_date", "position", "department", "skills", "years_of_experience", "certifications", "base_salary", "commission_percent", "bank_account", "tag_ids", "category_id", "created_by", "created_at", "updated_at", "show_in_calendar", "assigned_items", "location_id", "bio", "avatar_url"]),
   gabinet_leave_types: new Set(["id", "organization_id", "name", "color", "is_paid", "annual_quota_days", "requires_approval", "is_active", "created_by", "created_at", "updated_at"]),
   gabinet_leave_balances: new Set(["id", "organization_id", "employee_id", "leave_type_id", "year", "total_days", "used_days", "created_at", "updated_at"]),
   gabinet_working_hours: new Set(["id", "organization_id", "day_of_week", "start_time", "end_time", "is_open", "break_start", "break_end", "location_id", "created_by", "created_at", "updated_at"]),
@@ -258,9 +263,9 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   gabinet_leaves: new Set(["id", "organization_id", "user_id", "type", "leave_type_id", "start_date", "end_date", "start_time", "end_time", "status", "reason", "approved_by", "approved_at", "created_by", "created_at", "updated_at"]),
   gabinet_overtime: new Set(["id", "organization_id", "user_id", "date", "hours", "reason", "status", "approved_by", "approved_at", "created_by", "created_at", "updated_at"]),
   gabinet_patients: new Set(["id", "organization_id", "contact_id", "first_name", "last_name", "pesel", "date_of_birth", "gender", "email", "phone", "address", "medical_notes", "allergies", "blood_type", "emergency_contact_name", "emergency_contact_phone", "referral_source", "referred_by_patient_id", "is_active", "tags", "tag_ids", "category_id", "custom_fields", "created_by", "created_at", "updated_at", "preferred_location_id", "sms_consent"]),
-  gabinet_appointments: new Set(["id", "organization_id", "patient_id", "treatment_id", "employee_id", "date", "start_time", "end_time", "status", "notes", "internal_notes", "body_chart_data", "treatment_parameter_values", "interview_notes", "clinical_remarks", "photos", "color", "is_recurring", "recurring_rule", "recurring_group_id", "recurring_index", "prepayment_required", "prepayment_amount", "prepayment_status", "prepayment_paid_at", "package_usage_id", "scheduled_activity_id", "reminder_sent_at", "send_reminder", "cancelled_at", "cancelled_by", "cancellation_reason", "booked_from_portal", "booked_by_patient_id", "location_id", "room_id", "tag_ids", "category_id", "requires_completion", "created_by", "created_at", "updated_at", "contraindication_alerts_reviewed", "price_at_booking", "reminder_overrides", "variant_id"]),
-  gabinet_treatment_packages: new Set(["id", "organization_id", "name", "description", "treatments", "total_price", "currency", "discount_percent", "validity_days", "is_active", "loyalty_points_awarded", "auto_generated_for_treatment_id", "created_by", "created_at", "updated_at"]),
-  gabinet_package_usage: new Set(["id", "organization_id", "patient_id", "package_id", "purchased_at", "expires_at", "status", "treatments_used", "paid_amount", "payment_method", "created_by", "created_at", "updated_at", "is_gift", "voucher_code", "gift_recipient_name", "gift_recipient_phone", "gift_recipient_email"]),
+  gabinet_appointments: new Set(["id", "organization_id", "patient_id", "treatment_id", "employee_id", "date", "start_time", "end_time", "status", "notes", "internal_notes", "body_chart_data", "treatment_parameter_values", "interview_notes", "clinical_remarks", "photos", "color", "is_recurring", "recurring_rule", "recurring_group_id", "recurring_index", "prepayment_required", "prepayment_amount", "prepayment_status", "prepayment_paid_at", "package_usage_id", "scheduled_activity_id", "reminder_sent_at", "send_reminder", "cancelled_at", "cancelled_by", "cancellation_reason", "booked_from_portal", "booked_by_patient_id", "location_id", "room_id", "tag_ids", "category_id", "requires_completion", "created_by", "created_at", "updated_at", "contraindication_alerts_reviewed", "price_at_booking", "reminder_overrides", "variant_id", "stock_deducted", "package_deducted"]),
+  gabinet_treatment_packages: new Set(["id", "organization_id", "name", "description", "treatments", "total_price", "currency", "discount_percent", "validity_days", "is_active", "loyalty_points_awarded", "auto_generated_for_treatment_id", "created_by", "created_at", "updated_at", "tag_ids", "category_id"]),
+  gabinet_package_usage: new Set(["id", "organization_id", "patient_id", "package_id", "purchased_at", "expires_at", "status", "treatments_used", "paid_amount", "payment_method", "created_by", "created_at", "updated_at", "is_gift", "voucher_code", "gift_recipient_name", "gift_recipient_phone", "gift_recipient_email", "sold_by_employee_id"]),
   gabinet_loyalty_points: new Set(["id", "organization_id", "patient_id", "balance", "lifetime_earned", "lifetime_spent", "tier", "created_at", "updated_at"]),
   gabinet_loyalty_transactions: new Set(["id", "organization_id", "patient_id", "type", "points", "reason", "reference_type", "reference_id", "balance_after", "created_by", "created_at"]),
   gabinet_document_templates: new Set(["id", "organization_id", "name", "type", "content", "requires_signature", "is_active", "sort_order", "created_by", "created_at", "updated_at"]),
@@ -283,9 +288,10 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   product_stock_movements: new Set(["id", "organization_id", "product_id", "location_id", "delta", "balance_after", "reason", "source_type", "source_id", "note", "performed_by", "created_at", "unit_price", "avg_cost_after", "lot_number", "expiry_date"]),
   gabinet_treatment_products: new Set(["id", "organization_id", "treatment_id", "product_id", "product_section", "quantity", "unit", "created_at", "updated_at"]),
   gabinet_payment_methods: new Set(["id", "organization_id", "key", "name", "is_system", "is_active", "order", "available_for_settlement", "available_for_sales", "available_for_refund", "locks_amount_to_treatment_price", "is_package_coverage", "created_by", "created_at", "updated_at"]),
-  gabinet_employee_locations: new Set(["id", "organization_id", "employee_id", "location_id", "is_primary", "created_at"]),
+  gabinet_employee_locations: new Set(["id", "organization_id", "employee_id", "location_id", "is_primary", "created_at", "role"]),
   warehouse_deliveries: new Set(["id", "organization_id", "supplier_name", "invoice_number", "delivery_date", "location_id", "notes", "status", "created_by", "created_at", "updated_at", "total_value", "total_value_gross", "invoice_pages", "analysis_status", "analysis_result", "analysis_completed_at", "analysis_error", "matching_proposals", "item_decisions"]),
   warehouse_delivery_items: new Set(["id", "organization_id", "delivery_id", "product_id", "quantity", "unit_price", "vat_rate", "movement_id", "created_at", "unit_price_gross", "line_value_net", "line_value_gross", "vat_code", "lot_number", "expiry_date"]),
   delivery_name_mappings: new Set(["id", "organization_id", "invoice_name", "product_id", "created_at"]),
   document_analysis_jobs: new Set(["id", "organization_id", "kind", "pages", "context", "status", "result_json", "error_message", "created_by", "created_at", "updated_at", "completed_at"]),
+  gabinet_appointment_treatments: new Set(["id", "organization_id", "appointment_id", "treatment_id", "variant_id", "price_at_booking", "sort_order", "created_at", "updated_at", "stock_deducted", "package_deducted"]),
 };

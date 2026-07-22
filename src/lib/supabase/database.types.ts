@@ -4780,6 +4780,8 @@ export interface Database {
           price_at_booking: number | null;
           reminder_overrides: string | null;
           variant_id: string | null;
+          stock_deducted: boolean;
+          package_deducted: boolean;
         };
         Insert: {
           id?: string;
@@ -4828,6 +4830,8 @@ export interface Database {
           price_at_booking?: number | null;
           reminder_overrides?: string | null;
           variant_id?: string | null;
+          stock_deducted?: boolean;
+          package_deducted?: boolean;
         };
         Update: {
           id?: string;
@@ -4876,6 +4880,8 @@ export interface Database {
           price_at_booking?: number | null;
           reminder_overrides?: string | null;
           variant_id?: string | null;
+          stock_deducted?: boolean;
+          package_deducted?: boolean;
         };
         Relationships: [
           {
@@ -4971,77 +4977,6 @@ export interface Database {
           },
         ];
       };
-      gabinet_appointment_treatments: {
-        Row: {
-          id: string;
-          organization_id: string;
-          appointment_id: string;
-          treatment_id: string | null;
-          variant_id: string | null;
-          price_at_booking: number | null;
-          sort_order: number;
-          stock_deducted: boolean;
-          package_deducted: boolean;
-          created_at: number;
-          updated_at: number;
-        };
-        Insert: {
-          id?: string;
-          organization_id: string;
-          appointment_id: string;
-          treatment_id?: string | null;
-          variant_id?: string | null;
-          price_at_booking?: number | null;
-          sort_order?: number;
-          stock_deducted?: boolean;
-          package_deducted?: boolean;
-          created_at: number;
-          updated_at: number;
-        };
-        Update: {
-          id?: string;
-          organization_id?: string;
-          appointment_id?: string;
-          treatment_id?: string | null;
-          variant_id?: string | null;
-          price_at_booking?: number | null;
-          sort_order?: number;
-          stock_deducted?: boolean;
-          package_deducted?: boolean;
-          created_at?: number;
-          updated_at?: number;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "gabinet_appointment_treatments_organization_id_fkey";
-            columns: ["organization_id"];
-            isOneToOne: false;
-            referencedRelation: "organizations";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_appointment_treatments_appointment_id_fkey";
-            columns: ["appointment_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_appointments";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_appointment_treatments_treatment_id_fkey";
-            columns: ["treatment_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_treatments";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_appointment_treatments_variant_id_fkey";
-            columns: ["variant_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_treatment_variants";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       gabinet_treatment_packages: {
         Row: {
           id: string;
@@ -5056,11 +4991,11 @@ export interface Database {
           is_active: boolean;
           loyalty_points_awarded: number | null;
           auto_generated_for_treatment_id: string | null;
-          tag_ids: string[] | null;
-          category_id: string | null;
           created_by: string;
           created_at: number;
           updated_at: number;
+          tag_ids: string[] | null;
+          category_id: string | null;
         };
         Insert: {
           id?: string;
@@ -5075,11 +5010,11 @@ export interface Database {
           is_active: boolean;
           loyalty_points_awarded?: number | null;
           auto_generated_for_treatment_id?: string | null;
-          tag_ids?: string[] | null;
-          category_id?: string | null;
           created_by: string;
           created_at: number;
           updated_at: number;
+          tag_ids?: string[] | null;
+          category_id?: string | null;
         };
         Update: {
           id?: string;
@@ -5094,11 +5029,11 @@ export interface Database {
           is_active?: boolean;
           loyalty_points_awarded?: number | null;
           auto_generated_for_treatment_id?: string | null;
-          tag_ids?: string[] | null;
-          category_id?: string | null;
           created_by?: string;
           created_at?: number;
           updated_at?: number;
+          tag_ids?: string[] | null;
+          category_id?: string | null;
         };
         Relationships: [
           {
@@ -5136,15 +5071,15 @@ export interface Database {
           treatments_used: unknown;
           paid_amount: number;
           payment_method: string | null;
+          created_by: string;
+          created_at: number;
+          updated_at: number;
           is_gift: boolean;
           voucher_code: string | null;
           gift_recipient_name: string | null;
           gift_recipient_phone: string | null;
           gift_recipient_email: string | null;
           sold_by_employee_id: string | null;
-          created_by: string;
-          created_at: number;
-          updated_at: number;
         };
         Insert: {
           id?: string;
@@ -5157,15 +5092,15 @@ export interface Database {
           treatments_used: unknown;
           paid_amount: number;
           payment_method?: string | null;
+          created_by: string;
+          created_at: number;
+          updated_at: number;
           is_gift?: boolean;
           voucher_code?: string | null;
           gift_recipient_name?: string | null;
           gift_recipient_phone?: string | null;
           gift_recipient_email?: string | null;
           sold_by_employee_id?: string | null;
-          created_by: string;
-          created_at: number;
-          updated_at: number;
         };
         Update: {
           id?: string;
@@ -5178,15 +5113,15 @@ export interface Database {
           treatments_used?: unknown;
           paid_amount?: number;
           payment_method?: string | null;
+          created_by?: string;
+          created_at?: number;
+          updated_at?: number;
           is_gift?: boolean;
           voucher_code?: string | null;
           gift_recipient_name?: string | null;
           gift_recipient_phone?: string | null;
           gift_recipient_email?: string | null;
           sold_by_employee_id?: string | null;
-          created_by?: string;
-          created_at?: number;
-          updated_at?: number;
         };
         Relationships: [
           {
@@ -5211,17 +5146,17 @@ export interface Database {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "gabinet_package_usage_sold_by_employee_id_fkey";
-            columns: ["sold_by_employee_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_employees";
-            referencedColumns: ["id"];
-          },
-          {
             foreignKeyName: "gabinet_package_usage_created_by_fkey";
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_package_usage_sold_by_employee_id_fkey";
+            columns: ["sold_by_employee_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_employees";
             referencedColumns: ["id"];
           },
         ];
@@ -6985,6 +6920,7 @@ export interface Database {
           location_id: string;
           is_primary: boolean;
           created_at: number;
+          role: string | null;
         };
         Insert: {
           id?: string;
@@ -6993,6 +6929,7 @@ export interface Database {
           location_id: string;
           is_primary?: boolean;
           created_at?: number;
+          role?: string | null;
         };
         Update: {
           id?: string;
@@ -7001,6 +6938,7 @@ export interface Database {
           location_id?: string;
           is_primary?: boolean;
           created_at?: number;
+          role?: string | null;
         };
         Relationships: [
           {
@@ -7295,6 +7233,77 @@ export interface Database {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      gabinet_appointment_treatments: {
+        Row: {
+          id: string;
+          organization_id: string;
+          appointment_id: string;
+          treatment_id: string | null;
+          variant_id: string | null;
+          price_at_booking: number | null;
+          sort_order: number;
+          created_at: number;
+          updated_at: number;
+          stock_deducted: boolean;
+          package_deducted: boolean;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          appointment_id: string;
+          treatment_id?: string | null;
+          variant_id?: string | null;
+          price_at_booking?: number | null;
+          sort_order?: number;
+          created_at: number;
+          updated_at: number;
+          stock_deducted?: boolean;
+          package_deducted?: boolean;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          appointment_id?: string;
+          treatment_id?: string | null;
+          variant_id?: string | null;
+          price_at_booking?: number | null;
+          sort_order?: number;
+          created_at?: number;
+          updated_at?: number;
+          stock_deducted?: boolean;
+          package_deducted?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_appointment_treatments_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_appointment_treatments_appointment_id_fkey";
+            columns: ["appointment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_appointments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_appointment_treatments_treatment_id_fkey";
+            columns: ["treatment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_appointment_treatments_variant_id_fkey";
+            columns: ["variant_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatment_variants";
             referencedColumns: ["id"];
           },
         ];

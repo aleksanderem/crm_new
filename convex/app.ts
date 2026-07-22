@@ -190,6 +190,15 @@ export const generateUploadUrl = mutation({
   },
 });
 
+export const getStorageUrl = mutation({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    return await ctx.storage.getUrl(args.storageId);
+  },
+});
+
 // users table is auth — stays as mutation
 export const updateUserImage = mutation({
   args: {

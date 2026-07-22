@@ -3082,7 +3082,15 @@
         "baseSalary": "Wynagrodzenie podstawowe",
         "commissionPercent": "Prowizja %",
         "bankAccount": "Numer konta bankowego",
-        "noCompensationYet": "Brak danych o wynagrodzeniu."
+        "noCompensationYet": "Brak danych o wynagrodzeniu.",
+        "bio": "Bio",
+        "bioPlaceholder": "Krótki opis pracownika...",
+        "bioHint": "Maks. 1000 znaków",
+        "profilePhoto": "Zdjęcie profilowe",
+        "uploadPhoto": "Prześlij zdjęcie",
+        "changePhoto": "Zmień zdjęcie",
+        "removePhoto": "Usuń zdjęcie",
+        "photoUploadHint": "JPG, PNG lub WebP, maks. 5 MB"
       },
       "schedule": {
         "hasOverrides": "Ten pracownik ma zdefiniowany indywidualny grafik.",

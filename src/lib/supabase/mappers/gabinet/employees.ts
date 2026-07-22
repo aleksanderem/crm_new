@@ -45,6 +45,8 @@ export interface MappedGabinetEmployee {
   showInCalendar?: boolean;
   tagIds?: string[];
   categoryId?: string;
+  bio?: string;
+  avatarUrl?: string;
   createdBy: string;
   createdAt: number;
   updatedAt: number;

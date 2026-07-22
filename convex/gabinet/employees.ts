@@ -659,6 +659,8 @@ export const update = action({
     showInCalendar: v.optional(v.boolean()),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),
+    bio: v.optional(v.union(v.string(), v.null())),
+    avatarUrl: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     try {

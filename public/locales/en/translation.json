@@ -3062,7 +3062,15 @@
         "baseSalary": "Base Salary",
         "commissionPercent": "Commission %",
         "bankAccount": "Bank Account",
-        "noCompensationYet": "No compensation data added yet."
+        "noCompensationYet": "No compensation data added yet.",
+        "bio": "Bio",
+        "bioPlaceholder": "Short employee description...",
+        "bioHint": "Max. 1000 characters",
+        "profilePhoto": "Profile Photo",
+        "uploadPhoto": "Upload Photo",
+        "changePhoto": "Change Photo",
+        "removePhoto": "Remove Photo",
+        "photoUploadHint": "JPG, PNG or WebP, max. 5 MB"
       },
       "schedule": {
         "hasOverrides": "This employee has a custom schedule defined.",

@@ -1391,6 +1391,28 @@ export const create = action({
       }
     }
 
+    // --- Insert junction rows into gabinet_appointment_treatments ---
+    // Previously the create action wrote treatmentId only to the scalar column
+    // on gabinet_appointments and never populated the junction table, so new
+    // appointments had no junction row. Stock-deduction and package-deduction
+    // CAS guards read from this table and silently skipped new appointments.
+    // Closes #3472.
+    if (args.treatmentId) {
+      const allAppointmentIds = [firstId, ...recurringAppointments.map((r) => r.appointmentId)];
+      for (const aptId of allAppointmentIds) {
+        await db.insert("gabinetAppointmentTreatments", {
+          organizationId: String(args.organizationId),
+          appointmentId: aptId,
+          treatmentId: args.treatmentId,
+          variantId: args.variantId ?? null,
+          priceAtBooking: priceAtBooking ?? null,
+          sortOrder: 0,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+
     // --- Insert scheduledActivities directly to Supabase (primary) ---
     const dueDateMs = new Date(`${args.date}T${args.startTime}:00`).getTime();
     const endDateMs = new Date(`${args.date}T${args.endTime}:00`).getTime();

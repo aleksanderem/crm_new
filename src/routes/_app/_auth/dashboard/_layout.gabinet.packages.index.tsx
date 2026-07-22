@@ -64,7 +64,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "@/lib/ez-icons";
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
@@ -130,12 +130,13 @@ export const Route = createFileRoute(
   ),
   validateSearch: (
     search: Record<string, unknown>,
-  ): { nudge?: PackagesNudgeFilter } => {
+  ): { nudge?: PackagesNudgeFilter; edit?: string } => {
     const nudge =
       search.nudge === "expiring" || search.nudge === "no-usage"
         ? (search.nudge as PackagesNudgeFilter)
         : undefined;
-    return { nudge };
+    const edit = typeof search.edit === "string" ? search.edit : undefined;
+    return { nudge, edit };
   },
 });
 
@@ -225,7 +226,7 @@ function PackagesIndex() {
   const { organizationId } = useOrganization();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { nudge: nudgeFilter } = useSearch({ from: Route.id });
+  const { nudge: nudgeFilter, edit: editParam } = useSearch({ from: Route.id });
 
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen
   const createPkg = useAction(api.gabinet.packages.create);
@@ -739,6 +740,21 @@ function PackagesIndex() {
     setPanelOpen(true);
   }, []);
 
+  // Entered via "Edytuj" on the package detail card (?edit=<id>) — open the
+  // edit panel once data is loaded, then drop the param so refresh/back
+  // doesn't reopen it.
+  useEffect(() => {
+    if (!editParam) return;
+    const pkg = (packagesData ?? []).find((p) => p._id === editParam);
+    if (!pkg) return;
+    openEdit(pkg);
+    void navigate({
+      to: "/dashboard/gabinet/packages",
+      search: { nudge: nudgeFilter, edit: undefined },
+      replace: true,
+    });
+  }, [editParam, packagesData, openEdit, navigate, nudgeFilter]);
+
   const addTreatmentRow = () => {
     setSelectedTreatments((prev) => [
       ...prev,
@@ -1113,10 +1129,9 @@ function PackagesIndex() {
               },
             ]}
             onBulkAction={handleBulkAction}
-            onRowAction={(rowId) => {
-              const pkg = (packagesData ?? []).find((p) => p._id === rowId);
-              if (pkg) openEdit(pkg);
-            }}
+            onRowAction={(rowId) =>
+              navigate({ to: `/dashboard/gabinet/packages/${rowId}` })
+            }
             rowActions={rowActions}
             emptyTitle={t("gabinet.packages.emptyTitle", "Brak pakietów")}
             emptyDescription={t(

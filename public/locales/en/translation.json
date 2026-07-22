@@ -2977,6 +2977,8 @@
         "schedule": "Schedule",
         "assignedItems": "Materials",
         "notes": "Notes",
+        "documents": "Documents",
+        "permissions": "Permissions",
         "noPatients": "No clients seen yet."
       },
       "agenda": {

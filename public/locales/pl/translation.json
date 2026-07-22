@@ -2997,6 +2997,8 @@
         "schedule": "Grafik",
         "assignedItems": "Materiały",
         "notes": "Notatki",
+        "documents": "Dokumenty",
+        "permissions": "Uprawnienia",
         "noPatients": "Brak obsługiwanych klientów."
       },
       "agenda": {

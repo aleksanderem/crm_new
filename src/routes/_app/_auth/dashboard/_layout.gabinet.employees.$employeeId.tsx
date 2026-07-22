@@ -681,18 +681,6 @@ function EmployeeDetail() {
   // Tabs definition
   const tabs = !employee ? [] : [
     {
-      label: t("gabinet.employees.tabs.agenda"),
-      content: (
-        <UpcomingAgenda
-          appointments={employeeAppointments}
-          treatmentMap={treatmentMap}
-          navigate={navigate}
-          t={t}
-          i18nLanguage={i18n.language}
-        />
-      ),
-    },
-    {
       label: t("gabinet.employees.tabs.terminarz"),
       content: (
         <UpcomingAgenda
@@ -858,7 +846,7 @@ function EmployeeDetail() {
         expandedFieldCount={5}
         sidebarExtra={sidebarExtra}
         tabs={tabs}
-        defaultTab={t("gabinet.employees.tabs.agenda")}
+        defaultTab={t("gabinet.employees.tabs.terminarz")}
         beforeTabs={
           <EmployeeNavGroups
             activeGroup={activeNavGroup}

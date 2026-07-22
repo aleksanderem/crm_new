@@ -63,14 +63,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Pencil,
@@ -573,31 +565,6 @@ function EmployeeDetail() {
       ]
     : [];
 
-  // Actions dropdown menu
-  const actionsMenu = !employee ? undefined : (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm">
-          {t("detail.actions.actions")}
-          <ChevronDown className="ml-1 h-4 w-4" variant="stroke" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setEditDrawerOpen(true)}>
-          <Pencil className="mr-2 h-4 w-4" variant="stroke" />
-          {t("gabinet.employees.editEmployee")}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={handleDeactivate}
-          className="text-destructive focus:text-destructive"
-        >
-          {t("gabinet.employees.deactivate")}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-
   // Sidebar extra: notes card + treatment qualifications card
   const sidebarExtra = !employee ? undefined : (
     <>
@@ -875,34 +842,59 @@ function EmployeeDetail() {
     {
       label: t("gabinet.employees.tabs.account", "Konto"),
       content: (
-        <Card>
-          <CardContent className="pt-6 space-y-4">
-            <div>
-              <p className="text-xs text-muted-foreground">{t("gabinet.employees.loginEmail", "Adres e-mail do logowania")}</p>
-              <p className="text-sm font-medium">{employee.email || user?.email || "—"}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t("gabinet.employees.accountStatus", "Status konta")}</p>
-              <Badge variant={employee.isActive ? "default" : "secondary"}>
-                {employee.isActive ? t("gabinet.employees.accountActive", "Aktywny") : t("gabinet.employees.accountInactive", "Nieaktywny")}
-              </Badge>
-            </div>
-            {(role === "admin" || role === "owner") && (
+        <>
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <div>
+                <p className="text-xs text-muted-foreground">{t("gabinet.employees.loginEmail", "Adres e-mail do logowania")}</p>
+                <p className="text-sm font-medium">{employee.email || user?.email || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t("gabinet.employees.accountStatus", "Status konta")}</p>
+                <Badge variant={employee.isActive ? "default" : "secondary"}>
+                  {employee.isActive ? t("gabinet.employees.accountActive", "Aktywny") : t("gabinet.employees.accountInactive", "Nieaktywny")}
+                </Badge>
+              </div>
+              {(role === "admin" || role === "owner") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setNewPassword("");
+                    setConfirmPassword("");
+                    setChangePasswordError(null);
+                    setChangePasswordOpen(true);
+                  }}
+                >
+                  {t("gabinet.employees.changePassword")}
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+          <Card className="mt-4">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">{t("gabinet.employees.adminActions", "Akcje administracyjne")}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setNewPassword("");
-                  setConfirmPassword("");
-                  setChangePasswordError(null);
-                  setChangePasswordOpen(true);
-                }}
+                onClick={() => setEditDrawerOpen(true)}
               >
-                {t("gabinet.employees.changePassword")}
+                <Pencil className="mr-2 h-4 w-4" variant="stroke" />
+                {t("gabinet.employees.editEmployee")}
               </Button>
-            )}
-          </CardContent>
-        </Card>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                onClick={handleDeactivate}
+              >
+                {t("gabinet.employees.deactivate")}
+              </Button>
+            </CardContent>
+          </Card>
+        </>
       ),
     },
     {
@@ -973,7 +965,6 @@ function EmployeeDetail() {
         headerSubtitle={headerSubtitle}
         avatarUrl={employee?.avatarUrl ?? undefined}
         avatarFallback={avatarFallback}
-        actionsMenu={actionsMenu}
         fields={detailFields}
         expandedFieldCount={5}
         sidebarExtra={sidebarExtra}

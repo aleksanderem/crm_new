@@ -42,6 +42,15 @@ const COLUMN_LABEL_MAP: Record<string, string> = {
   catalog_number: "Nr katalogowy",
   stock_note: "Notatka magazynowa",
   purchase_price: "Cena zakupu",
+  // Gabinet employees (#3437)
+  bio: "Bio / Opis pracownika",
+  avatar_url: "Zdjęcie profilowe",
+  date_of_birth: "Data urodzenia",
+  years_of_experience: "Lata doświadczenia",
+  base_salary: "Wynagrodzenie podstawowe",
+  commission_percent: "Prowizja (%)",
+  bank_account: "Numer konta bankowego",
+  show_in_calendar: "Widoczny w kalendarzu",
 };
 
 function humanFieldLabel(rawField: string): string {

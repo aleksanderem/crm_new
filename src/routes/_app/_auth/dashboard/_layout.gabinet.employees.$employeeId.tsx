@@ -443,7 +443,10 @@ function EmployeeDetail() {
       setNewPassword("");
       setConfirmPassword("");
     } catch (e) {
-      setChangePasswordError(formatActionError(e));
+      setChangePasswordError(formatActionError(e, t, {
+        key: "gabinet.employees.errors.changePasswordFailed",
+        defaultValue: "Nie udało się zmienić hasła.",
+      }));
     } finally {
       setChangePasswordSubmitting(false);
     }
@@ -2057,9 +2060,14 @@ function DetailedDataTab({
         const url = await getStorageUrl({ storageId: storageId as Id<"_storage"> });
         if (url) {
           await onUpdate({ organizationId, employeeId: employee._id, avatarUrl: url });
+        } else {
+          toast.error(t("gabinet.employees.errors.photoUploadFailed", { defaultValue: "Nie udało się przetworzyć zdjęcia. Spróbuj ponownie." }));
         }
-      } catch {
-        toast.error(t("gabinet.employees.detailedData.profilePhoto") + ": upload failed");
+      } catch (e) {
+        toast.error(formatActionError(e, t, {
+          key: "gabinet.employees.errors.photoUploadFailed",
+          defaultValue: "Nie udało się zapisać zdjęcia profilowego.",
+        }));
       } finally {
         setPhotoUploading(false);
         if (photoFileRef.current) photoFileRef.current.value = "";
@@ -2067,7 +2075,7 @@ function DetailedDataTab({
     },
     onUploadError: () => {
       setPhotoUploading(false);
-      toast.error(t("gabinet.employees.detailedData.profilePhoto") + ": upload failed");
+      toast.error(t("gabinet.employees.errors.photoUploadFailed", { defaultValue: "Nie udało się przesłać zdjęcia profilowego." }));
     },
   });
 

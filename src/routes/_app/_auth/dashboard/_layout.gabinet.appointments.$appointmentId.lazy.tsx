@@ -1236,115 +1236,153 @@ function AppointmentDetail() {
                 {t("gabinet.treatments.treatment")}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 px-6 py-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                  {t("common.name")}
-                </Label>
-                <TreatmentPicker
-                  treatments={treatmentsList}
-                  value={editTreatmentId}
-                  onSelect={(id) => {
-                    setEditTreatmentId(id);
-                    setTreatmentPickerOpen(false);
-                    setTreatmentSearch("");
-                  }}
-                  open={treatmentPickerOpen}
-                  onOpenChange={setTreatmentPickerOpen}
-                  search={treatmentSearch}
-                  onSearchChange={setTreatmentSearch}
-                  formatPrice={(price, currency) =>
-                    formatCurrencyPLN(price ?? 0, currency ?? "PLN")
-                  }
-                  placeholder={t("gabinet.appointments.selectTreatment")}
-                  searchPlaceholder={t("gabinet.appointments.searchTreatment")}
-                  emptyText={t("common.noResults")}
-                  closeLabel={t("common.close")}
-                  selectedLabel={treatment?.name}
-                  triggerIcon={
-                    <Stethoscope className="size-4 shrink-0 text-primary" />
-                  }
-                />
+            {detail.treatments.length > 1 ? (
+              /* Multi-treatment: one row per junction entry, totals at bottom */
+              <CardContent className="space-y-0 divide-y divide-border px-6 py-0">
+                {detail.treatments.map((jt) => {
+                  const tr = treatmentsList?.find((t) => t._id === jt.treatmentId);
+                  const name = tr?.name ?? treatment?.name ?? "-";
+                  const price = jt.priceAtBooking ?? tr?.price ?? null;
+                  return (
+                    <div key={jt.id} className="flex items-center justify-between py-3">
+                      <div className="flex items-center gap-2">
+                        <Stethoscope className="h-4 w-4 shrink-0 text-primary" />
+                        <span className="text-sm font-medium">{name}</span>
+                      </div>
+                      {price != null && (
+                        <span className="text-sm text-muted-foreground">
+                          {formatCurrencyPLN(price)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+                <div className="flex items-center justify-between py-3 font-semibold">
+                  <span className="text-sm">
+                    {t("gabinet.appointments.totalDuration", "Łącznie")} · {calculateDuration()} min
+                  </span>
+                  <span className="text-sm">
+                    {formatCurrencyPLN(
+                      detail.treatments.reduce((sum, jt) => {
+                        const tr = treatmentsList?.find((t) => t._id === jt.treatmentId);
+                        return sum + (jt.priceAtBooking ?? tr?.price ?? 0);
+                      }, 0),
+                    )}
+                  </span>
+                </div>
+              </CardContent>
+            ) : (
+              /* Single / legacy treatment */
+              <CardContent className="space-y-3 px-6 py-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("common.name")}
+                  </Label>
+                  <TreatmentPicker
+                    treatments={treatmentsList}
+                    value={editTreatmentId}
+                    onSelect={(id) => {
+                      setEditTreatmentId(id);
+                      setTreatmentPickerOpen(false);
+                      setTreatmentSearch("");
+                    }}
+                    open={treatmentPickerOpen}
+                    onOpenChange={setTreatmentPickerOpen}
+                    search={treatmentSearch}
+                    onSearchChange={setTreatmentSearch}
+                    formatPrice={(price, currency) =>
+                      formatCurrencyPLN(price ?? 0, currency ?? "PLN")
+                    }
+                    placeholder={t("gabinet.appointments.selectTreatment")}
+                    searchPlaceholder={t("gabinet.appointments.searchTreatment")}
+                    emptyText={t("common.noResults")}
+                    closeLabel={t("common.close")}
+                    selectedLabel={treatment?.name}
+                    triggerIcon={
+                      <Stethoscope className="size-4 shrink-0 text-primary" />
+                    }
+                  />
 
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">
-                  {t("gabinet.treatments.duration")}
-                </span>
-                <span className="font-medium">
-                  {calculateDuration()} min
-                </span>
-              </div>
-              {treatment?.price !== undefined && (
+                </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">
-                    {t("common.price")}
+                    {t("gabinet.treatments.duration")}
                   </span>
                   <span className="font-medium">
-                    {formatCurrencyPLN(treatment.price, treatment.currency ?? "PLN")}
+                    {calculateDuration()} min
                   </span>
                 </div>
-              )}
-              {treatment?.description && (
-                <div className="pt-2">
-                  <span className="text-sm text-muted-foreground">
-                    {t("common.description")}
-                  </span>
-                  <p className="text-sm mt-1">{plateJsonToText(treatment.description)}</p>
-                </div>
-              )}
-              {treatment?.contraindications && (
-                <div className="pt-2 p-3 bg-destructive/10 rounded-lg">
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <div className="flex items-center gap-2 text-destructive">
-                      <ShieldAlert className="h-4 w-4" variant="stroke" />
-                      <span className="text-sm font-medium">
-                        {t("gabinet.treatments.contraindications")}
-                      </span>
-                    </div>
-                    {appointment.contraindicationAlertsReviewed ? (
-                      <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                        <CheckCircle className="h-3.5 w-3.5" variant="stroke" />
-                        <span>{t("gabinet.appointmentDetail.contraindicationDiscussed", "Omówiono")}</span>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-xs text-destructive hover:text-destructive"
-                        onClick={async () => {
-                          try {
-                            await updateAppointment({
-                              organizationId,
-                              appointmentId: appointment._id,
-                              contraindicationAlertsReviewed: true,
-                            });
-                            await refetch();
-                            toast.success(t("gabinet.appointmentDetail.contraindicationMarked", "Oznaczono jako omówione"));
-                          } catch {
-                            toast.error(t("common.errorOccurred", "Wystąpił błąd"));
-                          }
-                        }}
-                      >
-                        {t("gabinet.appointmentDetail.markContraindicationAsDiscussed", "Oznacz jako omówione")}
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-sm">{plateJsonToText(treatment.contraindications)}</p>
-                </div>
-              )}
-              {!!(treatment as Record<string, unknown>)?.aftercare && (
-                <div className="pt-2 p-3 bg-primary/10 rounded-lg">
-                  <div className="flex items-center gap-2 text-primary mb-1">
-                    <Heart className="h-4 w-4" variant="stroke" />
-                    <span className="text-sm font-medium">
-                      {t("gabinet.treatments.aftercare")}
+                {treatment?.price !== undefined && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">
+                      {t("common.price")}
+                    </span>
+                    <span className="font-medium">
+                      {formatCurrencyPLN(treatment.price, treatment.currency ?? "PLN")}
                     </span>
                   </div>
-                  <p className="text-sm">{plateJsonToText((treatment as Record<string, unknown>).aftercare as string)}</p>
-                </div>
-              )}
-            </CardContent>
+                )}
+                {treatment?.description && (
+                  <div className="pt-2">
+                    <span className="text-sm text-muted-foreground">
+                      {t("common.description")}
+                    </span>
+                    <p className="text-sm mt-1">{plateJsonToText(treatment.description)}</p>
+                  </div>
+                )}
+                {treatment?.contraindications && (
+                  <div className="pt-2 p-3 bg-destructive/10 rounded-lg">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-2 text-destructive">
+                        <ShieldAlert className="h-4 w-4" variant="stroke" />
+                        <span className="text-sm font-medium">
+                          {t("gabinet.treatments.contraindications")}
+                        </span>
+                      </div>
+                      {appointment.contraindicationAlertsReviewed ? (
+                        <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                          <CheckCircle className="h-3.5 w-3.5" variant="stroke" />
+                          <span>{t("gabinet.appointmentDetail.contraindicationDiscussed", "Omówiono")}</span>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs text-destructive hover:text-destructive"
+                          onClick={async () => {
+                            try {
+                              await updateAppointment({
+                                organizationId,
+                                appointmentId: appointment._id,
+                                contraindicationAlertsReviewed: true,
+                              });
+                              await refetch();
+                              toast.success(t("gabinet.appointmentDetail.contraindicationMarked", "Oznaczono jako omówione"));
+                            } catch {
+                              toast.error(t("common.errorOccurred", "Wystąpił błąd"));
+                            }
+                          }}
+                        >
+                          {t("gabinet.appointmentDetail.markContraindicationAsDiscussed", "Oznacz jako omówione")}
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-sm">{plateJsonToText(treatment.contraindications)}</p>
+                  </div>
+                )}
+                {!!(treatment as Record<string, unknown>)?.aftercare && (
+                  <div className="pt-2 p-3 bg-primary/10 rounded-lg">
+                    <div className="flex items-center gap-2 text-primary mb-1">
+                      <Heart className="h-4 w-4" variant="stroke" />
+                      <span className="text-sm font-medium">
+                        {t("gabinet.treatments.aftercare")}
+                      </span>
+                    </div>
+                    <p className="text-sm">{plateJsonToText((treatment as Record<string, unknown>).aftercare as string)}</p>
+                  </div>
+                )}
+              </CardContent>
+            )}
           </Card>
 
           {/* Employee Info Card */}

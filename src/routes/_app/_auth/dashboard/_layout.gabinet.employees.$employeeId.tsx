@@ -176,6 +176,14 @@ function EmployeeDetail() {
     setActiveNavGroup(group);
     if (group === "clientsAndVisits") {
       setActiveTab(t("gabinet.employees.tabs.terminarz"));
+    } else if (group === "schedule") {
+      setActiveTab(t("gabinet.employees.tabs.schedule"));
+    } else if (group === "employeeData") {
+      setActiveTab(t("gabinet.employees.tabs.detailedData"));
+    } else if (group === "documentsAndAssets") {
+      setActiveTab(t("gabinet.employees.tabs.documents", "Dokumenty"));
+    } else if (group === "accountAndAccess") {
+      setActiveTab(t("gabinet.employees.tabs.permissions", "Uprawnienia"));
     } else {
       setActiveTab("");
     }
@@ -841,8 +849,26 @@ function EmployeeDetail() {
       : []),
   ];
 
-  // Show only the 3 sub-tabs for "Klienci i wizyty"; other groups have no connected views yet
-  const visibleTabs = activeNavGroup === "clientsAndVisits" ? tabs.slice(0, 3) : [];
+  const visibleTabs = (() => {
+    switch (activeNavGroup) {
+      case "clientsAndVisits":
+        return tabs.slice(0, 3);
+      case "schedule":
+        return tabs.filter(tab => tab.label === t("gabinet.employees.tabs.schedule"));
+      case "employeeData":
+        return tabs.filter(tab => tab.label === t("gabinet.employees.tabs.detailedData"));
+      case "documentsAndAssets":
+        return tabs.filter(
+          tab =>
+            tab.label === t("gabinet.employees.tabs.documents", "Dokumenty") ||
+            tab.label === t("gabinet.employees.tabs.assignedItems")
+        );
+      case "accountAndAccess":
+        return tabs.filter(tab => tab.label === t("gabinet.employees.tabs.permissions", "Uprawnienia"));
+      default:
+        return [];
+    }
+  })();
 
   return (
     <>

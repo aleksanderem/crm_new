@@ -114,6 +114,7 @@ import { Route as AppAuthDashboardLayoutGabinetSettingsLeaveTypesRouteImport } f
 import { Route as AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.leave-balances'
 import { Route as AppAuthDashboardLayoutGabinetSettingsEquipmentRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.equipment'
 import { Route as AppAuthDashboardLayoutGabinetPatientsPatientIdRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.patients.$patientId'
+import { Route as AppAuthDashboardLayoutGabinetPackagesPackageIdRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.packages.$packageId'
 import { Route as AppAuthDashboardLayoutGabinetEmployeesEmployeeIdRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.employees.$employeeId'
 import { Route as AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.appointments.$appointmentId'
 
@@ -740,6 +741,12 @@ const AppAuthDashboardLayoutGabinetPatientsPatientIdRoute =
     path: '/gabinet/patients/$patientId',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
+const AppAuthDashboardLayoutGabinetPackagesPackageIdRoute =
+  AppAuthDashboardLayoutGabinetPackagesPackageIdRouteImport.update({
+    id: '/gabinet/packages/$packageId',
+    path: '/gabinet/packages/$packageId',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
 const AppAuthDashboardLayoutGabinetEmployeesEmployeeIdRoute =
   AppAuthDashboardLayoutGabinetEmployeesEmployeeIdRouteImport.update({
     id: '/gabinet/employees/$employeeId',
@@ -836,6 +843,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/settings/': typeof AppAuthDashboardLayoutSettingsIndexRoute
   '/dashboard/gabinet/appointments/$appointmentId': typeof AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdRoute
   '/dashboard/gabinet/employees/$employeeId': typeof AppAuthDashboardLayoutGabinetEmployeesEmployeeIdRoute
+  '/dashboard/gabinet/packages/$packageId': typeof AppAuthDashboardLayoutGabinetPackagesPackageIdRoute
   '/dashboard/gabinet/patients/$patientId': typeof AppAuthDashboardLayoutGabinetPatientsPatientIdRoute
   '/dashboard/gabinet/settings/equipment': typeof AppAuthDashboardLayoutGabinetSettingsEquipmentRoute
   '/dashboard/gabinet/settings/leave-balances': typeof AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRoute
@@ -934,6 +942,7 @@ export interface FileRoutesByTo {
   '/dashboard/settings': typeof AppAuthDashboardLayoutSettingsIndexRoute
   '/dashboard/gabinet/appointments/$appointmentId': typeof AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdRoute
   '/dashboard/gabinet/employees/$employeeId': typeof AppAuthDashboardLayoutGabinetEmployeesEmployeeIdRoute
+  '/dashboard/gabinet/packages/$packageId': typeof AppAuthDashboardLayoutGabinetPackagesPackageIdRoute
   '/dashboard/gabinet/patients/$patientId': typeof AppAuthDashboardLayoutGabinetPatientsPatientIdRoute
   '/dashboard/gabinet/settings/equipment': typeof AppAuthDashboardLayoutGabinetSettingsEquipmentRoute
   '/dashboard/gabinet/settings/leave-balances': typeof AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRoute
@@ -1044,6 +1053,7 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/settings/': typeof AppAuthDashboardLayoutSettingsIndexRoute
   '/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId': typeof AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdRoute
   '/_app/_auth/dashboard/_layout/gabinet/employees/$employeeId': typeof AppAuthDashboardLayoutGabinetEmployeesEmployeeIdRoute
+  '/_app/_auth/dashboard/_layout/gabinet/packages/$packageId': typeof AppAuthDashboardLayoutGabinetPackagesPackageIdRoute
   '/_app/_auth/dashboard/_layout/gabinet/patients/$patientId': typeof AppAuthDashboardLayoutGabinetPatientsPatientIdRoute
   '/_app/_auth/dashboard/_layout/gabinet/settings/equipment': typeof AppAuthDashboardLayoutGabinetSettingsEquipmentRoute
   '/_app/_auth/dashboard/_layout/gabinet/settings/leave-balances': typeof AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRoute
@@ -1153,6 +1163,7 @@ export interface FileRouteTypes {
     | '/dashboard/settings/'
     | '/dashboard/gabinet/appointments/$appointmentId'
     | '/dashboard/gabinet/employees/$employeeId'
+    | '/dashboard/gabinet/packages/$packageId'
     | '/dashboard/gabinet/patients/$patientId'
     | '/dashboard/gabinet/settings/equipment'
     | '/dashboard/gabinet/settings/leave-balances'
@@ -1251,6 +1262,7 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/dashboard/gabinet/appointments/$appointmentId'
     | '/dashboard/gabinet/employees/$employeeId'
+    | '/dashboard/gabinet/packages/$packageId'
     | '/dashboard/gabinet/patients/$patientId'
     | '/dashboard/gabinet/settings/equipment'
     | '/dashboard/gabinet/settings/leave-balances'
@@ -1360,6 +1372,7 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/settings/'
     | '/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId'
     | '/_app/_auth/dashboard/_layout/gabinet/employees/$employeeId'
+    | '/_app/_auth/dashboard/_layout/gabinet/packages/$packageId'
     | '/_app/_auth/dashboard/_layout/gabinet/patients/$patientId'
     | '/_app/_auth/dashboard/_layout/gabinet/settings/equipment'
     | '/_app/_auth/dashboard/_layout/gabinet/settings/leave-balances'
@@ -2134,6 +2147,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutGabinetPatientsPatientIdRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
+    '/_app/_auth/dashboard/_layout/gabinet/packages/$packageId': {
+      id: '/_app/_auth/dashboard/_layout/gabinet/packages/$packageId'
+      path: '/gabinet/packages/$packageId'
+      fullPath: '/dashboard/gabinet/packages/$packageId'
+      preLoaderRoute: typeof AppAuthDashboardLayoutGabinetPackagesPackageIdRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
     '/_app/_auth/dashboard/_layout/gabinet/employees/$employeeId': {
       id: '/_app/_auth/dashboard/_layout/gabinet/employees/$employeeId'
       path: '/gabinet/employees/$employeeId'
@@ -2371,6 +2391,7 @@ interface AppAuthDashboardLayoutRouteChildren {
   AppAuthDashboardLayoutProductsIndexRoute: typeof AppAuthDashboardLayoutProductsIndexRoute
   AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdRoute: typeof AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdRoute
   AppAuthDashboardLayoutGabinetEmployeesEmployeeIdRoute: typeof AppAuthDashboardLayoutGabinetEmployeesEmployeeIdRoute
+  AppAuthDashboardLayoutGabinetPackagesPackageIdRoute: typeof AppAuthDashboardLayoutGabinetPackagesPackageIdRoute
   AppAuthDashboardLayoutGabinetPatientsPatientIdRoute: typeof AppAuthDashboardLayoutGabinetPatientsPatientIdRoute
   AppAuthDashboardLayoutGabinetSettingsEquipmentRoute: typeof AppAuthDashboardLayoutGabinetSettingsEquipmentRoute
   AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRoute: typeof AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRoute
@@ -2448,6 +2469,8 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
       AppAuthDashboardLayoutGabinetAppointmentsAppointmentIdRoute,
     AppAuthDashboardLayoutGabinetEmployeesEmployeeIdRoute:
       AppAuthDashboardLayoutGabinetEmployeesEmployeeIdRoute,
+    AppAuthDashboardLayoutGabinetPackagesPackageIdRoute:
+      AppAuthDashboardLayoutGabinetPackagesPackageIdRoute,
     AppAuthDashboardLayoutGabinetPatientsPatientIdRoute:
       AppAuthDashboardLayoutGabinetPatientsPatientIdRoute,
     AppAuthDashboardLayoutGabinetSettingsEquipmentRoute:

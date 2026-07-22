@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
@@ -18,7 +18,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2 } from "@/lib/ez-icons";
-import { useSupabaseGabinetTreatmentPackagesList } from "@/hooks/use-supabase-gabinet-packages";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
@@ -46,7 +45,12 @@ export function SellPackagePanel({
   const purchasePackage = useAction(api.gabinet.packages.purchasePackage);
   const createPayment = useAction(api.payments.create);
 
-  const { data: packagesData } = useSupabaseGabinetTreatmentPackagesList(organizationId);
+  const listActivePackages = useAction(api.gabinet.packages.listActive);
+  const { data: packagesData } = useQuery({
+    queryKey: ["gabinet.packages.listActive", organizationId],
+    queryFn: () => listActivePackages({ organizationId }),
+    enabled: !!organizationId,
+  });
   const { data: patientsData } = useSupabaseGabinetPatientsList(organizationId);
   const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId);
   const { data: employeesData } = useSupabaseGabinetEmployeesList(String(organizationId), { activeOnly: true });
@@ -404,13 +408,11 @@ export function SellPackagePanel({
               />
             </SelectTrigger>
             <SelectContent>
-              {(packagesData ?? [])
-                .filter((p) => p.isActive)
-                .map((pkg) => (
-                  <SelectItem key={pkg._id} value={pkg._id}>
-                    {pkg.name} — {pkg.totalPrice} {pkg.currency ?? "PLN"}
-                  </SelectItem>
-                ))}
+              {(packagesData ?? []).map((pkg) => (
+                <SelectItem key={pkg._id} value={pkg._id}>
+                  {pkg.name} — {pkg.totalPrice} {pkg.currency ?? "PLN"}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

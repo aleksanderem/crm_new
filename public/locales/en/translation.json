@@ -3273,7 +3273,8 @@
         "leave": "Employee is on leave at this time",
         "leavePartial": "Employee is on leave on this day between {{start}}–{{end}}.",
         "outsideHours": "Outside clinic working hours",
-        "conflict": "Conflicts with another appointment"
+        "conflict": "Conflicts with another appointment",
+        "qualificationPartial": "Employee is not qualified for all selected treatments"
       },
       "rescheduled": "Appointment rescheduled",
       "rescheduleFailed": "Could not reschedule the appointment.",
@@ -3296,7 +3297,12 @@
         "invalidArguments": "Could not save changes — invalid appointment data.",
         "blockedNotDraggable": "Google events cannot be moved from the calendar.",
         "changeEmployeeFailed": "Could not change the appointment's employee."
-      }
+      },
+      "treatments": "Treatments",
+      "addTreatment": "Add treatment",
+      "removeTreatment": "Remove treatment",
+      "totalDuration": "Total",
+      "packageTreatment": "Treatment covered by package"
     },
     "events": {
       "create": "New Event"

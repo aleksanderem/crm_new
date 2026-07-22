@@ -34,6 +34,9 @@ interface AppointmentCardProps {
    */
   employeeCount?: number;
   employeeNames?: string[];
+  /** When > 1 the appointment has multiple treatments. Shows a "+N" badge
+   *  next to the treatment name (#3356). */
+  treatmentCount?: number;
   onClick?: () => void;
 }
 
@@ -49,6 +52,7 @@ export function AppointmentCard({
   indicators,
   employeeCount,
   employeeNames,
+  treatmentCount,
   onClick,
 }: AppointmentCardProps) {
   // When a base color is provided (employee color, treatment color, or an
@@ -126,6 +130,11 @@ export function AppointmentCard({
         <div className="truncate font-medium">{patientName}</div>
         <div className="truncate opacity-75">
           {treatmentName}{variantName ? ` · ${variantName}` : ""}
+          {(treatmentCount ?? 0) > 1 && (
+            <span className="ml-1 text-[10px] font-semibold opacity-90">
+              +{treatmentCount! - 1}
+            </span>
+          )}
         </div>
       </div>
     </button>

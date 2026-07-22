@@ -5,6 +5,19 @@
 import type { GabinetAppointmentRow } from "../../database.types";
 import { createEntityMapper } from "../generic";
 
+export interface MappedAppointmentTreatment {
+  _id: string;
+  appointmentId: string;
+  treatmentId?: string;
+  variantId?: string;
+  priceAtBooking?: number;
+  sortOrder: number;
+  stockDeducted?: boolean;
+  packageDeducted?: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface MappedGabinetAppointment {
   _id: string;
   _creationTime: number;
@@ -53,6 +66,9 @@ export interface MappedGabinetAppointment {
   createdBy: string;
   createdAt: number;
   updatedAt: number;
+  // Populated when the caller joins gabinet_appointment_treatments (#3356).
+  // Not present on rows returned by simple appointment list queries.
+  treatments?: MappedAppointmentTreatment[];
   _source: "supabase";
 }
 

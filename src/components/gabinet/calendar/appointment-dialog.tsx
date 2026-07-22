@@ -53,7 +53,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
-import { PlateText } from "@/components/plate-text";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -261,8 +260,11 @@ export function AppointmentDialog({
   // State
   // -------------------------------------------------------------------------
 
-  const [treatmentId, setTreatmentId] = useState("");
-  const [variantId, setVariantId] = useState("");
+  // Multi-treatment state (#3356): array of {treatmentId, variantId} pairs.
+  // Single-treatment mode (legacy): one entry in the array.
+  const [selectedTreatments, setSelectedTreatments] = useState<
+    Array<{ treatmentId: string; variantId: string }>
+  >([]);
   const [employeeId, setEmployeeId] = useState(defaultUserId ?? "");
   const [patientId, setPatientId] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
@@ -291,12 +293,19 @@ export function AppointmentDialog({
   const [locationId, setLocationId] = useState("");
   const [roomId, setRoomId] = useState("");
   const [packageUsageId, setPackageUsageId] = useState<string | null>(null);
+  // When a package is applied to a multi-treatment appointment, which treatment
+  // the package covers (user-selected from a dropdown per #3356 clarification).
+  const [packageTreatmentId, setPackageTreatmentId] = useState<string | null>(null);
 
   // Combobox open states
-  const [treatmentOpen, setTreatmentOpen] = useState(false);
+  const [addTreatmentOpen, setAddTreatmentOpen] = useState(false);
   const [patientOpen, setPatientOpen] = useState(false);
   const [patientSearch, setPatientSearch] = useState("");
-  const [treatmentSearch, setTreatmentSearch] = useState("");
+  const [addTreatmentSearch, setAddTreatmentSearch] = useState("");
+
+  // Convenience aliases — primary (first) treatment for backward-compat logic
+  const treatmentId = selectedTreatments[0]?.treatmentId ?? "";
+  const variantId = selectedTreatments[0]?.variantId ?? "";
 
   // Add-patient sub-panel state
   const [addPatientOpen, setAddPatientOpen] = useState(false);
@@ -480,7 +489,10 @@ export function AppointmentDialog({
     return employees.find((e) => e.userId === employeeId);
   }, [employees, employeeId]);
 
-  // Filter employees by treatment qualification
+  // Filter employees by treatment qualification (primary treatment).
+  // For multi-treatment appointments the filter still uses the primary treatment
+  // so the employee list isn't over-restricted; the UI shows a warning when the
+  // selected employee is unqualified for any secondary treatment.
   const qualifiedEmployees = useMemo(() => {
     if (!employees) return [];
     if (!treatmentId) return employees;
@@ -492,6 +504,17 @@ export function AppointmentDialog({
         ),
     );
   }, [employees, treatmentId]);
+
+  // Warning: selected employee is unqualified for one or more additional treatments.
+  const hasQualificationWarning = useMemo(() => {
+    if (!employeeId || !employees || selectedTreatments.length <= 1) return false;
+    const emp = employees.find((e) => e.userId === employeeId);
+    if (!emp || emp.qualifiedTreatmentIds.length === 0) return false;
+    return selectedTreatments.some(
+      (t) =>
+        !emp.qualifiedTreatmentIds.includes(t.treatmentId as Id<"gabinetTreatments">),
+    );
+  }, [employees, employeeId, selectedTreatments]);
 
   // Filter patients by search
   const filteredPatients = useMemo(() => {
@@ -535,7 +558,18 @@ export function AppointmentDialog({
     [variants, variantId],
   );
 
-  const effectiveDuration = selectedVariant?.resolvedDuration ?? selectedTreatment?.duration ?? 30;
+  // Effective duration: sum across all selected treatments.
+  // For a single treatment with a variant, the variant resolvedDuration takes precedence.
+  const effectiveDuration = useMemo(() => {
+    if (selectedTreatments.length === 0) return 30;
+    if (selectedTreatments.length === 1) {
+      return selectedVariant?.resolvedDuration ?? selectedTreatment?.duration ?? 30;
+    }
+    return selectedTreatments.reduce((sum, t) => {
+      const tr = treatments?.find((tr) => tr._id === t.treatmentId);
+      return sum + (tr?.duration ?? 30);
+    }, 0);
+  }, [selectedTreatments, selectedVariant, selectedTreatment, treatments]);
 
   // Available slots — action reading from Supabase
   const getAvailableSlots = useAction(api.gabinet.appointments.getAvailableSlotsQuery);
@@ -625,15 +659,20 @@ export function AppointmentDialog({
   // Reset downstream state when upstream selection changes
   // -------------------------------------------------------------------------
 
-  const handleTreatmentSelect = useCallback(
+  // Add a treatment to the selected list (called from the "add treatment" picker).
+  const handleTreatmentAdd = useCallback(
     (tid: string) => {
-      setTreatmentId(tid);
-      setVariantId("");
-      setTreatmentOpen(false);
-      setTreatmentSearch("");
+      setSelectedTreatments((prev) => {
+        // Prevent duplicates
+        if (prev.some((t) => t.treatmentId === tid)) return prev;
+        return [...prev, { treatmentId: tid, variantId: "" }];
+      });
+      setAddTreatmentOpen(false);
+      setAddTreatmentSearch("");
       setPackageUsageId(null);
-      // Reset employee if no longer qualified
-      if (employeeId && employees) {
+      setPackageTreatmentId(null);
+      // Reset employee if first treatment and no longer qualified
+      if (selectedTreatments.length === 0 && employeeId && employees) {
         const emp = employees.find((e) => e.userId === employeeId);
         if (
           emp &&
@@ -645,8 +684,20 @@ export function AppointmentDialog({
         }
       }
     },
-    [employeeId, employees],
+    [selectedTreatments.length, employeeId, employees],
   );
+
+  const handleTreatmentRemove = useCallback((tid: string) => {
+    setSelectedTreatments((prev) => prev.filter((t) => t.treatmentId !== tid));
+    setPackageUsageId(null);
+    setPackageTreatmentId(null);
+  }, []);
+
+  const handleVariantChange = useCallback((treatmentId: string, vid: string) => {
+    setSelectedTreatments((prev) =>
+      prev.map((t) => (t.treatmentId === treatmentId ? { ...t, variantId: vid } : t)),
+    );
+  }, []);
 
   const handleEmployeeSelect = useCallback((eid: string) => {
     setEmployeeId((prev) => {
@@ -867,7 +918,7 @@ export function AppointmentDialog({
 
   const canSubmit =
     !!patientId &&
-    !!treatmentId &&
+    selectedTreatments.length > 0 &&
     !!employeeId &&
     !!dateStr &&
     !!selectedSlot &&
@@ -906,8 +957,12 @@ export function AppointmentDialog({
       await createAppointment({
         organizationId,
         patientId: patientId as Id<"gabinetPatients">,
-        treatmentId: treatmentId as Id<"gabinetTreatments">,
-        variantId: variantId || undefined,
+        // Multi-treatment path: pass full array. Backend normalizes single-item
+        // arrays to the legacy scalar path for backward compat.
+        treatments: selectedTreatments.map((t) => ({
+          treatmentId: t.treatmentId,
+          variantId: t.variantId || undefined,
+        })),
         employeeId: employeeId as Id<"users">,
         date: dateStr,
         startTime: selectedSlot.start,
@@ -921,8 +976,10 @@ export function AppointmentDialog({
         locationId: locationId ? (locationId as Id<"gabinetLocations">) : undefined,
         roomId: roomId ? (roomId as Id<"gabinetRooms">) : undefined,
         packageUsageId: packageUsageId ?? undefined,
+        packageTreatmentId: packageTreatmentId ?? undefined,
         allowPast: recordWalkIn || undefined,
         allowConflict: hasBookingConflict || undefined,
+        allowUnqualified: hasQualificationWarning || undefined,
       });
       // Refresh the calendar immediately — Convex actions don't invalidate
       // the Supabase React Query cache automatically.
@@ -948,8 +1005,7 @@ export function AppointmentDialog({
     createAppointment,
     organizationId,
     patientId,
-    treatmentId,
-    variantId,
+    selectedTreatments,
     employeeId,
     dateStr,
     endTime,
@@ -962,8 +1018,10 @@ export function AppointmentDialog({
     locationId,
     roomId,
     packageUsageId,
+    packageTreatmentId,
     recordWalkIn,
     hasBookingConflict,
+    hasQualificationWarning,
     onOpenChange,
     queryClient,
     t,
@@ -992,8 +1050,7 @@ export function AppointmentDialog({
         setEmployeeId(defaultUserId);
       }
     } else {
-      setTreatmentId("");
-      setVariantId("");
+      setSelectedTreatments([]);
       setEmployeeId(defaultUserId ?? "");
       setPatientId("");
       setSelectedDate(
@@ -1008,10 +1065,11 @@ export function AppointmentDialog({
       setRecurringCount(4);
       setRecurringOverrides({});
       setPatientSearch("");
-      setTreatmentSearch("");
+      setAddTreatmentSearch("");
       setLocationId("");
       setRoomId("");
       setPackageUsageId(null);
+      setPackageTreatmentId(null);
       setAddPatientOpen(false);
       setPendingPatientLabel(null);
       setRecordWalkIn(false);
@@ -1022,7 +1080,7 @@ export function AppointmentDialog({
   // Determine which panels are active
   // -------------------------------------------------------------------------
 
-  const calendarEnabled = !!treatmentId && !!employeeId;
+  const calendarEnabled = selectedTreatments.length > 0 && !!employeeId;
   const slotsEnabled = calendarEnabled && !!selectedDate;
 
   // -------------------------------------------------------------------------
@@ -1233,21 +1291,120 @@ export function AppointmentDialog({
 
                 <Separator />
 
-                {/* Treatment selector */}
+                {/* Multi-treatment selector (#3356) */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    {t("gabinet.appointments.treatment")}
-                  </Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      {t("gabinet.appointments.treatments", "Zabiegi")}
+                    </Label>
+                  </div>
+
+                  {/* Selected treatments list */}
+                  {selectedTreatments.length > 0 && (
+                    <div className="space-y-1.5">
+                      {selectedTreatments.map((sel, idx) => {
+                        const tr = treatments?.find((t) => t._id === sel.treatmentId);
+                        const isFirst = idx === 0;
+                        return (
+                          <div
+                            key={sel.treatmentId}
+                            className="rounded-lg border bg-muted/30 p-3 space-y-2"
+                          >
+                            <div className="flex items-start gap-2">
+                              <div className="rounded-md bg-primary/10 p-1.5 shrink-0">
+                                <Stethoscope className="size-4 text-primary" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="font-semibold text-sm leading-tight truncate">
+                                  {tr?.name ?? sel.treatmentId}
+                                </p>
+                                {tr && (
+                                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                    <Badge variant="secondary" className="text-xs gap-1">
+                                      <Clock className="size-3" />
+                                      {tr.duration} min
+                                    </Badge>
+                                    {tr.price != null && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        {formatPrice(tr.price)}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleTreatmentRemove(sel.treatmentId)}
+                                className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                                aria-label={t("gabinet.appointments.removeTreatment", "Usuń zabieg")}
+                              >
+                                <X className="size-4" />
+                              </button>
+                            </div>
+                            {/* Variant picker — only for first/single treatment when variants exist */}
+                            {isFirst && selectedTreatments.length === 1 && variants && variants.length > 0 && (
+                              <Select
+                                value={sel.variantId}
+                                onValueChange={(v) =>
+                                  handleVariantChange(sel.treatmentId, v === "__none__" ? "" : v)
+                                }
+                              >
+                                <SelectTrigger className="h-8 text-xs" data-testid="appointment-variant-trigger">
+                                  <SelectValue
+                                    placeholder={t("gabinet.appointments.selectVariant", "Wybierz wariant")}
+                                  />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="__none__">
+                                    {t("gabinet.appointments.noVariant", "Bez wariantu")}
+                                  </SelectItem>
+                                  {variants.map((v: any) => (
+                                    <SelectItem key={v._id} value={v._id}>
+                                      <div className="flex flex-col">
+                                        <span>{v.name}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                          {v.resolvedDuration} min
+                                          {v.resolvedPrice != null ? ` · ${formatPrice(v.resolvedPrice)}` : ""}
+                                        </span>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Totals row when multiple treatments */}
+                      {selectedTreatments.length > 1 && (
+                        <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
+                          <Clock className="size-3" />
+                          <span>
+                            {t("gabinet.appointments.totalDuration", "Łącznie")}: {effectiveDuration} min
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Add treatment button — opens the picker */}
                   <TreatmentPicker
-                    treatments={treatments}
-                    value={treatmentId}
-                    onSelect={handleTreatmentSelect}
-                    open={treatmentOpen}
-                    onOpenChange={setTreatmentOpen}
-                    search={treatmentSearch}
-                    onSearchChange={setTreatmentSearch}
+                    treatments={(treatments ?? []).filter(
+                      (tr) => !selectedTreatments.some((s) => s.treatmentId === tr._id),
+                    )}
+                    value=""
+                    onSelect={handleTreatmentAdd}
+                    open={addTreatmentOpen}
+                    onOpenChange={setAddTreatmentOpen}
+                    search={addTreatmentSearch}
+                    onSearchChange={setAddTreatmentSearch}
                     formatPrice={(price) => formatPrice(price)}
-                    placeholder={t("gabinet.appointments.selectTreatment")}
+                    placeholder={
+                      selectedTreatments.length === 0
+                        ? t("gabinet.appointments.selectTreatment")
+                        : t("gabinet.appointments.addTreatment", "Dodaj zabieg")
+                    }
                     searchPlaceholder={t("gabinet.appointments.searchTreatment")}
                     emptyText={t("common.noResults")}
                     closeLabel={t("common.close")}
@@ -1256,71 +1413,14 @@ export function AppointmentDialog({
                   />
                 </div>
 
-                {/* Treatment info card */}
-                {selectedTreatment && (
-                  <div className="rounded-lg border bg-muted/30 p-3.5 space-y-2.5">
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-md bg-primary/10 p-2 shrink-0">
-                        <Stethoscope className="size-5 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-sm leading-tight">
-                          {selectedTreatment.name}
-                        </p>
-                        {selectedTreatment.description && (
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-3">
-                            <PlateText value={selectedTreatment.description} />
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="secondary" className="text-xs gap-1">
-                        <Clock className="size-3" />
-                        {effectiveDuration} min
-                      </Badge>
-                      {(selectedVariant?.resolvedPrice ?? selectedTreatment.price) != null && (
-                        <Badge variant="secondary" className="text-xs">
-                          {formatPrice(selectedVariant?.resolvedPrice ?? selectedTreatment.price)}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Variant selector — shown only when the selected treatment has variants */}
-                {selectedTreatment && variants && variants.length > 0 && (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      {t("gabinet.appointments.variant", "Wariant")}
-                    </Label>
-                    <Select
-                      value={variantId}
-                      onValueChange={(v) => setVariantId(v === "__none__" ? "" : v)}
-                    >
-                      <SelectTrigger className="h-9" data-testid="appointment-variant-trigger">
-                        <SelectValue
-                          placeholder={t("gabinet.appointments.selectVariant", "Wybierz wariant")}
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">
-                          {t("gabinet.appointments.noVariant", "Bez wariantu")}
-                        </SelectItem>
-                        {variants.map((v: any) => (
-                          <SelectItem key={v._id} value={v._id}>
-                            <div className="flex flex-col">
-                              <span>{v.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {v.resolvedDuration} min
-                                {v.resolvedPrice != null ? ` · ${formatPrice(v.resolvedPrice)}` : ""}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                {/* Qualification warning for multi-treatment */}
+                {hasQualificationWarning && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    {t(
+                      "gabinet.appointments.warnings.qualificationPartial",
+                      "Pracownik nie ma kwalifikacji do wszystkich wybranych zabiegów",
+                    )}
+                  </p>
                 )}
 
                 {/* Eligible patient packages — the backend auto-resolves only
@@ -1329,14 +1429,48 @@ export function AppointmentDialog({
                     treatment packages or treatments with treatmentCount=1
                     that belong to a separate package. Issue #1378. */}
                 {patientId && treatmentId && (
-                  <PackageUsageSelector
-                    patientId={patientId}
-                    treatmentId={treatmentId}
-                    variantId={variantId || undefined}
-                    organizationId={organizationId}
-                    selectedUsageId={packageUsageId}
-                    onSelect={setPackageUsageId}
-                  />
+                  <>
+                    <PackageUsageSelector
+                      patientId={patientId}
+                      treatmentId={treatmentId}
+                      variantId={variantId || undefined}
+                      organizationId={organizationId}
+                      selectedUsageId={packageUsageId}
+                      onSelect={(id) => {
+                        setPackageUsageId(id);
+                        if (!id) setPackageTreatmentId(null);
+                      }}
+                    />
+                    {/* When a package is selected for a multi-treatment appointment,
+                        ask the user which treatment the package deduction applies to. */}
+                    {packageUsageId && selectedTreatments.length > 1 && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          {t("gabinet.appointments.packageTreatment", "Zabieg objęty pakietem")}
+                        </Label>
+                        <Select
+                          value={packageTreatmentId ?? ""}
+                          onValueChange={(v) => setPackageTreatmentId(v || null)}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue
+                              placeholder={t("gabinet.appointments.selectTreatment")}
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {selectedTreatments.map((sel) => {
+                              const tr = treatments?.find((t) => t._id === sel.treatmentId);
+                              return (
+                                <SelectItem key={sel.treatmentId} value={sel.treatmentId}>
+                                  {tr?.name ?? sel.treatmentId}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 <Separator />

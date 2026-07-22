@@ -1107,7 +1107,18 @@ export const create = action({
   args: {
     organizationId: v.id("organizations"),
     patientId: v.string(),
-    treatmentId: v.string(),
+    // Multi-treatment model (#3356): pass `treatments` array instead of the
+    // scalar `treatmentId`/`variantId`. The scalar fields are kept for backward
+    // compatibility — old callers that pass only `treatmentId` still work.
+    treatments: v.optional(
+      v.array(
+        v.object({
+          treatmentId: v.string(),
+          variantId: v.optional(v.string()),
+        }),
+      ),
+    ),
+    treatmentId: v.optional(v.string()),
     variantId: v.optional(v.string()),
     employeeId: v.string(),
     date: v.string(),
@@ -1140,6 +1151,9 @@ export const create = action({
     prepaymentRequired: v.optional(v.boolean()),
     prepaymentAmount: v.optional(v.number()),
     packageUsageId: v.optional(v.string()),
+    // When a package is being applied to a multi-treatment appointment, which
+    // treatment the package deduction covers. Ignored in single-treatment mode.
+    packageTreatmentId: v.optional(v.string()),
     sendReminder: v.optional(v.boolean()),
     reminderOverrides: v.optional(v.string()), // JSON: per-appointment channel overrides
     locationId: v.optional(v.string()),
@@ -1156,6 +1170,10 @@ export const create = action({
     // explicit warning before the user opts in. Hard constraints (working
     // hours, approved leave, clinic closed) still block creation. Issue #1526.
     allowConflict: v.optional(v.boolean()),
+    // When true, allow booking even if the employee is not qualified for one or
+    // more of the selected treatments. The UI shows a warning; this flag lets
+    // the user proceed anyway. Per issue #3356 clarification: warn-not-block.
+    allowUnqualified: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     try {
@@ -1227,13 +1245,35 @@ export const create = action({
     const shouldSendReminder =
       args.sendReminder ?? (orgSettings as any)?.reminderEnabled ?? false;
 
+    // --- Normalize treatment list (#3356 multi-treatment model) ---
+    // When `treatments` array is provided (new multi-treatment path), use it as
+    // the canonical list. When only the legacy scalar `treatmentId` is provided
+    // (backward-compat callers), synthesize a single-item list from it.
+    const treatmentsList: Array<{ treatmentId: string; variantId?: string }> =
+      args.treatments && args.treatments.length > 0
+        ? args.treatments
+        : args.treatmentId
+          ? [{ treatmentId: args.treatmentId, variantId: args.variantId }]
+          : [];
+
+    if (treatmentsList.length === 0) {
+      throw new Error("At least one treatment is required");
+    }
+
+    const primaryTreatmentId = treatmentsList[0].treatmentId;
+    const primaryVariantId = treatmentsList[0].variantId ?? undefined;
+    const isMultiTreatment = treatmentsList.length > 1;
+
     // --- Employee qualification check (Supabase-primary) ---
+    // For multi-treatment appointments the UI shows a warning rather than
+    // blocking the user — per issue #3356 clarification. Callers may also pass
+    // `allowUnqualified: true` when the user has acknowledged the warning.
     const qualification = await checkEmployeeQualificationSupabase(db, {
       organizationId: String(args.organizationId),
       userId: args.employeeId,
-      treatmentId: args.treatmentId,
+      treatmentId: primaryTreatmentId,
     });
-    if (!qualification.qualified) {
+    if (!qualification.qualified && !isMultiTreatment && !args.allowUnqualified) {
       throw new Error(qualification.reason ?? "Employee not qualified");
     }
 
@@ -1251,8 +1291,13 @@ export const create = action({
       throw new Error(conflict.reason ?? "Time slot conflict");
     }
 
-    // --- Resolve treatment + patient from Supabase ---
-    const treatment = (await db.get("gabinetTreatments", args.treatmentId)) as GabinetTreatmentRow | null;
+    // --- Resolve all treatment rows + patient from Supabase ---
+    const treatmentRows: Array<{ row: GabinetTreatmentRow | null; variantId?: string }> = [];
+    for (const t of treatmentsList) {
+      const row = (await db.get("gabinetTreatments", t.treatmentId)) as GabinetTreatmentRow | null;
+      treatmentRows.push({ row, variantId: t.variantId });
+    }
+    const treatment = treatmentRows[0].row; // primary treatment (for backward compat)
     const patient = await db.get("gabinetPatients", args.patientId);
 
     const isRecurring = args.isRecurring ?? false;
@@ -1266,7 +1311,7 @@ export const create = action({
         const usageId = await resolveAutoPackageUsageSupabase(db, {
           organizationId: args.organizationId,
           patientId: args.patientId,
-          treatmentId: args.treatmentId,
+          treatmentId: primaryTreatmentId,
           treatment,
           userId: authResult.userId,
         });
@@ -1288,9 +1333,7 @@ export const create = action({
 
     // --- Equipment check (issue #1504) ---
     // Block creation when the resolved location is missing any equipment the
-    // treatment requires. Matches the client-side block in appointment-form
-    // and appointment-dialog so the rule is enforced even when callers bypass
-    // the UI.
+    // treatment requires. Checked against primary treatment only.
     await assertRequiredEquipmentAtLocation(db, {
       organizationId: String(args.organizationId),
       treatment,
@@ -1302,22 +1345,36 @@ export const create = action({
       : "Patient";
     const treatmentName = (treatment?.name as string) ?? "Treatment";
 
-    // --- Resolve variant price (if variantId provided) ---
-    let priceAtBooking: number | null = (treatment?.price as number | undefined) ?? null;
-    if (args.variantId) {
-      const variant = await db.get("gabinetTreatmentVariants", args.variantId);
-      if (variant && String(variant.organizationId) === String(args.organizationId)) {
-        const variantPrice = variant.price as number | null | undefined;
-        priceAtBooking = variantPrice ?? priceAtBooking;
+    // --- Resolve prices for all treatments (sum = total priceAtBooking) ---
+    // Per-treatment prices are stored in the junction table; the scalar
+    // priceAtBooking on the appointment row stores the total for display.
+    let totalPriceAtBooking: number | null = null;
+    const treatmentPrices: Array<number | null> = [];
+    for (const { row: tRow, variantId: tVariantId } of treatmentRows) {
+      let tPrice: number | null = (tRow?.price as number | undefined) ?? null;
+      if (tVariantId) {
+        const variant = await db.get("gabinetTreatmentVariants", tVariantId);
+        if (variant && String(variant.organizationId) === String(args.organizationId)) {
+          const variantPrice = variant.price as number | null | undefined;
+          tPrice = variantPrice ?? tPrice;
+        }
+      }
+      treatmentPrices.push(tPrice);
+      if (tPrice != null) {
+        totalPriceAtBooking = (totalPriceAtBooking ?? 0) + tPrice;
       }
     }
+    // Backward-compat: single-treatment price resolves as before.
+    const priceAtBooking = totalPriceAtBooking;
 
     // --- INSERT first appointment directly to Supabase ---
     const baseRow: Record<string, unknown> = {
       organizationId: String(args.organizationId),
       patientId: args.patientId,
-      treatmentId: args.treatmentId,
-      variantId: args.variantId ?? null,
+      // Scalar treatmentId/variantId kept for backward compatibility with read
+      // paths built before #3356. New read paths use the junction table.
+      treatmentId: primaryTreatmentId,
+      variantId: primaryVariantId ?? null,
       employeeId: args.employeeId,
       startTime: args.startTime,
       endTime: args.endTime,
@@ -1391,25 +1448,25 @@ export const create = action({
       }
     }
 
-    // --- Insert junction rows into gabinet_appointment_treatments ---
-    // Previously the create action wrote treatmentId only to the scalar column
-    // on gabinet_appointments and never populated the junction table, so new
-    // appointments had no junction row. Stock-deduction and package-deduction
-    // CAS guards read from this table and silently skipped new appointments.
-    // Closes #3472.
-    if (args.treatmentId) {
+    // --- Insert junction rows into gabinet_appointment_treatments (#3356) ---
+    // Multi-treatment: write one row per treatment with increasing sortOrder.
+    // Single-treatment: writes one row at sortOrder=0 (same as before).
+    {
       const allAppointmentIds = [firstId, ...recurringAppointments.map((r) => r.appointmentId)];
       for (const aptId of allAppointmentIds) {
-        await db.insert("gabinetAppointmentTreatments", {
-          organizationId: String(args.organizationId),
-          appointmentId: aptId,
-          treatmentId: args.treatmentId,
-          variantId: args.variantId ?? null,
-          priceAtBooking: priceAtBooking ?? null,
-          sortOrder: 0,
-          createdAt: now,
-          updatedAt: now,
-        });
+        for (let i = 0; i < treatmentsList.length; i++) {
+          const t = treatmentsList[i];
+          await db.insert("gabinetAppointmentTreatments", {
+            organizationId: String(args.organizationId),
+            appointmentId: aptId,
+            treatmentId: t.treatmentId,
+            variantId: t.variantId ?? null,
+            priceAtBooking: treatmentPrices[i] ?? null,
+            sortOrder: i,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
       }
     }
 
@@ -1486,7 +1543,7 @@ export const create = action({
           appointmentId: firstId,
           organizationId: args.organizationId,
           patientId: args.patientId,
-          treatmentId: args.treatmentId,
+          treatmentId: primaryTreatmentId,
           employeeId: args.employeeId,
           date: args.date,
           startTime: args.startTime,
@@ -1525,6 +1582,7 @@ export const create = action({
           organizationId: args.organizationId,
           patientId: args.patientId,
           treatmentId: args.treatmentId,
+          treatmentsCount: args.treatments?.length,
           employeeId: args.employeeId,
           date: args.date,
           startTime: args.startTime,
@@ -1588,6 +1646,16 @@ export const update = action({
     contraindicationAlertsReviewed: v.optional(v.union(v.boolean(), v.null())),
     variantId: v.optional(v.union(v.string(), v.null())),
     reminderOverrides: v.optional(v.string()), // JSON: per-appointment channel overrides
+    // Multi-treatment model (#3356): when provided, replaces all existing
+    // junction rows for this appointment with the new list.
+    treatments: v.optional(
+      v.array(
+        v.object({
+          treatmentId: v.string(),
+          variantId: v.optional(v.string()),
+        }),
+      ),
+    ),
   },
   handler: async (ctx, args) => {
     try {
@@ -1674,6 +1742,8 @@ export const update = action({
       status,
       cancellationReason,
       contraindicationAlertsReviewed,
+      // Excluded from db.patch: handled separately by the junction-row block below
+      treatments: _treatments,
       ...updates
     } = args;
 
@@ -1722,10 +1792,17 @@ export const update = action({
     console.info("[update] patching appointment in Supabase:", appointmentId);
     await db.patch("gabinetAppointments", appointmentId, patch);
 
-    // --- Upsert junction row in gabinetAppointmentTreatments when treatment changes ---
-    // The update action was patching treatmentId only on the scalar column and
-    // never touching the junction table, causing divergence over time. Closes #3473.
-    if (args.treatmentId !== undefined) {
+    // --- Upsert junction rows in gabinetAppointmentTreatments when treatment changes ---
+    // Multi-treatment path (#3356): when `treatments` array provided, replace all
+    // junction rows. Single-treatment legacy path: when only scalar `treatmentId`
+    // changes, replace the single junction row.
+    const updatesTreatmentList = args.treatments && args.treatments.length > 0
+      ? args.treatments
+      : args.treatmentId !== undefined && args.treatmentId !== null
+        ? [{ treatmentId: args.treatmentId, variantId: args.variantId ?? undefined }]
+        : null;
+
+    if (updatesTreatmentList !== null) {
       const existingJunctionRows = await db
         .query("gabinetAppointmentTreatments")
         .eq("appointmentId", appointmentId)
@@ -1733,29 +1810,47 @@ export const update = action({
       for (const row of existingJunctionRows) {
         await db.delete("gabinetAppointmentTreatments", String((row as Record<string, unknown>).id));
       }
-      if (args.treatmentId) {
-        const effectiveVariantId =
-          args.variantId !== undefined
-            ? args.variantId
-            : (appt.variantId as string | null | undefined) ?? null;
-        const newTreatment = (await db.get("gabinetTreatments", args.treatmentId)) as GabinetTreatmentRow | null;
-        let priceAtBooking: number | null = (newTreatment?.price as number | undefined) ?? null;
+      let totalPriceAtBooking: number | null = null;
+      for (let i = 0; i < updatesTreatmentList.length; i++) {
+        const t = updatesTreatmentList[i];
+        const newTreatment = (await db.get("gabinetTreatments", t.treatmentId)) as GabinetTreatmentRow | null;
+        let tPrice: number | null = (newTreatment?.price as number | undefined) ?? null;
+        const effectiveVariantId = t.variantId ?? null;
         if (effectiveVariantId) {
           const variant = await db.get("gabinetTreatmentVariants", effectiveVariantId);
           if (variant && String(variant.organizationId) === String(args.organizationId)) {
-            priceAtBooking = (variant.price as number | null | undefined) ?? priceAtBooking;
+            tPrice = (variant.price as number | null | undefined) ?? tPrice;
           }
         }
+        if (tPrice != null) totalPriceAtBooking = (totalPriceAtBooking ?? 0) + tPrice;
         await db.insert("gabinetAppointmentTreatments", {
           organizationId: String(args.organizationId),
           appointmentId,
-          treatmentId: args.treatmentId,
+          treatmentId: t.treatmentId,
           variantId: effectiveVariantId,
-          priceAtBooking,
-          sortOrder: 0,
+          priceAtBooking: tPrice,
+          sortOrder: i,
           createdAt: now,
           updatedAt: now,
         });
+      }
+      // Update the total price on the appointment row (for display in old read paths)
+      if (totalPriceAtBooking !== null) {
+        patch.priceAtBooking = totalPriceAtBooking;
+      }
+      // Update primary treatment scalar columns for backward compat
+      if (updatesTreatmentList.length > 0) {
+        patch.treatmentId = updatesTreatmentList[0].treatmentId;
+        patch.variantId = updatesTreatmentList[0].variantId ?? null;
+      }
+    } else if (args.treatmentId === null) {
+      // Explicit null means remove treatment — clear junction rows too.
+      const existingJunctionRows = await db
+        .query("gabinetAppointmentTreatments")
+        .eq("appointmentId", appointmentId)
+        .collect();
+      for (const row of existingJunctionRows) {
+        await db.delete("gabinetAppointmentTreatments", String((row as Record<string, unknown>).id));
       }
     }
 

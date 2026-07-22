@@ -26,7 +26,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Package, Plus, Loader2, Calendar } from "@/lib/ez-icons";
+import { Package, Plus, Loader2, Calendar, Edit2, Trash2 } from "@/lib/ez-icons";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { PackagePurchaseDrawer } from "./package-purchase-drawer";
 import { PlateText } from "@/components/plate-text";
@@ -293,6 +304,7 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
         open={detailUsageId !== null}
         onOpenChange={(o) => !o && setDetailUsageId(null)}
         organizationId={organizationId}
+        patientId={patientId}
         usage={items.find((u) => String(u._id) === detailUsageId) ?? null}
         pkg={
           detailUsageId
@@ -691,6 +703,7 @@ interface PackageDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   organizationId: Id<"organizations">;
+  patientId: string;
   usage: {
     _id: string;
     packageId: Id<"gabinetTreatmentPackages">;
@@ -715,12 +728,20 @@ function PackageDetailDialog({
   open,
   onOpenChange,
   organizationId,
+  patientId,
   usage,
   pkg,
   treatmentMap,
   scheduledByTreatment,
 }: PackageDetailDialogProps) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [editMode, setEditMode] = useState(false);
+  const [editExpiresAt, setEditExpiresAt] = useState("");
+  const [editStatus, setEditStatus] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const updatePackageUsage = useAction(api.gabinet.packages.updatePackageUsage);
 
   const listByPackageUsage = useAction(api.payments.listByPackageUsage);
   const { data: payments } = useQuery({
@@ -732,6 +753,63 @@ function PackageDetailDialog({
       }) as unknown as Promise<PaymentRow[]>,
     enabled: !!organizationId && !!usage && open,
   });
+
+  const handleEditOpen = () => {
+    setEditExpiresAt(
+      usage?.expiresAt
+        ? new Date(usage.expiresAt).toISOString().split("T")[0]
+        : "",
+    );
+    setEditStatus(usage?.status ?? "active");
+    setEditMode(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!usage) return;
+    setSubmitting(true);
+    try {
+      const expiresAt = editExpiresAt
+        ? new Date(editExpiresAt).getTime()
+        : null;
+      await updatePackageUsage({
+        organizationId,
+        usageId: usage._id,
+        expiresAt: expiresAt ?? undefined,
+        status: editStatus as "active" | "completed" | "cancelled",
+      });
+      toast.success(t("gabinet.packages.usageUpdated", "Karnet zaktualizowany"));
+      await queryClient.invalidateQueries({
+        queryKey: ["gabinet.packages.getPatientPackages", organizationId, patientId],
+      });
+      setEditMode(false);
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!usage) return;
+    setSubmitting(true);
+    try {
+      await updatePackageUsage({
+        organizationId,
+        usageId: usage._id,
+        status: "cancelled",
+      });
+      toast.success(t("gabinet.packages.usageCancelled", "Karnet anulowany"));
+      await queryClient.invalidateQueries({
+        queryKey: ["gabinet.packages.getPatientPackages", organizationId, patientId],
+      });
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (!usage) return null;
 
@@ -901,6 +979,114 @@ function PackageDetailDialog({
               </div>
             )}
           </div>
+
+          {editMode ? (
+            <div className="rounded-md border p-3 space-y-3 bg-muted/30">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                {t("gabinet.packages.editPackageUsage", "Edytuj karnet")}
+              </p>
+              <div className="space-y-1.5">
+                <Label className="text-xs">
+                  {t("gabinet.packages.expiryDate", "Data ważności")}
+                </Label>
+                <Input
+                  type="date"
+                  value={editExpiresAt}
+                  onChange={(e) => setEditExpiresAt(e.target.value)}
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">
+                  {t("gabinet.packages.status.label", "Status")}
+                </Label>
+                <Select value={editStatus} onValueChange={setEditStatus}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">
+                      {t("gabinet.packages.status.active", "Aktywny")}
+                    </SelectItem>
+                    <SelectItem value="completed">
+                      {t("gabinet.packages.status.completed", "Zakończony")}
+                    </SelectItem>
+                    <SelectItem value="cancelled">
+                      {t("gabinet.packages.status.cancelled", "Anulowany")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEditMode(false)}
+                  disabled={submitting}
+                >
+                  {t("common.cancel", "Anuluj")}
+                </Button>
+                <Button size="sm" onClick={handleEditSave} disabled={submitting}>
+                  {submitting && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                  {t("common.save", "Zapisz")}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            usage.status !== "cancelled" && (
+              <div className="flex items-center justify-between gap-2 pt-1 border-t">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      disabled={submitting}
+                    >
+                      <Trash2 className="mr-1.5 h-3.5 w-3.5" variant="stroke" />
+                      {t("gabinet.packages.cancelPackage", "Anuluj karnet")}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        {t("gabinet.packages.cancelPackageConfirmTitle", "Anulować karnet?")}
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t(
+                          "gabinet.packages.cancelPackageConfirmDesc",
+                          "Ta operacja anuluje karnet pacjenta. Tego działania nie można cofnąć.",
+                        )}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={submitting}>
+                        {t("common.cancel", "Anuluj")}
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleCancel}
+                        disabled={submitting}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {submitting && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                        {t("gabinet.packages.confirmCancel", "Tak, anuluj")}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEditOpen}
+                  disabled={submitting}
+                >
+                  <Edit2 className="mr-1.5 h-3.5 w-3.5" variant="stroke" />
+                  {t("common.edit", "Edytuj")}
+                </Button>
+              </div>
+            )
+          )}
         </div>
       </DialogContent>
     </Dialog>

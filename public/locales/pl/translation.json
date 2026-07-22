@@ -2985,6 +2985,7 @@
       "activity": "Aktywność",
       "qualifications": "Kwalifikacje zabiegowe",
       "addTreatment": "Dodaj zabieg...",
+      "searchTreatments": "Szukaj zabiegu...",
       "noQualifications": "Brak przypisanych kwalifikacji zabiegowych.",
       "showMore": "Pokaż {{count}} więcej",
       "showLess": "Pokaż mniej",

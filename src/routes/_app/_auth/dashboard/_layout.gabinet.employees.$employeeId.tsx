@@ -2045,16 +2045,15 @@ function DetailedDataTab({
   const [newCertDate, setNewCertDate] = useState("");
   const [newCertExpiry, setNewCertExpiry] = useState("");
 
-  // Treatment search for assignment
+  // Treatment filter and pending selection for edit mode
   const [treatmentSearchLocal, setTreatmentSearchLocal] = useState("");
-  const availableTreatmentsLocal = useMemo(() => {
-    if (!treatments || !employee) return [];
-    const assignedSet = new Set(employee.qualifiedTreatmentIds);
-    const filtered = treatments.filter((tr) => !assignedSet.has(tr._id));
-    if (!treatmentSearchLocal) return filtered;
+  const [pendingTreatmentIds, setPendingTreatmentIds] = useState<string[]>([]);
+  const filteredTreatmentsLocal = useMemo(() => {
+    if (!treatments) return [];
+    if (!treatmentSearchLocal) return treatments;
     const q = treatmentSearchLocal.toLowerCase();
-    return filtered.filter((tr) => tr.name.toLowerCase().includes(q));
-  }, [treatments, employee, treatmentSearchLocal]);
+    return treatments.filter((tr) => tr.name.toLowerCase().includes(q));
+  }, [treatments, treatmentSearchLocal]);
 
   // Re-sync form when employee data changes
   useEffect(() => {
@@ -2086,6 +2085,10 @@ function DetailedDataTab({
   }, [employee]);
 
   const startEdit = (section: string) => {
+    if (section === "treatments") {
+      setPendingTreatmentIds([...employee.qualifiedTreatmentIds]);
+      setTreatmentSearchLocal("");
+    }
     setEditing(section);
   };
 
@@ -2117,6 +2120,8 @@ function DetailedDataTab({
       bio: employee.bio ?? "",
     });
     setCertifications(employee.certifications ?? []);
+    setPendingTreatmentIds([]);
+    setTreatmentSearchLocal("");
   };
 
   const saveSection = async (section: string) => {
@@ -2169,6 +2174,15 @@ function DetailedDataTab({
           ? Number(formData.commissionPercent)
           : null;
         updatePayload.bankAccount = formData.bankAccount || null;
+      } else if (section === "treatments") {
+        await onSetTreatments({
+          organizationId,
+          employeeId: employee._id,
+          treatmentIds: pendingTreatmentIds,
+        });
+        toast.success(t("common.saved"));
+        setEditing(null);
+        return;
       }
 
       await onUpdate(updatePayload);
@@ -2203,25 +2217,6 @@ function DetailedDataTab({
 
   const handleRemoveCertification = (index: number) => {
     setCertifications(certifications.filter((_, i) => i !== index));
-  };
-
-  const handleAddTreatmentLocal = async (treatmentId: string) => {
-    const updated = [...employee.qualifiedTreatmentIds, treatmentId];
-    await onSetTreatments({
-      organizationId,
-      employeeId: employee._id,
-      treatmentIds: updated,
-    });
-    setTreatmentSearchLocal("");
-  };
-
-  const handleRemoveTreatmentLocal = async (treatmentId: string) => {
-    const updated = employee.qualifiedTreatmentIds.filter((id: string) => id !== treatmentId);
-    await onSetTreatments({
-      organizationId,
-      employeeId: employee._id,
-      treatmentIds: updated,
-    });
   };
 
   const readOnlyField = (label: string, value: string | undefined | null, icon?: React.ReactNode) => (
@@ -2738,70 +2733,63 @@ function DetailedDataTab({
       {/* Section: Przypisane zabiegi (Assigned Treatments) */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-primary">
-              <ClipboardList className="h-4 w-4" />
-            </span>
-            <h4 className="text-base font-semibold">
-              {t("gabinet.employees.detailedData.assignedTreatments")}
-            </h4>
-          </div>
-          {employee.qualifiedTreatmentIds.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5 mb-3">
+          {sectionHeader(
+            t("gabinet.employees.detailedData.assignedTreatments"),
+            "treatments",
+            <ClipboardList className="h-4 w-4" />,
+          )}
+          {editing === "treatments" ? (
+            <div className="space-y-3">
+              <div className="flex items-center w-full rounded-md border bg-transparent">
+                <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
+                <input
+                  type="text"
+                  className="h-8 w-full bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
+                  placeholder={t("gabinet.employees.searchTreatments")}
+                  value={treatmentSearchLocal}
+                  onChange={(e) => setTreatmentSearchLocal(e.target.value)}
+                />
+              </div>
+              <div className="max-h-64 overflow-y-auto rounded-md border">
+                {filteredTreatmentsLocal.length === 0 ? (
+                  <p className="py-3 px-3 text-sm text-muted-foreground text-center">
+                    {t("detail.relationships.noResults")}
+                  </p>
+                ) : (
+                  filteredTreatmentsLocal.map((tr) => (
+                    <label
+                      key={tr._id}
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-accent cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={pendingTreatmentIds.includes(tr._id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setPendingTreatmentIds([...pendingTreatmentIds, tr._id]);
+                          } else {
+                            setPendingTreatmentIds(pendingTreatmentIds.filter((id) => id !== tr._id));
+                          }
+                        }}
+                      />
+                      <span className="text-sm">{tr.name}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+          ) : employee.qualifiedTreatmentIds.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
               {employee.qualifiedTreatmentIds.map((tid) => (
-                <Badge key={tid} variant="secondary" className="gap-1 pr-1">
+                <Badge key={tid} variant="secondary">
                   {treatmentMap.get(tid) || "..."}
-                  <button
-                    type="button"
-                    className="ml-0.5 rounded-sm hover:bg-muted-foreground/20"
-                    onClick={() => handleRemoveTreatmentLocal(tid)}
-                  >
-                    <X className="h-[18px] w-[18px]" variant="stroke" />
-                  </button>
                 </Badge>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground mb-3">
+            <p className="text-sm text-muted-foreground">
               {t("gabinet.employees.noQualifications")}
             </p>
           )}
-          <div className="relative max-w-sm">
-            <div className="flex items-center w-full rounded-md border bg-transparent">
-              <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
-              <input
-                type="text"
-                className="h-8 w-full bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
-                placeholder={t("gabinet.employees.addTreatment")}
-                value={treatmentSearchLocal}
-                onChange={(e) => setTreatmentSearchLocal(e.target.value)}
-              />
-            </div>
-            {treatmentSearchLocal.length > 0 && availableTreatmentsLocal.length > 0 && (
-              <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
-                <ul className="max-h-[200px] overflow-y-auto p-1">
-                  {availableTreatmentsLocal.map((tr) => (
-                    <li key={tr._id}>
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                        onClick={() => handleAddTreatmentLocal(tr._id)}
-                      >
-                        {tr.name}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {treatmentSearchLocal.length > 0 && availableTreatmentsLocal.length === 0 && (
-              <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
-                <div className="py-3 px-3 text-sm text-muted-foreground">
-                  {t("detail.relationships.noResults")}
-                </div>
-              </div>
-            )}
-          </div>
         </CardContent>
       </Card>
 

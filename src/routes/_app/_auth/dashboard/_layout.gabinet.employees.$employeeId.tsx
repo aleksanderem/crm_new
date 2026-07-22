@@ -168,8 +168,18 @@ function EmployeeDetail() {
   const [newNote, setNewNote] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
 
-  // Main navigation groups (preparatory layer for future micro-tasks)
+  // Main navigation groups: controls which sub-tabs are visible
   const [activeNavGroup, setActiveNavGroup] = useState<string>("clientsAndVisits");
+  const [activeTab, setActiveTab] = useState<string>(t("gabinet.employees.tabs.terminarz"));
+
+  const handleNavGroupChange = (group: string) => {
+    setActiveNavGroup(group);
+    if (group === "clientsAndVisits") {
+      setActiveTab(t("gabinet.employees.tabs.terminarz"));
+    } else {
+      setActiveTab("");
+    }
+  };
 
   // Feature 1: Appointments view mode (calendar vs list)
   const [appointmentsView, setAppointmentsView] = useState<"calendar" | "list">("calendar");
@@ -831,6 +841,9 @@ function EmployeeDetail() {
       : []),
   ];
 
+  // Show only the 3 sub-tabs for "Klienci i wizyty"; other groups have no connected views yet
+  const visibleTabs = activeNavGroup === "clientsAndVisits" ? tabs.slice(0, 3) : [];
+
   return (
     <>
       <EntityDetailLayout
@@ -845,12 +858,13 @@ function EmployeeDetail() {
         fields={detailFields}
         expandedFieldCount={5}
         sidebarExtra={sidebarExtra}
-        tabs={tabs}
-        defaultTab={t("gabinet.employees.tabs.terminarz")}
+        tabs={visibleTabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
         beforeTabs={
           <EmployeeNavGroups
             activeGroup={activeNavGroup}
-            onGroupChange={setActiveNavGroup}
+            onGroupChange={handleNavGroupChange}
             t={t}
           />
         }

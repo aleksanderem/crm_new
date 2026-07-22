@@ -2965,6 +2965,7 @@
       "activity": "Activity",
       "qualifications": "Treatment Qualifications",
       "addTreatment": "Add treatment...",
+      "searchTreatments": "Search treatments...",
       "noQualifications": "No treatment qualifications assigned yet.",
       "showMore": "Show {{count}} more",
       "showLess": "Show less",

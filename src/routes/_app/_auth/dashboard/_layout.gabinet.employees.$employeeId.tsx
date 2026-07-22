@@ -773,6 +773,24 @@ function EmployeeDetail() {
       ),
     },
     {
+      label: t("gabinet.employees.tabs.qualificationsAndTreatments"),
+      content: (
+        <DetailedDataTab
+          employee={employee}
+          userEmail={user?.email}
+          treatments={treatments}
+          treatmentMap={treatmentMap}
+          organizationId={organizationId}
+          role={role}
+          onUpdate={async (a) => { await updateEmployee(a); invalidateEmployeeCache(); }}
+          onSetTreatments={async (a) => { await setQualifiedTreatments(a); invalidateEmployeeCache(); }}
+          t={t}
+          i18nLanguage={i18n.language}
+          qualificationsOnlyView={true}
+        />
+      ),
+    },
+    {
       label: t("gabinet.employees.tabs.detailedData"),
       content: (
         <DetailedDataTab
@@ -883,6 +901,7 @@ function EmployeeDetail() {
         return tabs.filter(
           tab =>
             tab.label === t("gabinet.employees.tabs.dataAndEmployment") ||
+            tab.label === t("gabinet.employees.tabs.qualificationsAndTreatments") ||
             tab.label === t("gabinet.employees.tabs.notes")
         );
       case "documentsAndAssets":
@@ -1942,6 +1961,7 @@ function DetailedDataTab({
   t,
   i18nLanguage,
   limitedView,
+  qualificationsOnlyView,
 }: {
   employee: MappedGabinetEmployee;
   userEmail?: string | null;
@@ -1955,6 +1975,7 @@ function DetailedDataTab({
   t: TFunction;
   i18nLanguage: string;
   limitedView?: boolean;
+  qualificationsOnlyView?: boolean;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -2208,6 +2229,7 @@ function DetailedDataTab({
 
   return (
     <div className="space-y-6 max-w-3xl">
+      {!qualificationsOnlyView && <>
       {/* Section: Dane osobowe (Personal Data) */}
       <Card>
         <CardContent className="pt-6">
@@ -2453,8 +2475,9 @@ function DetailedDataTab({
           )}
         </CardContent>
       </Card>
+      </>}
 
-      {!limitedView && <>
+      {(!limitedView || qualificationsOnlyView) && <>
       {/* Section: Kwalifikacje (Qualifications) */}
       <Card>
         <CardContent className="pt-6">
@@ -2671,6 +2694,7 @@ function DetailedDataTab({
         </CardContent>
       </Card>
 
+      {!qualificationsOnlyView && <>
       {/* Section: Wynagrodzenie (Compensation) */}
       <Card>
         <CardContent className="pt-6">
@@ -2739,6 +2763,7 @@ function DetailedDataTab({
           )}
         </CardContent>
       </Card>
+      </>}
       </>}
     </div>
   );

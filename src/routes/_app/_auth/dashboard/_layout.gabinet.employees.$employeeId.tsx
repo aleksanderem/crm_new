@@ -179,7 +179,7 @@ function EmployeeDetail() {
     } else if (group === "schedule") {
       setActiveTab(t("gabinet.employees.tabs.grafikPracy"));
     } else if (group === "employeeData") {
-      setActiveTab(t("gabinet.employees.tabs.detailedData"));
+      setActiveTab(t("gabinet.employees.tabs.dataAndEmployment"));
     } else if (group === "documentsAndAssets") {
       setActiveTab(t("gabinet.employees.tabs.documents", "Dokumenty"));
     } else if (group === "accountAndAccess") {
@@ -749,6 +749,30 @@ function EmployeeDetail() {
       ),
     },
     {
+      label: t("gabinet.employees.tabs.dataAndEmployment"),
+      content: (
+        <DetailedDataTab
+          employee={employee}
+          userEmail={user?.email}
+          treatments={treatments}
+          treatmentMap={treatmentMap}
+          organizationId={organizationId}
+          role={role}
+          onChangePassword={() => {
+            setNewPassword("");
+            setConfirmPassword("");
+            setChangePasswordError(null);
+            setChangePasswordOpen(true);
+          }}
+          onUpdate={async (a) => { await updateEmployee(a); invalidateEmployeeCache(); }}
+          onSetTreatments={async (a) => { await setQualifiedTreatments(a); invalidateEmployeeCache(); }}
+          t={t}
+          i18nLanguage={i18n.language}
+          limitedView={true}
+        />
+      ),
+    },
+    {
       label: t("gabinet.employees.tabs.detailedData"),
       content: (
         <DetailedDataTab
@@ -858,7 +882,7 @@ function EmployeeDetail() {
       case "employeeData":
         return tabs.filter(
           tab =>
-            tab.label === t("gabinet.employees.tabs.detailedData") ||
+            tab.label === t("gabinet.employees.tabs.dataAndEmployment") ||
             tab.label === t("gabinet.employees.tabs.notes")
         );
       case "documentsAndAssets":
@@ -1917,6 +1941,7 @@ function DetailedDataTab({
   onSetTreatments,
   t,
   i18nLanguage,
+  limitedView,
 }: {
   employee: MappedGabinetEmployee;
   userEmail?: string | null;
@@ -1929,6 +1954,7 @@ function DetailedDataTab({
   onSetTreatments: (args: FunctionArgs<typeof api.gabinet.employees.setQualifiedTreatments>) => Promise<void>;
   t: TFunction;
   i18nLanguage: string;
+  limitedView?: boolean;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -2428,6 +2454,7 @@ function DetailedDataTab({
         </CardContent>
       </Card>
 
+      {!limitedView && <>
       {/* Section: Kwalifikacje (Qualifications) */}
       <Card>
         <CardContent className="pt-6">
@@ -2712,6 +2739,7 @@ function DetailedDataTab({
           )}
         </CardContent>
       </Card>
+      </>}
     </div>
   );
 }

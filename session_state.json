@@ -1,9 +1,9 @@
 {
-  "session_id": "S0106",
+  "session_id": "S0107",
   "started_at": "2026-07-22T00:00:00Z",
   "last_updated": "2026-07-22T00:00:00Z",
   "status": "completed",
-  "focus": "Issue #3426: Wire Aktywność and Uprawnienia to Konto i dostęp nav group",
+  "focus": "Issue #3356: Multi-treatment appointments — phases 1–4",
   "tasks_snapshot": {
     "total": 1,
     "not_started": 0,
@@ -14,5 +14,5 @@
   },
   "active_task_ids": [],
   "blockers": [],
-  "notes": "S0106: Added Aktywność tab to the accountAndAccess case in visibleTabs filter. One-line change in _layout.gabinet.employees.$employeeId.tsx line 870-875."
+  "notes": "S0107: Phases 1–4 of #3356 committed. Phases 5–7 tracked as follow-ups #3468 and #3469. Commit: 4a229b9."
 }

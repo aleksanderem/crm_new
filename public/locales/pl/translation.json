@@ -2989,7 +2989,6 @@
       "showMore": "Pokaż {{count}} więcej",
       "showLess": "Pokaż mniej",
       "tabs": {
-        "agenda": "Agenda",
         "terminarz": "Terminarz",
         "appointments": "Wizyty",
         "patients": "Klienci",

@@ -153,6 +153,48 @@ function buildActiveUsageCounts(
   return counts;
 }
 
+function buildActiveUsageDetails(usages: MappedGabinetPackageUsage[]): Record<
+  string,
+  {
+    count: number;
+    treatmentProgress: Record<
+      string,
+      { usedCount: number; totalCount: number }
+    >;
+  }
+> {
+  const byPackage: Record<
+    string,
+    {
+      count: number;
+      treatmentProgress: Record<
+        string,
+        { usedCount: number; totalCount: number }
+      >;
+    }
+  > = {};
+
+  for (const u of usages) {
+    if (!byPackage[u.packageId]) {
+      byPackage[u.packageId] = { count: 0, treatmentProgress: {} };
+    }
+    byPackage[u.packageId].count += 1;
+    for (const t of u.treatmentsUsed) {
+      const key = t.treatmentId;
+      if (!byPackage[u.packageId].treatmentProgress[key]) {
+        byPackage[u.packageId].treatmentProgress[key] = {
+          usedCount: 0,
+          totalCount: 0,
+        };
+      }
+      byPackage[u.packageId].treatmentProgress[key].usedCount += t.usedCount;
+      byPackage[u.packageId].treatmentProgress[key].totalCount += t.totalCount;
+    }
+  }
+
+  return byPackage;
+}
+
 function derivePackageKpis(
   packages: MappedGabinetTreatmentPackage[],
   activeUsages: MappedGabinetPackageUsage[],
@@ -228,6 +270,11 @@ function PackagesIndex() {
 
   const activeUsageCounts = useMemo(
     () => buildActiveUsageCounts(activeUsagesData ?? []),
+    [activeUsagesData],
+  );
+
+  const activeUsageDetails = useMemo(
+    () => buildActiveUsageDetails(activeUsagesData ?? []),
     [activeUsagesData],
   );
 
@@ -526,6 +573,80 @@ function PackagesIndex() {
         getSortValue: (item) => activeUsageCounts[item._id] ?? 0,
       },
       {
+        id: "usage",
+        label: t("gabinet.packages.usageProgress", "Wykorzystanie"),
+        sortable: true,
+        className: "min-w-[160px]",
+        render: (item) => {
+          const detail = activeUsageDetails[item._id];
+          const progress = detail
+            ? Object.values(detail.treatmentProgress)
+            : [];
+          const overallUsed = progress.reduce((s, p) => s + p.usedCount, 0);
+          const overallTotal = progress.reduce((s, p) => s + p.totalCount, 0);
+          if (!detail || overallTotal === 0) {
+            return <span className="text-fg-quaternary">—</span>;
+          }
+          const percent = Math.round((overallUsed / overallTotal) * 100);
+          const remainingRatio = 1 - overallUsed / overallTotal;
+          const barColor =
+            remainingRatio <= 0.1
+              ? "bg-red-500"
+              : remainingRatio < 0.3
+                ? "bg-amber-500"
+                : "bg-emerald-500";
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="w-36 space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="tabular-nums">
+                        {overallUsed} / {overallTotal}
+                      </span>
+                      <span className="text-fg-quaternary tabular-nums">
+                        {percent}%
+                      </span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={`h-full rounded-full ${barColor}`}
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="space-y-1">
+                    {item.treatments.map((tr) => {
+                      const p = detail.treatmentProgress[tr.treatmentId];
+                      const nm =
+                        treatmentNameMap.get(tr.treatmentId) ??
+                        t("gabinet.packages.treatment", "Zabieg");
+                      return (
+                        <p key={tr.treatmentId} className="text-xs">
+                          {nm}: {p?.usedCount ?? 0} / {p?.totalCount ?? 0}
+                        </p>
+                      );
+                    })}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        },
+        getSortValue: (item) => {
+          const detail = activeUsageDetails[item._id];
+          if (!detail) return -1;
+          const progress = Object.values(detail.treatmentProgress);
+          const total = progress.reduce((s, p) => s + p.totalCount, 0);
+          if (total === 0) return -1;
+          return Math.round(
+            (progress.reduce((s, p) => s + p.usedCount, 0) / total) * 100,
+          );
+        },
+      },
+      {
         id: "category",
         label: t("common.category", "Kategoria"),
         sortable: true,
@@ -552,7 +673,13 @@ function PackagesIndex() {
         ),
       },
     ],
-    [t, treatmentNameMap, activeUsageCounts, categoryNameById],
+    [
+      t,
+      treatmentNameMap,
+      activeUsageCounts,
+      activeUsageDetails,
+      categoryNameById,
+    ],
   );
 
   const { allColumns, defaultHidden } = useAllColumns(
@@ -986,6 +1113,10 @@ function PackagesIndex() {
               },
             ]}
             onBulkAction={handleBulkAction}
+            onRowAction={(rowId) => {
+              const pkg = (packagesData ?? []).find((p) => p._id === rowId);
+              if (pkg) openEdit(pkg);
+            }}
             rowActions={rowActions}
             emptyTitle={t("gabinet.packages.emptyTitle", "Brak pakietów")}
             emptyDescription={t(

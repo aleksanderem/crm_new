@@ -693,6 +693,18 @@ function EmployeeDetail() {
       ),
     },
     {
+      label: t("gabinet.employees.tabs.terminarz"),
+      content: (
+        <UpcomingAgenda
+          appointments={employeeAppointments}
+          treatmentMap={treatmentMap}
+          navigate={navigate}
+          t={t}
+          i18nLanguage={i18n.language}
+        />
+      ),
+    },
+    {
       label: t("gabinet.employees.tabs.appointments"),
       content: (
         <AppointmentsTabContent

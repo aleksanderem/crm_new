@@ -187,7 +187,7 @@ function EmployeeDetail() {
     } else if (group === "documentsAndAssets") {
       setActiveTab(t("gabinet.employees.tabs.documents", "Dokumenty"));
     } else if (group === "accountAndAccess") {
-      setActiveTab(t("gabinet.employees.tabs.permissions", "Uprawnienia"));
+      setActiveTab(t("gabinet.employees.tabs.account", "Konto"));
     } else {
       setActiveTab("");
     }
@@ -870,6 +870,39 @@ function EmployeeDetail() {
       ),
     },
     {
+      label: t("gabinet.employees.tabs.account", "Konto"),
+      content: (
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            <div>
+              <p className="text-xs text-muted-foreground">{t("gabinet.employees.loginEmail", "Adres e-mail do logowania")}</p>
+              <p className="text-sm font-medium">{employee.email || user?.email || "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">{t("gabinet.employees.accountStatus", "Status konta")}</p>
+              <Badge variant={employee.isActive ? "default" : "secondary"}>
+                {employee.isActive ? t("gabinet.employees.accountActive", "Aktywny") : t("gabinet.employees.accountInactive", "Nieaktywny")}
+              </Badge>
+            </div>
+            {(role === "admin" || role === "owner") && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setNewPassword("");
+                  setConfirmPassword("");
+                  setChangePasswordError(null);
+                  setChangePasswordOpen(true);
+                }}
+              >
+                {t("gabinet.employees.changePassword")}
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ),
+    },
+    {
       label: t("gabinet.employees.activity"),
       content: (
         <ActivityFeed
@@ -917,6 +950,7 @@ function EmployeeDetail() {
       case "accountAndAccess":
         return tabs.filter(
           tab =>
+            tab.label === t("gabinet.employees.tabs.account", "Konto") ||
             tab.label === t("gabinet.employees.activity") ||
             tab.label === t("gabinet.employees.tabs.permissions", "Uprawnienia")
         );

@@ -2961,6 +2961,10 @@
       "passwordTooShort": "Password must be at least 8 characters.",
       "passwordNeedsUppercase": "Password must contain at least 1 uppercase letter.",
       "passwordNeedsDigit": "Password must contain at least 1 digit.",
+      "loginEmail": "Login email address",
+      "accountStatus": "Account status",
+      "accountActive": "Active",
+      "accountInactive": "Inactive",
       "details": "Details",
       "activity": "Activity",
       "qualifications": "Treatment Qualifications",
@@ -2983,6 +2987,7 @@
         "notes": "Notes",
         "documents": "Documents",
         "permissions": "Permissions",
+        "account": "Account",
         "noPatients": "No clients seen yet."
       },
       "agenda": {

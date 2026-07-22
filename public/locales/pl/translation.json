@@ -2981,6 +2981,10 @@
       "passwordTooShort": "Hasło musi mieć co najmniej 8 znaków.",
       "passwordNeedsUppercase": "Hasło musi zawierać co najmniej 1 wielką literę.",
       "passwordNeedsDigit": "Hasło musi zawierać co najmniej 1 cyfrę.",
+      "loginEmail": "Adres e-mail do logowania",
+      "accountStatus": "Status konta",
+      "accountActive": "Aktywny",
+      "accountInactive": "Nieaktywny",
       "details": "Szczegóły",
       "activity": "Aktywność",
       "qualifications": "Kwalifikacje zabiegowe",
@@ -3003,6 +3007,7 @@
         "notes": "Notatki",
         "documents": "Dokumenty",
         "permissions": "Uprawnienia",
+        "account": "Konto",
         "noPatients": "Brak obsługiwanych klientów."
       },
       "agenda": {

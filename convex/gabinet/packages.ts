@@ -410,6 +410,59 @@ export const remove = action({
   },
 });
 
+export const updatePackageUsage = action({
+  args: {
+    organizationId: v.id("organizations"),
+    usageId: v.string(),
+    expiresAt: v.optional(v.union(v.number(), v.null())),
+    status: v.optional(
+      v.union(
+        v.literal("active"),
+        v.literal("completed"),
+        v.literal("cancelled"),
+      ),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = (await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_packages",
+        action: "edit",
+      },
+    )) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+
+    const usage = await db.get("gabinetPackageUsage", args.usageId);
+    if (!usage || String(usage.organizationId) !== String(args.organizationId))
+      throw new Error("Package usage not found");
+    if (
+      perm.scope === "own" &&
+      String(usage.createdBy) !== String(authResult.userId)
+    ) {
+      throw new Error(
+        "Permission denied: you can only edit your own records",
+      );
+    }
+
+    const updates: Record<string, unknown> = { updatedAt: Date.now() };
+    if (args.expiresAt !== undefined) updates.expiresAt = args.expiresAt;
+    if (args.status !== undefined) updates.status = args.status;
+
+    await db.patch("gabinetPackageUsage", args.usageId, updates);
+  },
+});
+
 // --- Package Usage ---
 
 export const purchaseTreatment = action({

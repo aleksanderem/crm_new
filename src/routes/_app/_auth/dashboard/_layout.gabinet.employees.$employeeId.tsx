@@ -856,7 +856,11 @@ function EmployeeDetail() {
       case "schedule":
         return tabs.filter(tab => tab.label === t("gabinet.employees.tabs.grafikPracy"));
       case "employeeData":
-        return tabs.filter(tab => tab.label === t("gabinet.employees.tabs.detailedData"));
+        return tabs.filter(
+          tab =>
+            tab.label === t("gabinet.employees.tabs.detailedData") ||
+            tab.label === t("gabinet.employees.tabs.notes")
+        );
       case "documentsAndAssets":
         return tabs.filter(
           tab =>

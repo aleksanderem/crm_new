@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
@@ -740,6 +740,12 @@ function PackageDetailDialog({
   const [editExpiresAt, setEditExpiresAt] = useState("");
   const [editStatus, setEditStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setEditMode(false);
+    setEditExpiresAt("");
+    setEditStatus("");
+  }, [usage?._id]);
 
   const updatePackageUsage = useAction(api.gabinet.packages.updatePackageUsage);
 

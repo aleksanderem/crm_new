@@ -3141,11 +3141,25 @@ export type AppointmentFullDetailEmployee = GabinetEmployeeRow & {
   image?: string;
 };
 
+/** Junction row shape returned within `AppointmentFullDetail.treatments`. */
+export interface AppointmentFullDetailTreatment {
+  id: string;
+  treatmentId: string | null;
+  variantId: string | null;
+  priceAtBooking: number | null;
+  sortOrder: number;
+}
+
 /** Full DTO returned by `getFullDetail`. */
 export interface AppointmentFullDetail {
   appointment: GabinetAppointmentRow;
   patient: GabinetPatientRow | null;
   treatment: GabinetTreatmentRow | null;
+  /** Rows from `gabinet_appointment_treatments` ordered by sort_order.  Empty
+   *  for appointments created before the junction table shipped (pre-#3356).
+   *  Edit paths should prefer this array and fall back to `appointment.treatmentId`
+   *  when the array is empty (issue #3469). */
+  treatments: AppointmentFullDetailTreatment[];
   employee: AppointmentFullDetailEmployee | null;
   documents: FormDocumentRow[];
   payments: PaymentRow[];
@@ -3214,6 +3228,7 @@ export const getFullDetail = action({
       allPatientPaymentsRaw,
       patientCreditRowsRaw,
       workflowHistoryRaw,
+      appointmentTreatmentsRaw,
     ] = await Promise.all([
       db.get("gabinetPatients", patientId),
       treatmentId ? db.get("gabinetTreatments", treatmentId) : Promise.resolve(null),
@@ -3268,6 +3283,10 @@ export const getFullDetail = action({
         .eq("appointmentId", args.appointmentId)
         .order("createdAt", false)
         .collect(),
+      db.query("gabinetAppointmentTreatments")
+        .eq("appointmentId", args.appointmentId)
+        .order("sortOrder", true)
+        .collect(),
     ]);
 
     const patient = patientRaw as unknown as GabinetPatientRow | null;
@@ -3290,6 +3309,15 @@ export const getFullDetail = action({
       : null;
     const documents = documentsRaw as unknown as FormDocumentRow[];
     const payments = paymentsRaw as unknown as PaymentRow[];
+    const appointmentTreatments: AppointmentFullDetailTreatment[] = (
+      (appointmentTreatmentsRaw as unknown as Array<Record<string, unknown>>) ?? []
+    ).map((row) => ({
+      id: String(row.id ?? row._id),
+      treatmentId: row.treatmentId ? String(row.treatmentId) : null,
+      variantId: row.variantId ? String(row.variantId) : null,
+      priceAtBooking: row.priceAtBooking != null ? Number(row.priceAtBooking) : null,
+      sortOrder: Number(row.sortOrder ?? 0),
+    }));
     const patientPackageUsage = patientPackageUsageRaw as unknown as GabinetPackageUsageRow[];
     const patientHistoryRaw = patientHistoryRawAll as unknown as GabinetAppointmentRow[];
     const loyaltyTransactions = loyaltyTransactionsRaw as unknown as GabinetLoyaltyTransactionRow[];
@@ -3375,6 +3403,7 @@ export const getFullDetail = action({
       appointment,
       patient,
       treatment,
+      treatments: appointmentTreatments,
       employee,
       documents,
       payments,

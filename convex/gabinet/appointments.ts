@@ -1722,6 +1722,43 @@ export const update = action({
     console.info("[update] patching appointment in Supabase:", appointmentId);
     await db.patch("gabinetAppointments", appointmentId, patch);
 
+    // --- Upsert junction row in gabinetAppointmentTreatments when treatment changes ---
+    // The update action was patching treatmentId only on the scalar column and
+    // never touching the junction table, causing divergence over time. Closes #3473.
+    if (args.treatmentId !== undefined) {
+      const existingJunctionRows = await db
+        .query("gabinetAppointmentTreatments")
+        .eq("appointmentId", appointmentId)
+        .collect();
+      for (const row of existingJunctionRows) {
+        await db.delete("gabinetAppointmentTreatments", String((row as Record<string, unknown>).id));
+      }
+      if (args.treatmentId) {
+        const effectiveVariantId =
+          args.variantId !== undefined
+            ? args.variantId
+            : (appt.variantId as string | null | undefined) ?? null;
+        const newTreatment = (await db.get("gabinetTreatments", args.treatmentId)) as GabinetTreatmentRow | null;
+        let priceAtBooking: number | null = (newTreatment?.price as number | undefined) ?? null;
+        if (effectiveVariantId) {
+          const variant = await db.get("gabinetTreatmentVariants", effectiveVariantId);
+          if (variant && String(variant.organizationId) === String(args.organizationId)) {
+            priceAtBooking = (variant.price as number | null | undefined) ?? priceAtBooking;
+          }
+        }
+        await db.insert("gabinetAppointmentTreatments", {
+          organizationId: String(args.organizationId),
+          appointmentId,
+          treatmentId: args.treatmentId,
+          variantId: effectiveVariantId,
+          priceAtBooking,
+          sortOrder: 0,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+
     // --- Sync scheduledActivity in Supabase (moved out of _updateSideEffects mutation) ---
     const scheduledActivityIdStr = (appt.scheduledActivityId as string) ?? undefined;
     const dateChanged = !!(args.date || args.startTime || args.endTime);

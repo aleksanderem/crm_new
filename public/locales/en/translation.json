@@ -2969,7 +2969,7 @@
       "showMore": "Show {{count}} more",
       "showLess": "Show less",
       "tabs": {
-        "terminarz": "Terminarz",
+        "terminarz": "Calendar",
         "appointments": "Appointments",
         "patients": "Clients",
         "activities": "Activities",

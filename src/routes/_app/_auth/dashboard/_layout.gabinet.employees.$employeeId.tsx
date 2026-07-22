@@ -54,7 +54,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
-import { PlateText, plateJsonToText } from "@/components/plate-text";
+import { plateJsonToText } from "@/components/plate-text";
 import {
   Select,
   SelectContent,
@@ -538,117 +538,10 @@ function EmployeeDetail() {
           fieldKey: "role",
         },
         { label: t("gabinet.employees.specialization"), value: employee.specialization, fieldKey: "specialization" },
-        { label: t("gabinet.employees.license"), value: employee.licenseNumber, fieldKey: "licenseNumber" },
-        { label: t("gabinet.employees.hireDate"), value: employee.hireDate, fieldKey: "hireDate" },
-        {
-          label: t("gabinet.employees.color"),
-          value: employee.color ? (
-            <span className="flex items-center gap-2">
-              <span
-                className="inline-block h-4 w-4 rounded-full border"
-                style={{ backgroundColor: employee.color }}
-              />
-              {employee.color}
-            </span>
-          ) : undefined,
-          fieldKey: "color",
-        },
-        {
-          label: t("common.created"),
-          value: new Date(employee.createdAt).toLocaleDateString("pl-PL", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          }),
-          fieldKey: "createdAt",
-        },
       ]
     : [];
 
-  // Sidebar extra: notes card + treatment qualifications card
-  const sidebarExtra = !employee ? undefined : (
-    <>
-      {employee.notes && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">{t("gabinet.employees.detailedData.notesComments")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-              <PlateText value={employee.notes} />
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">
-            {t("gabinet.employees.qualifications")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {employee.qualifiedTreatmentIds.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5">
-              {employee.qualifiedTreatmentIds.map((tid) => (
-                <Badge key={tid} variant="secondary" className="gap-1 pr-1">
-                  {treatmentMap.get(tid) || "..."}
-                  <button
-                    type="button"
-                    className="ml-0.5 rounded-sm hover:bg-muted-foreground/20"
-                    onClick={() => handleRemoveTreatment(tid)}
-                  >
-                    <X className="h-[18px] w-[18px]" variant="stroke" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {t("gabinet.employees.noQualifications")}
-            </p>
-          )}
-
-          <div className="relative">
-            <div className="flex items-center w-full rounded-md border bg-transparent">
-              <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" variant="stroke" />
-              <input
-                type="text"
-                className="h-8 w-full bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
-                placeholder={t("gabinet.employees.addTreatment")}
-                value={treatmentSearch}
-                onChange={(e) => setTreatmentSearch(e.target.value)}
-              />
-            </div>
-            {treatmentSearch.length > 0 && availableTreatments.length > 0 && (
-              <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
-                <ul className="max-h-[200px] overflow-y-auto p-1">
-                  {availableTreatments.map((tr) => (
-                    <li key={tr._id}>
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                        onClick={() => handleAddTreatment(tr._id)}
-                      >
-                        {tr.name}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {treatmentSearch.length > 0 && availableTreatments.length === 0 && (
-              <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
-                <div className="py-3 px-3 text-sm text-muted-foreground">
-                  {t("detail.relationships.noResults")}
-                </div>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </>
-  );
+  const sidebarExtra = undefined;
 
   // Header subtitle with color swatch, role badge, and inactive badge
   const headerSubtitle = !employee ? undefined : (

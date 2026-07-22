@@ -470,6 +470,8 @@ export function AppointmentPreviewContent({
 
   const { appointment, patient, treatment } = detail;
   const initialStatus = appointment.status as AppointmentStatus;
+  const junctionTreatments = detail.treatments ?? [];
+  const isMultiTreatment = junctionTreatments.length > 1;
   const initialTreatmentId =
     detail.treatments?.[0]?.treatmentId ??
     (appointment.treatmentId ? String(appointment.treatmentId) : "");
@@ -1354,6 +1356,25 @@ export function AppointmentPreviewContent({
       {/* Secondary info — treatment, status, indicators, contact links */}
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
+          {isMultiTreatment ? (
+            <div className="flex flex-wrap gap-1">
+              {junctionTreatments.map((jt) => {
+                const name =
+                  treatments?.find((tr) => tr._id === jt.treatmentId)?.name ??
+                  treatment?.name ??
+                  t("gabinet.appointments.selectTreatment");
+                return (
+                  <span
+                    key={jt.id}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-background px-2 py-1 text-sm font-medium text-foreground"
+                  >
+                    <Stethoscope className="size-3.5 shrink-0 text-primary" />
+                    <span className="truncate">{name}</span>
+                  </span>
+                );
+              })}
+            </div>
+          ) : (
           <Popover
             open={treatmentOpen}
             onOpenChange={(o) => {
@@ -1425,6 +1446,7 @@ export function AppointmentPreviewContent({
               </Command>
             </PopoverContent>
           </Popover>
+          )}
           <Badge variant="outline" className="text-xs">
             <span
               className={`mr-1.5 inline-block h-2 w-2 rounded-full ${STATUS_DOT_COLORS[initialStatus] ?? "bg-muted-foreground"}`}

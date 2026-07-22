@@ -3294,7 +3294,8 @@
         "leave": "Pracownik jest na urlopie w tym terminie",
         "leavePartial": "Pracownik jest na urlopie w tym dniu w godzinach {{start}}–{{end}}.",
         "outsideHours": "Termin poza godzinami pracy gabinetu",
-        "conflict": "Kolizja terminów z inną wizytą"
+        "conflict": "Kolizja terminów z inną wizytą",
+        "qualificationPartial": "Pracownik nie ma kwalifikacji do wszystkich wybranych zabiegów"
       },
       "rescheduled": "Wizyta przeniesiona",
       "rescheduleFailed": "Nie udało się przenieść wizyty.",
@@ -3317,7 +3318,12 @@
         "invalidArguments": "Nie udało się zapisać zmian — nieprawidłowe dane wizyty.",
         "blockedNotDraggable": "Wydarzeń z Google nie można przesuwać w kalendarzu.",
         "changeEmployeeFailed": "Nie udało się zmienić pracownika dla wizyty."
-      }
+      },
+      "treatments": "Zabiegi",
+      "addTreatment": "Dodaj zabieg",
+      "removeTreatment": "Usuń zabieg",
+      "totalDuration": "Łącznie",
+      "packageTreatment": "Zabieg objęty pakietem"
     },
     "events": {
       "create": "Nowe zdarzenie"

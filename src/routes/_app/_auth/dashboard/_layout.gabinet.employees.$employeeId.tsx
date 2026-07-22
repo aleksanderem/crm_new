@@ -177,7 +177,7 @@ function EmployeeDetail() {
     if (group === "clientsAndVisits") {
       setActiveTab(t("gabinet.employees.tabs.terminarz"));
     } else if (group === "schedule") {
-      setActiveTab(t("gabinet.employees.tabs.schedule"));
+      setActiveTab(t("gabinet.employees.tabs.grafikPracy"));
     } else if (group === "employeeData") {
       setActiveTab(t("gabinet.employees.tabs.detailedData"));
     } else if (group === "documentsAndAssets") {
@@ -772,7 +772,7 @@ function EmployeeDetail() {
       ),
     },
     {
-      label: t("gabinet.employees.tabs.schedule"),
+      label: t("gabinet.employees.tabs.grafikPracy"),
       content: (
         <FlexibleScheduleEditor
           organizationId={organizationId}
@@ -854,7 +854,7 @@ function EmployeeDetail() {
       case "clientsAndVisits":
         return tabs.slice(0, 3);
       case "schedule":
-        return tabs.filter(tab => tab.label === t("gabinet.employees.tabs.schedule"));
+        return tabs.filter(tab => tab.label === t("gabinet.employees.tabs.grafikPracy"));
       case "employeeData":
         return tabs.filter(tab => tab.label === t("gabinet.employees.tabs.detailedData"));
       case "documentsAndAssets":

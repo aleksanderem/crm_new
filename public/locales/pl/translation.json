@@ -3497,7 +3497,7 @@
       "inactive": "Nieaktywny",
       "created": "Pakiet utworzony",
       "editPackage": "Edytuj pakiet",
-      "confirmDeleteDescription": "Pakiet zostanie dezaktywowany. Można go będzie aktywować ponownie.",
+      "confirmDeleteDescription": "Tej operacji nie można cofnąć.",
       "emptyTitle": "Brak pakietów",
       "emptyDescription": "Utwórz pakiety zabiegów, aby oferować zestawy",
       "activeUses": "aktywnych użyć",

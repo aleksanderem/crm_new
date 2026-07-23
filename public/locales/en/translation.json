@@ -3476,7 +3476,7 @@
       "inactive": "Inactive",
       "created": "Package created",
       "editPackage": "Edit Package",
-      "confirmDeleteDescription": "The package will be deactivated. It can be reactivated later.",
+      "confirmDeleteDescription": "This action cannot be undone.",
       "emptyTitle": "No packages yet",
       "emptyDescription": "Create treatment packages to offer bundles",
       "activeUses": "active uses",

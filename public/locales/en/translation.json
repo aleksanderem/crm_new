@@ -2701,7 +2701,7 @@
       "revenue": "Revenue",
       "description": "Description",
       "instructions": "Instructions",
-      "deactivate": "Delete",
+      "delete": "Delete",
       "reactivate": "Reactivate",
       "recentAppointments": "Recent Appointments",
       "noAppointments": "No appointments for this treatment",

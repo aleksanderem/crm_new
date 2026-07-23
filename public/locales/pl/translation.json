@@ -2717,7 +2717,7 @@
       "revenue": "Przychód",
       "description": "Opis",
       "instructions": "Instrukcje",
-      "deactivate": "Usuń",
+      "delete": "Usuń",
       "reactivate": "Reaktywuj",
       "recentAppointments": "Ostatnie wizyty",
       "noAppointments": "Brak wizyt dla tego zabiegu",

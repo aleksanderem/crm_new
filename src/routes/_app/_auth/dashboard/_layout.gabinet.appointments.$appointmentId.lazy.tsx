@@ -811,16 +811,9 @@ function AppointmentDetail() {
               {t("gabinet.packages.activePackages", "Aktywne pakiety")}
             </p>
             {relevantPkgs.map((pkg) => {
-              const relevantTreatment = pkg.treatmentsUsed.find((tu) =>
+              const matchedTreatments = pkg.treatmentsUsed.filter((tu) =>
                 apptTreatmentIds.has(tu.treatmentId),
               );
-              const used = relevantTreatment?.usedCount ?? 0;
-              const total = relevantTreatment?.totalCount ?? 0;
-              const remaining = Math.max(total - used, 0);
-              const pct = total > 0 ? Math.min((used / total) * 100, 100) : 0;
-              let barColor = "bg-emerald-500";
-              if (remaining <= 0) barColor = "bg-red-500";
-              else if (remaining / total < 0.3) barColor = "bg-amber-500";
               return (
                 <div
                   key={pkg._id}
@@ -837,20 +830,34 @@ function AppointmentDetail() {
                       {t(`gabinet.packages.status.${pkg.status}`)}
                     </Badge>
                   </div>
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-muted-foreground truncate">
-                      {treat?.name}
-                    </span>
-                    <span className="tabular-nums text-muted-foreground shrink-0">
-                      {used} / {total}
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${barColor}`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
+                  {matchedTreatments.map((tu) => {
+                    const used = tu.usedCount;
+                    const total = tu.totalCount;
+                    const remaining = Math.max(total - used, 0);
+                    const pct =
+                      total > 0 ? Math.min((used / total) * 100, 100) : 0;
+                    let barColor = "bg-emerald-500";
+                    if (remaining <= 0) barColor = "bg-red-500";
+                    else if (remaining / total < 0.3) barColor = "bg-amber-500";
+                    return (
+                      <div key={tu.treatmentId} className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-muted-foreground truncate">
+                            {tu.treatmentName ?? "-"}
+                          </span>
+                          <span className="tabular-nums text-muted-foreground shrink-0">
+                            {used} / {total}
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${barColor}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}

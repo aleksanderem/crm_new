@@ -448,7 +448,7 @@ function TreatmentDetail() {
 
   // --- Handlers (after hooks, before render) ---
 
-  const handleDeactivate = async () => {
+  const handleDelete = async () => {
     if (window.confirm(t("gabinet.treatments.confirmDelete"))) {
       await removeTreatment({
         organizationId,
@@ -1560,8 +1560,8 @@ function TreatmentDetail() {
         }}
         secondaryActions={[
           {
-            label: t("gabinet.treatmentDetail.deactivate"),
-            onClick: handleDeactivate,
+            label: t("gabinet.treatmentDetail.delete"),
+            onClick: handleDelete,
             variant: "destructive" as const,
           },
         ]}

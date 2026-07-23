@@ -148,6 +148,9 @@ async function applyAppointmentStatusChange(
     notificationMessage: string;
     cancellationReason?: string;
     sendCancellationNotifications?: boolean;
+    treatmentId?: string | null;
+    variantId?: string | null;
+    priceAtBooking?: number | null;
   },
 ) {
   const now = Date.now();
@@ -181,10 +184,10 @@ async function applyAppointmentStatusChange(
       "gabinetPatients",
       String(args.appointment.patientId),
     );
-    const treatment = args.appointment.treatmentId
+    const treatment = args.treatmentId
       ? await supabaseDb.get(
           "gabinetTreatments",
-          String(args.appointment.treatmentId),
+          String(args.treatmentId),
         )
       : null;
     if (patient?.email) {
@@ -237,17 +240,17 @@ async function applyAppointmentStatusChange(
   }
 
   if (args.nextStatus === "completed") {
-    if (args.appointment.treatmentId) {
+    if (args.treatmentId) {
       await handleAppointmentCompletion(ctx, {
         organizationId: args.organizationId,
         appointmentId: args.appointment._id,
         patientId: args.appointment.patientId,
-        treatmentId: args.appointment.treatmentId,
-        variantId: args.appointment.variantId as Id<"gabinetTreatmentVariants"> | undefined,
+        treatmentId: args.treatmentId as Id<"gabinetTreatments">,
+        variantId: args.variantId as Id<"gabinetTreatmentVariants"> | undefined,
         packageUsageId: args.appointment.packageUsageId as
           | Id<"gabinetPackageUsage">
           | undefined,
-        priceAtBooking: args.appointment.priceAtBooking as number | undefined,
+        priceAtBooking: args.priceAtBooking as number | undefined,
         userId: args.actorUserId,
       });
     }
@@ -326,7 +329,7 @@ async function applyAppointmentStatusChange(
       appointmentId: String(args.appointment._id),
       patientId: String(args.appointment.patientId),
       employeeId: String(args.appointment.employeeId),
-      treatmentId: String(args.appointment.treatmentId),
+      treatmentId: String(args.treatmentId ?? ""),
       status: args.nextStatus,
       previousStatus: args.appointment.status,
       date: args.appointment.date,
@@ -666,6 +669,10 @@ export const listPatientsWithStatsForEmployee = action({
       byPatient.get(patientId)!.push(apt);
     }
 
+    // Batch-load junction treatment IDs for all appointments
+    const allApptIds = appointments.map((a) => String(a._id));
+    const allJunctionMap = await getJunctionTreatmentIds(db, allApptIds);
+
     const results = await Promise.all(
       Array.from(byPatient.entries()).map(async ([patientId, patientApts]) => {
         const patient = (await db.get("gabinetPatients", patientId).catch(() => null)) as GabinetPatientRow | null;
@@ -674,7 +681,13 @@ export const listPatientsWithStatsForEmployee = action({
         const sortedAppointments = [...patientApts].sort((a, b) => String(b.date).localeCompare(String(a.date)));
         const lastVisitDate = sortedAppointments[0]?.date ?? null;
         const firstVisitDate = sortedAppointments[sortedAppointments.length - 1]?.date ?? null;
-        const treatmentIds = Array.from(new Set(patientApts.map((a) => String(a.treatmentId))));
+        const treatmentIds = Array.from(
+          new Set(
+            patientApts.flatMap((a) =>
+              (allJunctionMap.get(String(a._id)) ?? []).map((r) => r.treatmentId),
+            ),
+          ),
+        );
         const statuses = Array.from(new Set(patientApts.map((a) => String(a.status))));
 
         return {
@@ -1108,9 +1121,9 @@ export const create = action({
   args: {
     organizationId: v.id("organizations"),
     patientId: v.string(),
-    // Multi-treatment model (#3356): pass `treatments` array instead of the
-    // scalar `treatmentId`/`variantId`. The scalar fields are kept for backward
-    // compatibility — old callers that pass only `treatmentId` still work.
+    // Multi-treatment model (#3356): pass `treatments` array for multiple treatments.
+    // The scalar `treatmentId`/`variantId` args are kept for API backward compat —
+    // callers that pass only `treatmentId` are normalized to a single-item list.
     treatments: v.optional(
       v.array(
         v.object({
@@ -1744,6 +1757,8 @@ export const update = action({
       contraindicationAlertsReviewed,
       // Excluded from db.patch: handled separately by the junction-row block below
       treatments: _treatments,
+      treatmentId: _treatmentId,
+      variantId: _variantId,
       ...updates
     } = args;
 
@@ -2257,6 +2272,8 @@ export const updateStatus = action({
           scheduledActivityId: (appt.scheduledActivityId as string) ?? undefined,
           patientId: appt.patientId as string,
           treatmentId: statusJunctionRows[0]?.treatmentId,
+          variantId: statusJunctionRows[0]?.variantId ?? undefined,
+          priceAtBooking: statusJunctionRows[0]?.priceAtBooking ?? undefined,
           employeeId: appt.employeeId as string,
           createdBy: appt.createdBy as string,
           date: appt.date as string,
@@ -2534,6 +2551,8 @@ export const _updateStatusSideEffects = internalMutation({
     scheduledActivityId: v.optional(v.string()),
     patientId: v.string(),
     treatmentId: v.optional(v.string()),
+    variantId: v.optional(v.string()),
+    priceAtBooking: v.optional(v.number()),
     employeeId: v.string(),
     createdBy: v.string(),
     date: v.string(),
@@ -2558,9 +2577,6 @@ export const _updateStatusSideEffects = internalMutation({
         ? (args.scheduledActivityId as Id<"scheduledActivities">)
         : undefined,
       patientId: args.patientId as Id<"gabinetPatients">,
-      treatmentId: args.treatmentId
-        ? (args.treatmentId as Id<"gabinetTreatments">)
-        : undefined,
       employeeId: args.employeeId as Id<"users">,
       createdBy: args.createdBy as Id<"users">,
       date: args.date,
@@ -2588,6 +2604,9 @@ export const _updateStatusSideEffects = internalMutation({
       activityDescription: `Status changed from ${args.previousStatus} to ${args.nextStatus}`,
       notificationTitle: "Appointment status changed",
       notificationMessage: `Appointment status changed to "${args.nextStatus}"`,
+      treatmentId: args.treatmentId ?? null,
+      variantId: args.variantId ?? null,
+      priceAtBooking: args.priceAtBooking ?? null,
     });
 
     // After completing: auto-generate "after_completion" documents
@@ -2680,9 +2699,6 @@ export const applySmsReplyTransition = internalMutation({
         ? (appointment.scheduledActivityId as Id<"scheduledActivities">)
         : undefined,
       patientId: appointment.patientId as Id<"gabinetPatients">,
-      treatmentId: smsJunctionRows[0]?.treatmentId
-        ? (smsJunctionRows[0].treatmentId as Id<"gabinetTreatments">)
-        : undefined,
       employeeId: appointment.employeeId as Id<"users">,
       createdBy: appointment.createdBy as Id<"users">,
       date: appointment.date as string,
@@ -2719,6 +2735,9 @@ export const applySmsReplyTransition = internalMutation({
           : 'Appointment status changed to "cancelled" from patient SMS reply',
       cancellationReason:
         args.intent === "cancel" ? "Cancelled by patient SMS reply" : undefined,
+      treatmentId: smsJunctionRows[0]?.treatmentId ?? null,
+      variantId: smsJunctionRows[0]?.variantId ?? null,
+      priceAtBooking: smsJunctionRows[0]?.priceAtBooking ?? null,
     });
 
     return {
@@ -3271,10 +3290,9 @@ export interface AppointmentFullDetail {
   appointment: GabinetAppointmentRow;
   patient: GabinetPatientRow | null;
   treatment: GabinetTreatmentRow | null;
-  /** Rows from `gabinet_appointment_treatments` ordered by sort_order.  Empty
-   *  for appointments created before the junction table shipped (pre-#3356).
-   *  Edit paths should prefer this array and fall back to `appointment.treatmentId`
-   *  when the array is empty (issue #3469). */
+  /** Rows from `gabinet_appointment_treatments` ordered by sort_order.
+   *  Canonical treatment list — the deprecated scalar columns on
+   *  `gabinet_appointments` have been dropped (#3399). */
   treatments: AppointmentFullDetailTreatment[];
   employee: AppointmentFullDetailEmployee | null;
   documents: FormDocumentRow[];
@@ -3444,12 +3462,14 @@ export const getFullDetail = action({
       .filter((a) => String(a._id) !== args.appointmentId)
       .slice(0, 20);
 
-    // Enrich history appointments with treatment name
+    // Enrich history appointments with treatment name via junction table
+    const historyApptIds = patientHistory.map((a) => String(a._id));
+    const historyJunctionMap = await getJunctionTreatmentIds(db, historyApptIds);
     const historyTreatmentIds = Array.from(
       new Set(
-        patientHistory
-          .map((a) => (a.treatmentId ? String(a.treatmentId) : null))
-          .filter((id): id is string => id !== null),
+        historyApptIds.flatMap((id) =>
+          (historyJunctionMap.get(id) ?? []).map((r) => r.treatmentId),
+        ),
       ),
     );
     const historyTreatments = await Promise.all(
@@ -3524,10 +3544,13 @@ export const getFullDetail = action({
       documents,
       payments,
       patientPackageUsage: enrichedPatientPackageUsage,
-      patientHistory: patientHistory.map((a) => ({
-        ...a,
-        treatment: a.treatmentId ? treatmentMap.get(String(a.treatmentId)) : undefined,
-      })),
+      patientHistory: patientHistory.map((a) => {
+        const primaryTid = (historyJunctionMap.get(String(a._id)) ?? [])[0]?.treatmentId ?? null;
+        return {
+          ...a,
+          treatment: primaryTid ? treatmentMap.get(primaryTid) : undefined,
+        };
+      }),
       loyaltyBalance: (loyaltyBalanceRow?.balance as number | null) ?? 0,
       loyaltyTier: (loyaltyBalanceRow?.tier as string | null) ?? null,
       loyaltyTransactions,

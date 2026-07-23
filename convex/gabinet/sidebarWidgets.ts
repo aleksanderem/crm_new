@@ -123,10 +123,14 @@ export const getTreatmentsKpis = action({
       (a: any) => String(a.date ?? "") >= startOfMonthStr,
     );
 
+    const thisMonthIds = completedThisMonth.map((a: any) => String(a._id ?? a.id ?? ""));
+    const monthJunctionMap = await getJunctionTreatmentIds(db, thisMonthIds);
     const treatmentCounts: Record<string, number> = {};
-    for (const appt of completedThisMonth) {
-      const id = String((appt as any).treatmentId);
-      treatmentCounts[id] = (treatmentCounts[id] ?? 0) + 1;
+    for (const apptId of thisMonthIds) {
+      const primaryTid = (monthJunctionMap.get(apptId) ?? [])[0]?.treatmentId;
+      if (primaryTid) {
+        treatmentCounts[primaryTid] = (treatmentCounts[primaryTid] ?? 0) + 1;
+      }
     }
     let popularId: string | null = null;
     let maxCount = 0;
@@ -409,7 +413,7 @@ export const getDayAgenda = action({
       sorted.map(async (appt, i) => {
         const apptId = sortedIds[i];
         const junctionRows = junctionMap.get(apptId) ?? [];
-        const treatmentId = junctionRows[0]?.treatmentId ?? (appt.treatmentId ? String(appt.treatmentId) : null);
+        const treatmentId = junctionRows[0]?.treatmentId ?? null;
         const [patient, treatment, employee] = await Promise.all([
           appt.patientId ? db.get("gabinetPatients", String(appt.patientId)).catch(() => null) : null,
           treatmentId ? db.get("gabinetTreatments", treatmentId).catch(() => null) : null,
@@ -585,9 +589,7 @@ export const getTopTreatments = action({
     for (const appt of appointments as any[]) {
       const apptId = String(appt._id ?? appt.id ?? "");
       const junctionRows = topJunctionMap.get(apptId) ?? [];
-      const tids = junctionRows.length > 0
-        ? junctionRows.map((r) => r.treatmentId)
-        : appt.treatmentId ? [String(appt.treatmentId)] : [];
+      const tids = junctionRows.map((r) => r.treatmentId);
       for (const tid of tids) {
         treatmentCounts.set(tid, (treatmentCounts.get(tid) ?? 0) + 1);
       }

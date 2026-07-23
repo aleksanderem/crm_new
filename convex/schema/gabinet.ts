@@ -423,8 +423,6 @@ export function createGabinetTables({
   gabinetAppointments: defineTable({
     organizationId: v.id("organizations"),
     patientId: v.id("gabinetPatients"),
-    treatmentId: v.optional(v.id("gabinetTreatments")),
-    variantId: v.optional(v.id("gabinetTreatmentVariants")),
     employeeId: v.id("users"),
     date: v.string(), // YYYY-MM-DD
     startTime: v.string(), // HH:MM
@@ -478,7 +476,6 @@ export function createGabinetTables({
     categoryId: v.optional(v.id("categoryDefinitions")),
     requiresCompletion: v.optional(v.boolean()),
     contraindicationAlertsReviewed: v.optional(v.boolean()),
-    priceAtBooking: v.optional(v.number()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -489,15 +486,12 @@ export function createGabinetTables({
     .index("by_orgAndEmployee", ["organizationId", "employeeId"])
     .index("by_orgAndEmployeeAndDate", ["organizationId", "employeeId", "date"])
     .index("by_orgAndStatus", ["organizationId", "status"])
-    .index("by_orgAndTreatment", ["organizationId", "treatmentId"])
     .index("by_orgAndRecurringGroup", ["organizationId", "recurringGroupId"])
     .index("by_orgAndRoomAndDate", ["organizationId", "roomId", "date"])
     .index("by_requiresCompletion", ["organizationId", "requiresCompletion"]),
 
   // Junction table: appointment → treatment(s) (#3360).
-  // Backfilled from the scalar treatmentId/variantId/priceAtBooking columns
-  // on gabinetAppointments. New rows are written here by the multi-treatment
-  // model introduced in #3356.
+  // Canonical multi-treatment model introduced in #3356.
   gabinetAppointmentTreatments: defineTable({
     organizationId: v.id("organizations"),
     appointmentId: v.id("gabinetAppointments"),

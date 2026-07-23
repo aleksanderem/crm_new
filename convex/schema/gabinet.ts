@@ -424,6 +424,14 @@ export function createGabinetTables({
     organizationId: v.id("organizations"),
     patientId: v.id("gabinetPatients"),
     employeeId: v.id("users"),
+    // DEPRECATED (#3399): replaced by gabinetAppointmentTreatments junction
+    // rows; the Supabase columns are dropped and no code reads these. They
+    // must stay optional here because legacy documents in the Convex dev
+    // deployment still carry the fields — removing them entirely makes every
+    // `convex deploy` fail schema validation.
+    treatmentId: v.optional(v.id("gabinetTreatments")),
+    variantId: v.optional(v.id("gabinetTreatmentVariants")),
+    priceAtBooking: v.optional(v.float64()),
     date: v.string(), // YYYY-MM-DD
     startTime: v.string(), // HH:MM
     endTime: v.string(),

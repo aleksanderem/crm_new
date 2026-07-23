@@ -2462,7 +2462,7 @@
       "searchPlaceholder": "Search clients...",
       "emptyTitle": "No clients yet",
       "emptyDescription": "Add your first client to get started",
-      "confirmDelete": "Are you sure you want to deactivate this client?",
+      "confirmDelete": "Are you sure you want to delete this client?",
       "nudgeFilter": {
         "missingContact": "Showing clients with no phone or email.",
         "noRecentVisit": "Showing clients with no visit in the last 90 days.",

@@ -2474,7 +2474,7 @@
       "searchPlaceholder": "Szukaj klientów...",
       "emptyTitle": "Brak klientów",
       "emptyDescription": "Dodaj pierwszego klienta, aby rozpocząć",
-      "confirmDelete": "Czy na pewno chcesz dezaktywować tego klienta?",
+      "confirmDelete": "Czy na pewno chcesz usunąć tego klienta?",
       "nudgeFilter": {
         "missingContact": "Pokazywani są klienci bez telefonu i e-maila.",
         "noRecentVisit": "Pokazywani są klienci bez wizyty w ostatnich 90 dniach.",

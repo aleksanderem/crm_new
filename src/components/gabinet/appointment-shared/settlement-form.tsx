@@ -186,9 +186,17 @@ export function SettlementForm({
         pkg.treatmentsUsed.some((e) => visitTreatmentIds.has(e.treatmentId))),
   );
 
+  // gratis / barter lock the amount in split rows too (mirrors non-split behavior).
+  const isFirstSplitFixed = firstSplitMethod === "gratis" || firstSplitMethod === "barter";
+  const isSecondSplitFixed = secondSplitMethod === "gratis" || secondSplitMethod === "barter";
+
   // Split payment derived values
-  const parsedFirstSplit = parseFloat(firstSplitAmount.replace(",", ".")) || 0;
-  const parsedSecondSplit = parseFloat(secondSplitAmount.replace(",", ".")) || 0;
+  const parsedFirstSplit = isFirstSplitFixed
+    ? treatmentPrice
+    : parseFloat(firstSplitAmount.replace(",", ".")) || 0;
+  const parsedSecondSplit = isSecondSplitFixed
+    ? treatmentPrice
+    : parseFloat(secondSplitAmount.replace(",", ".")) || 0;
   const splitTotal = Math.round((parsedFirstSplit + parsedSecondSplit) * 100) / 100;
   const balanceAvailable = patientCreditBalance ?? 0;
   // In split mode, credit fills the full outstanding gap; amounts cover the rest.
@@ -650,6 +658,9 @@ export function SettlementForm({
                   value={firstSplitMethod}
                   onValueChange={(v) => {
                     setFirstSplitMethod(v as (typeof PAYMENT_METHODS)[number]);
+                    if (v === "gratis" || v === "barter") {
+                      setFirstSplitAmount(treatmentPrice.toFixed(2));
+                    }
                     if (v !== "package") { setFirstSplitPackageId(null); setFirstSplitPackageItems([]); }
                   }}
                 >
@@ -668,14 +679,21 @@ export function SettlementForm({
                   type="text"
                   inputMode="decimal"
                   placeholder="0.00"
-                  value={firstSplitAmount}
+                  value={isFirstSplitFixed ? treatmentPrice.toFixed(2) : firstSplitAmount}
+                  disabled={isFirstSplitFixed}
                   onChange={(e) => {
+                    if (isFirstSplitFixed) return;
                     const v = e.target.value;
                     if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
                       setFirstSplitAmount(v);
                     }
                   }}
                 />
+                {isFirstSplitFixed && (
+                  <p className="text-xs text-muted-foreground">
+                    {t("gabinet.payments.amountLockedToTreatment")}
+                  </p>
+                )}
               </div>
               <div className="rounded-md border p-2 space-y-2">
                 <Label className="text-xs font-medium">
@@ -685,6 +703,9 @@ export function SettlementForm({
                   value={secondSplitMethod}
                   onValueChange={(v) => {
                     setSecondSplitMethod(v as (typeof PAYMENT_METHODS)[number]);
+                    if (v === "gratis" || v === "barter") {
+                      setSecondSplitAmount(treatmentPrice.toFixed(2));
+                    }
                     if (v !== "package") { setSecondSplitPackageId(null); setSecondSplitPackageItems([]); }
                   }}
                 >
@@ -703,14 +724,21 @@ export function SettlementForm({
                   type="text"
                   inputMode="decimal"
                   placeholder="0.00"
-                  value={secondSplitAmount}
+                  value={isSecondSplitFixed ? treatmentPrice.toFixed(2) : secondSplitAmount}
+                  disabled={isSecondSplitFixed}
                   onChange={(e) => {
+                    if (isSecondSplitFixed) return;
                     const v = e.target.value;
                     if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
                       setSecondSplitAmount(v);
                     }
                   }}
                 />
+                {isSecondSplitFixed && (
+                  <p className="text-xs text-muted-foreground">
+                    {t("gabinet.payments.amountLockedToTreatment")}
+                  </p>
+                )}
               </div>
             </div>
             {firstSplitMethod === "package" && (

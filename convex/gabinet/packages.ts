@@ -403,10 +403,17 @@ export const remove = action({
       );
     }
 
-    await db.patch("gabinetTreatmentPackages", args.packageId, {
-      isActive: false,
-      updatedAt: Date.now(),
-    });
+    const usages = await db
+      .query("gabinetPackageUsage")
+      .eq("packageId", args.packageId)
+      .collect();
+    if (usages.length > 0) {
+      throw new Error(
+        "Cannot delete a package that has been purchased by patients. Deactivate it instead.",
+      );
+    }
+
+    await db.delete("gabinetTreatmentPackages", args.packageId);
   },
 });
 

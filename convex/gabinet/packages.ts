@@ -450,9 +450,7 @@ export const updatePackageUsage = action({
       perm.scope === "own" &&
       String(usage.createdBy) !== String(authResult.userId)
     ) {
-      throw new Error(
-        "Permission denied: you can only edit your own records",
-      );
+      throw new Error("Permission denied: you can only edit your own records");
     }
 
     const updates: Record<string, unknown> = { updatedAt: Date.now() };
@@ -1014,6 +1012,22 @@ export const usePackageTreatmentsBatch = action({
       status: allUsed ? "completed" : "active",
       updatedAt: Date.now(),
     });
+
+    // Manual redemption wins the CAS race with completion-time auto-deduct
+    // (#3535): mark the junction rows for the redeemed treatments as
+    // package_deducted so updateStatus(completed/no_show) skips them and the
+    // entry is not deducted twice.
+    if (args.appointmentId) {
+      for (const item of args.items) {
+        await db
+          .raw()
+          .from("gabinet_appointment_treatments")
+          .update({ package_deducted: true })
+          .eq("appointment_id", args.appointmentId)
+          .eq("treatment_id", item.treatmentId)
+          .eq("package_deducted", false);
+      }
+    }
 
     // Log activity via internalMutation
     try {

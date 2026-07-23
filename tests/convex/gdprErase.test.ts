@@ -49,9 +49,9 @@ describe("gabinet/patients.gdprErase — activity and note anonymization", () =>
       ctx.db
         .query("activities")
         .withIndex("by_entity", (q) =>
-          q.eq("entityType", "gabinetPatient").eq("entityId", patientIdStr)
+          q.eq("entityType", "gabinetPatient").eq("entityId", patientIdStr),
         )
-        .collect()
+        .collect(),
     );
 
     for (const activity of activities) {
@@ -90,9 +90,9 @@ describe("gabinet/patients.gdprErase — activity and note anonymization", () =>
       ctx.db
         .query("notes")
         .withIndex("by_entity", (q) =>
-          q.eq("entityType", "gabinetPatient").eq("entityId", patientIdStr)
+          q.eq("entityType", "gabinetPatient").eq("entityId", patientIdStr),
         )
-        .collect()
+        .collect(),
     );
 
     expect(notes).toHaveLength(1);
@@ -104,7 +104,11 @@ describe("gabinet/patients.gdprErase — activity and note anonymization", () =>
   test("nulls out clinical text fields on appointments for the erased patient", async () => {
     const t = createTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
-    const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(
+      t,
+      organizationId,
+      userId,
+    );
     const patientIdStr = String(patientId);
 
     await t.run(async (ctx) => {
@@ -112,7 +116,6 @@ describe("gabinet/patients.gdprErase — activity and note anonymization", () =>
       await ctx.db.insert("gabinetAppointments", {
         organizationId,
         patientId,
-        treatmentId,
         employeeId: userId,
         date: "2026-01-15",
         startTime: "09:00",
@@ -123,7 +126,9 @@ describe("gabinet/patients.gdprErase — activity and note anonymization", () =>
         interviewNotes: "Pacjent Jan Kowalski skarżył się na ból pleców.",
         clinicalRemarks: "Kowalski ma alergię na lateks.",
         bodyChartData: JSON.stringify({ marks: ["lower_back"] }),
-        treatmentParameterValues: JSON.stringify([{ name: "Waga", value: "85kg" }]),
+        treatmentParameterValues: JSON.stringify([
+          { name: "Waga", value: "85kg" },
+        ]),
         isRecurring: false,
         createdBy: userId,
         createdAt: now,
@@ -140,9 +145,9 @@ describe("gabinet/patients.gdprErase — activity and note anonymization", () =>
       ctx.db
         .query("gabinetAppointments")
         .withIndex("by_orgAndPatient", (q) =>
-          q.eq("organizationId", organizationId).eq("patientId", patientId)
+          q.eq("organizationId", organizationId).eq("patientId", patientId),
         )
-        .collect()
+        .collect(),
     );
 
     expect(appointments).toHaveLength(1);
@@ -169,9 +174,9 @@ describe("gabinet/patients.gdprErase — activity and note anonymization", () =>
       ctx.db
         .query("activities")
         .withIndex("by_entity", (q) =>
-          q.eq("entityType", "gabinetPatient").eq("entityId", patientIdStr)
+          q.eq("entityType", "gabinetPatient").eq("entityId", patientIdStr),
         )
-        .collect()
+        .collect(),
     );
 
     // Every activity entry — including the new deletion event — must be PII-free

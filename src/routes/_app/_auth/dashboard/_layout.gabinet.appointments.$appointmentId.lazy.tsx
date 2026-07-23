@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import {
+  createLazyFileRoute,
+  useNavigate,
+  useSearch,
+} from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
@@ -39,7 +43,10 @@ import { ChangeEmployeeModal } from "@/components/gabinet/change-employee-modal"
 import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 import { DocumentationTab } from "@/components/gabinet/documentation-tab";
 import { TreatmentPicker } from "@/components/gabinet/appointment-shared/treatment-picker";
-import { RichTextEditor, plateJsonToText } from "@/components/gabinet/rich-text-editor";
+import {
+  RichTextEditor,
+  plateJsonToText,
+} from "@/components/gabinet/rich-text-editor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -66,8 +73,15 @@ import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { ActivityFeed } from "@/components/crm/activity-feed";
 import { activitiesToFeedEntries } from "@/components/crm/activity-feed-adapter";
 import { mergeTimelineSources } from "@/components/activity-timeline/merge-timeline-sources";
-import type { SmsEventEntry, AutomationRunEntry, TimelineSourceEntry } from "@/components/activity-timeline/merge-timeline-sources";
-import { AppointmentDocumentChecklist, useAppointmentDocumentCounts } from "@/components/documents/appointment-document-checklist";
+import type {
+  SmsEventEntry,
+  AutomationRunEntry,
+  TimelineSourceEntry,
+} from "@/components/activity-timeline/merge-timeline-sources";
+import {
+  AppointmentDocumentChecklist,
+  useAppointmentDocumentCounts,
+} from "@/components/documents/appointment-document-checklist";
 import { DocumentGateDialog } from "@/components/documents/document-gate-dialog";
 import { AfterCompletionDocumentsDialog } from "@/components/documents/after-completion-documents-dialog";
 import { EmptyState } from "@/components/layout/empty-state";
@@ -124,7 +138,11 @@ export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId",
 )({
   component: () => (
-    <PermissionGate feature="gabinet_appointments" action="view" loadingFallback={<AppointmentDetailSkeleton />}>
+    <PermissionGate
+      feature="gabinet_appointments"
+      action="view"
+      loadingFallback={<AppointmentDetailSkeleton />}
+    >
       <AppointmentDetail />
     </PermissionGate>
   ),
@@ -146,7 +164,10 @@ const VALID_TRANSITIONS: Record<string, string[]> = Object.fromEntries(
   ALL_STATUSES.map((s) => [s, ALL_STATUSES.filter((t) => t !== s)]),
 );
 
-function getSmsSummary(events: Array<Record<string, unknown>>, appointmentStatus: string) {
+function getSmsSummary(
+  events: Array<Record<string, unknown>>,
+  appointmentStatus: string,
+) {
   const latestOutbound = events.find(
     (event) =>
       event.direction === "outbound" &&
@@ -161,35 +182,62 @@ function getSmsSummary(events: Array<Record<string, unknown>>, appointmentStatus
   if (latestInbound) {
     if (latestInbound.processingStatus === "processed") {
       if (latestInbound.parsedIntent === "confirm") {
-        return { labelKey: "gabinet.appointmentDetail.sms.summaryConfirmed", tone: "default" as const };
+        return {
+          labelKey: "gabinet.appointmentDetail.sms.summaryConfirmed",
+          tone: "default" as const,
+        };
       }
       if (latestInbound.parsedIntent === "cancel") {
-        return { labelKey: "gabinet.appointmentDetail.sms.summaryCancelled", tone: "destructive" as const };
+        return {
+          labelKey: "gabinet.appointmentDetail.sms.summaryCancelled",
+          tone: "destructive" as const,
+        };
       }
     }
 
     if (latestInbound.processingStatus === "failed") {
-      return { labelKey: "gabinet.appointmentDetail.sms.summaryFailed", tone: "destructive" as const };
+      return {
+        labelKey: "gabinet.appointmentDetail.sms.summaryFailed",
+        tone: "destructive" as const,
+      };
     }
 
-    return { labelKey: "gabinet.appointmentDetail.sms.summaryIgnored", tone: "secondary" as const };
+    return {
+      labelKey: "gabinet.appointmentDetail.sms.summaryIgnored",
+      tone: "secondary" as const,
+    };
   }
 
   if (latestOutbound) {
     if (latestOutbound.processingStatus === "failed") {
-      return { labelKey: "gabinet.appointmentDetail.sms.summaryFailed", tone: "destructive" as const };
+      return {
+        labelKey: "gabinet.appointmentDetail.sms.summaryFailed",
+        tone: "destructive" as const,
+      };
     }
     if (latestOutbound.processingStatus === "pending") {
-      return { labelKey: "gabinet.appointmentDetail.sms.summaryQueued", tone: "outline" as const };
+      return {
+        labelKey: "gabinet.appointmentDetail.sms.summaryQueued",
+        tone: "outline" as const,
+      };
     }
-    return { labelKey: "gabinet.appointmentDetail.sms.summarySent", tone: "secondary" as const };
+    return {
+      labelKey: "gabinet.appointmentDetail.sms.summarySent",
+      tone: "secondary" as const,
+    };
   }
 
   if (appointmentStatus === "pending_confirmation") {
-    return { labelKey: "gabinet.appointmentDetail.sms.summaryAwaitingRequest", tone: "outline" as const };
+    return {
+      labelKey: "gabinet.appointmentDetail.sms.summaryAwaitingRequest",
+      tone: "outline" as const,
+    };
   }
 
-  return { labelKey: "gabinet.appointmentDetail.sms.summaryNoHistory", tone: "secondary" as const };
+  return {
+    labelKey: "gabinet.appointmentDetail.sms.summaryNoHistory",
+    tone: "secondary" as const,
+  };
 }
 
 function AppointmentDetail() {
@@ -231,7 +279,6 @@ function AppointmentDetail() {
 
   const { tags: tagDefinitions } = useTagDefinitions(organizationId);
 
-
   // Payment management state
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -239,14 +286,22 @@ function AppointmentDetail() {
   const [paymentNote, setPaymentNote] = useState("");
   const [paymentUseBalance, setPaymentUseBalance] = useState(false);
   const [isPaymentSubmitting, setIsPaymentSubmitting] = useState(false);
-  const [patientCreditBalance, setPatientCreditBalance] = useState<number | null>(
-    null,
-  );
+  const [patientCreditBalance, setPatientCreditBalance] = useState<
+    number | null
+  >(null);
   const [paymentPackageId, setPaymentPackageId] = useState<string | null>(null);
   const [paymentPackageItems, setPaymentPackageItems] = useState<
-    Array<{ treatmentId: string; variantId?: string; treatmentName: string; remaining: number; qty: number }>
+    Array<{
+      treatmentId: string;
+      variantId?: string;
+      treatmentName: string;
+      remaining: number;
+      qty: number;
+    }>
   >([]);
-  const [discountType, setDiscountType] = useState<"amount" | "percent">("amount");
+  const [discountType, setDiscountType] = useState<"amount" | "percent">(
+    "amount",
+  );
   const [discountValue, setDiscountValue] = useState("");
 
   // Body chart state
@@ -255,7 +310,13 @@ function AppointmentDetail() {
   const [usageDialogOpen, setUsageDialogOpen] = useState(false);
   const [usageDialogPkgId, setUsageDialogPkgId] = useState<string | null>(null);
   const [usageDialogItems, setUsageDialogItems] = useState<
-    Array<{ treatmentId: string; variantId?: string; treatmentName: string; remaining: number; qty: number }>
+    Array<{
+      treatmentId: string;
+      variantId?: string;
+      treatmentName: string;
+      remaining: number;
+      qty: number;
+    }>
   >([]);
   const [isUsageSubmitting, setIsUsageSubmitting] = useState(false);
 
@@ -270,7 +331,8 @@ function AppointmentDetail() {
   const [gateTargetStatus, setGateTargetStatus] = useState<string>("");
 
   // After-completion documents dialog (shown after appointment is completed)
-  const [afterCompletionDialogOpen, setAfterCompletionDialogOpen] = useState(false);
+  const [afterCompletionDialogOpen, setAfterCompletionDialogOpen] =
+    useState(false);
 
   // Document counts for gate checks and status badges (must be before early returns)
   const docCounts = useAppointmentDocumentCounts(appointmentId, organizationId);
@@ -287,8 +349,12 @@ function AppointmentDetail() {
   // (issue #1040) reflects new receipts immediately.
   const invalidateAppointmentCaches = async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetAppointments.all }),
-      queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.all }),
+      queryClient.invalidateQueries({
+        queryKey: supabaseKeys.gabinetAppointments.all,
+      }),
+      queryClient.invalidateQueries({
+        queryKey: supabaseKeys.scheduledActivities.all,
+      }),
       queryClient.invalidateQueries({ queryKey: supabaseKeys.activities.all }),
       queryClient.invalidateQueries({ queryKey: supabaseKeys.payments.all }),
     ]);
@@ -301,7 +367,9 @@ function AppointmentDetail() {
   const getPatientCreditAction = useAction(api.payments.getPatientCredit);
 
   // Package usage mutation
-  const usePackageTreatmentsBatch = useAction(api.gabinet.packages.usePackageTreatmentsBatch);
+  const usePackageTreatmentsBatch = useAction(
+    api.gabinet.packages.usePackageTreatmentsBatch,
+  );
 
   const getFullDetailAction = useAction(api.gabinet.appointments.getFullDetail);
   const {
@@ -324,23 +392,42 @@ function AppointmentDetail() {
     queryKey: ["gabinet.treatments.listActive", organizationId],
     queryFn: () => listActiveTreatments({ organizationId }),
     enabled: !!organizationId,
-  }) as { data: Array<{ _id: string; name: string; duration: number; price?: number; currency?: string }> | undefined };
+  }) as {
+    data:
+      | Array<{
+          _id: string;
+          name: string;
+          duration: number;
+          price?: number;
+          currency?: string;
+        }>
+      | undefined;
+  };
 
   const listLocationsAction = useAction(api.gabinet.locations.listLocations);
   const { data: locationsList } = useQuery({
     queryKey: ["gabinet.locations.listLocations", organizationId],
     queryFn: () => listLocationsAction({ organizationId }),
     enabled: !!organizationId,
-  }) as { data: Array<{ _id: string; name: string; isActive: boolean }> | undefined };
+  }) as {
+    data: Array<{ _id: string; name: string; isActive: boolean }> | undefined;
+  };
 
   const getLocationAction = useAction(api.gabinet.locations.getLocation);
   const { data: locationWithRooms } = useQuery({
     queryKey: ["gabinet.locations.getLocation", organizationId, editLocationId],
-    queryFn: () => getLocationAction({ organizationId, locationId: editLocationId }),
+    queryFn: () =>
+      getLocationAction({ organizationId, locationId: editLocationId }),
     enabled: !!organizationId && !!editLocationId,
-  }) as { data: { rooms?: Array<{ _id: string; name: string; isActive: boolean }> } | undefined };
+  }) as {
+    data:
+      | { rooms?: Array<{ _id: string; name: string; isActive: boolean }> }
+      | undefined;
+  };
 
-  const listSmsEventsAction = useAction(api.gabinet.appointmentSms.listByAppointment);
+  const listSmsEventsAction = useAction(
+    api.gabinet.appointmentSms.listByAppointment,
+  );
   const { data: smsEvents = [] } = useQuery({
     queryKey: [
       "gabinet.appointmentSms.listByAppointment",
@@ -353,15 +440,19 @@ function AppointmentDetail() {
         appointmentId: appointmentId as Id<"gabinetAppointments">,
       }),
     enabled: !!organizationId && !!appointmentId,
-  }) as { data: Array<{
-    _id: string;
-    direction: "inbound" | "outbound";
-    eventType: string;
-    rawBody?: string;
-    processingStatus?: string;
-    parsedIntent?: string;
-    createdAt: number;
-  }> | undefined };
+  }) as {
+    data:
+      | Array<{
+          _id: string;
+          direction: "inbound" | "outbound";
+          eventType: string;
+          rawBody?: string;
+          processingStatus?: string;
+          parsedIntent?: string;
+          createdAt: number;
+        }>
+      | undefined;
+  };
 
   const { data: activities } = useSupabaseActivitiesByEntity(
     organizationId,
@@ -377,12 +468,15 @@ function AppointmentDetail() {
     }),
   );
 
-  const { data: orgSettings } = useSupabaseOrgSettings(organizationId as string);
+  const { data: orgSettings } = useSupabaseOrgSettings(
+    organizationId as string,
+  );
 
   // Equipment list used to surface parameter units on the Documentation tab —
   // when the appointment's treatment lists required equipment, the editor
   // pre-fills the unit field with that equipment's catalog. See #1847.
-  const { data: orgEquipment } = useSupabaseGabinetEquipmentList(organizationId);
+  const { data: orgEquipment } =
+    useSupabaseGabinetEquipmentList(organizationId);
   const equipmentParameterUnits = useMemo(() => {
     const requiredIds =
       (detail?.treatment?.requiredEquipmentIds as string[] | undefined) ?? [];
@@ -434,7 +528,9 @@ function AppointmentDetail() {
 
   // Initialize tagIds from appointment data
   useEffect(() => {
-    setTagIds((detail?.appointment.tagIds as Id<"tagDefinitions">[] | undefined) ?? []);
+    setTagIds(
+      (detail?.appointment.tagIds as Id<"tagDefinitions">[] | undefined) ?? [],
+    );
   }, [detail?.appointment._id, detail?.appointment.tagIds]);
 
   // Seed reminder toggles from per-appointment overrides (falling back to org defaults).
@@ -447,19 +543,43 @@ function AppointmentDetail() {
     const appt = detail.appointment as Record<string, unknown>;
     let overrides: Record<string, boolean> = {};
     if (appt.reminderOverrides) {
-      try { overrides = JSON.parse(String(appt.reminderOverrides)); } catch {}
+      try {
+        overrides = JSON.parse(String(appt.reminderOverrides));
+      } catch {}
     }
-    setEditReminderSms48h("sms48h" in overrides ? overrides.sms48h : (orgSettings.reminderSms48h ?? false));
-    setEditReminderSms24h("sms24h" in overrides ? overrides.sms24h : (orgSettings.reminderSms24h ?? false));
-    setEditReminderEmail48h("email48h" in overrides ? overrides.email48h : (orgSettings.reminderEmail48h ?? false));
-    setEditReminderEmail24h("email24h" in overrides ? overrides.email24h : (orgSettings.reminderEmail24h ?? false));
+    setEditReminderSms48h(
+      "sms48h" in overrides
+        ? overrides.sms48h
+        : (orgSettings.reminderSms48h ?? false),
+    );
+    setEditReminderSms24h(
+      "sms24h" in overrides
+        ? overrides.sms24h
+        : (orgSettings.reminderSms24h ?? false),
+    );
+    setEditReminderEmail48h(
+      "email48h" in overrides
+        ? overrides.email48h
+        : (orgSettings.reminderEmail48h ?? false),
+    );
+    setEditReminderEmail24h(
+      "email24h" in overrides
+        ? overrides.email24h
+        : (orgSettings.reminderEmail24h ?? false),
+    );
   }, [detail, orgSettings]);
 
   // Track recently viewed
   useEffect(() => {
     if (detail && organizationId) {
-      const label = `${detail.treatment?.name ?? t("gabinet.appointments.appointment")} - ${detail.patient?.firstName ?? ""} ${detail.patient?.lastName ?? ""}`.trim();
-      trackView({ organizationId, entityType: "gabinetAppointments", entityId: appointmentId, entityLabel: label });
+      const label =
+        `${detail.treatment?.name ?? t("gabinet.appointments.appointment")} - ${detail.patient?.firstName ?? ""} ${detail.patient?.lastName ?? ""}`.trim();
+      trackView({
+        organizationId,
+        entityType: "gabinetAppointments",
+        entityId: appointmentId,
+        entityLabel: label,
+      });
     }
   }, [detail?.appointment._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -485,7 +605,9 @@ function AppointmentDetail() {
     } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
-      setTagIds((detail.appointment.tagIds as Id<"tagDefinitions">[] | undefined) ?? []);
+      setTagIds(
+        (detail.appointment.tagIds as Id<"tagDefinitions">[] | undefined) ?? [],
+      );
     } finally {
       setIsSavingTags(false);
     }
@@ -496,16 +618,38 @@ function AppointmentDetail() {
     if (!detail) return [];
     const { appointment: appt, treatment: treat } = detail;
     const fields: DetailField[] = [
-      { label: t("gabinet.treatments.treatment"), value: treat?.name ?? "-", fieldKey: "treatment" },
-      { label: t("common.date"), value: new Date(appt.date).toLocaleDateString(i18n.language), fieldKey: "date" },
-      { label: t("common.time"), value: `${appt.startTime?.substring(0, 5) ?? ""} - ${appt.endTime?.substring(0, 5) ?? ""}`, fieldKey: "time" },
+      {
+        label: t("gabinet.treatments.treatment"),
+        value: treat?.name ?? "-",
+        fieldKey: "treatment",
+      },
+      {
+        label: t("common.date"),
+        value: new Date(appt.date).toLocaleDateString(i18n.language),
+        fieldKey: "date",
+      },
+      {
+        label: t("common.time"),
+        value: `${appt.startTime?.substring(0, 5) ?? ""} - ${appt.endTime?.substring(0, 5) ?? ""}`,
+        fieldKey: "time",
+      },
     ];
     if (treat?.price !== undefined) {
-      fields.push({ label: t("common.price"), value: formatCurrencyPLN(treat.price, treat.currency ?? "PLN"), fieldKey: "price" });
-    }
-    if ((appt.status === "completed" || appt.status === "cancelled") && appt.updatedAt) {
       fields.push({
-        label: appt.status === "completed" ? t("gabinet.appointments.completedAt", "Zakończono") : t("gabinet.appointments.cancelledAt", "Anulowano"),
+        label: t("common.price"),
+        value: formatCurrencyPLN(treat.price, treat.currency ?? "PLN"),
+        fieldKey: "price",
+      });
+    }
+    if (
+      (appt.status === "completed" || appt.status === "cancelled") &&
+      appt.updatedAt
+    ) {
+      fields.push({
+        label:
+          appt.status === "completed"
+            ? t("gabinet.appointments.completedAt", "Zakończono")
+            : t("gabinet.appointments.cancelledAt", "Anulowano"),
         value: new Date(appt.updatedAt).toLocaleString(i18n.language),
         fieldKey: "statusDate",
       });
@@ -516,10 +660,24 @@ function AppointmentDetail() {
   // Sidebar extra: patient card, employee card, packages
   const sidebarExtra = (() => {
     if (!detail) return null;
-    const { appointment: appt, patient: pat, treatment: treat, employee: emp, patientPackageUsage: pkgUsage, loyaltyBalance: loyBal } = detail;
+    const {
+      appointment: appt,
+      patient: pat,
+      treatment: treat,
+      employee: emp,
+      patientPackageUsage: pkgUsage,
+      loyaltyBalance: loyBal,
+    } = detail;
     const empName = emp ? (emp.name ?? emp.email ?? "-") : "-";
+    // Post-#3399 the appointment row has no scalar treatmentId — match
+    // package usage against every treatment of the visit (junction rows).
+    const apptTreatmentIds = new Set(
+      (detail.treatments ?? [])
+        .map((jt) => jt.treatmentId)
+        .filter((id): id is string => Boolean(id)),
+    );
     const relevantPkgs = (pkgUsage ?? []).filter((pkg) =>
-      pkg.treatmentsUsed.some((tu) => tu.treatmentId === appt.treatmentId),
+      pkg.treatmentsUsed.some((tu) => apptTreatmentIds.has(tu.treatmentId)),
     );
 
     return (
@@ -529,14 +687,23 @@ function AppointmentDetail() {
           <ItemMedia>
             <Avatar className="h-9 w-9 bg-purple-100 dark:bg-purple-900/50">
               <AvatarFallback className="text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
-                {pat?.firstName && pat?.lastName ? `${pat.firstName[0]}${pat.lastName[0]}` : "?"}
+                {pat?.firstName && pat?.lastName
+                  ? `${pat.firstName[0]}${pat.lastName[0]}`
+                  : "?"}
               </AvatarFallback>
             </Avatar>
           </ItemMedia>
           <ItemContent>
-            <ItemTitle>{pat?.firstName} {pat?.lastName}</ItemTitle>
+            <ItemTitle>
+              {pat?.firstName} {pat?.lastName}
+            </ItemTitle>
             <ItemDescription className="text-xs">
-              {[pat?.phone ? formatPhoneNumber(pat.phone) : undefined, pat?.email].filter(Boolean).join(" · ")}
+              {[
+                pat?.phone ? formatPhoneNumber(pat.phone) : undefined,
+                pat?.email,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </ItemDescription>
             {loyBal > 0 && (
               <Badge variant="outline" className="mt-0.5 w-fit text-[10px]">
@@ -547,13 +714,20 @@ function AppointmentDetail() {
           </ItemContent>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="absolute right-1 top-1 size-7">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1 size-7"
+              >
                 <MoreVerticalCircle02 size={16} variant="stroke" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem asChild>
-                <Link to="/dashboard/gabinet/patients/$patientId" params={{ patientId: pat?._id ?? "" }}>
+                <Link
+                  to="/dashboard/gabinet/patients/$patientId"
+                  params={{ patientId: pat?._id ?? "" }}
+                >
                   <Eye size={14} variant="stroke" className="mr-2" />
                   {t("gabinet.patients.viewProfile", "Profil klienta")}
                 </Link>
@@ -561,12 +735,18 @@ function AppointmentDetail() {
               <DropdownMenuSeparator />
               {pat?.phone && (
                 <DropdownMenuItem asChild>
-                  <a href={`tel:${pat.phone}`}><Phone size={14} variant="stroke" className="mr-2" />{t("common.call", "Zadzwoń")}</a>
+                  <a href={`tel:${pat.phone}`}>
+                    <Phone size={14} variant="stroke" className="mr-2" />
+                    {t("common.call", "Zadzwoń")}
+                  </a>
                 </DropdownMenuItem>
               )}
               {pat?.email && (
                 <DropdownMenuItem asChild>
-                  <a href={`mailto:${pat.email}`}><Mail size={14} variant="stroke" className="mr-2" />{t("common.sendEmail", "Wyślij e-mail")}</a>
+                  <a href={`mailto:${pat.email}`}>
+                    <Mail size={14} variant="stroke" className="mr-2" />
+                    {t("common.sendEmail", "Wyślij e-mail")}
+                  </a>
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -580,24 +760,38 @@ function AppointmentDetail() {
               <Avatar className="h-9 w-9 bg-cyan-100 dark:bg-cyan-900/50">
                 {emp.image && <AvatarImage src={emp.image} alt={empName} />}
                 <AvatarFallback className="text-xs font-medium bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300">
-                  {empName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()}
+                  {empName
+                    .split(" ")
+                    .map((w: string) => w[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()}
                 </AvatarFallback>
               </Avatar>
             </ItemMedia>
             <ItemContent>
               <ItemTitle>{empName}</ItemTitle>
-              <ItemDescription className="text-xs">{emp.email ?? t("gabinet.employees.employee")}</ItemDescription>
+              <ItemDescription className="text-xs">
+                {emp.email ?? t("gabinet.employees.employee")}
+              </ItemDescription>
             </ItemContent>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="absolute right-1 top-1 size-7">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1 size-7"
+                >
                   <MoreVerticalCircle02 size={16} variant="stroke" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 {emp.email && (
                   <DropdownMenuItem asChild>
-                    <a href={`mailto:${emp.email}`}><Mail size={14} variant="stroke" className="mr-2" />{t("common.sendEmail", "Wyślij e-mail")}</a>
+                    <a href={`mailto:${emp.email}`}>
+                      <Mail size={14} variant="stroke" className="mr-2" />
+                      {t("common.sendEmail", "Wyślij e-mail")}
+                    </a>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
@@ -617,8 +811,8 @@ function AppointmentDetail() {
               {t("gabinet.packages.activePackages", "Aktywne pakiety")}
             </p>
             {relevantPkgs.map((pkg) => {
-              const relevantTreatment = pkg.treatmentsUsed.find(
-                (tu) => tu.treatmentId === appt.treatmentId,
+              const relevantTreatment = pkg.treatmentsUsed.find((tu) =>
+                apptTreatmentIds.has(tu.treatmentId),
               );
               const used = relevantTreatment?.usedCount ?? 0;
               const total = relevantTreatment?.totalCount ?? 0;
@@ -628,19 +822,34 @@ function AppointmentDetail() {
               if (remaining <= 0) barColor = "bg-red-500";
               else if (remaining / total < 0.3) barColor = "bg-amber-500";
               return (
-                <div key={pkg._id} className="rounded-md border p-2.5 space-y-1.5">
+                <div
+                  key={pkg._id}
+                  className="rounded-md border p-2.5 space-y-1.5"
+                >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-medium truncate">{pkg.packageName}</p>
-                    <Badge variant="outline" className={`text-[10px] shrink-0 ${pkg.status === "active" ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400" : ""}`}>
+                    <p className="text-xs font-medium truncate">
+                      {pkg.packageName}
+                    </p>
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] shrink-0 ${pkg.status === "active" ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400" : ""}`}
+                    >
                       {t(`gabinet.packages.status.${pkg.status}`)}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-muted-foreground truncate">{treat?.name}</span>
-                    <span className="tabular-nums text-muted-foreground shrink-0">{used} / {total}</span>
+                    <span className="text-muted-foreground truncate">
+                      {treat?.name}
+                    </span>
+                    <span className="tabular-nums text-muted-foreground shrink-0">
+                      {used} / {total}
+                    </span>
                   </div>
                   <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+                    <div
+                      className={`h-full rounded-full transition-all ${barColor}`}
+                      style={{ width: `${pct}%` }}
+                    />
                   </div>
                 </div>
               );
@@ -678,7 +887,11 @@ function AppointmentDetail() {
           <p className="text-sm text-muted-foreground">
             {t("common.notFoundDescription")}
           </p>
-          <Button variant="outline" size="sm" onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}
+          >
             &larr; {t("common.goBack")}
           </Button>
         </div>
@@ -759,7 +972,14 @@ function AppointmentDetail() {
       const result = await updateStatus({
         organizationId,
         appointmentId: appointment._id,
-        status: newStatus as "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled" | "no_show" | "pending_confirmation",
+        status: newStatus as
+          | "scheduled"
+          | "confirmed"
+          | "in_progress"
+          | "completed"
+          | "cancelled"
+          | "no_show"
+          | "pending_confirmation",
       });
       toast.success(t("gabinet.appointments.statusUpdated"));
       if (result?.warnings && result.warnings.length > 0) {
@@ -857,11 +1077,15 @@ function AppointmentDetail() {
     setIsSavingScheduling(true);
     try {
       const apptRaw = detail.appointment as Record<string, unknown>;
-      const currentTreatmentId = apptRaw.treatmentId ? String(apptRaw.treatmentId) : "";
+      const currentTreatmentId = apptRaw.treatmentId
+        ? String(apptRaw.treatmentId)
+        : "";
       const currentDate = (apptRaw.date as string) ?? "";
       const currentStart = ((apptRaw.startTime as string) ?? "").slice(0, 5);
       const currentEnd = ((apptRaw.endTime as string) ?? "").slice(0, 5);
-      const currentLocation = apptRaw.locationId ? String(apptRaw.locationId) : "";
+      const currentLocation = apptRaw.locationId
+        ? String(apptRaw.locationId)
+        : "";
       const currentRoom = apptRaw.roomId ? String(apptRaw.roomId) : "";
 
       const args: Parameters<typeof updateAppointment>[0] = {
@@ -872,7 +1096,8 @@ function AppointmentDetail() {
         args.treatmentId = editTreatmentId;
       }
       if (editDate && editDate !== currentDate) args.date = editDate;
-      if (editStartTime && editStartTime !== currentStart) args.startTime = editStartTime;
+      if (editStartTime && editStartTime !== currentStart)
+        args.startTime = editStartTime;
       if (editEndTime && editEndTime !== currentEnd) args.endTime = editEndTime;
       if (editLocationId !== currentLocation) {
         args.locationId = editLocationId || null;
@@ -1074,7 +1299,18 @@ function AppointmentDetail() {
   // a visit settled purely from credit lands as `amount=0, creditApplied=price`
   // (#1856), so without summing creditApplied the outstanding would stay at
   // the full visit price even after settlement.
-  const treatmentPrice = treatment?.price ?? 0;
+  // Multi-treatment visits (#3356): the amount due is the SUM of all junction
+  // rows, not the single resolved treatment's price. priceAtBooking is frozen
+  // at booking; fall back to the current catalog price, then to the legacy
+  // single-treatment price for pre-junction appointments.
+  const junctionTreatments = detail?.treatments ?? [];
+  const treatmentPrice =
+    junctionTreatments.length > 0
+      ? junctionTreatments.reduce((sum, jt) => {
+          const tr = treatmentsList?.find((t) => t._id === jt.treatmentId);
+          return sum + (jt.priceAtBooking ?? tr?.price ?? 0);
+        }, 0)
+      : (treatment?.price ?? 0);
   // gratis / barter always settle at the full treatment price and the amount
   // is locked (no manual edit) — the method just records that no cash changed
   // hands (gratis) or it was exchanged in kind (barter).
@@ -1102,7 +1338,10 @@ function AppointmentDetail() {
       event.direction === "inbound" &&
       event.eventType === "appointment_confirmation_reply",
   );
-  const smsSummary = getSmsSummary(smsEvents as Array<Record<string, unknown>>, appointment.status);
+  const smsSummary = getSmsSummary(
+    smsEvents as Array<Record<string, unknown>>,
+    appointment.status,
+  );
 
   // Build merged timeline using mergeTimelineSources
   const mergedTimeline = mergeTimelineSources({
@@ -1133,14 +1372,18 @@ function AppointmentDetail() {
   });
 
   // Header title and subtitle
-  const headerTitle = `${treatment?.name ?? t("gabinet.appointments.appointment")} - ${patient?.firstName ?? ""} ${patient?.lastName ?? ""}`.trim();
+  const headerTitle =
+    `${treatment?.name ?? t("gabinet.appointments.appointment")} - ${patient?.firstName ?? ""} ${patient?.lastName ?? ""}`.trim();
   const linkedPackageUsage = appointment.packageUsageId
-    ? patientPackageUsage.find((p) => String(p._id) === String(appointment.packageUsageId)) ?? null
+    ? (patientPackageUsage.find(
+        (p) => String(p._id) === String(appointment.packageUsageId),
+      ) ?? null)
     : null;
   const headerSubtitle = (
     <span className="flex flex-wrap items-center gap-x-2 gap-y-1 whitespace-normal">
       <span>
-        {formatDate(appointment.date)} &bull; {formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}
+        {formatDate(appointment.date)} &bull;{" "}
+        {formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}
       </span>
       {appointment.packageUsageId && (
         <Badge
@@ -1150,7 +1393,9 @@ function AppointmentDetail() {
           <Package className="h-3 w-3" variant="stroke" />
           <span className="truncate max-w-[180px]">
             {linkedPackageUsage?.packageName
-              ? t("gabinet.packages.partOfPackage", { name: linkedPackageUsage.packageName })
+              ? t("gabinet.packages.partOfPackage", {
+                  name: linkedPackageUsage.packageName,
+                })
               : t("gabinet.packages.partOfPackageGeneric")}
           </span>
         </Badge>
@@ -1177,50 +1422,58 @@ function AppointmentDetail() {
   };
 
   // Status dropdown as actions menu
-  const statusAction = availableTransitions.length > 0 ? (
-    <Select
-      value={appointment.status}
-      onValueChange={(value) => handleStatusChange(value)}
-      disabled={isUpdating}
-    >
-      <SelectTrigger className="h-9 w-auto gap-2 text-sm font-medium">
-        <span className="flex items-center gap-2">
-          <span className={`h-2 w-2 shrink-0 rounded-full ${statusDotColors[appointment.status] ?? "bg-muted-foreground"}`} />
-          {t(`gabinet.appointments.statuses.${appointment.status}`)}
-        </span>
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={appointment.status} disabled>
+  const statusAction =
+    availableTransitions.length > 0 ? (
+      <Select
+        value={appointment.status}
+        onValueChange={(value) => handleStatusChange(value)}
+        disabled={isUpdating}
+      >
+        <SelectTrigger className="h-9 w-auto gap-2 text-sm font-medium">
           <span className="flex items-center gap-2">
-            <span className={`h-2 w-2 shrink-0 rounded-full ${statusDotColors[appointment.status] ?? "bg-muted-foreground"}`} />
+            <span
+              className={`h-2 w-2 shrink-0 rounded-full ${statusDotColors[appointment.status] ?? "bg-muted-foreground"}`}
+            />
             {t(`gabinet.appointments.statuses.${appointment.status}`)}
           </span>
-        </SelectItem>
-        {availableTransitions.map((status) => {
-          const docBadge = getDocBadgeCount(status);
-          return (
-            <SelectItem key={status} value={status}>
-              <span className="flex items-center gap-2">
-                <span className={`h-2 w-2 shrink-0 rounded-full ${statusDotColors[status] ?? "bg-muted-foreground"}`} />
-                {t(`gabinet.appointments.statuses.${status}`)}
-                {docBadge > 0 && (
-                  <span className="inline-flex items-center justify-center h-5 min-w-5 px-1 text-xs font-bold rounded-full bg-destructive text-destructive-foreground">
-                    {docBadge}
-                  </span>
-                )}
-              </span>
-            </SelectItem>
-          );
-        })}
-      </SelectContent>
-    </Select>
-  ) : (
-    <span className="flex items-center gap-2 text-sm font-medium">
-      <span className={`h-2 w-2 shrink-0 rounded-full ${statusDotColors[appointment.status] ?? "bg-muted-foreground"}`} />
-      {t(`gabinet.appointments.statuses.${appointment.status}`)}
-    </span>
-  );
-
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={appointment.status} disabled>
+            <span className="flex items-center gap-2">
+              <span
+                className={`h-2 w-2 shrink-0 rounded-full ${statusDotColors[appointment.status] ?? "bg-muted-foreground"}`}
+              />
+              {t(`gabinet.appointments.statuses.${appointment.status}`)}
+            </span>
+          </SelectItem>
+          {availableTransitions.map((status) => {
+            const docBadge = getDocBadgeCount(status);
+            return (
+              <SelectItem key={status} value={status}>
+                <span className="flex items-center gap-2">
+                  <span
+                    className={`h-2 w-2 shrink-0 rounded-full ${statusDotColors[status] ?? "bg-muted-foreground"}`}
+                  />
+                  {t(`gabinet.appointments.statuses.${status}`)}
+                  {docBadge > 0 && (
+                    <span className="inline-flex items-center justify-center h-5 min-w-5 px-1 text-xs font-bold rounded-full bg-destructive text-destructive-foreground">
+                      {docBadge}
+                    </span>
+                  )}
+                </span>
+              </SelectItem>
+            );
+          })}
+        </SelectContent>
+      </Select>
+    ) : (
+      <span className="flex items-center gap-2 text-sm font-medium">
+        <span
+          className={`h-2 w-2 shrink-0 rounded-full ${statusDotColors[appointment.status] ?? "bg-muted-foreground"}`}
+        />
+        {t(`gabinet.appointments.statuses.${appointment.status}`)}
+      </span>
+    );
 
   // Build tabs array
   const tabs = [
@@ -1240,11 +1493,16 @@ function AppointmentDetail() {
               /* Multi-treatment: one row per junction entry, totals at bottom */
               <CardContent className="space-y-0 divide-y divide-border px-6 py-0">
                 {detail.treatments.map((jt) => {
-                  const tr = treatmentsList?.find((t) => t._id === jt.treatmentId);
+                  const tr = treatmentsList?.find(
+                    (t) => t._id === jt.treatmentId,
+                  );
                   const name = tr?.name ?? treatment?.name ?? "-";
                   const price = jt.priceAtBooking ?? tr?.price ?? null;
                   return (
-                    <div key={jt.id} className="flex items-center justify-between py-3">
+                    <div
+                      key={jt.id}
+                      className="flex items-center justify-between py-3"
+                    >
                       <div className="flex items-center gap-2">
                         <Stethoscope className="h-4 w-4 shrink-0 text-primary" />
                         <span className="text-sm font-medium">{name}</span>
@@ -1259,12 +1517,15 @@ function AppointmentDetail() {
                 })}
                 <div className="flex items-center justify-between py-3 font-semibold">
                   <span className="text-sm">
-                    {t("gabinet.appointments.totalDuration", "Łącznie")} · {calculateDuration()} min
+                    {t("gabinet.appointments.totalDuration", "Łącznie")} ·{" "}
+                    {calculateDuration()} min
                   </span>
                   <span className="text-sm">
                     {formatCurrencyPLN(
                       detail.treatments.reduce((sum, jt) => {
-                        const tr = treatmentsList?.find((t) => t._id === jt.treatmentId);
+                        const tr = treatmentsList?.find(
+                          (t) => t._id === jt.treatmentId,
+                        );
                         return sum + (jt.priceAtBooking ?? tr?.price ?? 0);
                       }, 0),
                     )}
@@ -1294,7 +1555,9 @@ function AppointmentDetail() {
                       formatCurrencyPLN(price ?? 0, currency ?? "PLN")
                     }
                     placeholder={t("gabinet.appointments.selectTreatment")}
-                    searchPlaceholder={t("gabinet.appointments.searchTreatment")}
+                    searchPlaceholder={t(
+                      "gabinet.appointments.searchTreatment",
+                    )}
                     emptyText={t("common.noResults")}
                     closeLabel={t("common.close")}
                     selectedLabel={treatment?.name}
@@ -1302,15 +1565,12 @@ function AppointmentDetail() {
                       <Stethoscope className="size-4 shrink-0 text-primary" />
                     }
                   />
-
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">
                     {t("gabinet.treatments.duration")}
                   </span>
-                  <span className="font-medium">
-                    {calculateDuration()} min
-                  </span>
+                  <span className="font-medium">{calculateDuration()} min</span>
                 </div>
                 {treatment?.price !== undefined && (
                   <div className="flex items-center justify-between">
@@ -1318,7 +1578,10 @@ function AppointmentDetail() {
                       {t("common.price")}
                     </span>
                     <span className="font-medium">
-                      {formatCurrencyPLN(treatment.price, treatment.currency ?? "PLN")}
+                      {formatCurrencyPLN(
+                        treatment.price,
+                        treatment.currency ?? "PLN",
+                      )}
                     </span>
                   </div>
                 )}
@@ -1327,7 +1590,9 @@ function AppointmentDetail() {
                     <span className="text-sm text-muted-foreground">
                       {t("common.description")}
                     </span>
-                    <p className="text-sm mt-1">{plateJsonToText(treatment.description)}</p>
+                    <p className="text-sm mt-1">
+                      {plateJsonToText(treatment.description)}
+                    </p>
                   </div>
                 )}
                 {treatment?.contraindications && (
@@ -1341,8 +1606,16 @@ function AppointmentDetail() {
                       </div>
                       {appointment.contraindicationAlertsReviewed ? (
                         <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                          <CheckCircle className="h-3.5 w-3.5" variant="stroke" />
-                          <span>{t("gabinet.appointmentDetail.contraindicationDiscussed", "Omówiono")}</span>
+                          <CheckCircle
+                            className="h-3.5 w-3.5"
+                            variant="stroke"
+                          />
+                          <span>
+                            {t(
+                              "gabinet.appointmentDetail.contraindicationDiscussed",
+                              "Omówiono",
+                            )}
+                          </span>
                         </div>
                       ) : (
                         <Button
@@ -1357,17 +1630,29 @@ function AppointmentDetail() {
                                 contraindicationAlertsReviewed: true,
                               });
                               await refetch();
-                              toast.success(t("gabinet.appointmentDetail.contraindicationMarked", "Oznaczono jako omówione"));
+                              toast.success(
+                                t(
+                                  "gabinet.appointmentDetail.contraindicationMarked",
+                                  "Oznaczono jako omówione",
+                                ),
+                              );
                             } catch {
-                              toast.error(t("common.errorOccurred", "Wystąpił błąd"));
+                              toast.error(
+                                t("common.errorOccurred", "Wystąpił błąd"),
+                              );
                             }
                           }}
                         >
-                          {t("gabinet.appointmentDetail.markContraindicationAsDiscussed", "Oznacz jako omówione")}
+                          {t(
+                            "gabinet.appointmentDetail.markContraindicationAsDiscussed",
+                            "Oznacz jako omówione",
+                          )}
                         </Button>
                       )}
                     </div>
-                    <p className="text-sm">{plateJsonToText(treatment.contraindications)}</p>
+                    <p className="text-sm">
+                      {plateJsonToText(treatment.contraindications)}
+                    </p>
                   </div>
                 )}
                 {!!(treatment as Record<string, unknown>)?.aftercare && (
@@ -1378,7 +1663,12 @@ function AppointmentDetail() {
                         {t("gabinet.treatments.aftercare")}
                       </span>
                     </div>
-                    <p className="text-sm">{plateJsonToText((treatment as Record<string, unknown>).aftercare as string)}</p>
+                    <p className="text-sm">
+                      {plateJsonToText(
+                        (treatment as Record<string, unknown>)
+                          .aftercare as string,
+                      )}
+                    </p>
                   </div>
                 )}
               </CardContent>
@@ -1440,9 +1730,17 @@ function AppointmentDetail() {
                   </div>
                   {latestOutboundSms ? (
                     <>
-                      <p className="text-sm">{(latestOutboundSms as Record<string, unknown>).rawBody as string}</p>
+                      <p className="text-sm">
+                        {
+                          (latestOutboundSms as Record<string, unknown>)
+                            .rawBody as string
+                        }
+                      </p>
                       <p className="text-xs text-muted-foreground">
-                        {t("gabinet.appointmentDetail.sms.processingStatus")}: {t(`gabinet.appointmentDetail.sms.processingStatuses.${(latestOutboundSms as Record<string, unknown>).processingStatus}`)}
+                        {t("gabinet.appointmentDetail.sms.processingStatus")}:{" "}
+                        {t(
+                          `gabinet.appointmentDetail.sms.processingStatuses.${(latestOutboundSms as Record<string, unknown>).processingStatus}`,
+                        )}
                       </p>
                     </>
                   ) : (
@@ -1459,16 +1757,32 @@ function AppointmentDetail() {
                   </div>
                   {latestInboundSms ? (
                     <>
-                      <p className="text-sm">{(latestInboundSms as Record<string, unknown>).rawBody as string}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {t("gabinet.appointmentDetail.sms.parsedIntent")}: {t(`gabinet.appointmentDetail.sms.intents.${(latestInboundSms as Record<string, unknown>).parsedIntent ?? "unknown"}`)}
+                      <p className="text-sm">
+                        {
+                          (latestInboundSms as Record<string, unknown>)
+                            .rawBody as string
+                        }
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {t("gabinet.appointmentDetail.sms.processingStatus")}: {t(`gabinet.appointmentDetail.sms.processingStatuses.${(latestInboundSms as Record<string, unknown>).processingStatus}`)}
+                        {t("gabinet.appointmentDetail.sms.parsedIntent")}:{" "}
+                        {t(
+                          `gabinet.appointmentDetail.sms.intents.${(latestInboundSms as Record<string, unknown>).parsedIntent ?? "unknown"}`,
+                        )}
                       </p>
-                      {(latestInboundSms as Record<string, unknown>).processingError && (
+                      <p className="text-xs text-muted-foreground">
+                        {t("gabinet.appointmentDetail.sms.processingStatus")}:{" "}
+                        {t(
+                          `gabinet.appointmentDetail.sms.processingStatuses.${(latestInboundSms as Record<string, unknown>).processingStatus}`,
+                        )}
+                      </p>
+                      {(latestInboundSms as Record<string, unknown>)
+                        .processingError && (
                         <p className="text-xs text-muted-foreground">
-                          {t("gabinet.appointmentDetail.sms.processingReason")}: {(latestInboundSms as Record<string, unknown>).processingError as string}
+                          {t("gabinet.appointmentDetail.sms.processingReason")}:{" "}
+                          {
+                            (latestInboundSms as Record<string, unknown>)
+                              .processingError as string
+                          }
                         </p>
                       )}
                     </>
@@ -1525,9 +1839,7 @@ function AppointmentDetail() {
             </CardHeader>
             <CardContent className="space-y-3 px-6 py-4">
               <RichTextEditor
-                placeholder={t(
-                  "gabinet.appointments.internalNotesPlaceholder",
-                )}
+                placeholder={t("gabinet.appointments.internalNotesPlaceholder")}
                 value={internalNotes}
                 onChange={(val) => setInternalNotes(val ?? "")}
               />
@@ -1666,11 +1978,16 @@ function AppointmentDetail() {
                     <tbody>
                       {payments.map((payment: Record<string, unknown>) => {
                         const creditEarned =
-                          (payment.creditEarned as number | null | undefined) ?? 0;
+                          (payment.creditEarned as number | null | undefined) ??
+                          0;
                         const creditApplied =
-                          (payment.creditApplied as number | null | undefined) ?? 0;
+                          (payment.creditApplied as
+                            | number
+                            | null
+                            | undefined) ?? 0;
                         const isCreditRefund =
-                          (payment.kind as string | null | undefined) === "credit_refund";
+                          (payment.kind as string | null | undefined) ===
+                          "credit_refund";
                         const currency = (payment.currency as string) ?? "PLN";
                         const creditBadges: Array<{
                           key: string;
@@ -1709,80 +2026,82 @@ function AppointmentDetail() {
                           }
                         }
                         return (
-                        <tr
-                          key={payment._id as string}
-                          className="border-b last:border-0 hover:bg-muted/30"
-                        >
-                          <td className="p-3">
-                            <p className="font-medium">
-                              {formatCurrencyPLN(
-                                payment.amount as number,
-                                currency,
+                          <tr
+                            key={payment._id as string}
+                            className="border-b last:border-0 hover:bg-muted/30"
+                          >
+                            <td className="p-3">
+                              <p className="font-medium">
+                                {formatCurrencyPLN(
+                                  payment.amount as number,
+                                  currency,
+                                )}
+                              </p>
+                              {creditBadges.length > 0 && (
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  {creditBadges.map((badge) => (
+                                    <Badge
+                                      key={badge.key}
+                                      variant="outline"
+                                      className={`text-[10px] font-normal ${badge.className}`}
+                                    >
+                                      {badge.label}
+                                    </Badge>
+                                  ))}
+                                </div>
                               )}
-                            </p>
-                            {creditBadges.length > 0 && (
-                              <div className="mt-1 flex flex-wrap gap-1">
-                                {creditBadges.map((badge) => (
-                                  <Badge
-                                    key={badge.key}
-                                    variant="outline"
-                                    className={`text-[10px] font-normal ${badge.className}`}
-                                  >
-                                    {badge.label}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                          </td>
-                          <td className="p-3">
-                            <Badge variant="outline">
-                              {t(
-                                `gabinet.payments.methods.${payment.paymentMethod}`,
-                              )}
-                            </Badge>
-                          </td>
-                          <td className="p-3 text-sm text-muted-foreground">
-                            {new Date(
-                              payment.createdAt as number,
-                            ).toLocaleDateString(i18n.language)}
-                          </td>
-                          <td className="p-3">
-                            <Badge
-                              variant={
-                                payment.status === "completed"
-                                  ? "default"
-                                  : payment.status === "refunded"
-                                    ? "destructive"
-                                    : "secondary"
-                              }
-                            >
-                              {t(
-                                `gabinet.payments.status.${payment.status}`,
-                              )}
-                            </Badge>
-                          </td>
-                          <td className="p-3 text-right">
-                            {payment.status === "pending" && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleMarkPaid(payment._id as string)}
+                            </td>
+                            <td className="p-3">
+                              <Badge variant="outline">
+                                {t(
+                                  `gabinet.payments.methods.${payment.paymentMethod}`,
+                                )}
+                              </Badge>
+                            </td>
+                            <td className="p-3 text-sm text-muted-foreground">
+                              {new Date(
+                                payment.createdAt as number,
+                              ).toLocaleDateString(i18n.language)}
+                            </td>
+                            <td className="p-3">
+                              <Badge
+                                variant={
+                                  payment.status === "completed"
+                                    ? "default"
+                                    : payment.status === "refunded"
+                                      ? "destructive"
+                                      : "secondary"
+                                }
                               >
-                                {t("gabinet.payments.markPaid")}
-                              </Button>
-                            )}
-                            {payment.status === "completed" && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-destructive"
-                                onClick={() => handleRefundPayment(payment._id as string)}
-                              >
-                                {t("gabinet.payments.refund")}
-                              </Button>
-                            )}
-                          </td>
-                        </tr>
+                                {t(`gabinet.payments.status.${payment.status}`)}
+                              </Badge>
+                            </td>
+                            <td className="p-3 text-right">
+                              {payment.status === "pending" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    handleMarkPaid(payment._id as string)
+                                  }
+                                >
+                                  {t("gabinet.payments.markPaid")}
+                                </Button>
+                              )}
+                              {payment.status === "completed" && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-destructive"
+                                  onClick={() =>
+                                    handleRefundPayment(payment._id as string)
+                                  }
+                                >
+                                  {t("gabinet.payments.refund")}
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
                         );
                       })}
                     </tbody>
@@ -1889,9 +2208,7 @@ function AppointmentDetail() {
                             variant="outline"
                             className={appointmentStatusBadgeClass(appt.status)}
                           >
-                            {t(
-                              `gabinet.appointments.statuses.${appt.status}`,
-                            )}
+                            {t(`gabinet.appointments.statuses.${appt.status}`)}
                           </Badge>
                         </Link>
                       </div>
@@ -1920,19 +2237,31 @@ function AppointmentDetail() {
               ) : (
                 <div className="space-y-3">
                   {patientPackageUsage.map((pkg) => {
-                    const totals = { used: pkg.totalUsed, total: pkg.totalCount };
+                    const totals = {
+                      used: pkg.totalUsed,
+                      total: pkg.totalCount,
+                    };
                     const progressPercent =
                       totals.total > 0
                         ? Math.min((totals.used / totals.total) * 100, 100)
                         : 0;
-                    const overallRemainingRatio = totals.total > 0 ? (totals.total - totals.used) / totals.total : 1;
+                    const overallRemainingRatio =
+                      totals.total > 0
+                        ? (totals.total - totals.used) / totals.total
+                        : 1;
                     let overallBarColor = "bg-emerald-500";
-                    if (overallRemainingRatio <= 0) overallBarColor = "bg-red-500";
-                    else if (overallRemainingRatio < 0.1) overallBarColor = "bg-red-500";
-                    else if (overallRemainingRatio < 0.3) overallBarColor = "bg-amber-500";
+                    if (overallRemainingRatio <= 0)
+                      overallBarColor = "bg-red-500";
+                    else if (overallRemainingRatio < 0.1)
+                      overallBarColor = "bg-red-500";
+                    else if (overallRemainingRatio < 0.3)
+                      overallBarColor = "bg-amber-500";
 
                     return (
-                      <div key={pkg._id} className="p-4 border rounded-lg space-y-3">
+                      <div
+                        key={pkg._id}
+                        className="p-4 border rounded-lg space-y-3"
+                      >
                         <div className="flex items-center justify-between">
                           <p className="font-medium">
                             {pkg.packageName ?? t("gabinet.packages.package")}
@@ -1946,25 +2275,41 @@ function AppointmentDetail() {
                                   setUsageDialogPkgId(pkg._id);
                                   setUsageDialogItems(
                                     pkg.treatmentsUsed
-                                      .filter((e) => (e.usedCount ?? 0) < (e.totalCount ?? 0))
+                                      .filter(
+                                        (e) =>
+                                          (e.usedCount ?? 0) <
+                                          (e.totalCount ?? 0),
+                                      )
                                       .map((e) => ({
                                         treatmentId: e.treatmentId,
-                                        variantId: (e as any).variantId ?? undefined,
-                                        treatmentName: e.treatmentName ?? t("gabinet.packages.treatment"),
-                                        remaining: (e.totalCount ?? 0) - (e.usedCount ?? 0),
+                                        variantId:
+                                          (e as any).variantId ?? undefined,
+                                        treatmentName:
+                                          e.treatmentName ??
+                                          t("gabinet.packages.treatment"),
+                                        remaining:
+                                          (e.totalCount ?? 0) -
+                                          (e.usedCount ?? 0),
                                         qty: 0,
                                       })),
                                   );
                                   setUsageDialogOpen(true);
                                 }}
                               >
-                                <Plus className="mr-1 h-3.5 w-3.5" variant="stroke" />
+                                <Plus
+                                  className="mr-1 h-3.5 w-3.5"
+                                  variant="stroke"
+                                />
                                 {t("gabinet.packages.useMultiple")}
                               </Button>
                             )}
                             <Badge
                               variant="outline"
-                              className={pkg.status === "active" ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400" : ""}
+                              className={
+                                pkg.status === "active"
+                                  ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"
+                                  : ""
+                              }
                             >
                               {t(`gabinet.packages.status.${pkg.status}`)}
                             </Badge>
@@ -1978,7 +2323,9 @@ function AppointmentDetail() {
                               {t("gabinet.packages.overallProgress")}
                             </span>
                             <span className="tabular-nums">
-                              {t("gabinet.packages.completionPercent", { percent: Math.round(progressPercent) })}
+                              {t("gabinet.packages.completionPercent", {
+                                percent: Math.round(progressPercent),
+                              })}
                             </span>
                           </div>
                           <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -1993,44 +2340,65 @@ function AppointmentDetail() {
 
                         {/* Per-treatment progress bars */}
                         {pkg.treatmentsUsed.length > 0 && (
-                            <div className="space-y-2">
-                              <p className="text-xs font-medium text-muted-foreground">
-                                {t("gabinet.packages.perTreatmentProgress")}
-                              </p>
-                              {pkg.treatmentsUsed.map((entry, index) => {
-                                const usedCount = entry.usedCount ?? 0;
-                                const totalCount = entry.totalCount ?? 0;
-                                const remaining = totalCount - usedCount;
-                                const pct = totalCount > 0 ? Math.round((usedCount / totalCount) * 100) : 0;
-                                const remainingRatio = totalCount > 0 ? remaining / totalCount : 1;
-                                let barColor = "bg-emerald-500";
-                                let statusLabel = t("gabinet.packages.plentyRemaining");
-                                if (remainingRatio <= 0) { barColor = "bg-red-500"; statusLabel = t("gabinet.packages.fullyUsed"); }
-                                else if (remainingRatio < 0.1) { barColor = "bg-red-500"; statusLabel = t("gabinet.packages.almostExhausted"); }
-                                else if (remainingRatio < 0.3) { barColor = "bg-amber-500"; statusLabel = t("gabinet.packages.runningLow"); }
-
-                                return (
-                                  <div key={`${pkg._id}-${entry.treatmentId ?? index}`} className="space-y-1">
-                                    <div className="flex items-center justify-between text-xs">
-                                      <span className="truncate max-w-[50%]">
-                                        {entry.treatmentName ?? t("gabinet.treatments.treatment")}
-                                      </span>
-                                      <span className="text-muted-foreground tabular-nums">
-                                        {usedCount} / {totalCount}
-                                        <span className="ml-1.5 text-[10px]">({statusLabel})</span>
-                                      </span>
-                                    </div>
-                                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                                      <div
-                                        className={`h-full transition-all rounded-full ${barColor}`}
-                                        style={{ width: `${pct}%` }}
-                                      />
-                                    </div>
-                                  </div>
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium text-muted-foreground">
+                              {t("gabinet.packages.perTreatmentProgress")}
+                            </p>
+                            {pkg.treatmentsUsed.map((entry, index) => {
+                              const usedCount = entry.usedCount ?? 0;
+                              const totalCount = entry.totalCount ?? 0;
+                              const remaining = totalCount - usedCount;
+                              const pct =
+                                totalCount > 0
+                                  ? Math.round((usedCount / totalCount) * 100)
+                                  : 0;
+                              const remainingRatio =
+                                totalCount > 0 ? remaining / totalCount : 1;
+                              let barColor = "bg-emerald-500";
+                              let statusLabel = t(
+                                "gabinet.packages.plentyRemaining",
+                              );
+                              if (remainingRatio <= 0) {
+                                barColor = "bg-red-500";
+                                statusLabel = t("gabinet.packages.fullyUsed");
+                              } else if (remainingRatio < 0.1) {
+                                barColor = "bg-red-500";
+                                statusLabel = t(
+                                  "gabinet.packages.almostExhausted",
                                 );
-                              })}
-                            </div>
-                          )}
+                              } else if (remainingRatio < 0.3) {
+                                barColor = "bg-amber-500";
+                                statusLabel = t("gabinet.packages.runningLow");
+                              }
+
+                              return (
+                                <div
+                                  key={`${pkg._id}-${entry.treatmentId ?? index}`}
+                                  className="space-y-1"
+                                >
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="truncate max-w-[50%]">
+                                      {entry.treatmentName ??
+                                        t("gabinet.treatments.treatment")}
+                                    </span>
+                                    <span className="text-muted-foreground tabular-nums">
+                                      {usedCount} / {totalCount}
+                                      <span className="ml-1.5 text-[10px]">
+                                        ({statusLabel})
+                                      </span>
+                                    </span>
+                                  </div>
+                                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                                    <div
+                                      className={`h-full transition-all rounded-full ${barColor}`}
+                                      style={{ width: `${pct}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
 
                         {!!pkg.expiresAt && (
                           <p className="text-xs text-muted-foreground">
@@ -2083,33 +2451,35 @@ function AppointmentDetail() {
                     {t("gabinet.loyalty.recentTransactions")}
                   </h4>
                   <div className="space-y-2">
-                    {loyaltyTransactions.slice(0, 5).map((tx: Record<string, unknown>) => (
-                      <div
-                        key={tx._id as string}
-                        className="flex items-center justify-between p-2 border rounded"
-                      >
-                        <div>
-                          <p className="text-sm">
-                            {t(`gabinet.loyalty.txTypes.${tx.type}`)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(tx.createdAt as number).toLocaleDateString(
-                              "pl-PL",
-                            )}
-                          </p>
-                        </div>
-                        <span
-                          className={
-                            (tx.points as number) > 0
-                              ? "text-green-600 font-medium"
-                              : "text-destructive font-medium"
-                          }
+                    {loyaltyTransactions
+                      .slice(0, 5)
+                      .map((tx: Record<string, unknown>) => (
+                        <div
+                          key={tx._id as string}
+                          className="flex items-center justify-between p-2 border rounded"
                         >
-                          {(tx.points as number) > 0 ? "+" : ""}
-                          {tx.points as number}
-                        </span>
-                      </div>
-                    ))}
+                          <div>
+                            <p className="text-sm">
+                              {t(`gabinet.loyalty.txTypes.${tx.type}`)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(
+                                tx.createdAt as number,
+                              ).toLocaleDateString("pl-PL")}
+                            </p>
+                          </div>
+                          <span
+                            className={
+                              (tx.points as number) > 0
+                                ? "text-green-600 font-medium"
+                                : "text-destructive font-medium"
+                            }
+                          >
+                            {(tx.points as number) > 0 ? "+" : ""}
+                            {tx.points as number}
+                          </span>
+                        </div>
+                      ))}
                   </div>
                 </div>
               )}
@@ -2135,9 +2505,13 @@ function AppointmentDetail() {
                       <p className="text-2xl font-bold text-green-600">
                         {formatCurrencyPLN(
                           allPatientPayments
-                            .filter((p: Record<string, unknown>) => p.status === "completed")
+                            .filter(
+                              (p: Record<string, unknown>) =>
+                                p.status === "completed",
+                            )
                             .reduce(
-                              (sum: number, p: Record<string, unknown>) => sum + (p.amount as number),
+                              (sum: number, p: Record<string, unknown>) =>
+                                sum + (p.amount as number),
                               0,
                             ),
                         )}
@@ -2150,7 +2524,8 @@ function AppointmentDetail() {
                       <p className="text-sm font-medium">
                         {allPatientPayments[0]
                           ? new Date(
-                              (allPatientPayments[0] as Record<string, unknown>).createdAt as number,
+                              (allPatientPayments[0] as Record<string, unknown>)
+                                .createdAt as number,
                             ).toLocaleDateString(i18n.language)
                           : "-"}
                       </p>
@@ -2255,7 +2630,7 @@ function AppointmentDetail() {
         <AppointmentDocumentChecklist
           appointmentId={appointmentId}
           organizationId={organizationId}
-          treatmentId={appointment.treatmentId}
+          treatmentId={detail.treatments?.[0]?.treatmentId ?? undefined}
         />
       ),
     },
@@ -2269,7 +2644,11 @@ function AppointmentDetail() {
         onBack={() => navigate({ to: "/dashboard/gabinet/calendar" })}
         title={headerTitle}
         subtitle={headerSubtitle}
-        avatarFallback={patient ? `${patient.firstName?.[0] ?? ""}${patient.lastName?.[0] ?? ""}`.toUpperCase() : "?"}
+        avatarFallback={
+          patient
+            ? `${patient.firstName?.[0] ?? ""}${patient.lastName?.[0] ?? ""}`.toUpperCase()
+            : "?"
+        }
         actionsMenu={statusAction}
         fields={detailFields}
         expandedFieldCount={5}
@@ -2291,7 +2670,9 @@ function AppointmentDetail() {
           onOpenChange={setChangeEmployeeOpen}
           organizationId={organizationId}
           appointmentId={appointmentId as Id<"gabinetAppointments">}
-          treatmentId={detail.appointment.treatmentId as Id<"gabinetTreatments">}
+          treatmentId={
+            detail.treatments?.[0]?.treatmentId as Id<"gabinetTreatments">
+          }
           currentEmployeeId={detail.appointment.employeeId}
           appointmentDate={detail.appointment.date}
           startTime={detail.appointment.startTime}
@@ -2386,8 +2767,12 @@ function AppointmentDetail() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="amount">{t("gabinet.payments.discountTypeAmount")}</SelectItem>
-                      <SelectItem value="percent">{t("gabinet.payments.discountTypePercent")}</SelectItem>
+                      <SelectItem value="amount">
+                        {t("gabinet.payments.discountTypeAmount")}
+                      </SelectItem>
+                      <SelectItem value="percent">
+                        {t("gabinet.payments.discountTypePercent")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <div className="relative flex-1">
@@ -2403,15 +2788,23 @@ function AppointmentDetail() {
                           const disc =
                             discountType === "amount"
                               ? Math.min(parsed, outstanding)
-                              : Math.round(outstanding * Math.min(parsed, 100) / 100 * 100) / 100;
-                          setPaymentAmount(Math.max(0, outstanding - disc).toFixed(2));
+                              : Math.round(
+                                  ((outstanding * Math.min(parsed, 100)) /
+                                    100) *
+                                    100,
+                                ) / 100;
+                          setPaymentAmount(
+                            Math.max(0, outstanding - disc).toFixed(2),
+                          );
                         }
                       }}
                       placeholder={discountType === "percent" ? "0" : "0.00"}
                       className={discountType === "percent" ? "pr-8" : ""}
                     />
                     {discountType === "percent" && (
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">%</span>
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                        %
+                      </span>
                     )}
                   </div>
                 </div>
@@ -2423,7 +2816,9 @@ function AppointmentDetail() {
                 type="text"
                 inputMode="decimal"
                 value={
-                  isFixedAmountMethod ? treatmentPrice.toFixed(2) : paymentAmount
+                  isFixedAmountMethod
+                    ? treatmentPrice.toFixed(2)
+                    : paymentAmount
                 }
                 disabled={isFixedAmountMethod}
                 onChange={(e) => {
@@ -2441,7 +2836,8 @@ function AppointmentDetail() {
               )}
               {outstanding > 0 && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {t("gabinet.payments.outstanding")}: {formatCurrencyPLN(outstanding)}
+                  {t("gabinet.payments.outstanding")}:{" "}
+                  {formatCurrencyPLN(outstanding)}
                 </p>
               )}
               {(() => {
@@ -2532,7 +2928,8 @@ function AppointmentDetail() {
               <div className="space-y-3 rounded-md border p-3">
                 <div>
                   <Label>{t("gabinet.packages.selectPackage")}</Label>
-                  {patientPackageUsage.filter((p) => p.status === "active").length === 0 ? (
+                  {patientPackageUsage.filter((p) => p.status === "active")
+                    .length === 0 ? (
                     <p className="text-sm text-muted-foreground mt-1">
                       {t("gabinet.packages.noActivePackages")}
                     </p>
@@ -2541,22 +2938,33 @@ function AppointmentDetail() {
                       value={paymentPackageId ?? ""}
                       onValueChange={(pkgId) => {
                         setPaymentPackageId(pkgId);
-                        const pkg = patientPackageUsage.find((p) => p._id === pkgId);
+                        const pkg = patientPackageUsage.find(
+                          (p) => p._id === pkgId,
+                        );
                         setPaymentPackageItems(
                           (pkg?.treatmentsUsed ?? [])
-                            .filter((e) => (e.usedCount ?? 0) < (e.totalCount ?? 0))
+                            .filter(
+                              (e) => (e.usedCount ?? 0) < (e.totalCount ?? 0),
+                            )
                             .map((e) => ({
                               treatmentId: e.treatmentId,
                               variantId: (e as any).variantId ?? undefined,
-                              treatmentName: e.treatmentName ?? t("gabinet.packages.treatment"),
-                              remaining: (e.totalCount ?? 0) - (e.usedCount ?? 0),
+                              treatmentName:
+                                e.treatmentName ??
+                                t("gabinet.packages.treatment"),
+                              remaining:
+                                (e.totalCount ?? 0) - (e.usedCount ?? 0),
                               qty: 0,
-                            }))
+                            })),
                         );
                       }}
                     >
                       <SelectTrigger className="mt-1">
-                        <SelectValue placeholder={t("gabinet.packages.selectPackagePlaceholder")} />
+                        <SelectValue
+                          placeholder={t(
+                            "gabinet.packages.selectPackagePlaceholder",
+                          )}
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         {patientPackageUsage
@@ -2582,11 +2990,18 @@ function AppointmentDetail() {
                           {t("gabinet.packages.perTreatmentProgress")}
                         </p>
                         {paymentPackageItems.map((item, idx) => (
-                          <div key={item.treatmentId} className="flex items-center gap-3">
+                          <div
+                            key={item.treatmentId}
+                            className="flex items-center gap-3"
+                          >
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{item.treatmentName}</p>
+                              <p className="text-sm font-medium truncate">
+                                {item.treatmentName}
+                              </p>
                               <p className="text-xs text-muted-foreground">
-                                {t("gabinet.packages.availableRemaining", { remaining: item.remaining })}
+                                {t("gabinet.packages.availableRemaining", {
+                                  remaining: item.remaining,
+                                })}
                               </p>
                             </div>
                             <Input
@@ -2597,9 +3012,17 @@ function AppointmentDetail() {
                               max={item.remaining}
                               value={item.qty}
                               onChange={(e) => {
-                                const val = Math.max(0, Math.min(item.remaining, parseInt(e.target.value) || 0));
+                                const val = Math.max(
+                                  0,
+                                  Math.min(
+                                    item.remaining,
+                                    parseInt(e.target.value) || 0,
+                                  ),
+                                );
                                 setPaymentPackageItems((prev) =>
-                                  prev.map((it, i) => (i === idx ? { ...it, qty: val } : it))
+                                  prev.map((it, i) =>
+                                    i === idx ? { ...it, qty: val } : it,
+                                  ),
                                 );
                               }}
                             />
@@ -2658,9 +3081,13 @@ function AppointmentDetail() {
               usageDialogItems.map((item, idx) => (
                 <div key={item.treatmentId} className="flex items-center gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{item.treatmentName}</p>
+                    <p className="text-sm font-medium truncate">
+                      {item.treatmentName}
+                    </p>
                     <p className="text-xs text-muted-foreground">
-                      {t("gabinet.packages.availableRemaining", { remaining: item.remaining })}
+                      {t("gabinet.packages.availableRemaining", {
+                        remaining: item.remaining,
+                      })}
                     </p>
                   </div>
                   <Input
@@ -2671,9 +3098,14 @@ function AppointmentDetail() {
                     max={item.remaining}
                     value={item.qty}
                     onChange={(e) => {
-                      const val = Math.max(0, Math.min(item.remaining, parseInt(e.target.value) || 0));
+                      const val = Math.max(
+                        0,
+                        Math.min(item.remaining, parseInt(e.target.value) || 0),
+                      );
                       setUsageDialogItems((prev) =>
-                        prev.map((it, i) => (i === idx ? { ...it, qty: val } : it)),
+                        prev.map((it, i) =>
+                          i === idx ? { ...it, qty: val } : it,
+                        ),
                       );
                     }}
                   />
@@ -2682,10 +3114,7 @@ function AppointmentDetail() {
             )}
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setUsageDialogOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setUsageDialogOpen(false)}>
               {t("common.cancel")}
             </Button>
             <Button
@@ -2722,7 +3151,9 @@ function AppointmentDetail() {
                 }
               }}
             >
-              {isUsageSubmitting ? t("common.saving") : t("gabinet.packages.recordUsage")}
+              {isUsageSubmitting
+                ? t("common.saving")
+                : t("gabinet.packages.recordUsage")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -3872,7 +3872,7 @@
         "card": "Karta",
         "cash": "Gotówka",
         "other": "Inna",
-        "package": "Seria/Karnet",
+        "package": "Karnet/seria/pakiet",
         "gratis": "Gratis",
         "barter": "Barter",
         "transfer": "Przelew"

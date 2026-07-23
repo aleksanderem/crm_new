@@ -2526,7 +2526,8 @@ function AppointmentDetail() {
           organizationId={organizationId}
           appointmentId={appointmentId as Id<"gabinetAppointments">}
           treatmentIds={
-            (detail.treatments?.map((t) => t.treatmentId) ?? []) as Id<"gabinetTreatments">[]
+            (detail.treatments?.map((t) => t.treatmentId) ??
+              []) as Id<"gabinetTreatments">[]
           }
           currentEmployeeId={detail.appointment.employeeId}
           appointmentDate={detail.appointment.date}
@@ -2616,6 +2617,7 @@ function AppointmentDetail() {
               treatmentsList={treatmentsList}
               payments={payments as Array<Record<string, unknown>>}
               patientPackageUsage={patientPackageUsage}
+              linkedPackageUsageId={appointment.packageUsageId ?? null}
               onSuccess={() => {
                 setPaymentDialogOpen(false);
                 refetch();

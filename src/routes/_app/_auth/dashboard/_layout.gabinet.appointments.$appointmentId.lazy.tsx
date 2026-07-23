@@ -43,6 +43,7 @@ import { ChangeEmployeeModal } from "@/components/gabinet/change-employee-modal"
 import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 import { DocumentationTab } from "@/components/gabinet/documentation-tab";
 import { TreatmentPicker } from "@/components/gabinet/appointment-shared/treatment-picker";
+import { SettlementForm } from "@/components/gabinet/appointment-shared/settlement-form";
 import {
   RichTextEditor,
   plateJsonToText,
@@ -281,28 +282,6 @@ function AppointmentDetail() {
 
   // Payment management state
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<string>("cash");
-  const [paymentNote, setPaymentNote] = useState("");
-  const [paymentUseBalance, setPaymentUseBalance] = useState(false);
-  const [isPaymentSubmitting, setIsPaymentSubmitting] = useState(false);
-  const [patientCreditBalance, setPatientCreditBalance] = useState<
-    number | null
-  >(null);
-  const [paymentPackageId, setPaymentPackageId] = useState<string | null>(null);
-  const [paymentPackageItems, setPaymentPackageItems] = useState<
-    Array<{
-      treatmentId: string;
-      variantId?: string;
-      treatmentName: string;
-      remaining: number;
-      qty: number;
-    }>
-  >([]);
-  const [discountType, setDiscountType] = useState<"amount" | "percent">(
-    "amount",
-  );
-  const [discountValue, setDiscountValue] = useState("");
 
   // Body chart state
 
@@ -361,10 +340,8 @@ function AppointmentDetail() {
   };
 
   // Payment actions (Supabase-primary)
-  const createPayment = useAction(api.payments.create);
   const markPaymentPaid = useAction(api.payments.markPaid);
   const refundPayment = useAction(api.payments.refund);
-  const getPatientCreditAction = useAction(api.payments.getPatientCredit);
 
   // Package usage mutation
   const usePackageTreatmentsBatch = useAction(
@@ -1125,130 +1102,6 @@ function AppointmentDetail() {
     }
   };
 
-  // Open the Add Payment dialog and fetch the patient's current credit
-  // balance — needed so the dialog can offer "Użyj salda klienta" with a
-  // correct cap. Best-effort: failure leaves balance at null and hides the
-  // option, the user can still record the payment.
-  const openPaymentDialog = async () => {
-    setPaymentDialogOpen(true);
-    setPaymentUseBalance(false);
-    setPaymentPackageId(null);
-    setPaymentPackageItems([]);
-    setDiscountType("amount");
-    setDiscountValue("");
-    if (patient?._id) {
-      try {
-        const credit = await getPatientCreditAction({
-          organizationId,
-          patientId: patient._id,
-        });
-        setPatientCreditBalance(credit.balance);
-      } catch {
-        setPatientCreditBalance(null);
-      }
-    }
-  };
-
-  // Payment handlers
-  const handleCreatePayment = async () => {
-    const normalizedAmount = paymentAmount.replace(",", ".");
-    if (!paymentAmount || isNaN(parseFloat(normalizedAmount))) {
-      toast.error(t("gabinet.payments.amountRequired"));
-      return;
-    }
-
-    const amount = parseFloat(normalizedAmount);
-    // Issue #1690: any portion of `amount` above the visit's outstanding
-    // automatically flows to the patient's credit balance as creditEarned.
-    // Outstanding is treatmentPrice - sum(completed payments) at the moment
-    // of submit, so the math stays consistent with what the user sees in the
-    // summary card.
-    const outstandingNow = Math.max(0, treatmentPrice - totalPaid);
-    const creditEarned =
-      amount > outstandingNow + 0.005
-        ? Math.round((amount - outstandingNow) * 100) / 100
-        : 0;
-    // Issue #1690: when "Użyj salda klienta" is checked, apply available
-    // balance against the visit. We send creditApplied so the backend
-    // deducts from the patient ledger; it does not increase `amount`.
-    const balanceAvailable = patientCreditBalance ?? 0;
-    const creditApplied =
-      paymentUseBalance && balanceAvailable > 0
-        ? Math.round(
-            Math.min(balanceAvailable, Math.max(0, outstandingNow - amount)) *
-              100,
-          ) / 100
-        : 0;
-
-    setIsPaymentSubmitting(true);
-    try {
-      if (paymentMethod === "package" && paymentPackageId) {
-        const pkgItems = paymentPackageItems
-          .filter((it) => it.qty > 0)
-          .map((it) => ({
-            treatmentId: it.treatmentId,
-            ...(it.variantId ? { variantId: it.variantId } : {}),
-            quantity: it.qty,
-          }));
-        if (pkgItems.length > 0) {
-          await usePackageTreatmentsBatch({
-            organizationId,
-            usageId: paymentPackageId,
-            items: pkgItems,
-            appointmentId,
-          });
-        }
-      }
-
-      await createPayment({
-        organizationId,
-        patientId: patient!._id,
-        appointmentId: appointment._id,
-        amount,
-        currency: "PLN",
-        paymentMethod: paymentMethod as
-          | "cash"
-          | "card"
-          | "transfer"
-          | "package"
-          | "gratis"
-          | "barter"
-          | "other",
-        notes: paymentNote || undefined,
-        creditEarned: creditEarned > 0 ? creditEarned : undefined,
-        creditApplied: creditApplied > 0 ? creditApplied : undefined,
-      });
-
-      toast.success(t("gabinet.payments.created"));
-      setPaymentDialogOpen(false);
-      setPaymentAmount("");
-      setPaymentNote("");
-      setPaymentUseBalance(false);
-      setPaymentPackageId(null);
-      setPaymentPackageItems([]);
-      setDiscountType("amount");
-      setDiscountValue("");
-      refetch();
-      // Refresh credit balance for any further dialog opens.
-      if (patient?._id) {
-        try {
-          const credit = await getPatientCreditAction({
-            organizationId,
-            patientId: patient._id,
-          });
-          setPatientCreditBalance(credit.balance);
-        } catch {
-          // best-effort; balance will refresh next time the dialog opens
-        }
-      }
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : t("common.error");
-      toast.error(msg);
-    } finally {
-      setIsPaymentSubmitting(false);
-    }
-  };
-
   const handleMarkPaid = async (paymentId: string) => {
     try {
       await markPaymentPaid({
@@ -1318,11 +1171,6 @@ function AppointmentDetail() {
           return sum + (jt.priceAtBooking ?? tr?.price ?? 0);
         }, 0)
       : (treatment?.price ?? 0);
-  // gratis / barter always settle at the full treatment price and the amount
-  // is locked (no manual edit) — the method just records that no cash changed
-  // hands (gratis) or it was exchanged in kind (barter).
-  const isFixedAmountMethod =
-    paymentMethod === "gratis" || paymentMethod === "barter";
   const totalPaid = payments
     .filter((p: Record<string, unknown>) => p.status === "completed")
     .reduce(
@@ -1941,7 +1789,7 @@ function AppointmentDetail() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => void openPaymentDialog()}
+                onClick={() => setPaymentDialogOpen(true)}
               >
                 <Plus className="mr-2 h-4 w-4" variant="stroke" />
                 {t("gabinet.payments.addPayment")}
@@ -1954,7 +1802,7 @@ function AppointmentDetail() {
                   title={t("gabinet.payments.noPayments")}
                   description={t("gabinet.payments.noPaymentsDesc")}
                   action={
-                    <Button onClick={() => void openPaymentDialog()}>
+                    <Button onClick={() => setPaymentDialogOpen(true)}>
                       <Plus className="mr-2 h-4 w-4" variant="stroke" />
                       {t("gabinet.payments.addFirst")}
                     </Button>
@@ -2758,315 +2606,23 @@ function AppointmentDetail() {
               {t("gabinet.payments.addPaymentDesc")}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            {!isFixedAmountMethod && outstanding > 0 && (
-              <div>
-                <Label>{t("gabinet.payments.discount")}</Label>
-                <div className="flex gap-2 mt-1">
-                  <Select
-                    value={discountType}
-                    onValueChange={(v) => {
-                      setDiscountType(v as "amount" | "percent");
-                      setDiscountValue("");
-                    }}
-                  >
-                    <SelectTrigger className="w-40">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="amount">
-                        {t("gabinet.payments.discountTypeAmount")}
-                      </SelectItem>
-                      <SelectItem value="percent">
-                        {t("gabinet.payments.discountTypePercent")}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <div className="relative flex-1">
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      value={discountValue}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                          setDiscountValue(v);
-                          const parsed = parseFloat(v.replace(",", ".")) || 0;
-                          const disc =
-                            discountType === "amount"
-                              ? Math.min(parsed, outstanding)
-                              : Math.round(
-                                  ((outstanding * Math.min(parsed, 100)) /
-                                    100) *
-                                    100,
-                                ) / 100;
-                          setPaymentAmount(
-                            Math.max(0, outstanding - disc).toFixed(2),
-                          );
-                        }
-                      }}
-                      placeholder={discountType === "percent" ? "0" : "0.00"}
-                      className={discountType === "percent" ? "pr-8" : ""}
-                    />
-                    {discountType === "percent" && (
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                        %
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-            <div>
-              <Label>{t("gabinet.payments.amount")}</Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                value={
-                  isFixedAmountMethod
-                    ? treatmentPrice.toFixed(2)
-                    : paymentAmount
-                }
-                disabled={isFixedAmountMethod}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                    setPaymentAmount(v);
-                  }
-                }}
-                placeholder={outstanding > 0 ? outstanding.toFixed(2) : "0.00"}
-              />
-              {isFixedAmountMethod && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("gabinet.payments.amountLockedToTreatment")}
-                </p>
-              )}
-              {outstanding > 0 && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("gabinet.payments.outstanding")}:{" "}
-                  {formatCurrencyPLN(outstanding)}
-                </p>
-              )}
-              {(() => {
-                // Live preview of overpayment → patient credit (issue #1690).
-                const parsed = parseFloat(paymentAmount.replace(",", "."));
-                const overpay =
-                  Number.isFinite(parsed) && outstanding > 0
-                    ? Math.max(0, parsed - outstanding)
-                    : Number.isFinite(parsed) && outstanding <= 0
-                      ? Math.max(0, parsed)
-                      : 0;
-                if (overpay <= 0) return null;
-                return (
-                  <p className="text-xs text-emerald-600 mt-1">
-                    {t("gabinet.payments.overpaymentToCredit", {
-                      amount: formatCurrencyPLN(overpay),
-                    })}
-                  </p>
-                );
-              })()}
-            </div>
-            {patientCreditBalance !== null && patientCreditBalance > 0 && (
-              <div className="rounded-md border bg-emerald-50/50 p-2.5 dark:bg-emerald-950/20">
-                <label className="flex items-start gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="mt-1"
-                    checked={paymentUseBalance}
-                    onChange={(e) => setPaymentUseBalance(e.target.checked)}
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">
-                      {t("gabinet.payments.useBalance", {
-                        amount: formatCurrencyPLN(patientCreditBalance),
-                      })}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {t("gabinet.payments.useBalanceHint")}
-                    </p>
-                  </div>
-                </label>
-              </div>
-            )}
-            <div>
-              <Label>{t("gabinet.payments.method")}</Label>
-              <Select
-                value={paymentMethod}
-                onValueChange={(v) => {
-                  setPaymentMethod(v);
-                  if (v === "gratis" || v === "barter") {
-                    setPaymentAmount(treatmentPrice.toFixed(2));
-                  }
-                  if (v !== "package") {
-                    setPaymentPackageId(null);
-                    setPaymentPackageItems([]);
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">
-                    {t("gabinet.payments.methods.cash")}
-                  </SelectItem>
-                  <SelectItem value="card">
-                    {t("gabinet.payments.methods.card")}
-                  </SelectItem>
-                  <SelectItem value="transfer">
-                    {t("gabinet.payments.methods.transfer")}
-                  </SelectItem>
-                  <SelectItem value="package">
-                    {t("gabinet.payments.methods.package")}
-                  </SelectItem>
-                  <SelectItem value="gratis">
-                    {t("gabinet.payments.methods.gratis")}
-                  </SelectItem>
-                  <SelectItem value="barter">
-                    {t("gabinet.payments.methods.barter")}
-                  </SelectItem>
-                  <SelectItem value="other">
-                    {t("gabinet.payments.methods.other")}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {paymentMethod === "package" && (
-              <div className="space-y-3 rounded-md border p-3">
-                <div>
-                  <Label>{t("gabinet.packages.selectPackage")}</Label>
-                  {patientPackageUsage.filter((p) => p.status === "active")
-                    .length === 0 ? (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {t("gabinet.packages.noActivePackages")}
-                    </p>
-                  ) : (
-                    <Select
-                      value={paymentPackageId ?? ""}
-                      onValueChange={(pkgId) => {
-                        setPaymentPackageId(pkgId);
-                        const pkg = patientPackageUsage.find(
-                          (p) => p._id === pkgId,
-                        );
-                        setPaymentPackageItems(
-                          (pkg?.treatmentsUsed ?? [])
-                            .filter(
-                              (e) => (e.usedCount ?? 0) < (e.totalCount ?? 0),
-                            )
-                            .map((e) => ({
-                              treatmentId: e.treatmentId,
-                              variantId: (e as any).variantId ?? undefined,
-                              treatmentName:
-                                e.treatmentName ??
-                                t("gabinet.packages.treatment"),
-                              remaining:
-                                (e.totalCount ?? 0) - (e.usedCount ?? 0),
-                              qty: 0,
-                            })),
-                        );
-                      }}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue
-                          placeholder={t(
-                            "gabinet.packages.selectPackagePlaceholder",
-                          )}
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {patientPackageUsage
-                          .filter((pkg) => pkg.status === "active")
-                          .map((pkg) => (
-                            <SelectItem key={pkg._id} value={pkg._id}>
-                              {pkg.packageName ?? t("gabinet.packages.package")}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-                {paymentPackageId && (
-                  <div className="space-y-2">
-                    {paymentPackageItems.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        {t("gabinet.packages.allTreatmentsExhausted")}
-                      </p>
-                    ) : (
-                      <>
-                        <p className="text-xs font-medium text-muted-foreground">
-                          {t("gabinet.packages.perTreatmentProgress")}
-                        </p>
-                        {paymentPackageItems.map((item, idx) => (
-                          <div
-                            key={item.treatmentId}
-                            className="flex items-center gap-3"
-                          >
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {item.treatmentName}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {t("gabinet.packages.availableRemaining", {
-                                  remaining: item.remaining,
-                                })}
-                              </p>
-                            </div>
-                            <Input
-                              type="number"
-                              inputMode="numeric"
-                              className="w-20"
-                              min={0}
-                              max={item.remaining}
-                              value={item.qty}
-                              onChange={(e) => {
-                                const val = Math.max(
-                                  0,
-                                  Math.min(
-                                    item.remaining,
-                                    parseInt(e.target.value) || 0,
-                                  ),
-                                );
-                                setPaymentPackageItems((prev) =>
-                                  prev.map((it, i) =>
-                                    i === idx ? { ...it, qty: val } : it,
-                                  ),
-                                );
-                              }}
-                            />
-                          </div>
-                        ))}
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-            <div>
-              <Label>{t("common.notes")}</Label>
-              <RichTextEditor
-                value={paymentNote}
-                onChange={(val) => setPaymentNote(val ?? "")}
-                placeholder={t("gabinet.payments.notePlaceholder")}
-                minHeight="80px"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setPaymentDialogOpen(false)}
-            >
-              {t("common.cancel")}
-            </Button>
-            <Button
-              onClick={handleCreatePayment}
-              disabled={isPaymentSubmitting}
-            >
-              {isPaymentSubmitting
-                ? t("common.processing")
-                : t("gabinet.payments.create")}
-            </Button>
-          </DialogFooter>
+          {paymentDialogOpen && (
+            <SettlementForm
+              organizationId={organizationId}
+              appointmentId={appointment._id}
+              patientId={patient!._id}
+              junctionTreatments={junctionTreatments}
+              legacyTreatmentPrice={treatment?.price}
+              treatmentsList={treatmentsList}
+              payments={payments as Array<Record<string, unknown>>}
+              patientPackageUsage={patientPackageUsage}
+              onSuccess={() => {
+                setPaymentDialogOpen(false);
+                refetch();
+              }}
+              onCancel={() => setPaymentDialogOpen(false)}
+            />
+          )}
         </DialogContent>
       </Dialog>
 

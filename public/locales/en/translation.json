@@ -3851,7 +3851,7 @@
         "card": "Card",
         "cash": "Cash",
         "other": "Other",
-        "package": "Series/Package",
+        "package": "Package/Series/Carnet",
         "gratis": "Gratis",
         "barter": "Barter",
         "transfer": "Transfer"

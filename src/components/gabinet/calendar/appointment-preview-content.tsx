@@ -412,15 +412,8 @@ export function AppointmentPreviewContent({
     setEndTime(appt.endTime.slice(0, 5));
     setNotes(appt.notes ?? "");
     setInternalNotes(appt.internalNotes ?? "");
-    const junctionTreatmentId = detail.treatments?.[0]?.treatmentId ?? null;
-    setTreatmentId(
-      junctionTreatmentId
-        ? junctionTreatmentId
-        : appt.treatmentId
-          ? String(appt.treatmentId)
-          : "",
-    );
-    setVariantId(appt.variantId ? String(appt.variantId) : "");
+    setTreatmentId(detail.treatments?.[0]?.treatmentId ?? "");
+    setVariantId("");
     setTagIds(
       (appt.tagIds ?? []).map((id) => id as Id<"tagDefinitions">),
     );
@@ -441,12 +434,8 @@ export function AppointmentPreviewContent({
   const initialStatus = appointment.status as AppointmentStatus;
   const junctionTreatments = detail.treatments ?? [];
   const isMultiTreatment = junctionTreatments.length > 1;
-  const initialTreatmentId =
-    detail.treatments?.[0]?.treatmentId ??
-    (appointment.treatmentId ? String(appointment.treatmentId) : "");
-  const initialVariantId = appointment.variantId
-    ? String(appointment.variantId)
-    : "";
+  const initialTreatmentId = detail.treatments?.[0]?.treatmentId ?? "";
+  const initialVariantId = "";
   const availableTransitions = VALID_TRANSITIONS[initialStatus] ?? [];
   const patientFullName = patient
     ? `${patient.firstName ?? ""} ${patient.lastName ?? ""}`.trim()
@@ -1495,7 +1484,7 @@ export function AppointmentPreviewContent({
         <Button
           variant="outline"
           size="sm"
-          onClick={handleSave}
+          onClick={() => void handleSave()}
           disabled={!dirty || saving}
           className="w-full sm:w-auto"
         >
@@ -1615,7 +1604,7 @@ export function AppointmentPreviewContent({
         ref={settleDrag.contentRef}
         onPointerDown={settleDrag.onPointerDown}
         className={cn(
-          "sm:max-w-md",
+          "sm:max-w-2xl",
           settleDrag.isDragging && "cursor-grabbing select-none",
         )}
       >

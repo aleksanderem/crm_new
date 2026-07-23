@@ -387,7 +387,7 @@ export function DraggableAppointment({
         // made tall content unreadable. Drag-to-peek is now touch-driven only
         // via the grab pill at the top, which has its own `touch-none` zone.
         className={cn(
-          "w-[553px] max-w-[calc(100vw-24px)] overflow-y-auto p-0 rounded-xl border-border/60 shadow-2xl",
+          "w-[640px] max-w-[calc(100vw-24px)] overflow-y-auto p-0 rounded-xl border-border/60 shadow-2xl",
           isPreviewDragging && "cursor-grabbing select-none",
         )}
         // Cap the popover at whatever vertical space Radix's collision logic has

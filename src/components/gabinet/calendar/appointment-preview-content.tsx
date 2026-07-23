@@ -59,6 +59,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { getAppointmentJunctionPrice } from "@/lib/gabinet/appointment-display";
 import {
   BadgeCheck,
   Calendar,
@@ -711,13 +712,11 @@ export function AppointmentPreviewContent({
   // Sum prices across all junction treatments; fall back to the legacy scalar
   // for pre-junction single-treatment appointments. Fixes the "!"-unpaid
   // indicator and isSettled check for multi-treatment visits (issue #3517).
-  const treatmentPrice =
-    junctionTreatments.length > 0
-      ? junctionTreatments.reduce((sum, jt) => {
-          const tr = treatments?.find((t) => t._id === jt.treatmentId);
-          return sum + (jt.priceAtBooking ?? tr?.price ?? 0);
-        }, 0)
-      : (treatment?.price ?? 0);
+  const treatmentPrice = getAppointmentJunctionPrice(
+    junctionTreatments,
+    treatments,
+    treatment?.price,
+  );
   // Credit applied from the patient's overpayment balance (issue #1059) counts
   // toward the paid total — a visit settled purely from credit lands as
   // `amount=0, creditApplied=price` (#1856), so without summing creditApplied

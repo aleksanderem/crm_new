@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { createSupabaseDb, type SupabaseDb } from "../_helpers/supabaseDb";
+import { getJunctionTreatmentIds } from "../gabinet/_helpers/junctionTreatments";
 import { getValidAccessToken } from "../google/_helpers";
 import { Resend } from "resend";
 import { sendViaResend, sendViaMailgun } from "../email/providers";
@@ -126,11 +127,11 @@ export const sendSigningEmailInternal = internalAction({
           ).getTime();
           appointmentDate = !isNaN(ts) ? formatDatePl(ts) : String(appointment.date);
         }
-        if (appointment.treatmentId) {
-          const treatment = await db.get(
-            "gabinetTreatments",
-            String(appointment.treatmentId),
-          );
+        const signingJunctionMap = await getJunctionTreatmentIds(db, [String(doc.entityId)]);
+        const signingJunctionRows = signingJunctionMap.get(String(doc.entityId)) ?? [];
+        const signingTreatmentId = signingJunctionRows[0]?.treatmentId ?? (appointment.treatmentId ? String(appointment.treatmentId) : null);
+        if (signingTreatmentId) {
+          const treatment = await db.get("gabinetTreatments", signingTreatmentId);
           if (treatment) {
             treatmentName = treatment.name as string | undefined;
           }

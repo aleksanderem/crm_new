@@ -4,6 +4,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
+import {
+  getAppointmentTreatmentDisplay,
+  getAppointmentJunctionPrice,
+} from "@/lib/gabinet/appointment-display";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
@@ -331,34 +335,19 @@ function PatientDetail() {
   }, [allVariantsData]);
 
   // Treatment info comes from the junction rows (#3399 dropped the scalar
-  // treatment_id column). Display: primary treatment name (+variant), with a
-  // "+N" suffix for multi-treatment visits. Price: sum over junction rows
-  // (priceAtBooking frozen at booking, catalog price as fallback).
+  // treatment_id column). Delegates to shared utilities in
+  // src/lib/gabinet/appointment-display.ts (issue #3544).
   const getApptTreatmentDisplay = (
     apt?: MappedGabinetAppointment | null,
-  ): string | undefined => {
-    const rows = apt?.treatments ?? [];
-    const primary = rows[0];
-    const name = primary?.treatmentId
-      ? treatmentsData?.find((tr) => tr._id === primary.treatmentId)?.name
-      : undefined;
-    if (!name) return undefined;
-    const variantName = primary?.variantId
-      ? variantNameMap.get(primary.variantId)
-      : undefined;
-    const base = variantName ? `${name} · ${variantName}` : name;
-    return rows.length > 1 ? `${base} +${rows.length - 1}` : base;
-  };
+  ): string | undefined =>
+    getAppointmentTreatmentDisplay(
+      apt?.treatments ?? [],
+      treatmentsData,
+      (variantId) => variantNameMap.get(variantId),
+    );
 
-  const getApptPrice = (apt?: MappedGabinetAppointment | null): number => {
-    const rows = apt?.treatments ?? [];
-    return rows.reduce((sum, jt) => {
-      const catalog = jt.treatmentId
-        ? (treatmentsData?.find((tr) => tr._id === jt.treatmentId)?.price ?? 0)
-        : 0;
-      return sum + (jt.priceAtBooking ?? catalog);
-    }, 0);
-  };
+  const getApptPrice = (apt?: MappedGabinetAppointment | null): number =>
+    getAppointmentJunctionPrice(apt?.treatments ?? [], treatmentsData);
 
   const { data: patientPayments } = useSupabasePaymentsByPatient(
     organizationId,

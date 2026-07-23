@@ -58,6 +58,7 @@ import {
   Trash2,
   Package,
   Pencil,
+  Power,
   X,
   Gift,
   Search,
@@ -856,6 +857,32 @@ function PackagesIndex() {
     }
   };
 
+  const handleToggleActive = useCallback(
+    async (pkg: TreatmentPackage) => {
+      try {
+        await updatePkg({
+          organizationId,
+          packageId: pkg._id,
+          isActive: !pkg.isActive,
+        });
+        toast.success(
+          pkg.isActive
+            ? t("gabinet.packages.deactivated", "Pakiet dezaktywowany")
+            : t("gabinet.packages.activated", "Pakiet aktywowany"),
+        );
+        invalidatePackages();
+      } catch (e) {
+        toast.error(
+          formatActionError(e, t, {
+            key: "gabinet.packages.errors.toggleActiveFailed",
+            defaultValue: "Nie udało się zmienić statusu pakietu.",
+          }),
+        );
+      }
+    },
+    [updatePkg, organizationId, t, invalidatePackages],
+  );
+
   const handleBulkAction = useCallback(
     async (action: string, selectedRows: TreatmentPackage[]) => {
       if (action === "delete") {
@@ -877,6 +904,13 @@ function PackagesIndex() {
               icon: <Pencil className="h-4 w-4" variant="stroke" />,
               onClick: () => openEdit(row),
             },
+            {
+              label: row.isActive
+                ? t("common.deactivate", "Dezaktywuj")
+                : t("common.activate", "Aktywuj"),
+              icon: <Power className="h-4 w-4" variant="stroke" />,
+              onClick: () => handleToggleActive(row),
+            },
           ]
         : []),
       ...(canDelete
@@ -889,7 +923,7 @@ function PackagesIndex() {
           ]
         : []),
     ],
-    [t, canEdit, canDelete, openEdit],
+    [t, canEdit, canDelete, openEdit, handleToggleActive],
   );
 
   const handleAssignGift = async () => {

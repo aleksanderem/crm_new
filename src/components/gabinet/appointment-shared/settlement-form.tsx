@@ -221,6 +221,27 @@ export function SettlementForm({
   const isSecondSplitFixed =
     secondSplitMethod === "gratis" || secondSplitMethod === "barter";
 
+  // Package mode: no money changes hands — settlement is purely quantitative.
+  const isPackageMode = !splitPayment && paymentMethod === "package";
+
+  // Auto-computed ledger amount: Σ(qty × priceAtBooking, fallback catalog), capped to outstanding.
+  const packageSettlementAmount = isPackageMode
+    ? Math.min(
+        Math.max(0, outstanding),
+        paymentPackageItems
+          .filter((it) => it.qty > 0)
+          .reduce((sum, it) => {
+            const jt = junctionTreatments.find(
+              (j) => j.treatmentId === it.treatmentId,
+            );
+            const catalogTr = treatmentsList?.find(
+              (t) => t._id === it.treatmentId,
+            );
+            return sum + it.qty * (jt?.priceAtBooking ?? catalogTr?.price ?? 0);
+          }, 0),
+      )
+    : 0;
+
   // Split payment derived values
   const parsedFirstSplit = isFirstSplitFixed
     ? treatmentPrice
@@ -278,6 +299,25 @@ export function SettlementForm({
           t(
             "gabinet.packages.splitSameMethodError",
             "Wybierz dwie różne metody płatności",
+          ),
+        );
+        return;
+      }
+    } else if (isPackageMode) {
+      if (!paymentPackageId) {
+        toast.error(
+          t(
+            "gabinet.packages.noPackageSelected",
+            "Wybierz pakiet do rozliczenia",
+          ),
+        );
+        return;
+      }
+      if (!paymentPackageItems.some((it) => it.qty > 0)) {
+        toast.error(
+          t(
+            "gabinet.packages.noQtySelected",
+            "Wybierz co najmniej jedną ilość > 0",
           ),
         );
         return;
@@ -371,6 +411,33 @@ export function SettlementForm({
             });
           }
         }
+      } else if (isPackageMode) {
+        if (paymentPackageId) {
+          const pkgItems = paymentPackageItems
+            .filter((it) => it.qty > 0)
+            .map((it) => ({
+              treatmentId: it.treatmentId,
+              ...(it.variantId ? { variantId: it.variantId } : {}),
+              quantity: it.qty,
+            }));
+          if (pkgItems.length > 0) {
+            await usePackageTreatmentsBatch({
+              organizationId,
+              usageId: paymentPackageId,
+              items: pkgItems,
+              appointmentId,
+            });
+          }
+        }
+        await createPayment({
+          organizationId,
+          patientId: patientId as Id<"gabinetPatients">,
+          appointmentId: appointmentId as Id<"gabinetAppointments">,
+          amount: packageSettlementAmount,
+          currency: "PLN",
+          paymentMethod: "package",
+          notes: paymentNote || undefined,
+        });
       } else {
         const normalizedAmount = paymentAmount.replace(",", ".");
         const amount = parseFloat(normalizedAmount);
@@ -388,24 +455,6 @@ export function SettlementForm({
                 ) * 100,
               ) / 100
             : 0;
-
-        if (paymentMethod === "package" && paymentPackageId) {
-          const pkgItems = paymentPackageItems
-            .filter((it) => it.qty > 0)
-            .map((it) => ({
-              treatmentId: it.treatmentId,
-              ...(it.variantId ? { variantId: it.variantId } : {}),
-              quantity: it.qty,
-            }));
-          if (pkgItems.length > 0) {
-            await usePackageTreatmentsBatch({
-              organizationId,
-              usageId: paymentPackageId,
-              items: pkgItems,
-              appointmentId,
-            });
-          }
-        }
 
         await createPayment({
           organizationId,
@@ -473,55 +522,78 @@ export function SettlementForm({
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>{t("gabinet.payments.amount")}</Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                value={
-                  isFixedAmountMethod
-                    ? treatmentPrice.toFixed(2)
-                    : paymentAmount
-                }
-                disabled={isFixedAmountMethod}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                    setPaymentAmount(v);
-                  }
-                }}
-                placeholder={outstanding > 0 ? outstanding.toFixed(2) : "0.00"}
-              />
-              {isFixedAmountMethod && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("gabinet.payments.amountLockedToTreatment")}
+            {isPackageMode ? (
+              <div className="rounded-md border bg-muted/40 p-2.5">
+                <p className="text-sm text-muted-foreground">
+                  {t(
+                    "gabinet.packages.packageModeInfo",
+                    "Rozliczenie ilościowe z pakietu — bez płatności",
+                  )}
                 </p>
-              )}
-              {outstanding > 0 && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("gabinet.payments.outstanding")}:{" "}
-                  {formatCurrencyPLN(outstanding)}
-                </p>
-              )}
-              {(() => {
-                const parsed = parseFloat(paymentAmount.replace(",", "."));
-                const overpay =
-                  Number.isFinite(parsed) && outstanding > 0
-                    ? Math.max(0, parsed - outstanding)
-                    : Number.isFinite(parsed) && outstanding <= 0
-                      ? Math.max(0, parsed)
-                      : 0;
-                if (overpay <= 0) return null;
-                return (
-                  <p className="text-xs text-emerald-600 mt-1">
-                    {t("gabinet.payments.overpaymentToCredit", {
-                      amount: formatCurrencyPLN(overpay),
+                {packageSettlementAmount > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t("gabinet.packages.packageModeSettlement", {
+                      amount: formatCurrencyPLN(packageSettlementAmount),
+                      defaultValue: "Wartość rozliczenia: {{amount}}",
                     })}
                   </p>
-                );
-              })()}
-            </div>
-            {!isFixedAmountMethod && outstanding > 0 && (
+                )}
+              </div>
+            ) : (
+              <>
+                <div>
+                  <Label>{t("gabinet.payments.amount")}</Label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={
+                      isFixedAmountMethod
+                        ? treatmentPrice.toFixed(2)
+                        : paymentAmount
+                    }
+                    disabled={isFixedAmountMethod}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                        setPaymentAmount(v);
+                      }
+                    }}
+                    placeholder={
+                      outstanding > 0 ? outstanding.toFixed(2) : "0.00"
+                    }
+                  />
+                  {isFixedAmountMethod && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t("gabinet.payments.amountLockedToTreatment")}
+                    </p>
+                  )}
+                  {outstanding > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t("gabinet.payments.outstanding")}:{" "}
+                      {formatCurrencyPLN(outstanding)}
+                    </p>
+                  )}
+                  {(() => {
+                    const parsed = parseFloat(paymentAmount.replace(",", "."));
+                    const overpay =
+                      Number.isFinite(parsed) && outstanding > 0
+                        ? Math.max(0, parsed - outstanding)
+                        : Number.isFinite(parsed) && outstanding <= 0
+                          ? Math.max(0, parsed)
+                          : 0;
+                    if (overpay <= 0) return null;
+                    return (
+                      <p className="text-xs text-emerald-600 mt-1">
+                        {t("gabinet.payments.overpaymentToCredit", {
+                          amount: formatCurrencyPLN(overpay),
+                        })}
+                      </p>
+                    );
+                  })()}
+                </div>
+              </>
+            )}
+            {!isPackageMode && !isFixedAmountMethod && outstanding > 0 && (
               <div>
                 <Label>{t("gabinet.payments.discount")}</Label>
                 <div className="flex gap-2 mt-1">

@@ -215,6 +215,28 @@ export function SettlementForm({
         pkg.treatmentsUsed.some((e) => visitTreatmentIds.has(e.treatmentId))),
   );
 
+  // Package redemption is quantity-only: the package was paid for up front, so
+  // no amount is entered. The ledger row's amount is derived from the redeemed
+  // quantities (qty × price of that treatment on this visit), capped at the
+  // outstanding balance so the visit's "due" math stays consistent.
+  const unitPriceFor = (treatmentId: string) => {
+    const jt = junctionTreatments.find((j) => j.treatmentId === treatmentId);
+    if (jt?.priceAtBooking != null) return jt.priceAtBooking;
+    return treatmentsList?.find((t) => t._id === treatmentId)?.price ?? 0;
+  };
+  const packageSettleAmount =
+    paymentMethod === "package"
+      ? Math.min(
+          Math.max(0, outstanding),
+          Math.round(
+            paymentPackageItems.reduce(
+              (s, it) => s + it.qty * unitPriceFor(it.treatmentId),
+              0,
+            ) * 100,
+          ) / 100,
+        )
+      : 0;
+
   // gratis / barter lock the amount in split rows too (mirrors non-split behavior).
   const isFirstSplitFixed =
     firstSplitMethod === "gratis" || firstSplitMethod === "barter";
@@ -278,6 +300,26 @@ export function SettlementForm({
           t(
             "gabinet.packages.splitSameMethodError",
             "Wybierz dwie różne metody płatności",
+          ),
+        );
+        return;
+      }
+    } else if (paymentMethod === "package") {
+      // Quantity-only settlement — the package was already paid for.
+      if (!paymentPackageId) {
+        toast.error(
+          t(
+            "gabinet.packages.selectPackageRequired",
+            "Wybierz pakiet do rozliczenia",
+          ),
+        );
+        return;
+      }
+      if (!paymentPackageItems.some((it) => it.qty > 0)) {
+        toast.error(
+          t(
+            "gabinet.packages.selectQuantityRequired",
+            "Podaj ilość zabiegów do rozliczenia z pakietu",
           ),
         );
         return;
@@ -372,8 +414,13 @@ export function SettlementForm({
           }
         }
       } else {
+        // Package redemption derives the ledger amount from quantities; other
+        // methods use the user-entered amount.
         const normalizedAmount = paymentAmount.replace(",", ".");
-        const amount = parseFloat(normalizedAmount);
+        const amount =
+          paymentMethod === "package"
+            ? packageSettleAmount
+            : parseFloat(normalizedAmount);
         const outstandingNow = Math.max(0, outstanding);
         const creditEarned =
           amount > outstandingNow + 0.005
@@ -473,112 +520,139 @@ export function SettlementForm({
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>{t("gabinet.payments.amount")}</Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                value={
-                  isFixedAmountMethod
-                    ? treatmentPrice.toFixed(2)
-                    : paymentAmount
-                }
-                disabled={isFixedAmountMethod}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                    setPaymentAmount(v);
-                  }
-                }}
-                placeholder={outstanding > 0 ? outstanding.toFixed(2) : "0.00"}
-              />
-              {isFixedAmountMethod && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("gabinet.payments.amountLockedToTreatment")}
+            {paymentMethod === "package" ? (
+              <div className="rounded-md border bg-muted/30 p-2.5">
+                <p className="text-sm">
+                  {t(
+                    "gabinet.payments.packageQuantityInfo",
+                    "Rozliczenie ilościowe z pakietu — bez płatności.",
+                  )}
                 </p>
-              )}
-              {outstanding > 0 && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {t("gabinet.payments.outstanding")}:{" "}
-                  {formatCurrencyPLN(outstanding)}
+                  {t("gabinet.payments.packageSettleValue", {
+                    amount: formatCurrencyPLN(packageSettleAmount),
+                    defaultValue: "Wartość rozliczenia: {{amount}}",
+                  })}
                 </p>
-              )}
-              {(() => {
-                const parsed = parseFloat(paymentAmount.replace(",", "."));
-                const overpay =
-                  Number.isFinite(parsed) && outstanding > 0
-                    ? Math.max(0, parsed - outstanding)
-                    : Number.isFinite(parsed) && outstanding <= 0
-                      ? Math.max(0, parsed)
-                      : 0;
-                if (overpay <= 0) return null;
-                return (
-                  <p className="text-xs text-emerald-600 mt-1">
-                    {t("gabinet.payments.overpaymentToCredit", {
-                      amount: formatCurrencyPLN(overpay),
-                    })}
+                {outstanding > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t("gabinet.payments.outstanding")}:{" "}
+                    {formatCurrencyPLN(outstanding)}
                   </p>
-                );
-              })()}
-            </div>
-            {!isFixedAmountMethod && outstanding > 0 && (
+                )}
+              </div>
+            ) : (
               <div>
-                <Label>{t("gabinet.payments.discount")}</Label>
-                <div className="flex gap-2 mt-1">
-                  <Select
-                    value={discountType}
-                    onValueChange={(v) => {
-                      setDiscountType(v as "amount" | "percent");
-                      setDiscountValue("");
-                    }}
-                  >
-                    <SelectTrigger className="w-40">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="amount">
-                        {t("gabinet.payments.discountTypeAmount")}
-                      </SelectItem>
-                      <SelectItem value="percent">
-                        {t("gabinet.payments.discountTypePercent")}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <div className="relative flex-1">
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      value={discountValue}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                          setDiscountValue(v);
-                          const parsed = parseFloat(v.replace(",", ".")) || 0;
-                          const disc =
-                            discountType === "amount"
-                              ? Math.min(parsed, outstanding)
-                              : Math.round(
-                                  ((outstanding * Math.min(parsed, 100)) /
-                                    100) *
-                                    100,
-                                ) / 100;
-                          setPaymentAmount(
-                            Math.max(0, outstanding - disc).toFixed(2),
-                          );
-                        }
-                      }}
-                      placeholder={discountType === "percent" ? "0" : "0.00"}
-                      className={discountType === "percent" ? "pr-8" : ""}
-                    />
-                    {discountType === "percent" && (
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                        %
-                      </span>
-                    )}
-                  </div>
-                </div>
+                <Label>{t("gabinet.payments.amount")}</Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={
+                    isFixedAmountMethod
+                      ? treatmentPrice.toFixed(2)
+                      : paymentAmount
+                  }
+                  disabled={isFixedAmountMethod}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                      setPaymentAmount(v);
+                    }
+                  }}
+                  placeholder={
+                    outstanding > 0 ? outstanding.toFixed(2) : "0.00"
+                  }
+                />
+                {isFixedAmountMethod && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t("gabinet.payments.amountLockedToTreatment")}
+                  </p>
+                )}
+                {outstanding > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t("gabinet.payments.outstanding")}:{" "}
+                    {formatCurrencyPLN(outstanding)}
+                  </p>
+                )}
+                {(() => {
+                  const parsed = parseFloat(paymentAmount.replace(",", "."));
+                  const overpay =
+                    Number.isFinite(parsed) && outstanding > 0
+                      ? Math.max(0, parsed - outstanding)
+                      : Number.isFinite(parsed) && outstanding <= 0
+                        ? Math.max(0, parsed)
+                        : 0;
+                  if (overpay <= 0) return null;
+                  return (
+                    <p className="text-xs text-emerald-600 mt-1">
+                      {t("gabinet.payments.overpaymentToCredit", {
+                        amount: formatCurrencyPLN(overpay),
+                      })}
+                    </p>
+                  );
+                })()}
               </div>
             )}
+            {paymentMethod !== "package" &&
+              !isFixedAmountMethod &&
+              outstanding > 0 && (
+                <div>
+                  <Label>{t("gabinet.payments.discount")}</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Select
+                      value={discountType}
+                      onValueChange={(v) => {
+                        setDiscountType(v as "amount" | "percent");
+                        setDiscountValue("");
+                      }}
+                    >
+                      <SelectTrigger className="w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="amount">
+                          {t("gabinet.payments.discountTypeAmount")}
+                        </SelectItem>
+                        <SelectItem value="percent">
+                          {t("gabinet.payments.discountTypePercent")}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="relative flex-1">
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        value={discountValue}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                            setDiscountValue(v);
+                            const parsed = parseFloat(v.replace(",", ".")) || 0;
+                            const disc =
+                              discountType === "amount"
+                                ? Math.min(parsed, outstanding)
+                                : Math.round(
+                                    ((outstanding * Math.min(parsed, 100)) /
+                                      100) *
+                                      100,
+                                  ) / 100;
+                            setPaymentAmount(
+                              Math.max(0, outstanding - disc).toFixed(2),
+                            );
+                          }
+                        }}
+                        placeholder={discountType === "percent" ? "0" : "0.00"}
+                        className={discountType === "percent" ? "pr-8" : ""}
+                      />
+                      {discountType === "percent" && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                          %
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
           </div>
         )}
 

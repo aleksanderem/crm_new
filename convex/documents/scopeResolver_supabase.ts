@@ -73,7 +73,7 @@ async function fetchAppointmentScope(
 
   const scopeJunctionMap = await getJunctionTreatmentIds(db, [appointmentId]);
   const scopeJunctionRows = scopeJunctionMap.get(appointmentId) ?? [];
-  const scopeTreatmentId = scopeJunctionRows[0]?.treatmentId ?? (appointment.treatmentId ? String(appointment.treatmentId) : null);
+  const scopeTreatmentId = scopeJunctionRows[0]?.treatmentId ?? null;
   if (scopeTreatmentId) {
     const treatment = await db.get("gabinetTreatments", scopeTreatmentId);
     if (treatment) {

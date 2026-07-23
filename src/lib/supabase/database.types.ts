@@ -4737,7 +4737,6 @@ export interface Database {
           id: string;
           organization_id: string;
           patient_id: string;
-          treatment_id: string | null;
           employee_id: string;
           date: string;
           start_time: string;
@@ -4777,9 +4776,7 @@ export interface Database {
           created_at: number;
           updated_at: number;
           contraindication_alerts_reviewed: boolean | null;
-          price_at_booking: number | null;
           reminder_overrides: string | null;
-          variant_id: string | null;
           stock_deducted: boolean;
           package_deducted: boolean;
         };
@@ -4787,7 +4784,6 @@ export interface Database {
           id?: string;
           organization_id: string;
           patient_id: string;
-          treatment_id?: string | null;
           employee_id: string;
           date: string;
           start_time: string;
@@ -4827,9 +4823,7 @@ export interface Database {
           created_at: number;
           updated_at: number;
           contraindication_alerts_reviewed?: boolean | null;
-          price_at_booking?: number | null;
           reminder_overrides?: string | null;
-          variant_id?: string | null;
           stock_deducted?: boolean;
           package_deducted?: boolean;
         };
@@ -4837,7 +4831,6 @@ export interface Database {
           id?: string;
           organization_id?: string;
           patient_id?: string;
-          treatment_id?: string | null;
           employee_id?: string;
           date?: string;
           start_time?: string;
@@ -4877,9 +4870,7 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
           contraindication_alerts_reviewed?: boolean | null;
-          price_at_booking?: number | null;
           reminder_overrides?: string | null;
-          variant_id?: string | null;
           stock_deducted?: boolean;
           package_deducted?: boolean;
         };
@@ -4896,13 +4887,6 @@ export interface Database {
             columns: ["patient_id"];
             isOneToOne: false;
             referencedRelation: "gabinet_patients";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_appointments_treatment_id_fkey";
-            columns: ["treatment_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_treatments";
             referencedColumns: ["id"];
           },
           {
@@ -4966,13 +4950,6 @@ export interface Database {
             columns: ["package_usage_id"];
             isOneToOne: false;
             referencedRelation: "gabinet_package_usage";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_appointments_variant_id_fkey";
-            columns: ["variant_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_treatment_variants";
             referencedColumns: ["id"];
           },
         ];

@@ -129,7 +129,7 @@ export const sendSigningEmailInternal = internalAction({
         }
         const signingJunctionMap = await getJunctionTreatmentIds(db, [String(doc.entityId)]);
         const signingJunctionRows = signingJunctionMap.get(String(doc.entityId)) ?? [];
-        const signingTreatmentId = signingJunctionRows[0]?.treatmentId ?? (appointment.treatmentId ? String(appointment.treatmentId) : null);
+        const signingTreatmentId = signingJunctionRows[0]?.treatmentId ?? null;
         if (signingTreatmentId) {
           const treatment = await db.get("gabinetTreatments", signingTreatmentId);
           if (treatment) {

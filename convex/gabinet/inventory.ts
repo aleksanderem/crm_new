@@ -95,13 +95,6 @@ export const getPlannedUsage = action({
       if (!apptTreatmentMap.has(aid)) apptTreatmentMap.set(aid, []);
       apptTreatmentMap.get(aid)!.push(String(row.treatmentId));
     }
-    for (const appt of appointments) {
-      const aid = String(appt._id);
-      if (!apptTreatmentMap.has(aid) && appt.treatmentId) {
-        apptTreatmentMap.set(aid, [String(appt.treatmentId)]);
-      }
-    }
-
     const activeAppointments = appointments.filter((a) =>
       apptTreatmentMap.has(String(a._id)),
     );
@@ -293,13 +286,6 @@ export const checkAppointmentShortage = action({
         if (!apptTreatmentMap.has(aid)) apptTreatmentMap.set(aid, []);
         apptTreatmentMap.get(aid)!.push(String(row.treatmentId));
       }
-      for (const appt of appointments) {
-        const aid = String(appt._id);
-        if (!apptTreatmentMap.has(aid) && appt.treatmentId) {
-          apptTreatmentMap.set(aid, [String(appt.treatmentId)]);
-        }
-      }
-
       const allExistingTreatmentIds = [
         ...new Set([...apptTreatmentMap.values()].flat()),
       ];

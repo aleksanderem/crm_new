@@ -162,8 +162,6 @@ export const sendReminder = internalMutation({
         .filter((r) => r.treatmentId)
         .sort((a, b) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0))
         .map((r) => String(r.treatmentId));
-    } else if (appointment.treatmentId) {
-      resolvedTreatmentIds = [String(appointment.treatmentId)];
     } else {
       resolvedTreatmentIds = [];
     }

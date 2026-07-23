@@ -143,15 +143,14 @@ export const getMyAppointments = action({
       .eq("patientId", patientId)
       .collect();
 
-    // Resolve treatment IDs via junction table, falling back to scalar for
-    // old appointments that pre-date the junction migration.
+    // Resolve treatment IDs via junction table.
     const portalApptIds = appointments.map((a) => String(a._id));
     const portalJunctionMap = await getJunctionTreatmentIds(db, portalApptIds);
     const apptTreatmentId = new Map<string, string | null>();
     for (const appt of appointments) {
       const apptId = String(appt._id);
       const junctionRows = portalJunctionMap.get(apptId) ?? [];
-      const tid = junctionRows[0]?.treatmentId ?? (appt.treatmentId as string | null | undefined) ?? null;
+      const tid = junctionRows[0]?.treatmentId ?? null;
       apptTreatmentId.set(apptId, tid);
     }
 
@@ -677,7 +676,7 @@ export const requestReschedule = action({
 
     const reschedJunctionMap = await getJunctionTreatmentIds(db, [args.appointmentId]);
     const reschedJunctionRows = reschedJunctionMap.get(args.appointmentId) ?? [];
-    const reschedTreatmentId = reschedJunctionRows[0]?.treatmentId ?? (appt.treatmentId ? String(appt.treatmentId) : null);
+    const reschedTreatmentId = reschedJunctionRows[0]?.treatmentId ?? null;
     const treatment = reschedTreatmentId
       ? await db.get("gabinetTreatments", reschedTreatmentId)
       : null;

@@ -184,6 +184,31 @@ export function SettlementForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId, patientId]);
 
+  // Visit booked against a package: preselect it so the quantity panel is one
+  // click away. Manual redemption marks the junction rows as deducted, so the
+  // completion-time auto-deduct skips them (no double deduction).
+  useEffect(() => {
+    if (!linkedPackageUsageId) return;
+    const linked = patientPackageUsage.find(
+      (p) => p._id === linkedPackageUsageId && p.status === "active",
+    );
+    if (!linked) return;
+    setPaymentMethod("package");
+    setPaymentPackageId(linked._id);
+    setPaymentPackageItems(
+      linked.treatmentsUsed
+        .filter((e) => (e.usedCount ?? 0) < (e.totalCount ?? 0))
+        .map((e) => ({
+          treatmentId: e.treatmentId,
+          variantId: e.variantId,
+          treatmentName: e.treatmentName ?? t("gabinet.packages.treatment"),
+          remaining: (e.totalCount ?? 0) - (e.usedCount ?? 0),
+          qty: 0,
+        })),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedPackageUsageId, patientPackageUsage.length]);
+
   // Amount due = sum of junction treatment prices (priceAtBooking ?? catalog),
   // with fallback to legacy single-treatment price for pre-junction appointments.
   const treatmentPrice =
@@ -690,27 +715,15 @@ export function SettlementForm({
           )}
           {!splitPayment && linkedPackageUsageId && (
             <div className="rounded-md border bg-sky-50/50 p-2.5 dark:bg-sky-950/20">
-              <p className="text-sm font-medium">
-                {t(
-                  "gabinet.payments.linkedPackageTitle",
-                  "Wizyta powiązana z pakietem",
-                )}
-                {(() => {
-                  const linked = patientPackageUsage.find(
-                    (p) => p._id === linkedPackageUsageId,
-                  );
-                  return linked?.packageName ? `: ${linked.packageName}` : "";
-                })()}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground">
                 {t(
                   "gabinet.payments.linkedPackageHint",
-                  "Zużycie zostanie odliczone z pakietu automatycznie przy zakończeniu wizyty — ręczne rozliczenie jest wyłączone, żeby nie odliczyć podwójnie.",
+                  "Wizyta powiązana z pakietem — rozliczenie tutaj oznaczy zużycie, a przy zakończeniu wizyty nie zostanie ono odliczone ponownie.",
                 )}
               </p>
             </div>
           )}
-          {!splitPayment && !linkedPackageUsageId && (
+          {!splitPayment && (
             <div>
               <Label>
                 {t("gabinet.payments.redeemFromPackage", "Pakiet / karnet")}

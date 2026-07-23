@@ -335,6 +335,18 @@ export function SettlementForm({
         );
         return;
       }
+      if (
+        outstanding <= 0 &&
+        (firstSplitMethod === "package" || secondSplitMethod === "package")
+      ) {
+        toast.error(
+          t(
+            "gabinet.payments.alreadySettled",
+            "Wizyta jest już rozliczona — ponowne rozliczenie z pakietu odliczyłoby zabiegi drugi raz.",
+          ),
+        );
+        return;
+      }
     } else if (isPackageMode) {
       if (!paymentPackageId) {
         toast.error(

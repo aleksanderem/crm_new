@@ -4,6 +4,7 @@ import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { createNotificationDirect } from "../notifications";
 import { Id } from "../_generated/dataModel";
+import type { SupabaseRow } from "../_helpers/supabaseRows";
 
 // Supabase is primary for appointmentReminders. Reads, inserts, updates
 // and cross-process cancels in this file all go through `createSupabaseDb()`.
@@ -148,14 +149,36 @@ export const sendReminder = internalMutation({
       return;
     }
 
+    // Resolve treatments from junction table (multi-treatment, #3356).
+    // Fall back to scalar treatmentId for legacy rows not in the junction table.
+    const junctionRows = await db
+      .query<SupabaseRow<"gabinetAppointmentTreatments">>("gabinetAppointmentTreatments")
+      .eq("appointmentId", String(appointment._id))
+      .collect();
+
+    let resolvedTreatmentIds: string[];
+    if (junctionRows.length > 0) {
+      resolvedTreatmentIds = junctionRows
+        .filter((r) => r.treatmentId)
+        .sort((a, b) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0))
+        .map((r) => String(r.treatmentId));
+    } else if (appointment.treatmentId) {
+      resolvedTreatmentIds = [String(appointment.treatmentId)];
+    } else {
+      resolvedTreatmentIds = [];
+    }
+    const primaryTreatmentId = resolvedTreatmentIds[0];
+
     const patient = await db.get("gabinetPatients", String(appointment.patientId));
-    const treatment = appointment.treatmentId
-      ? await db.get("gabinetTreatments", String(appointment.treatmentId))
-      : null;
+    const treatments = resolvedTreatmentIds.length > 0
+      ? await Promise.all(resolvedTreatmentIds.map((tid) => db.get("gabinetTreatments", tid)))
+      : [];
     const patientName = patient
       ? `${patient.firstName} ${patient.lastName ?? ""}`.trim()
       : "Klient";
-    const treatmentName = (treatment?.name as string) ?? "Wizyta";
+    const treatmentName =
+      treatments.filter(Boolean).map((t) => (t as { name?: unknown })?.name as string).filter(Boolean).join(" + ") ||
+      "Wizyta";
 
     // Resolve per-channel settings from org settings + per-appointment overrides.
     // Org settings are read from Supabase (primary store). Per-appointment overrides
@@ -281,7 +304,7 @@ export const sendReminder = internalMutation({
       organizationId: String(reminder.organizationId),
       appointmentId: String(appointment._id),
       patientId: String(appointment.patientId),
-      treatmentId: String(appointment.treatmentId),
+      treatmentId: primaryTreatmentId,
       employeeId: String(appointment.employeeId),
       date: appointment.date as string,
       startTime: appointment.startTime as string,

@@ -2526,7 +2526,8 @@ function AppointmentDetail() {
           organizationId={organizationId}
           appointmentId={appointmentId as Id<"gabinetAppointments">}
           treatmentIds={
-            (detail.treatments?.map((t) => t.treatmentId) ?? []) as Id<"gabinetTreatments">[]
+            (detail.treatments?.map((t) => t.treatmentId) ??
+              []) as Id<"gabinetTreatments">[]
           }
           currentEmployeeId={detail.appointment.employeeId}
           appointmentDate={detail.appointment.date}
@@ -2599,7 +2600,7 @@ function AppointmentDetail() {
 
       {/* Payment Dialog */}
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{t("gabinet.payments.addPayment")}</DialogTitle>
             <DialogDescription>

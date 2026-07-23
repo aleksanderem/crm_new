@@ -14,9 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DialogFooter } from "@/components/ui/dialog";
-import {
-  RichTextEditor,
-} from "@/components/gabinet/rich-text-editor";
+import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import type { Id } from "@cvx/_generated/dataModel";
 
@@ -34,12 +32,12 @@ export interface PackageUsageEntry {
 }
 
 export interface JunctionTreatment {
-  treatmentId: string;
+  treatmentId?: string | null;
   priceAtBooking?: number | null;
 }
 
 export interface SettlementFormProps {
-  organizationId: string;
+  organizationId: Id<"organizations">;
   appointmentId: string;
   patientId: string;
   /** Junction treatment rows — used to compute the canonical amount due. */
@@ -119,21 +117,41 @@ export function SettlementForm({
 
   // Split payment state
   const [splitPayment, setSplitPayment] = useState(false);
-  const [firstSplitMethod, setFirstSplitMethod] = useState<(typeof PAYMENT_METHODS)[number]>("cash");
-  const [secondSplitMethod, setSecondSplitMethod] = useState<(typeof PAYMENT_METHODS)[number]>("card");
+  const [firstSplitMethod, setFirstSplitMethod] =
+    useState<(typeof PAYMENT_METHODS)[number]>("cash");
+  const [secondSplitMethod, setSecondSplitMethod] =
+    useState<(typeof PAYMENT_METHODS)[number]>("card");
   const [firstSplitAmount, setFirstSplitAmount] = useState("");
   const [secondSplitAmount, setSecondSplitAmount] = useState("");
-  const [firstSplitPackageId, setFirstSplitPackageId] = useState<string | null>(null);
+  const [firstSplitPackageId, setFirstSplitPackageId] = useState<string | null>(
+    null,
+  );
   const [firstSplitPackageItems, setFirstSplitPackageItems] = useState<
-    Array<{ treatmentId: string; variantId?: string; treatmentName: string; remaining: number; qty: number }>
+    Array<{
+      treatmentId: string;
+      variantId?: string;
+      treatmentName: string;
+      remaining: number;
+      qty: number;
+    }>
   >([]);
-  const [secondSplitPackageId, setSecondSplitPackageId] = useState<string | null>(null);
+  const [secondSplitPackageId, setSecondSplitPackageId] = useState<
+    string | null
+  >(null);
   const [secondSplitPackageItems, setSecondSplitPackageItems] = useState<
-    Array<{ treatmentId: string; variantId?: string; treatmentName: string; remaining: number; qty: number }>
+    Array<{
+      treatmentId: string;
+      variantId?: string;
+      treatmentName: string;
+      remaining: number;
+      qty: number;
+    }>
   >([]);
 
   // Mark completed state
-  const [markCompleted, setMarkCompleted] = useState(showMarkCompleted ?? false);
+  const [markCompleted, setMarkCompleted] = useState(
+    showMarkCompleted ?? false,
+  );
 
   const createPayment = useAction(api.payments.create);
   const getPatientCreditAction = useAction(api.payments.getPatientCredit);
@@ -145,7 +163,9 @@ export function SettlementForm({
   useEffect(() => {
     if (!patientId) return;
     getPatientCreditAction({ organizationId, patientId })
-      .then((credit: { balance: number }) => setPatientCreditBalance(credit.balance))
+      .then((credit: { balance: number }) =>
+        setPatientCreditBalance(credit.balance),
+      )
       .catch(() => setPatientCreditBalance(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId, patientId]);
@@ -188,31 +208,60 @@ export function SettlementForm({
 
   // Split payment derived values
   const parsedFirstSplit = parseFloat(firstSplitAmount.replace(",", ".")) || 0;
-  const parsedSecondSplit = parseFloat(secondSplitAmount.replace(",", ".")) || 0;
-  const splitTotal = Math.round((parsedFirstSplit + parsedSecondSplit) * 100) / 100;
+  const parsedSecondSplit =
+    parseFloat(secondSplitAmount.replace(",", ".")) || 0;
+  const splitTotal =
+    Math.round((parsedFirstSplit + parsedSecondSplit) * 100) / 100;
   const balanceAvailable = patientCreditBalance ?? 0;
   // In split mode, credit fills the full outstanding gap; amounts cover the rest.
-  const splitCreditApplied = splitPayment && paymentUseBalance && balanceAvailable > 0
-    ? Math.min(balanceAvailable, Math.max(0, outstanding))
-    : 0;
-  const splitExpectedTotal = Math.round(Math.max(0, outstanding - splitCreditApplied) * 100) / 100;
+  const splitCreditApplied =
+    splitPayment && paymentUseBalance && balanceAvailable > 0
+      ? Math.min(balanceAvailable, Math.max(0, outstanding))
+      : 0;
+  const splitExpectedTotal =
+    Math.round(Math.max(0, outstanding - splitCreditApplied) * 100) / 100;
   const splitMismatch = splitPayment && splitTotal < splitExpectedTotal - 0.005;
-  const splitMissingAmount = splitPayment && splitExpectedTotal > 0 && parsedFirstSplit <= 0 && parsedSecondSplit <= 0;
-  const splitSameMethod = splitPayment && parsedFirstSplit > 0 && parsedSecondSplit > 0 && firstSplitMethod === secondSplitMethod;
-  const splitOverpayment = splitPayment ? Math.max(0, splitTotal - splitExpectedTotal) : 0;
+  const splitMissingAmount =
+    splitPayment &&
+    splitExpectedTotal > 0 &&
+    parsedFirstSplit <= 0 &&
+    parsedSecondSplit <= 0;
+  const splitSameMethod =
+    splitPayment &&
+    parsedFirstSplit > 0 &&
+    parsedSecondSplit > 0 &&
+    firstSplitMethod === secondSplitMethod;
+  const splitOverpayment = splitPayment
+    ? Math.max(0, splitTotal - splitExpectedTotal)
+    : 0;
 
   const handleSubmit = async () => {
     if (splitPayment) {
       if (splitMissingAmount) {
-        toast.error(t("gabinet.packages.splitMissingAmount", "Podaj kwotę co najmniej jednej metody płatności"));
+        toast.error(
+          t(
+            "gabinet.packages.splitMissingAmount",
+            "Podaj kwotę co najmniej jednej metody płatności",
+          ),
+        );
         return;
       }
       if (splitMismatch) {
-        toast.error(t("gabinet.packages.splitUnderpaidError", "Suma rozdzielonych płatności jest niższa niż kwota do zapłaty"));
+        toast.error(
+          t(
+            "gabinet.packages.splitUnderpaidError",
+            "Suma rozdzielonych płatności jest niższa niż kwota do zapłaty",
+          ),
+        );
         return;
       }
       if (splitSameMethod) {
-        toast.error(t("gabinet.packages.splitSameMethodError", "Wybierz dwie różne metody płatności"));
+        toast.error(
+          t(
+            "gabinet.packages.splitSameMethodError",
+            "Wybierz dwie różne metody płatności",
+          ),
+        );
         return;
       }
     } else {
@@ -230,9 +279,14 @@ export function SettlementForm({
       }
 
       if (splitPayment) {
-        const parts: Array<{ method: (typeof PAYMENT_METHODS)[number]; amount: number }> = [];
-        if (parsedFirstSplit > 0) parts.push({ method: firstSplitMethod, amount: parsedFirstSplit });
-        if (parsedSecondSplit > 0) parts.push({ method: secondSplitMethod, amount: parsedSecondSplit });
+        const parts: Array<{
+          method: (typeof PAYMENT_METHODS)[number];
+          amount: number;
+        }> = [];
+        if (parsedFirstSplit > 0)
+          parts.push({ method: firstSplitMethod, amount: parsedFirstSplit });
+        if (parsedSecondSplit > 0)
+          parts.push({ method: secondSplitMethod, amount: parsedSecondSplit });
 
         if (parts.length === 0 && splitCreditApplied > 0) {
           // Credit covers the whole visit: record a credit-only ledger row.
@@ -251,8 +305,10 @@ export function SettlementForm({
           let remainingExpected = splitExpectedTotal;
           for (let i = 0; i < parts.length; i++) {
             const part = parts[i];
-            const splitPackageId = i === 0 ? firstSplitPackageId : secondSplitPackageId;
-            const splitPackageItems = i === 0 ? firstSplitPackageItems : secondSplitPackageItems;
+            const splitPackageId =
+              i === 0 ? firstSplitPackageId : secondSplitPackageId;
+            const splitPackageItems =
+              i === 0 ? firstSplitPackageItems : secondSplitPackageItems;
             if (part.method === "package" && splitPackageId) {
               const pkgItems = splitPackageItems
                 .filter((it) => it.qty > 0)
@@ -271,10 +327,17 @@ export function SettlementForm({
               }
             }
             const splitNote = `split: ${part.method}`;
-            const combinedNote = paymentNote ? `${paymentNote} (${splitNote})` : splitNote;
-            const absorbedOutstanding = Math.min(part.amount, remainingExpected);
-            const rowCreditEarned = Math.round((part.amount - absorbedOutstanding) * 100) / 100;
-            remainingExpected = Math.round((remainingExpected - absorbedOutstanding) * 100) / 100;
+            const combinedNote = paymentNote
+              ? `${paymentNote} (${splitNote})`
+              : splitNote;
+            const absorbedOutstanding = Math.min(
+              part.amount,
+              remainingExpected,
+            );
+            const rowCreditEarned =
+              Math.round((part.amount - absorbedOutstanding) * 100) / 100;
+            remainingExpected =
+              Math.round((remainingExpected - absorbedOutstanding) * 100) / 100;
             await createPayment({
               organizationId,
               patientId: patientId as Id<"gabinetPatients">,
@@ -283,7 +346,9 @@ export function SettlementForm({
               currency: "PLN",
               paymentMethod: part.method,
               notes: combinedNote,
-              ...(i === 0 && splitCreditApplied > 0 ? { creditApplied: splitCreditApplied } : {}),
+              ...(i === 0 && splitCreditApplied > 0
+                ? { creditApplied: splitCreditApplied }
+                : {}),
               ...(rowCreditEarned > 0 ? { creditEarned: rowCreditEarned } : {}),
             });
           }
@@ -299,8 +364,10 @@ export function SettlementForm({
         const creditApplied =
           paymentUseBalance && balanceAvailable > 0
             ? Math.round(
-                Math.min(balanceAvailable, Math.max(0, outstandingNow - amount)) *
-                  100,
+                Math.min(
+                  balanceAvailable,
+                  Math.max(0, outstandingNow - amount),
+                ) * 100,
               ) / 100
             : 0;
 
@@ -351,7 +418,7 @@ export function SettlementForm({
 
   return (
     <>
-      <div className="space-y-4 py-4">
+      <div className="grid gap-4 py-4 sm:grid-cols-2">
         {!splitPayment && !isFixedAmountMethod && outstanding > 0 && (
           <div>
             <Label>{t("gabinet.payments.discount")}</Label>
@@ -513,7 +580,7 @@ export function SettlementForm({
         )}
 
         {!splitPayment && paymentMethod === "package" && (
-          <div className="space-y-3 rounded-md border p-3">
+          <div className="space-y-3 rounded-md border p-3 sm:col-span-2">
             <div>
               <Label>{t("gabinet.packages.selectPackage")}</Label>
               {eligiblePackages.length === 0 ? (
@@ -528,9 +595,7 @@ export function SettlementForm({
                     const pkg = eligiblePackages.find((p) => p._id === pkgId);
                     setPaymentPackageItems(
                       (pkg?.treatmentsUsed ?? [])
-                        .filter(
-                          (e) => (e.usedCount ?? 0) < (e.totalCount ?? 0),
-                        )
+                        .filter((e) => (e.usedCount ?? 0) < (e.totalCount ?? 0))
                         .map((e) => ({
                           treatmentId: e.treatmentId,
                           variantId: e.variantId,
@@ -617,7 +682,7 @@ export function SettlementForm({
         )}
 
         {/* Split payment toggle */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:col-span-2">
           <input
             type="checkbox"
             id="settlement-split-payment"
@@ -634,13 +699,16 @@ export function SettlementForm({
               }
             }}
           />
-          <Label htmlFor="settlement-split-payment" className="cursor-pointer font-normal">
+          <Label
+            htmlFor="settlement-split-payment"
+            className="cursor-pointer font-normal"
+          >
             {t("gabinet.packages.splitPayment", "Podziel płatność")}
           </Label>
         </div>
 
         {splitPayment && (
-          <div className="rounded-lg border p-3 space-y-3">
+          <div className="rounded-lg border p-3 space-y-3 sm:col-span-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-md border p-2 space-y-2">
                 <Label className="text-xs font-medium">
@@ -650,7 +718,10 @@ export function SettlementForm({
                   value={firstSplitMethod}
                   onValueChange={(v) => {
                     setFirstSplitMethod(v as (typeof PAYMENT_METHODS)[number]);
-                    if (v !== "package") { setFirstSplitPackageId(null); setFirstSplitPackageItems([]); }
+                    if (v !== "package") {
+                      setFirstSplitPackageId(null);
+                      setFirstSplitPackageItems([]);
+                    }
                   }}
                 >
                   <SelectTrigger>
@@ -685,7 +756,10 @@ export function SettlementForm({
                   value={secondSplitMethod}
                   onValueChange={(v) => {
                     setSecondSplitMethod(v as (typeof PAYMENT_METHODS)[number]);
-                    if (v !== "package") { setSecondSplitPackageId(null); setSecondSplitPackageItems([]); }
+                    if (v !== "package") {
+                      setSecondSplitPackageId(null);
+                      setSecondSplitPackageItems([]);
+                    }
                   }}
                 >
                   <SelectTrigger>
@@ -716,10 +790,13 @@ export function SettlementForm({
             {firstSplitMethod === "package" && (
               <div className="rounded-md border p-3 space-y-2">
                 <Label className="text-xs font-medium">
-                  {t("gabinet.packages.selectPackage")} ({t("gabinet.packages.firstMethod", "Pierwsza metoda")})
+                  {t("gabinet.packages.selectPackage")} (
+                  {t("gabinet.packages.firstMethod", "Pierwsza metoda")})
                 </Label>
                 {eligiblePackages.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">{t("gabinet.packages.noActivePackages")}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t("gabinet.packages.noActivePackages")}
+                  </p>
                 ) : (
                   <Select
                     value={firstSplitPackageId ?? ""}
@@ -728,18 +805,28 @@ export function SettlementForm({
                       const pkg = eligiblePackages.find((p) => p._id === pkgId);
                       setFirstSplitPackageItems(
                         (pkg?.treatmentsUsed ?? [])
-                          .filter((e) => (e.usedCount ?? 0) < (e.totalCount ?? 0))
+                          .filter(
+                            (e) => (e.usedCount ?? 0) < (e.totalCount ?? 0),
+                          )
                           .map((e) => ({
                             treatmentId: e.treatmentId,
                             variantId: e.variantId,
-                            treatmentName: e.treatmentName ?? t("gabinet.packages.treatment"),
+                            treatmentName:
+                              e.treatmentName ??
+                              t("gabinet.packages.treatment"),
                             remaining: (e.totalCount ?? 0) - (e.usedCount ?? 0),
                             qty: 0,
                           })),
                       );
                     }}
                   >
-                    <SelectTrigger><SelectValue placeholder={t("gabinet.packages.selectPackagePlaceholder")} /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={t(
+                          "gabinet.packages.selectPackagePlaceholder",
+                        )}
+                      />
+                    </SelectTrigger>
                     <SelectContent>
                       {eligiblePackages.map((pkg) => (
                         <SelectItem key={pkg._id} value={pkg._id}>
@@ -752,13 +839,24 @@ export function SettlementForm({
                 {firstSplitPackageId && (
                   <div className="space-y-2">
                     {firstSplitPackageItems.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">{t("gabinet.packages.allTreatmentsExhausted")}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {t("gabinet.packages.allTreatmentsExhausted")}
+                      </p>
                     ) : (
                       firstSplitPackageItems.map((item, idx) => (
-                        <div key={item.treatmentId} className="flex items-center gap-3">
+                        <div
+                          key={item.treatmentId}
+                          className="flex items-center gap-3"
+                        >
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{item.treatmentName}</p>
-                            <p className="text-xs text-muted-foreground">{t("gabinet.packages.availableRemaining", { remaining: item.remaining })}</p>
+                            <p className="text-sm font-medium truncate">
+                              {item.treatmentName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {t("gabinet.packages.availableRemaining", {
+                                remaining: item.remaining,
+                              })}
+                            </p>
                           </div>
                           <Input
                             type="number"
@@ -768,8 +866,18 @@ export function SettlementForm({
                             max={item.remaining}
                             value={item.qty}
                             onChange={(e) => {
-                              const val = Math.max(0, Math.min(item.remaining, parseInt(e.target.value) || 0));
-                              setFirstSplitPackageItems((prev) => prev.map((it, i) => i === idx ? { ...it, qty: val } : it));
+                              const val = Math.max(
+                                0,
+                                Math.min(
+                                  item.remaining,
+                                  parseInt(e.target.value) || 0,
+                                ),
+                              );
+                              setFirstSplitPackageItems((prev) =>
+                                prev.map((it, i) =>
+                                  i === idx ? { ...it, qty: val } : it,
+                                ),
+                              );
                             }}
                           />
                         </div>
@@ -782,10 +890,13 @@ export function SettlementForm({
             {secondSplitMethod === "package" && (
               <div className="rounded-md border p-3 space-y-2">
                 <Label className="text-xs font-medium">
-                  {t("gabinet.packages.selectPackage")} ({t("gabinet.packages.secondMethod", "Druga metoda")})
+                  {t("gabinet.packages.selectPackage")} (
+                  {t("gabinet.packages.secondMethod", "Druga metoda")})
                 </Label>
                 {eligiblePackages.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">{t("gabinet.packages.noActivePackages")}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t("gabinet.packages.noActivePackages")}
+                  </p>
                 ) : (
                   <Select
                     value={secondSplitPackageId ?? ""}
@@ -794,18 +905,28 @@ export function SettlementForm({
                       const pkg = eligiblePackages.find((p) => p._id === pkgId);
                       setSecondSplitPackageItems(
                         (pkg?.treatmentsUsed ?? [])
-                          .filter((e) => (e.usedCount ?? 0) < (e.totalCount ?? 0))
+                          .filter(
+                            (e) => (e.usedCount ?? 0) < (e.totalCount ?? 0),
+                          )
                           .map((e) => ({
                             treatmentId: e.treatmentId,
                             variantId: e.variantId,
-                            treatmentName: e.treatmentName ?? t("gabinet.packages.treatment"),
+                            treatmentName:
+                              e.treatmentName ??
+                              t("gabinet.packages.treatment"),
                             remaining: (e.totalCount ?? 0) - (e.usedCount ?? 0),
                             qty: 0,
                           })),
                       );
                     }}
                   >
-                    <SelectTrigger><SelectValue placeholder={t("gabinet.packages.selectPackagePlaceholder")} /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={t(
+                          "gabinet.packages.selectPackagePlaceholder",
+                        )}
+                      />
+                    </SelectTrigger>
                     <SelectContent>
                       {eligiblePackages.map((pkg) => (
                         <SelectItem key={pkg._id} value={pkg._id}>
@@ -818,13 +939,24 @@ export function SettlementForm({
                 {secondSplitPackageId && (
                   <div className="space-y-2">
                     {secondSplitPackageItems.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">{t("gabinet.packages.allTreatmentsExhausted")}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {t("gabinet.packages.allTreatmentsExhausted")}
+                      </p>
                     ) : (
                       secondSplitPackageItems.map((item, idx) => (
-                        <div key={item.treatmentId} className="flex items-center gap-3">
+                        <div
+                          key={item.treatmentId}
+                          className="flex items-center gap-3"
+                        >
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{item.treatmentName}</p>
-                            <p className="text-xs text-muted-foreground">{t("gabinet.packages.availableRemaining", { remaining: item.remaining })}</p>
+                            <p className="text-sm font-medium truncate">
+                              {item.treatmentName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {t("gabinet.packages.availableRemaining", {
+                                remaining: item.remaining,
+                              })}
+                            </p>
                           </div>
                           <Input
                             type="number"
@@ -834,8 +966,18 @@ export function SettlementForm({
                             max={item.remaining}
                             value={item.qty}
                             onChange={(e) => {
-                              const val = Math.max(0, Math.min(item.remaining, parseInt(e.target.value) || 0));
-                              setSecondSplitPackageItems((prev) => prev.map((it, i) => i === idx ? { ...it, qty: val } : it));
+                              const val = Math.max(
+                                0,
+                                Math.min(
+                                  item.remaining,
+                                  parseInt(e.target.value) || 0,
+                                ),
+                              );
+                              setSecondSplitPackageItems((prev) =>
+                                prev.map((it, i) =>
+                                  i === idx ? { ...it, qty: val } : it,
+                                ),
+                              );
                             }}
                           />
                         </div>
@@ -858,9 +1000,19 @@ export function SettlementForm({
                 {` / ${formatCurrencyPLN(splitExpectedTotal)}`}
               </span>
               {splitSameMethod ? (
-                <span>{t("gabinet.packages.splitSameMethod", "Metody muszą się różnić")}</span>
+                <span>
+                  {t(
+                    "gabinet.packages.splitSameMethod",
+                    "Metody muszą się różnić",
+                  )}
+                </span>
               ) : splitMismatch ? (
-                <span>{t("gabinet.packages.splitUnderpaid", "Kwota jest niższa niż cena")}</span>
+                <span>
+                  {t(
+                    "gabinet.packages.splitUnderpaid",
+                    "Kwota jest niższa niż cena",
+                  )}
+                </span>
               ) : null}
             </div>
             {splitOverpayment > 0 && (
@@ -873,7 +1025,7 @@ export function SettlementForm({
           </div>
         )}
 
-        <div>
+        <div className="sm:col-span-2">
           <Label>{t("common.notes")}</Label>
           <RichTextEditor
             value={paymentNote}
@@ -900,7 +1052,13 @@ export function SettlementForm({
         )}
       </div>
 
-      <DialogFooter className={extraFooterContent ? "flex-col-reverse gap-2 sm:flex-row sm:justify-between" : undefined}>
+      <DialogFooter
+        className={
+          extraFooterContent
+            ? "flex-col-reverse gap-2 sm:flex-row sm:justify-between"
+            : undefined
+        }
+      >
         {extraFooterContent}
         <div className="flex gap-2 justify-end">
           <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>
@@ -910,7 +1068,8 @@ export function SettlementForm({
             onClick={() => void handleSubmit()}
             disabled={
               isSubmitting ||
-              (splitPayment && (splitMissingAmount || splitMismatch || splitSameMethod))
+              (splitPayment &&
+                (splitMissingAmount || splitMismatch || splitSameMethod))
             }
           >
             {isSubmitting

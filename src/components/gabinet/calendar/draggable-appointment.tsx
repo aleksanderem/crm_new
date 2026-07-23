@@ -1,5 +1,11 @@
 import { useDraggable } from "@dnd-kit/core";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -9,10 +15,7 @@ import {
 } from "@/components/ui/popover";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import {
-  AppointmentCard,
-  type AppointmentTag,
-} from "./appointment-card";
+import { AppointmentCard, type AppointmentTag } from "./appointment-card";
 import type { AppointmentIndicator } from "./appointment-indicators";
 import { AppointmentPreviewContent } from "./appointment-preview-content";
 
@@ -323,7 +326,9 @@ export function DraggableAppointment({
       // drag). Desktop is unaffected — `touch-action` only gates touch input.
       className={`relative h-full touch-none ${isDragging ? "opacity-50 cursor-grabbing" : "cursor-grab"}`}
       style={
-        previewHeightPx !== null ? { height: `${previewHeightPx}px` } : undefined
+        previewHeightPx !== null
+          ? { height: `${previewHeightPx}px` }
+          : undefined
       }
     >
       <AppointmentCard
@@ -387,7 +392,7 @@ export function DraggableAppointment({
         // made tall content unreadable. Drag-to-peek is now touch-driven only
         // via the grab pill at the top, which has its own `touch-none` zone.
         className={cn(
-          "w-[553px] max-w-[calc(100vw-24px)] overflow-y-auto p-0 rounded-xl border-border/60 shadow-2xl",
+          "w-[640px] max-w-[calc(100vw-24px)] overflow-y-auto p-0 rounded-xl border-border/60 shadow-2xl",
           isPreviewDragging && "cursor-grabbing select-none",
         )}
         // Cap the popover at whatever vertical space Radix's collision logic has
@@ -436,7 +441,10 @@ export function DraggableAppointment({
           onClose={() => setPopoverOpen(false)}
           titleDragHandler={handlePreviewHandleDragStart}
           isPreviewDragging={isPreviewDragging}
-          dragToMoveLabel={t("gabinet.appointments.dragToMove", "Przeciągnij, aby przesunąć")}
+          dragToMoveLabel={t(
+            "gabinet.appointments.dragToMove",
+            "Przeciągnij, aby przesunąć",
+          )}
         />
       </PopoverContent>
     </Popover>

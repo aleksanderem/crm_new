@@ -180,12 +180,6 @@ function TreatmentsIndex() {
         isSystem: true,
         isDefault: false,
       },
-      {
-        id: "inactive",
-        name: t("gabinet.treatments.views.inactive"),
-        isSystem: true,
-        isDefault: false,
-      },
     ],
     [t],
   );
@@ -256,9 +250,6 @@ function TreatmentsIndex() {
     switch (activeViewId) {
       case "active":
         data = allTreatments.filter((t) => t.isActive);
-        break;
-      case "inactive":
-        data = allTreatments.filter((t) => !t.isActive);
         break;
       default:
         data = allTreatments;

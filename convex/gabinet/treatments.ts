@@ -766,7 +766,6 @@ export const listActive = action({
     let results = (await db
       .query("gabinetTreatments")
       .eq("organizationId", String(args.organizationId))
-      .eq("isActive", true)
       .collect()) as GabinetTreatmentRow[];
 
     if (perm.scope === "own") {

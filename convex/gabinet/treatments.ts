@@ -468,11 +468,12 @@ export const remove = action({
       throw new Error("Permission denied: you can only delete your own records");
     }
 
-    // --- Soft-delete: PATCH isActive=false in Supabase ---
-    await db.patch("gabinetTreatments", args.treatmentId, {
-      isActive: false,
-      updatedAt: Date.now(),
-    });
+    // --- Hard-delete the treatment row from Supabase ---
+    // FK dependencies: gabinet_treatment_variants and gabinet_treatment_products
+    // cascade; gabinet_appointment_treatments sets treatment_id to NULL;
+    // gabinet_treatment_packages.auto_generated_for_treatment_id sets to NULL
+    // (via migration 00077).
+    await db.delete("gabinetTreatments", args.treatmentId);
 
     // --- Delegate post-write side effects ---
     try {

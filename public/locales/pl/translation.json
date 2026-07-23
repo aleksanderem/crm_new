@@ -2718,7 +2718,6 @@
       "description": "Opis",
       "instructions": "Instrukcje",
       "delete": "Usuń",
-      "reactivate": "Reaktywuj",
       "recentAppointments": "Ostatnie wizyty",
       "noAppointments": "Brak wizyt dla tego zabiegu",
       "overview": {

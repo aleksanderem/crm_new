@@ -2702,7 +2702,6 @@
       "description": "Description",
       "instructions": "Instructions",
       "delete": "Delete",
-      "reactivate": "Reactivate",
       "recentAppointments": "Recent Appointments",
       "noAppointments": "No appointments for this treatment",
       "overview": {

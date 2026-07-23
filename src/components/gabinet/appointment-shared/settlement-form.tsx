@@ -34,12 +34,12 @@ export interface PackageUsageEntry {
 }
 
 export interface JunctionTreatment {
-  treatmentId: string;
+  treatmentId: string | null;
   priceAtBooking?: number | null;
 }
 
 export interface SettlementFormProps {
-  organizationId: string;
+  organizationId: Id<"organizations">;
   appointmentId: string;
   patientId: string;
   /** Junction treatment rows — used to compute the canonical amount due. */
@@ -177,7 +177,7 @@ export function SettlementForm({
 
   // Only show active packages that cover at least one treatment of this visit.
   const visitTreatmentIds = new Set(
-    junctionTreatments.map((jt) => jt.treatmentId),
+    junctionTreatments.filter((jt) => jt.treatmentId != null).map((jt) => jt.treatmentId!),
   );
   const eligiblePackages = patientPackageUsage.filter(
     (pkg) =>
@@ -359,7 +359,7 @@ export function SettlementForm({
 
   return (
     <>
-      <div className="space-y-4 py-4">
+      <div className="grid sm:grid-cols-2 gap-x-4 gap-y-4 py-4">
         {!splitPayment && !isFixedAmountMethod && outstanding > 0 && (
           <div>
             <Label>{t("gabinet.payments.discount")}</Label>
@@ -521,7 +521,7 @@ export function SettlementForm({
         )}
 
         {!splitPayment && paymentMethod === "package" && (
-          <div className="space-y-3 rounded-md border p-3">
+          <div className="space-y-3 rounded-md border p-3 sm:col-span-2">
             <div>
               <Label>{t("gabinet.packages.selectPackage")}</Label>
               {eligiblePackages.length === 0 ? (
@@ -625,7 +625,7 @@ export function SettlementForm({
         )}
 
         {/* Split payment toggle */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:col-span-2">
           <input
             type="checkbox"
             id="settlement-split-payment"
@@ -648,7 +648,7 @@ export function SettlementForm({
         </div>
 
         {splitPayment && (
-          <div className="rounded-lg border p-3 space-y-3">
+          <div className="rounded-lg border p-3 space-y-3 sm:col-span-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-md border p-2 space-y-2">
                 <Label className="text-xs font-medium">
@@ -901,7 +901,7 @@ export function SettlementForm({
           </div>
         )}
 
-        <div>
+        <div className="sm:col-span-2">
           <Label>{t("common.notes")}</Label>
           <RichTextEditor
             value={paymentNote}
@@ -912,7 +912,7 @@ export function SettlementForm({
         </div>
 
         {showMarkCompleted && (
-          <label className="flex items-start gap-2 text-sm cursor-pointer">
+          <label className="flex items-start gap-2 text-sm cursor-pointer sm:col-span-2">
             <input
               type="checkbox"
               className="mt-1"

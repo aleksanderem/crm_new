@@ -2599,7 +2599,7 @@ function AppointmentDetail() {
 
       {/* Payment Dialog */}
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{t("gabinet.payments.addPayment")}</DialogTitle>
             <DialogDescription>

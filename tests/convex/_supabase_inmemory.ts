@@ -155,6 +155,7 @@ class InMemoryRawQuery {
   private updatePayload: Record<string, unknown> | null = null;
   private upsertPayload: Record<string, unknown>[] | null = null;
   private filters: Array<(row: Row) => boolean> = [];
+  private orderBy: Array<{ field: string; ascending: boolean }> = [];
 
   constructor(table: string) {
     this.table = table;
@@ -221,6 +222,12 @@ class InMemoryRawQuery {
     return this;
   }
 
+  order(column: string, options?: { ascending?: boolean }) {
+    const ascending = options?.ascending ?? false;
+    this.orderBy.push({ field: snakeToCamel(column), ascending });
+    return this;
+  }
+
   private _execute(): { data: Row[]; error: null | { message: string } } {
     const t = getTable(this.table);
 
@@ -253,6 +260,22 @@ class InMemoryRawQuery {
       for (const row of matched) {
         t.delete(String(row.id));
       }
+    }
+    if (this.orderBy.length > 0) {
+      const orderBy = this.orderBy;
+      matched.sort((a, b) => {
+        for (const { field, ascending } of orderBy) {
+          const va = a[field] as any;
+          const vb = b[field] as any;
+          if (va === vb) continue;
+          const dir = ascending ? 1 : -1;
+          if (va == null) return 1;
+          if (vb == null) return -1;
+          if (va < vb) return -1 * dir;
+          if (va > vb) return 1 * dir;
+        }
+        return 0;
+      });
     }
     return { data: matched.map((r) => ({ ...r })), error: null };
   }

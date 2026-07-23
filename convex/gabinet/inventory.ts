@@ -14,6 +14,7 @@ import { createSupabaseDb } from "../_helpers/supabaseDb";
 import type { SupabaseRow } from "../_helpers/supabaseRows";
 
 type AppointmentRow = SupabaseRow<"gabinetAppointments">;
+type AppointmentTreatmentRow = SupabaseRow<"gabinetAppointmentTreatments">;
 type TreatmentProductRow = SupabaseRow<"gabinetTreatmentProducts">;
 type ProductRow = SupabaseRow<"products">;
 type StockLevelRow = SupabaseRow<"productStockLevels">;
@@ -73,14 +74,40 @@ export const getPlannedUsage = action({
 
     // For today, skip appointments whose start time has already passed.
     const appointments = allAppts.filter((a) => {
-      if (!a.treatmentId) return false;
       if (String(a.date) === todayStr && String(a.startTime) < currentTimeStr) return false;
       return true;
     });
 
     if (appointments.length === 0) return [];
 
-    const treatmentIds = [...new Set(appointments.map((a) => String(a.treatmentId)))];
+    // Resolve treatments from the junction table (multi-treatment support, #3356).
+    // Fall back to scalar treatmentId for legacy rows not yet in the junction table.
+    const appointmentIds = appointments.map((a) => String(a._id));
+    const junctionRows = await db
+      .query<AppointmentTreatmentRow>("gabinetAppointmentTreatments")
+      .in("appointmentId", appointmentIds)
+      .collect();
+
+    const apptTreatmentMap = new Map<string, string[]>();
+    for (const row of junctionRows) {
+      if (!row.treatmentId) continue;
+      const aid = String(row.appointmentId);
+      if (!apptTreatmentMap.has(aid)) apptTreatmentMap.set(aid, []);
+      apptTreatmentMap.get(aid)!.push(String(row.treatmentId));
+    }
+    for (const appt of appointments) {
+      const aid = String(appt._id);
+      if (!apptTreatmentMap.has(aid) && appt.treatmentId) {
+        apptTreatmentMap.set(aid, [String(appt.treatmentId)]);
+      }
+    }
+
+    const activeAppointments = appointments.filter((a) =>
+      apptTreatmentMap.has(String(a._id)),
+    );
+    if (activeAppointments.length === 0) return [];
+
+    const treatmentIds = [...new Set([...apptTreatmentMap.values()].flat())];
 
     const links = await db
       .query<TreatmentProductRow>("gabinetTreatmentProducts")
@@ -115,23 +142,25 @@ export const getPlannedUsage = action({
       usage: number;
     };
     const usageMap = new Map<string, UsageEntry>();
-    for (const appt of appointments) {
-      const tid = String(appt.treatmentId);
+    for (const appt of activeAppointments) {
+      const tids = apptTreatmentMap.get(String(appt._id)) ?? [];
       const locationId = appt.locationId ? String(appt.locationId) : null;
-      const products = treatmentMap.get(tid);
-      if (!products) continue;
-      for (const p of products) {
-        const key = `${p.productId}::${locationId ?? ""}`;
-        const existing = usageMap.get(key);
-        if (existing) {
-          existing.usage += p.quantity;
-        } else {
-          usageMap.set(key, {
-            productId: p.productId,
-            locationId,
-            unit: p.unit,
-            usage: p.quantity,
-          });
+      for (const tid of tids) {
+        const products = treatmentMap.get(tid);
+        if (!products) continue;
+        for (const p of products) {
+          const key = `${p.productId}::${locationId ?? ""}`;
+          const existing = usageMap.get(key);
+          if (existing) {
+            existing.usage += p.quantity;
+          } else {
+            usageMap.set(key, {
+              productId: p.productId,
+              locationId,
+              unit: p.unit,
+              usage: p.quantity,
+            });
+          }
         }
       }
     }
@@ -242,7 +271,6 @@ export const checkAppointmentShortage = action({
       .collect();
 
     const appointments = allAppts.filter((a) => {
-      if (!a.treatmentId) return false;
       if (String(a.date) === todayStr && String(a.startTime) < currentTimeStr) return false;
       return true;
     });
@@ -250,13 +278,35 @@ export const checkAppointmentShortage = action({
     // `${productId}::${locationId}` → total already-planned quantity
     const usageMap = new Map<string, number>();
     if (appointments.length > 0) {
-      const existingTreatmentIds = [
-        ...new Set(appointments.map((a) => String(a.treatmentId))),
+      // Resolve treatments from the junction table (multi-treatment support, #3356).
+      // Fall back to scalar treatmentId for legacy rows not yet in the junction table.
+      const apptIds = appointments.map((a) => String(a._id));
+      const existingJunctionRows = await db
+        .query<AppointmentTreatmentRow>("gabinetAppointmentTreatments")
+        .in("appointmentId", apptIds)
+        .collect();
+
+      const apptTreatmentMap = new Map<string, string[]>();
+      for (const row of existingJunctionRows) {
+        if (!row.treatmentId) continue;
+        const aid = String(row.appointmentId);
+        if (!apptTreatmentMap.has(aid)) apptTreatmentMap.set(aid, []);
+        apptTreatmentMap.get(aid)!.push(String(row.treatmentId));
+      }
+      for (const appt of appointments) {
+        const aid = String(appt._id);
+        if (!apptTreatmentMap.has(aid) && appt.treatmentId) {
+          apptTreatmentMap.set(aid, [String(appt.treatmentId)]);
+        }
+      }
+
+      const allExistingTreatmentIds = [
+        ...new Set([...apptTreatmentMap.values()].flat()),
       ];
       const existingLinks = await db
         .query<TreatmentProductRow>("gabinetTreatmentProducts")
         .eq("organizationId", String(args.organizationId))
-        .in("treatmentId", existingTreatmentIds)
+        .in("treatmentId", allExistingTreatmentIds)
         .collect();
 
       // Only track products that appear in this treatment's recipe
@@ -265,12 +315,14 @@ export const checkAppointmentShortage = action({
       );
 
       for (const appt of appointments) {
-        const tid = String(appt.treatmentId);
+        const tids = apptTreatmentMap.get(String(appt._id)) ?? [];
         const apptLoc = appt.locationId ? String(appt.locationId) : null;
-        const apptLinks = relevantLinks.filter((l) => String(l.treatmentId) === tid);
-        for (const link of apptLinks) {
-          const key = `${String(link.productId)}::${apptLoc ?? ""}`;
-          usageMap.set(key, (usageMap.get(key) ?? 0) + Number(link.quantity));
+        for (const tid of tids) {
+          const apptLinks = relevantLinks.filter((l) => String(l.treatmentId) === tid);
+          for (const link of apptLinks) {
+            const key = `${String(link.productId)}::${apptLoc ?? ""}`;
+            usageMap.set(key, (usageMap.get(key) ?? 0) + Number(link.quantity));
+          }
         }
       }
     }

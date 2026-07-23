@@ -2,6 +2,7 @@ import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { getJunctionTreatmentIds } from "./_helpers/junctionTreatments";
 
 // All widgets are Supabase-primary actions — the underlying business tables
 // (gabinet_appointments, gabinet_patients, gabinet_employees, ...) live in
@@ -401,11 +402,17 @@ export const getDayAgenda = action({
       String(a.startTime).localeCompare(String(b.startTime)),
     );
 
+    const sortedIds = sorted.map((a) => String(a._id ?? a.id ?? ""));
+    const junctionMap = await getJunctionTreatmentIds(db, sortedIds);
+
     const enriched = await Promise.all(
-      sorted.map(async (appt) => {
+      sorted.map(async (appt, i) => {
+        const apptId = sortedIds[i];
+        const junctionRows = junctionMap.get(apptId) ?? [];
+        const treatmentId = junctionRows[0]?.treatmentId ?? (appt.treatmentId ? String(appt.treatmentId) : null);
         const [patient, treatment, employee] = await Promise.all([
           appt.patientId ? db.get("gabinetPatients", String(appt.patientId)).catch(() => null) : null,
-          appt.treatmentId ? db.get("gabinetTreatments", String(appt.treatmentId)).catch(() => null) : null,
+          treatmentId ? db.get("gabinetTreatments", treatmentId).catch(() => null) : null,
           appt.employeeId
             ? db
                 .get<{ name?: string | null; email?: string | null }>(
@@ -571,11 +578,18 @@ export const getTopTreatments = action({
       db.query("gabinetTreatments").eq("organizationId", orgId).collect(),
     ]);
 
+    const topApptIds = (appointments as any[]).map((a) => String(a._id ?? a.id ?? ""));
+    const topJunctionMap = await getJunctionTreatmentIds(db, topApptIds);
+
     const treatmentCounts = new Map<string, number>();
     for (const appt of appointments as any[]) {
-      if (appt.treatmentId) {
-        const key = String(appt.treatmentId);
-        treatmentCounts.set(key, (treatmentCounts.get(key) ?? 0) + 1);
+      const apptId = String(appt._id ?? appt.id ?? "");
+      const junctionRows = topJunctionMap.get(apptId) ?? [];
+      const tids = junctionRows.length > 0
+        ? junctionRows.map((r) => r.treatmentId)
+        : appt.treatmentId ? [String(appt.treatmentId)] : [];
+      for (const tid of tids) {
+        treatmentCounts.set(tid, (treatmentCounts.get(tid) ?? 0) + 1);
       }
     }
 

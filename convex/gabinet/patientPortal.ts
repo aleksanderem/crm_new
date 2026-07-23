@@ -11,6 +11,7 @@ import {
   checkEmployeeQualificationSupabase,
   checkConflictSupabase,
 } from "./_availability_supabase";
+import { getJunctionTreatmentIds } from "./_helpers/junctionTreatments";
 
 // ---------------------------------------------------------------------------
 // Patient-portal reads (actions — gabinetPortalSessions and all dependent
@@ -142,13 +143,20 @@ export const getMyAppointments = action({
       .eq("patientId", patientId)
       .collect();
 
-    // Resolve treatment names in one batch to avoid N+1 reads against Supabase.
+    // Resolve treatment IDs via junction table, falling back to scalar for
+    // old appointments that pre-date the junction migration.
+    const portalApptIds = appointments.map((a) => String(a._id));
+    const portalJunctionMap = await getJunctionTreatmentIds(db, portalApptIds);
+    const apptTreatmentId = new Map<string, string | null>();
+    for (const appt of appointments) {
+      const apptId = String(appt._id);
+      const junctionRows = portalJunctionMap.get(apptId) ?? [];
+      const tid = junctionRows[0]?.treatmentId ?? (appt.treatmentId as string | null | undefined) ?? null;
+      apptTreatmentId.set(apptId, tid);
+    }
+
     const treatmentIds = Array.from(
-      new Set(
-        appointments
-          .map((a) => a.treatmentId)
-          .filter((id): id is NonNullable<typeof id> => typeof id === "string" && id.length > 0),
-      ),
+      new Set([...apptTreatmentId.values()].filter((id): id is string => typeof id === "string" && id.length > 0)),
     );
     const treatments = await db.getMany("gabinetTreatments", treatmentIds);
     const treatmentNameById = new Map<string, string>();
@@ -157,7 +165,7 @@ export const getMyAppointments = action({
     }
 
     const enriched = appointments.map((appt) => {
-      const treatmentId = appt.treatmentId as string | null | undefined;
+      const treatmentId = apptTreatmentId.get(String(appt._id));
       return {
         _id: String(appt._id),
         date: appt.date as string,
@@ -667,8 +675,11 @@ export const requestReschedule = action({
       ? `${patient.firstName} ${patient.lastName}`
       : "Patient";
 
-    const treatment = appt.treatmentId
-      ? await db.get("gabinetTreatments", String(appt.treatmentId))
+    const reschedJunctionMap = await getJunctionTreatmentIds(db, [args.appointmentId]);
+    const reschedJunctionRows = reschedJunctionMap.get(args.appointmentId) ?? [];
+    const reschedTreatmentId = reschedJunctionRows[0]?.treatmentId ?? (appt.treatmentId ? String(appt.treatmentId) : null);
+    const treatment = reschedTreatmentId
+      ? await db.get("gabinetTreatments", reschedTreatmentId)
       : null;
     const treatmentName = (treatment?.name as string) ?? "appointment";
 

@@ -12,6 +12,7 @@
 
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import type { EntityType, ScopeData } from "./scopeResolver";
+import { getJunctionTreatmentIds } from "../gabinet/_helpers/junctionTreatments";
 
 type SupabaseDb = ReturnType<typeof createSupabaseDb>;
 
@@ -70,8 +71,11 @@ async function fetchAppointmentScope(
     }
   }
 
-  if (appointment.treatmentId) {
-    const treatment = await db.get("gabinetTreatments", String(appointment.treatmentId));
+  const scopeJunctionMap = await getJunctionTreatmentIds(db, [appointmentId]);
+  const scopeJunctionRows = scopeJunctionMap.get(appointmentId) ?? [];
+  const scopeTreatmentId = scopeJunctionRows[0]?.treatmentId ?? (appointment.treatmentId ? String(appointment.treatmentId) : null);
+  if (scopeTreatmentId) {
+    const treatment = await db.get("gabinetTreatments", scopeTreatmentId);
     if (treatment) {
       scope.treatment = flattenEntity(treatment);
       await resolveTreatmentCategoryName(db, scope.treatment, treatment.categoryId);

@@ -459,17 +459,6 @@ function TreatmentDetail() {
     }
   };
 
-  const handleReactivate = async () => {
-    await updateTreatment({
-      organizationId,
-      treatmentId: treatmentId as Id<"gabinetTreatments">,
-      isActive: true,
-    });
-    void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.detail(organizationId, treatmentId) });
-    void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetTreatments.list(organizationId) });
-    toast.success(t("common.saved"));
-  };
-
   const handleAddProduct = async () => {
     const product = (warehouseProducts ?? []).find(p => p._id === addProductSelectedId);
     if (!product) return;
@@ -1570,17 +1559,11 @@ function TreatmentDetail() {
           setEditPanelOpen(true);
         }}
         secondaryActions={[
-          treatment?.isActive === false
-            ? {
-                label: t("gabinet.treatmentDetail.reactivate"),
-                onClick: handleReactivate,
-                variant: "outline" as const,
-              }
-            : {
-                label: t("gabinet.treatmentDetail.deactivate"),
-                onClick: handleDeactivate,
-                variant: "destructive" as const,
-              },
+          {
+            label: t("gabinet.treatmentDetail.deactivate"),
+            onClick: handleDeactivate,
+            variant: "destructive" as const,
+          },
         ]}
         fields={detailFields}
         expandedFieldCount={5}

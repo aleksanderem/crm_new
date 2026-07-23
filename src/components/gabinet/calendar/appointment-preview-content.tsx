@@ -47,8 +47,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 import { DocumentGateDialog } from "@/components/documents/document-gate-dialog";
@@ -104,6 +102,7 @@ import {
 } from "./appointment-indicators";
 import { StockShortageWarning } from "@/components/gabinet/appointment-shared/warnings";
 import { useAppointmentShortage } from "@/components/gabinet/appointment-shared/use-appointment-warnings";
+import { SettlementForm } from "@/components/gabinet/appointment-shared/settlement-form";
 
 // All statuses can transition to any other status. Lets staff correct mistakes
 // after a visit was already marked completed/cancelled/no_show (issue #1027).
@@ -221,12 +220,8 @@ export function AppointmentPreviewContent({
   const getWarnings = useAction(api.gabinet.appointments.getWarnings);
   const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
   const listVariantsAction = useAction(api.gabinet.treatments.listVariants);
-  const createPaymentAction = useAction(api.payments.create);
   const getPatientPackagesEnriched = useAction(
     api.gabinet.packages.getPatientPackagesEnriched,
-  );
-  const usePackageTreatmentsBatch = useAction(
-    api.gabinet.packages.usePackageTreatmentsBatch,
   );
 
   const { data: detail, isLoading, refetch } = useQuery({
@@ -254,7 +249,7 @@ export function AppointmentPreviewContent({
     queryKey: ["gabinet.treatments.listActive", organizationId],
     queryFn: () => listActiveTreatments({ organizationId }),
     enabled: !!organizationId,
-  }) as { data: Array<{ _id: string; name: string; duration: number }> | undefined };
+  }) as { data: Array<{ _id: string; name: string; duration: number; price?: number }> | undefined };
 
   // Patient's enriched package usage — drives the "deduct from active package"
   // section of the settle dialog (issue #1697). We need the enriched shape
@@ -359,32 +354,6 @@ export function AppointmentPreviewContent({
   // these modal confirmations without dismissing them first.
   const cancelDrag = useDraggableDialog(cancelDialogOpen);
   const settleDrag = useDraggableDialog(settleDialogOpen);
-  const [settleAmount, setSettleAmount] = useState("");
-  const [settleMethod, setSettleMethod] = useState<
-    "cash" | "card" | "transfer" | "package" | "other"
-  >("cash");
-  const [settleNotes, setSettleNotes] = useState("");
-  const [settleMarkCompleted, setSettleMarkCompleted] = useState(true);
-  const [settleSubmitting, setSettleSubmitting] = useState(false);
-  const [settleSplitPayment, setSettleSplitPayment] = useState(false);
-  const [settleFirstSplitMethod, setSettleFirstSplitMethod] = useState<
-    "cash" | "card" | "transfer" | "package" | "other"
-  >("cash");
-  const [settleSecondSplitMethod, setSettleSecondSplitMethod] = useState<
-    "cash" | "card" | "transfer" | "package" | "other"
-  >("card");
-  const [settleFirstSplitAmount, setSettleFirstSplitAmount] = useState("");
-  const [settleSecondSplitAmount, setSettleSecondSplitAmount] = useState("");
-  // Patient credit (overpayment carry-forward) — issue #1059.
-  const [settleUseCredit, setSettleUseCredit] = useState(false);
-  const [settleCreditAmount, setSettleCreditAmount] = useState("");
-  // Deduct units from an active package covering this visit's treatment
-  // (issue #1697). Staff opens "Rozlicz wizytę" and chooses how many "sztuki"
-  // of the package to draw down — defaults to 1 when a single matching
-  // package exists, otherwise the picker stays empty until staff selects one.
-  const [settleUsePackage, setSettleUsePackage] = useState(false);
-  const [settlePackageUsageId, setSettlePackageUsageId] = useState<string>("");
-  const [settlePackageQuantity, setSettlePackageQuantity] = useState<number>(1);
 
   const { tags: tagDefinitions } = useTagDefinitions(organizationId);
   const { dispatch } = useSidebarActions();
@@ -661,7 +630,7 @@ export function AppointmentPreviewContent({
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (closeAfter = true) => {
     if (!dirty || saving) return;
     setSaving(true);
     try {
@@ -718,7 +687,7 @@ export function AppointmentPreviewContent({
 
       await refetch();
       toast.success(t("gabinet.appointments.updated"));
-      onClose();
+      if (closeAfter) onClose();
     } catch (error) {
       console.error("[appointment-preview] save failed", error);
       toast.error(
@@ -732,7 +701,16 @@ export function AppointmentPreviewContent({
     }
   };
 
-  const treatmentPrice = treatment?.price ?? 0;
+  // Sum prices across all junction treatments; fall back to the legacy scalar
+  // for pre-junction single-treatment appointments. Fixes the "!"-unpaid
+  // indicator and isSettled check for multi-treatment visits (issue #3517).
+  const treatmentPrice =
+    junctionTreatments.length > 0
+      ? junctionTreatments.reduce((sum, jt) => {
+          const tr = treatments?.find((t) => t._id === jt.treatmentId);
+          return sum + (jt.priceAtBooking ?? tr?.price ?? 0);
+        }, 0)
+      : (treatment?.price ?? 0);
   // Credit applied from the patient's overpayment balance (issue #1059) counts
   // toward the paid total — a visit settled purely from credit lands as
   // `amount=0, creditApplied=price` (#1856), so without summing creditApplied
@@ -876,398 +854,11 @@ export function AppointmentPreviewContent({
     return out;
   })();
 
-  // Active package usages that still have remaining sessions for THIS visit's
-  // treatment. Drives the new "Pakiet aktywny" section in the settle dialog
-  // (issue #1697). Skip when the appointment already has a linked
-  // `packageUsageId` — that path auto-deducts 1 on completion via
-  // `handleAppointmentCompletion`, so showing the picker would double-deduct.
-  const eligiblePackageUsages =
-    appointment.packageUsageId || !appointment.treatmentId
-      ? []
-      : (patientPackagesEnriched ?? []).filter((u) => {
-          if (u.status !== "active") return false;
-          if (u.expiresAt && (u.expiresAt as number) < Date.now()) return false;
-          const entry = u.treatmentsUsed.find(
-            (tu) => tu.treatmentId === String(appointment.treatmentId),
-          );
-          return !!entry && entry.usedCount < entry.totalCount;
-        });
-
-  const selectedPackageUsage = eligiblePackageUsages.find(
-    (u) => u._id === settlePackageUsageId,
-  );
-  const selectedPackageEntry = selectedPackageUsage?.treatmentsUsed.find(
-    (tu) => tu.treatmentId === String(appointment.treatmentId),
-  );
-  const selectedPackageRemaining = selectedPackageEntry
-    ? selectedPackageEntry.totalCount - selectedPackageEntry.usedCount
-    : 0;
-  // True when the user picked "package" from the payment method dropdown
-  // (as opposed to checking the `settleUsePackage` checkbox).
-  const settleMethodIsPackage = !settleUsePackage && settleMethod === "package";
-  const packageQuantityExceedsRemaining =
-    (settleUsePackage || (settleMethodIsPackage && eligiblePackageUsages.length > 0)) &&
-    !!selectedPackageEntry &&
-    settlePackageQuantity > selectedPackageRemaining;
-
-  const handleOpenSettleDialog = () => {
-    if (saving || settleSubmitting) return;
-    setSettleAmount(outstanding > 0 ? outstanding.toFixed(2) : "");
-    setSettleMethod("cash");
-    setSettleNotes("");
-    setSettleMarkCompleted(canMarkCompleted);
-    setSettleSplitPayment(false);
-    setSettleFirstSplitMethod("cash");
-    setSettleSecondSplitMethod("card");
-    setSettleFirstSplitAmount("");
-    setSettleSecondSplitAmount("");
-    setSettleUseCredit(false);
-    setSettleCreditAmount(
-      Math.min(patientCreditBalance, outstanding).toFixed(2),
-    );
-    // Pre-arm the package-deduction section when exactly one matching package
-    // is available — the common case is a single active package, so staff get
-    // a one-click "rozlicz z pakietu" affordance without juggling a picker.
-    // With 0 or 2+ packages, leave the toggle off and let staff decide.
-    const singlePkg = eligiblePackageUsages.length === 1;
-    setSettleUsePackage(singlePkg);
-    setSettlePackageUsageId(singlePkg ? eligiblePackageUsages[0]._id : "");
-    setSettlePackageQuantity(1);
-    setSettleDialogOpen(true);
-  };
-
-  // Credit applied + overpayment derivation. Credit can stack with split
-  // payment (issue #1288): credit reduces outstanding first, the two split
-  // amounts cover the remainder.
-  const parsedSettleAmount =
-    parseFloat(settleAmount.replace(",", ".")) || 0;
-  const parsedCreditAmount =
-    parseFloat(settleCreditAmount.replace(",", ".")) || 0;
-  const creditMaxApplicable = Math.min(patientCreditBalance, outstanding);
-  const creditApplied =
-    settleUseCredit && parsedCreditAmount > 0
-      ? Math.min(parsedCreditAmount, creditMaxApplicable)
-      : 0;
-  const creditApplyExceedsBalance =
-    settleUseCredit && parsedCreditAmount > patientCreditBalance + 0.005;
-
-  const parsedFirstSplitAmount =
-    parseFloat(settleFirstSplitAmount.replace(",", ".")) || 0;
-  const parsedSecondSplitAmount =
-    parseFloat(settleSecondSplitAmount.replace(",", ".")) || 0;
-  const splitTotal =
-    Math.round((parsedFirstSplitAmount + parsedSecondSplitAmount) * 100) / 100;
-  // Credit reduces what the two methods need to cover.
-  const splitExpectedTotal =
-    Math.round(Math.max(0, outstanding - creditApplied) * 100) / 100;
-  // Issue #1852: only an UNDER-payment blocks submit. Over-payment is
-  // accepted and the excess flows to the patient's credit balance — same
-  // as the single-amount path does. The amber "Nadpłata…" note below
-  // tells staff what will happen.
-  const splitMismatch =
-    settleSplitPayment && splitTotal < splitExpectedTotal - 0.005;
-  // When credit covers the entire visit, no split amounts are required —
-  // the visit will be settled by a credit-only payment row.
-  const splitMissingAmount =
-    settleSplitPayment &&
-    splitExpectedTotal > 0 &&
-    parsedFirstSplitAmount <= 0 &&
-    parsedSecondSplitAmount <= 0;
-  // Methods only need to differ when both split rows are actually used.
-  const splitSameMethod =
-    settleSplitPayment &&
-    parsedFirstSplitAmount > 0 &&
-    parsedSecondSplitAmount > 0 &&
-    settleFirstSplitMethod === settleSecondSplitMethod;
-
-  const overpaymentAmount = settleSplitPayment
-    ? Math.max(0, splitTotal - splitExpectedTotal)
-    : Math.max(0, parsedSettleAmount + creditApplied - outstanding);
-
-  const handleConfirmSettle = async () => {
-    if (settleSubmitting) return;
-    const parsedAmount = parseFloat(settleAmount.replace(",", "."));
-    const hasAmount = settleAmount.trim().length > 0 && !isNaN(parsedAmount);
-    if (creditApplyExceedsBalance) {
-      toast.error(
-        t("gabinet.payments.creditExceedsBalance", {
-          defaultValue:
-            "Kwota użytego salda nadpłat przekracza dostępne środki.",
-        }),
-      );
-      return;
-    }
-    if (settleUsePackage || (settleMethodIsPackage && eligiblePackageUsages.length > 0)) {
-      if (!settlePackageUsageId) {
-        toast.error(
-          t("gabinet.appointmentDetail.packageNotSelected", {
-            defaultValue: "Wybierz pakiet, z którego chcesz zdjąć sztuki.",
-          }),
-        );
-        return;
-      }
-      if (settlePackageQuantity < 1) {
-        toast.error(
-          t("gabinet.appointmentDetail.packageQuantityMin", {
-            defaultValue: "Liczba sztuk musi wynosić co najmniej 1.",
-          }),
-        );
-        return;
-      }
-      if (packageQuantityExceedsRemaining) {
-        toast.error(
-          t("gabinet.appointmentDetail.packageQuantityExceeds", {
-            defaultValue:
-              "Liczba sztuk przekracza pozostałą ilość w pakiecie.",
-          }),
-        );
-        return;
-      }
-    }
-    if (settleSplitPayment) {
-      if (splitMissingAmount) {
-        toast.error(
-          t(
-            "gabinet.packages.splitMissingAmount",
-            "Podaj kwotę co najmniej jednej metody płatności",
-          ),
-        );
-        return;
-      }
-      if (splitMismatch) {
-        toast.error(
-          t(
-            "gabinet.packages.splitUnderpaidError",
-            "Suma rozdzielonych płatności jest niższa niż kwota do zapłaty",
-          ),
-        );
-        return;
-      }
-      if (splitSameMethod) {
-        toast.error(
-          t(
-            "gabinet.packages.splitSameMethodError",
-            "Wybierz dwie różne metody płatności",
-          ),
-        );
-        return;
-      }
-    } else {
-      if (hasAmount && parsedAmount < 0) {
-        toast.error(t("gabinet.payments.amountRequired"));
-        return;
-      }
-      if (
-        !hasAmount &&
-        creditApplied <= 0 &&
-        !settleMarkCompleted &&
-        !settleUsePackage
-      ) {
-        toast.error(
-          t("gabinet.appointmentDetail.settleNothingToDo", {
-            defaultValue: "Wpisz kwotę lub zaznacz zamknięcie wizyty.",
-          }),
-        );
-        return;
-      }
-    }
-    setSettleSubmitting(true);
-    try {
-      if (dirty) {
-        await handleSave();
-      }
-      // Issue #1697: deduct chosen number of "sztuki" from the active package
-      // before recording the payment row, so the visible package progress is
-      // up-to-date by the time the dialog closes and the calendar refreshes.
-      if (
-        (settleUsePackage || (settleMethodIsPackage && eligiblePackageUsages.length > 0)) &&
-        settlePackageUsageId &&
-        settlePackageQuantity > 0 &&
-        appointment.treatmentId
-      ) {
-        await usePackageTreatmentsBatch({
-          organizationId,
-          usageId: settlePackageUsageId,
-          items: [
-            {
-              treatmentId: String(appointment.treatmentId),
-              ...(appointment.variantId ? { variantId: String(appointment.variantId) } : {}),
-              quantity: settlePackageQuantity,
-            },
-          ],
-          appointmentId: appointment._id,
-        });
-      }
-      if (settleSplitPayment && patient?._id) {
-        const parts: Array<{
-          method: "cash" | "card" | "transfer" | "package" | "other";
-          amount: number;
-        }> = [];
-        if (parsedFirstSplitAmount > 0)
-          parts.push({
-            method: settleFirstSplitMethod,
-            amount: parsedFirstSplitAmount,
-          });
-        if (parsedSecondSplitAmount > 0)
-          parts.push({
-            method: settleSecondSplitMethod,
-            amount: parsedSecondSplitAmount,
-          });
-        if (parts.length === 0 && creditApplied > 0) {
-          // Credit covers the whole visit: record a credit-only ledger row
-          // so the visit is settled without a cash/card payment.
-          await createPaymentAction({
-            organizationId,
-            patientId: patient._id,
-            appointmentId: appointment._id,
-            amount: 0,
-            currency: "PLN",
-            paymentMethod: settleFirstSplitMethod,
-            notes: settleNotes.trim() || undefined,
-            creditApplied,
-          });
-        } else {
-          // Issue #1852: distribute over-payment across split rows so the
-          // excess lands on the patient's credit balance. Process the rows
-          // sequentially — each row absorbs whatever is left of the visit's
-          // outstanding (after creditApplied); the remainder of the row is
-          // recorded as creditEarned. Backend constraint: creditEarned per
-          // row must not exceed that row's amount, so this per-row split is
-          // required (one big creditEarned on the first row would trip the
-          // server-side check whenever the per-row amount is smaller).
-          let remainingExpected = splitExpectedTotal;
-          for (let i = 0; i < parts.length; i++) {
-            const part = parts[i];
-            const baseNote = settleNotes.trim();
-            const splitNote = `split: ${part.method}`;
-            const combinedNote = baseNote
-              ? `${baseNote} (${splitNote})`
-              : splitNote;
-            const absorbedOutstanding = Math.min(part.amount, remainingExpected);
-            const rowCreditEarned =
-              Math.round((part.amount - absorbedOutstanding) * 100) / 100;
-            remainingExpected =
-              Math.round((remainingExpected - absorbedOutstanding) * 100) / 100;
-            await createPaymentAction({
-              organizationId,
-              patientId: patient._id,
-              appointmentId: appointment._id,
-              amount: part.amount,
-              currency: "PLN",
-              paymentMethod: part.method,
-              notes: combinedNote,
-              // Attach credit to the first positive split row only — the
-              // backend ledger entry on that row drains the patient's
-              // balance for the whole settle action.
-              ...(i === 0 && creditApplied > 0 ? { creditApplied } : {}),
-              ...(rowCreditEarned > 0 ? { creditEarned: rowCreditEarned } : {}),
-            });
-          }
-        }
-      } else if (
-        patient?._id &&
-        ((hasAmount && parsedAmount > 0) || creditApplied > 0)
-      ) {
-        await createPaymentAction({
-          organizationId,
-          patientId: patient._id,
-          appointmentId: appointment._id,
-          amount: parsedAmount > 0 ? parsedAmount : 0,
-          currency: "PLN",
-          paymentMethod: settleMethod,
-          notes: settleNotes.trim() || undefined,
-          ...(settleMethodIsPackage && settlePackageUsageId
-            ? { packageUsageId: settlePackageUsageId }
-            : {}),
-          ...(overpaymentAmount > 0
-            ? { creditEarned: overpaymentAmount }
-            : {}),
-          ...(creditApplied > 0 ? { creditApplied } : {}),
-        });
-      } else if (
-        // Issue #1697: package-only settle — staff drew sessions from a
-        // package and did not enter a cash amount. Record a package-method
-        // payment for the outstanding total so the visit clears the unpaid
-        // indicator, mirroring the auto-deduction path that runs for
-        // appointments already linked via `packageUsageId` (#1524).
-        settleUsePackage &&
-        settlePackageUsageId &&
-        patient?._id &&
-        outstanding > 0 &&
-        !settleSplitPayment
-      ) {
-        await createPaymentAction({
-          organizationId,
-          patientId: patient._id,
-          appointmentId: appointment._id,
-          packageUsageId: settlePackageUsageId,
-          amount: outstanding,
-          currency: "PLN",
-          paymentMethod: "package",
-          notes: settleNotes.trim() || undefined,
-        });
-      }
-      let settleStockWarnings: string[] = [];
-      if (settleMarkCompleted && canMarkCompleted) {
-        const result = await updateStatus({
-          organizationId,
-          appointmentId: appointment._id,
-          status: "completed",
-        });
-        settleStockWarnings = result?.warnings ?? [];
-      }
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: supabaseKeys.gabinetAppointments.all,
-        }),
-        queryClient.invalidateQueries({
-          queryKey: supabaseKeys.scheduledActivities.all,
-        }),
-        // Refresh the per-tile paid/unpaid indicator on the calendar
-        // (issue #1040) after a settle action records a new payment.
-        queryClient.invalidateQueries({
-          queryKey: supabaseKeys.payments.all,
-        }),
-        // Issue #1697: refresh patient package usage so the settle dialog
-        // (and any other open package widgets) reflect the deducted units.
-        queryClient.invalidateQueries({
-          queryKey: [
-            "gabinet.packages.getPatientPackagesEnriched",
-            organizationId,
-            patientIdForPackages,
-          ],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: [
-            "gabinet.packages.getPatientPackages",
-            organizationId,
-            patientIdForPackages,
-          ],
-        }),
-      ]);
-      await refetch();
-      setSettleDialogOpen(false);
-      toast.success(
-        t("gabinet.appointmentDetail.settleSuccess", {
-          defaultValue: "Wizyta rozliczona",
-        }),
-      );
-      if (settleStockWarnings.length > 0) {
-        toast.warning(t("gabinet.stock.negativeWarning"));
-      }
-      onClose();
-    } catch (error) {
-      console.error("[appointment-preview] settle failed", error);
-      toast.error(
-        formatAppointmentError(error, t, {
-          key: "gabinet.appointments.updateFailed",
-          defaultValue: "Nie udało się rozliczyć wizyty.",
-        }),
-      );
-    } finally {
-      setSettleSubmitting(false);
-    }
-  };
+  // Package usages passed to SettlementForm — skip when the appointment already
+  // has a linked packageUsageId (auto-deducts on completion, double-deduct risk).
+  const packageUsageForSettle = appointment.packageUsageId
+    ? []
+    : (patientPackagesEnriched ?? []);
 
   const handleNavigateToPayments = () => {
     setSettleDialogOpen(false);
@@ -1905,7 +1496,7 @@ export function AppointmentPreviewContent({
           variant="outline"
           size="sm"
           onClick={handleSave}
-          disabled={!dirty || saving || settleSubmitting}
+          disabled={!dirty || saving}
           className="w-full sm:w-auto"
         >
           {saving
@@ -1915,8 +1506,8 @@ export function AppointmentPreviewContent({
         <Button
           size="sm"
           variant={isSettled ? "outline" : "default"}
-          onClick={handleOpenSettleDialog}
-          disabled={saving || settleSubmitting || isSettled}
+          onClick={() => setSettleDialogOpen(true)}
+          disabled={saving || isSettled}
           className="w-full sm:w-auto"
         >
           {saving ? (
@@ -2018,10 +1609,7 @@ export function AppointmentPreviewContent({
 
     <Dialog
       open={settleDialogOpen}
-      onOpenChange={(o) => {
-        if (settleSubmitting) return;
-        setSettleDialogOpen(o);
-      }}
+      onOpenChange={setSettleDialogOpen}
     >
       <DialogContent
         ref={settleDrag.contentRef}
@@ -2043,667 +1631,123 @@ export function AppointmentPreviewContent({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1">
-            {treatment?.name && (
-              <div className="flex justify-between gap-3">
-                <span className="text-muted-foreground">
-                  {t("gabinet.appointments.treatment")}
-                </span>
-                <span className="font-medium truncate">{treatment.name}</span>
+        <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1 mt-2">
+          {(isMultiTreatment ? junctionTreatments : treatment ? [treatment] : []).map((item, i) => {
+            const name = isMultiTreatment
+              ? (treatments?.find((tr) => tr._id === (item as typeof junctionTreatments[0]).treatmentId)?.name ?? t("gabinet.appointments.selectTreatment"))
+              : (item as typeof treatment)?.name ?? "";
+            return (
+              <div key={i} className="flex justify-between gap-3">
+                <span className="text-muted-foreground truncate">{name}</span>
               </div>
-            )}
-            <div className="flex justify-between gap-3">
-              <span className="text-muted-foreground">
-                {t("gabinet.payments.treatmentPrice")}
-              </span>
-              <span className="font-medium tabular-nums">
-                {formatCurrencyPLN(treatmentPrice)}
-              </span>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-muted-foreground">
-                {t("gabinet.payments.totalPaid")}
-              </span>
-              <span className="font-medium tabular-nums">
-                {formatCurrencyPLN(totalPaid)}
-              </span>
-            </div>
-            <div className="flex justify-between gap-3 border-t pt-1">
-              <span className="text-muted-foreground">
-                {t("gabinet.payments.outstanding")}
-              </span>
-              <span className="font-semibold tabular-nums">
-                {formatCurrencyPLN(outstanding)}
-              </span>
-            </div>
-            {patientCreditBalance > 0 && (
-              <div className="flex justify-between gap-3 border-t pt-1 text-emerald-700 dark:text-emerald-400">
-                <span>
-                  {t("gabinet.payments.creditBalance", {
-                    defaultValue: "Saldo nadpłat",
-                  })}
-                </span>
-                <span className="font-medium tabular-nums">
-                  {formatCurrencyPLN(patientCreditBalance)}
-                </span>
-              </div>
-            )}
+            );
+          })}
+          <div className="flex justify-between gap-3">
+            <span className="text-muted-foreground">
+              {t("gabinet.payments.treatmentPrice")}
+            </span>
+            <span className="font-medium tabular-nums">
+              {formatCurrencyPLN(treatmentPrice)}
+            </span>
           </div>
-
-          {eligiblePackageUsages.length > 0 && (
-            <div className="space-y-2 rounded-md border border-blue-200 bg-blue-50 p-2.5 dark:border-blue-900 dark:bg-blue-950/30">
-              <Label
-                htmlFor="settle-use-package"
-                className="-mx-1 flex min-h-11 select-none items-start gap-3 rounded-md px-1 py-1.5 cursor-pointer text-sm font-normal leading-snug active:bg-blue-100 dark:active:bg-blue-900/40"
-              >
-                <Checkbox
-                  id="settle-use-package"
-                  checked={settleUsePackage}
-                  onCheckedChange={(v) => {
-                    const next = v === true;
-                    setSettleUsePackage(next);
-                    if (next && !settlePackageUsageId) {
-                      setSettlePackageUsageId(eligiblePackageUsages[0]._id);
-                    }
-                    // Issue #1793: client already paid for the package, so the
-                    // visit should settle without an additional cash/card row.
-                    // Clearing the amount sends `handleConfirmSettle` down the
-                    // package-only path (writes a `paymentMethod: "package"`
-                    // ledger entry for the outstanding total). Unchecking
-                    // restores the cash flow.
-                    if (next) {
-                      setSettleAmount("");
-                    } else {
-                      setSettleAmount(
-                        outstanding > 0 ? outstanding.toFixed(2) : "",
-                      );
-                    }
-                  }}
-                  className="mt-0.5"
-                />
-                <span>
-                  {t("gabinet.appointmentDetail.deductFromPackage", {
-                    defaultValue:
-                      "Zdejmij sztuki z aktywnego pakietu pacjenta",
-                  })}
-                </span>
-              </Label>
-              {settleUsePackage && (
-                <>
-                  {eligiblePackageUsages.length > 1 && (
-                    <div className="space-y-1">
-                      <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                        {t("gabinet.appointmentDetail.choosePackage", {
-                          defaultValue: "Wybierz pakiet",
-                        })}
-                      </Label>
-                      <Select
-                        value={settlePackageUsageId}
-                        onValueChange={(v) => setSettlePackageUsageId(v)}
-                      >
-                        <SelectTrigger className="h-9">
-                          <SelectValue
-                            placeholder={t(
-                              "gabinet.appointmentDetail.choosePackage",
-                              { defaultValue: "Wybierz pakiet" },
-                            )}
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {eligiblePackageUsages.map((u) => {
-                            const entry = u.treatmentsUsed.find(
-                              (tu) =>
-                                tu.treatmentId ===
-                                String(appointment.treatmentId),
-                            );
-                            const remaining = entry
-                              ? entry.totalCount - entry.usedCount
-                              : 0;
-                            const total = entry?.totalCount ?? 0;
-                            const pkgLabel =
-                              u.packageName ?? t("gabinet.packages.package");
-                            return (
-                              <SelectItem key={u._id} value={u._id}>
-                                {`${pkgLabel} — ${remaining}/${total}`}
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  {selectedPackageUsage && (
-                    <div className="text-[11px] text-muted-foreground">
-                      {t("gabinet.appointmentDetail.packageRemaining", {
-                        defaultValue:
-                          "{{name}} — pozostało {{remaining}} z {{total}}",
-                        name:
-                          selectedPackageUsage.packageName ??
-                          t("gabinet.packages.package"),
-                        remaining: selectedPackageRemaining,
-                        total: selectedPackageEntry?.totalCount ?? 0,
-                      })}
-                    </div>
-                  )}
-                  <div className="space-y-1">
-                    <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                      {t("gabinet.appointmentDetail.unitsToDeduct", {
-                        defaultValue: "Ile sztuk zdjąć?",
-                      })}
-                    </Label>
-                    <Input
-                      type="number"
-                      inputMode="numeric"
-                      min={1}
-                      max={
-                        selectedPackageEntry
-                          ? selectedPackageRemaining
-                          : undefined
-                      }
-                      value={settlePackageQuantity}
-                      onChange={(e) => {
-                        const v = parseInt(e.target.value, 10);
-                        if (Number.isFinite(v) && v >= 1) {
-                          setSettlePackageQuantity(v);
-                        } else if (e.target.value === "") {
-                          setSettlePackageQuantity(1);
-                        }
-                      }}
-                    />
-                    {packageQuantityExceedsRemaining && (
-                      <p className="text-[11px] text-destructive">
-                        {t(
-                          "gabinet.appointmentDetail.packageQuantityExceeds",
-                          {
-                            defaultValue:
-                              "Liczba sztuk przekracza pozostałą ilość w pakiecie.",
-                          },
-                        )}
-                      </p>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {!settleSplitPayment && !settleUsePackage && (
-            <div className="space-y-1.5">
-              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                {t("gabinet.payments.amount")}
-              </Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                value={settleAmount}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                    setSettleAmount(v);
-                  }
-                }}
-                placeholder={outstanding > 0 ? outstanding.toFixed(2) : "0.00"}
-                disabled={!patient?._id}
-              />
-              {!patient?._id && (
-                <p className="text-[11px] text-muted-foreground">
-                  {t("gabinet.payments.noPaymentsDesc")}
-                </p>
-              )}
-            </div>
-          )}
-
-          {!settleSplitPayment && !settleUsePackage && (
-            <div className="space-y-1.5">
-              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                {t("gabinet.payments.method")}
-              </Label>
-              <Select
-                value={settleMethod}
-                onValueChange={(v) =>
-                  setSettleMethod(v as typeof settleMethod)
-                }
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">
-                    {t("gabinet.payments.methods.cash")}
-                  </SelectItem>
-                  <SelectItem value="card">
-                    {t("gabinet.payments.methods.card")}
-                  </SelectItem>
-                  <SelectItem value="transfer">
-                    {t("gabinet.payments.methods.transfer")}
-                  </SelectItem>
-                  <SelectItem value="package">
-                    {t("gabinet.payments.methods.package")}
-                  </SelectItem>
-                  <SelectItem value="other">
-                    {t("gabinet.payments.methods.other")}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {settleMethodIsPackage && eligiblePackageUsages.length > 0 && (
-            <div className="space-y-2 rounded-md border p-2.5">
-              {eligiblePackageUsages.length > 1 && (
-                <div className="space-y-1">
-                  <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                    {t("gabinet.appointmentDetail.choosePackage", {
-                      defaultValue: "Wybierz pakiet",
-                    })}
-                  </Label>
-                  <Select
-                    value={settlePackageUsageId}
-                    onValueChange={(v) => setSettlePackageUsageId(v)}
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue
-                        placeholder={t(
-                          "gabinet.appointmentDetail.choosePackage",
-                          { defaultValue: "Wybierz pakiet" },
-                        )}
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {eligiblePackageUsages.map((u) => {
-                        const entry = u.treatmentsUsed.find(
-                          (tu) =>
-                            tu.treatmentId ===
-                            String(appointment.treatmentId),
-                        );
-                        const remaining = entry
-                          ? entry.totalCount - entry.usedCount
-                          : 0;
-                        const total = entry?.totalCount ?? 0;
-                        const pkgLabel =
-                          u.packageName ?? t("gabinet.packages.package");
-                        return (
-                          <SelectItem key={u._id} value={u._id}>
-                            {`${pkgLabel} — ${remaining}/${total}`}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              {selectedPackageUsage && (
-                <div className="text-[11px] text-muted-foreground">
-                  {t("gabinet.appointmentDetail.packageRemaining", {
-                    defaultValue:
-                      "{{name}} — pozostało {{remaining}} z {{total}}",
-                    name:
-                      selectedPackageUsage.packageName ??
-                      t("gabinet.packages.package"),
-                    remaining: selectedPackageRemaining,
-                    total: selectedPackageEntry?.totalCount ?? 0,
-                  })}
-                </div>
-              )}
-              <div className="space-y-1">
-                <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                  {t("gabinet.appointmentDetail.unitsToDeduct", {
-                    defaultValue: "Ile sztuk zdjąć?",
-                  })}
-                </Label>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  max={
-                    selectedPackageEntry
-                      ? selectedPackageRemaining
-                      : undefined
-                  }
-                  value={settlePackageQuantity}
-                  onChange={(e) => {
-                    const v = parseInt(e.target.value, 10);
-                    if (Number.isFinite(v) && v >= 1) {
-                      setSettlePackageQuantity(v);
-                    } else if (e.target.value === "") {
-                      setSettlePackageQuantity(1);
-                    }
-                  }}
-                />
-                {packageQuantityExceedsRemaining && (
-                  <p className="text-[11px] text-destructive">
-                    {t(
-                      "gabinet.appointmentDetail.packageQuantityExceeds",
-                      {
-                        defaultValue:
-                          "Liczba sztuk przekracza pozostałą ilość w pakiecie.",
-                      },
-                    )}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {settleUsePackage && !settleSplitPayment && (
-            <div className="rounded-md border border-blue-200 bg-blue-50 p-2.5 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200">
-              {t("gabinet.payments.packageCoversVisitNote", {
-                defaultValue:
-                  "Wizyta zostanie rozliczona z pakietu — klient już opłacił pakiet, nie wymaga dodatkowej formy płatności.",
-              })}
-            </div>
-          )}
-
-          {patient?._id && patientCreditBalance > 0 && (
-            <div className="space-y-2 rounded-md border border-emerald-200 bg-emerald-50 p-2.5 dark:border-emerald-900 dark:bg-emerald-950/30">
-              <Label
-                htmlFor="settle-use-credit"
-                className="-mx-1 flex min-h-11 select-none items-start gap-3 rounded-md px-1 py-1.5 cursor-pointer text-sm font-normal leading-snug active:bg-emerald-100 dark:active:bg-emerald-900/40"
-              >
-                <Checkbox
-                  id="settle-use-credit"
-                  checked={settleUseCredit}
-                  className="mt-0.5"
-                  onCheckedChange={(v) => {
-                    const next = v === true;
-                    setSettleUseCredit(next);
-                    if (next) {
-                      const def = Math.min(
-                        patientCreditBalance,
-                        outstanding,
-                      );
-                      setSettleCreditAmount(
-                        def > 0 ? def.toFixed(2) : "",
-                      );
-                      if (!settleSplitPayment) {
-                        const remaining = Math.max(0, outstanding - def);
-                        setSettleAmount(
-                          remaining > 0 ? remaining.toFixed(2) : "",
-                        );
-                      }
-                    } else {
-                      setSettleCreditAmount("");
-                      if (!settleSplitPayment) {
-                        setSettleAmount(
-                          outstanding > 0 ? outstanding.toFixed(2) : "",
-                        );
-                      }
-                    }
-                  }}
-                />
-                <span>
-                  {t("gabinet.payments.useCredit", {
-                    defaultValue: "Użyj salda nadpłat",
-                    amount: formatCurrencyPLN(patientCreditBalance),
-                  })}{" "}
-                  <span className="text-muted-foreground">
-                    ({formatCurrencyPLN(patientCreditBalance)})
-                  </span>
-                </span>
-              </Label>
-              {settleUseCredit && (
-                <div className="space-y-1">
-                  <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                    {t("gabinet.payments.creditAmountToApply", {
-                      defaultValue: "Kwota z salda",
-                    })}
-                  </Label>
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    value={settleCreditAmount}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                        setSettleCreditAmount(v);
-                      }
-                    }}
-                    placeholder={Math.min(
-                      patientCreditBalance,
-                      outstanding,
-                    ).toFixed(2)}
-                  />
-                  {creditApplyExceedsBalance && (
-                    <p className="text-[11px] text-destructive">
-                      {t("gabinet.payments.creditExceedsBalance", {
-                        defaultValue:
-                          "Kwota użytego salda nadpłat przekracza dostępne środki.",
-                      })}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {overpaymentAmount > 0 && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
-              {t("gabinet.payments.overpaymentNote", {
-                defaultValue:
-                  "Nadpłata {{amount}} zostanie dopisana do salda klienta i można ją wykorzystać przy kolejnych wizytach.",
-                amount: formatCurrencyPLN(overpaymentAmount),
-              })}
-            </div>
-          )}
-
-          {patient?._id && (
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="settle-split-payment"
-                checked={settleSplitPayment}
-                onCheckedChange={(v) => setSettleSplitPayment(v === true)}
-              />
-              <Label
-                htmlFor="settle-split-payment"
-                className="cursor-pointer text-sm font-normal"
-              >
-                {t("gabinet.packages.splitPayment", "Podziel płatność")}
-              </Label>
-            </div>
-          )}
-
-          {settleSplitPayment && (
-            <div className="rounded-lg border p-3 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-md border p-2 space-y-2">
-                  <Label className="text-xs font-medium">
-                    {t("gabinet.packages.firstMethod", "Pierwsza metoda")}
-                  </Label>
-                  <Select
-                    value={settleFirstSplitMethod}
-                    onValueChange={(v) =>
-                      setSettleFirstSplitMethod(
-                        v as typeof settleFirstSplitMethod,
-                      )
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">
-                        {t("gabinet.payments.methods.cash")}
-                      </SelectItem>
-                      <SelectItem value="card">
-                        {t("gabinet.payments.methods.card")}
-                      </SelectItem>
-                      <SelectItem value="transfer">
-                        {t("gabinet.payments.methods.transfer")}
-                      </SelectItem>
-                      <SelectItem value="package">
-                        {t("gabinet.payments.methods.package")}
-                      </SelectItem>
-                      <SelectItem value="other">
-                        {t("gabinet.payments.methods.other")}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    value={settleFirstSplitAmount}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                        setSettleFirstSplitAmount(v);
-                      }
-                    }}
-                  />
-                </div>
-                <div className="rounded-md border p-2 space-y-2">
-                  <Label className="text-xs font-medium">
-                    {t("gabinet.packages.secondMethod", "Druga metoda")}
-                  </Label>
-                  <Select
-                    value={settleSecondSplitMethod}
-                    onValueChange={(v) =>
-                      setSettleSecondSplitMethod(
-                        v as typeof settleSecondSplitMethod,
-                      )
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">
-                        {t("gabinet.payments.methods.cash")}
-                      </SelectItem>
-                      <SelectItem value="card">
-                        {t("gabinet.payments.methods.card")}
-                      </SelectItem>
-                      <SelectItem value="transfer">
-                        {t("gabinet.payments.methods.transfer")}
-                      </SelectItem>
-                      <SelectItem value="package">
-                        {t("gabinet.payments.methods.package")}
-                      </SelectItem>
-                      <SelectItem value="other">
-                        {t("gabinet.payments.methods.other")}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    value={settleSecondSplitAmount}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                        setSettleSecondSplitAmount(v);
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-              <div
-                className={cn(
-                  "flex items-center justify-between text-xs",
-                  splitMismatch || splitSameMethod
-                    ? "text-destructive"
-                    : "text-muted-foreground",
-                )}
-              >
-                <span>
-                  {t("gabinet.packages.splitSum", "Suma")}:{" "}
-                  {formatCurrencyPLN(splitTotal)}
-                  {` / ${formatCurrencyPLN(splitExpectedTotal)}`}
-                </span>
-                {splitSameMethod ? (
-                  <span>
-                    {t(
-                      "gabinet.packages.splitSameMethod",
-                      "Metody muszą się różnić",
-                    )}
-                  </span>
-                ) : splitMismatch ? (
-                  <span>
-                    {t(
-                      "gabinet.packages.splitUnderpaid",
-                      "Kwota jest niższa niż cena",
-                    )}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-1.5">
-            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              {t("common.notes")}
-            </Label>
-            <Textarea
-              value={settleNotes}
-              onChange={(e) => setSettleNotes(e.target.value)}
-              placeholder={t("gabinet.payments.notePlaceholder")}
-              className="min-h-[72px] text-sm"
-            />
+          <div className="flex justify-between gap-3">
+            <span className="text-muted-foreground">
+              {t("gabinet.payments.totalPaid")}
+            </span>
+            <span className="font-medium tabular-nums">
+              {formatCurrencyPLN(totalPaid)}
+            </span>
           </div>
-
-          {canMarkCompleted && (
-            <label className="flex items-start gap-2 text-sm">
-              <Checkbox
-                id="settle-mark-completed"
-                checked={settleMarkCompleted}
-                onCheckedChange={(c) =>
-                  setSettleMarkCompleted(c === true)
-                }
-              />
-              <span className="leading-tight">
-                {t("gabinet.appointmentDetail.settleMarkCompleted", {
-                  defaultValue: "Oznacz wizytę jako zakończoną",
+          <div className="flex justify-between gap-3 border-t pt-1">
+            <span className="text-muted-foreground">
+              {t("gabinet.payments.outstanding")}
+            </span>
+            <span className="font-semibold tabular-nums">
+              {formatCurrencyPLN(outstanding)}
+            </span>
+          </div>
+          {patientCreditBalance > 0 && (
+            <div className="flex justify-between gap-3 border-t pt-1 text-emerald-700 dark:text-emerald-400">
+              <span>
+                {t("gabinet.payments.creditBalance", {
+                  defaultValue: "Saldo nadpłat",
                 })}
               </span>
-            </label>
+              <span className="font-medium tabular-nums">
+                {formatCurrencyPLN(patientCreditBalance)}
+              </span>
+            </div>
           )}
         </div>
 
-        <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleNavigateToPayments}
-            disabled={settleSubmitting}
-          >
-            <ExternalLink className="mr-1 size-3" />
-            {t("gabinet.payments.paymentHistory")}
-          </Button>
-          <div className="flex gap-2 justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setSettleDialogOpen(false)}
-              disabled={settleSubmitting}
-            >
-              {t("common.cancel")}
-            </Button>
-            <Button
-              type="button"
-              onClick={handleConfirmSettle}
-              disabled={
-                settleSubmitting ||
-                creditApplyExceedsBalance ||
-                packageQuantityExceedsRemaining ||
-                (settleUsePackage && !settlePackageUsageId) ||
-                (settleMethodIsPackage &&
-                  eligiblePackageUsages.length > 0 &&
-                  !settlePackageUsageId) ||
-                (settleSplitPayment &&
-                  (splitMissingAmount || splitMismatch || splitSameMethod))
+          {settleDialogOpen && (
+            <SettlementForm
+              organizationId={organizationId}
+              appointmentId={appointment._id}
+              patientId={patient?._id ?? ""}
+              junctionTreatments={junctionTreatments}
+              legacyTreatmentPrice={treatment?.price}
+              treatmentsList={treatments}
+              payments={(detail.payments ?? []) as Array<Record<string, unknown>>}
+              patientPackageUsage={packageUsageForSettle}
+              showMarkCompleted={canMarkCompleted}
+              onMarkCompleted={async () => {
+                const result = await updateStatus({
+                  organizationId,
+                  appointmentId: appointment._id,
+                  status: "completed",
+                });
+                if (result?.warnings?.length) {
+                  toast.warning(t("gabinet.stock.negativeWarning"));
+                }
+              }}
+              onBeforeSubmit={dirty ? async () => { await handleSave(false); } : undefined}
+              onSuccess={async () => {
+                await Promise.all([
+                  queryClient.invalidateQueries({
+                    queryKey: supabaseKeys.gabinetAppointments.all,
+                  }),
+                  queryClient.invalidateQueries({
+                    queryKey: supabaseKeys.scheduledActivities.all,
+                  }),
+                  queryClient.invalidateQueries({
+                    queryKey: supabaseKeys.payments.all,
+                  }),
+                  queryClient.invalidateQueries({
+                    queryKey: [
+                      "gabinet.packages.getPatientPackagesEnriched",
+                      organizationId,
+                      patientIdForPackages,
+                    ],
+                  }),
+                  queryClient.invalidateQueries({
+                    queryKey: [
+                      "gabinet.packages.getPatientPackages",
+                      organizationId,
+                      patientIdForPackages,
+                    ],
+                  }),
+                ]);
+                await refetch();
+                setSettleDialogOpen(false);
+                onClose();
+              }}
+              onCancel={() => setSettleDialogOpen(false)}
+              extraFooterContent={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleNavigateToPayments}
+                >
+                  <ExternalLink className="mr-1 size-3" />
+                  {t("gabinet.payments.paymentHistory")}
+                </Button>
               }
-            >
-              {settleSubmitting
-                ? t("common.processing")
-                : t("gabinet.appointmentDetail.closeAndSettle", "Rozlicz wizytę")}
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

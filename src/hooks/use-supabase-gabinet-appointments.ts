@@ -199,7 +199,47 @@ export function useSupabaseGabinetAppointmentsByEmployee(
         .limit(limit);
 
       if (error) throw error;
-      return (data ?? []).map(mapGabinetAppointmentFromSupabase);
+      const mapped = (data ?? []).map(mapGabinetAppointmentFromSupabase);
+
+      const apptIds = mapped.map((a) => a._id);
+      if (apptIds.length > 0) {
+        const { data: junctionRows } = await client
+          .from("gabinet_appointment_treatments")
+          .select(
+            "id,appointment_id,treatment_id,variant_id,price_at_booking,sort_order",
+          )
+          .in("appointment_id", apptIds)
+          .order("sort_order", { ascending: true });
+        const byAppt = new Map<
+          string,
+          NonNullable<MappedGabinetAppointment["treatments"]>
+        >();
+        for (const row of (junctionRows ?? []) as Array<{
+          id: string;
+          appointment_id: string;
+          treatment_id: string | null;
+          variant_id: string | null;
+          price_at_booking: number | null;
+          sort_order: number;
+        }>) {
+          const list = byAppt.get(row.appointment_id) ?? [];
+          list.push({
+            _id: row.id,
+            appointmentId: row.appointment_id,
+            treatmentId: row.treatment_id ?? undefined,
+            variantId: row.variant_id ?? undefined,
+            priceAtBooking: row.price_at_booking ?? undefined,
+            sortOrder: row.sort_order,
+            createdAt: 0,
+            updatedAt: 0,
+          });
+          byAppt.set(row.appointment_id, list);
+        }
+        for (const appt of mapped) {
+          appt.treatments = byAppt.get(appt._id) ?? [];
+        }
+      }
+      return mapped;
     },
     enabled: enabled && isReady && !!organizationId && !!employeeId,
   } satisfies UseQueryOptions<MappedGabinetAppointment[], Error>);

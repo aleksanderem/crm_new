@@ -2670,8 +2670,8 @@ function AppointmentDetail() {
           onOpenChange={setChangeEmployeeOpen}
           organizationId={organizationId}
           appointmentId={appointmentId as Id<"gabinetAppointments">}
-          treatmentId={
-            detail.treatments?.[0]?.treatmentId as Id<"gabinetTreatments">
+          treatmentIds={
+            (detail.treatments?.map((t) => t.treatmentId) ?? []) as Id<"gabinetTreatments">[]
           }
           currentEmployeeId={detail.appointment.employeeId}
           appointmentDate={detail.appointment.date}

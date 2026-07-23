@@ -56,6 +56,14 @@ export interface SettlementFormProps {
   onSuccess: () => void;
   /** Called when the user cancels. Should close the dialog. */
   onCancel: () => void;
+  /** Called before payment creation — use to auto-save unsaved form fields. */
+  onBeforeSubmit?: () => Promise<void>;
+  /** If true, shows a "mark visit as completed" checkbox before the footer. */
+  showMarkCompleted?: boolean;
+  /** Called after all payments are created when the mark-completed checkbox is checked. */
+  onMarkCompleted?: () => Promise<void>;
+  /** Rendered in the footer row before the action buttons. */
+  extraFooterContent?: React.ReactNode;
 }
 
 const PAYMENT_METHODS = [
@@ -79,6 +87,10 @@ export function SettlementForm({
   patientPackageUsage,
   onSuccess,
   onCancel,
+  onBeforeSubmit,
+  showMarkCompleted,
+  onMarkCompleted,
+  extraFooterContent,
 }: SettlementFormProps) {
   const { t } = useTranslation();
 
@@ -104,6 +116,24 @@ export function SettlementForm({
     "amount",
   );
   const [discountValue, setDiscountValue] = useState("");
+
+  // Split payment state
+  const [splitPayment, setSplitPayment] = useState(false);
+  const [firstSplitMethod, setFirstSplitMethod] = useState<(typeof PAYMENT_METHODS)[number]>("cash");
+  const [secondSplitMethod, setSecondSplitMethod] = useState<(typeof PAYMENT_METHODS)[number]>("card");
+  const [firstSplitAmount, setFirstSplitAmount] = useState("");
+  const [secondSplitAmount, setSecondSplitAmount] = useState("");
+  const [firstSplitPackageId, setFirstSplitPackageId] = useState<string | null>(null);
+  const [firstSplitPackageItems, setFirstSplitPackageItems] = useState<
+    Array<{ treatmentId: string; variantId?: string; treatmentName: string; remaining: number; qty: number }>
+  >([]);
+  const [secondSplitPackageId, setSecondSplitPackageId] = useState<string | null>(null);
+  const [secondSplitPackageItems, setSecondSplitPackageItems] = useState<
+    Array<{ treatmentId: string; variantId?: string; treatmentName: string; remaining: number; qty: number }>
+  >([]);
+
+  // Mark completed state
+  const [markCompleted, setMarkCompleted] = useState(showMarkCompleted ?? false);
 
   const createPayment = useAction(api.payments.create);
   const getPatientCreditAction = useAction(api.payments.getPatientCredit);
@@ -156,59 +186,158 @@ export function SettlementForm({
         pkg.treatmentsUsed.some((e) => visitTreatmentIds.has(e.treatmentId))),
   );
 
-  const handleSubmit = async () => {
-    const normalizedAmount = paymentAmount.replace(",", ".");
-    if (!paymentAmount || isNaN(parseFloat(normalizedAmount))) {
-      toast.error(t("gabinet.payments.amountRequired"));
-      return;
-    }
+  // Split payment derived values
+  const parsedFirstSplit = parseFloat(firstSplitAmount.replace(",", ".")) || 0;
+  const parsedSecondSplit = parseFloat(secondSplitAmount.replace(",", ".")) || 0;
+  const splitTotal = Math.round((parsedFirstSplit + parsedSecondSplit) * 100) / 100;
+  const balanceAvailable = patientCreditBalance ?? 0;
+  // In split mode, credit fills the full outstanding gap; amounts cover the rest.
+  const splitCreditApplied = splitPayment && paymentUseBalance && balanceAvailable > 0
+    ? Math.min(balanceAvailable, Math.max(0, outstanding))
+    : 0;
+  const splitExpectedTotal = Math.round(Math.max(0, outstanding - splitCreditApplied) * 100) / 100;
+  const splitMismatch = splitPayment && splitTotal < splitExpectedTotal - 0.005;
+  const splitMissingAmount = splitPayment && splitExpectedTotal > 0 && parsedFirstSplit <= 0 && parsedSecondSplit <= 0;
+  const splitSameMethod = splitPayment && parsedFirstSplit > 0 && parsedSecondSplit > 0 && firstSplitMethod === secondSplitMethod;
+  const splitOverpayment = splitPayment ? Math.max(0, splitTotal - splitExpectedTotal) : 0;
 
-    const amount = parseFloat(normalizedAmount);
-    const outstandingNow = Math.max(0, outstanding);
-    const creditEarned =
-      amount > outstandingNow + 0.005
-        ? Math.round((amount - outstandingNow) * 100) / 100
-        : 0;
-    const balanceAvailable = patientCreditBalance ?? 0;
-    const creditApplied =
-      paymentUseBalance && balanceAvailable > 0
-        ? Math.round(
-            Math.min(balanceAvailable, Math.max(0, outstandingNow - amount)) *
-              100,
-          ) / 100
-        : 0;
+  const handleSubmit = async () => {
+    if (splitPayment) {
+      if (splitMissingAmount) {
+        toast.error(t("gabinet.packages.splitMissingAmount", "Podaj kwotę co najmniej jednej metody płatności"));
+        return;
+      }
+      if (splitMismatch) {
+        toast.error(t("gabinet.packages.splitUnderpaidError", "Suma rozdzielonych płatności jest niższa niż kwota do zapłaty"));
+        return;
+      }
+      if (splitSameMethod) {
+        toast.error(t("gabinet.packages.splitSameMethodError", "Wybierz dwie różne metody płatności"));
+        return;
+      }
+    } else {
+      const normalizedAmount = paymentAmount.replace(",", ".");
+      if (!paymentAmount || isNaN(parseFloat(normalizedAmount))) {
+        toast.error(t("gabinet.payments.amountRequired"));
+        return;
+      }
+    }
 
     setIsSubmitting(true);
     try {
-      if (paymentMethod === "package" && paymentPackageId) {
-        const pkgItems = paymentPackageItems
-          .filter((it) => it.qty > 0)
-          .map((it) => ({
-            treatmentId: it.treatmentId,
-            ...(it.variantId ? { variantId: it.variantId } : {}),
-            quantity: it.qty,
-          }));
-        if (pkgItems.length > 0) {
-          await usePackageTreatmentsBatch({
-            organizationId,
-            usageId: paymentPackageId,
-            items: pkgItems,
-            appointmentId,
-          });
-        }
+      if (onBeforeSubmit) {
+        await onBeforeSubmit();
       }
 
-      await createPayment({
-        organizationId,
-        patientId: patientId as Id<"gabinetPatients">,
-        appointmentId: appointmentId as Id<"gabinetAppointments">,
-        amount,
-        currency: "PLN",
-        paymentMethod: paymentMethod as (typeof PAYMENT_METHODS)[number],
-        notes: paymentNote || undefined,
-        creditEarned: creditEarned > 0 ? creditEarned : undefined,
-        creditApplied: creditApplied > 0 ? creditApplied : undefined,
-      });
+      if (splitPayment) {
+        const parts: Array<{ method: (typeof PAYMENT_METHODS)[number]; amount: number }> = [];
+        if (parsedFirstSplit > 0) parts.push({ method: firstSplitMethod, amount: parsedFirstSplit });
+        if (parsedSecondSplit > 0) parts.push({ method: secondSplitMethod, amount: parsedSecondSplit });
+
+        if (parts.length === 0 && splitCreditApplied > 0) {
+          // Credit covers the whole visit: record a credit-only ledger row.
+          await createPayment({
+            organizationId,
+            patientId: patientId as Id<"gabinetPatients">,
+            appointmentId: appointmentId as Id<"gabinetAppointments">,
+            amount: 0,
+            currency: "PLN",
+            paymentMethod: firstSplitMethod,
+            notes: paymentNote || undefined,
+            creditApplied: splitCreditApplied,
+          });
+        } else {
+          // Distribute outstanding across split rows; credit attaches to first row.
+          let remainingExpected = splitExpectedTotal;
+          for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            const splitPackageId = i === 0 ? firstSplitPackageId : secondSplitPackageId;
+            const splitPackageItems = i === 0 ? firstSplitPackageItems : secondSplitPackageItems;
+            if (part.method === "package" && splitPackageId) {
+              const pkgItems = splitPackageItems
+                .filter((it) => it.qty > 0)
+                .map((it) => ({
+                  treatmentId: it.treatmentId,
+                  ...(it.variantId ? { variantId: it.variantId } : {}),
+                  quantity: it.qty,
+                }));
+              if (pkgItems.length > 0) {
+                await usePackageTreatmentsBatch({
+                  organizationId,
+                  usageId: splitPackageId,
+                  items: pkgItems,
+                  appointmentId,
+                });
+              }
+            }
+            const splitNote = `split: ${part.method}`;
+            const combinedNote = paymentNote ? `${paymentNote} (${splitNote})` : splitNote;
+            const absorbedOutstanding = Math.min(part.amount, remainingExpected);
+            const rowCreditEarned = Math.round((part.amount - absorbedOutstanding) * 100) / 100;
+            remainingExpected = Math.round((remainingExpected - absorbedOutstanding) * 100) / 100;
+            await createPayment({
+              organizationId,
+              patientId: patientId as Id<"gabinetPatients">,
+              appointmentId: appointmentId as Id<"gabinetAppointments">,
+              amount: part.amount,
+              currency: "PLN",
+              paymentMethod: part.method,
+              notes: combinedNote,
+              ...(i === 0 && splitCreditApplied > 0 ? { creditApplied: splitCreditApplied } : {}),
+              ...(rowCreditEarned > 0 ? { creditEarned: rowCreditEarned } : {}),
+            });
+          }
+        }
+      } else {
+        const normalizedAmount = paymentAmount.replace(",", ".");
+        const amount = parseFloat(normalizedAmount);
+        const outstandingNow = Math.max(0, outstanding);
+        const creditEarned =
+          amount > outstandingNow + 0.005
+            ? Math.round((amount - outstandingNow) * 100) / 100
+            : 0;
+        const creditApplied =
+          paymentUseBalance && balanceAvailable > 0
+            ? Math.round(
+                Math.min(balanceAvailable, Math.max(0, outstandingNow - amount)) *
+                  100,
+              ) / 100
+            : 0;
+
+        if (paymentMethod === "package" && paymentPackageId) {
+          const pkgItems = paymentPackageItems
+            .filter((it) => it.qty > 0)
+            .map((it) => ({
+              treatmentId: it.treatmentId,
+              ...(it.variantId ? { variantId: it.variantId } : {}),
+              quantity: it.qty,
+            }));
+          if (pkgItems.length > 0) {
+            await usePackageTreatmentsBatch({
+              organizationId,
+              usageId: paymentPackageId,
+              items: pkgItems,
+              appointmentId,
+            });
+          }
+        }
+
+        await createPayment({
+          organizationId,
+          patientId: patientId as Id<"gabinetPatients">,
+          appointmentId: appointmentId as Id<"gabinetAppointments">,
+          amount,
+          currency: "PLN",
+          paymentMethod: paymentMethod as (typeof PAYMENT_METHODS)[number],
+          notes: paymentNote || undefined,
+          creditEarned: creditEarned > 0 ? creditEarned : undefined,
+          creditApplied: creditApplied > 0 ? creditApplied : undefined,
+        });
+      }
+
+      if (showMarkCompleted && markCompleted && onMarkCompleted) {
+        await onMarkCompleted();
+      }
 
       toast.success(t("gabinet.payments.created"));
       onSuccess();
@@ -223,7 +352,7 @@ export function SettlementForm({
   return (
     <>
       <div className="space-y-4 py-4">
-        {!isFixedAmountMethod && outstanding > 0 && (
+        {!splitPayment && !isFixedAmountMethod && outstanding > 0 && (
           <div>
             <Label>{t("gabinet.payments.discount")}</Label>
             <div className="flex gap-2 mt-1">
@@ -281,52 +410,54 @@ export function SettlementForm({
           </div>
         )}
 
-        <div>
-          <Label>{t("gabinet.payments.amount")}</Label>
-          <Input
-            type="text"
-            inputMode="decimal"
-            value={
-              isFixedAmountMethod ? treatmentPrice.toFixed(2) : paymentAmount
-            }
-            disabled={isFixedAmountMethod}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                setPaymentAmount(v);
+        {!splitPayment && (
+          <div>
+            <Label>{t("gabinet.payments.amount")}</Label>
+            <Input
+              type="text"
+              inputMode="decimal"
+              value={
+                isFixedAmountMethod ? treatmentPrice.toFixed(2) : paymentAmount
               }
-            }}
-            placeholder={outstanding > 0 ? outstanding.toFixed(2) : "0.00"}
-          />
-          {isFixedAmountMethod && (
-            <p className="text-xs text-muted-foreground mt-1">
-              {t("gabinet.payments.amountLockedToTreatment")}
-            </p>
-          )}
-          {outstanding > 0 && (
-            <p className="text-xs text-muted-foreground mt-1">
-              {t("gabinet.payments.outstanding")}:{" "}
-              {formatCurrencyPLN(outstanding)}
-            </p>
-          )}
-          {(() => {
-            const parsed = parseFloat(paymentAmount.replace(",", "."));
-            const overpay =
-              Number.isFinite(parsed) && outstanding > 0
-                ? Math.max(0, parsed - outstanding)
-                : Number.isFinite(parsed) && outstanding <= 0
-                  ? Math.max(0, parsed)
-                  : 0;
-            if (overpay <= 0) return null;
-            return (
-              <p className="text-xs text-emerald-600 mt-1">
-                {t("gabinet.payments.overpaymentToCredit", {
-                  amount: formatCurrencyPLN(overpay),
-                })}
+              disabled={isFixedAmountMethod}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                  setPaymentAmount(v);
+                }
+              }}
+              placeholder={outstanding > 0 ? outstanding.toFixed(2) : "0.00"}
+            />
+            {isFixedAmountMethod && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("gabinet.payments.amountLockedToTreatment")}
               </p>
-            );
-          })()}
-        </div>
+            )}
+            {outstanding > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("gabinet.payments.outstanding")}:{" "}
+                {formatCurrencyPLN(outstanding)}
+              </p>
+            )}
+            {(() => {
+              const parsed = parseFloat(paymentAmount.replace(",", "."));
+              const overpay =
+                Number.isFinite(parsed) && outstanding > 0
+                  ? Math.max(0, parsed - outstanding)
+                  : Number.isFinite(parsed) && outstanding <= 0
+                    ? Math.max(0, parsed)
+                    : 0;
+              if (overpay <= 0) return null;
+              return (
+                <p className="text-xs text-emerald-600 mt-1">
+                  {t("gabinet.payments.overpaymentToCredit", {
+                    amount: formatCurrencyPLN(overpay),
+                  })}
+                </p>
+              );
+            })()}
+          </div>
+        )}
 
         {patientCreditBalance !== null && patientCreditBalance > 0 && (
           <div className="rounded-md border bg-emerald-50/50 p-2.5 dark:bg-emerald-950/20">
@@ -351,35 +482,37 @@ export function SettlementForm({
           </div>
         )}
 
-        <div>
-          <Label>{t("gabinet.payments.method")}</Label>
-          <Select
-            value={paymentMethod}
-            onValueChange={(v) => {
-              setPaymentMethod(v);
-              if (v === "gratis" || v === "barter") {
-                setPaymentAmount(treatmentPrice.toFixed(2));
-              }
-              if (v !== "package") {
-                setPaymentPackageId(null);
-                setPaymentPackageItems([]);
-              }
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PAYMENT_METHODS.map((m) => (
-                <SelectItem key={m} value={m}>
-                  {t(`gabinet.payments.methods.${m}`)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {!splitPayment && (
+          <div>
+            <Label>{t("gabinet.payments.method")}</Label>
+            <Select
+              value={paymentMethod}
+              onValueChange={(v) => {
+                setPaymentMethod(v);
+                if (v === "gratis" || v === "barter") {
+                  setPaymentAmount(treatmentPrice.toFixed(2));
+                }
+                if (v !== "package") {
+                  setPaymentPackageId(null);
+                  setPaymentPackageItems([]);
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PAYMENT_METHODS.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {t(`gabinet.payments.methods.${m}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
-        {paymentMethod === "package" && (
+        {!splitPayment && paymentMethod === "package" && (
           <div className="space-y-3 rounded-md border p-3">
             <div>
               <Label>{t("gabinet.packages.selectPackage")}</Label>
@@ -483,6 +616,263 @@ export function SettlementForm({
           </div>
         )}
 
+        {/* Split payment toggle */}
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="settlement-split-payment"
+            checked={splitPayment}
+            onChange={(e) => {
+              setSplitPayment(e.target.checked);
+              if (!e.target.checked) {
+                setFirstSplitAmount("");
+                setSecondSplitAmount("");
+                setFirstSplitPackageId(null);
+                setFirstSplitPackageItems([]);
+                setSecondSplitPackageId(null);
+                setSecondSplitPackageItems([]);
+              }
+            }}
+          />
+          <Label htmlFor="settlement-split-payment" className="cursor-pointer font-normal">
+            {t("gabinet.packages.splitPayment", "Podziel płatność")}
+          </Label>
+        </div>
+
+        {splitPayment && (
+          <div className="rounded-lg border p-3 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-md border p-2 space-y-2">
+                <Label className="text-xs font-medium">
+                  {t("gabinet.packages.firstMethod", "Pierwsza metoda")}
+                </Label>
+                <Select
+                  value={firstSplitMethod}
+                  onValueChange={(v) => {
+                    setFirstSplitMethod(v as (typeof PAYMENT_METHODS)[number]);
+                    if (v !== "package") { setFirstSplitPackageId(null); setFirstSplitPackageItems([]); }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_METHODS.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {t(`gabinet.payments.methods.${m}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  value={firstSplitAmount}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                      setFirstSplitAmount(v);
+                    }
+                  }}
+                />
+              </div>
+              <div className="rounded-md border p-2 space-y-2">
+                <Label className="text-xs font-medium">
+                  {t("gabinet.packages.secondMethod", "Druga metoda")}
+                </Label>
+                <Select
+                  value={secondSplitMethod}
+                  onValueChange={(v) => {
+                    setSecondSplitMethod(v as (typeof PAYMENT_METHODS)[number]);
+                    if (v !== "package") { setSecondSplitPackageId(null); setSecondSplitPackageItems([]); }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_METHODS.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {t(`gabinet.payments.methods.${m}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  value={secondSplitAmount}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                      setSecondSplitAmount(v);
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            {firstSplitMethod === "package" && (
+              <div className="rounded-md border p-3 space-y-2">
+                <Label className="text-xs font-medium">
+                  {t("gabinet.packages.selectPackage")} ({t("gabinet.packages.firstMethod", "Pierwsza metoda")})
+                </Label>
+                {eligiblePackages.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">{t("gabinet.packages.noActivePackages")}</p>
+                ) : (
+                  <Select
+                    value={firstSplitPackageId ?? ""}
+                    onValueChange={(pkgId) => {
+                      setFirstSplitPackageId(pkgId);
+                      const pkg = eligiblePackages.find((p) => p._id === pkgId);
+                      setFirstSplitPackageItems(
+                        (pkg?.treatmentsUsed ?? [])
+                          .filter((e) => (e.usedCount ?? 0) < (e.totalCount ?? 0))
+                          .map((e) => ({
+                            treatmentId: e.treatmentId,
+                            variantId: e.variantId,
+                            treatmentName: e.treatmentName ?? t("gabinet.packages.treatment"),
+                            remaining: (e.totalCount ?? 0) - (e.usedCount ?? 0),
+                            qty: 0,
+                          })),
+                      );
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder={t("gabinet.packages.selectPackagePlaceholder")} /></SelectTrigger>
+                    <SelectContent>
+                      {eligiblePackages.map((pkg) => (
+                        <SelectItem key={pkg._id} value={pkg._id}>
+                          {pkg.packageName ?? t("gabinet.packages.package")}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {firstSplitPackageId && (
+                  <div className="space-y-2">
+                    {firstSplitPackageItems.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">{t("gabinet.packages.allTreatmentsExhausted")}</p>
+                    ) : (
+                      firstSplitPackageItems.map((item, idx) => (
+                        <div key={item.treatmentId} className="flex items-center gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{item.treatmentName}</p>
+                            <p className="text-xs text-muted-foreground">{t("gabinet.packages.availableRemaining", { remaining: item.remaining })}</p>
+                          </div>
+                          <Input
+                            type="number"
+                            inputMode="numeric"
+                            className="w-20"
+                            min={0}
+                            max={item.remaining}
+                            value={item.qty}
+                            onChange={(e) => {
+                              const val = Math.max(0, Math.min(item.remaining, parseInt(e.target.value) || 0));
+                              setFirstSplitPackageItems((prev) => prev.map((it, i) => i === idx ? { ...it, qty: val } : it));
+                            }}
+                          />
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            {secondSplitMethod === "package" && (
+              <div className="rounded-md border p-3 space-y-2">
+                <Label className="text-xs font-medium">
+                  {t("gabinet.packages.selectPackage")} ({t("gabinet.packages.secondMethod", "Druga metoda")})
+                </Label>
+                {eligiblePackages.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">{t("gabinet.packages.noActivePackages")}</p>
+                ) : (
+                  <Select
+                    value={secondSplitPackageId ?? ""}
+                    onValueChange={(pkgId) => {
+                      setSecondSplitPackageId(pkgId);
+                      const pkg = eligiblePackages.find((p) => p._id === pkgId);
+                      setSecondSplitPackageItems(
+                        (pkg?.treatmentsUsed ?? [])
+                          .filter((e) => (e.usedCount ?? 0) < (e.totalCount ?? 0))
+                          .map((e) => ({
+                            treatmentId: e.treatmentId,
+                            variantId: e.variantId,
+                            treatmentName: e.treatmentName ?? t("gabinet.packages.treatment"),
+                            remaining: (e.totalCount ?? 0) - (e.usedCount ?? 0),
+                            qty: 0,
+                          })),
+                      );
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder={t("gabinet.packages.selectPackagePlaceholder")} /></SelectTrigger>
+                    <SelectContent>
+                      {eligiblePackages.map((pkg) => (
+                        <SelectItem key={pkg._id} value={pkg._id}>
+                          {pkg.packageName ?? t("gabinet.packages.package")}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {secondSplitPackageId && (
+                  <div className="space-y-2">
+                    {secondSplitPackageItems.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">{t("gabinet.packages.allTreatmentsExhausted")}</p>
+                    ) : (
+                      secondSplitPackageItems.map((item, idx) => (
+                        <div key={item.treatmentId} className="flex items-center gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{item.treatmentName}</p>
+                            <p className="text-xs text-muted-foreground">{t("gabinet.packages.availableRemaining", { remaining: item.remaining })}</p>
+                          </div>
+                          <Input
+                            type="number"
+                            inputMode="numeric"
+                            className="w-20"
+                            min={0}
+                            max={item.remaining}
+                            value={item.qty}
+                            onChange={(e) => {
+                              const val = Math.max(0, Math.min(item.remaining, parseInt(e.target.value) || 0));
+                              setSecondSplitPackageItems((prev) => prev.map((it, i) => i === idx ? { ...it, qty: val } : it));
+                            }}
+                          />
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            <div
+              className={`flex items-center justify-between text-xs ${
+                splitMismatch || splitSameMethod
+                  ? "text-destructive"
+                  : "text-muted-foreground"
+              }`}
+            >
+              <span>
+                {t("gabinet.packages.splitSum", "Suma")}:{" "}
+                {formatCurrencyPLN(splitTotal)}
+                {` / ${formatCurrencyPLN(splitExpectedTotal)}`}
+              </span>
+              {splitSameMethod ? (
+                <span>{t("gabinet.packages.splitSameMethod", "Metody muszą się różnić")}</span>
+              ) : splitMismatch ? (
+                <span>{t("gabinet.packages.splitUnderpaid", "Kwota jest niższa niż cena")}</span>
+              ) : null}
+            </div>
+            {splitOverpayment > 0 && (
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                {t("gabinet.payments.overpaymentToCredit", {
+                  amount: formatCurrencyPLN(splitOverpayment),
+                })}
+              </p>
+            )}
+          </div>
+        )}
+
         <div>
           <Label>{t("common.notes")}</Label>
           <RichTextEditor
@@ -492,17 +882,42 @@ export function SettlementForm({
             minHeight="80px"
           />
         </div>
+
+        {showMarkCompleted && (
+          <label className="flex items-start gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={markCompleted}
+              onChange={(e) => setMarkCompleted(e.target.checked)}
+            />
+            <span className="leading-tight">
+              {t("gabinet.appointmentDetail.settleMarkCompleted", {
+                defaultValue: "Oznacz wizytę jako zakończoną",
+              })}
+            </span>
+          </label>
+        )}
       </div>
 
-      <DialogFooter>
-        <Button variant="outline" onClick={onCancel}>
-          {t("common.cancel")}
-        </Button>
-        <Button onClick={() => void handleSubmit()} disabled={isSubmitting}>
-          {isSubmitting
-            ? t("common.processing")
-            : t("gabinet.payments.create")}
-        </Button>
+      <DialogFooter className={extraFooterContent ? "flex-col-reverse gap-2 sm:flex-row sm:justify-between" : undefined}>
+        {extraFooterContent}
+        <div className="flex gap-2 justify-end">
+          <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>
+            {t("common.cancel")}
+          </Button>
+          <Button
+            onClick={() => void handleSubmit()}
+            disabled={
+              isSubmitting ||
+              (splitPayment && (splitMissingAmount || splitMismatch || splitSameMethod))
+            }
+          >
+            {isSubmitting
+              ? t("common.processing")
+              : t("gabinet.payments.create")}
+          </Button>
+        </div>
       </DialogFooter>
     </>
   );

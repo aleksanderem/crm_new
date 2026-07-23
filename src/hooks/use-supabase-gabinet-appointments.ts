@@ -115,7 +115,49 @@ export function useSupabaseGabinetAppointmentsByPatient(
         .limit(limit);
 
       if (error) throw error;
-      return (data ?? []).map(mapGabinetAppointmentFromSupabase);
+      const mapped = (data ?? []).map(mapGabinetAppointmentFromSupabase);
+
+      // Attach junction treatment rows (#3399 dropped the scalar treatment_id
+      // column — the junction table is the only source of visit treatments).
+      const apptIds = mapped.map((a) => a._id);
+      if (apptIds.length > 0) {
+        const { data: junctionRows } = await client
+          .from("gabinet_appointment_treatments")
+          .select(
+            "id,appointment_id,treatment_id,variant_id,price_at_booking,sort_order",
+          )
+          .in("appointment_id", apptIds)
+          .order("sort_order", { ascending: true });
+        const byAppt = new Map<
+          string,
+          NonNullable<MappedGabinetAppointment["treatments"]>
+        >();
+        for (const row of (junctionRows ?? []) as Array<{
+          id: string;
+          appointment_id: string;
+          treatment_id: string | null;
+          variant_id: string | null;
+          price_at_booking: number | null;
+          sort_order: number;
+        }>) {
+          const list = byAppt.get(row.appointment_id) ?? [];
+          list.push({
+            _id: row.id,
+            appointmentId: row.appointment_id,
+            treatmentId: row.treatment_id ?? undefined,
+            variantId: row.variant_id ?? undefined,
+            priceAtBooking: row.price_at_booking ?? undefined,
+            sortOrder: row.sort_order,
+            createdAt: 0,
+            updatedAt: 0,
+          });
+          byAppt.set(row.appointment_id, list);
+        }
+        for (const appt of mapped) {
+          appt.treatments = byAppt.get(appt._id) ?? [];
+        }
+      }
+      return mapped;
     },
     enabled: enabled && isReady && !!organizationId && !!patientId,
   } satisfies UseQueryOptions<MappedGabinetAppointment[], Error>);
@@ -266,11 +308,7 @@ export function useSupabaseGabinetFirstAppointmentIdsByPatient(
       }
       return firstIds;
     },
-    enabled:
-      enabled &&
-      isReady &&
-      !!organizationId &&
-      stableIds.length > 0,
+    enabled: enabled && isReady && !!organizationId && stableIds.length > 0,
   } satisfies UseQueryOptions<Set<string>, Error>);
 }
 
@@ -366,11 +404,7 @@ export function useSupabaseGabinetAppointmentPackagePositions(
 
       return result;
     },
-    enabled:
-      enabled &&
-      isReady &&
-      !!organizationId &&
-      stableIds.length > 0,
+    enabled: enabled && isReady && !!organizationId && stableIds.length > 0,
   } satisfies UseQueryOptions<Map<string, AppointmentPackagePosition>, Error>);
 }
 
@@ -430,11 +464,7 @@ export function useSupabaseGabinetAppointmentRecurringPositions(
 
       return result;
     },
-    enabled:
-      enabled &&
-      isReady &&
-      !!organizationId &&
-      stableIds.length > 0,
+    enabled: enabled && isReady && !!organizationId && stableIds.length > 0,
   } satisfies UseQueryOptions<Map<string, number>, Error>);
 }
 
@@ -499,8 +529,7 @@ export function useSupabaseGabinetAppointmentPaymentTotals(
       }
       return result;
     },
-    enabled:
-      enabled && isReady && !!organizationId && stableIds.length > 0,
+    enabled: enabled && isReady && !!organizationId && stableIds.length > 0,
   } satisfies UseQueryOptions<Map<string, number>, Error>);
 }
 

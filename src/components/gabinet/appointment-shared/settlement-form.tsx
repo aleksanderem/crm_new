@@ -354,6 +354,15 @@ export function SettlementForm({
         );
         return;
       }
+      if (outstanding <= 0) {
+        toast.error(
+          t(
+            "gabinet.payments.alreadySettled",
+            "Wizyta jest już rozliczona — ponowne rozliczenie z pakietu odliczyłoby zabiegi drugi raz.",
+          ),
+        );
+        return;
+      }
     } else {
       const normalizedAmount = paymentAmount.replace(",", ".");
       if (!paymentAmount || isNaN(parseFloat(normalizedAmount))) {
@@ -435,6 +444,9 @@ export function SettlementForm({
               amount: part.amount,
               currency: "PLN",
               paymentMethod: part.method,
+              ...(part.method === "package" && splitPackageId
+                ? { packageUsageId: splitPackageId }
+                : {}),
               notes: combinedNote,
               ...(i === 0 && splitCreditApplied > 0
                 ? { creditApplied: splitCreditApplied }
@@ -465,6 +477,7 @@ export function SettlementForm({
           organizationId,
           patientId: patientId as Id<"gabinetPatients">,
           appointmentId: appointmentId as Id<"gabinetAppointments">,
+          packageUsageId: paymentPackageId ?? undefined,
           amount: packageSettlementAmount,
           currency: "PLN",
           paymentMethod: "package",

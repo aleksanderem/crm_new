@@ -52,6 +52,12 @@ export interface SettlementFormProps {
   payments: Array<Record<string, unknown>>;
   /** Patient's active package usages — filtered to those containing any visit treatment. */
   patientPackageUsage: PackageUsageEntry[];
+  /**
+   * Package usage already linked to this appointment at booking time.
+   * When set, manual package redemption is disabled — usage is deducted
+   * automatically on completion, and offering it here would double-deduct.
+   */
+  linkedPackageUsageId?: string | null;
   /** Called after a payment is successfully created. Should close the dialog and refetch. */
   onSuccess: () => void;
   /** Called when the user cancels. Should close the dialog. */
@@ -90,6 +96,7 @@ export function SettlementForm({
   treatmentsList,
   payments,
   patientPackageUsage,
+  linkedPackageUsageId,
   onSuccess,
   onCancel,
   onBeforeSubmit,
@@ -681,7 +688,29 @@ export function SettlementForm({
               </label>
             </div>
           )}
-          {!splitPayment && (
+          {!splitPayment && linkedPackageUsageId && (
+            <div className="rounded-md border bg-sky-50/50 p-2.5 dark:bg-sky-950/20">
+              <p className="text-sm font-medium">
+                {t(
+                  "gabinet.payments.linkedPackageTitle",
+                  "Wizyta powiązana z pakietem",
+                )}
+                {(() => {
+                  const linked = patientPackageUsage.find(
+                    (p) => p._id === linkedPackageUsageId,
+                  );
+                  return linked?.packageName ? `: ${linked.packageName}` : "";
+                })()}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {t(
+                  "gabinet.payments.linkedPackageHint",
+                  "Zużycie zostanie odliczone z pakietu automatycznie przy zakończeniu wizyty — ręczne rozliczenie jest wyłączone, żeby nie odliczyć podwójnie.",
+                )}
+              </p>
+            </div>
+          )}
+          {!splitPayment && !linkedPackageUsageId && (
             <div>
               <Label>
                 {t("gabinet.payments.redeemFromPackage", "Pakiet / karnet")}

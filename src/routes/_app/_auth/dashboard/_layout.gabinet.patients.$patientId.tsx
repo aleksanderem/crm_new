@@ -15,8 +15,14 @@ import {
   useSupabaseGabinetAppointmentRecurringPositions,
 } from "@/hooks/use-supabase-gabinet-appointments";
 import type { MappedGabinetAppointment } from "@/lib/supabase/mappers/gabinet/appointments";
-import { useSupabaseGabinetLoyaltyBalance, useSupabaseGabinetLoyaltyTransactions } from "@/hooks/use-supabase-gabinet-loyalty";
-import { useSupabaseGabinetTreatmentsList, useSupabaseGabinetAllTreatmentVariants } from "@/hooks/use-supabase-gabinet-treatments";
+import {
+  useSupabaseGabinetLoyaltyBalance,
+  useSupabaseGabinetLoyaltyTransactions,
+} from "@/hooks/use-supabase-gabinet-loyalty";
+import {
+  useSupabaseGabinetTreatmentsList,
+  useSupabaseGabinetAllTreatmentVariants,
+} from "@/hooks/use-supabase-gabinet-treatments";
 import {
   useSupabaseGabinetPackageUsageByPatient,
   useSupabaseGabinetTreatmentPackagesList,
@@ -87,12 +93,35 @@ import { formatPhoneNumber } from "@/lib/phone";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { formatBirthDate } from "@/lib/format-date";
 
-const INTAKE_GROUP_ORDER = ["diseases", "allergies", "medications", "devices", "other"] as const;
+const INTAKE_GROUP_ORDER = [
+  "diseases",
+  "allergies",
+  "medications",
+  "devices",
+  "other",
+] as const;
 type IntakeGroupKey = (typeof INTAKE_GROUP_ORDER)[number];
 
 const ALLERGY_KEYWORDS = ["alerg", "uczulen", "nadwrażliw", "nietolerancj"];
-const MED_KEYWORDS = ["lek", "preparat", "suplement", "farmak", "dawkow", "przyjmow"];
-const DEVICE_KEYWORDS = ["implan", "rozrusznik", "protez", "urządzeni", "wszczep", "defibrylat", "endoprotez", "metalow", "stymulat"];
+const MED_KEYWORDS = [
+  "lek",
+  "preparat",
+  "suplement",
+  "farmak",
+  "dawkow",
+  "przyjmow",
+];
+const DEVICE_KEYWORDS = [
+  "implan",
+  "rozrusznik",
+  "protez",
+  "urządzeni",
+  "wszczep",
+  "defibrylat",
+  "endoprotez",
+  "metalow",
+  "stymulat",
+];
 
 function classifyIntakeItem(item: string): IntakeGroupKey {
   const separatorIdx = item.indexOf(": ");
@@ -106,7 +135,9 @@ function classifyIntakeItem(item: string): IntakeGroupKey {
   return isTextField ? "other" : "diseases";
 }
 
-function groupIntakeSummary(items: string[]): { key: IntakeGroupKey; items: string[] }[] {
+function groupIntakeSummary(
+  items: string[],
+): { key: IntakeGroupKey; items: string[] }[] {
   const map: Record<IntakeGroupKey, string[]> = {
     diseases: [],
     allergies: [],
@@ -117,7 +148,10 @@ function groupIntakeSummary(items: string[]): { key: IntakeGroupKey; items: stri
   for (const item of items) {
     map[classifyIntakeItem(item)].push(item);
   }
-  return INTAKE_GROUP_ORDER.filter((k) => map[k].length > 0).map((k) => ({ key: k, items: map[k] }));
+  return INTAKE_GROUP_ORDER.filter((k) => map[k].length > 0).map((k) => ({
+    key: k,
+    items: map[k],
+  }));
 }
 
 function PatientDetailSkeleton() {
@@ -134,7 +168,11 @@ export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/patients/$patientId",
 )({
   component: () => (
-    <PermissionGate feature="gabinet_patients" action="view" loadingFallback={<PatientDetailSkeleton />}>
+    <PermissionGate
+      feature="gabinet_patients"
+      action="view"
+      loadingFallback={<PatientDetailSkeleton />}
+    >
       <PatientDetail />
     </PermissionGate>
   ),
@@ -162,7 +200,9 @@ function PatientDetail() {
   const trackView = useAction(api.recentlyViewed.track);
   const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action
-  const getLatestSignedIntakeByPatientAction = useAction(api.documents.documents.getLatestSignedIntakeByPatient);
+  const getLatestSignedIntakeByPatientAction = useAction(
+    api.documents.documents.getLatestSignedIntakeByPatient,
+  );
   const queryClient = useQueryClient();
 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
@@ -173,7 +213,8 @@ function PatientDetail() {
   // Issue #1928: collapse the "Last appointments" overview card by default on
   // mobile so other sections (medical info, status tiles) aren't pushed below
   // the fold. On desktop (md+) the section stays expanded — see JSX below.
-  const [lastAppointmentsExpanded, setLastAppointmentsExpanded] = useState(false);
+  const [lastAppointmentsExpanded, setLastAppointmentsExpanded] =
+    useState(false);
 
   // Tag and category definitions for the edit drawer PatientForm
   // (kept in sync with the patients list create-form props).
@@ -189,8 +230,12 @@ function PatientDetail() {
     "cash" | "card" | "transfer" | "package" | "other"
   >("cash");
   const [paymentEditNotes, setPaymentEditNotes] = useState("");
-  const [paymentEditAppointmentId, setPaymentEditAppointmentId] = useState<string | null>(null);
-  const [paymentEditDiscountType, setPaymentEditDiscountType] = useState<"amount" | "percent">("amount");
+  const [paymentEditAppointmentId, setPaymentEditAppointmentId] = useState<
+    string | null
+  >(null);
+  const [paymentEditDiscountType, setPaymentEditDiscountType] = useState<
+    "amount" | "percent"
+  >("amount");
   const [paymentEditDiscountValue, setPaymentEditDiscountValue] = useState("");
   const [isPaymentEditSubmitting, setIsPaymentEditSubmitting] = useState(false);
 
@@ -213,7 +258,9 @@ function PatientDetail() {
   const [addPaymentAppointmentId, setAddPaymentAppointmentId] =
     useState<string>("");
   const [isAddPaymentSubmitting, setIsAddPaymentSubmitting] = useState(false);
-  const [addPaymentDiscountType, setAddPaymentDiscountType] = useState<"amount" | "percent">("amount");
+  const [addPaymentDiscountType, setAddPaymentDiscountType] = useState<
+    "amount" | "percent"
+  >("amount");
   const [addPaymentDiscountValue, setAddPaymentDiscountValue] = useState("");
 
   // Cancel-payment confirm state.
@@ -231,7 +278,12 @@ function PatientDetail() {
   useEffect(() => {
     if (patient && organizationId) {
       const label = `${patient.firstName} ${patient.lastName}`.trim();
-      trackView({ organizationId, entityType: "gabinetPatients", entityId: patient._id, entityLabel: label });
+      trackView({
+        organizationId,
+        entityType: "gabinetPatients",
+        entityId: patient._id,
+        entityLabel: label,
+      });
     }
   }, [patient?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -263,8 +315,10 @@ function PatientDetail() {
     patientId,
   );
 
-  const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId);
-  const { data: allVariantsData } = useSupabaseGabinetAllTreatmentVariants(organizationId);
+  const { data: treatmentsData } =
+    useSupabaseGabinetTreatmentsList(organizationId);
+  const { data: allVariantsData } =
+    useSupabaseGabinetAllTreatmentVariants(organizationId);
 
   const variantNameMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -276,6 +330,36 @@ function PatientDetail() {
     return map;
   }, [allVariantsData]);
 
+  // Treatment info comes from the junction rows (#3399 dropped the scalar
+  // treatment_id column). Display: primary treatment name (+variant), with a
+  // "+N" suffix for multi-treatment visits. Price: sum over junction rows
+  // (priceAtBooking frozen at booking, catalog price as fallback).
+  const getApptTreatmentDisplay = (
+    apt?: MappedGabinetAppointment | null,
+  ): string | undefined => {
+    const rows = apt?.treatments ?? [];
+    const primary = rows[0];
+    const name = primary?.treatmentId
+      ? treatmentsData?.find((tr) => tr._id === primary.treatmentId)?.name
+      : undefined;
+    if (!name) return undefined;
+    const variantName = primary?.variantId
+      ? variantNameMap.get(primary.variantId)
+      : undefined;
+    const base = variantName ? `${name} · ${variantName}` : name;
+    return rows.length > 1 ? `${base} +${rows.length - 1}` : base;
+  };
+
+  const getApptPrice = (apt?: MappedGabinetAppointment | null): number => {
+    const rows = apt?.treatments ?? [];
+    return rows.reduce((sum, jt) => {
+      const catalog = jt.treatmentId
+        ? (treatmentsData?.find((tr) => tr._id === jt.treatmentId)?.price ?? 0)
+        : 0;
+      return sum + (jt.priceAtBooking ?? catalog);
+    }, 0);
+  };
+
   const { data: patientPayments } = useSupabasePaymentsByPatient(
     organizationId,
     patientId,
@@ -286,9 +370,8 @@ function PatientDetail() {
     patientId,
   );
 
-  const { data: treatmentPackages } = useSupabaseGabinetTreatmentPackagesList(
-    organizationId,
-  );
+  const { data: treatmentPackages } =
+    useSupabaseGabinetTreatmentPackagesList(organizationId);
 
   const { data: patientDocuments } = useQuery({
     queryKey: [
@@ -307,8 +390,13 @@ function PatientDetail() {
   });
 
   const { data: latestIntake } = useQuery({
-    queryKey: ["documents.getLatestSignedIntakeByPatient", organizationId, patientId],
-    queryFn: () => getLatestSignedIntakeByPatientAction({ organizationId, patientId }),
+    queryKey: [
+      "documents.getLatestSignedIntakeByPatient",
+      organizationId,
+      patientId,
+    ],
+    queryFn: () =>
+      getLatestSignedIntakeByPatientAction({ organizationId, patientId }),
     enabled: !!organizationId && !!patientId,
   });
 
@@ -346,10 +434,7 @@ function PatientDetail() {
     "gabinet_payments",
     "view",
   );
-  const { allowed: canViewPhotos } = usePermission(
-    "gabinet_photos",
-    "view",
-  );
+  const { allowed: canViewPhotos } = usePermission("gabinet_photos", "view");
   const { role } = useRole();
   const canGdprErase = role === "owner" || role === "admin";
 
@@ -359,14 +444,16 @@ function PatientDetail() {
     notes?: string;
   }): string => {
     if (payment.appointmentId) {
-      const apt = patientAppointments?.find((a) => a._id === payment.appointmentId);
-      const treatmentName = apt?.treatmentId
-        ? treatmentsData?.find((tr) => tr._id === apt.treatmentId)?.name
-        : undefined;
+      const apt = patientAppointments?.find(
+        (a) => a._id === payment.appointmentId,
+      );
+      const treatmentName = getApptTreatmentDisplay(apt);
       if (treatmentName) return treatmentName;
     }
     if (payment.packageUsageId) {
-      const usage = patientPackageUsage?.find((u) => u._id === payment.packageUsageId);
+      const usage = patientPackageUsage?.find(
+        (u) => u._id === payment.packageUsageId,
+      );
       const pkgName = usage
         ? treatmentPackages?.find((p) => p._id === usage.packageId)?.name
         : undefined;
@@ -441,19 +528,78 @@ function PatientDetail() {
   const detailFields: DetailField[] = (() => {
     if (!patient) return [];
     const fields: DetailField[] = [];
-    if (patient.email) fields.push({ label: t("common.email"), value: patient.email, fieldKey: "email" });
-    if (patient.phone) fields.push({ label: t("common.phone"), value: formatPhoneNumber(patient.phone), fieldKey: "phone" });
-    if (patient.gender) fields.push({ label: t("gabinet.patients.gender"), value: t(`gabinet.patients.genderOptions.${patient.gender}`), fieldKey: "gender" });
-    if (patient.pesel) fields.push({ label: t("gabinet.patients.pesel"), value: patient.pesel, fieldKey: "pesel" });
+    if (patient.email)
+      fields.push({
+        label: t("common.email"),
+        value: patient.email,
+        fieldKey: "email",
+      });
+    if (patient.phone)
+      fields.push({
+        label: t("common.phone"),
+        value: formatPhoneNumber(patient.phone),
+        fieldKey: "phone",
+      });
+    if (patient.gender)
+      fields.push({
+        label: t("gabinet.patients.gender"),
+        value: t(`gabinet.patients.genderOptions.${patient.gender}`),
+        fieldKey: "gender",
+      });
+    if (patient.pesel)
+      fields.push({
+        label: t("gabinet.patients.pesel"),
+        value: patient.pesel,
+        fieldKey: "pesel",
+      });
     if (patient.address) {
-      const patientAddr = patient.address as { street?: string; postalCode?: string; city?: string };
-      const addr = [patientAddr.street, patientAddr.postalCode, patientAddr.city].filter(Boolean).join(", ");
-      if (addr) fields.push({ label: t("gabinet.patients.address"), value: addr, fieldKey: "address" });
+      const patientAddr = patient.address as {
+        street?: string;
+        postalCode?: string;
+        city?: string;
+      };
+      const addr = [
+        patientAddr.street,
+        patientAddr.postalCode,
+        patientAddr.city,
+      ]
+        .filter(Boolean)
+        .join(", ");
+      if (addr)
+        fields.push({
+          label: t("gabinet.patients.address"),
+          value: addr,
+          fieldKey: "address",
+        });
     }
-    if (patient.referralSource) fields.push({ label: t("gabinet.patients.referralSource"), value: displayReferralSource(patient.referralSource, t), fieldKey: "referral" });
-    if (patient.dateOfBirth) fields.push({ label: t("gabinet.patients.dateOfBirth"), value: formatBirthDate(patient.dateOfBirth), fieldKey: "dob" });
-    if (patient.bloodType) fields.push({ label: t("gabinet.patients.bloodType"), value: <Badge variant="outline" className="text-[10px]">{patient.bloodType}</Badge>, fieldKey: "bloodType" });
-    if (patient.allergies) fields.push({ label: t("gabinet.patients.allergies"), value: patient.allergies, fieldKey: "allergies" });
+    if (patient.referralSource)
+      fields.push({
+        label: t("gabinet.patients.referralSource"),
+        value: displayReferralSource(patient.referralSource, t),
+        fieldKey: "referral",
+      });
+    if (patient.dateOfBirth)
+      fields.push({
+        label: t("gabinet.patients.dateOfBirth"),
+        value: formatBirthDate(patient.dateOfBirth),
+        fieldKey: "dob",
+      });
+    if (patient.bloodType)
+      fields.push({
+        label: t("gabinet.patients.bloodType"),
+        value: (
+          <Badge variant="outline" className="text-[10px]">
+            {patient.bloodType}
+          </Badge>
+        ),
+        fieldKey: "bloodType",
+      });
+    if (patient.allergies)
+      fields.push({
+        label: t("gabinet.patients.allergies"),
+        value: patient.allergies,
+        fieldKey: "allergies",
+      });
     return fields;
   })();
 
@@ -470,14 +616,18 @@ function PatientDetail() {
               <Calendar size={12} variant="stroke" />
               {t("gabinet.patients.totalAppointments")}
             </span>
-            <span className="text-xs font-semibold tabular-nums">{patientAppointments?.length ?? 0}</span>
+            <span className="text-xs font-semibold tabular-nums">
+              {patientAppointments?.length ?? 0}
+            </span>
           </div>
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Trophy size={12} variant="stroke" />
               {t("gabinet.loyalty.balance")}
             </span>
-            <span className="text-xs font-semibold tabular-nums">{loyaltyBalance?.balance ?? 0}</span>
+            <span className="text-xs font-semibold tabular-nums">
+              {loyaltyBalance?.balance ?? 0}
+            </span>
           </div>
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -545,7 +695,9 @@ function PatientDetail() {
           )}
         </div>
         {(() => {
-          const medicalNotesText = plateJsonToText(patient.medicalNotes ?? undefined).trim();
+          const medicalNotesText = plateJsonToText(
+            patient.medicalNotes ?? undefined,
+          ).trim();
           if (!medicalNotesText) return null;
           return (
             <div className="space-y-1.5">
@@ -601,8 +753,15 @@ function PatientDetail() {
         patientId,
         ...formData,
       });
-      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.detail(organizationId, patientId) });
-      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(organizationId) });
+      void queryClient.invalidateQueries({
+        queryKey: supabaseKeys.gabinetPatients.detail(
+          organizationId,
+          patientId,
+        ),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: supabaseKeys.gabinetPatients.list(organizationId),
+      });
       setEditDrawerOpen(false);
     } catch (e) {
       toast.error(
@@ -672,9 +831,20 @@ function PatientDetail() {
       toast.error(t("gabinet.payments.amountRequired"));
       return;
     }
-    const discountVal = parseFloat(paymentEditDiscountValue.replace(",", ".")) || 0;
-    const discountAmount = paymentEditDiscountValue && paymentEditDiscountType === "amount" && discountVal > 0 ? discountVal : null;
-    const discountPercent = paymentEditDiscountValue && paymentEditDiscountType === "percent" && discountVal > 0 ? discountVal : null;
+    const discountVal =
+      parseFloat(paymentEditDiscountValue.replace(",", ".")) || 0;
+    const discountAmount =
+      paymentEditDiscountValue &&
+      paymentEditDiscountType === "amount" &&
+      discountVal > 0
+        ? discountVal
+        : null;
+    const discountPercent =
+      paymentEditDiscountValue &&
+      paymentEditDiscountType === "percent" &&
+      discountVal > 0
+        ? discountVal
+        : null;
     setIsPaymentEditSubmitting(true);
     try {
       await updatePaymentAction({
@@ -687,7 +857,9 @@ function PatientDetail() {
         discountPercent,
       });
       toast.success(t("gabinet.payments.updated"));
-      void queryClient.invalidateQueries({ queryKey: supabaseKeys.payments.all });
+      void queryClient.invalidateQueries({
+        queryKey: supabaseKeys.payments.all,
+      });
       closeEditPaymentDialog();
     } catch (e) {
       toast.error(
@@ -732,7 +904,9 @@ function PatientDetail() {
       });
       toast.success(t("gabinet.payments.credit.refundSuccess"));
       await refetchPatientCredit();
-      void queryClient.invalidateQueries({ queryKey: supabaseKeys.payments.all });
+      void queryClient.invalidateQueries({
+        queryKey: supabaseKeys.payments.all,
+      });
       setRefundDialogOpen(false);
     } catch (e) {
       toast.error(
@@ -752,7 +926,9 @@ function PatientDetail() {
         organizationId,
         patientId,
       });
-      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(organizationId) });
+      void queryClient.invalidateQueries({
+        queryKey: supabaseKeys.gabinetPatients.list(organizationId),
+      });
       navigate({ to: "/dashboard/gabinet/patients" });
     }
   };
@@ -762,10 +938,22 @@ function PatientDetail() {
     setIsGdprSubmitting(true);
     try {
       await gdprErasePatient({ organizationId, patientId });
-      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.list(organizationId) });
-      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetPatients.detail(organizationId, patientId) });
+      void queryClient.invalidateQueries({
+        queryKey: supabaseKeys.gabinetPatients.list(organizationId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: supabaseKeys.gabinetPatients.detail(
+          organizationId,
+          patientId,
+        ),
+      });
       setGdprDialogOpen(false);
-      toast.success(t("gabinet.patients.gdprEraseSuccess", "Dane klienta zostały trwale usunięte (RODO)."));
+      toast.success(
+        t(
+          "gabinet.patients.gdprEraseSuccess",
+          "Dane klienta zostały trwale usunięte (RODO).",
+        ),
+      );
       navigate({ to: "/dashboard/gabinet/patients" });
     } catch (e) {
       toast.error(
@@ -812,11 +1000,7 @@ function PatientDetail() {
         const apt = (patientAppointments ?? []).find(
           (a) => a._id === addPaymentAppointmentId,
         );
-        const treatmentPrice =
-          apt?.treatmentId
-            ? treatmentsData?.find((tr) => tr._id === apt.treatmentId)?.price ??
-              0
-            : 0;
+        const treatmentPrice = getApptPrice(apt);
         // Credit applied to prior payments on this visit (issue #1059) counts
         // toward the paid total — without it, a visit already fully settled
         // from credit would look unpaid and any new cash payment would skip
@@ -866,7 +1050,9 @@ function PatientDetail() {
       setAddPaymentDiscountType("amount");
       setAddPaymentDiscountValue("");
       await refetchPatientCredit();
-      void queryClient.invalidateQueries({ queryKey: supabaseKeys.payments.all });
+      void queryClient.invalidateQueries({
+        queryKey: supabaseKeys.payments.all,
+      });
     } catch (e) {
       toast.error(
         formatActionError(e, t, {
@@ -897,7 +1083,9 @@ function PatientDetail() {
       setCancellingPaymentId(null);
       setCancelReason("");
       await refetchPatientCredit();
-      void queryClient.invalidateQueries({ queryKey: supabaseKeys.payments.all });
+      void queryClient.invalidateQueries({
+        queryKey: supabaseKeys.payments.all,
+      });
     } catch (e) {
       toast.error(
         formatActionError(e, t, {
@@ -969,20 +1157,10 @@ function PatientDetail() {
   // entered on past appointments. Each entry shows what was proposed and when.
   const beautyPlanEntries = (patientAppointments ?? [])
     .filter((apt) => plateJsonToText(apt.interviewNotes).trim().length > 0)
-    .sort((a, b) =>
-      (b.date + b.startTime).localeCompare(a.date + a.startTime),
-    );
+    .sort((a, b) => (b.date + b.startTime).localeCompare(a.date + a.startTime));
 
   const renderAppointmentRow = (apt: MappedGabinetAppointment) => {
-    const treatmentName = treatmentsData?.find(
-      (tr) => tr._id === apt.treatmentId,
-    )?.name;
-    const variantName = apt.variantId ? variantNameMap.get(apt.variantId) : undefined;
-    const treatmentDisplayName = treatmentName
-      ? variantName
-        ? `${treatmentName} · ${variantName}`
-        : treatmentName
-      : undefined;
+    const treatmentDisplayName = getApptTreatmentDisplay(apt);
     const visitCount = getVisitCountLabel(apt);
     return (
       <div
@@ -1109,7 +1287,9 @@ function PatientDetail() {
                       {t("gabinet.patients.referralSource")}
                     </p>
                     <p className="font-medium">
-                      {patient?.referralSource ? displayReferralSource(patient.referralSource, t) : "—"}
+                      {patient?.referralSource
+                        ? displayReferralSource(patient.referralSource, t)
+                        : "—"}
                     </p>
                   </div>
                 </div>
@@ -1248,16 +1428,13 @@ function PatientDetail() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() =>
-                navigate({ to: "/dashboard/gabinet/calendar" })
-              }
+              onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}
             >
               <Plus className="mr-1 h-4 w-4" variant="stroke" />
               {t("gabinet.appointments.createAppointment")}
             </Button>
           </div>
-          {!patientAppointments ||
-          patientAppointments.length === 0 ? (
+          {!patientAppointments || patientAppointments.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Calendar className="h-10 w-10 text-muted-foreground/40 mb-3" />
               <p className="text-sm text-muted-foreground">
@@ -1268,20 +1445,10 @@ function PatientDetail() {
             <div className="space-y-2">
               {[...patientAppointments]
                 .sort((a, b) =>
-                  (b.date + b.startTime).localeCompare(
-                    a.date + a.startTime,
-                  ),
+                  (b.date + b.startTime).localeCompare(a.date + a.startTime),
                 )
                 .map((apt) => {
-                  const treatmentName = treatmentsData?.find(
-                    (tr) => tr._id === apt.treatmentId,
-                  )?.name;
-                  const variantName = apt.variantId ? variantNameMap.get(apt.variantId) : undefined;
-                  const treatmentDisplayName = treatmentName
-                    ? variantName
-                      ? `${treatmentName} · ${variantName}`
-                      : treatmentName
-                    : undefined;
+                  const treatmentDisplayName = getApptTreatmentDisplay(apt);
                   const isPast =
                     apt.date < new Date().toISOString().split("T")[0];
                   const visitCount = getVisitCountLabel(apt);
@@ -1318,17 +1485,14 @@ function PatientDetail() {
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {apt.date} &middot; {apt.startTime}–
-                          {apt.endTime}
+                          {apt.date} &middot; {apt.startTime}–{apt.endTime}
                         </p>
                       </div>
                       <Badge
                         variant="outline"
                         className={appointmentStatusBadgeClass(apt.status)}
                       >
-                        {t(
-                          `gabinet.appointments.statuses.${apt.status}`,
-                        )}
+                        {t(`gabinet.appointments.statuses.${apt.status}`)}
                       </Badge>
                     </div>
                   );
@@ -1371,15 +1535,7 @@ function PatientDetail() {
           ) : (
             <div className="space-y-3">
               {beautyPlanEntries.map((apt) => {
-                const treatmentName = treatmentsData?.find(
-                  (tr) => tr._id === apt.treatmentId,
-                )?.name;
-                const variantName = apt.variantId ? variantNameMap.get(apt.variantId) : undefined;
-                const treatmentDisplayName = treatmentName
-                  ? variantName
-                    ? `${treatmentName} · ${variantName}`
-                    : treatmentName
-                  : undefined;
+                const treatmentDisplayName = getApptTreatmentDisplay(apt);
                 const planText = plateJsonToText(apt.interviewNotes).trim();
                 return (
                   <Card
@@ -1420,361 +1576,378 @@ function PatientDetail() {
         </div>
       ),
     },
-    ...(canViewPhotos ? [{
-      label: t("gabinet.patients.tabs.photos", "Zdjęcia"),
-      count: (patientAppointments ?? []).reduce(
-        (sum, apt) =>
-          sum + (Array.isArray(apt.photos) ? apt.photos.length : 0),
-        0,
-      ),
-      content: (
-        <PatientPhotosTab
-          organizationId={organizationId}
-          appointments={patientAppointments}
-          treatments={treatmentsData}
-        />
-      ),
-    }] : []),
-    ...(canViewPayments ? [{
-      // Issue #1690: one merged tab — wpłaty, saldo, naliczenia, zwroty in
-      // a single chronological table with a "Typ" column.
-      label: t("gabinet.payments.payments"),
-      count: patientPayments?.length ?? 0,
-      content: (() => {
-        const completedPayments = (patientPayments ?? []).filter(
-          (p) => p.status === "completed" && p.kind !== "credit_refund",
-        );
-        const totalSpent = completedPayments.reduce(
-          (sum, p) => sum + (p.amount ?? 0),
-          0,
-        );
-        const pendingPayments = (patientPayments ?? []).filter(
-          (p) => p.status === "pending",
-        );
-        const outstanding = pendingPayments.reduce(
-          (sum, p) => sum + (p.amount ?? 0),
-          0,
-        );
-        const balance = patientCredit?.balance ?? 0;
+    ...(canViewPhotos
+      ? [
+          {
+            label: t("gabinet.patients.tabs.photos", "Zdjęcia"),
+            count: (patientAppointments ?? []).reduce(
+              (sum, apt) =>
+                sum + (Array.isArray(apt.photos) ? apt.photos.length : 0),
+              0,
+            ),
+            content: (
+              <PatientPhotosTab
+                organizationId={organizationId}
+                appointments={patientAppointments}
+                treatments={treatmentsData}
+              />
+            ),
+          },
+        ]
+      : []),
+    ...(canViewPayments
+      ? [
+          {
+            // Issue #1690: one merged tab — wpłaty, saldo, naliczenia, zwroty in
+            // a single chronological table with a "Typ" column.
+            label: t("gabinet.payments.payments"),
+            count: patientPayments?.length ?? 0,
+            content: (() => {
+              const completedPayments = (patientPayments ?? []).filter(
+                (p) => p.status === "completed" && p.kind !== "credit_refund",
+              );
+              const totalSpent = completedPayments.reduce(
+                (sum, p) => sum + (p.amount ?? 0),
+                0,
+              );
+              const pendingPayments = (patientPayments ?? []).filter(
+                (p) => p.status === "pending",
+              );
+              const outstanding = pendingPayments.reduce(
+                (sum, p) => sum + (p.amount ?? 0),
+                0,
+              );
+              const balance = patientCredit?.balance ?? 0;
 
-        type PaymentRowType =
-          | "payment"
-          | "overpayment"
-          | "credit_applied"
-          | "credit_refund"
-          | "cancelled"
-          | "refunded";
+              type PaymentRowType =
+                | "payment"
+                | "overpayment"
+                | "credit_applied"
+                | "credit_refund"
+                | "cancelled"
+                | "refunded";
 
-        const classifyPayment = (p: NonNullable<typeof patientPayments>[number]) => {
-          const earned = p.creditEarned ?? 0;
-          const applied = p.creditApplied ?? 0;
-          if (p.kind === "credit_refund") return "credit_refund" as const;
-          if (p.status === "cancelled") return "cancelled" as const;
-          if (p.status === "refunded") return "refunded" as const;
-          if (earned > 0) return "overpayment" as const;
-          if (applied > 0) return "credit_applied" as const;
-          return "payment" as const;
-        };
+              const classifyPayment = (
+                p: NonNullable<typeof patientPayments>[number],
+              ) => {
+                const earned = p.creditEarned ?? 0;
+                const applied = p.creditApplied ?? 0;
+                if (p.kind === "credit_refund") return "credit_refund" as const;
+                if (p.status === "cancelled") return "cancelled" as const;
+                if (p.status === "refunded") return "refunded" as const;
+                if (earned > 0) return "overpayment" as const;
+                if (applied > 0) return "credit_applied" as const;
+                return "payment" as const;
+              };
 
-        const typeLabelKey: Record<PaymentRowType, string> = {
-          payment: "gabinet.payments.types.payment",
-          overpayment: "gabinet.payments.types.overpayment",
-          credit_applied: "gabinet.payments.types.creditApplied",
-          credit_refund: "gabinet.payments.types.creditRefund",
-          cancelled: "gabinet.payments.types.cancelled",
-          refunded: "gabinet.payments.types.refunded",
-        };
+              const typeLabelKey: Record<PaymentRowType, string> = {
+                payment: "gabinet.payments.types.payment",
+                overpayment: "gabinet.payments.types.overpayment",
+                credit_applied: "gabinet.payments.types.creditApplied",
+                credit_refund: "gabinet.payments.types.creditRefund",
+                cancelled: "gabinet.payments.types.cancelled",
+                refunded: "gabinet.payments.types.refunded",
+              };
 
-        const typeBadgeClass: Record<PaymentRowType, string> = {
-          payment: "",
-          overpayment:
-            "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300",
-          credit_applied:
-            "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300",
-          credit_refund:
-            "border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300",
-          cancelled:
-            "border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800/60 dark:bg-gray-950/40 dark:text-gray-300",
-          refunded:
-            "border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300",
-        };
+              const typeBadgeClass: Record<PaymentRowType, string> = {
+                payment: "",
+                overpayment:
+                  "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300",
+                credit_applied:
+                  "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300",
+                credit_refund:
+                  "border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300",
+                cancelled:
+                  "border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800/60 dark:bg-gray-950/40 dark:text-gray-300",
+                refunded:
+                  "border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300",
+              };
 
-        return (
-          <div className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <WalletIcon
-                      className="h-4 w-4 text-emerald-600"
-                      variant="stroke"
-                    />
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        {t("gabinet.payments.credit.available")}
-                      </p>
-                      <p className="text-2xl font-bold tabular-nums">
-                        {formatCurrencyPLN(balance)}
-                      </p>
-                    </div>
+              return (
+                <div className="space-y-6">
+                  <div className="grid gap-4 sm:grid-cols-4">
+                    <Card>
+                      <CardContent className="pt-6">
+                        <div className="flex items-center gap-3">
+                          <WalletIcon
+                            className="h-4 w-4 text-emerald-600"
+                            variant="stroke"
+                          />
+                          <div>
+                            <p className="text-sm text-muted-foreground">
+                              {t("gabinet.payments.credit.available")}
+                            </p>
+                            <p className="text-2xl font-bold tabular-nums">
+                              {formatCurrencyPLN(balance)}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-6">
+                        <div className="flex items-center gap-3">
+                          <CreditCard
+                            className="h-4 w-4 text-green-600"
+                            variant="stroke"
+                          />
+                          <div>
+                            <p className="text-sm text-muted-foreground">
+                              {t("gabinet.payments.totalSpent")}
+                            </p>
+                            <p className="text-2xl font-bold">
+                              {formatCurrencyPLN(totalSpent)}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-6">
+                        <div className="flex items-center gap-3">
+                          <CreditCard
+                            className="h-4 w-4 text-amber-600"
+                            variant="stroke"
+                          />
+                          <div>
+                            <p className="text-sm text-muted-foreground">
+                              {t("gabinet.payments.outstanding")}
+                            </p>
+                            <p className="text-2xl font-bold">
+                              {formatCurrencyPLN(outstanding)}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-6">
+                        <div className="flex flex-col gap-2">
+                          {canCreatePayment && (
+                            <Button
+                              size="sm"
+                              onClick={openAddPaymentDialog}
+                              className="w-full"
+                            >
+                              <Plus className="mr-1 h-4 w-4" variant="stroke" />
+                              {t("gabinet.payments.addPayment")}
+                            </Button>
+                          )}
+                          {balance > 0 && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={openRefundDialog}
+                              className="w-full"
+                            >
+                              <RefreshCw
+                                className="mr-1 h-4 w-4"
+                                variant="stroke"
+                              />
+                              {t("gabinet.payments.credit.refundCredit")}
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <CreditCard
-                      className="h-4 w-4 text-green-600"
-                      variant="stroke"
-                    />
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        {t("gabinet.payments.totalSpent")}
-                      </p>
-                      <p className="text-2xl font-bold">
-                        {formatCurrencyPLN(totalSpent)}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <CreditCard
-                      className="h-4 w-4 text-amber-600"
-                      variant="stroke"
-                    />
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        {t("gabinet.payments.outstanding")}
-                      </p>
-                      <p className="text-2xl font-bold">
-                        {formatCurrencyPLN(outstanding)}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex flex-col gap-2">
-                    {canCreatePayment && (
-                      <Button
-                        size="sm"
-                        onClick={openAddPaymentDialog}
-                        className="w-full"
-                      >
-                        <Plus className="mr-1 h-4 w-4" variant="stroke" />
-                        {t("gabinet.payments.addPayment")}
-                      </Button>
-                    )}
-                    {balance > 0 && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={openRefundDialog}
-                        className="w-full"
-                      >
-                        <RefreshCw className="mr-1 h-4 w-4" variant="stroke" />
-                        {t("gabinet.payments.credit.refundCredit")}
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
 
-            <Card>
-              <CardContent className="pt-6 space-y-4">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <CreditCard
-                    className="h-4 w-4 text-muted-foreground"
-                    variant="stroke"
-                  />
-                  {t("gabinet.payments.paymentHistory")}
-                </h3>
-                {!patientPayments || patientPayments.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <CreditCard className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                    <p className="text-sm text-muted-foreground">
-                      {t("gabinet.payments.noPayments")}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto border rounded-lg">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b bg-muted/50">
-                          <th className="text-left p-3 text-sm font-medium">
-                            {t("common.date")}
-                          </th>
-                          <th className="text-left p-3 text-sm font-medium">
-                            {t("gabinet.payments.type")}
-                          </th>
-                          <th className="text-left p-3 text-sm font-medium">
-                            {t("gabinet.payments.for")}
-                          </th>
-                          <th className="text-left p-3 text-sm font-medium">
-                            {t("gabinet.payments.method")}
-                          </th>
-                          <th className="text-right p-3 text-sm font-medium">
-                            {t("gabinet.payments.amount")}
-                          </th>
-                          <th className="text-right p-3 text-sm font-medium">
-                            {t("gabinet.payments.balanceDelta")}
-                          </th>
-                          <th className="text-right p-3 text-sm font-medium">
-                            {t("common.actions")}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[...patientPayments]
-                          .sort((a, b) => b.createdAt - a.createdAt)
-                          .map((payment) => {
-                            const type = classifyPayment(payment);
-                            const earned = payment.creditEarned ?? 0;
-                            const applied = payment.creditApplied ?? 0;
-                            const balanceDelta = earned - applied;
-                            const isCancellable =
-                              canCancelPayment &&
-                              (payment.status === "completed" ||
-                                payment.status === "pending");
-                            const isEditable =
-                              payment.status === "completed" ||
-                              payment.status === "pending";
-                            return (
-                              <tr
-                                key={payment._id}
-                                className={`border-b last:border-0 hover:bg-muted/30 ${
-                                  payment.appointmentId
-                                    ? "cursor-pointer"
-                                    : ""
-                                }`}
-                                onClick={() => {
-                                  if (payment.appointmentId) {
-                                    navigate({
-                                      to: "/dashboard/gabinet/appointments/$appointmentId",
-                                      params: {
-                                        appointmentId: payment.appointmentId,
-                                      },
-                                    });
-                                  }
-                                }}
-                              >
-                                <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">
-                                  {new Date(
-                                    payment.createdAt,
-                                  ).toLocaleDateString("pl-PL")}
-                                </td>
-                                <td className="p-3">
-                                  <Badge
-                                    variant="outline"
-                                    className={`text-[10px] ${typeBadgeClass[type]}`}
-                                  >
-                                    {t(typeLabelKey[type])}
-                                  </Badge>
-                                </td>
-                                <td className="p-3 text-sm">
-                                  <div
-                                    className="max-w-[220px] truncate"
-                                    title={getPaymentForLabel(payment)}
-                                  >
-                                    {getPaymentForLabel(payment)}
-                                  </div>
-                                </td>
-                                <td className="p-3">
-                                  <Badge variant="outline">
-                                    {t(
-                                      `gabinet.payments.methods.${payment.paymentMethod}`,
-                                    )}
-                                  </Badge>
-                                </td>
-                                <td className="p-3 text-right font-medium tabular-nums">
-                                  {formatCurrencyPLN(
-                                    payment.amount,
-                                    payment.currency ?? "PLN",
-                                  )}
-                                </td>
-                                <td
-                                  className={`p-3 text-right font-semibold tabular-nums ${
-                                    balanceDelta > 0
-                                      ? "text-emerald-600"
-                                      : balanceDelta < 0
-                                        ? "text-red-600"
-                                        : "text-muted-foreground"
-                                  }`}
-                                >
-                                  {balanceDelta === 0
-                                    ? "—"
-                                    : `${balanceDelta > 0 ? "+" : "−"}${formatCurrencyPLN(Math.abs(balanceDelta))}`}
-                                </td>
-                                <td className="p-3 text-right">
-                                  <div className="flex justify-end gap-1">
-                                    {isEditable && (
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        aria-label={t("common.edit")}
-                                        title={t(
-                                          "gabinet.payments.editPayment",
-                                        )}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          openEditPaymentDialog({
-                                            _id: payment._id,
-                                            amount: payment.amount,
-                                            paymentMethod:
-                                              payment.paymentMethod,
-                                            notes: payment.notes,
-                                            appointmentId: payment.appointmentId,
-                                            discountAmount: payment.discountAmount,
-                                            discountPercent: payment.discountPercent,
-                                          });
-                                        }}
-                                      >
-                                        <Pencil
-                                          className="h-4 w-4"
-                                          variant="stroke"
-                                        />
-                                      </Button>
-                                    )}
-                                    {isCancellable && (
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="text-destructive"
-                                        aria-label={t("common.cancel")}
-                                        title={t(
-                                          "gabinet.payments.cancelPayment",
-                                        )}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          openCancelDialog(payment._id);
-                                        }}
-                                      >
-                                        <Minus
-                                          className="h-4 w-4"
-                                          variant="stroke"
-                                        />
-                                      </Button>
-                                    )}
-                                  </div>
-                                </td>
+                  <Card>
+                    <CardContent className="pt-6 space-y-4">
+                      <h3 className="text-sm font-semibold flex items-center gap-2">
+                        <CreditCard
+                          className="h-4 w-4 text-muted-foreground"
+                          variant="stroke"
+                        />
+                        {t("gabinet.payments.paymentHistory")}
+                      </h3>
+                      {!patientPayments || patientPayments.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                          <CreditCard className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                          <p className="text-sm text-muted-foreground">
+                            {t("gabinet.payments.noPayments")}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto border rounded-lg">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="border-b bg-muted/50">
+                                <th className="text-left p-3 text-sm font-medium">
+                                  {t("common.date")}
+                                </th>
+                                <th className="text-left p-3 text-sm font-medium">
+                                  {t("gabinet.payments.type")}
+                                </th>
+                                <th className="text-left p-3 text-sm font-medium">
+                                  {t("gabinet.payments.for")}
+                                </th>
+                                <th className="text-left p-3 text-sm font-medium">
+                                  {t("gabinet.payments.method")}
+                                </th>
+                                <th className="text-right p-3 text-sm font-medium">
+                                  {t("gabinet.payments.amount")}
+                                </th>
+                                <th className="text-right p-3 text-sm font-medium">
+                                  {t("gabinet.payments.balanceDelta")}
+                                </th>
+                                <th className="text-right p-3 text-sm font-medium">
+                                  {t("common.actions")}
+                                </th>
                               </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        );
-      })(),
-    }] : []),
+                            </thead>
+                            <tbody>
+                              {[...patientPayments]
+                                .sort((a, b) => b.createdAt - a.createdAt)
+                                .map((payment) => {
+                                  const type = classifyPayment(payment);
+                                  const earned = payment.creditEarned ?? 0;
+                                  const applied = payment.creditApplied ?? 0;
+                                  const balanceDelta = earned - applied;
+                                  const isCancellable =
+                                    canCancelPayment &&
+                                    (payment.status === "completed" ||
+                                      payment.status === "pending");
+                                  const isEditable =
+                                    payment.status === "completed" ||
+                                    payment.status === "pending";
+                                  return (
+                                    <tr
+                                      key={payment._id}
+                                      className={`border-b last:border-0 hover:bg-muted/30 ${
+                                        payment.appointmentId
+                                          ? "cursor-pointer"
+                                          : ""
+                                      }`}
+                                      onClick={() => {
+                                        if (payment.appointmentId) {
+                                          navigate({
+                                            to: "/dashboard/gabinet/appointments/$appointmentId",
+                                            params: {
+                                              appointmentId:
+                                                payment.appointmentId,
+                                            },
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">
+                                        {new Date(
+                                          payment.createdAt,
+                                        ).toLocaleDateString("pl-PL")}
+                                      </td>
+                                      <td className="p-3">
+                                        <Badge
+                                          variant="outline"
+                                          className={`text-[10px] ${typeBadgeClass[type]}`}
+                                        >
+                                          {t(typeLabelKey[type])}
+                                        </Badge>
+                                      </td>
+                                      <td className="p-3 text-sm">
+                                        <div
+                                          className="max-w-[220px] truncate"
+                                          title={getPaymentForLabel(payment)}
+                                        >
+                                          {getPaymentForLabel(payment)}
+                                        </div>
+                                      </td>
+                                      <td className="p-3">
+                                        <Badge variant="outline">
+                                          {t(
+                                            `gabinet.payments.methods.${payment.paymentMethod}`,
+                                          )}
+                                        </Badge>
+                                      </td>
+                                      <td className="p-3 text-right font-medium tabular-nums">
+                                        {formatCurrencyPLN(
+                                          payment.amount,
+                                          payment.currency ?? "PLN",
+                                        )}
+                                      </td>
+                                      <td
+                                        className={`p-3 text-right font-semibold tabular-nums ${
+                                          balanceDelta > 0
+                                            ? "text-emerald-600"
+                                            : balanceDelta < 0
+                                              ? "text-red-600"
+                                              : "text-muted-foreground"
+                                        }`}
+                                      >
+                                        {balanceDelta === 0
+                                          ? "—"
+                                          : `${balanceDelta > 0 ? "+" : "−"}${formatCurrencyPLN(Math.abs(balanceDelta))}`}
+                                      </td>
+                                      <td className="p-3 text-right">
+                                        <div className="flex justify-end gap-1">
+                                          {isEditable && (
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
+                                              aria-label={t("common.edit")}
+                                              title={t(
+                                                "gabinet.payments.editPayment",
+                                              )}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                openEditPaymentDialog({
+                                                  _id: payment._id,
+                                                  amount: payment.amount,
+                                                  paymentMethod:
+                                                    payment.paymentMethod,
+                                                  notes: payment.notes,
+                                                  appointmentId:
+                                                    payment.appointmentId,
+                                                  discountAmount:
+                                                    payment.discountAmount,
+                                                  discountPercent:
+                                                    payment.discountPercent,
+                                                });
+                                              }}
+                                            >
+                                              <Pencil
+                                                className="h-4 w-4"
+                                                variant="stroke"
+                                              />
+                                            </Button>
+                                          )}
+                                          {isCancellable && (
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
+                                              className="text-destructive"
+                                              aria-label={t("common.cancel")}
+                                              title={t(
+                                                "gabinet.payments.cancelPayment",
+                                              )}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                openCancelDialog(payment._id);
+                                              }}
+                                            >
+                                              <Minus
+                                                className="h-4 w-4"
+                                                variant="stroke"
+                                              />
+                                            </Button>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })(),
+          },
+        ]
+      : []),
     {
       label: t("gabinet.patients.tabs.documents"),
       count: patientDocuments?.length ?? 0,
@@ -1850,10 +2023,7 @@ function PatientDetail() {
 
           {loyaltyBalance?.tier && (
             <div className="flex items-center gap-2">
-              <Star
-                className="h-4 w-4 text-yellow-500"
-                variant="stroke"
-              />
+              <Star className="h-4 w-4 text-yellow-500" variant="stroke" />
               <span className="text-sm font-medium">
                 {t("gabinet.loyalty.tier")}:{" "}
                 {t(`gabinet.loyalty.tiers.${loyaltyBalance.tier}`)}
@@ -1866,8 +2036,7 @@ function PatientDetail() {
             <h4 className="text-sm font-semibold mb-3">
               {t("gabinet.loyalty.transactionHistory")}
             </h4>
-            {!loyaltyTransactions ||
-            loyaltyTransactions.length === 0 ? (
+            {!loyaltyTransactions || loyaltyTransactions.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Star className="h-8 w-8 text-muted-foreground/40 mb-2" />
                 <p className="text-sm text-muted-foreground">
@@ -1894,30 +2063,17 @@ function PatientDetail() {
                         }`}
                       >
                         {tx.type === "earn" ? (
-                          <Plus
-                            className="h-4 w-4"
-                            variant="stroke"
-                          />
+                          <Plus className="h-4 w-4" variant="stroke" />
                         ) : tx.type === "spend" ? (
-                          <Minus
-                            className="h-4 w-4"
-                            variant="stroke"
-                          />
+                          <Minus className="h-4 w-4" variant="stroke" />
                         ) : (
-                          <Star
-                            className="h-4 w-4"
-                            variant="stroke"
-                          />
+                          <Star className="h-4 w-4" variant="stroke" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">
-                          {tx.reason}
-                        </p>
+                        <p className="text-sm font-medium">{tx.reason}</p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(tx.createdAt).toLocaleDateString(
-                            "pl-PL",
-                          )}
+                          {new Date(tx.createdAt).toLocaleDateString("pl-PL")}
                         </p>
                       </div>
                       <span
@@ -1966,19 +2122,36 @@ function PatientDetail() {
           <span className="flex items-center gap-2">
             {t("gabinet.patients.patient")}
             {patient && !patient.isActive && (
-              <Badge variant="outline" className="text-xs">{t("common.inactive")}</Badge>
+              <Badge variant="outline" className="text-xs">
+                {t("common.inactive")}
+              </Badge>
             )}
           </span>
         }
-        avatarFallback={patient ? `${patient.firstName?.[0] ?? ""}${patient.lastName?.[0] ?? ""}`.toUpperCase() : "?"}
+        avatarFallback={
+          patient
+            ? `${patient.firstName?.[0] ?? ""}${patient.lastName?.[0] ?? ""}`.toUpperCase()
+            : "?"
+        }
         onEdit={() => setEditDrawerOpen(true)}
         secondaryActions={[
-          { label: t("common.delete"), onClick: handleDelete, variant: "destructive" as const },
-          ...(canGdprErase ? [{
-            label: t("gabinet.patients.gdprErase", "RODO: Usuń dane"),
-            onClick: () => { setGdprConfirmText(""); setGdprDialogOpen(true); },
+          {
+            label: t("common.delete"),
+            onClick: handleDelete,
             variant: "destructive" as const,
-          }] : []),
+          },
+          ...(canGdprErase
+            ? [
+                {
+                  label: t("gabinet.patients.gdprErase", "RODO: Usuń dane"),
+                  onClick: () => {
+                    setGdprConfirmText("");
+                    setGdprDialogOpen(true);
+                  },
+                  variant: "destructive" as const,
+                },
+              ]
+            : []),
         ]}
         fields={detailFields}
         expandedFieldCount={4}
@@ -2002,8 +2175,13 @@ function PatientDetail() {
               phone: patient.phone ?? undefined,
               pesel: patient.pesel ?? undefined,
               dateOfBirth: patient.dateOfBirth ?? undefined,
-              gender: (patient.gender as "male" | "female" | "other" | undefined) ?? undefined,
-              address: (patient.address as { street?: string; city?: string; postalCode?: string } | undefined) ?? undefined,
+              gender:
+                (patient.gender as "male" | "female" | "other" | undefined) ??
+                undefined,
+              address:
+                (patient.address as
+                  | { street?: string; city?: string; postalCode?: string }
+                  | undefined) ?? undefined,
               medicalNotes: patient.medicalNotes ?? undefined,
               allergies: patient.allergies ?? undefined,
               bloodType: patient.bloodType ?? undefined,
@@ -2011,7 +2189,9 @@ function PatientDetail() {
               emergencyContactPhone: patient.emergencyContactPhone ?? undefined,
               referralSource: patient.referralSource ?? undefined,
               tagIds: patient.tagIds as Id<"tagDefinitions">[] | undefined,
-              categoryId: patient.categoryId as Id<"categoryDefinitions"> | undefined,
+              categoryId: patient.categoryId as
+                | Id<"categoryDefinitions">
+                | undefined,
             }}
             onSubmit={handleEditSubmit}
             onCancel={() => setEditDrawerOpen(false)}
@@ -2084,74 +2264,79 @@ function PatientDetail() {
                 </SelectContent>
               </Select>
             </div>
-            {paymentEditAppointmentId && (() => {
-              const apt = (patientAppointments ?? []).find(
-                (a) => a._id === paymentEditAppointmentId,
-              );
-              const treatmentPrice = apt?.treatmentId
-                ? (treatmentsData?.find((tr) => tr._id === apt.treatmentId)?.price ?? 0)
-                : 0;
-              if (treatmentPrice <= 0) return null;
-              return (
-                <div>
-                  <Label>{t("gabinet.payments.discount")}</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Select
-                      value={paymentEditDiscountType}
-                      onValueChange={(v) => {
-                        setPaymentEditDiscountType(v as "amount" | "percent");
-                        setPaymentEditDiscountValue("");
-                        setPaymentEditAmount(treatmentPrice.toFixed(2));
-                      }}
-                    >
-                      <SelectTrigger className="w-40">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="amount">
-                          {t("gabinet.payments.discountTypeAmount")}
-                        </SelectItem>
-                        <SelectItem value="percent">
-                          {t("gabinet.payments.discountTypePercent")}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="relative flex-1">
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        value={paymentEditDiscountValue}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                            setPaymentEditDiscountValue(v);
-                            const parsed = parseFloat(v.replace(",", ".")) || 0;
-                            const disc =
-                              paymentEditDiscountType === "amount"
-                                ? Math.min(parsed, treatmentPrice)
-                                : Math.round(
-                                    (treatmentPrice * Math.min(parsed, 100)) /
-                                      100 *
-                                      100,
-                                  ) / 100;
-                            setPaymentEditAmount(
-                              Math.max(0, treatmentPrice - disc).toFixed(2),
-                            );
-                          }
+            {paymentEditAppointmentId &&
+              (() => {
+                const apt = (patientAppointments ?? []).find(
+                  (a) => a._id === paymentEditAppointmentId,
+                );
+                const treatmentPrice = getApptPrice(apt);
+                if (treatmentPrice <= 0) return null;
+                return (
+                  <div>
+                    <Label>{t("gabinet.payments.discount")}</Label>
+                    <div className="flex gap-2 mt-1">
+                      <Select
+                        value={paymentEditDiscountType}
+                        onValueChange={(v) => {
+                          setPaymentEditDiscountType(v as "amount" | "percent");
+                          setPaymentEditDiscountValue("");
+                          setPaymentEditAmount(treatmentPrice.toFixed(2));
                         }}
-                        placeholder={paymentEditDiscountType === "percent" ? "0" : "0.00"}
-                        className={paymentEditDiscountType === "percent" ? "pr-8" : ""}
-                      />
-                      {paymentEditDiscountType === "percent" && (
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                          %
-                        </span>
-                      )}
+                      >
+                        <SelectTrigger className="w-40">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="amount">
+                            {t("gabinet.payments.discountTypeAmount")}
+                          </SelectItem>
+                          <SelectItem value="percent">
+                            {t("gabinet.payments.discountTypePercent")}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="relative flex-1">
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          value={paymentEditDiscountValue}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                              setPaymentEditDiscountValue(v);
+                              const parsed =
+                                parseFloat(v.replace(",", ".")) || 0;
+                              const disc =
+                                paymentEditDiscountType === "amount"
+                                  ? Math.min(parsed, treatmentPrice)
+                                  : Math.round(
+                                      ((treatmentPrice *
+                                        Math.min(parsed, 100)) /
+                                        100) *
+                                        100,
+                                    ) / 100;
+                              setPaymentEditAmount(
+                                Math.max(0, treatmentPrice - disc).toFixed(2),
+                              );
+                            }
+                          }}
+                          placeholder={
+                            paymentEditDiscountType === "percent" ? "0" : "0.00"
+                          }
+                          className={
+                            paymentEditDiscountType === "percent" ? "pr-8" : ""
+                          }
+                        />
+                        {paymentEditDiscountType === "percent" && (
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                            %
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })()}
+                );
+              })()}
             <div>
               <Label>{t("common.notes")}</Label>
               <Input
@@ -2227,9 +2412,7 @@ function PatientDetail() {
                 <Select
                   value={refundMethod}
                   onValueChange={(v) =>
-                    setRefundMethod(
-                      v as "cash" | "card" | "transfer" | "other",
-                    )
+                    setRefundMethod(v as "cash" | "card" | "transfer" | "other")
                   }
                 >
                   <SelectTrigger>
@@ -2379,13 +2562,8 @@ function PatientDetail() {
                       )
                       .slice(0, 20);
                     return upcoming.map((apt) => {
-                      const treatmentName =
-                        treatmentsData?.find((tr) => tr._id === apt.treatmentId)
-                          ?.name ?? t("common.unknown");
-                      const variantName = apt.variantId ? variantNameMap.get(apt.variantId) : undefined;
-                      const treatmentDisplayName = variantName
-                        ? `${treatmentName} · ${variantName}`
-                        : treatmentName;
+                      const treatmentDisplayName =
+                        getApptTreatmentDisplay(apt) ?? t("common.unknown");
                       return (
                         <SelectItem key={apt._id} value={apt._id}>
                           {apt.date} · {apt.startTime} · {treatmentDisplayName}
@@ -2401,88 +2579,98 @@ function PatientDetail() {
                 </p>
               )}
             </div>
-            {addPaymentAppointmentId && (() => {
-              const apt = (patientAppointments ?? []).find(
-                (a) => a._id === addPaymentAppointmentId,
-              );
-              const aptTreatmentPrice = apt?.treatmentId
-                ? (treatmentsData?.find((tr) => tr._id === apt.treatmentId)?.price ?? 0)
-                : 0;
-              const paidForVisit = (patientPayments ?? [])
-                .filter(
-                  (p) =>
-                    p.appointmentId === addPaymentAppointmentId &&
-                    p.status === "completed",
-                )
-                .reduce(
-                  (sum, p) =>
-                    sum +
-                    (p.amount ?? 0) +
-                    ((p as { creditApplied?: number | null }).creditApplied ?? 0),
-                  0,
+            {addPaymentAppointmentId &&
+              (() => {
+                const apt = (patientAppointments ?? []).find(
+                  (a) => a._id === addPaymentAppointmentId,
                 );
-              const outstandingForVisit = Math.max(0, aptTreatmentPrice - paidForVisit);
-              if (outstandingForVisit <= 0) return null;
-              return (
-                <div>
-                  <Label>{t("gabinet.payments.discount")}</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Select
-                      value={addPaymentDiscountType}
-                      onValueChange={(v) => {
-                        setAddPaymentDiscountType(v as "amount" | "percent");
-                        setAddPaymentDiscountValue("");
-                      }}
-                    >
-                      <SelectTrigger className="w-40">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="amount">
-                          {t("gabinet.payments.discountTypeAmount")}
-                        </SelectItem>
-                        <SelectItem value="percent">
-                          {t("gabinet.payments.discountTypePercent")}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="relative flex-1">
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        value={addPaymentDiscountValue}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                            setAddPaymentDiscountValue(v);
-                            const parsed = parseFloat(v.replace(",", ".")) || 0;
-                            const disc =
-                              addPaymentDiscountType === "amount"
-                                ? Math.min(parsed, outstandingForVisit)
-                                : Math.round(
-                                    (outstandingForVisit *
-                                      Math.min(parsed, 100)) /
-                                      100 *
-                                      100,
-                                  ) / 100;
-                            setAddPaymentAmount(
-                              Math.max(0, outstandingForVisit - disc).toFixed(2),
-                            );
-                          }
+                const aptTreatmentPrice = getApptPrice(apt);
+                const paidForVisit = (patientPayments ?? [])
+                  .filter(
+                    (p) =>
+                      p.appointmentId === addPaymentAppointmentId &&
+                      p.status === "completed",
+                  )
+                  .reduce(
+                    (sum, p) =>
+                      sum +
+                      (p.amount ?? 0) +
+                      ((p as { creditApplied?: number | null }).creditApplied ??
+                        0),
+                    0,
+                  );
+                const outstandingForVisit = Math.max(
+                  0,
+                  aptTreatmentPrice - paidForVisit,
+                );
+                if (outstandingForVisit <= 0) return null;
+                return (
+                  <div>
+                    <Label>{t("gabinet.payments.discount")}</Label>
+                    <div className="flex gap-2 mt-1">
+                      <Select
+                        value={addPaymentDiscountType}
+                        onValueChange={(v) => {
+                          setAddPaymentDiscountType(v as "amount" | "percent");
+                          setAddPaymentDiscountValue("");
                         }}
-                        placeholder={addPaymentDiscountType === "percent" ? "0" : "0.00"}
-                        className={addPaymentDiscountType === "percent" ? "pr-8" : ""}
-                      />
-                      {addPaymentDiscountType === "percent" && (
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                          %
-                        </span>
-                      )}
+                      >
+                        <SelectTrigger className="w-40">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="amount">
+                            {t("gabinet.payments.discountTypeAmount")}
+                          </SelectItem>
+                          <SelectItem value="percent">
+                            {t("gabinet.payments.discountTypePercent")}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="relative flex-1">
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          value={addPaymentDiscountValue}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
+                              setAddPaymentDiscountValue(v);
+                              const parsed =
+                                parseFloat(v.replace(",", ".")) || 0;
+                              const disc =
+                                addPaymentDiscountType === "amount"
+                                  ? Math.min(parsed, outstandingForVisit)
+                                  : Math.round(
+                                      ((outstandingForVisit *
+                                        Math.min(parsed, 100)) /
+                                        100) *
+                                        100,
+                                    ) / 100;
+                              setAddPaymentAmount(
+                                Math.max(0, outstandingForVisit - disc).toFixed(
+                                  2,
+                                ),
+                              );
+                            }
+                          }}
+                          placeholder={
+                            addPaymentDiscountType === "percent" ? "0" : "0.00"
+                          }
+                          className={
+                            addPaymentDiscountType === "percent" ? "pr-8" : ""
+                          }
+                        />
+                        {addPaymentDiscountType === "percent" && (
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                            %
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })()}
+                );
+              })()}
             <div>
               <Label>{t("common.notes")}</Label>
               <Input
@@ -2494,10 +2682,7 @@ function PatientDetail() {
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setAddPaymentOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setAddPaymentOpen(false)}>
               {t("common.cancel")}
             </Button>
             <Button
@@ -2512,10 +2697,20 @@ function PatientDetail() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={gdprDialogOpen} onOpenChange={(open) => { if (!open) setGdprDialogOpen(false); }}>
+      <Dialog
+        open={gdprDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) setGdprDialogOpen(false);
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{t("gabinet.patients.gdprEraseTitle", "Trwałe usunięcie danych (RODO)")}</DialogTitle>
+            <DialogTitle>
+              {t(
+                "gabinet.patients.gdprEraseTitle",
+                "Trwałe usunięcie danych (RODO)",
+              )}
+            </DialogTitle>
             <DialogDescription>
               {t(
                 "gabinet.patients.gdprEraseDesc",
@@ -2526,7 +2721,10 @@ function PatientDetail() {
           <div className="space-y-4 py-2">
             <div>
               <Label>
-                {t("gabinet.patients.gdprEraseConfirmLabel", 'Wpisz "USUŃ" aby potwierdzić')}
+                {t(
+                  "gabinet.patients.gdprEraseConfirmLabel",
+                  'Wpisz "USUŃ" aby potwierdzić',
+                )}
               </Label>
               <Input
                 type="text"
@@ -2544,7 +2742,10 @@ function PatientDetail() {
             <Button
               variant="destructive"
               onClick={handleGdprErase}
-              disabled={isGdprSubmitting || gdprConfirmText.trim().toUpperCase() !== "USUŃ"}
+              disabled={
+                isGdprSubmitting ||
+                gdprConfirmText.trim().toUpperCase() !== "USUŃ"
+              }
             >
               {isGdprSubmitting
                 ? t("common.processing")

@@ -49,7 +49,7 @@ interface ChangeEmployeeModalProps {
   onOpenChange: (open: boolean) => void;
   organizationId: Id<"organizations">;
   appointmentId: Id<"gabinetAppointments">;
-  treatmentId: Id<"gabinetTreatments">;
+  treatmentIds: Id<"gabinetTreatments">[];
   currentEmployeeId: Id<"users">;
   appointmentDate: string; // YYYY-MM-DD
   startTime: string; // HH:MM
@@ -122,7 +122,7 @@ export function ChangeEmployeeModal({
   onOpenChange,
   organizationId,
   appointmentId,
-  treatmentId,
+  treatmentIds,
   currentEmployeeId,
   appointmentDate,
   startTime,
@@ -157,7 +157,7 @@ export function ChangeEmployeeModal({
             : "—";
         const isQualified =
           e.qualifiedTreatmentIds.length === 0 ||
-          e.qualifiedTreatmentIds.includes(treatmentId);
+          treatmentIds.every((id) => e.qualifiedTreatmentIds.includes(id));
         return {
           employeeDoc: e as EmployeeRow["employeeDoc"],
           name,
@@ -166,7 +166,7 @@ export function ChangeEmployeeModal({
           isQualified,
         };
       });
-  }, [employeesList, currentEmployeeId, treatmentId]);
+  }, [employeesList, currentEmployeeId, treatmentIds]);
 
   // For the selected employee, check availability at current slot (action → Supabase)
   const getAvailableSlots = useAction(api.gabinet.appointments.getAvailableSlotsQuery);

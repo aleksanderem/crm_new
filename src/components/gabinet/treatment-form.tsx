@@ -136,10 +136,8 @@ export function TreatmentForm({
   const [requiresApproval, setRequiresApproval] = useState(initialData?.requiresApproval ?? false);
   const initialTreatmentCount = initialData?.treatmentCount;
   const initialPackageId = initialData?.packageId ?? null;
-  const [isPackage, setIsPackage] = useState(
-    !!initialPackageId ||
-      (initialTreatmentCount != null && initialTreatmentCount > 1),
-  );
+  const isPackage =
+    !!initialPackageId || (initialTreatmentCount != null && initialTreatmentCount > 1);
   const [selectedPackageId, setSelectedPackageId] = useState<string>(
     initialPackageId ?? "",
   );
@@ -423,34 +421,6 @@ export function TreatmentForm({
             </SelectContent>
           </Select>
           {renderFieldError("taxRate")}
-        </div>
-        <div className="space-y-1.5">
-          <Label>{t("gabinet.treatments.package", "Pakiet")}</Label>
-          <div className="flex h-9 items-center gap-2">
-            <Checkbox
-              id="treatment-is-package"
-              checked={isPackage}
-              onCheckedChange={(checked) => {
-                const next = !!checked;
-                setIsPackage(next);
-                if (!next) {
-                  setSelectedPackageId("");
-                  setPkgCount("");
-                  setPkgTotalPrice("");
-                  setPkgValidityAmount("");
-                  setPkgValidityUnit("months");
-                  setPkgName("");
-                  setPkgNameEdited(false);
-                } else if (!initialPackageId) {
-                  // Auto-generate name from current treatment name if already entered
-                  if (name) setPkgName(name + " – __ zabiegów");
-                }
-              }}
-            />
-            <Label htmlFor="treatment-is-package" className="cursor-pointer font-normal">
-              {t("gabinet.treatments.isPackageLabel", "Ten zabieg to pakiet")}
-            </Label>
-          </div>
         </div>
         {isPackage && !!initialPackageId && (
           <div className="space-y-1.5">

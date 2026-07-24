@@ -874,6 +874,7 @@ function EmployeeDetail() {
         tabs={visibleTabs}
         activeTab={activeTab}
         onTabChange={setActiveTab}
+        initialSidebarWidth={300}
         beforeTabs={
           <EmployeeNavGroups
             activeGroup={activeNavGroup}

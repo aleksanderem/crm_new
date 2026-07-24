@@ -231,6 +231,8 @@ interface EntityDetailLayoutProps {
   sidebarExtra?: React.ReactNode;
   /** Quick action items to include in the sidebar actions dropdown (sidebar-slot variant only). */
   quickActionItems?: { key: string; label: string; icon?: React.ReactNode; onClick: () => void }[];
+  /** Initial width of the resizable left sidebar in pixels (default: 420). */
+  initialSidebarWidth?: number;
 }
 
 export function EntityDetailLayout({
@@ -262,12 +264,13 @@ export function EntityDetailLayout({
   breadcrumbs,
   sidebarExtra,
   quickActionItems,
+  initialSidebarWidth = 420,
 }: EntityDetailLayoutProps) {
   const { t } = useTranslation();
   const [showAllFields, setShowAllFields] = useState(false);
 
   // Resizable sidebar width (hooks must be before early returns)
-  const [sidebarWidth, setSidebarWidth] = useState(420);
+  const [sidebarWidth, setSidebarWidth] = useState(initialSidebarWidth);
   const isResizing = useRef(false);
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {

@@ -81,6 +81,8 @@ import {
   Star,
   FileText,
   Upload,
+  Settings,
+  Power,
 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import type { EmployeePatientStats } from "@cvx/gabinet/appointments";
@@ -735,23 +737,34 @@ function EmployeeDetail() {
     {
       label: t("gabinet.employees.tabs.account", "Konto"),
       content: (
-        <>
-          <Card>
-            <CardContent className="pt-6 space-y-4">
-              <div>
-                <p className="text-xs text-muted-foreground">{t("gabinet.employees.loginEmail", "Adres e-mail do logowania")}</p>
-                <p className="text-sm font-medium">{employee.email || user?.email || "—"}</p>
+        <div className="space-y-6">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+              {t("gabinet.employees.tabs.account", "Konto")}
+            </p>
+            <div className="rounded-lg border divide-y">
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="text-sm text-muted-foreground">{t("gabinet.employees.loginEmail", "Adres e-mail do logowania")}</span>
+                <span className="text-sm font-medium">{employee.email || user?.email || "—"}</span>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{t("gabinet.employees.accountStatus", "Status konta")}</p>
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="text-sm text-muted-foreground">{t("gabinet.employees.accountStatus", "Status konta")}</span>
                 <Badge variant={employee.isActive ? "default" : "secondary"}>
                   {employee.isActive ? t("gabinet.employees.accountActive", "Aktywny") : t("gabinet.employees.accountInactive", "Nieaktywny")}
                 </Badge>
               </div>
-              {(role === "admin" || role === "owner") && (
-                <Button
-                  variant="outline"
-                  size="sm"
+            </div>
+          </div>
+
+          {(role === "admin" || role === "owner") && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                {t("gabinet.employees.adminActions", "Akcje administracyjne")}
+              </p>
+              <div className="rounded-lg border divide-y">
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
                   onClick={() => {
                     setNewPassword("");
                     setConfirmPassword("");
@@ -759,35 +772,32 @@ function EmployeeDetail() {
                     setChangePasswordOpen(true);
                   }}
                 >
-                  {t("gabinet.employees.changePassword")}
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-          <Card className="mt-4">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t("gabinet.employees.adminActions", "Akcje administracyjne")}</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setEditDrawerOpen(true)}
-              >
-                <Pencil className="mr-2 h-4 w-4" variant="stroke" />
-                {t("gabinet.employees.editEmployee")}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-destructive hover:text-destructive"
-                onClick={handleDeactivate}
-              >
-                {t("gabinet.employees.deactivate")}
-              </Button>
-            </CardContent>
-          </Card>
-        </>
+                  <Settings className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
+                  <span className="flex-1 text-sm">{t("gabinet.employees.changePassword")}</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
+                </button>
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                  onClick={() => setEditDrawerOpen(true)}
+                >
+                  <Pencil className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
+                  <span className="flex-1 text-sm">{t("gabinet.employees.editEmployee")}</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
+                </button>
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                  onClick={handleDeactivate}
+                >
+                  <Power className="h-4 w-4 text-destructive shrink-0" variant="stroke" />
+                  <span className="flex-1 text-sm text-destructive">{t("gabinet.employees.deactivate")}</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       ),
     },
     {

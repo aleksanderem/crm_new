@@ -1423,55 +1423,28 @@ export function AppointmentDialog({
                   </p>
                 )}
 
-                {/* Eligible patient packages — the backend auto-resolves only
-                    when treatmentCount > 1, so this manual picker is the only
-                    way to cover appointments via manually-defined multi-
-                    treatment packages or treatments with treatmentCount=1
-                    that belong to a separate package. Issue #1378. */}
-                {patientId && treatmentId && (
-                  <>
+                {/* Eligible patient packages — render one selector per selected
+                    treatment so packages are discovered regardless of which
+                    treatment was added first (issue #3586). Each selector
+                    auto-sets packageTreatmentId, removing the manual dropdown
+                    that previously asked the user to re-select the covered
+                    treatment. Issue #1378. */}
+                {patientId && selectedTreatments.length > 0 &&
+                  selectedTreatments.map((sel) => (
                     <PackageUsageSelector
+                      key={sel.treatmentId}
                       patientId={patientId}
-                      treatmentId={treatmentId}
-                      variantId={variantId || undefined}
+                      treatmentId={sel.treatmentId}
+                      variantId={sel.variantId || undefined}
                       organizationId={organizationId}
-                      selectedUsageId={packageUsageId}
+                      selectedUsageId={packageTreatmentId === sel.treatmentId ? packageUsageId : null}
                       onSelect={(id) => {
                         setPackageUsageId(id);
-                        if (!id) setPackageTreatmentId(null);
+                        setPackageTreatmentId(id ? sel.treatmentId : null);
                       }}
                     />
-                    {/* When a package is selected for a multi-treatment appointment,
-                        ask the user which treatment the package deduction applies to. */}
-                    {packageUsageId && selectedTreatments.length > 1 && (
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                          {t("gabinet.appointments.packageTreatment", "Zabieg objęty pakietem")}
-                        </Label>
-                        <Select
-                          value={packageTreatmentId ?? ""}
-                          onValueChange={(v) => setPackageTreatmentId(v || null)}
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue
-                              placeholder={t("gabinet.appointments.selectTreatment")}
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {selectedTreatments.map((sel) => {
-                              const tr = treatments?.find((t) => t._id === sel.treatmentId);
-                              return (
-                                <SelectItem key={sel.treatmentId} value={sel.treatmentId}>
-                                  {tr?.name ?? sel.treatmentId}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                  </>
-                )}
+                  ))
+                }
 
                 <Separator />
 

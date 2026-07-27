@@ -2656,6 +2656,18 @@ function AppointmentDetail() {
               payments={payments as Array<Record<string, unknown>>}
               patientPackageUsage={patientPackageUsage}
               linkedPackageUsageId={appointment.packageUsageId ?? null}
+              showMarkCompleted={availableTransitions.includes("completed")}
+              onMarkCompleted={async () => {
+                const result = await updateStatus({
+                  organizationId,
+                  appointmentId: appointment._id,
+                  status: "completed",
+                });
+                if (result?.warnings?.length) {
+                  toast.warning(t("gabinet.stock.negativeWarning"));
+                }
+                await invalidateAppointmentCaches();
+              }}
               onSuccess={() => {
                 setPaymentDialogOpen(false);
                 refetch();

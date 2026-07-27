@@ -312,12 +312,15 @@ export function AppointmentPreviewContent({
     detail?.appointment.date,
     appointmentId,
   );
+  // First same-day appointment to settle next (sorted by start_time from the query).
+  const nextSameDayAppointment = sameDayOtherAppointments?.[0] ?? null;
 
   const [status, setStatus] = useState<AppointmentStatus | "">("");
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [changeHistoryOpen, setChangeHistoryOpen] = useState(false);
+  const [settleNextEnabled, setSettleNextEnabled] = useState(false);
 
   // Appointment change history (issue #1837). Activities are recorded by the
   // backend on every update — we surface only the ones that meaningfully
@@ -1662,7 +1665,7 @@ export function AppointmentPreviewContent({
           {sameDayOtherAppointments && sameDayOtherAppointments.length > 0 && (
             <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 flex gap-2 text-sm">
               <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-              <div className="text-amber-700 dark:text-amber-300">
+              <div className="flex-1 text-amber-700 dark:text-amber-300">
                 <p className="font-medium">
                   {t(
                     "gabinet.appointments.otherAppointmentsTodayTitle",
@@ -1682,6 +1685,25 @@ export function AppointmentPreviewContent({
                     "pamiętaj o ich rozliczeniu",
                   )}
                 </p>
+                {nextSameDayAppointment && (
+                  <button
+                    type="button"
+                    onClick={() => setSettleNextEnabled((v) => !v)}
+                    className={cn(
+                      "mt-2 inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-colors",
+                      settleNextEnabled
+                        ? "border-amber-500 bg-amber-100 text-amber-800 dark:border-amber-500 dark:bg-amber-900/40 dark:text-amber-200"
+                        : "border-amber-300 bg-transparent text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/30",
+                    )}
+                  >
+                    {settleNextEnabled && <Check className="size-3" />}
+                    {t("gabinet.appointments.settleNext", {
+                      defaultValue:
+                        "Po rozliczeniu → {{time}}",
+                      time: `${nextSameDayAppointment.startTime.slice(0, 5)}–${nextSameDayAppointment.endTime.slice(0, 5)}`,
+                    })}
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -1804,6 +1826,13 @@ export function AppointmentPreviewContent({
                 await refetch();
                 setSettleDialogOpen(false);
                 onClose();
+                if (settleNextEnabled && nextSameDayAppointment) {
+                  void navigate({
+                    to: "/dashboard/gabinet/appointments/$appointmentId",
+                    params: { appointmentId: nextSameDayAppointment.id },
+                    search: { tab: "payments" },
+                  });
+                }
               }}
               onCancel={() => setSettleDialogOpen(false)}
               extraFooterContent={

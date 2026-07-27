@@ -2667,6 +2667,7 @@ function AppointmentDetail() {
                   toast.warning(t("gabinet.stock.negativeWarning"));
                 }
                 await invalidateAppointmentCaches();
+                setTimeout(() => setAfterCompletionDialogOpen(true), 500);
               }}
               onSuccess={() => {
                 setPaymentDialogOpen(false);

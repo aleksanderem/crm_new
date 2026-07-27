@@ -1399,6 +1399,7 @@ export const create = action({
       prepaymentAmount: args.prepaymentAmount ?? null,
       prepaymentStatus: args.prepaymentRequired ? "pending" : null,
       packageUsageId: resolvedPackageUsageId ?? null,
+      packageTreatmentId: args.packageTreatmentId ?? null,
       sendReminder: shouldSendReminder,
       reminderOverrides: args.reminderOverrides ?? null,
       locationId: resolvedLocationId ?? null,
@@ -2367,11 +2368,15 @@ export const updateStatus = action({
     // Package return: when reverting from completed or no_show, restore one
     // package entry per junction treatment. CAS lives on
     // gabinet_appointment_treatments.package_deducted per junction row (#3367).
+    // If packageTreatmentId is set, only the covered treatment is returned (#3590).
     if (
       (appt.status === "completed" || appt.status === "no_show") &&
       appt.packageUsageId
     ) {
-      for (const jt of statusJunctionRows) {
+      const pkgReturnRows = appt.packageTreatmentId
+        ? statusJunctionRows.filter((jt) => jt.treatmentId === String(appt.packageTreatmentId))
+        : statusJunctionRows;
+      for (const jt of pkgReturnRows) {
         const { data: pkgReturnCasRows } = await db.raw()
           .from("gabinet_appointment_treatments")
           .update({ package_deducted: false })
@@ -2491,11 +2496,15 @@ export const updateStatus = action({
     // Package deduction: completed and no_show both consume one entry per junction
     // treatment. CAS lives on gabinet_appointment_treatments.package_deducted per
     // junction row (#3367), replacing the old appointment-level flag. Closes #3206.
+    // If packageTreatmentId is set, only the covered treatment is deducted (#3590).
     if (
       (args.status === "completed" || args.status === "no_show") &&
       appt.packageUsageId
     ) {
-      for (const jt of statusJunctionRows) {
+      const pkgDeductRows = appt.packageTreatmentId
+        ? statusJunctionRows.filter((jt) => jt.treatmentId === String(appt.packageTreatmentId))
+        : statusJunctionRows;
+      for (const jt of pkgDeductRows) {
         const { data: pkgCasRows } = await db.raw()
           .from("gabinet_appointment_treatments")
           .update({ package_deducted: true })

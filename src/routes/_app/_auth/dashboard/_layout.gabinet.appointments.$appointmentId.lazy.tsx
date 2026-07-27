@@ -14,6 +14,7 @@ import { formatPhoneNumber } from "@/lib/phone";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
 import { useSupabaseGabinetEquipmentList } from "@/hooks/use-supabase-gabinet-equipment";
+import { useSupabaseGabinetSameDayAppointments } from "@/hooks/use-supabase-gabinet-appointments";
 import { useSupabaseOrgSettings } from "@/hooks/use-supabase-organizations";
 import { Button } from "@/components/ui/button";
 import {
@@ -115,6 +116,7 @@ import {
   Building2,
   Clock,
 } from "@/lib/ez-icons";
+import { AlertTriangle } from "lucide-react";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
@@ -448,6 +450,16 @@ function AppointmentDetail() {
   const { data: orgSettings } = useSupabaseOrgSettings(
     organizationId as string,
   );
+
+  // Same-day appointments for the same patient — used to warn staff that more
+  // visits may need settling after this one (issue #3581, mirrors #3578).
+  const { data: sameDayOtherAppointments } =
+    useSupabaseGabinetSameDayAppointments(
+      organizationId,
+      detail?.patient?._id ?? undefined,
+      detail?.appointment?.date,
+      appointmentId,
+    );
 
   // Equipment list used to surface parameter units on the Documentation tab —
   // when the appointment's treatment lists required equipment, the editor
@@ -2607,6 +2619,32 @@ function AppointmentDetail() {
               {t("gabinet.payments.addPaymentDesc")}
             </DialogDescription>
           </DialogHeader>
+          {sameDayOtherAppointments && sameDayOtherAppointments.length > 0 && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 flex gap-2 text-sm">
+              <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="text-amber-700 dark:text-amber-300">
+                <p className="font-medium">
+                  {t(
+                    "gabinet.appointments.otherAppointmentsTodayTitle",
+                    "Inne wizyty pacjenta w tym dniu",
+                  )}
+                </p>
+                <p className="text-xs mt-0.5 text-amber-600 dark:text-amber-400">
+                  {sameDayOtherAppointments
+                    .map(
+                      (a) =>
+                        `${a.startTime.slice(0, 5)}–${a.endTime.slice(0, 5)}`,
+                    )
+                    .join(", ")}
+                  {" — "}
+                  {t(
+                    "gabinet.appointments.otherAppointmentsTodayHint",
+                    "pamiętaj o ich rozliczeniu",
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
           {paymentDialogOpen && (
             <SettlementForm
               organizationId={organizationId}

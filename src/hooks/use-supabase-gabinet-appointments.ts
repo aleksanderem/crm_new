@@ -639,6 +639,72 @@ export function useSupabaseGabinetNextAppointmentByPatient(
 }
 
 // ---------------------------------------------------------------------------
+// Same-day Appointments for a Patient (settlement warning — issue #3578)
+// ---------------------------------------------------------------------------
+
+export interface SameDayAppointmentInfo {
+  id: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+}
+
+/**
+ * Returns other non-cancelled, non-no-show appointments for the same patient
+ * on the same date, excluding the current appointment. Used by the settlement
+ * dialog to warn when more appointments remain to be settled (issue #3578).
+ */
+export function useSupabaseGabinetSameDayAppointments(
+  organizationId: string,
+  patientId: string | undefined,
+  date: string | undefined,
+  excludeAppointmentId: string,
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  return useQuery<SameDayAppointmentInfo[], Error>({
+    queryKey: [
+      ...supabaseKeys.gabinetAppointments.list(organizationId),
+      "sameDay",
+      patientId ?? "",
+      date ?? "",
+      excludeAppointmentId,
+    ],
+    queryFn: async (): Promise<SameDayAppointmentInfo[]> => {
+      if (!client || !patientId || !date) return [];
+      const { data, error } = await client
+        .from("gabinet_appointments")
+        .select("id, start_time, end_time, status")
+        .eq("organization_id", organizationId)
+        .eq("patient_id", patientId)
+        .eq("date", date)
+        .neq("id", excludeAppointmentId)
+        .not("status", "in", '("cancelled","no_show")')
+        .order("start_time");
+      if (error) throw error;
+      return (
+        (
+          data ?? []
+        ) as Array<{
+          id: string;
+          start_time: string;
+          end_time: string;
+          status: string;
+        }>
+      ).map((r) => ({
+        id: r.id,
+        startTime: r.start_time,
+        endTime: r.end_time,
+        status: r.status,
+      }));
+    },
+    enabled: enabled && isReady && !!organizationId && !!patientId && !!date,
+  } satisfies UseQueryOptions<SameDayAppointmentInfo[], Error>);
+}
+
+// ---------------------------------------------------------------------------
 // Single Appointment
 // ---------------------------------------------------------------------------
 

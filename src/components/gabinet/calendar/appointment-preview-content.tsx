@@ -96,6 +96,7 @@ import {
   useSupabaseGabinetFirstAppointmentIdsByPatient,
   useSupabaseGabinetAppointmentPackagePositions,
   useSupabaseGabinetAppointmentRecurringPositions,
+  useSupabaseGabinetSameDayAppointments,
 } from "@/hooks/use-supabase-gabinet-appointments";
 import {
   AppointmentIndicatorBadge,
@@ -302,6 +303,15 @@ export function AppointmentPreviewContent({
         }>
       | undefined;
   };
+
+  // Other appointments for the same patient on the same date — used to warn
+  // staff that more visits may need settling after this one (issue #3578).
+  const { data: sameDayOtherAppointments } = useSupabaseGabinetSameDayAppointments(
+    organizationId,
+    patientIdForPackages || undefined,
+    detail?.appointment.date,
+    appointmentId,
+  );
 
   const [status, setStatus] = useState<AppointmentStatus | "">("");
   const [date, setDate] = useState("");
@@ -1648,6 +1658,33 @@ export function AppointmentPreviewContent({
               })}
             </DialogDescription>
           </DialogHeader>
+
+          {sameDayOtherAppointments && sameDayOtherAppointments.length > 0 && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 flex gap-2 text-sm">
+              <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="text-amber-700 dark:text-amber-300">
+                <p className="font-medium">
+                  {t(
+                    "gabinet.appointments.otherAppointmentsTodayTitle",
+                    "Inne wizyty pacjenta w tym dniu",
+                  )}
+                </p>
+                <p className="text-xs mt-0.5 text-amber-600 dark:text-amber-400">
+                  {sameDayOtherAppointments
+                    .map(
+                      (a) =>
+                        `${a.startTime.slice(0, 5)}–${a.endTime.slice(0, 5)}`,
+                    )
+                    .join(", ")}
+                  {" — "}
+                  {t(
+                    "gabinet.appointments.otherAppointmentsTodayHint",
+                    "pamiętaj o ich rozliczeniu",
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1 mt-2">
             {(isMultiTreatment

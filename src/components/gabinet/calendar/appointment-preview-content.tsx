@@ -1715,27 +1715,54 @@ export function AppointmentPreviewContent({
                 ? [treatment]
                 : []
             ).map((item, i) => {
-              const name = isMultiTreatment
-                ? (treatments?.find(
-                    (tr) =>
-                      tr._id ===
-                      (item as (typeof junctionTreatments)[0]).treatmentId,
-                  )?.name ?? t("gabinet.appointments.selectTreatment"))
+              const jt = isMultiTreatment
+                ? (item as (typeof junctionTreatments)[0])
+                : null;
+              const name = jt
+                ? (treatments?.find((tr) => tr._id === jt.treatmentId)?.name ??
+                    t("gabinet.appointments.selectTreatment"))
                 : ((item as typeof treatment)?.name ?? "");
+              const itemPrice = jt
+                ? (jt.priceAtBooking ??
+                    treatments?.find((tr) => tr._id === jt.treatmentId)
+                      ?.price ??
+                    0)
+                : null;
               return (
                 <div key={i} className="flex justify-between gap-3">
-                  <span className="text-muted-foreground truncate">{name}</span>
+                  <span className="inline-flex items-center gap-1 text-muted-foreground truncate">
+                    {isSettled && (
+                      <Check className="size-3 shrink-0 text-emerald-500" />
+                    )}
+                    <span className="truncate">{name}</span>
+                  </span>
+                  {itemPrice !== null && (
+                    <span className="tabular-nums shrink-0">
+                      {formatCurrencyPLN(itemPrice)}
+                    </span>
+                  )}
                 </div>
               );
             })}
-            <div className="flex justify-between gap-3">
-              <span className="text-muted-foreground">
-                {t("gabinet.payments.treatmentPrice")}
-              </span>
-              <span className="font-medium tabular-nums">
-                {formatCurrencyPLN(treatmentPrice)}
-              </span>
-            </div>
+            {isMultiTreatment ? (
+              <div className="flex justify-between gap-3 border-t pt-1">
+                <span className="text-muted-foreground">
+                  {t("gabinet.payments.totalPrice", "Łącznie")}
+                </span>
+                <span className="font-medium tabular-nums">
+                  {formatCurrencyPLN(treatmentPrice)}
+                </span>
+              </div>
+            ) : (
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">
+                  {t("gabinet.payments.treatmentPrice")}
+                </span>
+                <span className="font-medium tabular-nums">
+                  {formatCurrencyPLN(treatmentPrice)}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between gap-3">
               <span className="text-muted-foreground">
                 {t("gabinet.payments.totalPaid")}

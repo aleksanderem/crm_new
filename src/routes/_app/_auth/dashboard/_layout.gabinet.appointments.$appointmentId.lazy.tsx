@@ -453,12 +453,15 @@ function AppointmentDetail() {
 
   // Same-day appointments for the same patient — used to warn staff that more
   // visits may need settling after this one (issue #3581, mirrors #3578).
+  // Suppressed for multi-treatment (junction) appointments: all treatments are
+  // already in one appointment, so the warning would be misleading (#3594).
   const { data: sameDayOtherAppointments } =
     useSupabaseGabinetSameDayAppointments(
       organizationId,
       detail?.patient?._id ?? undefined,
       detail?.appointment?.date,
       appointmentId,
+      { enabled: !detail?.treatments || detail.treatments.length <= 1 },
     );
 
   // Equipment list used to surface parameter units on the Documentation tab —

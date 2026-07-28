@@ -780,55 +780,6 @@ function TreatmentsIndex() {
         onFiltersChange={setActiveFilters}
       />
 
-      {/* Mobile-only toggle: collapse KPI cards by default on small screens */}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => setShowStatsMobile((s) => !s)}
-        aria-expanded={showStatsMobile}
-        className="md:hidden w-full justify-between"
-      >
-        {showStatsMobile ? t("common.hideStats") : t("common.showStats")}
-        {showStatsMobile ? (
-          <ChevronUp className="size-4" />
-        ) : (
-          <ChevronDown className="size-4" />
-        )}
-      </Button>
-
-      {/* KPI Statistics Cards */}
-      <div className={`${showStatsMobile ? "grid" : "hidden md:grid"} gap-4 sm:grid-cols-3`}>
-        <StatisticsOrderCard
-          title={t("gabinet.treatments.totalTreatments", "Zabiegi")}
-          description={t("gabinet.treatments.inCatalog", "W katalogu")}
-          value={String(kpis?.totalTreatments ?? 0)}
-          changePercentage={
-            kpis?.popularTreatment
-              ? `★ ${kpis.popularTreatment}`
-              : ""
-          }
-          chartData={treatmentChartData}
-        />
-        <StatisticsProfitCard
-          title={t("gabinet.treatments.completedThisMonth", "Wykonane w tym mies.")}
-          description={t("gabinet.treatments.thisMonth", "Ten miesiąc")}
-          value={String(kpis?.completedThisMonth ?? 0)}
-          changePercentage={t("gabinet.treatments.appointments", "wizyt")}
-        />
-        <StatisticsSalesGrowthCard
-          title={t("gabinet.treatments.popular", "Najpopularniejszy")}
-          description={t("gabinet.treatments.byAppointments", "Wg wizyt")}
-          value={kpis?.popularTreatment ?? "—"}
-          changePercentage={
-            kpis?.completedThisMonth
-              ? `${kpis.completedThisMonth} ${t("gabinet.treatments.thisMonthShort", "w tym mies.")}`
-              : ""
-          }
-          gradientId="fillTreatments"
-        />
-      </div>
-
       {groupByEquipment && treatmentGroups ? (
         treatmentGroups.length === 0 ? (
           <CrmDataTable
@@ -913,6 +864,55 @@ function TreatmentsIndex() {
           }
         />
       )}
+
+      {/* Mobile-only toggle: collapse KPI cards by default on small screens */}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setShowStatsMobile((s) => !s)}
+        aria-expanded={showStatsMobile}
+        className="md:hidden w-full justify-between"
+      >
+        {showStatsMobile ? t("common.hideStats") : t("common.showStats")}
+        {showStatsMobile ? (
+          <ChevronUp className="size-4" />
+        ) : (
+          <ChevronDown className="size-4" />
+        )}
+      </Button>
+
+      {/* KPI Statistics Cards */}
+      <div className={`${showStatsMobile ? "grid" : "hidden md:grid"} gap-4 sm:grid-cols-3`}>
+        <StatisticsOrderCard
+          title={t("gabinet.treatments.totalTreatments", "Zabiegi")}
+          description={t("gabinet.treatments.inCatalog", "W katalogu")}
+          value={String(kpis?.totalTreatments ?? 0)}
+          changePercentage={
+            kpis?.popularTreatment
+              ? `★ ${kpis.popularTreatment}`
+              : ""
+          }
+          chartData={treatmentChartData}
+        />
+        <StatisticsProfitCard
+          title={t("gabinet.treatments.completedThisMonth", "Wykonane w tym mies.")}
+          description={t("gabinet.treatments.thisMonth", "Ten miesiąc")}
+          value={String(kpis?.completedThisMonth ?? 0)}
+          changePercentage={t("gabinet.treatments.appointments", "wizyt")}
+        />
+        <StatisticsSalesGrowthCard
+          title={t("gabinet.treatments.popular", "Najpopularniejszy")}
+          description={t("gabinet.treatments.byAppointments", "Wg wizyt")}
+          value={kpis?.popularTreatment ?? "—"}
+          changePercentage={
+            kpis?.completedThisMonth
+              ? `${kpis.completedThisMonth} ${t("gabinet.treatments.thisMonthShort", "w tym mies.")}`
+              : ""
+          }
+          gradientId="fillTreatments"
+        />
+      </div>
 
       <SidePanel
         open={columnSettingsOpen}

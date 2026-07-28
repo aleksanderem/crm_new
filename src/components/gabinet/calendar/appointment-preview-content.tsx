@@ -306,11 +306,14 @@ export function AppointmentPreviewContent({
 
   // Other appointments for the same patient on the same date — used to warn
   // staff that more visits may need settling after this one (issue #3578).
+  // Suppressed for multi-treatment (junction) appointments: all treatments are
+  // already in one appointment, so the warning would be misleading (#3594).
   const { data: sameDayOtherAppointments } = useSupabaseGabinetSameDayAppointments(
     organizationId,
     patientIdForPackages || undefined,
     detail?.appointment.date,
     appointmentId,
+    { enabled: !detail?.treatments || detail.treatments.length <= 1 },
   );
   // First same-day appointment to settle next (sorted by start_time from the query).
   const nextSameDayAppointment = sameDayOtherAppointments?.[0] ?? null;

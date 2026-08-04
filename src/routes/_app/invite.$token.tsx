@@ -13,6 +13,7 @@ import { useState } from "react";
 import { Users, AlertCircle, CheckCircle2, XCircle } from "@/lib/ez-icons";
 
 export const Route = createFileRoute("/_app/invite/$token")({
+  errorComponent: InviteErrorBoundary,
   component: InviteAcceptPage,
 });
 
@@ -267,6 +268,26 @@ function InviteAcceptPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function InviteErrorBoundary({ error, reset }: { error: Error; reset: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <CenteredCard>
+      <div className="flex flex-col items-center gap-3 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive" />
+        <div className="space-y-1">
+          <p className="text-lg font-medium">
+            {t("invite.errorTitle", { defaultValue: "Coś poszło nie tak" })}
+          </p>
+          <p className="text-sm text-muted-foreground">{error.message}</p>
+        </div>
+        <Button onClick={reset}>
+          {t("invite.retry", { defaultValue: "Spróbuj ponownie" })}
+        </Button>
+      </div>
+    </CenteredCard>
   );
 }
 

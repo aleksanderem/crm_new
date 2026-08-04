@@ -1,12 +1,17 @@
 import { useState, useEffect } from "react";
 import { useQuery, useAction } from "convex/react";
-import { useQuery as useTanstackQuery } from "@tanstack/react-query";
+import { useQuery as useTanstackQuery, useQueryClient } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { useRole } from "@/hooks/use-permission";
 import { toast } from "sonner";
+import {
+  useSupabaseGoogleCalendarConfigs,
+  useSupabaseGoogleCalendarOrgDefault,
+} from "@/hooks/use-supabase-google-calendar-configs";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import {
   Card,
   CardContent,
@@ -55,6 +60,7 @@ export function GoogleCalendarSyncSettings({
   const { t } = useTranslation();
   const { role } = useRole();
   const isAdmin = role === "owner" || role === "admin";
+  const queryClient = useQueryClient();
 
   const listActivityTypesAction = useAction(api.activityTypes.list);
   const { data: activityTypes } = useTanstackQuery({
@@ -62,22 +68,23 @@ export function GoogleCalendarSyncSettings({
     queryFn: () => listActivityTypesAction({ organizationId }),
     enabled: !!organizationId,
   }) as { data: any[] | undefined };
-  const myConfigs = useQuery(api.googleCalendarSyncConfigs.listMine, {
-    organizationId,
-  });
-  const allConfigs = useQuery(
-    api.googleCalendarSyncConfigs.listAll,
-    isAdmin ? { organizationId } : "skip"
-  );
-  const orgDefault = useQuery(api.googleCalendarSyncConfigs.getOrgDefault, {
-    organizationId,
-  });
-  const myConnection = useQuery(api.oauthConnections.getMyGoogleConnection, {
-    organizationId,
-  });
   const { data: user } = useTanstackQuery(
     convexQuery(api.app.getCurrentUser, {})
   );
+  const { data: myConfigs } = useSupabaseGoogleCalendarConfigs(
+    organizationId,
+    user?._id ? String(user._id) : undefined,
+    { enabled: !!user?._id },
+  );
+  const { data: allConfigs } = useSupabaseGoogleCalendarConfigs(
+    organizationId,
+    undefined,
+    { enabled: isAdmin },
+  );
+  const { data: orgDefault } = useSupabaseGoogleCalendarOrgDefault(organizationId);
+  const myConnection = useQuery(api.oauthConnections.getMyGoogleConnection, {
+    organizationId,
+  });
 
   const createConfig = useAction(api.googleCalendarSyncConfigs.create);
   const updateConfig = useAction(api.googleCalendarSyncConfigs.update);
@@ -163,6 +170,11 @@ export function GoogleCalendarSyncSettings({
     }
   };
 
+  const invalidateConfigs = () =>
+    queryClient.invalidateQueries({
+      queryKey: supabaseKeys.googleCalendarSyncConfigs.all,
+    });
+
   const handleAddCalendar = async (cal: GoogleCalendarInfo) => {
     if (!myConnection) return;
     setAddingCalendarId(cal.id);
@@ -175,6 +187,7 @@ export function GoogleCalendarSyncSettings({
         targetModule: "crm",
         visibility: "full",
       });
+      await invalidateConfigs();
       toast.success(t("googleCalendar.settings.calendarAdded"));
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
@@ -185,7 +198,7 @@ export function GoogleCalendarSyncSettings({
   };
 
   const handleUpdateConfig = async (
-    configId: Id<"googleCalendarSyncConfigs">,
+    configId: string,
     patch: {
       targetModule?: "crm" | "gabinet";
       targetActivityType?: string;
@@ -196,17 +209,17 @@ export function GoogleCalendarSyncSettings({
   ) => {
     try {
       await updateConfig({ configId, ...patch });
+      await invalidateConfigs();
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       toast.error(message);
     }
   };
 
-  const handleRemoveConfig = async (
-    configId: Id<"googleCalendarSyncConfigs">
-  ) => {
+  const handleRemoveConfig = async (configId: string) => {
     try {
       await removeConfig({ configId });
+      await invalidateConfigs();
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       toast.error(message);

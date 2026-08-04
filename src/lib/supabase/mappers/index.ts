@@ -293,3 +293,10 @@ export {
   mapGabinetEmployeeScheduleToSupabase,
   type MappedGabinetEmployeeSchedule,
 } from "./gabinet";
+
+// ── Google Calendar ───────────────────────────────────────────────────────────
+
+export {
+  mapGoogleCalendarSyncConfigFromSupabase,
+  type MappedGoogleCalendarSyncConfig,
+} from "./google-calendar-sync-configs";

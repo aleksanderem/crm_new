@@ -7450,3 +7450,6 @@ export type GabinetLoyaltyPointsUpdate = Database["public"]["Tables"]["gabinet_l
 export type GabinetLoyaltyTransactionRow = Database["public"]["Tables"]["gabinet_loyalty_transactions"]["Row"];
 export type GabinetLoyaltyTransactionInsert = Database["public"]["Tables"]["gabinet_loyalty_transactions"]["Insert"];
 export type GabinetLoyaltyTransactionUpdate = Database["public"]["Tables"]["gabinet_loyalty_transactions"]["Update"];
+export type GoogleCalendarSyncConfigRow = Database["public"]["Tables"]["google_calendar_sync_configs"]["Row"];
+export type GoogleCalendarSyncConfigInsert = Database["public"]["Tables"]["google_calendar_sync_configs"]["Insert"];
+export type GoogleCalendarSyncConfigUpdate = Database["public"]["Tables"]["google_calendar_sync_configs"]["Update"];

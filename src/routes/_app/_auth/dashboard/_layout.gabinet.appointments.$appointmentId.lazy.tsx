@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   createLazyFileRoute,
   useNavigate,
@@ -116,7 +116,6 @@ import {
   Building2,
   Clock,
 } from "@/lib/ez-icons";
-import { AlertTriangle } from "lucide-react";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
@@ -452,17 +451,36 @@ function AppointmentDetail() {
   );
 
   // Same-day appointments for the same patient — used to warn staff that more
-  // visits may need settling after this one (issue #3581, mirrors #3578).
-  // Suppressed for multi-treatment (junction) appointments: all treatments are
-  // already in one appointment, so the warning would be misleading (#3594).
+  // Other same-day appointments for the same patient — shown in the settlement
+  // dialog so staff can batch-settle multiple visits at once (issue #3578).
   const { data: sameDayOtherAppointments } =
     useSupabaseGabinetSameDayAppointments(
       organizationId,
       detail?.patient?._id ?? undefined,
       detail?.appointment?.date,
       appointmentId,
-      { enabled: !detail?.treatments || detail.treatments.length <= 1 },
     );
+
+  // Which additional same-day appointments to include in the batch settlement.
+  const [selectedAdditionalIds, setSelectedAdditionalIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const prevSameDayLengthRef2 = useRef<number>(-1);
+  useEffect(() => {
+    if (!sameDayOtherAppointments) return;
+    if (prevSameDayLengthRef2.current === sameDayOtherAppointments.length) return;
+    prevSameDayLengthRef2.current = sameDayOtherAppointments.length;
+    setSelectedAdditionalIds(new Set(sameDayOtherAppointments.map((a) => a.id)));
+  }, [sameDayOtherAppointments]);
+
+  const toggleAdditional = useCallback((id: string, checked: boolean) => {
+    setSelectedAdditionalIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
 
   // Equipment list used to surface parameter units on the Documentation tab —
   // when the appointment's treatment lists required equipment, the editor
@@ -2623,29 +2641,43 @@ function AppointmentDetail() {
             </DialogDescription>
           </DialogHeader>
           {sameDayOtherAppointments && sameDayOtherAppointments.length > 0 && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 flex gap-2 text-sm">
-              <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-              <div className="text-amber-700 dark:text-amber-300">
-                <p className="font-medium">
-                  {t(
-                    "gabinet.appointments.otherAppointmentsTodayTitle",
-                    "Inne wizyty pacjenta w tym dniu",
-                  )}
-                </p>
-                <p className="text-xs mt-0.5 text-amber-600 dark:text-amber-400">
-                  {sameDayOtherAppointments
-                    .map(
-                      (a) =>
-                        `${a.startTime.slice(0, 5)}–${a.endTime.slice(0, 5)}`,
-                    )
-                    .join(", ")}
-                  {" — "}
-                  {t(
-                    "gabinet.appointments.otherAppointmentsTodayHint",
-                    "pamiętaj o ich rozliczeniu",
-                  )}
-                </p>
-              </div>
+            <div className="rounded-md border bg-muted/20 p-3 space-y-2 text-sm">
+              <p className="font-medium text-muted-foreground">
+                {t(
+                  "gabinet.appointments.batchSettleTitle",
+                  "Inne wizyty tego pacjenta w tym dniu — uwzględnij w rozliczeniu:",
+                )}
+              </p>
+              {sameDayOtherAppointments.map((appt) => (
+                <div key={appt.id} className="flex items-start gap-2">
+                  <Checkbox
+                    id={`batch-detail-${appt.id}`}
+                    checked={selectedAdditionalIds.has(appt.id)}
+                    onCheckedChange={(checked) =>
+                      toggleAdditional(appt.id, Boolean(checked))
+                    }
+                    className="mt-0.5"
+                  />
+                  <label
+                    htmlFor={`batch-detail-${appt.id}`}
+                    className="cursor-pointer leading-snug"
+                  >
+                    <span className="font-medium">
+                      {appt.startTime.slice(0, 5)}–{appt.endTime.slice(0, 5)}
+                    </span>
+                    {appt.treatmentNames.length > 0 && (
+                      <span className="text-muted-foreground ml-1">
+                        · {appt.treatmentNames.join(", ")}
+                      </span>
+                    )}
+                    {appt.totalPrice > 0 && (
+                      <span className="text-muted-foreground ml-1">
+                        · {formatCurrencyPLN(appt.totalPrice)}
+                      </span>
+                    )}
+                  </label>
+                </div>
+              ))}
             </div>
           )}
           {paymentDialogOpen && (
@@ -2659,6 +2691,11 @@ function AppointmentDetail() {
               payments={payments as Array<Record<string, unknown>>}
               patientPackageUsage={patientPackageUsage}
               linkedPackageUsageId={appointment.packageUsageId ?? null}
+              additionalAppointments={
+                (sameDayOtherAppointments ?? [])
+                  .filter((a) => selectedAdditionalIds.has(a.id))
+                  .map((a) => ({ id: a.id, totalPrice: a.totalPrice }))
+              }
               showMarkCompleted={availableTransitions.includes("completed")}
               onMarkCompleted={async () => {
                 const result = await updateStatus({

@@ -3,7 +3,6 @@ import { v } from "convex/values";
 import { action, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { auth } from "@cvx/auth";
-import type { Doc } from "../_generated/dataModel";
 import { getValidAccessTokenForConnection } from "./_helpers";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import {
@@ -56,18 +55,13 @@ function parseGoogleDateTime(dt?: {
 }
 
 export const syncCalendarConfig = internalAction({
-  args: { configId: v.id("googleCalendarSyncConfigs") },
+  args: { configId: v.string() },
   handler: async (ctx, args) => {
-    const config = await ctx.runQuery(
-      internal.googleCalendarSyncConfigs.getById,
-      { configId: args.configId }
-    );
+    const db = createSupabaseDb();
+    const config = await db.get("googleCalendarSyncConfigs", args.configId);
     if (!config || !config.syncEnabled) return { synced: 0 };
 
-    await ctx.runMutation(
-      internal.googleCalendarSyncConfigs.updateSyncState,
-      { configId: args.configId, syncStatus: "syncing" }
-    );
+    await db.patch("googleCalendarSyncConfigs", args.configId, { syncStatus: "syncing" });
 
     try {
       const auth = await getValidAccessTokenForConnection(
@@ -75,14 +69,10 @@ export const syncCalendarConfig = internalAction({
         config.connectionId
       );
       if (!auth) {
-        await ctx.runMutation(
-          internal.googleCalendarSyncConfigs.updateSyncState,
-          {
-            configId: args.configId,
-            syncStatus: "error",
-            syncError: "OAuth token unavailable",
-          }
-        );
+        await db.patch("googleCalendarSyncConfigs", args.configId, {
+          syncStatus: "error",
+          syncError: "OAuth token unavailable",
+        });
         return { synced: 0, error: "OAuth token unavailable" };
       }
 
@@ -126,10 +116,10 @@ export const syncCalendarConfig = internalAction({
 
         if (resp.status === 410) {
           // syncToken invalidated — clear it and retry with full sync
-          await ctx.runMutation(
-            internal.googleCalendarSyncConfigs.resetSyncToken,
-            { configId: args.configId }
-          );
+          await db.patch("googleCalendarSyncConfigs", args.configId, {
+            lastSyncToken: null,
+            syncStatus: "idle",
+          });
           await ctx.scheduler.runAfter(
             0,
             internal.google.calendarSync.syncCalendarConfig,
@@ -154,7 +144,6 @@ export const syncCalendarConfig = internalAction({
       } while (pageToken);
 
       // Handle cancelled events — delete corresponding records (Supabase-primary)
-      const db = createSupabaseDb();
       const cancelledEvents = allEvents.filter(
         (e) => e.status === "cancelled"
       );
@@ -182,37 +171,24 @@ export const syncCalendarConfig = internalAction({
         synced = await resolveGabinetEvents(ctx, config, validEvents);
       }
 
-      const syncStateUpdate: {
-        configId: typeof args.configId;
-        syncStatus: "idle";
-        lastSyncAt: number;
-        lastSyncToken?: string;
-      } = {
-        configId: args.configId,
-        syncStatus: "idle" as const,
+      const syncPatch: Record<string, unknown> = {
+        syncStatus: "idle",
         lastSyncAt: Date.now(),
+        syncError: null,
       };
       if (nextSyncToken) {
-        syncStateUpdate.lastSyncToken = nextSyncToken;
+        syncPatch.lastSyncToken = nextSyncToken;
       }
-
-      await ctx.runMutation(
-        internal.googleCalendarSyncConfigs.updateSyncState,
-        syncStateUpdate
-      );
+      await db.patch("googleCalendarSyncConfigs", args.configId, syncPatch);
 
       return { synced };
     } catch (error) {
       const errorMsg =
         error instanceof Error ? error.message : "Unknown error";
-      await ctx.runMutation(
-        internal.googleCalendarSyncConfigs.updateSyncState,
-        {
-          configId: args.configId,
-          syncStatus: "error",
-          syncError: errorMsg,
-        }
-      );
+      await db.patch("googleCalendarSyncConfigs", args.configId, {
+        syncStatus: "error",
+        syncError: errorMsg,
+      });
       return { synced: 0, error: errorMsg };
     }
   },
@@ -220,7 +196,7 @@ export const syncCalendarConfig = internalAction({
 
 async function resolveCrmEvents(
   ctx: any,
-  config: Doc<"googleCalendarSyncConfigs">,
+  config: Record<string, unknown>,
   events: GoogleCalendarEvent[]
 ): Promise<number> {
   const activityType = config.targetActivityType ?? "meeting";
@@ -279,7 +255,7 @@ async function resolveCrmEvents(
 
 async function resolveGabinetEvents(
   _ctx: any,
-  config: Doc<"googleCalendarSyncConfigs">,
+  config: Record<string, unknown>,
   events: GoogleCalendarEvent[]
 ): Promise<number> {
   const db = createSupabaseDb();
@@ -407,15 +383,17 @@ async function resolveGabinetEvents(
 export const syncAll = internalAction({
   args: {},
   handler: async (ctx): Promise<{ scheduled: number }> => {
-    const configs = await ctx.runQuery(
-      internal.googleCalendarSyncConfigs.getEnabledConfigs,
-      { limit: 5 }
-    );
+    const db = createSupabaseDb();
+    const configs = await db
+      .query("googleCalendarSyncConfigs")
+      .eq("syncEnabled", true)
+      .take(5)
+      .collect();
 
     for (const config of configs) {
       await ctx.scheduler.runAfter(0,
         internal.google.calendarSync.syncCalendarConfig,
-        { configId: config._id }
+        { configId: String(config._id) }
       );
     }
 
@@ -429,19 +407,21 @@ export const syncMyCalendars = action({
     const userId = await auth.getUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
-    const configs = await ctx.runQuery(
-      internal.googleCalendarSyncConfigs.getByOrgAndUser,
-      { organizationId: args.organizationId, userId }
-    );
+    const db = createSupabaseDb();
+    const configs = await db
+      .query("googleCalendarSyncConfigs")
+      .eq("organizationId", String(args.organizationId))
+      .eq("userId", String(userId))
+      .collect();
 
     const results: { calendarName: string | null; scheduled: boolean }[] = [];
     for (const config of configs) {
       if (!config.syncEnabled) continue;
       await ctx.scheduler.runAfter(0,
         internal.google.calendarSync.syncCalendarConfig,
-        { configId: config._id }
+        { configId: String(config._id) }
       );
-      results.push({ calendarName: config.googleCalendarName, scheduled: true });
+      results.push({ calendarName: config.googleCalendarName as string | null, scheduled: true });
     }
 
     return results;

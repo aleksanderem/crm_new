@@ -651,12 +651,16 @@ export interface SameDayAppointmentInfo {
   treatmentNames: string[];
   /** Sum of junction treatment prices (priceAtBooking ?? catalog price). */
   totalPrice: number;
+  /** True when the appointment is completed and fully paid — show as a disabled checkbox. */
+  isSettled: boolean;
 }
 
 /**
  * Returns other non-cancelled, non-no-show appointments for the same patient
  * on the same date, excluding the current appointment. Includes treatment names
  * and total price to support batch settlement in one dialog (issue #3578).
+ * Already-settled appointments are included so they render as disabled checkboxes
+ * rather than being hidden (issue #3609).
  */
 export function useSupabaseGabinetSameDayAppointments(
   organizationId: string,
@@ -681,7 +685,7 @@ export function useSupabaseGabinetSameDayAppointments(
       const { data, error } = await client
         .from("gabinet_appointments")
         .select(
-          "id, start_time, end_time, status, gabinet_appointment_treatments(price_at_booking, gabinet_treatments(name, price))",
+          "id, start_time, end_time, status, gabinet_appointment_treatments(price_at_booking, gabinet_treatments(name, price)), payments(amount, credit_applied, status)",
         )
         .eq("organization_id", organizationId)
         .eq("patient_id", patientId)
@@ -699,6 +703,11 @@ export function useSupabaseGabinetSameDayAppointments(
           price_at_booking: number | null;
           gabinet_treatments: { name: string; price: number | null } | null;
         }> | null;
+        payments: Array<{
+          amount: number;
+          credit_applied: number | null;
+          status: string;
+        }> | null;
       };
       return (data ?? []).map((raw) => {
         const r = raw as unknown as RawRow;
@@ -711,6 +720,12 @@ export function useSupabaseGabinetSameDayAppointments(
             sum + (t.price_at_booking ?? t.gabinet_treatments?.price ?? 0),
           0,
         );
+        const completedPaid = (r.payments ?? [])
+          .filter((p) => p.status === "completed")
+          .reduce((sum, p) => sum + p.amount + (p.credit_applied ?? 0), 0);
+        const isSettled =
+          r.status === "completed" &&
+          (totalPrice === 0 || completedPaid >= totalPrice);
         return {
           id: r.id,
           startTime: r.start_time,
@@ -718,6 +733,7 @@ export function useSupabaseGabinetSameDayAppointments(
           status: r.status,
           treatmentNames,
           totalPrice,
+          isSettled,
         };
       });
     },

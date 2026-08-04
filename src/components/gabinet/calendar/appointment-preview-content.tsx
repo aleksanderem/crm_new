@@ -325,7 +325,10 @@ export function AppointmentPreviewContent({
     // Only auto-select on first load; don't clobber user's manual selections.
     if (prevSameDayLengthRef.current === sameDayOtherAppointments.length) return;
     prevSameDayLengthRef.current = sameDayOtherAppointments.length;
-    setSelectedAdditionalIds(new Set(sameDayOtherAppointments.map((a) => a.id)));
+    // Pre-select only unsettled appointments; already-settled ones show as disabled.
+    setSelectedAdditionalIds(
+      new Set(sameDayOtherAppointments.filter((a) => !a.isSettled).map((a) => a.id)),
+    );
   }, [sameDayOtherAppointments]);
 
   const toggleAdditional = useCallback((id: string, checked: boolean) => {
@@ -1692,10 +1695,14 @@ export function AppointmentPreviewContent({
                 )}
               </p>
               {sameDayOtherAppointments.map((appt) => (
-                <div key={appt.id} className="flex items-start gap-2">
+                <div
+                  key={appt.id}
+                  className={`flex items-start gap-2 ${appt.isSettled ? "opacity-50" : ""}`}
+                >
                   <Checkbox
                     id={`batch-${appt.id}`}
-                    checked={selectedAdditionalIds.has(appt.id)}
+                    checked={!appt.isSettled && selectedAdditionalIds.has(appt.id)}
+                    disabled={appt.isSettled}
                     onCheckedChange={(checked) =>
                       toggleAdditional(appt.id, Boolean(checked))
                     }
@@ -1703,7 +1710,7 @@ export function AppointmentPreviewContent({
                   />
                   <label
                     htmlFor={`batch-${appt.id}`}
-                    className="cursor-pointer leading-snug"
+                    className={`leading-snug ${appt.isSettled ? "cursor-not-allowed" : "cursor-pointer"}`}
                   >
                     <span className="font-medium">
                       {appt.startTime.slice(0, 5)}–{appt.endTime.slice(0, 5)}
@@ -1716,6 +1723,11 @@ export function AppointmentPreviewContent({
                     {appt.totalPrice > 0 && (
                       <span className="text-muted-foreground ml-1">
                         · {formatCurrencyPLN(appt.totalPrice)}
+                      </span>
+                    )}
+                    {appt.isSettled && (
+                      <span className="text-muted-foreground ml-1">
+                        · {t("gabinet.appointments.alreadySettled", "rozliczona")}
                       </span>
                     )}
                   </label>

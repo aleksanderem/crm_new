@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { useTranslation } from "react-i18next";
@@ -52,6 +52,7 @@ import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 import { DocumentGateDialog } from "@/components/documents/document-gate-dialog";
 import { useAppointmentDocumentCounts } from "@/components/documents/appointment-document-checklist";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
   TooltipContent,
@@ -304,26 +305,43 @@ export function AppointmentPreviewContent({
       | undefined;
   };
 
-  // Other appointments for the same patient on the same date — used to warn
-  // staff that more visits may need settling after this one (issue #3578).
-  // Suppressed for multi-treatment (junction) appointments: all treatments are
-  // already in one appointment, so the warning would be misleading (#3594).
+  // Other appointments for the same patient on the same date — shown in the
+  // settlement dialog so staff can batch-settle multiple visits at once (#3578).
   const { data: sameDayOtherAppointments } = useSupabaseGabinetSameDayAppointments(
     organizationId,
     patientIdForPackages || undefined,
     detail?.appointment.date,
     appointmentId,
-    { enabled: !detail?.treatments || detail.treatments.length <= 1 },
   );
-  // First same-day appointment to settle next (sorted by start_time from the query).
-  const nextSameDayAppointment = sameDayOtherAppointments?.[0] ?? null;
+
+  // Track which additional same-day appointments the staff wants to include in
+  // the batch settlement. Pre-select all by default when the data first arrives.
+  const [selectedAdditionalIds, setSelectedAdditionalIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const prevSameDayLengthRef = useRef<number>(-1);
+  useEffect(() => {
+    if (!sameDayOtherAppointments) return;
+    // Only auto-select on first load; don't clobber user's manual selections.
+    if (prevSameDayLengthRef.current === sameDayOtherAppointments.length) return;
+    prevSameDayLengthRef.current = sameDayOtherAppointments.length;
+    setSelectedAdditionalIds(new Set(sameDayOtherAppointments.map((a) => a.id)));
+  }, [sameDayOtherAppointments]);
+
+  const toggleAdditional = useCallback((id: string, checked: boolean) => {
+    setSelectedAdditionalIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
 
   const [status, setStatus] = useState<AppointmentStatus | "">("");
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [changeHistoryOpen, setChangeHistoryOpen] = useState(false);
-  const [settleNextEnabled, setSettleNextEnabled] = useState(false);
 
   // Appointment change history (issue #1837). Activities are recorded by the
   // backend on every update — we surface only the ones that meaningfully
@@ -1666,48 +1684,43 @@ export function AppointmentPreviewContent({
           </DialogHeader>
 
           {sameDayOtherAppointments && sameDayOtherAppointments.length > 0 && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 flex gap-2 text-sm">
-              <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-              <div className="flex-1 text-amber-700 dark:text-amber-300">
-                <p className="font-medium">
-                  {t(
-                    "gabinet.appointments.otherAppointmentsTodayTitle",
-                    "Inne wizyty pacjenta w tym dniu",
-                  )}
-                </p>
-                <p className="text-xs mt-0.5 text-amber-600 dark:text-amber-400">
-                  {sameDayOtherAppointments
-                    .map(
-                      (a) =>
-                        `${a.startTime.slice(0, 5)}–${a.endTime.slice(0, 5)}`,
-                    )
-                    .join(", ")}
-                  {" — "}
-                  {t(
-                    "gabinet.appointments.otherAppointmentsTodayHint",
-                    "pamiętaj o ich rozliczeniu",
-                  )}
-                </p>
-                {nextSameDayAppointment && (
-                  <button
-                    type="button"
-                    onClick={() => setSettleNextEnabled((v) => !v)}
-                    className={cn(
-                      "mt-2 inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-colors",
-                      settleNextEnabled
-                        ? "border-amber-500 bg-amber-100 text-amber-800 dark:border-amber-500 dark:bg-amber-900/40 dark:text-amber-200"
-                        : "border-amber-300 bg-transparent text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/30",
-                    )}
-                  >
-                    {settleNextEnabled && <Check className="size-3" />}
-                    {t("gabinet.appointments.settleNext", {
-                      defaultValue:
-                        "Po rozliczeniu → {{time}}",
-                      time: `${nextSameDayAppointment.startTime.slice(0, 5)}–${nextSameDayAppointment.endTime.slice(0, 5)}`,
-                    })}
-                  </button>
+            <div className="rounded-md border bg-muted/20 p-3 space-y-2 text-sm">
+              <p className="font-medium text-muted-foreground">
+                {t(
+                  "gabinet.appointments.batchSettleTitle",
+                  "Inne wizyty tego pacjenta w tym dniu — uwzględnij w rozliczeniu:",
                 )}
-              </div>
+              </p>
+              {sameDayOtherAppointments.map((appt) => (
+                <div key={appt.id} className="flex items-start gap-2">
+                  <Checkbox
+                    id={`batch-${appt.id}`}
+                    checked={selectedAdditionalIds.has(appt.id)}
+                    onCheckedChange={(checked) =>
+                      toggleAdditional(appt.id, Boolean(checked))
+                    }
+                    className="mt-0.5"
+                  />
+                  <label
+                    htmlFor={`batch-${appt.id}`}
+                    className="cursor-pointer leading-snug"
+                  >
+                    <span className="font-medium">
+                      {appt.startTime.slice(0, 5)}–{appt.endTime.slice(0, 5)}
+                    </span>
+                    {appt.treatmentNames.length > 0 && (
+                      <span className="text-muted-foreground ml-1">
+                        · {appt.treatmentNames.join(", ")}
+                      </span>
+                    )}
+                    {appt.totalPrice > 0 && (
+                      <span className="text-muted-foreground ml-1">
+                        · {formatCurrencyPLN(appt.totalPrice)}
+                      </span>
+                    )}
+                  </label>
+                </div>
+              ))}
             </div>
           )}
 
@@ -1810,6 +1823,11 @@ export function AppointmentPreviewContent({
               patientPackageUsage={packageUsageForSettle}
               linkedPackageUsageId={appointment.packageUsageId ?? null}
               showMarkCompleted={canMarkCompleted}
+              additionalAppointments={
+                (sameDayOtherAppointments ?? [])
+                  .filter((a) => selectedAdditionalIds.has(a.id))
+                  .map((a) => ({ id: a.id, totalPrice: a.totalPrice }))
+              }
               onMarkCompleted={async () => {
                 const result = await updateStatus({
                   organizationId,
@@ -1856,13 +1874,6 @@ export function AppointmentPreviewContent({
                 await refetch();
                 setSettleDialogOpen(false);
                 onClose();
-                if (settleNextEnabled && nextSameDayAppointment) {
-                  void navigate({
-                    to: "/dashboard/gabinet/appointments/$appointmentId",
-                    params: { appointmentId: nextSameDayAppointment.id },
-                    search: { tab: "payments" },
-                  });
-                }
               }}
               onCancel={() => setSettleDialogOpen(false)}
               extraFooterContent={

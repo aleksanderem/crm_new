@@ -58,6 +58,13 @@ export interface SettlementFormProps {
    * automatically on completion, and offering it here would double-deduct.
    */
   linkedPackageUsageId?: string | null;
+  /**
+   * Additional same-day appointments to settle in the same operation.
+   * For each entry, a payment is created with the same method and that
+   * appointment's full price. Package and split payment modes are excluded
+   * from batch (those appointments remain for manual individual settlement).
+   */
+  additionalAppointments?: Array<{ id: string; totalPrice: number }>;
   /** Called after a payment is successfully created. Should close the dialog and refetch. */
   onSuccess: () => void;
   /** Called when the user cancels. Should close the dialog. */
@@ -97,6 +104,7 @@ export function SettlementForm({
   payments,
   patientPackageUsage,
   linkedPackageUsageId,
+  additionalAppointments = [],
   onSuccess,
   onCancel,
   onBeforeSubmit,
@@ -524,6 +532,29 @@ export function SettlementForm({
           creditEarned: creditEarned > 0 ? creditEarned : undefined,
           creditApplied: creditApplied > 0 ? creditApplied : undefined,
         });
+      }
+
+      // Batch-settle additional same-day appointments with the same payment
+      // method (non-package, non-split only — complex redemptions must be
+      // done individually). Issue #3578.
+      if (
+        additionalAppointments.length > 0 &&
+        !isPackageMode &&
+        !splitPayment
+      ) {
+        const batchMethod = paymentMethod as (typeof PAYMENT_METHODS)[number];
+        for (const appt of additionalAppointments) {
+          if (appt.totalPrice <= 0) continue;
+          await createPayment({
+            organizationId,
+            patientId: patientId as Id<"gabinetPatients">,
+            appointmentId: appt.id as Id<"gabinetAppointments">,
+            amount: appt.totalPrice,
+            currency: "PLN",
+            paymentMethod: batchMethod,
+            notes: paymentNote || undefined,
+          });
+        }
       }
 
       if (showMarkCompleted && markCompleted && onMarkCompleted) {

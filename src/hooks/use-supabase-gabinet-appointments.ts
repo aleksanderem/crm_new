@@ -639,7 +639,7 @@ export function useSupabaseGabinetNextAppointmentByPatient(
 }
 
 // ---------------------------------------------------------------------------
-// Same-day Appointments for a Patient (settlement warning — issue #3578)
+// Same-day Appointments for a Patient (batch settlement — issue #3578)
 // ---------------------------------------------------------------------------
 
 export interface SameDayAppointmentInfo {
@@ -647,12 +647,16 @@ export interface SameDayAppointmentInfo {
   startTime: string;
   endTime: string;
   status: string;
+  /** Names of all treatments assigned to this appointment via the junction table. */
+  treatmentNames: string[];
+  /** Sum of junction treatment prices (priceAtBooking ?? catalog price). */
+  totalPrice: number;
 }
 
 /**
  * Returns other non-cancelled, non-no-show appointments for the same patient
- * on the same date, excluding the current appointment. Used by the settlement
- * dialog to warn when more appointments remain to be settled (issue #3578).
+ * on the same date, excluding the current appointment. Includes treatment names
+ * and total price to support batch settlement in one dialog (issue #3578).
  */
 export function useSupabaseGabinetSameDayAppointments(
   organizationId: string,
@@ -676,7 +680,9 @@ export function useSupabaseGabinetSameDayAppointments(
       if (!client || !patientId || !date) return [];
       const { data, error } = await client
         .from("gabinet_appointments")
-        .select("id, start_time, end_time, status")
+        .select(
+          "id, start_time, end_time, status, gabinet_appointment_treatments(price_at_booking, gabinet_treatments(name, price))",
+        )
         .eq("organization_id", organizationId)
         .eq("patient_id", patientId)
         .eq("date", date)
@@ -684,21 +690,36 @@ export function useSupabaseGabinetSameDayAppointments(
         .not("status", "in", '("cancelled","no_show")')
         .order("start_time");
       if (error) throw error;
-      return (
-        (
-          data ?? []
-        ) as Array<{
-          id: string;
-          start_time: string;
-          end_time: string;
-          status: string;
-        }>
-      ).map((r) => ({
-        id: r.id,
-        startTime: r.start_time,
-        endTime: r.end_time,
-        status: r.status,
-      }));
+      type RawRow = {
+        id: string;
+        start_time: string;
+        end_time: string;
+        status: string;
+        gabinet_appointment_treatments: Array<{
+          price_at_booking: number | null;
+          gabinet_treatments: { name: string; price: number | null } | null;
+        }> | null;
+      };
+      return (data ?? []).map((raw) => {
+        const r = raw as unknown as RawRow;
+        const junctions = r.gabinet_appointment_treatments ?? [];
+        const treatmentNames = junctions
+          .map((t) => t.gabinet_treatments?.name)
+          .filter((n): n is string => Boolean(n));
+        const totalPrice = junctions.reduce(
+          (sum, t) =>
+            sum + (t.price_at_booking ?? t.gabinet_treatments?.price ?? 0),
+          0,
+        );
+        return {
+          id: r.id,
+          startTime: r.start_time,
+          endTime: r.end_time,
+          status: r.status,
+          treatmentNames,
+          totalPrice,
+        };
+      });
     },
     enabled: enabled && isReady && !!organizationId && !!patientId && !!date,
   } satisfies UseQueryOptions<SameDayAppointmentInfo[], Error>);

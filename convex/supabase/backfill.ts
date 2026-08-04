@@ -374,6 +374,16 @@ export const _listInvitations = internalQuery({
   },
 });
 
+export const _listGoogleCalendarSyncConfigs = internalQuery({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    return ctx.db
+      .query("googleCalendarSyncConfigs")
+      .withIndex("by_orgAndUser", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+  },
+});
+
 // ---------------------------------------------------------------------------
 // Backfill actions
 // ---------------------------------------------------------------------------
@@ -621,6 +631,41 @@ export const backfillEmployees = internalAction({
   },
 });
 
+export const backfillGoogleCalendarSyncConfigs = internalAction({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args): Promise<{ synced: number; errors: string[] }> => {
+    const configs = await ctx.runQuery(
+      internal.supabase.backfill._listGoogleCalendarSyncConfigs,
+      { organizationId: args.organizationId },
+    );
+
+    const rows = configs.map((c) => ({
+      id: c._id,
+      organization_id: String(c.organizationId),
+      user_id: String(c.userId),
+      connection_id: String(c.connectionId),
+      google_calendar_id: c.googleCalendarId,
+      google_calendar_name: c.googleCalendarName,
+      is_org_default: c.isOrgDefault,
+      target_module: c.targetModule,
+      target_activity_type: c.targetActivityType ?? null,
+      visibility: c.visibility,
+      sync_enabled: c.syncEnabled,
+      last_sync_token: c.lastSyncToken ?? null,
+      last_sync_at: c.lastSyncAt ?? null,
+      sync_status: c.syncStatus ?? null,
+      sync_error: c.syncError ?? null,
+    }));
+
+    const result = await upsertBatch("google_calendar_sync_configs", rows);
+    console.info(
+      `Backfill googleCalendarSyncConfigs: ${result.synced}/${rows.length} synced`,
+    );
+    if (result.errors.length > 0) console.error("Errors:", result.errors);
+    return result;
+  },
+});
+
 // ---------------------------------------------------------------------------
 // Run all backfills in dependency order
 // ---------------------------------------------------------------------------
@@ -755,6 +800,7 @@ export const backfillAll = internalAction({
     employees: number;
     appointments: number;
     invitations: number;
+    googleCalendarSyncConfigs: number;
     totalErrors: number;
   }> => {
     const orgId = args.organizationId;
@@ -825,6 +871,15 @@ export const backfillAll = internalAction({
     if (invitations.errors.length > 0)
       console.error("Invitation errors:", invitations.errors);
 
+    // google_calendar_sync_configs after oauth_connections (connection_id FK dep).
+    const googleCalendarSyncConfigs = await ctx.runAction(
+      internal.supabase.backfill.backfillGoogleCalendarSyncConfigs,
+      { organizationId: orgId },
+    );
+    console.info(`GoogleCalendarSyncConfigs: ${googleCalendarSyncConfigs.synced} synced, ${googleCalendarSyncConfigs.errors.length} errors`);
+    if (googleCalendarSyncConfigs.errors.length > 0)
+      console.error("GoogleCalendarSyncConfigs errors:", googleCalendarSyncConfigs.errors);
+
     console.info("=== BACKFILL COMPLETE ===");
 
     return {
@@ -834,9 +889,11 @@ export const backfillAll = internalAction({
       employees: employees.synced,
       appointments: appointments.synced,
       invitations: invitations.synced,
+      googleCalendarSyncConfigs: googleCalendarSyncConfigs.synced,
       totalErrors: usersResult.errors.length + patients.errors.length +
         treatments.errors.length + employees.errors.length +
-        appointments.errors.length + invitations.errors.length,
+        appointments.errors.length + invitations.errors.length +
+        googleCalendarSyncConfigs.errors.length,
     };
   },
 });

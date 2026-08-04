@@ -527,7 +527,7 @@ export function createCrmTables({
     lastGoogleSyncAt: v.optional(v.number()),
     requiresCompletion: v.optional(v.boolean()),
     sourceType: v.optional(v.union(v.literal("manual"), v.literal("google"), v.literal("system"))),
-    syncConfigId: v.optional(v.id("googleCalendarSyncConfigs")),
+    syncConfigId: v.optional(v.string()),
     visibilityOverride: v.optional(v.union(v.literal("full"), v.literal("busy_only"), v.literal("hidden"))),
     // Link to module extension record (e.g. gabinetAppointment)
     moduleRef: v.optional(
@@ -1064,26 +1064,5 @@ export function createCrmTables({
     .index("by_entity", ["entityType", "entityId"])
     .index("by_org", ["organizationId"]),
 
-  // --- Google Calendar Sync Configs ---
-
-  googleCalendarSyncConfigs: defineTable({
-    organizationId: v.id("organizations"),
-    userId: v.id("users"),
-    connectionId: v.id("oauthConnections"),
-    googleCalendarId: v.string(),
-    googleCalendarName: v.string(),
-    isOrgDefault: v.boolean(),
-    targetModule: v.union(v.literal("crm"), v.literal("gabinet")),
-    targetActivityType: v.optional(v.string()),
-    visibility: v.union(v.literal("full"), v.literal("busy_only"), v.literal("hidden")),
-    syncEnabled: v.boolean(),
-    lastSyncToken: v.optional(v.string()),
-    lastSyncAt: v.optional(v.number()),
-    syncStatus: v.optional(v.union(v.literal("idle"), v.literal("syncing"), v.literal("error"))),
-    syncError: v.optional(v.string()),
-  })
-    .index("by_orgAndUser", ["organizationId", "userId"])
-    .index("by_orgDefault", ["organizationId", "isOrgDefault"])
-    .index("by_syncEnabled", ["syncEnabled", "lastSyncAt"]),
   };
 }

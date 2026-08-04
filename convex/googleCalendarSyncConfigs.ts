@@ -109,16 +109,20 @@ export const update = action({
     isOrgDefault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const db = createSupabaseDb();
-    const config = await db.get("googleCalendarSyncConfigs", args.configId);
+    // Records shown by listMine live in Convex (list queries use ctx.db).
+    // Look up via Convex using getById, not db.get() which uses Supabase UUIDs.
+    const config = await ctx.runQuery(
+      internal.googleCalendarSyncConfigs.getById,
+      { configId: args.configId as any },
+    );
     if (!config) throw new Error("Config not found");
 
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: config.organizationId as any },
+      { organizationId: config.organizationId },
     );
 
-    const isOwner = config.userId === String(authResult.userId);
+    const isOwner = config.userId === authResult.userId;
     const isAdmin = authResult.role === "owner" || authResult.role === "admin";
     if (!isOwner && !isAdmin) {
       throw new Error("You can only modify your own calendar configs");
@@ -127,25 +131,18 @@ export const update = action({
       throw new Error("Only the calendar owner can change visibility settings");
     }
 
-    if (args.isOrgDefault === true) {
-      const existing = await db
-        .query("googleCalendarSyncConfigs")
-        .eq("organizationId", config.organizationId as string)
-        .eq("isOrgDefault", true)
-        .first();
-      if (existing && existing._id !== args.configId) {
-        await db.patch("googleCalendarSyncConfigs", existing._id as string, { isOrgDefault: false });
-      }
-    }
-
-    const patch: Record<string, unknown> = {};
-    if (args.targetModule !== undefined) patch.targetModule = args.targetModule;
-    if (args.targetActivityType !== undefined) patch.targetActivityType = args.targetActivityType;
-    if (args.visibility !== undefined) patch.visibility = args.visibility;
-    if (args.syncEnabled !== undefined) patch.syncEnabled = args.syncEnabled;
-    if (args.isOrgDefault !== undefined) patch.isOrgDefault = args.isOrgDefault;
-
-    await db.patch("googleCalendarSyncConfigs", args.configId, patch);
+    await ctx.runMutation(
+      internal.googleCalendarSyncConfigs.updateConfig,
+      {
+        configId: args.configId as any,
+        organizationId: config.organizationId,
+        targetModule: args.targetModule,
+        targetActivityType: args.targetActivityType,
+        visibility: args.visibility,
+        syncEnabled: args.syncEnabled,
+        isOrgDefault: args.isOrgDefault,
+      },
+    );
   },
 });
 
@@ -252,5 +249,39 @@ export const deleteConfig = internalMutation({
   args: { configId: v.id("googleCalendarSyncConfigs") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.configId);
+  },
+});
+
+export const updateConfig = internalMutation({
+  args: {
+    configId: v.id("googleCalendarSyncConfigs"),
+    organizationId: v.id("organizations"),
+    targetModule: v.optional(v.union(v.literal("crm"), v.literal("gabinet"))),
+    targetActivityType: v.optional(v.string()),
+    visibility: v.optional(v.union(v.literal("full"), v.literal("busy_only"), v.literal("hidden"))),
+    syncEnabled: v.optional(v.boolean()),
+    isOrgDefault: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    if (args.isOrgDefault === true) {
+      const existing = await ctx.db
+        .query("googleCalendarSyncConfigs")
+        .withIndex("by_orgDefault", (q) =>
+          q.eq("organizationId", args.organizationId).eq("isOrgDefault", true)
+        )
+        .first();
+      if (existing && existing._id !== args.configId) {
+        await ctx.db.patch(existing._id, { isOrgDefault: false });
+      }
+    }
+
+    const patch: Record<string, unknown> = {};
+    if (args.targetModule !== undefined) patch.targetModule = args.targetModule;
+    if (args.targetActivityType !== undefined) patch.targetActivityType = args.targetActivityType;
+    if (args.visibility !== undefined) patch.visibility = args.visibility;
+    if (args.syncEnabled !== undefined) patch.syncEnabled = args.syncEnabled;
+    if (args.isOrgDefault !== undefined) patch.isOrgDefault = args.isOrgDefault;
+
+    await ctx.db.patch(args.configId, patch);
   },
 });

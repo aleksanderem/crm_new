@@ -677,6 +677,8 @@ export interface Database {
           accepted_at: number | null;
           created_at: number;
           updated_at: number;
+          module: string | null;
+          module_data: unknown | null;
         };
         Insert: {
           id?: string;
@@ -690,6 +692,8 @@ export interface Database {
           accepted_at?: number | null;
           created_at: number;
           updated_at: number;
+          module?: string | null;
+          module_data?: unknown | null;
         };
         Update: {
           id?: string;
@@ -703,6 +707,8 @@ export interface Database {
           accepted_at?: number | null;
           created_at?: number;
           updated_at?: number;
+          module?: string | null;
+          module_data?: unknown | null;
         };
         Relationships: [
           {

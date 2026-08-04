@@ -364,6 +364,16 @@ export const _listEmployees = internalQuery({
   },
 });
 
+export const _listInvitations = internalQuery({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    return ctx.db
+      .query("invitations")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+  },
+});
+
 // ---------------------------------------------------------------------------
 // Backfill actions
 // ---------------------------------------------------------------------------
@@ -522,6 +532,37 @@ export const backfillTreatments = internalAction({
     console.info(
       `Backfill treatments: ${result.synced}/${rows.length} synced`,
     );
+    if (result.errors.length > 0) console.error("Errors:", result.errors);
+    return result;
+  },
+});
+
+export const backfillInvitations = internalAction({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args): Promise<{ synced: number; errors: string[] }> => {
+    const invitations = await ctx.runQuery(
+      internal.supabase.backfill._listInvitations,
+      { organizationId: args.organizationId },
+    );
+
+    const rows = invitations.map((inv) => ({
+      id: String(inv._id),
+      organization_id: String(inv.organizationId),
+      email: inv.email,
+      role: inv.role,
+      token: inv.token,
+      status: inv.status,
+      invited_by: String(inv.invitedBy),
+      expires_at: inv.expiresAt,
+      accepted_at: inv.acceptedAt ?? null,
+      created_at: inv.createdAt,
+      updated_at: inv.updatedAt,
+      module: inv.module ?? null,
+      module_data: inv.moduleData ?? null,
+    }));
+
+    const result = await upsertBatch("invitations", rows);
+    console.info(`Backfill invitations: ${result.synced}/${rows.length} synced`);
     if (result.errors.length > 0) console.error("Errors:", result.errors);
     return result;
   },
@@ -713,6 +754,7 @@ export const backfillAll = internalAction({
     treatments: number;
     employees: number;
     appointments: number;
+    invitations: number;
     totalErrors: number;
   }> => {
     const orgId = args.organizationId;
@@ -774,6 +816,15 @@ export const backfillAll = internalAction({
     if (appointments.errors.length > 0)
       console.error("Appointment errors:", appointments.errors);
 
+    // Invitations after users (invited_by FK dep) and after orgs are present.
+    const invitations = await ctx.runAction(
+      internal.supabase.backfill.backfillInvitations,
+      { organizationId: orgId },
+    );
+    console.info(`Invitations: ${invitations.synced} synced, ${invitations.errors.length} errors`);
+    if (invitations.errors.length > 0)
+      console.error("Invitation errors:", invitations.errors);
+
     console.info("=== BACKFILL COMPLETE ===");
 
     return {
@@ -782,9 +833,10 @@ export const backfillAll = internalAction({
       treatments: treatments.synced,
       employees: employees.synced,
       appointments: appointments.synced,
+      invitations: invitations.synced,
       totalErrors: usersResult.errors.length + patients.errors.length +
         treatments.errors.length + employees.errors.length +
-        appointments.errors.length,
+        appointments.errors.length + invitations.errors.length,
     };
   },
 });

@@ -313,6 +313,11 @@ export function SettlementForm({
   const splitOverpayment = splitPayment
     ? Math.max(0, splitTotal - splitExpectedTotal)
     : 0;
+  // Split includes a package leg — batch settlement requires per-appointment
+  // package item selection, so it cannot be automated proportionally.
+  const splitHasPackage =
+    splitPayment &&
+    (firstSplitMethod === "package" || secondSplitMethod === "package");
 
   const handleSubmit = async () => {
     if (splitPayment) {
@@ -554,6 +559,52 @@ export function SettlementForm({
             paymentMethod: batchMethod,
             notes: paymentNote || undefined,
           });
+        }
+      }
+
+      // Batch-settle additional same-day appointments with proportional split
+      // amounts when split-payment mode has no package leg. Each additional
+      // appointment receives the same ratio of method-1 / method-2 as the
+      // primary appointment. Issue #3608.
+      if (
+        additionalAppointments.length > 0 &&
+        splitPayment &&
+        !splitHasPackage &&
+        splitTotal > 0
+      ) {
+        const ratio1 = parsedFirstSplit / splitTotal;
+        for (const appt of additionalAppointments) {
+          if (appt.totalPrice <= 0) continue;
+          const apptAmount1 =
+            Math.round(appt.totalPrice * ratio1 * 100) / 100;
+          const apptAmount2 =
+            Math.round((appt.totalPrice - apptAmount1) * 100) / 100;
+          if (apptAmount1 > 0) {
+            await createPayment({
+              organizationId,
+              patientId: patientId as Id<"gabinetPatients">,
+              appointmentId: appt.id as Id<"gabinetAppointments">,
+              amount: apptAmount1,
+              currency: "PLN",
+              paymentMethod: firstSplitMethod,
+              notes: paymentNote
+                ? `${paymentNote} (split: ${firstSplitMethod})`
+                : `split: ${firstSplitMethod}`,
+            });
+          }
+          if (apptAmount2 > 0) {
+            await createPayment({
+              organizationId,
+              patientId: patientId as Id<"gabinetPatients">,
+              appointmentId: appt.id as Id<"gabinetAppointments">,
+              amount: apptAmount2,
+              currency: "PLN",
+              paymentMethod: secondSplitMethod,
+              notes: paymentNote
+                ? `${paymentNote} (split: ${secondSplitMethod})`
+                : `split: ${secondSplitMethod}`,
+            });
+          }
         }
       }
 
@@ -1303,15 +1354,16 @@ export function SettlementForm({
           </div>
         )}
 
-        {/* Warning: package-mode / split-payment batch exclusion — shown when the
-            user has selected additional same-day appointments but the current
-            settlement mode cannot process them automatically. */}
-        {(isPackageMode || splitPayment) && additionalAppointments.length > 0 && (
+        {/* Warning: batch exclusion — shown when the user has selected additional
+            same-day appointments but the settlement mode cannot process them
+            automatically (package-only or split with a package leg). Pure
+            split-payment (both legs are real money) is handled proportionally. */}
+        {(isPackageMode || splitHasPackage) && additionalAppointments.length > 0 && (
           <div className="rounded-md border border-amber-200 bg-amber-50/50 p-2.5 dark:border-amber-800 dark:bg-amber-950/20 sm:col-span-2">
             <p className="text-sm text-amber-700 dark:text-amber-400">
               {t(
                 "gabinet.appointments.batchSkippedForPackage",
-                "Przy rozliczeniu z pakietu lub podzielonej płatności pozostałe wizyty z tego dnia nie są rozliczane automatycznie — odlicz je osobno po zamknięciu tego okna.",
+                "Przy rozliczeniu z pakietu pozostałe wizyty z tego dnia nie są rozliczane automatycznie — odlicz je osobno po zamknięciu tego okna.",
               )}
             </p>
           </div>

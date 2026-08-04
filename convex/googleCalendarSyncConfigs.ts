@@ -152,22 +152,31 @@ export const update = action({
 export const remove = action({
   args: { configId: v.string() },
   handler: async (ctx, args) => {
-    const db = createSupabaseDb();
-    const config = await db.get("googleCalendarSyncConfigs", args.configId);
+    // Records shown by listMine live in Convex (list queries use ctx.db).
+    // The migration moved create/update/remove to Supabase-primary but did not
+    // migrate the list queries, so existing records are Convex-only and their
+    // _id values are Convex IDs — not Supabase UUIDs. Look up via Convex.
+    const config = await ctx.runQuery(
+      internal.googleCalendarSyncConfigs.getById,
+      { configId: args.configId as any },
+    );
     if (!config) throw new Error("Config not found");
 
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: config.organizationId as any },
+      { organizationId: config.organizationId },
     );
 
-    const isOwner = config.userId === String(authResult.userId);
+    const isOwner = config.userId === authResult.userId;
     const isAdmin = authResult.role === "owner" || authResult.role === "admin";
     if (!isOwner && !isAdmin) {
       throw new Error("You can only remove your own calendar configs");
     }
 
-    await db.delete("googleCalendarSyncConfigs", args.configId);
+    await ctx.runMutation(
+      internal.googleCalendarSyncConfigs.deleteConfig,
+      { configId: args.configId as any },
+    );
   },
 });
 
@@ -236,5 +245,12 @@ export const resetSyncToken = internalMutation({
       lastSyncToken: undefined,
       syncStatus: "idle",
     });
+  },
+});
+
+export const deleteConfig = internalMutation({
+  args: { configId: v.id("googleCalendarSyncConfigs") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.configId);
   },
 });

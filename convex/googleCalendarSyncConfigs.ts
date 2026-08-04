@@ -109,8 +109,43 @@ export const update = action({
     isOrgDefault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    // Records shown by listMine live in Convex (list queries use ctx.db).
-    // Look up via Convex using getById, not db.get() which uses Supabase UUIDs.
+    const db = createSupabaseDb();
+
+    // Try Supabase first (records created after the Supabase migration).
+    const supabaseConfig = await db.get("googleCalendarSyncConfigs", args.configId);
+    if (supabaseConfig) {
+      const authResult = await ctx.runQuery(
+        internal._helpers.authAction.verifyOrgAccess,
+        { organizationId: supabaseConfig.organizationId as any },
+      );
+
+      const isOwner = supabaseConfig.userId === String(authResult.userId);
+      const isAdmin = authResult.role === "owner" || authResult.role === "admin";
+      if (!isOwner && !isAdmin) throw new Error("You can only modify your own calendar configs");
+      if (args.visibility !== undefined && !isOwner) throw new Error("Only the calendar owner can change visibility settings");
+
+      if (args.isOrgDefault === true) {
+        const existing = await db
+          .query("googleCalendarSyncConfigs")
+          .eq("organizationId", supabaseConfig.organizationId as string)
+          .eq("isOrgDefault", true)
+          .first();
+        if (existing && existing._id !== args.configId) {
+          await db.patch("googleCalendarSyncConfigs", existing._id as string, { isOrgDefault: false });
+        }
+      }
+
+      const patch: Record<string, unknown> = {};
+      if (args.targetModule !== undefined) patch.targetModule = args.targetModule;
+      if (args.targetActivityType !== undefined) patch.targetActivityType = args.targetActivityType;
+      if (args.visibility !== undefined) patch.visibility = args.visibility;
+      if (args.syncEnabled !== undefined) patch.syncEnabled = args.syncEnabled;
+      if (args.isOrgDefault !== undefined) patch.isOrgDefault = args.isOrgDefault;
+      await db.patch("googleCalendarSyncConfigs", args.configId, patch);
+      return;
+    }
+
+    // Fall back to Convex for pre-migration records.
     const config = await ctx.runQuery(
       internal.googleCalendarSyncConfigs.getById,
       { configId: args.configId as any },
@@ -149,10 +184,25 @@ export const update = action({
 export const remove = action({
   args: { configId: v.string() },
   handler: async (ctx, args) => {
-    // Records shown by listMine live in Convex (list queries use ctx.db).
-    // The migration moved create/update/remove to Supabase-primary but did not
-    // migrate the list queries, so existing records are Convex-only and their
-    // _id values are Convex IDs — not Supabase UUIDs. Look up via Convex.
+    const db = createSupabaseDb();
+
+    // Try Supabase first (records created after the Supabase migration).
+    const supabaseConfig = await db.get("googleCalendarSyncConfigs", args.configId);
+    if (supabaseConfig) {
+      const authResult = await ctx.runQuery(
+        internal._helpers.authAction.verifyOrgAccess,
+        { organizationId: supabaseConfig.organizationId as any },
+      );
+
+      const isOwner = supabaseConfig.userId === String(authResult.userId);
+      const isAdmin = authResult.role === "owner" || authResult.role === "admin";
+      if (!isOwner && !isAdmin) throw new Error("You can only remove your own calendar configs");
+
+      await db.delete("googleCalendarSyncConfigs", args.configId);
+      return;
+    }
+
+    // Fall back to Convex for pre-migration records.
     const config = await ctx.runQuery(
       internal.googleCalendarSyncConfigs.getById,
       { configId: args.configId as any },

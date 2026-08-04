@@ -1303,6 +1303,20 @@ export function SettlementForm({
           </div>
         )}
 
+        {/* Warning: package-mode / split-payment batch exclusion — shown when the
+            user has selected additional same-day appointments but the current
+            settlement mode cannot process them automatically. */}
+        {(isPackageMode || splitPayment) && additionalAppointments.length > 0 && (
+          <div className="rounded-md border border-amber-200 bg-amber-50/50 p-2.5 dark:border-amber-800 dark:bg-amber-950/20 sm:col-span-2">
+            <p className="text-sm text-amber-700 dark:text-amber-400">
+              {t(
+                "gabinet.appointments.batchSkippedForPackage",
+                "Przy rozliczeniu z pakietu lub podzielonej płatności pozostałe wizyty z tego dnia nie są rozliczane automatycznie — odlicz je osobno po zamknięciu tego okna.",
+              )}
+            </p>
+          </div>
+        )}
+
         <div className="sm:col-span-2">
           <Label>{t("common.notes")}</Label>
           <RichTextEditor

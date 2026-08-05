@@ -1,9 +1,15 @@
 // Worker daemon — polls SQLite queue, runs run-claude.sh for each job
 import Database from "better-sqlite3";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { ensureSchema } from "./schema.mjs";
+import { claimNextPlanned } from "./triage/claim.mjs";
+import { nextUntriagedJob, triageJob } from "./triage/runner.mjs";
+import { evaluateIssue } from "./triage/evaluate.mjs";
+import { buildPlanDigest, fetchPlanRecords } from "./triage/plan.mjs";
+import { createTriageRecord } from "./triage/base-writer.mjs";
+import { postVerdict } from "./triage/github-writer.mjs";
 
 const DB_PATH = process.env.DB_PATH || "/home/claude-bot/worker/queue.db";
 const RUN_SCRIPT = "/home/claude-bot/worker/run-claude.sh";
@@ -27,41 +33,18 @@ const THROTTLE_INTERVAL_MS = parseInt(
   10,
 );
 
+// Logins whose jobs are hard-paused (never claimed, regardless of triage status).
+// Configured via env (comma-separated). Empty by default.
+const PAUSED_LOGINS = (process.env.PAUSED_LOGINS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 fs.mkdirSync(LOG_DIR, { recursive: true });
 
 const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
 ensureSchema(db);
-
-// Picks the oldest pending job whose `trigger_login` is either NOT in the
-// throttled list, or is in the list but no other job from that same user
-// has started or finished within THROTTLE_INTERVAL_MS. Skipped throttled
-// jobs stay pending and are picked once the cooldown has elapsed.
-const claimNextStmt = db.prepare(`
-  SELECT * FROM jobs
-  WHERE status = 'pending'
-    AND (
-      trigger_login IS NULL
-      OR trigger_login NOT IN (${THROTTLED_LOGINS.map(() => "?").join(",") || "''"})
-      OR NOT EXISTS (
-        SELECT 1 FROM jobs busy
-        WHERE busy.trigger_login = jobs.trigger_login
-          AND busy.status IN ('running', 'done', 'failed')
-          AND COALESCE(busy.finished_at, busy.started_at, 0) > ?
-      )
-    )
-  ORDER BY created_at ASC
-  LIMIT 1
-`);
-const claimNext = db.transaction(() => {
-  const cutoff = Date.now() - THROTTLE_INTERVAL_MS;
-  const job = claimNextStmt.get(...THROTTLED_LOGINS, cutoff);
-  if (!job) return null;
-  db.prepare(
-    `UPDATE jobs SET status = 'running', started_at = ? WHERE id = ?`
-  ).run(Date.now(), job.id);
-  return job;
-});
 
 function finalizeJob(id, status, result) {
   db.prepare(
@@ -73,6 +56,39 @@ function jlog(obj) {
   const line = JSON.stringify({ ts: new Date().toISOString(), ...obj }) + "\n";
   fs.appendFileSync(path.join(LOG_DIR, "worker.log"), line);
   console.log(line.trim());
+}
+
+// Execute a subprocess synchronously; throws if it exits non-zero.
+function exec(cmd, args) {
+  const r = spawnSync(cmd, args, { encoding: "utf8", maxBuffer: 20 * 1024 * 1024 });
+  if (r.status !== 0) throw new Error(`${cmd} failed (${r.status}): ${(r.stderr || "").slice(0, 500)}`);
+  return { stdout: r.stdout || "" };
+}
+
+// Triage classifier LLM: reuse run-claude.sh in a one-shot, headless mode.
+// The script already knows how to invoke Claude; we pass the prompt via env
+// as TRIAGE_PROMPT and read its stdout. Uses the same RUN_SCRIPT the worker
+// runs. run-claude.sh handles TRIAGE_MODE=1 by calling:
+//   printf '%s' "$TRIAGE_PROMPT" | claude -p --output-format text 2>/dev/null
+// which is the same `claude` binary/HOME the normal path uses, in print mode.
+function invokeLLM(prompt) {
+  const r = spawnSync("/bin/bash", [RUN_SCRIPT], {
+    encoding: "utf8", maxBuffer: 20 * 1024 * 1024,
+    env: { ...process.env, TRIAGE_MODE: "1", TRIAGE_PROMPT: prompt },
+  });
+  return r.stdout || "";
+}
+
+// Plan digest cache — refreshed at most once per TTL to avoid hammering Base
+// on every loop iteration (typical loop cadence: 3 s).
+let planCache = { digest: "", at: 0 };
+function getPlanDigest() {
+  const TTL = 5 * 60 * 1000;
+  if (Date.now() - planCache.at < TTL && planCache.digest) return planCache.digest;
+  try {
+    planCache = { digest: buildPlanDigest(fetchPlanRecords({ exec })), at: Date.now() };
+  } catch (e) { jlog({ level: "warn", msg: "plan-fetch-failed", err: String(e) }); }
+  return planCache.digest;
 }
 
 async function runJob(job) {
@@ -114,17 +130,37 @@ process.on("SIGINT", () => { stopping = true; });
 
 async function loop() {
   while (!stopping) {
-    const job = claimNext();
-    if (!job) {
-      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-      continue;
+    // 1) triage: evaluate one untriaged job if available (triage has priority)
+    const untriaged = nextUntriagedJob(db);
+    if (untriaged) {
+      try {
+        await triageJob(db, untriaged, {
+          planDigest: getPlanDigest(),
+          evaluate: (issue, digest) => evaluateIssue(issue, digest, { invokeLLM }),
+          writeBase: (verdict, issue) => createTriageRecord(verdict, issue, { exec }),
+          writeGithub: (issue, verdict) => postVerdict(issue, verdict, { exec }),
+          now: Date.now,
+        });
+        jlog({ level: "info", msg: "triaged", id: untriaged.id, issue: untriaged.issue_number });
+      } catch (e) {
+        // Don't spin on a broken job: mark as backlog so it can still be claimed later
+        db.prepare("UPDATE jobs SET triage_status='backlog', triage_rationale=? WHERE id=?")
+          .run("Triage nieudany: " + String(e).slice(0, 300), untriaged.id);
+        jlog({ level: "error", msg: "triage-failed", id: untriaged.id, err: String(e) });
+      }
+      continue; // triage takes priority — loop back before claiming
     }
-    try {
-      await runJob(job);
-    } catch (e) {
-      finalizeJob(job.id, "failed", JSON.stringify({ error: String(e) }));
-      jlog({ level: "error", msg: "exception", id: job.id, err: String(e) });
-    }
+
+    // 2) claim next planned job (priority-ordered, excludes paused + throttled)
+    const job = claimNextPlanned(db, {
+      throttledLogins: THROTTLED_LOGINS,
+      pausedLogins: PAUSED_LOGINS,
+      throttleIntervalMs: THROTTLE_INTERVAL_MS,
+      now: Date.now,
+    });
+    if (!job) { await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS)); continue; }
+    try { await runJob(job); }
+    catch (e) { finalizeJob(job.id, "failed", JSON.stringify({ error: String(e) })); jlog({ level: "error", msg: "exception", id: job.id, err: String(e) }); }
   }
   jlog({ level: "info", msg: "shutdown" });
 }

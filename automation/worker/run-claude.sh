@@ -3,6 +3,16 @@
 # env: JOB_ID, ISSUE_NUMBER, REPO, EVENT_TYPE, TRIGGER_LOGIN, PAYLOAD_JSON
 set -uo pipefail
 
+# TRIAGE_MODE: one-shot classifier — send TRIAGE_PROMPT to Claude headless,
+# print raw stdout, then exit. Invokes claude the same way the normal path
+# does (same binary, same HOME, same -p flag) but in print/one-shot mode
+# with --output-format text so the caller gets plain text (no ANSI / JSON).
+# Stderr is suppressed so only the verdict JSON reaches the caller's stdout.
+if [ "${TRIAGE_MODE:-}" = "1" ]; then
+  HOME=/home/claude-bot claude -p "$TRIAGE_PROMPT" --output-format text 2>/dev/null
+  exit 0
+fi
+
 LOG_DIR=/home/claude-bot/logs
 JOB_LOG="$LOG_DIR/job-${JOB_ID}.log"
 mkdir -p "$LOG_DIR"

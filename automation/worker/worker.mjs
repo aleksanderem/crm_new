@@ -14,6 +14,14 @@ import { ensureStrikeSchema, listBannedLogins } from "./policy/strikes.mjs";
 import { relatedLoginsOf } from "./policy/detect.mjs";
 import { recentIssuesByLogins } from "./policy/history.mjs";
 import { evaluatePolicyPre, pressureOverride } from "./policy/engine.mjs";
+import { ensurePlanDeltaColumn } from "./wiki/schema.mjs";
+import { looksLikePlanImpact } from "./wiki/detect.mjs";
+import { assessPlanDelta } from "./wiki/assess.mjs";
+import { fetchPlanRecordsWithIds, buildDeltaDigest } from "./wiki/plan-index.mjs";
+import { markRecordDone } from "./wiki/base-status.mjs";
+import { postPlanNote, postPlanDraft } from "./wiki/wiki-note.mjs";
+import { labelIssue } from "./triage/github-writer.mjs";
+import { applyPlanDelta } from "./wiki/feedback.mjs";
 
 const DB_PATH = process.env.DB_PATH || "/home/claude-bot/worker/queue.db";
 const RUN_SCRIPT = "/home/claude-bot/worker/run-claude.sh";
@@ -51,12 +59,20 @@ const BANNED_LOGINS = (process.env.BANNED_LOGINS ?? "")
   .map((s) => s.trim())
   .filter(Boolean);
 
+// Wiki feedback loop: "off" (default, skip) | "dry" (assess + persist, no writes)
+// | "on" (execute Base/Wiki/label writes). Ships off so nothing mutates the
+// shared plan until the lark-cli write commands are verified live.
+const WIKI_FEEDBACK = (process.env.WIKI_FEEDBACK ?? "off").trim();
+const PLAN_WIKI_DOC = process.env.PLAN_WIKI_DOC ?? "";
+const FEEDBACK_THRESHOLD = parseFloat(process.env.FEEDBACK_CONFIDENCE_THRESHOLD ?? "0.8");
+
 fs.mkdirSync(LOG_DIR, { recursive: true });
 
 const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
 ensureSchema(db);
 ensureStrikeSchema(db);
+ensurePlanDeltaColumn(db);
 
 function finalizeJob(id, status, result) {
   db.prepare(
@@ -103,6 +119,43 @@ function getPlanDigest() {
     planCache = { digest: buildPlanDigest(fetchPlanRecords({ exec })), at: Date.now() };
   } catch (e) { jlog({ level: "warn", msg: "plan-fetch-failed", err: String(e) }); }
   return planCache.digest;
+}
+
+// Plan records WITH ids, cached like the digest, for the feedback assessment.
+let recordsCache = { records: null, at: 0 };
+function getPlanRecords() {
+  const TTL = 5 * 60 * 1000;
+  if (recordsCache.records && Date.now() - recordsCache.at < TTL) return recordsCache.records;
+  try {
+    recordsCache = { records: fetchPlanRecordsWithIds({ exec }), at: Date.now() };
+  } catch (e) { jlog({ level: "warn", msg: "plan-records-fetch-failed", err: String(e) }); }
+  return recordsCache.records || [];
+}
+
+// Run the plan-delta feedback for a non-rejected triage. Gated by WIKI_FEEDBACK
+// + the cheap looksLikePlanImpact filter. Runs for both fits and backlog (a new
+// blocker may not match an existing task); the assessment returns "none" for
+// out-of-scope reports. In "dry" mode writers are no-ops (nothing mutates); the
+// intended action is still persisted to plan_delta.
+async function runFeedback(job, issue) {
+  if (WIKI_FEEDBACK === "off") return;
+  if (!looksLikePlanImpact(issue)) return;
+  try {
+    const records = getPlanRecords();
+    const delta = await assessPlanDelta(issue, buildDeltaDigest(records), { invokeLLM });
+    const write = WIKI_FEEDBACK === "on" && PLAN_WIKI_DOC !== "";
+    const outcome = applyPlanDelta(delta, issue, {
+      markDone: (id) => { if (write) markRecordDone(id, { exec }); },
+      postNote: (t) => { if (write) postPlanNote(PLAN_WIKI_DOC, t, { exec }); },
+      postDraft: (t) => { if (write) postPlanDraft(PLAN_WIKI_DOC, t, { exec }); },
+      labelIssue: (l) => { if (write) labelIssue(issue, l, { exec }); },
+    }, { records, threshold: FEEDBACK_THRESHOLD });
+    db.prepare("UPDATE jobs SET plan_delta = ? WHERE id = ?")
+      .run(JSON.stringify({ mode: WIKI_FEEDBACK, wrote: write, note: delta.note, ...outcome }), job.id);
+    jlog({ level: "info", msg: "plan-delta", id: job.id, mode: WIKI_FEEDBACK, action: outcome.action, wrote: write });
+  } catch (e) {
+    jlog({ level: "warn", msg: "plan-delta-failed", id: job.id, err: String(e) });
+  }
 }
 
 async function runJob(job) {
@@ -162,7 +215,7 @@ async function loop() {
         continue;
       }
       try {
-        await triageJob(db, untriaged, {
+        const res = await triageJob(db, untriaged, {
           planDigest: getPlanDigest(),
           evaluate: (issue, digest) => evaluateIssue(issue, digest, { invokeLLM }),
           writeBase: (verdict, issue) => createTriageRecord(verdict, issue, { exec }),
@@ -173,6 +226,7 @@ async function loop() {
           log: (o) => jlog(o),
         });
         jlog({ level: "info", msg: "triaged", id: untriaged.id, issue: untriaged.issue_number });
+        if (res && !res.rejected) await runFeedback(untriaged, gateIssue);
       } catch (e) {
         // Don't spin on a broken job: mark as backlog so it can still be claimed later
         db.prepare("UPDATE jobs SET triage_status='backlog', triage_rationale=? WHERE id=?")

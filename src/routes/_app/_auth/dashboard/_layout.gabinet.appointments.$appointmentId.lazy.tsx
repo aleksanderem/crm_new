@@ -250,6 +250,10 @@ function AppointmentDetail() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  const { allowed: canEdit } = usePermission("gabinet_appointments", "edit");
+  const { allowed: canCreatePayment } = usePermission("gabinet_payments", "create");
+  const { allowed: canEditPayment } = usePermission("gabinet_payments", "edit");
+  const { allowed: canRefundPayment } = usePermission("gabinet_payments", "refund");
 
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -804,11 +808,15 @@ function AppointmentDetail() {
                     </a>
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setChangeEmployeeOpen(true)}>
-                  <RefreshCcw size={14} variant="stroke" className="mr-2" />
-                  {t("gabinet.appointments.changeEmployee", "Zmień pracownika")}
-                </DropdownMenuItem>
+                {canEdit && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setChangeEmployeeOpen(true)}>
+                      <RefreshCcw size={14} variant="stroke" className="mr-2" />
+                      {t("gabinet.appointments.changeEmployee", "Zmień pracownika")}
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </Item>
@@ -889,7 +897,7 @@ function AppointmentDetail() {
           <TagsPicker
             tags={tagDefinitions}
             selectedIds={tagIds}
-            onChange={handleTagsChange}
+            onChange={canEdit ? handleTagsChange : () => {}}
           />
         </div>
       </div>
@@ -1309,9 +1317,9 @@ function AppointmentDetail() {
     no_show: "bg-destructive",
   };
 
-  // Status dropdown as actions menu
+  // Status dropdown as actions menu — only shown when user has edit permission
   const statusAction =
-    availableTransitions.length > 0 ? (
+    canEdit && availableTransitions.length > 0 ? (
       <Select
         value={appointment.status}
         onValueChange={(value) => handleStatusChange(value)}
@@ -1505,7 +1513,7 @@ function AppointmentDetail() {
                             )}
                           </span>
                         </div>
-                      ) : (
+                      ) : canEdit ? (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -1536,7 +1544,7 @@ function AppointmentDetail() {
                             "Oznacz jako omówione",
                           )}
                         </Button>
-                      )}
+                      ) : null}
                     </div>
                     <p className="text-sm">
                       {plateJsonToText(treatment.contraindications)}
@@ -1731,15 +1739,17 @@ function AppointmentDetail() {
                 value={internalNotes}
                 onChange={(val) => setInternalNotes(val ?? "")}
               />
-              <div className="flex justify-end">
-                <Button
-                  size="sm"
-                  onClick={handleSaveInternalNotes}
-                  disabled={isSavingNotes}
-                >
-                  {isSavingNotes ? t("common.saving") : t("common.save")}
-                </Button>
-              </div>
+              {canEdit && (
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    onClick={handleSaveInternalNotes}
+                    disabled={isSavingNotes}
+                  >
+                    {isSavingNotes ? t("common.saving") : t("common.save")}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -1819,14 +1829,16 @@ function AppointmentDetail() {
                   {t("gabinet.payments.linkedToAppointment")}
                 </CardDescription>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setPaymentDialogOpen(true)}
-              >
-                <Plus className="mr-2 h-4 w-4" variant="stroke" />
-                {t("gabinet.payments.addPayment")}
-              </Button>
+              {canCreatePayment && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setPaymentDialogOpen(true)}
+                >
+                  <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                  {t("gabinet.payments.addPayment")}
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="px-6 py-4">
               {payments.length === 0 ? (
@@ -1835,10 +1847,12 @@ function AppointmentDetail() {
                   title={t("gabinet.payments.noPayments")}
                   description={t("gabinet.payments.noPaymentsDesc")}
                   action={
-                    <Button onClick={() => setPaymentDialogOpen(true)}>
-                      <Plus className="mr-2 h-4 w-4" variant="stroke" />
-                      {t("gabinet.payments.addFirst")}
-                    </Button>
+                    canCreatePayment ? (
+                      <Button onClick={() => setPaymentDialogOpen(true)}>
+                        <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                        {t("gabinet.payments.addFirst")}
+                      </Button>
+                    ) : undefined
                   }
                 />
               ) : (
@@ -1965,7 +1979,7 @@ function AppointmentDetail() {
                               </Badge>
                             </td>
                             <td className="p-3 text-right">
-                              {payment.status === "pending" && (
+                              {payment.status === "pending" && canEditPayment && (
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -1976,7 +1990,7 @@ function AppointmentDetail() {
                                   {t("gabinet.payments.markPaid")}
                                 </Button>
                               )}
-                              {payment.status === "completed" && (
+                              {payment.status === "completed" && canRefundPayment && (
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -2155,7 +2169,7 @@ function AppointmentDetail() {
                             {pkg.packageName ?? t("gabinet.packages.package")}
                           </p>
                           <div className="flex items-center gap-2">
-                            {pkg.status === "active" && (
+                            {pkg.status === "active" && canEdit && (
                               <Button
                                 variant="outline"
                                 size="sm"

@@ -899,74 +899,74 @@ function DeliveriesPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {status === “draft” ? (
-                        <div className=”flex items-center justify-end gap-2”>
+                      {status === "draft" ? (
+                        <div className="flex items-center justify-end gap-2">
                           {canEdit && (
                             <Button
-                              size=”sm”
-                              variant=”ghost”
+                              size="sm"
+                              variant="ghost"
                               onClick={() => handleEditOpen(id)}
                               disabled={editLoading}
-                              className=”gap-1.5”
+                              className="gap-1.5"
                             >
-                              {t(“gabinet.deliveries.editAction”, “Edytuj”)}
+                              {t("gabinet.deliveries.editAction", "Edytuj")}
                             </Button>
                           )}
                           {canEdit && d.matchingProposals != null && (
                             <Button
-                              size=”sm”
-                              variant=”outline”
+                              size="sm"
+                              variant="outline"
                               onClick={() => handleOpenDecisions(d)}
-                              className=”gap-1.5”
+                              className="gap-1.5"
                             >
-                              <Sparkles className=”h-3.5 w-3.5” variant=”stroke” />
-                              {t(“gabinet.deliveries.checkItemsAction”, “Sprawdź pozycje”)}
+                              <Sparkles className="h-3.5 w-3.5" variant="stroke" />
+                              {t("gabinet.deliveries.checkItemsAction", "Sprawdź pozycje")}
                             </Button>
                           )}
                           {canEdit && (hasCreateLater ? (
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span className=”inline-flex”>
+                                  <span className="inline-flex">
                                     <Button
-                                      size=”sm”
-                                      variant=”outline”
+                                      size="sm"
+                                      variant="outline"
                                       disabled
-                                      className=”gap-1.5 pointer-events-none”
+                                      className="gap-1.5 pointer-events-none"
                                     >
-                                      <CheckCircle className=”h-3.5 w-3.5” variant=”stroke” />
-                                      {t(“gabinet.deliveries.postAction”, “Zaksięguj”)}
+                                      <CheckCircle className="h-3.5 w-3.5" variant="stroke" />
+                                      {t("gabinet.deliveries.postAction", "Zaksięguj")}
                                     </Button>
                                   </span>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   {t(
-                                    “gabinet.deliveries.postBlockedCreateLater”,
-                                    “Najpierw rozwiąż pozycje „Utwórz później” w weryfikacji faktury.”,
+                                    "gabinet.deliveries.postBlockedCreateLater",
+                                    "Najpierw rozwiąż pozycje „Utwórz później\u201D w weryfikacji faktury.",
                                   )}
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
                           ) : (
                             <Button
-                              size=”sm”
-                              variant=”outline”
+                              size="sm"
+                              variant="outline"
                               onClick={() => setPostTarget({ id, label })}
-                              className=”gap-1.5”
+                              className="gap-1.5"
                             >
-                              <CheckCircle className=”h-3.5 w-3.5” variant=”stroke” />
-                              {t(“gabinet.deliveries.postAction”, “Zaksięguj”)}
+                              <CheckCircle className="h-3.5 w-3.5" variant="stroke" />
+                              {t("gabinet.deliveries.postAction", "Zaksięguj")}
                             </Button>
                           ))}
                           {canDelete && (
                             <Button
-                              size=”sm”
-                              variant=”ghost”
+                              size="sm"
+                              variant="ghost"
                               onClick={() => setCancelTarget({ id, label })}
-                              className=”gap-1.5 text-destructive hover:text-destructive”
+                              className="gap-1.5 text-destructive hover:text-destructive"
                             >
-                              <Trash2 className=”h-3.5 w-3.5” variant=”stroke” />
-                              {t(“gabinet.deliveries.cancelAction”, “Usuń”)}
+                              <Trash2 className="h-3.5 w-3.5" variant="stroke" />
+                              {t("gabinet.deliveries.cancelAction", "Usuń")}
                             </Button>
                           )}
                         </div>
@@ -2789,7 +2789,7 @@ function ItemDecisionsDialog({
             <span>
               {t(
                 "gabinet.deliveries.decisions.createLaterBlocking",
-                "Pozycje oznaczone „Utwórz później” blokują zatwierdzenie dostawy. Zmień decyzję na inną, aby odblokować zaksięgowanie.",
+                "Pozycje oznaczone „Utwórz później\u201D blokują zatwierdzenie dostawy. Zmień decyzję na inną, aby odblokować zaksięgowanie.",
               )}
             </span>
           </div>

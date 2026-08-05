@@ -105,24 +105,7 @@ describe("appointment billing flow (E2E)", () => {
       });
     expect(apptId).toBeTruthy();
 
-    // ── 4. Seed packageDeducted: false on junction rows ───────────────────────
-    // In production Postgres the gabinet_appointment_treatments.package_deducted
-    // column has DEFAULT false. The in-memory mock stores junction rows without
-    // this column (it's absent from the insert), so the CAS filter
-    // `.eq("package_deducted", false)` would never match. Patching here
-    // replicates the DB default so the deduction CAS succeeds.
-    const { data: junctionRows } = await db
-      .raw()
-      .from("gabinet_appointment_treatments")
-      .select("id")
-      .eq("appointment_id", apptId);
-    for (const row of (junctionRows ?? []) as Array<{ id: string }>) {
-      await db.patch("gabinetAppointmentTreatments", row.id, {
-        packageDeducted: false,
-      });
-    }
-
-    // ── 5. Run appointment through full state machine → completed ─────────────
+    // ── 4. Run appointment through full state machine → completed ─────────────
     await t.withIdentity(ownerIdentity).action(
       api.gabinet.appointments.updateStatus,
       { organizationId, appointmentId: apptId, status: "confirmed" },
@@ -312,18 +295,6 @@ describe("appointment billing flow (E2E)", () => {
       });
 
     const db = createSupabaseDb();
-
-    // Seed packageDeducted: false on junction rows (production DB default).
-    const { data: junctionRows } = await db
-      .raw()
-      .from("gabinet_appointment_treatments")
-      .select("id")
-      .eq("appointment_id", apptId);
-    for (const row of (junctionRows ?? []) as Array<{ id: string }>) {
-      await db.patch("gabinetAppointmentTreatments", row.id, {
-        packageDeducted: false,
-      });
-    }
 
     // Complete the appointment — deducts 1 session.
     await t.withIdentity(identity).action(

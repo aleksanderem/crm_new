@@ -119,12 +119,25 @@ export function createInMemorySupabaseDb() {
   };
 }
 
-// Snake → camel conversion used to bridge the raw client (which uses
-// PostgREST-style snake_case identifiers) to the in-memory store (which
-// keeps tables/rows in Convex camelCase). The merge action is the only
-// caller of `db.raw()` so we only need this one direction.
+// Snake → camel conversion bridges the raw client (PostgREST-style snake_case
+// identifiers) to the in-memory store (Convex camelCase). The reverse direction
+// (camel → snake) is applied when _execute() returns rows so that callers
+// reading field names by their PostgREST snake_case names — e.g.
+// getJunctionTreatmentIds accessing row.treatment_id — match real Supabase.
 function snakeToCamel(s: string): string {
   return s.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+}
+
+function camelToSnake(s: string): string {
+  return s.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+}
+
+function convertKeysToSnake(row: Row): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(row)) {
+    out[camelToSnake(k)] = v;
+  }
+  return out;
 }
 
 /**
@@ -277,7 +290,10 @@ class InMemoryRawQuery {
         return 0;
       });
     }
-    return { data: matched.map((r) => ({ ...r })), error: null };
+    // Return rows with snake_case keys to match real PostgREST/Supabase responses.
+    // Callers that read field names from raw results (e.g. getJunctionTreatmentIds
+    // accessing row.treatment_id) rely on this format.
+    return { data: matched.map((r) => convertKeysToSnake({ ...r })), error: null };
   }
 
   /** Makes the builder directly awaitable: `await client.from(t).delete().eq(...)` */

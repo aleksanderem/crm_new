@@ -1,0 +1,158 @@
+name: Supabase Backup
+
+# Nightly encrypted backup of self-hosted Supabase Postgres to S3-compatible storage.
+# A weekly restore drill verifies the latest backup is decryptable and structurally sound.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_DB_URL              PostgreSQL connection string (e.g. postgresql://user:pass@host:5433/postgres)
+#   BACKUP_ENCRYPTION_KEY        Passphrase for AES-256-CBC encryption
+#   BACKUP_S3_BUCKET             Destination bucket name, no s3:// prefix
+#   BACKUP_AWS_ACCESS_KEY_ID     S3 credentials
+#   BACKUP_AWS_SECRET_ACCESS_KEY S3 credentials
+#
+# Optional repository secrets:
+#   BACKUP_AWS_ENDPOINT_URL      Override endpoint for S3-compatible stores (Backblaze B2, MinIO…)
+#   BACKUP_AWS_DEFAULT_REGION    S3 region (default: us-east-1)
+
+on:
+  schedule:
+    # Nightly backup at 03:00 UTC (05:00 Europe/Warsaw summer time)
+    - cron: "0 3 * * *"
+    # Weekly restore drill every Sunday at 04:00 UTC
+    - cron: "0 4 * * 0"
+  workflow_dispatch:
+    inputs:
+      run_restore_drill:
+        description: 'Also run restore drill?'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['true', 'false']
+      retention_days:
+        description: 'Retention override (days, empty = use default 30)'
+        required: false
+        default: ''
+
+# Cancel redundant runs triggered by the same commit on the same branch
+concurrency:
+  group: supabase-backup-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # 1. Nightly backup
+  # ──────────────────────────────────────────────────────────────────────────
+  backup:
+    name: Backup Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Run on every nightly trigger (03:00) and every manual dispatch
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.schedule == '0 3 * * *'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install postgresql-client
+        run: sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Run backup
+        env:
+          SUPABASE_DB_URL:          ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_ENCRYPTION_KEY:    ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+          BACKUP_S3_BUCKET:         ${{ secrets.BACKUP_S3_BUCKET }}
+          AWS_ACCESS_KEY_ID:        ${{ secrets.BACKUP_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY:    ${{ secrets.BACKUP_AWS_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL:         ${{ secrets.BACKUP_AWS_ENDPOINT_URL }}
+          AWS_DEFAULT_REGION:       ${{ secrets.BACKUP_AWS_DEFAULT_REGION || 'us-east-1' }}
+          BACKUP_RETENTION_DAYS:    ${{ inputs.retention_days || '30' }}
+        run: bash scripts/backup-supabase.sh
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 2. Weekly restore drill — verifies the latest backup is intact
+  # ──────────────────────────────────────────────────────────────────────────
+  restore-drill:
+    name: Weekly restore drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: >-
+      github.event.schedule == '0 4 * * 0' ||
+      (github.event_name == 'workflow_dispatch' && inputs.run_restore_drill == 'true')
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install postgresql-client
+        run: sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Download and decrypt latest backup
+        id: drill
+        env:
+          BACKUP_ENCRYPTION_KEY:    ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+          BACKUP_S3_BUCKET:         ${{ secrets.BACKUP_S3_BUCKET }}
+          AWS_ACCESS_KEY_ID:        ${{ secrets.BACKUP_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY:    ${{ secrets.BACKUP_AWS_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL:         ${{ secrets.BACKUP_AWS_ENDPOINT_URL }}
+          AWS_DEFAULT_REGION:       ${{ secrets.BACKUP_AWS_DEFAULT_REGION || 'us-east-1' }}
+        run: |
+          set -euo pipefail
+
+          BACKUP_S3_PREFIX="supabase-backups"
+          AWS_EXTRA=()
+          [ -n "${AWS_ENDPOINT_URL:-}" ] && AWS_EXTRA=(--endpoint-url "${AWS_ENDPOINT_URL}")
+
+          echo "[drill] Fetching latest backup key..."
+          BACKUP_KEY=$(aws s3api "${AWS_EXTRA[@]}" list-objects-v2 \
+            --bucket "${BACKUP_S3_BUCKET}" \
+            --prefix "${BACKUP_S3_PREFIX}/" \
+            --region "${AWS_DEFAULT_REGION:-us-east-1}" \
+            --query "sort_by(Contents, &LastModified)[-1].Key" \
+            --output text)
+
+          if [ -z "$BACKUP_KEY" ] || [ "$BACKUP_KEY" = "None" ]; then
+            echo "[drill] ERROR: no backups found in s3://${BACKUP_S3_BUCKET}/${BACKUP_S3_PREFIX}/"
+            exit 1
+          fi
+
+          echo "[drill] Latest backup: ${BACKUP_KEY}"
+
+          WORK_DIR=$(mktemp -d)
+          trap 'rm -rf "$WORK_DIR"' EXIT
+
+          aws s3 cp "${AWS_EXTRA[@]}" \
+            "s3://${BACKUP_S3_BUCKET}/${BACKUP_KEY}" \
+            "${WORK_DIR}/backup.sql.gz.enc" \
+            --region "${AWS_DEFAULT_REGION:-us-east-1}" \
+            --no-progress
+
+          echo "[drill] Download complete — decrypting..."
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+            -pass "env:BACKUP_ENCRYPTION_KEY" \
+            -in  "${WORK_DIR}/backup.sql.gz.enc" \
+            -out "${WORK_DIR}/backup.sql.gz"
+
+          echo "[drill] Decryption OK — verifying gzip integrity..."
+          gunzip -t "${WORK_DIR}/backup.sql.gz"
+
+          echo "[drill] Checking SQL dump header..."
+          first_line=$(gunzip -c "${WORK_DIR}/backup.sql.gz" | head -n1)
+          if [[ "$first_line" != "-- PostgreSQL database dump"* ]]; then
+            echo "[drill] ERROR: unexpected dump header: ${first_line}"
+            exit 1
+          fi
+
+          TABLE_COUNT=$(gunzip -c "${WORK_DIR}/backup.sql.gz" | grep -c '^CREATE TABLE' || true)
+          echo "[drill] Tables in dump: ${TABLE_COUNT}"
+          echo "backup_key=${BACKUP_KEY}" >> "$GITHUB_OUTPUT"
+          echo "table_count=${TABLE_COUNT}" >> "$GITHUB_OUTPUT"
+
+      - name: Report drill result
+        run: |
+          echo "### Restore Drill Result" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Backup | \`${{ steps.drill.outputs.backup_key }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Tables in dump | ${{ steps.drill.outputs.table_count }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Status | ✅ Decrypted and verified |" >> "$GITHUB_STEP_SUMMARY"

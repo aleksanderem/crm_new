@@ -290,7 +290,7 @@ CREATE TABLE platform_products (
   name              TEXT NOT NULL,
   description       TEXT NOT NULL,
   is_active         BOOLEAN NOT NULL,
-  prices            JSONB NOT NULL,   -- { month: { usd, eur }, year: { usd, eur } }
+  prices            JSONB NOT NULL,   -- { month: { usd, eur, pln }, year: { usd, eur, pln } }
   stripe_product_id TEXT,
   created_at        BIGINT NOT NULL,
   updated_at        BIGINT NOT NULL

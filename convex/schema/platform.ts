@@ -77,8 +77,8 @@ export function createPlatformTables({
     description: v.string(),
     isActive: v.boolean(),
     prices: v.object({
-      month: v.object({ usd: v.number(), eur: v.number() }),
-      year: v.object({ usd: v.number(), eur: v.number() }),
+      month: v.object({ usd: v.number(), eur: v.number(), pln: v.number() }),
+      year: v.object({ usd: v.number(), eur: v.number(), pln: v.number() }),
     }),
     stripeProductId: v.optional(v.string()),
     createdAt: v.number(),

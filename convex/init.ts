@@ -23,10 +23,12 @@ const seedProducts = [
       [INTERVALS.MONTH]: {
         [CURRENCIES.USD]: 0,
         [CURRENCIES.EUR]: 0,
+        [CURRENCIES.PLN]: 0,
       },
       [INTERVALS.YEAR]: {
         [CURRENCIES.USD]: 0,
         [CURRENCIES.EUR]: 0,
+        [CURRENCIES.PLN]: 0,
       },
     },
   },
@@ -39,10 +41,12 @@ const seedProducts = [
       [INTERVALS.MONTH]: {
         [CURRENCIES.USD]: 1990,
         [CURRENCIES.EUR]: 1990,
+        [CURRENCIES.PLN]: 7900,
       },
       [INTERVALS.YEAR]: {
         [CURRENCIES.USD]: 19990,
         [CURRENCIES.EUR]: 19990,
+        [CURRENCIES.PLN]: 79900,
       },
     },
   },
@@ -132,10 +136,12 @@ const init: RegisteredAction<
         [INTERVALS.MONTH]: {
           [CURRENCIES.USD]: getPrice(CURRENCIES.USD, INTERVALS.MONTH),
           [CURRENCIES.EUR]: getPrice(CURRENCIES.EUR, INTERVALS.MONTH),
+          [CURRENCIES.PLN]: getPrice(CURRENCIES.PLN, INTERVALS.MONTH),
         },
         [INTERVALS.YEAR]: {
           [CURRENCIES.USD]: getPrice(CURRENCIES.USD, INTERVALS.YEAR),
           [CURRENCIES.EUR]: getPrice(CURRENCIES.EUR, INTERVALS.YEAR),
+          [CURRENCIES.PLN]: getPrice(CURRENCIES.PLN, INTERVALS.YEAR),
         },
       },
     });

@@ -10,10 +10,12 @@ import { createPlatformTables } from "./schema/platform";
 export const CURRENCIES = {
   USD: "usd",
   EUR: "eur",
+  PLN: "pln",
 } as const;
 export const currencyValidator = v.union(
   v.literal(CURRENCIES.USD),
   v.literal(CURRENCIES.EUR),
+  v.literal(CURRENCIES.PLN),
 );
 export type Currency = Infer<typeof currencyValidator>;
 
@@ -44,6 +46,7 @@ const priceValidator = v.object({
 export const pricesValidator = v.object({
   [CURRENCIES.USD]: priceValidator,
   [CURRENCIES.EUR]: priceValidator,
+  [CURRENCIES.PLN]: priceValidator,
 });
 
 // --- CRM Validators ---

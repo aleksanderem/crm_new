@@ -53,10 +53,12 @@ describe("checkSeatLimit via getSeatUsage", () => {
           month: {
             usd: { stripeId: "price_pro_m_usd", amount: 2900 },
             eur: { stripeId: "price_pro_m_eur", amount: 2900 },
+            pln: { stripeId: "price_pro_m_pln", amount: 12900 },
           },
           year: {
             usd: { stripeId: "price_pro_y_usd", amount: 29000 },
             eur: { stripeId: "price_pro_y_eur", amount: 29000 },
+            pln: { stripeId: "price_pro_y_pln", amount: 129000 },
           },
         },
       });
@@ -101,10 +103,12 @@ describe("checkSeatLimit via getSeatUsage", () => {
           month: {
             usd: { stripeId: "price_pro_m_usd", amount: 2900 },
             eur: { stripeId: "price_pro_m_eur", amount: 2900 },
+            pln: { stripeId: "price_pro_m_pln", amount: 12900 },
           },
           year: {
             usd: { stripeId: "price_pro_y_usd", amount: 29000 },
             eur: { stripeId: "price_pro_y_eur", amount: 29000 },
+            pln: { stripeId: "price_pro_y_pln", amount: 129000 },
           },
         },
       });
@@ -148,10 +152,12 @@ describe("checkSeatLimit via getSeatUsage", () => {
           month: {
             usd: { stripeId: "price_f_m_usd", amount: 0 },
             eur: { stripeId: "price_f_m_eur", amount: 0 },
+            pln: { stripeId: "price_f_m_pln", amount: 0 },
           },
           year: {
             usd: { stripeId: "price_f_y_usd", amount: 0 },
             eur: { stripeId: "price_f_y_eur", amount: 0 },
+            pln: { stripeId: "price_f_y_pln", amount: 0 },
           },
         },
       });
@@ -255,10 +261,12 @@ describe("invitations.create with seat limit", () => {
           month: {
             usd: { stripeId: "price_f_m_usd", amount: 0 },
             eur: { stripeId: "price_f_m_eur", amount: 0 },
+            pln: { stripeId: "price_f_m_pln", amount: 0 },
           },
           year: {
             usd: { stripeId: "price_f_y_usd", amount: 0 },
             eur: { stripeId: "price_f_y_eur", amount: 0 },
+            pln: { stripeId: "price_f_y_pln", amount: 0 },
           },
         },
       });
@@ -304,10 +312,12 @@ describe("invitations.create with seat limit", () => {
           month: {
             usd: { stripeId: "price_f_m_usd", amount: 0 },
             eur: { stripeId: "price_f_m_eur", amount: 0 },
+            pln: { stripeId: "price_f_m_pln", amount: 0 },
           },
           year: {
             usd: { stripeId: "price_f_y_usd", amount: 0 },
             eur: { stripeId: "price_f_y_eur", amount: 0 },
+            pln: { stripeId: "price_f_y_pln", amount: 0 },
           },
         },
       });

@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { RotateCcw } from "@/lib/ez-icons";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
-import { PermissionGate } from "@/hooks/use-permission";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function GabinetRolesSettingsSkeleton() {
@@ -168,6 +168,7 @@ function RolePermissionPanel({
   isSystem: boolean;
 }) {
   const { t } = useTranslation();
+  const { allowed: canEdit } = usePermission("gabinet_settings", "edit");
   const rawPerms = useQuery(api.gabinetRoles.getPermissions, {
     organizationId: organizationId as never,
     gabinetRole: roleKey,
@@ -287,6 +288,7 @@ function RolePermissionPanel({
                         <ScopeSelect
                           value={scope}
                           onChange={(v) => handleChange(feature.key, action, v)}
+                          disabled={!canEdit}
                         />
                       ) : (
                         <span className="text-xs text-muted-foreground/40">—</span>
@@ -300,36 +302,38 @@ function RolePermissionPanel({
         </table>
       </div>
 
-      <div className="flex items-center justify-between pt-2 border-t">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleReset}
-          disabled={resetting}
-        >
-          <RotateCcw className="mr-2 h-3.5 w-3.5" variant="stroke" />
-          {resetting
-            ? t("common.loading", "Loading…")
-            : isSystem
-            ? t("gabinet.roles.resetButton", "Reset to defaults")
-            : t("gabinet.roles.clearButton", "Clear permissions")}
-        </Button>
-        <Button
-          size="sm"
-          onClick={handleSave}
-          disabled={!dirty || saving}
-        >
-          {saving ? t("common.saving", "Saving…") : t("common.save", "Save")}
-        </Button>
-      </div>
+      {canEdit && (
+        <div className="flex items-center justify-between pt-2 border-t">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            disabled={resetting}
+          >
+            <RotateCcw className="mr-2 h-3.5 w-3.5" variant="stroke" />
+            {resetting
+              ? t("common.loading", "Loading…")
+              : isSystem
+              ? t("gabinet.roles.resetButton", "Reset to defaults")
+              : t("gabinet.roles.clearButton", "Clear permissions")}
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={!dirty || saving}
+          >
+            {saving ? t("common.saving", "Saving…") : t("common.save", "Save")}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
 
-function ScopeSelect({ value, onChange }: { value: Scope; onChange: (v: Scope) => void }) {
+function ScopeSelect({ value, onChange, disabled }: { value: Scope; onChange: (v: Scope) => void; disabled?: boolean }) {
   const { t } = useTranslation();
   return (
-    <Select value={value} onValueChange={(v) => onChange(v as Scope)}>
+    <Select value={value} onValueChange={(v) => onChange(v as Scope)} disabled={disabled}>
       <SelectTrigger className="h-7 w-24 text-xs">
         <SelectValue />
       </SelectTrigger>

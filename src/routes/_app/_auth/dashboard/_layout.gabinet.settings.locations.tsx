@@ -34,7 +34,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
-import { PermissionGate } from "@/hooks/use-permission";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function LocationsSettingsSkeleton() {
@@ -88,6 +88,9 @@ function LocationCard({
   onDeleted: () => void;
 }) {
   const { t } = useTranslation();
+  const { allowed: canEdit } = usePermission("gabinet_settings", "edit");
+  const { allowed: canDelete } = usePermission("gabinet_settings", "delete");
+  const { allowed: canCreate } = usePermission("gabinet_settings", "create");
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -385,17 +388,21 @@ function LocationCard({
             </div>
 
             <div className="flex items-center justify-between pt-2">
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setDeleteOpen(true)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" variant="stroke" />
-                {t("common.delete")}
-              </Button>
-              <Button size="sm" onClick={handleSave} disabled={saving || !editName?.trim()}>
-                {saving ? t("common.saving") : t("common.save")}
-              </Button>
+              {canDelete && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" variant="stroke" />
+                  {t("common.delete")}
+                </Button>
+              )}
+              {canEdit && (
+                <Button size="sm" onClick={handleSave} disabled={saving || !editName?.trim()}>
+                  {saving ? t("common.saving") : t("common.save")}
+                </Button>
+              )}
             </div>
 
             <Separator />
@@ -404,14 +411,16 @@ function LocationCard({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-medium">{t("gabinet.locations.rooms")}</h4>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setAddRoomOpen(true)}
-                >
-                  <Plus className="mr-1.5 h-3.5 w-3.5" variant="stroke" />
-                  {t("gabinet.locations.addRoom")}
-                </Button>
+                {canCreate && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setAddRoomOpen(true)}
+                  >
+                    <Plus className="mr-1.5 h-3.5 w-3.5" variant="stroke" />
+                    {t("gabinet.locations.addRoom")}
+                  </Button>
+                )}
               </div>
 
               {location.rooms.length === 0 ? (
@@ -426,29 +435,45 @@ function LocationCard({
                           {t("gabinet.locations.floor")}: {room.floor}
                         </span>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => handleToggleRoom(room._id, room.isActive)}
-                        className="text-xs"
-                      >
-                        {room.isActive ? (
-                          <Badge variant="default" className="text-[10px] cursor-pointer">
-                            {t("common.active")}
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="text-[10px] cursor-pointer">
-                            {t("common.inactive")}
-                          </Badge>
-                        )}
-                      </button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                        onClick={() => handleDeleteRoom(room._id)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" variant="stroke" />
-                      </Button>
+                      {canEdit ? (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleRoom(room._id, room.isActive)}
+                          className="text-xs"
+                        >
+                          {room.isActive ? (
+                            <Badge variant="default" className="text-[10px] cursor-pointer">
+                              {t("common.active")}
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-[10px] cursor-pointer">
+                              {t("common.inactive")}
+                            </Badge>
+                          )}
+                        </button>
+                      ) : (
+                        <span className="text-xs">
+                          {room.isActive ? (
+                            <Badge variant="default" className="text-[10px]">
+                              {t("common.active")}
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-[10px]">
+                              {t("common.inactive")}
+                            </Badge>
+                          )}
+                        </span>
+                      )}
+                      {canDelete && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteRoom(room._id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" variant="stroke" />
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -523,6 +548,7 @@ function LocationCard({
 function LocationsSettingsPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const { allowed: canCreate } = usePermission("gabinet_settings", "create");
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
@@ -579,10 +605,12 @@ function LocationsSettingsPage() {
               {t("gabinet.locations.title")}
             </SectionHeader.Heading>
             <SectionHeader.Actions>
-              <Button size="sm" onClick={() => setCreateOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" variant="stroke" />
-                {t("gabinet.locations.addLocation")}
-              </Button>
+              {canCreate && (
+                <Button size="sm" onClick={() => setCreateOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                  {t("gabinet.locations.addLocation")}
+                </Button>
+              )}
             </SectionHeader.Actions>
           </SectionHeader.Group>
           <UntitledAlert>{t("gabinet.locations.description", "Zarządzaj lokalizacjami gabinetu.")}</UntitledAlert>

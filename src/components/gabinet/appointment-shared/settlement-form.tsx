@@ -348,6 +348,25 @@ export function SettlementForm({
         )
       : 0;
 
+  // Remaining-outstanding hints for the non-package ("cash") leg in split mode.
+  // Shown as placeholder + helper text so staff don't have to compute mentally.
+  const cashLegHintFromPackage1 =
+    splitPayment &&
+    firstSplitMethod === "package" &&
+    splitPackage1Amount > 0 &&
+    secondSplitMethod !== "package" &&
+    !isSecondSplitFixed
+      ? Math.max(0, outstanding - splitPackage1Amount)
+      : null;
+  const cashLegHintFromPackage2 =
+    splitPayment &&
+    secondSplitMethod === "package" &&
+    splitPackage2Amount > 0 &&
+    firstSplitMethod !== "package" &&
+    !isFirstSplitFixed
+      ? Math.max(0, outstanding - splitPackage2Amount)
+      : null;
+
   // Split payment derived values
   const parsedFirstSplit = isFirstSplitFixed
     ? treatmentPrice
@@ -1099,7 +1118,11 @@ export function SettlementForm({
                 <Input
                   type="text"
                   inputMode="decimal"
-                  placeholder="0.00"
+                  placeholder={
+                    cashLegHintFromPackage2 !== null
+                      ? cashLegHintFromPackage2.toFixed(2)
+                      : "0.00"
+                  }
                   value={
                     isFirstSplitFixed
                       ? treatmentPrice.toFixed(2)
@@ -1128,6 +1151,14 @@ export function SettlementForm({
                       "gabinet.packages.packageModeInfo",
                       "Rozliczenie ilościowe z pakietu — bez płatności",
                     )}
+                  </p>
+                )}
+                {cashLegHintFromPackage2 !== null && !firstSplitAmount && (
+                  <p className="text-xs text-muted-foreground">
+                    {t("gabinet.packages.cashLegHint", {
+                      amount: formatCurrencyPLN(cashLegHintFromPackage2),
+                      defaultValue: "Pozostało do zapłaty: {{amount}}",
+                    })}
                   </p>
                 )}
               </div>
@@ -1175,7 +1206,11 @@ export function SettlementForm({
                 <Input
                   type="text"
                   inputMode="decimal"
-                  placeholder="0.00"
+                  placeholder={
+                    cashLegHintFromPackage1 !== null
+                      ? cashLegHintFromPackage1.toFixed(2)
+                      : "0.00"
+                  }
                   value={
                     isSecondSplitFixed
                       ? treatmentPrice.toFixed(2)
@@ -1206,6 +1241,14 @@ export function SettlementForm({
                       "gabinet.packages.packageModeInfo",
                       "Rozliczenie ilościowe z pakietu — bez płatności",
                     )}
+                  </p>
+                )}
+                {cashLegHintFromPackage1 !== null && !secondSplitAmount && (
+                  <p className="text-xs text-muted-foreground">
+                    {t("gabinet.packages.cashLegHint", {
+                      amount: formatCurrencyPLN(cashLegHintFromPackage1),
+                      defaultValue: "Pozostało do zapłaty: {{amount}}",
+                    })}
                   </p>
                 )}
               </div>

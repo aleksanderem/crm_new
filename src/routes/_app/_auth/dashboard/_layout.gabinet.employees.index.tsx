@@ -93,6 +93,9 @@ function EmployeesIndex() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { allowed: canCreate } = usePermission("gabinet_employees", "create");
+  const { allowed: canEdit } = usePermission("gabinet_employees", "edit");
+  const { allowed: canDelete } = usePermission("gabinet_employees", "delete");
   const { tags } = useTagDefinitions(organizationId);
   const { categories } = useCategoryDefinitions(organizationId, "gabinetEmployee");
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
@@ -335,36 +338,44 @@ function EmployeesIndex() {
 
   const rowActions = useCallback(
     (row: Employee) => [
-      {
-        label: t("common.edit"),
-        onClick: () => navigate({ to: `/dashboard/gabinet/employees/${row._id}` }),
-      },
+      ...(canEdit
+        ? [
+            {
+              label: t("common.edit"),
+              onClick: () => navigate({ to: `/dashboard/gabinet/employees/${row._id}` }),
+            },
+          ]
+        : []),
       {
         label: t("gabinet.timetable.editTitle"),
         icon: <Calendar className="h-4 w-4" variant="stroke" />,
         onClick: () => setEditingScheduleEmployee(row),
       },
-      {
-        label: t("common.delete"),
-        icon: <Trash2 className="h-4 w-4" variant="stroke" />,
-        onClick: async () => {
-          if (window.confirm(t("gabinet.employees.confirmDelete"))) {
-            try {
-              await removeEmployee({ organizationId, employeeId: row._id as Id<"gabinetEmployees"> });
-              toast.success(t("common.deleted"));
-            } catch (e) {
-              toast.error(
-                formatActionError(e, t, {
-                  key: "gabinet.employees.errors.deleteFailed",
-                  defaultValue: "Nie udało się usunąć pracownika.",
-                }),
-              );
-            }
-          }
-        },
-      },
+      ...(canDelete
+        ? [
+            {
+              label: t("common.delete"),
+              icon: <Trash2 className="h-4 w-4" variant="stroke" />,
+              onClick: async () => {
+                if (window.confirm(t("gabinet.employees.confirmDelete"))) {
+                  try {
+                    await removeEmployee({ organizationId, employeeId: row._id as Id<"gabinetEmployees"> });
+                    toast.success(t("common.deleted"));
+                  } catch (e) {
+                    toast.error(
+                      formatActionError(e, t, {
+                        key: "gabinet.employees.errors.deleteFailed",
+                        defaultValue: "Nie udało się usunąć pracownika.",
+                      }),
+                    );
+                  }
+                }
+              },
+            },
+          ]
+        : []),
     ],
-    [navigate, removeEmployee, organizationId, t]
+    [navigate, removeEmployee, organizationId, t, canEdit, canDelete]
   );
 
   const handleBulkAction = useCallback(
@@ -403,10 +414,12 @@ function EmployeesIndex() {
         title={t("gabinet.employees.title")}
         description={t("gabinet.employees.description")}
         actions={
-          <Button onClick={() => setShowCreate(true)}>
-            <Plus className="mr-2 h-4 w-4" variant="stroke" />
-            {t("gabinet.employees.add")}
-          </Button>
+          <PermissionGate feature="gabinet_employees" action="create">
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
+              {t("gabinet.employees.add")}
+            </Button>
+          </PermissionGate>
         }
       />
 
@@ -449,11 +462,15 @@ function EmployeesIndex() {
         onSearchChange={setSearchValue}
         searchPlaceholder={t("gabinet.employees.searchPlaceholder")}
         dropdownActions={[
-          {
-            label: t("quickActions.newEmployee"),
-            icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: () => setShowCreate(true),
-          },
+          ...(canCreate
+            ? [
+                {
+                  label: t("quickActions.newEmployee"),
+                  icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
+                  onClick: () => setShowCreate(true),
+                },
+              ]
+            : []),
           {
             label: t("gabinet.timetable.title"),
             icon: <Calendar className="mr-1.5 h-4 w-4" variant="stroke" />,
@@ -476,9 +493,9 @@ function EmployeesIndex() {
         enableBulkSelect
         hiddenColumnIds={hiddenColumnIds}
         bulkActions={[
-          { label: t("common.edit"), value: "edit" },
+          ...(canEdit ? [{ label: t("common.edit"), value: "edit" }] : []),
           { label: t("gabinet.events.create", { defaultValue: "Nowe zdarzenie" }), value: "addEvent" },
-          { label: t("common.delete"), value: "delete", variant: "destructive" },
+          ...(canDelete ? [{ label: t("common.delete"), value: "delete", variant: "destructive" as const }] : []),
         ]}
         onBulkAction={handleBulkAction}
         rowActions={rowActions}

@@ -20,7 +20,6 @@ export interface MappedOrgSettings {
   reminderSms24h?: boolean;
   reminderEmail48h?: boolean;
   reminderEmail24h?: boolean;
-  appointmentWorkflowConfig?: string;
   createdAt: number;
   updatedAt: number;
   _source: "supabase";

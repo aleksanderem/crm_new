@@ -16,9 +16,12 @@
  *   resourceSharingEnabled  → permissions.getResourceSharingEnabled query:
  *                             returned directly to callers (permissions.ts:118)
  *
- * Omitted from this file (tracked as follow-ups):
- *   timezone                — requires full availability-engine harness
- *   appointmentWorkflowConfig — requires appointment-workflow integration test
+ * Resolved follow-ups (issue #3678):
+ *   timezone                — wired up: appointment-dialog now reads orgSettings.timezone
+ *                             and computes nowDate/nowTime in the clinic's timezone
+ *                             (frontend effect; no backend unit test needed)
+ *   appointmentWorkflowConfig — removed: dispatchAppointmentCreated was never called;
+ *                             appointment notifications are handled by automation.ts
  *
  * The sendReminder internalMutation channel-level effect (which SMS/email channel
  * fires) has a known Convex/Supabase storage inconsistency (see follow-up note

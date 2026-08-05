@@ -96,6 +96,7 @@ import { TreatmentPicker } from "@/components/gabinet/appointment-shared/treatme
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
+import { useSupabaseOrgSettings } from "@/hooks/use-supabase-organizations";
 import { formatPhoneNumber } from "@/lib/phone";
 
 // ---------------------------------------------------------------------------
@@ -247,6 +248,8 @@ export function AppointmentDialog({
     queryFn: () => listLocationsAction({ organizationId }),
     enabled: !!organizationId,
   });
+
+  const { data: orgSettings } = useSupabaseOrgSettings(String(organizationId));
 
   // Patient tag/category defs for the inline create-patient drawer
   // (kept in sync with the patients list create-form props).
@@ -539,12 +542,22 @@ export function AppointmentDialog({
     ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`
     : "";
 
-  // "Now" in the user's local timezone — used to exclude past slots when the
-  // selected date is today. Backend doesn't know the clinic timezone, so the
-  // client is the source of truth. Issue #1402 / #1406.
+  // "Now" in the clinic's timezone — used to exclude past slots when the
+  // selected date is today. orgSettings.timezone carries the clinic's zone;
+  // fall back to the browser's local timezone when not configured (#1402/#1406).
+  const clinicTz = orgSettings?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   const now = new Date();
-  const nowDate = format(now, "yyyy-MM-dd");
-  const nowTime = format(now, "HH:mm");
+  const _nowInClinic = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: clinicTz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(now);
+  const [nowDate, nowTimeFull] = _nowInClinic.split(" ");
+  const nowTime = nowTimeFull.slice(0, 5);
 
   // Variants query — load variants for the selected treatment
   const { data: variants } = useQuery({

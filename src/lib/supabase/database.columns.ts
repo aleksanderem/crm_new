@@ -204,7 +204,7 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   organizations: new Set(["id", "name", "slug", "owner_id", "logo", "website", "created_at", "updated_at", "onboarding_completed"]),
   product_subscriptions: new Set(["id", "organization_id", "product_id", "stripe_subscription_id", "status", "current_period_start", "current_period_end", "cancel_at_period_end", "created_at", "updated_at"]),
   team_memberships: new Set(["id", "user_id", "organization_id", "role", "invited_by", "joined_at"]),
-  org_settings: new Set(["id", "organization_id", "allow_custom_lost_reason", "lost_reason_required", "default_currency", "timezone", "resource_sharing_enabled", "reminder_enabled", "reminder_hours_before", "appointment_workflow_config", "created_at", "updated_at", "reminder_sms_48h", "reminder_sms_24h", "reminder_email_48h", "reminder_email_24h"]),
+  org_settings: new Set(["id", "organization_id", "allow_custom_lost_reason", "lost_reason_required", "default_currency", "timezone", "resource_sharing_enabled", "reminder_enabled", "reminder_hours_before", "created_at", "updated_at", "reminder_sms_48h", "reminder_sms_24h", "reminder_email_48h", "reminder_email_24h"]),
   org_permissions: new Set(["id", "organization_id", "role", "permissions", "updated_by", "updated_at"]),
   invitations: new Set(["id", "organization_id", "email", "role", "token", "status", "invited_by", "expires_at", "accepted_at", "created_at", "updated_at"]),
   resource_invites: new Set(["id", "organization_id", "email", "user_id", "resource_type", "resource_id", "access_level", "invited_by", "token", "status", "created_at", "updated_at"]),

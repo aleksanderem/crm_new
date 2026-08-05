@@ -15,6 +15,7 @@ function seed(db, overrides = {}) {
 
 test("nextUntriagedJob returns the oldest pending+untriaged job, null when none", () => {
   const db = new Database(":memory:");
+  ensureSchema(db);
   assert.equal(nextUntriagedJob(db), null);
   seed(db);
   const j = nextUntriagedJob(db);

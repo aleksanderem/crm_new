@@ -1,12 +1,8 @@
 export function nextUntriagedJob(db) {
-  try {
-    return db.prepare(
-      `SELECT * FROM jobs WHERE status = 'pending' AND triage_status = 'untriaged'
-       ORDER BY created_at ASC LIMIT 1`,
-    ).get() || null;
-  } catch {
-    return null;
-  }
+  return db.prepare(
+    `SELECT * FROM jobs WHERE status = 'pending' AND triage_status = 'untriaged'
+     ORDER BY created_at ASC LIMIT 1`,
+  ).get() || null;
 }
 
 function issueFromJob(job) {

@@ -179,13 +179,13 @@ async function seedOrganizationDefaultsHandler(
         productId: "crm",
         name: "CRM",
         description: "Contact management, leads, pipelines, deals, documents, email",
-        prices: { month: { usd: 29, eur: 27 }, year: { usd: 290, eur: 270 } },
+        prices: { month: { usd: 29, eur: 27, pln: 119 }, year: { usd: 290, eur: 270, pln: 1190 } },
       },
       {
         productId: "gabinet",
         name: "Gabinet",
         description: "Patient management, appointments, treatments, scheduling, billing",
-        prices: { month: { usd: 49, eur: 45 }, year: { usd: 490, eur: 450 } },
+        prices: { month: { usd: 49, eur: 45, pln: 199 }, year: { usd: 490, eur: 450, pln: 1990 } },
       },
     ];
 

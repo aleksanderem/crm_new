@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add an anti-abuse policy layer to the triage worker: a SQLite strike ledger, pressure and multi-account detectors, escalating public strike comments, automatic permanent ban at 5 strikes, and a human-only collaborator-removal recommendation at the 6th offense.
+**Goal:** Add an anti-abuse policy layer to the triage worker: a SQLite strike ledger, multi-account duplicate detection, a merit-independent pressure rejection, escalating public strike comments, automatic permanent ban at 5 strikes, and a human-only collaborator-removal recommendation at the 6th offense.
 
-**Architecture:** A new pure-logic module tree under `automation/worker/policy/` (strike ledger, detectors, message templates, orchestrating engine). The worker loop runs `evaluatePolicy` as a gate BEFORE the Phase 1 triage evaluator: a blocked verdict short-circuits to `triage_status='rejected'` with a visible GitHub comment and never reaches the plan evaluator or Base writer. The queue orderer (`claimNextPlanned`) additionally excludes banned logins. Bans are persisted in the ledger (`banned_at`) and unioned each loop with a static `BANNED_LOGINS` env seed — the same shape as the existing `PAUSED_LOGINS` mechanism.
+**Architecture:** A new pure-logic module tree under `automation/worker/policy/` (strike ledger, detectors, message templates, orchestrating engine). Multi-account duplicates and already-banned logins are blocked by a PRE-gate that runs before the Phase 1 plan evaluator (pure abuse, no LLM call needed). Pressure is handled AFTER the merit verdict: a pressure-laden issue that does NOT fit the plan is rejected with a stern comment, while a fitting issue is accepted regardless of tone — so pressure is never a decision factor. The queue orderer (`claimNextPlanned`) additionally excludes banned logins. Bans persist in the ledger (`banned_at`) and are unioned each loop with a static `BANNED_LOGINS` env seed — the same shape as the existing `PAUSED_LOGINS` mechanism.
 
 **Tech Stack:** Node ESM daemon, `better-sqlite3`, built-in `node:test` runner, `gh` CLI via the worker's injected `exec` helper. Zero new npm dependencies.
 
@@ -13,29 +13,31 @@
 - Zero new npm dependencies. Tests use the built-in `node:test` runner; run with `npm test` (which runs `node --test`) from `automation/worker/`.
 - The strike ledger lives in the SAME SQLite database as the jobs queue (`queue.db`); `ensureStrikeSchema(db)` is called on that same `db` handle in `worker.mjs`. The webhook does NOT call it (the webhook does no policy work).
 - Schema changes are additive-only, mirroring `schema.mjs` (never drop/alter existing columns).
-- `STRIKE_BAN_THRESHOLD = 5`. The 5th strike bans; a strike counted at or beyond 6 emits the collaborator-removal recommendation.
+- `STRIKE_BAN_THRESHOLD = 5`. The 5th strike bans; a strike counted at or beyond 6 emits the collaborator-removal recommendation. Strikes are accrued ONLY by multi-account duplicates (spec §140). Pressure does NOT increment the strike counter.
 - `SIMILARITY_THRESHOLD = 0.8` (Jaccard over normalized ≥3-char tokens) for multi-account duplicate detection.
-- `MIN_SUBSTANCE_TOKENS = 12`: pressure only blocks when a pressure phrase is present AND the remaining substantive content is below this token count (pure-pressure junk). A real task worded urgently must still pass.
+- **Pressure is NEVER a decision factor.** Whether an issue fits the plan and its priority are decided purely on merit by the Phase 1 evaluator (which derives priority from the matched package, not the issue's tone). Pressure only changes how a NON-fitting issue is answered.
+- Pressure handling (per the user's ruling): pressure phrase present AND the issue does NOT fit the plan → REJECT (`triage_status='rejected'`) with a stern, reproachful comment that warns this violates repeatedly-established rules. Pressure phrase present AND the issue DOES fit → accept normally, pressure ignored entirely. No pressure phrase AND non-fit → ordinary polite backlog. This is why pressure is evaluated AFTER the merit verdict, not as a pre-gate.
+- The pressure comment is stern/reproachful for ALL logins (not only `HARSH_LOGINS`); `HARSH_LOGINS` (`aslocka`, `aslocka2026`) get an additional harsher clause. HARD BOUNDARY: harsh copy targets the behavior/violation (junk report, gaming, pressure-as-argument), never the person — no insults, no harassment. Reviewers must reject any template that attacks the individual.
+- Gate order is fixed: (1) PRE-gate = multi-account duplicate, then already-banned (multi-account first so an already-banned repeat offender still accrues the 6th strike + recommendation); (2) plan evaluation (LLM); (3) pressure override on the verdict. The PRE-gate runs before any LLM call.
 - Banned logins are the UNION of the static `BANNED_LOGINS` env list (comma-separated, same parsing as `PAUSED_LOGINS`) and ledger rows where `banned_at IS NOT NULL`. The env var is for manual/seed bans; runtime auto-bans persist only in the ledger.
-- Detection order in the engine is fixed: multi-account duplicate is checked BEFORE the already-banned short-circuit, so an already-banned user who files a NEW duplicate still accrues the 6th strike and triggers the recommendation.
-- Message tone: default terse Polish. For logins in `HARSH_LOGINS` (`aslocka`, `aslocka2026`) the comments are harsher and more critical. HARD BOUNDARY: harsh copy targets the behavior/violation (junk report, gaming, pressure), never the person — no insults, no harassment. Reviewers must reject any template that attacks the individual.
 - The agent NEVER auto-removes a collaborator or a GitHub account. The 6th-offense output is a printed recommendation + the exact `gh api -X DELETE` command only; a human runs it.
-- A blocked policy verdict sets `triage_status='rejected'`. Because Phase 1's `claimNextPlanned` only selects `triage_status IN ('triaged','backlog')`, rejected jobs are already unclaimable; the banned-login exclusion in the orderer is defense-in-depth and parity with `PAUSED_LOGINS`.
-- DECYZJA DO POTWIERDZENIA (pre-flight): the spec lists pressure under "Kategoryczne no-go (odrzucenie, nie backlog)" but also says pressure merely "nie podnosi priorytetu". This plan resolves the ambiguity as: pressure blocks (→ rejected) ONLY when the issue is pure-pressure junk (thin substance, see `MIN_SUBSTANCE_TOKENS`); substantive-but-urgent issues proceed to normal triage. Confirm this reading before Task 5.
+- A blocked/rejected verdict sets `triage_status='rejected'`. Because Phase 1's `claimNextPlanned` only selects `triage_status IN ('triaged','backlog')`, rejected jobs are already unclaimable; the banned-login exclusion in the orderer is defense-in-depth and parity with `PAUSED_LOGINS`.
+- Every blocked/rejected issue still gets a visible GitHub comment + a `triage:rejected` label (Phase 1 principle: the reporter always sees the verdict).
 
 ---
 
 ## File Structure
 
 - `automation/worker/policy/strikes.mjs` — strike ledger: schema, read/increment/ban, banned-login listing. (Task 1)
-- `automation/worker/policy/detect.mjs` — pure detectors: pressure, token similarity, related-login map, multi-account duplicate, harsh-login predicate. (Task 2)
+- `automation/worker/policy/detect.mjs` — pure detectors: pressure presence, token similarity, related-login map, multi-account duplicate, harsh-login predicate. (Task 2)
 - `automation/worker/policy/history.mjs` — DB read: recent issues by a set of logins, for duplicate comparison. (Task 3)
-- `automation/worker/policy/tone.mjs` — Polish comment templates (pressure/strike/ban/recommendation) with harsh variants. (Task 4)
-- `automation/worker/policy/engine.mjs` — `evaluatePolicy` orchestration wiring detectors + ledger + tone. (Task 5)
+- `automation/worker/policy/tone.mjs` — Polish comment templates (pressure/strike/ban/recommendation). (Task 4)
+- `automation/worker/policy/engine.mjs` — `evaluatePolicyPre` (multi-account + banned) and `pressureOverride` (post-verdict). (Task 5)
+- `automation/worker/triage/evaluate.mjs` — MODIFY: prompt line making pressure explicitly irrelevant to fit/priority. (Task 5)
 - `automation/worker/triage/claim.mjs` — MODIFY: add `bannedLogins` exclusion to `claimNextPlanned`. (Task 6)
 - `automation/worker/triage/github-writer.mjs` — MODIFY: add `postRejection`. (Task 7)
-- `automation/worker/triage/runner.mjs` — MODIFY: export `issueFromJob`. (Task 7)
-- `automation/worker/worker.mjs` — MODIFY: wire policy gate + ban union into the loop. (Task 7)
+- `automation/worker/triage/runner.mjs` — MODIFY: export `issueFromJob`; add pressure short-circuit to `triageJob`. (Task 7)
+- `automation/worker/worker.mjs` — MODIFY: wire pre-gate + pressure + ban union into the loop. (Task 7)
 - Tests co-located as `*.test.mjs` next to each module (matching Phase 1, e.g. `triage/runner.test.mjs`).
 
 ---
@@ -195,7 +197,7 @@ git commit -m "feat(triage/policy): strike ledger (SQLite) with auto-ban thresho
 
 ---
 
-### Task 2: Detectors (pressure, similarity, multi-account)
+### Task 2: Detectors (pressure presence, similarity, multi-account)
 
 **Files:**
 - Create: `automation/worker/policy/detect.mjs`
@@ -204,12 +206,12 @@ git commit -m "feat(triage/policy): strike ledger (SQLite) with auto-ban thresho
 **Interfaces:**
 - Consumes: an `issue` object of the Phase 1 shape from `issueFromJob`: `{ number, repo, title, body, login, url, jamLink }`.
 - Produces:
-  - `PRESSURE_PHRASES: string[]`, `MIN_SUBSTANCE_TOKENS = 12`, `SIMILARITY_THRESHOLD = 0.8`
+  - `PRESSURE_PHRASES: string[]`, `SIMILARITY_THRESHOLD = 0.8`
   - `RELATED_LOGINS: Record<string,string[]>`, `relatedLoginsOf(login): string[]`
   - `HARSH_LOGINS: Set<string>`, `isHarshLogin(login): boolean`
   - `normalizeTokens(text): string[]`
   - `similarity(a, b): number` (0..1 Jaccard)
-  - `detectPressure(issue): { hit: boolean, phrase: string|null }`
+  - `detectPressure(issue): { hit: boolean, phrase: string|null }` — pure presence check (a pressure phrase appears in title/body). Deliberately does NOT weigh substance: whether pressure blocks is decided later, from the merit verdict, NOT here.
   - `detectMultiAccount(issue, { priorIssues }): { hit, relatedLogin, matchTitle, similarity }` where `priorIssues: Array<{login,title,body}>`
 
 - [ ] **Step 1: Write the failing test**
@@ -223,22 +225,13 @@ import {
   relatedLoginsOf, isHarshLogin,
 } from "./detect.mjs";
 
-test("detectPressure fires on thin pressure-only content", () => {
-  const issue = { title: "PILNE", body: "Zrób to teraz, to krytyczne!!!" };
-  assert.equal(detectPressure(issue).hit, true);
+test("detectPressure fires when a pressure phrase is present", () => {
+  assert.equal(detectPressure({ title: "PILNE", body: "zrób to teraz!!!" }).hit, true);
+  assert.equal(detectPressure({ title: "Pilne: kalendarz gubi terminy", body: "Przy zmianie strefy znikają wizyty, odtworzenie: ..." }).hit, true);
 });
 
-test("detectPressure does NOT fire on a substantive issue worded urgently", () => {
-  const issue = {
-    title: "Pilne: kalendarz gubi terminy przy zmianie strefy",
-    body: "Przy zmianie strefy czasowej z Europe/Warsaw na UTC widok tygodnia przesuwa wizyty o godzinę i znika prepayment badge. Odtworzenie: otwórz gabinet, zmień strefę w ustawieniach organizacji, odśwież kalendarz tygodniowy.",
-  };
-  assert.equal(detectPressure(issue).hit, false);
-});
-
-test("detectPressure misses when there is no pressure phrase", () => {
-  const issue = { title: "Literówka w nagłówku", body: "Drobna literówka na stronie ustawień." };
-  assert.equal(detectPressure(issue).hit, false);
+test("detectPressure does not fire without a pressure phrase", () => {
+  assert.equal(detectPressure({ title: "Literówka w nagłówku", body: "Drobna literówka na stronie ustawień." }).hit, false);
 });
 
 test("similarity is ~1 for identical text and low for different", () => {
@@ -292,7 +285,6 @@ export const PRESSURE_PHRASES = [
   "musisz to zrobic", "musicie to zrobić", "bo inaczej",
   "do it now", "right now", "urgent", "immediately", "or else", "drop everything",
 ];
-export const MIN_SUBSTANCE_TOKENS = 12;
 export const SIMILARITY_THRESHOLD = 0.8;
 
 export const RELATED_LOGINS = {
@@ -325,18 +317,13 @@ export function similarity(a, b) {
   return union === 0 ? 0 : inter / union;
 }
 
-// Pressure blocks only when a pressure phrase is present AND the remaining
-// substantive content is thin (pure-pressure junk). Substantive-but-urgent
-// issues pass through to normal triage.
+// Pure presence check. Whether pressure BLOCKS is decided later from the merit
+// verdict (a fitting task passes even if worded urgently); this only reports
+// that a pressure phrase is present.
 export function detectPressure(issue) {
   const text = `${issue.title || ""}\n${issue.body || ""}`.toLowerCase();
   const phrase = PRESSURE_PHRASES.find((p) => text.includes(p));
-  if (!phrase) return { hit: false, phrase: null };
-  let rest = text;
-  for (const p of PRESSURE_PHRASES) rest = rest.split(p).join(" ");
-  const tokens = rest.split(/[^a-ząćęłńóśźż0-9]+/i).filter((t) => t.length >= 3);
-  const thin = tokens.length < MIN_SUBSTANCE_TOKENS;
-  return { hit: thin, phrase: thin ? phrase : null };
+  return { hit: !!phrase, phrase: phrase || null };
 }
 
 // priorIssues are already restricted to related logins by the caller.
@@ -355,13 +342,13 @@ export function detectMultiAccount(issue, { priorIssues }) {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cd automation/worker && node --test policy/detect.test.mjs`
-Expected: PASS (8 tests).
+Expected: PASS (7 tests).
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add automation/worker/policy/detect.mjs automation/worker/policy/detect.test.mjs
-git commit -m "feat(triage/policy): pressure + multi-account duplicate detectors"
+git commit -m "feat(triage/policy): pressure-presence + multi-account duplicate detectors"
 ```
 
 ---
@@ -471,7 +458,7 @@ git commit -m "feat(triage/policy): recent-issues-by-login reader for dup detect
 **Interfaces:**
 - Consumes: `isHarshLogin` from `./detect.mjs`.
 - Produces (all return Polish strings):
-  - `pressureComment({ login }): string`
+  - `pressureComment({ login }): string` — stern/reproachful for every login; warns that "presja nie jest argumentem" is a repeatedly-established rule and that ignoring it is a violation. `HARSH_LOGINS` get an extra harsher clause.
   - `strikeComment({ login, count, threshold, reason }): string`
   - `banComment({ login, reason, threshold }): string`
   - `collaboratorRemovalRecommendation({ login, repo }): string`
@@ -486,16 +473,19 @@ import {
   pressureComment, strikeComment, banComment, collaboratorRemovalRecommendation,
 } from "./tone.mjs";
 
-test("pressureComment rejects and states pressure is not an argument", () => {
+test("pressureComment is stern, rejects, and warns about the repeatedly-established rule", () => {
   const c = pressureComment({ login: "randomdev" });
   assert.match(c, /Odrzucone/);
   assert.match(c, /[Pp]resja/);
+  // warns this rule has been established repeatedly / it is a violation
+  assert.match(c, /wielokrotnie|nie po raz pierwszy|ustaleń|zasad/);
 });
 
-test("harsh login gets a harsher pressure comment than a neutral one", () => {
+test("a harsh login gets an even harsher pressure comment than a neutral one", () => {
   const harsh = pressureComment({ login: "aslocka" });
   const neutral = pressureComment({ login: "randomdev" });
   assert.notEqual(harsh, neutral);
+  assert.ok(harsh.length >= neutral.length);
 });
 
 test("strikeComment shows the counter and threshold", () => {
@@ -529,11 +519,20 @@ Expected: FAIL — `Cannot find module './tone.mjs'`.
 import { isHarshLogin } from "./detect.mjs";
 
 // HARD BOUNDARY: harsh copy targets the behavior/violation, never the person.
+// Pressure is rejected sternly for EVERYONE and always references that this is
+// a repeatedly-established rule; harsh logins get an extra clause on top.
 export function pressureComment({ login }) {
+  const base =
+    "⛔ **Odrzucone.** Presja nie jest argumentem — i nie mówimy tego po raz pierwszy. " +
+    "To zasada ustalana wielokrotnie: priorytet wynika z planu, nie z tonu ani ponaglania. " +
+    "To zgłoszenie nie realizuje żadnego zadania z planu, więc samym naciskiem nic nie wskórasz. " +
+    "Opisz konkretny problem merytorycznie (co, gdzie, jak odtworzyć), a zostanie ocenione normalnie.";
   if (isHarshLogin(login)) {
-    return "⛔ **Odrzucone.** Presja i ponaglenia to nie jest zgłoszenie. Nie ma tu treści merytorycznej — sam nacisk. Tak to nie działa: opisz konkretny problem (co, gdzie, jak odtworzyć) albo nie zajmuj kolejki. Priorytet ustala plan, nie ton wiadomości.";
+    return base +
+      "\n\nTo kolejne naruszenie tych samych, jasno zakomunikowanych ustaleń. " +
+      "Ponaglanie zamiast treści to marnowanie kolejki — przestań tak zgłaszać.";
   }
-  return "⛔ **Odrzucone.** Presja nie jest argumentem za priorytetem. To zgłoszenie nie opisuje konkretnego zadania z planu — samo ponaglenie nie wystarcza. Opisz problem merytorycznie (co, gdzie, jak odtworzyć), a wróci do oceny.";
+  return base;
 }
 
 export function strikeComment({ login, count, threshold, reason }) {
@@ -564,16 +563,18 @@ git commit -m "feat(triage/policy): Polish strike/ban/pressure comment templates
 
 ---
 
-### Task 5: Policy engine (orchestration)
+### Task 5: Policy engine (pre-gate + pressure override) and evaluator hardening
 
 **Files:**
 - Create: `automation/worker/policy/engine.mjs`
+- Modify: `automation/worker/triage/evaluate.mjs` (one prompt line)
 - Test: `automation/worker/policy/engine.test.mjs`
 
 **Interfaces:**
 - Consumes: `detectPressure`, `detectMultiAccount` (`./detect.mjs`); `addStrike`, `isBanned`, `STRIKE_BAN_THRESHOLD` (`./strikes.mjs`); `pressureComment`, `strikeComment`, `banComment`, `collaboratorRemovalRecommendation` (`./tone.mjs`).
-- Produces: `evaluatePolicy(db, issue, { priorIssues = [], now }): { blocked: boolean, flags: string[], comment: string|null, recordedStrike: boolean, banned: boolean }`. `now` is a function returning ms (e.g. `Date.now`).
-- Order (fixed): multi-account → already-banned → pressure → clean. Multi-account is checked first so an already-banned repeat offender still accrues the 6th strike + recommendation.
+- Produces:
+  - `evaluatePolicyPre(db, issue, { priorIssues = [], now }): { blocked: boolean, flags: string[], comment: string|null, recordedStrike: boolean, banned: boolean }` — PRE-gate for merit-independent abuse (multi-account duplicate, then already-banned). Runs before the LLM. Order fixed: multi-account is checked BEFORE the banned short-circuit so an already-banned repeat offender still accrues the 6th strike + recommendation. `now` is a function returning ms (e.g. `Date.now`).
+  - `pressureOverride(verdict, issue): { reject: boolean, comment: string|null }` — post-verdict pure function. `reject` is true iff `detectPressure(issue).hit && verdict.fits === false`. A fitting verdict never rejects (pressure ignored). `comment` is the stern `pressureComment` when rejecting.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -583,7 +584,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import { ensureStrikeSchema, isBanned, getStrike } from "./strikes.mjs";
-import { evaluatePolicy } from "./engine.mjs";
+import { evaluatePolicyPre, pressureOverride } from "./engine.mjs";
 
 function db0() {
   const db = new Database(":memory:");
@@ -591,30 +592,20 @@ function db0() {
   return db;
 }
 const clock = () => 1000;
+const dup = { login: "aslocka", repo: "aleksanderem/crm_new", url: "u", title: "Dup", body: "identyczna treść zgłoszenia do porównania" };
+const priorDup = [{ login: "aslocka2026", title: "Dup", body: "identyczna treść zgłoszenia do porównania" }];
 
-test("clean issue is not blocked", () => {
+test("evaluatePolicyPre passes a clean issue (no abuse signal)", () => {
   const db = db0();
-  const issue = { login: "dev", repo: "o/r", title: "Realne zadanie", body: "opis konkretnego zadania z planu, wiele szczegółów technicznych tutaj." };
-  const r = evaluatePolicy(db, issue, { priorIssues: [], now: clock });
+  const issue = { login: "dev", repo: "o/r", url: "u", title: "Realne zadanie", body: "opis konkretnego zadania z planu, sporo szczegółów technicznych." };
+  const r = evaluatePolicyPre(db, issue, { priorIssues: [], now: clock });
   assert.equal(r.blocked, false);
   assert.equal(r.recordedStrike, false);
 });
 
-test("pure-pressure junk is blocked without a strike", () => {
+test("evaluatePolicyPre strikes and blocks a multi-account duplicate", () => {
   const db = db0();
-  const issue = { login: "dev", repo: "o/r", title: "PILNE", body: "zrób to teraz!!!" };
-  const r = evaluatePolicy(db, issue, { priorIssues: [], now: clock });
-  assert.equal(r.blocked, true);
-  assert.deepEqual(r.flags, ["pressure"]);
-  assert.equal(r.recordedStrike, false);
-  assert.match(r.comment, /Presja|presja/);
-});
-
-test("multi-account duplicate records a strike and blocks", () => {
-  const db = db0();
-  const issue = { login: "aslocka", repo: "o/r", title: "Kalendarz gubi terminy", body: "przy zmianie strefy czasowej znikają wizyty" };
-  const priorIssues = [{ login: "aslocka2026", title: "Kalendarz gubi terminy", body: "przy zmianie strefy czasowej znikają wizyty" }];
-  const r = evaluatePolicy(db, issue, { priorIssues, now: clock });
+  const r = evaluatePolicyPre(db, dup, { priorIssues: priorDup, now: clock });
   assert.equal(r.blocked, true);
   assert.deepEqual(r.flags, ["multi-account"]);
   assert.equal(r.recordedStrike, true);
@@ -622,38 +613,52 @@ test("multi-account duplicate records a strike and blocks", () => {
   assert.match(r.comment, /Strike 1\/5/);
 });
 
-test("fifth duplicate strike bans and includes the ban notice", () => {
+test("evaluatePolicyPre bans on the fifth duplicate and includes the ban notice", () => {
   const db = db0();
-  const issue = { login: "aslocka", repo: "o/r", title: "Dup", body: "identyczna treść zgłoszenia do porównania" };
-  const priorIssues = [{ login: "aslocka2026", title: "Dup", body: "identyczna treść zgłoszenia do porównania" }];
   let r;
-  for (let i = 0; i < 5; i++) r = evaluatePolicy(db, issue, { priorIssues, now: clock });
+  for (let i = 0; i < 5; i++) r = evaluatePolicyPre(db, dup, { priorIssues: priorDup, now: clock });
   assert.equal(r.banned, true);
   assert.equal(isBanned(db, "aslocka"), true);
   assert.match(r.comment, /Permanentny ban/);
 });
 
-test("sixth offense appends the collaborator-removal recommendation", () => {
+test("evaluatePolicyPre appends the collaborator-removal recommendation on the sixth offense", () => {
   const db = db0();
-  const issue = { login: "aslocka", repo: "aleksanderem/crm_new", title: "Dup", body: "identyczna treść zgłoszenia do porównania" };
-  const priorIssues = [{ login: "aslocka2026", title: "Dup", body: "identyczna treść zgłoszenia do porównania" }];
   let r;
-  for (let i = 0; i < 6; i++) r = evaluatePolicy(db, issue, { priorIssues, now: clock });
+  for (let i = 0; i < 6; i++) r = evaluatePolicyPre(db, dup, { priorIssues: priorDup, now: clock });
   assert.match(r.comment, /gh api -X DELETE repos\/aleksanderem\/crm_new\/collaborators\/aslocka/);
 });
 
-test("already-banned user filing a clean issue is blocked without a new strike", () => {
+test("evaluatePolicyPre blocks an already-banned user without a new strike", () => {
   const db = db0();
-  const dup = { login: "aslocka", repo: "o/r", title: "Dup", body: "identyczna treść zgłoszenia do porównania" };
-  const priorIssues = [{ login: "aslocka2026", title: "Dup", body: "identyczna treść zgłoszenia do porównania" }];
-  for (let i = 0; i < 5; i++) evaluatePolicy(db, dup, { priorIssues, now: clock });
+  for (let i = 0; i < 5; i++) evaluatePolicyPre(db, dup, { priorIssues: priorDup, now: clock });
   const before = getStrike(db, "aslocka").count;
-  const clean = { login: "aslocka", repo: "o/r", title: "Coś nowego", body: "całkiem inny, merytoryczny opis problemu z wieloma detalami technicznymi" };
-  const r = evaluatePolicy(db, clean, { priorIssues: [], now: clock });
+  const clean = { login: "aslocka", repo: "o/r", url: "u", title: "Coś nowego", body: "całkiem inny, merytoryczny opis problemu z detalami" };
+  const r = evaluatePolicyPre(db, clean, { priorIssues: [], now: clock });
   assert.equal(r.blocked, true);
   assert.deepEqual(r.flags, ["banned"]);
   assert.equal(r.recordedStrike, false);
   assert.equal(getStrike(db, "aslocka").count, before);
+});
+
+test("pressureOverride rejects a non-fitting issue that carries pressure", () => {
+  const verdict = { fits: false };
+  const issue = { login: "dev", title: "PILNE", body: "zrób to teraz!!!" };
+  const r = pressureOverride(verdict, issue);
+  assert.equal(r.reject, true);
+  assert.match(r.comment, /Presja|presja/);
+});
+
+test("pressureOverride never rejects a FITTING issue, even worded urgently", () => {
+  const verdict = { fits: true, package: "PK1", priority: "P0" };
+  const issue = { login: "dev", title: "PILNE: realny bug", body: "natychmiast, ale to konkretne zadanie z planu" };
+  assert.deepEqual(pressureOverride(verdict, issue), { reject: false, comment: null });
+});
+
+test("pressureOverride does not reject a non-fitting issue WITHOUT pressure", () => {
+  const verdict = { fits: false };
+  const issue = { login: "dev", title: "Drobiazg", body: "kosmetyczna zmiana koloru" };
+  assert.deepEqual(pressureOverride(verdict, issue), { reject: false, comment: null });
 });
 ```
 
@@ -672,12 +677,10 @@ import {
   pressureComment, strikeComment, banComment, collaboratorRemovalRecommendation,
 } from "./tone.mjs";
 
-// Decide whether an issue is blocked by policy before it reaches the plan
-// evaluator. Returns a structured outcome; the caller posts the comment and
-// sets triage_status='rejected' when blocked. Detection order is fixed:
-// multi-account first so an already-banned repeat offender still accrues the
-// 6th strike + collaborator-removal recommendation.
-export function evaluatePolicy(db, issue, { priorIssues = [], now }) {
+// PRE-gate: merit-independent abuse, checked before the LLM evaluator.
+// Order is fixed — multi-account first so an already-banned repeat offender
+// still accrues the 6th strike + collaborator-removal recommendation.
+export function evaluatePolicyPre(db, issue, { priorIssues = [], now }) {
   const login = issue.login || "";
   const ts = now();
 
@@ -703,25 +706,49 @@ export function evaluatePolicy(db, issue, { priorIssues = [], now }) {
     };
   }
 
-  const pressure = detectPressure(issue);
-  if (pressure.hit) {
-    return { blocked: true, flags: ["pressure"], comment: pressureComment({ login }), recordedStrike: false, banned: false };
-  }
-
   return { blocked: false, flags: [], comment: null, recordedStrike: false, banned: false };
+}
+
+// Post-verdict override: pressure rejects ONLY a non-fitting issue. A fitting
+// verdict is never touched, so pressure never influences the fit/priority
+// decision — it only makes a junk (non-fit) submission a stern rejection
+// instead of an ordinary polite backlog.
+export function pressureOverride(verdict, issue) {
+  if (verdict.fits === false && detectPressure(issue).hit) {
+    return { reject: true, comment: pressureComment({ login: issue.login || "" }) };
+  }
+  return { reject: false, comment: null };
 }
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cd automation/worker && node --test policy/engine.test.mjs`
-Expected: PASS (6 tests).
+Expected: PASS (8 tests).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Harden the evaluator prompt so pressure cannot inflate priority**
+
+In `automation/worker/triage/evaluate.mjs`, inside `buildTriagePrompt`, the rules line currently reads:
+
+```js
+Zasady: jeśli zgłoszenie nie realizuje żadnego pakietu, ustaw fits=false i package/priority/order=null. Nie zgaduj — przy niepewności obniż confidence. Zwróć wyłącznie JSON, bez dodatkowego tekstu.
+```
+
+Change it to (add the pressure-neutrality sentence):
+
+```js
+Zasady: jeśli zgłoszenie nie realizuje żadnego pakietu, ustaw fits=false i package/priority/order=null. Priorytet dziedzicz WYŁĄCZNIE z dopasowanego pakietu — ignoruj presję, ponaglenia i ton zgłoszenia; nacisk nie podnosi priorytetu ani nie zmienia dopasowania. Nie zgaduj — przy niepewności obniż confidence. Zwróć wyłącznie JSON, bez dodatkowego tekstu.
+```
+
+Run the Phase 1 evaluator tests to confirm no regression:
+Run: `cd automation/worker && node --test triage/evaluate.test.mjs`
+Expected: PASS (unchanged).
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add automation/worker/policy/engine.mjs automation/worker/policy/engine.test.mjs
-git commit -m "feat(triage/policy): evaluatePolicy engine (pressure/multi-account/ban)"
+git add automation/worker/policy/engine.mjs automation/worker/policy/engine.test.mjs automation/worker/triage/evaluate.mjs
+git commit -m "feat(triage/policy): pre-gate engine + pressure override; harden evaluator prompt"
 ```
 
 ---
@@ -846,18 +873,21 @@ git commit -m "feat(triage): exclude banned logins from the queue orderer"
 
 ---
 
-### Task 7: Wire the policy gate into the worker loop
+### Task 7: Wire the pre-gate + pressure override into the worker loop
 
 **Files:**
 - Modify: `automation/worker/triage/github-writer.mjs` (add `postRejection`)
-- Modify: `automation/worker/triage/runner.mjs` (export `issueFromJob`)
-- Modify: `automation/worker/worker.mjs` (policy gate + ban union + `BANNED_LOGINS` env + `ensureStrikeSchema`)
-- Test: `automation/worker/triage/github-writer-reject.test.mjs` (new), `automation/worker/policy/integration.test.mjs` (new)
+- Modify: `automation/worker/triage/runner.mjs` (export `issueFromJob`; add pressure short-circuit to `triageJob`)
+- Modify: `automation/worker/worker.mjs` (pre-gate + pressure + ban union + `BANNED_LOGINS` env + `ensureStrikeSchema`)
+- Test: `automation/worker/triage/github-writer-reject.test.mjs` (new), `automation/worker/triage/runner-pressure.test.mjs` (new), `automation/worker/policy/integration.test.mjs` (new)
 - Docs: `automation/worker/README.md` (deploy notes — create if absent)
 
 **Interfaces:**
-- Consumes: `evaluatePolicy` (`./policy/engine.mjs`), `listBannedLogins`, `ensureStrikeSchema` (`./policy/strikes.mjs`), `relatedLoginsOf` (`./policy/detect.mjs`), `recentIssuesByLogins` (`./policy/history.mjs`), `issueFromJob`, `nextUntriagedJob`, `triageJob` (`./triage/runner.mjs`), `claimNextPlanned` (`./triage/claim.mjs`), the existing `exec`, `jlog`, `getPlanDigest`, `invokeLLM`, `PAUSED_LOGINS`, `THROTTLED_LOGINS`, `THROTTLE_INTERVAL_MS`.
-- Produces: `postRejection(issue, body, { exec }): void` (gh comment + `--add-label triage:rejected`); `issueFromJob` exported.
+- Consumes: `evaluatePolicyPre`, `pressureOverride` (`./policy/engine.mjs`), `listBannedLogins`, `ensureStrikeSchema` (`./policy/strikes.mjs`), `relatedLoginsOf` (`./policy/detect.mjs`), `recentIssuesByLogins` (`./policy/history.mjs`), `issueFromJob`, `nextUntriagedJob`, `triageJob` (`./triage/runner.mjs`), `claimNextPlanned` (`./triage/claim.mjs`), and the existing `exec`, `jlog`, `getPlanDigest`, `invokeLLM`, `PAUSED_LOGINS`, `THROTTLED_LOGINS`, `THROTTLE_INTERVAL_MS`.
+- Produces:
+  - `postRejection(issue, body, { exec }): void` (gh comment + `--add-label triage:rejected`).
+  - `issueFromJob` exported.
+  - `triageJob(db, job, deps)` gains two OPTIONAL deps: `deps.pressureReject(verdict): { reject, comment }` and `deps.writeRejection(issue, comment)`. When `pressureReject` returns `reject:true`, `triageJob` sets `triage_status='rejected'`, skips the Base write, calls `writeRejection` instead of `writeGithub`, and returns `{ verdict, rejected: true }`. When absent or `reject:false`, behavior is exactly Phase 1.
 
 - [ ] **Step 1: Write the failing test for `postRejection`**
 
@@ -889,8 +919,8 @@ Append to `automation/worker/triage/github-writer.mjs` (after the existing `post
 
 ```js
 // Policy rejection: a visible comment plus the triage:rejected label. Used when
-// the policy gate blocks an issue (pressure / multi-account / banned) before it
-// reaches the plan evaluator.
+// the policy gate blocks an issue (multi-account / banned / pressure) so the
+// reporter still sees a verdict.
 export function postRejection(issue, body, { exec }) {
   const repo = issue.repo;
   exec("gh", ["issue", "comment", String(issue.number), "--repo", repo, "--body", body]);
@@ -903,29 +933,106 @@ export function postRejection(issue, body, { exec }) {
 Run: `cd automation/worker && node --test triage/github-writer-reject.test.mjs`
 Expected: PASS (1 test).
 
-- [ ] **Step 5: Export `issueFromJob` from `runner.mjs`**
-
-In `automation/worker/triage/runner.mjs`, change the declaration:
+- [ ] **Step 5: Write the failing test for the `triageJob` pressure short-circuit**
 
 ```js
-function issueFromJob(job) {
+// automation/worker/triage/runner-pressure.test.mjs
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import Database from "better-sqlite3";
+import { ensureSchema } from "../schema.mjs";
+import { triageJob } from "./runner.mjs";
+
+function seed(db) {
+  db.prepare(
+    `INSERT INTO jobs (id, issue_number, repo, event_type, trigger_login, payload_json, status, created_at)
+     VALUES (1, 1, 'o/r', 'issues.opened', 'dev', ?, 'pending', 1)`,
+  ).run(JSON.stringify({ title: "PILNE", body: "zrób to teraz" }));
+  return db.prepare("SELECT * FROM jobs WHERE id = 1").get();
+}
+
+test("triageJob rejects on pressure: no Base write, writeRejection called, status rejected", async () => {
+  const db = new Database(":memory:");
+  ensureSchema(db);
+  const job = seed(db);
+  const verdict = { fits: false, package: null, priority: null, order: null, confidence: 0.9, rationale: "poza planem" };
+  const calls = { base: 0, github: 0, rejection: null };
+  await triageJob(db, job, {
+    planDigest: "x",
+    evaluate: async () => verdict,
+    writeBase: () => { calls.base++; return "recX"; },
+    writeGithub: () => { calls.github++; },
+    writeRejection: (_issue, comment) => { calls.rejection = comment; },
+    pressureReject: () => ({ reject: true, comment: "⛔ Presja nie jest argumentem." }),
+    now: () => 1,
+  });
+  assert.equal(calls.base, 0);
+  assert.equal(calls.github, 0);
+  assert.equal(calls.rejection, "⛔ Presja nie jest argumentem.");
+  assert.equal(db.prepare("SELECT triage_status FROM jobs WHERE id = 1").get().triage_status, "rejected");
+});
+
+test("triageJob without pressureReject behaves exactly like Phase 1 (Base + github)", async () => {
+  const db = new Database(":memory:");
+  ensureSchema(db);
+  const job = seed(db);
+  const verdict = { fits: true, package: "PK1", priority: "P0", order: 1, module: "DevOps", confidence: 0.9, rationale: "ok" };
+  const calls = { base: 0, github: 0 };
+  await triageJob(db, job, {
+    planDigest: "x",
+    evaluate: async () => verdict,
+    writeBase: () => { calls.base++; return "recX"; },
+    writeGithub: () => { calls.github++; },
+    now: () => 1,
+  });
+  assert.equal(calls.base, 1);
+  assert.equal(calls.github, 1);
+  assert.equal(db.prepare("SELECT triage_status FROM jobs WHERE id = 1").get().triage_status, "triaged");
+});
 ```
 
-to:
+- [ ] **Step 6: Run it to verify it fails**
+
+Run: `cd automation/worker && node --test triage/runner-pressure.test.mjs`
+Expected: FAIL — the first test still writes Base / sets `triaged` (short-circuit not implemented).
+
+- [ ] **Step 7: Add the pressure short-circuit to `triageJob` and export `issueFromJob`**
+
+In `automation/worker/triage/runner.mjs`:
+
+7a. Change the declaration `function issueFromJob(job) {` to `export function issueFromJob(job) {`.
+
+7b. In `triageJob`, immediately AFTER the `const verdict = await deps.evaluate(issue, deps.planDigest);` line, insert the short-circuit:
 
 ```js
-export function issueFromJob(job) {
+  const pr = deps.pressureReject ? deps.pressureReject(verdict) : { reject: false };
+  if (pr.reject) {
+    db.prepare(
+      `UPDATE jobs SET triage_status = 'rejected', triage_package = NULL, triage_priority = NULL,
+         triage_order = NULL, triage_confidence = ?, triage_rationale = ? WHERE id = ?`,
+    ).run(verdict.confidence, String(pr.comment).slice(0, 1000), job.id);
+    try { deps.writeRejection(issue, pr.comment); }
+    catch (e) { deps.log?.({ level: "warn", msg: "triage-rejection-write-failed", id: job.id, err: String(e).slice(0, 300) }); }
+    return { verdict, rejected: true };
+  }
 ```
+
+(The existing Base-write / persist / GitHub-write block stays unchanged after this insert.)
+
+- [ ] **Step 8: Run the runner tests**
+
+Run: `cd automation/worker && node --test triage/runner-pressure.test.mjs`
+Expected: PASS (2 tests).
 
 Run the Phase 1 runner tests to confirm no regression:
 Run: `cd automation/worker && node --test triage/runner.test.mjs`
 Expected: PASS (unchanged).
 
-- [ ] **Step 6: Write the policy integration test**
+- [ ] **Step 9: Write the policy integration test**
 
 ```js
 // automation/worker/policy/integration.test.mjs
-// Exercises the worker's decision path (policy gate → rejected → unclaimable)
+// Exercises the worker's decision path (pre-gate → rejected → unclaimable)
 // without importing worker.mjs (which starts the daemon on import).
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -934,7 +1041,7 @@ import { ensureSchema } from "../schema.mjs";
 import { ensureStrikeSchema, listBannedLogins } from "./strikes.mjs";
 import { relatedLoginsOf } from "./detect.mjs";
 import { recentIssuesByLogins } from "./history.mjs";
-import { evaluatePolicy } from "./engine.mjs";
+import { evaluatePolicyPre } from "./engine.mjs";
 import { issueFromJob } from "../triage/runner.mjs";
 import { claimNextPlanned } from "../triage/claim.mjs";
 
@@ -945,29 +1052,25 @@ function insertJob(db, { id, login, title, body, triage = "untriaged" }) {
   ).run(id, id, login, JSON.stringify({ title, body }), id, triage);
 }
 
-test("a duplicate from a related account is blocked, marked rejected, and never claimed", () => {
+test("a duplicate from a related account is pre-gate blocked, marked rejected, and never claimed", () => {
   const db = new Database(":memory:");
   ensureSchema(db);
   ensureStrikeSchema(db);
 
-  // prior issue from the alt account (already triaged, not relevant to claim here)
   insertJob(db, { id: 1, login: "aslocka2026", title: "Kalendarz gubi terminy", body: "przy zmianie strefy czasowej znikają wizyty", triage: "triaged" });
-  // the new untriaged duplicate from the main account
   insertJob(db, { id: 2, login: "aslocka", title: "Kalendarz gubi terminy", body: "przy zmianie strefy czasowej znikają wizyty" });
 
   const job = db.prepare("SELECT * FROM jobs WHERE id = 2").get();
   const issue = issueFromJob(job);
-  const policy = evaluatePolicy(db, issue, {
+  const pre = evaluatePolicyPre(db, issue, {
     priorIssues: recentIssuesByLogins(db, relatedLoginsOf(issue.login), { excludeId: job.id }),
     now: () => 5000,
   });
-  assert.equal(policy.blocked, true);
-  assert.deepEqual(policy.flags, ["multi-account"]);
+  assert.equal(pre.blocked, true);
+  assert.deepEqual(pre.flags, ["multi-account"]);
 
-  // worker would set this on block:
   db.prepare("UPDATE jobs SET triage_status='rejected' WHERE id = ?").run(job.id);
 
-  // the rejected duplicate is not claimable
   const claimed = claimNextPlanned(db, {
     throttledLogins: [], pausedLogins: [],
     bannedLogins: listBannedLogins(db),
@@ -977,14 +1080,14 @@ test("a duplicate from a related account is blocked, marked rejected, and never 
 });
 ```
 
-- [ ] **Step 7: Run it to verify it fails**
+- [ ] **Step 10: Run it to verify it passes**
 
 Run: `cd automation/worker && node --test policy/integration.test.mjs`
-Expected: PASS already IF Tasks 1–6 are in and `issueFromJob` is exported (this test uses only existing exports). If `issueFromJob` is not yet exported it FAILS with an import error — confirms Step 5 landed.
+Expected: PASS (1 test). (Uses only existing exports plus `issueFromJob`, exported in Step 7a.)
 
-- [ ] **Step 8: Wire the gate into `worker.mjs`**
+- [ ] **Step 11: Wire the gate into `worker.mjs`**
 
-8a. Update the runner + github-writer imports and add the policy imports. In `automation/worker/worker.mjs`, change:
+11a. Update the runner + github-writer imports and add the policy imports. In `automation/worker/worker.mjs`, change:
 
 ```js
 import { nextUntriagedJob, triageJob } from "./triage/runner.mjs";
@@ -1004,10 +1107,10 @@ import { postVerdict, postRejection } from "./triage/github-writer.mjs";
 import { ensureStrikeSchema, listBannedLogins } from "./policy/strikes.mjs";
 import { relatedLoginsOf } from "./policy/detect.mjs";
 import { recentIssuesByLogins } from "./policy/history.mjs";
-import { evaluatePolicy } from "./policy/engine.mjs";
+import { evaluatePolicyPre, pressureOverride } from "./policy/engine.mjs";
 ```
 
-8b. Ensure the strike schema. Change:
+11b. Ensure the strike schema. Change:
 ```js
 ensureSchema(db);
 ```
@@ -1017,7 +1120,7 @@ ensureSchema(db);
 ensureStrikeSchema(db);
 ```
 
-8c. Add the `BANNED_LOGINS` env seed. After the `PAUSED_LOGINS` block (the `.split(",")...filter(Boolean)` for paused), add:
+11c. Add the `BANNED_LOGINS` env seed. After the `PAUSED_LOGINS` block (its `.split(",")...filter(Boolean)`), add:
 
 ```js
 // Statically-seeded permanent bans (comma-separated). Unioned each loop with
@@ -1028,41 +1131,59 @@ const BANNED_LOGINS = (process.env.BANNED_LOGINS ?? "")
   .filter(Boolean);
 ```
 
-8d. Insert the policy gate at the top of the untriaged branch. Change:
+11d. Insert the pre-gate + pressure wiring in the untriaged branch. Change:
 
 ```js
     const untriaged = nextUntriagedJob(db);
     if (untriaged) {
       try {
         await triageJob(db, untriaged, {
+          planDigest: getPlanDigest(),
+          evaluate: (issue, digest) => evaluateIssue(issue, digest, { invokeLLM }),
+          writeBase: (verdict, issue) => createTriageRecord(verdict, issue, { exec }),
+          writeGithub: (issue, verdict) => postVerdict(issue, verdict, { exec }),
+          now: Date.now,
+          log: (o) => jlog(o),
+        });
+        jlog({ level: "info", msg: "triaged", id: untriaged.id, issue: untriaged.issue_number });
+      } catch (e) {
 ```
-
 to:
-
 ```js
     const untriaged = nextUntriagedJob(db);
     if (untriaged) {
-      // policy gate: block pressure / multi-account / banned before plan eval
+      // PRE-gate: block multi-account duplicates + banned logins before the LLM.
       const gateIssue = issueFromJob(untriaged);
-      const policy = evaluatePolicy(db, gateIssue, {
+      const pre = evaluatePolicyPre(db, gateIssue, {
         priorIssues: recentIssuesByLogins(db, relatedLoginsOf(gateIssue.login), { excludeId: untriaged.id }),
         now: Date.now,
       });
-      if (policy.blocked) {
-        try { postRejection(gateIssue, policy.comment, { exec }); }
+      if (pre.blocked) {
+        try { postRejection(gateIssue, pre.comment, { exec }); }
         catch (e) { jlog({ level: "warn", msg: "policy-comment-failed", id: untriaged.id, err: String(e) }); }
         db.prepare("UPDATE jobs SET triage_status='rejected', triage_rationale=? WHERE id=?")
-          .run(String(policy.comment).slice(0, 1000), untriaged.id);
-        jlog({ level: "info", msg: "policy-blocked", id: untriaged.id, flags: policy.flags, banned: policy.banned });
+          .run(String(pre.comment).slice(0, 1000), untriaged.id);
+        jlog({ level: "info", msg: "policy-blocked", id: untriaged.id, flags: pre.flags, banned: pre.banned });
         continue;
       }
       try {
         await triageJob(db, untriaged, {
+          planDigest: getPlanDigest(),
+          evaluate: (issue, digest) => evaluateIssue(issue, digest, { invokeLLM }),
+          writeBase: (verdict, issue) => createTriageRecord(verdict, issue, { exec }),
+          writeGithub: (issue, verdict) => postVerdict(issue, verdict, { exec }),
+          writeRejection: (issue, comment) => postRejection(issue, comment, { exec }),
+          pressureReject: (verdict) => pressureOverride(verdict, gateIssue),
+          now: Date.now,
+          log: (o) => jlog(o),
+        });
+        jlog({ level: "info", msg: "triaged", id: untriaged.id, issue: untriaged.issue_number });
+      } catch (e) {
 ```
 
-(The rest of the `try { await triageJob(...) ...} catch ... continue;` block is unchanged.)
+(The `catch (e) { ... }` block and the `continue;` that follow are unchanged.)
 
-8e. Union ledger bans into the claim call. Change:
+11e. Union ledger bans into the claim call. Change:
 
 ```js
     const job = claimNextPlanned(db, {
@@ -1083,16 +1204,16 @@ to:
     });
 ```
 
-- [ ] **Step 9: Verify the whole worker package**
+- [ ] **Step 12: Verify the whole worker package**
 
-Run: `cd automation/worker && node --check worker.mjs && node --check triage/runner.mjs && node --check triage/github-writer.mjs && node --check triage/claim.mjs && echo SYNTAX_OK`
+Run: `cd automation/worker && node --check worker.mjs && node --check triage/runner.mjs && node --check triage/github-writer.mjs && node --check triage/claim.mjs && node --check triage/evaluate.mjs && echo SYNTAX_OK`
 Expected: `SYNTAX_OK`.
 
 Run the full suite:
 Run: `cd automation/worker && npm test`
 Expected: all tests pass (Phase 1 suite + the new policy suite), 0 failures.
 
-- [ ] **Step 10: Deploy notes**
+- [ ] **Step 13: Deploy notes**
 
 Create `automation/worker/README.md` if it does not exist, or append a section, documenting the Phase 2 operational surface:
 
@@ -1101,40 +1222,42 @@ Create `automation/worker/README.md` if it does not exist, or append a section, 
 
 - Strike ledger lives in the same `queue.db` (table `strikes`). No migration step — `ensureStrikeSchema(db)` runs at worker startup.
 - `BANNED_LOGINS` (env, comma-separated) is the static ban seed. Runtime auto-bans (5 strikes) persist in the `strikes` ledger; the worker unions both each loop. Set on the server the same way as `PAUSED_LOGINS`/`THROTTLED_LOGINS` (systemd unit env / `.env`).
+- Pressure is never a decision factor: a fitting issue is accepted even if worded urgently; only a NON-fitting issue that carries pressure is rejected (stern comment). Priority always comes from the matched plan package.
 - GitHub labels required in the target repo: `triage:rejected` (in addition to Phase 1's `triage:PK1..PK9` and `triage:backlog`). Missing labels make `gh --add-label` fail, but that path is non-fatal (caught + logged).
 - The 6th-offense output is a printed `gh api -X DELETE .../collaborators/<login>` recommendation only. A human runs it. The agent never removes a collaborator or account.
 - Deploy is manual: copy `automation/worker/**` (including the new `policy/` dir) to `/home/claude-bot/worker/` as user `claude-bot` (respect RunCloud ownership), then restart `claude-worker` (the webhook is unchanged).
 ```
 
-- [ ] **Step 11: Commit**
+- [ ] **Step 14: Commit**
 
 ```bash
 git add automation/worker/worker.mjs automation/worker/triage/github-writer.mjs \
         automation/worker/triage/runner.mjs \
         automation/worker/triage/github-writer-reject.test.mjs \
+        automation/worker/triage/runner-pressure.test.mjs \
         automation/worker/policy/integration.test.mjs \
         automation/worker/README.md
-git commit -m "feat(triage): wire policy gate + ban union into the worker loop"
+git commit -m "feat(triage): wire policy pre-gate + pressure override into the worker loop"
 ```
 
 ---
 
 ## Self-Review
 
-Spec coverage (spec §132–171, Faza 2 §179–181):
+Spec coverage (spec §132–171, Faza 2 §179–181) + the user's pressure ruling:
 - Strike ledger (SQLite `strikes`: login/count/reasons/banned_at/updated_at) → Task 1. ✅
-- Pressure no-go + multi-account gaming (aslocka/aslocka2026, similarity + related-login map) → Task 2. ✅
-- Duplicate comparison against prior submissions from related accounts → Task 3 (history) + Task 5 (engine). ✅
-- Public strike comment with `Strike X/5` counter + reason; harsh Anna Słocka tone bounded to behavior → Task 4. ✅
-- Auto permanent ban at 5 strikes; banned excluded from the queue → Task 1 (ban flag) + Task 5 (engine) + Task 6 (orderer) + Task 7 (env union). ✅
+- Multi-account gaming (aslocka/aslocka2026, similarity + related-login map) → Task 2 + Task 3 (history) + Task 5 (pre-gate). ✅
+- Pressure never a decision factor; blocks only a non-fit, with a stern warning about repeatedly-established rules; fitting-but-urgent passes → Task 2 (presence), Task 4 (stern comment), Task 5 (`pressureOverride` + evaluator prompt hardening), Task 7 (`triageJob` short-circuit). ✅
+- Public strike comment with `Strike X/5` + reason; harsh Anna Słocka tone bounded to behavior → Task 4. ✅
+- Auto permanent ban at 5 strikes; banned excluded from the queue → Task 1 + Task 5 + Task 6 + Task 7 (env union). ✅
 - 6th offense → collaborator-removal recommendation, human-only, exact `gh api` command → Task 4 + Task 5. ✅
 - `BANNED_LOGINS` env, analogous to `PAUSED_LOGINS`, distinct permanent message → Task 7 + Task 4 (`banComment`). ✅
 - Visible verdict always (rejected issues get a comment + `triage:rejected` label) → Task 7 (`postRejection`). ✅
 
-Out of scope (spec §187–191), correctly NOT implemented here: Jam polling, ML dedup, auto collaborator/account removal, `Task breakdown` table, and the Wiki feedback loop (that is Phase 3).
+Out of scope (spec §187–191), correctly NOT implemented: Jam polling, ML dedup, auto collaborator/account removal, `Task breakdown` table, and the Wiki feedback loop (Phase 3).
 
 Placeholder scan: no TBD/TODO; every code and test step carries full content. ✅
 
-Type consistency: `evaluatePolicy` return shape `{ blocked, flags, comment, recordedStrike, banned }` is produced in Task 5 and consumed in Task 7 identically. `addStrike` returns `{ count, banned }` (Task 1) and is destructured as such in Task 5. `issue` shape matches Phase 1 `issueFromJob` output. `claimNextPlanned`'s new `bannedLogins` default `[]` keeps Phase 1 callers valid. ✅
+Type consistency: `evaluatePolicyPre` return `{ blocked, flags, comment, recordedStrike, banned }` (Task 5) consumed identically in Task 7. `pressureOverride(verdict, issue) → { reject, comment }` (Task 5) consumed by `triageJob`'s `pressureReject` dep (Task 7). `addStrike → { count, banned }` (Task 1) destructured in Task 5. `issue` shape matches Phase 1 `issueFromJob`. `claimNextPlanned`'s new `bannedLogins` defaults `[]`, keeping Phase 1 callers valid. `triageJob`'s new `pressureReject`/`writeRejection` deps are optional, keeping Phase 1 runner tests valid. ✅
 
-One open confirmation for pre-flight: the pressure-blocking heuristic (see Global Constraints "DECYZJA DO POTWIERDZENIA"). Everything else follows the spec directly.
+Pressure decision is fully resolved by the user's ruling (no open pre-flight items): pressure blocks only a non-fitting issue, is never a factor in the fit/priority decision, and always yields a stern comment warning about repeatedly-established rules.

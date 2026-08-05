@@ -68,14 +68,16 @@ function exec(cmd, args) {
 // Triage classifier LLM: reuse run-claude.sh in a one-shot, headless mode.
 // The script already knows how to invoke Claude; we pass the prompt via env
 // as TRIAGE_PROMPT and read its stdout. Uses the same RUN_SCRIPT the worker
-// runs. run-claude.sh handles TRIAGE_MODE=1 by calling:
-//   printf '%s' "$TRIAGE_PROMPT" | claude -p --output-format text 2>/dev/null
+// runs. run-claude.sh handles TRIAGE_MODE=1 by running: claude -p "$TRIAGE_PROMPT" --output-format text
 // which is the same `claude` binary/HOME the normal path uses, in print mode.
 function invokeLLM(prompt) {
   const r = spawnSync("/bin/bash", [RUN_SCRIPT], {
     encoding: "utf8", maxBuffer: 20 * 1024 * 1024,
     env: { ...process.env, TRIAGE_MODE: "1", TRIAGE_PROMPT: prompt },
   });
+  if (r.status !== 0) {
+    throw new Error(`triage LLM failed (exit ${r.status}): ${(r.stderr || "").slice(0, 500)}`);
+  }
   return r.stdout || "";
 }
 

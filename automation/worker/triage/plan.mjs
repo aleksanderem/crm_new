@@ -26,7 +26,7 @@ export function buildPlanDigest(records) {
     byPk.get(r.pk).push(r);
   }
   const parts = [];
-  for (const [pk, list] of [...byPk.entries()].sort()) {
+  for (const [pk, list] of [...byPk.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     parts.push(`### ${pk}`);
     for (const r of list) {
       parts.push(`- [${r.pr}|${r.mod}|kol ${r.ord}] ${r.task}`);

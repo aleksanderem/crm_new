@@ -38,7 +38,7 @@ import { formatPhoneNumber } from "@/lib/phone";
 import { formatBirthDate } from "@/lib/format-date";
 import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import { displayReferralSource } from "@/lib/options";
-import { PermissionGate } from "@/hooks/use-permission";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type PatientNudgeFilter = "missing-contact" | "no-recent-visit" | "duplicates";
@@ -102,6 +102,10 @@ function PatientsIndex() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { nudge: nudgeFilter } = useSearch({ from: Route.id });
+  const { allowed: canCreate } = usePermission("gabinet_patients", "create");
+  const { allowed: canEdit } = usePermission("gabinet_patients", "edit");
+  const { allowed: canDelete } = usePermission("gabinet_patients", "delete");
+
   const createPatient = useAction(api.gabinet.patients.create);
   const removePatient = useAction(api.gabinet.patients.remove);
 
@@ -551,37 +555,45 @@ function PatientsIndex() {
 
   const rowActions = useCallback(
     (row: Patient) => [
-      {
-        label: t("common.edit"),
-        onClick: () =>
-          navigate({ to: `/dashboard/gabinet/patients/${row._id}` }),
-      },
+      ...(canEdit
+        ? [
+            {
+              label: t("common.edit"),
+              onClick: () =>
+                navigate({ to: `/dashboard/gabinet/patients/${row._id}` }),
+            },
+          ]
+        : []),
       {
         label: t("gabinet.patients.merge.action", { defaultValue: "Scal z..." }),
         icon: <Users className="h-4 w-4" variant="stroke" />,
         onClick: () => setMergeSourcePatient(row),
       },
-      {
-        label: t("common.delete"),
-        icon: <Trash2 className="h-4 w-4" variant="stroke" />,
-        onClick: async () => {
-          if (window.confirm(t("gabinet.patients.confirmDelete"))) {
-            try {
-              await removePatient({ organizationId, patientId: row._id as Id<"gabinetPatients"> });
-              toast.success(t("common.deleted"));
-            } catch (e) {
-              toast.error(
-                formatActionError(e, t, {
-                  key: "gabinet.patients.errors.deleteFailed",
-                  defaultValue: "Nie udało się usunąć pacjenta.",
-                }),
-              );
-            }
-          }
-        },
-      },
+      ...(canDelete
+        ? [
+            {
+              label: t("common.delete"),
+              icon: <Trash2 className="h-4 w-4" variant="stroke" />,
+              onClick: async () => {
+                if (window.confirm(t("gabinet.patients.confirmDelete"))) {
+                  try {
+                    await removePatient({ organizationId, patientId: row._id as Id<"gabinetPatients"> });
+                    toast.success(t("common.deleted"));
+                  } catch (e) {
+                    toast.error(
+                      formatActionError(e, t, {
+                        key: "gabinet.patients.errors.deleteFailed",
+                        defaultValue: "Nie udało się usunąć pacjenta.",
+                      }),
+                    );
+                  }
+                }
+              },
+            },
+          ]
+        : []),
     ],
-    [navigate, removePatient, organizationId, t],
+    [navigate, removePatient, organizationId, t, canEdit, canDelete],
   );
 
   return (
@@ -590,10 +602,12 @@ function PatientsIndex() {
         title={t("gabinet.patients.title")}
         description={t("gabinet.patients.description")}
         actions={
-          <Button onClick={() => setPanelOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" variant="stroke" />
-            {t("gabinet.patients.addPatient")}
-          </Button>
+          <PermissionGate feature="gabinet_patients" action="create">
+            <Button onClick={() => setPanelOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
+              {t("gabinet.patients.addPatient")}
+            </Button>
+          </PermissionGate>
         }
       />
 
@@ -684,16 +698,20 @@ function PatientsIndex() {
         onSortChange={setSortDescriptor}
         enableBulkSelect
         bulkActions={[
-          { label: t("common.edit"), value: "edit" },
+          ...(canEdit ? [{ label: t("common.edit"), value: "edit" }] : []),
           {
             label: t("gabinet.patients.merge.bulkAction", { defaultValue: "Scal zaznaczonych" }),
             value: "merge",
           },
-          {
-            label: t("common.delete"),
-            value: "delete",
-            variant: "destructive",
-          },
+          ...(canDelete
+            ? [
+                {
+                  label: t("common.delete"),
+                  value: "delete",
+                  variant: "destructive" as const,
+                },
+              ]
+            : []),
         ]}
         onBulkAction={handleBulkAction}
         rowActions={rowActions}

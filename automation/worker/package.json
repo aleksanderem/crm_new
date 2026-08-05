@@ -3,6 +3,9 @@
   "type": "module",
   "version": "1.0.0",
   "private": true,
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
     "express": "^4.21.0",
     "better-sqlite3": "^11.3.0"

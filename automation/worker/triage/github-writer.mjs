@@ -31,3 +31,8 @@ export function postRejection(issue, body, { exec }) {
   exec("gh", ["issue", "comment", String(issue.number), "--repo", repo, "--body", body]);
   exec("gh", ["issue", "edit", String(issue.number), "--repo", repo, "--add-label", "triage:rejected"]);
 }
+
+// Add a label to an issue (used to flag plan-change proposals for human review).
+export function labelIssue(issue, label, { exec }) {
+  exec("gh", ["issue", "edit", String(issue.number), "--repo", issue.repo, "--add-label", label]);
+}

@@ -1,11 +1,11 @@
 // Plan bridge: turn native "Do zrobienia" plan tasks into @claude GitHub issues,
-// one at a time, in plan order (Priorytet P0→P1→P2, then Kolejność). The normal
-// pipeline (webhook → triage → worker) then executes them. Idempotency:
+// one per tick, in plan order (Priorytet P0→P1→P2, then Kolejność). The normal
+// pipeline (webhook → triage → worker) then executes them, and the worker's
+// claimNextPlanned orders the whole queue by triage priority — so an imported
+// task takes its correct place relative to everything else already queued
+// (no idle-gating: the queue itself is the sequencer). Idempotency:
 //   - skips Triage=true rows (triage-created records — never re-imported)
 //   - skips Zaimportowane=true rows (native tasks already sent to GitHub)
-// Backpressure: only imports when the worker queue has no pending/running job,
-// so tasks run successively, not flooded.
-import Database from "better-sqlite3";
 import { spawnSync } from "node:child_process";
 import { fetchPlanRecordsWithIds } from "./wiki/plan-index.mjs";
 import { BASE_TOKEN, TABLE_ID } from "./triage/plan.mjs";
@@ -54,9 +54,8 @@ export function buildIssue(record) {
   return { title, body };
 }
 
-// One bridge tick. deps: { exec, queueBusy, repo, dry }. Returns an outcome object.
+// One bridge tick. deps: { exec, repo, dry }. Returns an outcome object.
 export function runBridge(records, deps) {
-  if (deps.queueBusy()) return { action: "skip", reason: "queue-busy" };
   const task = selectNextTask(records);
   if (!task) return { action: "skip", reason: "no-task" };
   const { title, body } = buildIssue(task);
@@ -79,23 +78,17 @@ if (isMain) {
     if (r.status !== 0) throw new Error(`${cmd} failed (${r.status}): ${(r.stderr || "").slice(0, 300)}`);
     return { stdout: r.stdout || "" };
   }
-  function queueBusy() {
-    const db = new Database(DB_PATH, { readonly: true });
-    const c = db.prepare("SELECT count(*) c FROM jobs WHERE status IN ('pending','running')").get().c;
-    db.close();
-    return c > 0;
-  }
   try {
     const records = fetchPlanRecordsWithIds({ exec });
     let res;
     if (DRY) {
-      // preview: show the next task selection + queue state, no writes, no gate
+      // preview: show the next task selection, no writes
       const task = selectNextTask(records);
       res = task
-        ? { action: "dry", record: task.record_id, title: buildIssue(task).title, queueBusy: queueBusy() }
-        : { action: "dry", reason: "no-task", queueBusy: queueBusy() };
+        ? { action: "dry", record: task.record_id, title: buildIssue(task).title }
+        : { action: "dry", reason: "no-task" };
     } else {
-      res = runBridge(records, { exec, queueBusy, repo: REPO, dry: false });
+      res = runBridge(records, { exec, repo: REPO, dry: false });
     }
     console.log(JSON.stringify({ ts: new Date().toISOString(), ...res }));
   } catch (e) {

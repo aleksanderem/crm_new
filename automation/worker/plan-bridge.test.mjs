@@ -46,24 +46,24 @@ test("buildIssue mentions @claude and carries plan context", () => {
   assert.match(body, /r9/);
 });
 
-test("runBridge skips when the queue is busy (backpressure)", () => {
-  const res = runBridge([rec("r1")], { queueBusy: () => true, exec: () => { throw new Error("should not run"); }, repo: "o/r" });
-  assert.deepEqual(res, { action: "skip", reason: "queue-busy" });
+test("runBridge returns no-task when nothing is importable", () => {
+  const res = runBridge([rec("t", { "Triage": true })], { exec: () => { throw new Error("no"); }, repo: "o/r" });
+  assert.deepEqual(res, { action: "skip", reason: "no-task" });
 });
 
 test("runBridge dry mode selects a task without side effects", () => {
-  const res = runBridge([rec("r1")], { queueBusy: () => false, dry: true, exec: () => { throw new Error("no"); }, repo: "o/r" });
+  const res = runBridge([rec("r1")], { dry: true, exec: () => { throw new Error("no"); }, repo: "o/r" });
   assert.equal(res.action, "dry");
   assert.equal(res.record, "r1");
 });
 
-test("runBridge creates the issue, marks imported, when idle", () => {
+test("runBridge creates the issue and marks imported (unconditionally — queue orders execution)", () => {
   const calls = [];
   const exec = (cmd, args) => {
     calls.push([cmd, args[0]]);
     return { stdout: cmd === "gh" ? "https://github.com/o/r/issues/123\n" : "{}" };
   };
-  const res = runBridge([rec("r1")], { queueBusy: () => false, exec, repo: "o/r" });
+  const res = runBridge([rec("r1")], { exec, repo: "o/r" });
   assert.equal(res.action, "imported");
   assert.equal(res.url, "https://github.com/o/r/issues/123");
   assert.deepEqual(calls[0], ["gh", "issue"]);          // create issue

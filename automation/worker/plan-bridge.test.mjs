@@ -46,24 +46,31 @@ test("buildIssue mentions @claude and carries plan context", () => {
   assert.match(body, /r9/);
 });
 
+const idle = { pendingCount: () => 0, cap: 3 };
+
 test("runBridge returns no-task when nothing is importable", () => {
-  const res = runBridge([rec("t", { "Triage": true })], { exec: () => { throw new Error("no"); }, repo: "o/r" });
+  const res = runBridge([rec("t", { "Triage": true })], { ...idle, exec: () => { throw new Error("no"); }, repo: "o/r" });
   assert.deepEqual(res, { action: "skip", reason: "no-task" });
 });
 
+test("runBridge skips (cap-reached) when the plan-job buffer is full", () => {
+  const res = runBridge([rec("r1")], { pendingCount: () => 3, cap: 3, exec: () => { throw new Error("should not run"); }, repo: "o/r" });
+  assert.deepEqual(res, { action: "skip", reason: "cap-reached", pending: 3, cap: 3 });
+});
+
 test("runBridge dry mode selects a task without side effects", () => {
-  const res = runBridge([rec("r1")], { dry: true, exec: () => { throw new Error("no"); }, repo: "o/r" });
+  const res = runBridge([rec("r1")], { ...idle, dry: true, exec: () => { throw new Error("no"); }, repo: "o/r" });
   assert.equal(res.action, "dry");
   assert.equal(res.record, "r1");
 });
 
-test("runBridge creates the issue and marks imported (unconditionally — queue orders execution)", () => {
+test("runBridge creates the issue and marks imported when under cap (queue orders execution)", () => {
   const calls = [];
   const exec = (cmd, args) => {
     calls.push([cmd, args[0]]);
     return { stdout: cmd === "gh" ? "https://github.com/o/r/issues/123\n" : "{}" };
   };
-  const res = runBridge([rec("r1")], { exec, repo: "o/r" });
+  const res = runBridge([rec("r1")], { ...idle, exec, repo: "o/r" });
   assert.equal(res.action, "imported");
   assert.equal(res.url, "https://github.com/o/r/issues/123");
   assert.deepEqual(calls[0], ["gh", "issue"]);          // create issue

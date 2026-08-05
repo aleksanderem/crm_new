@@ -6,6 +6,7 @@
 // (no idle-gating: the queue itself is the sequencer). Idempotency:
 //   - skips Triage=true rows (triage-created records — never re-imported)
 //   - skips Zaimportowane=true rows (native tasks already sent to GitHub)
+import Database from "better-sqlite3";
 import { spawnSync } from "node:child_process";
 import { fetchPlanRecordsWithIds } from "./wiki/plan-index.mjs";
 import { BASE_TOKEN, TABLE_ID } from "./triage/plan.mjs";
@@ -54,8 +55,14 @@ export function buildIssue(record) {
   return { title, body };
 }
 
-// One bridge tick. deps: { exec, repo, dry }. Returns an outcome object.
+// One bridge tick. deps: { exec, repo, dry, pendingCount, cap }. Returns an
+// outcome. The cap limits how many bridge-imported plan jobs may sit PENDING at
+// once — a small buffer so the queue isn't filled on spec. It counts only plan
+// jobs (bridge author), NOT the whole queue, so it never lets unrelated jobs
+// block a plan import (that was the earlier idle-gate bug).
 export function runBridge(records, deps) {
+  const pending = deps.pendingCount();
+  if (pending >= deps.cap) return { action: "skip", reason: "cap-reached", pending, cap: deps.cap };
   const task = selectNextTask(records);
   if (!task) return { action: "skip", reason: "no-task" };
   const { title, body } = buildIssue(task);
@@ -73,22 +80,30 @@ if (isMain) {
   const DRY = process.env.BRIDGE_DRY === "1";
   const REPO = process.env.PLAN_BRIDGE_REPO || "aleksanderem/crm_new";
   const DB_PATH = process.env.DB_PATH || "/home/claude-bot/worker/queue.db";
+  const CAP = parseInt(process.env.PLAN_BRIDGE_MAX_PENDING ?? "3", 10);
+  // bridge-imported issues are authored by the bot's gh identity
+  const AUTHOR = process.env.PLAN_BRIDGE_AUTHOR || process.env.BOT_GH_LOGIN || "aleksanderem";
   function exec(cmd, args) {
     const r = spawnSync(cmd, args, { encoding: "utf8", maxBuffer: 20 * 1024 * 1024 });
     if (r.status !== 0) throw new Error(`${cmd} failed (${r.status}): ${(r.stderr || "").slice(0, 300)}`);
     return { stdout: r.stdout || "" };
   }
+  function pendingCount() {
+    const db = new Database(DB_PATH, { readonly: true });
+    const c = db.prepare("SELECT count(*) c FROM jobs WHERE status='pending' AND trigger_login=?").get(AUTHOR).c;
+    db.close();
+    return c;
+  }
   try {
     const records = fetchPlanRecordsWithIds({ exec });
     let res;
     if (DRY) {
-      // preview: show the next task selection, no writes
+      // preview: next task selection + current plan-job buffer vs cap, no writes
       const task = selectNextTask(records);
-      res = task
-        ? { action: "dry", record: task.record_id, title: buildIssue(task).title }
-        : { action: "dry", reason: "no-task" };
+      res = { action: "dry", pending: pendingCount(), cap: CAP,
+        ...(task ? { record: task.record_id, title: buildIssue(task).title } : { reason: "no-task" }) };
     } else {
-      res = runBridge(records, { exec, repo: REPO, dry: false });
+      res = runBridge(records, { exec, repo: REPO, dry: false, pendingCount, cap: CAP });
     }
     console.log(JSON.stringify({ ts: new Date().toISOString(), ...res }));
   } catch (e) {

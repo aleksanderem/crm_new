@@ -80,7 +80,7 @@ import { CategoriesManagerSlideout } from "@/components/categories-tags/categori
 import { EventDialog } from "@/components/gabinet/calendar/event-dialog";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatAppointmentError } from "@/lib/format-action-error";
-import { PermissionGate } from "@/hooks/use-permission";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function CalendarSkeleton() {
@@ -136,6 +136,8 @@ function formatDateStr(d: Date): string {
 function GabinetCalendarPage() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
+  const { allowed: canCreate } = usePermission("gabinet_appointments", "create");
+  const { allowed: canUpdate } = usePermission("gabinet_appointments", "update");
   const search = useSearch({ from: "/_app/_auth/dashboard/_layout/gabinet/calendar/" });
   const routeNavigate = useNavigate();
   const nudgeFilter = search.nudge;
@@ -999,12 +1001,13 @@ function GabinetCalendarPage() {
   // Opens the create-appointment dialog with the current date pre-filled.
   // Shared by the mobile and desktop "+" buttons so both spawn the same dialog.
   const openCreateDialog = useCallback(() => {
+    if (!canCreate) return;
     setCreateDefaultDate(formatDateStr(currentDate));
     setCreateDefaultTime(undefined);
     setCreateDefaultEndTime(undefined);
     setCreateDefaultUserId(undefined);
     setCreateDialogOpen(true);
-  }, [currentDate]);
+  }, [currentDate, canCreate]);
 
   // Opens the create-event dialog (non-patient calendar block — e.g.
   // meeting/training that blocks time in the calendar, issue #1555).
@@ -1050,6 +1053,7 @@ function GabinetCalendarPage() {
   // Click-to-create handler
   const handleSlotClick = useCallback(
     (dateOrTime: string, time?: string) => {
+      if (!canCreate) return;
       // Day view passes just time, week view passes date + time
       if (time) {
         setCreateDefaultDate(dateOrTime);
@@ -1062,43 +1066,46 @@ function GabinetCalendarPage() {
       setCreateDefaultUserId(undefined);
       setCreateDialogOpen(true);
     },
-    [currentDate],
+    [currentDate, canCreate],
   );
 
   // Drag-to-create handler (sets both start and end time)
   const handleSlotDragSelect = useCallback(
     (date: string, startTime: string, endTime: string) => {
+      if (!canCreate) return;
       setCreateDefaultDate(date);
       setCreateDefaultTime(startTime);
       setCreateDefaultEndTime(endTime);
       setCreateDefaultUserId(undefined);
       setCreateDialogOpen(true);
     },
-    [],
+    [canCreate],
   );
 
   // Click-to-create for the day-by-employee view — pre-selects the employee
   // whose column was clicked so the user doesn't have to choose again.
   const handleEmployeeSlotClick = useCallback(
     (date: string, time: string, employeeId: string) => {
+      if (!canCreate) return;
       setCreateDefaultDate(date);
       setCreateDefaultTime(time);
       setCreateDefaultEndTime(undefined);
       setCreateDefaultUserId(employeeId);
       setCreateDialogOpen(true);
     },
-    [],
+    [canCreate],
   );
 
   const handleEmployeeSlotDragSelect = useCallback(
     (date: string, startTime: string, endTime: string, employeeId: string) => {
+      if (!canCreate) return;
       setCreateDefaultDate(date);
       setCreateDefaultTime(startTime);
       setCreateDefaultEndTime(endTime);
       setCreateDefaultUserId(employeeId);
       setCreateDialogOpen(true);
     },
-    [],
+    [canCreate],
   );
 
   const handleDayClick = useCallback((date: string) => {
@@ -1109,6 +1116,7 @@ function GabinetCalendarPage() {
   // Resize handler (called when user drags an appointment's bottom edge)
   const handleAppointmentResize = useCallback(
     async (id: string, newEndTime: string) => {
+      if (!canUpdate) return;
       try {
         await updateAppointment({
           organizationId,
@@ -1130,7 +1138,7 @@ function GabinetCalendarPage() {
         );
       }
     },
-    [organizationId, updateAppointment, queryClient, t],
+    [organizationId, updateAppointment, queryClient, t, canUpdate],
   );
 
   // DnD handlers
@@ -1151,6 +1159,7 @@ function GabinetCalendarPage() {
       setActiveAppointment(null);
 
       if (!over) return;
+      if (!canUpdate) return;
 
       const appointmentId = active.id as string;
       const dropData = over.data.current;
@@ -1222,7 +1231,7 @@ function GabinetCalendarPage() {
         }
       }
     },
-    [organizationId, updateAppointment, viewAppointments, queryClient, t],
+    [organizationId, updateAppointment, viewAppointments, queryClient, t, canUpdate],
   );
 
   // Title
@@ -1450,14 +1459,16 @@ function GabinetCalendarPage() {
                 </Button>
                 <h2 className="ml-2 truncate text-xs font-semibold">{title}</h2>
               </div>
-              <Button
-                size="sm"
-                className="h-7 shrink-0 text-xs md:hidden"
-                aria-label={t("gabinet.dashboard.addAppointment", "Umów wizytę")}
-                onClick={openCreateDialog}
-              >
-                <Plus className="h-3.5 w-3.5" variant="stroke" />
-              </Button>
+              <PermissionGate feature="gabinet_appointments" action="create">
+                <Button
+                  size="sm"
+                  className="h-7 shrink-0 text-xs md:hidden"
+                  aria-label={t("gabinet.dashboard.addAppointment", "Umów wizytę")}
+                  onClick={openCreateDialog}
+                >
+                  <Plus className="h-3.5 w-3.5" variant="stroke" />
+                </Button>
+              </PermissionGate>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -1503,17 +1514,19 @@ function GabinetCalendarPage() {
 
               {/* Create button — hidden on mobile where it lives next to the
                   date nav (above) to avoid wrapping onto its own row. */}
-              <Button
-                size="sm"
-                className="hidden h-7 text-xs md:inline-flex"
-                data-testid="calendar-create-appointment-button"
-                onClick={openCreateDialog}
-              >
-                <Plus className="h-3.5 w-3.5 sm:mr-1" variant="stroke" />
-                <span className="hidden sm:inline">
-                  {t("gabinet.dashboard.addAppointment", "Umów wizytę")}
-                </span>
-              </Button>
+              <PermissionGate feature="gabinet_appointments" action="create">
+                <Button
+                  size="sm"
+                  className="hidden h-7 text-xs md:inline-flex"
+                  data-testid="calendar-create-appointment-button"
+                  onClick={openCreateDialog}
+                >
+                  <Plus className="h-3.5 w-3.5 sm:mr-1" variant="stroke" />
+                  <span className="hidden sm:inline">
+                    {t("gabinet.dashboard.addAppointment", "Umów wizytę")}
+                  </span>
+                </Button>
+              </PermissionGate>
             </div>
           </div>
 

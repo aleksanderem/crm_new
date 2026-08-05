@@ -169,7 +169,7 @@ npm run migrations:apply
 - [ ] Filter dropdowns work
 
 ### 4. Monitoring
-- [ ] Set up error tracking (Sentry, LogRocket, etc.)
+- [x] Set up error tracking — Sentry wired in (#3643). Set VITE_SENTRY_DSN in Netlify env vars to activate; SENTRY_AUTH_TOKEN + SENTRY_ORG + SENTRY_PROJECT enable source-map upload at build time. See `.env.example`.
 - [ ] Monitor performance (Lighthouse, WebPageTest)
 - [ ] Check analytics (Google Analytics, Plausible, etc.)
 

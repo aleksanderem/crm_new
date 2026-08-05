@@ -2,10 +2,15 @@ import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
 import App from "@/app";
+import { initSentry } from "@/lib/sentry";
 import { installGlobalErrorHandlers } from "@/lib/error-reporter";
 
-// Install global error handlers as early as possible so we catch errors
-// that happen during the initial React render and async work after mount.
+// Sentry must be initialized before any other code so its SDK-level handlers
+// (breadcrumbs, network tracing, etc.) are in place from the very first tick.
+// It is a no-op when VITE_SENTRY_DSN is not set.
+initSentry();
+
+// Install our own global error handlers after Sentry so both receive events.
 installGlobalErrorHandlers();
 
 // Render the app

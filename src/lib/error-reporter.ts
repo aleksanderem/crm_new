@@ -1,5 +1,5 @@
-// Frontend error reporter — pushes errors into the Convex `errorLogs` table
-// so they're visible in /admin/errors and searchable.
+// Frontend error reporter — sends errors to Sentry AND pushes them into the
+// Convex `errorLogs` table so they're visible in /admin/errors.
 //
 // Usage:
 //   import { reportError, installGlobalErrorHandlers } from "@/lib/error-reporter";
@@ -10,6 +10,7 @@
 // the app. We swallow every exception inside this module.
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@cvx/_generated/api";
+import { Sentry } from "@/lib/sentry";
 
 const ENDPOINT = import.meta.env.VITE_CONVEX_URL as string | undefined;
 
@@ -76,6 +77,25 @@ export async function reportError(
     const { message, stack } = asMessage(err);
     const dedupKey = `${ctx.scope ?? ""}|${ctx.fnName ?? ""}|${message}`;
     if (isDuplicate(dedupKey)) return;
+
+    // Forward to Sentry first (no-op when DSN is not configured).
+    try {
+      const errObj =
+        err instanceof Error ? err : new Error(message);
+      Sentry.withScope((scope) => {
+        if (ctx.scope) scope.setTag("app.scope", ctx.scope);
+        if (ctx.fnName) scope.setTag("app.fnName", ctx.fnName);
+        if (ctx.organizationId)
+          scope.setTag("app.organizationId", ctx.organizationId);
+        if (ctx.source) scope.setTag("app.source", ctx.source);
+        if (ctx.level === "warn") {
+          scope.setLevel("warning");
+        }
+        Sentry.captureException(errObj);
+      });
+    } catch {
+      // Sentry errors must not propagate.
+    }
 
     const c = client();
     if (!c) return;

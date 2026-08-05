@@ -35,5 +35,6 @@ test("createTriageRecord builds a record-create command and returns the new id",
   assert.equal(calls[0].cmd, "lark-cli");
   assert.ok(calls[0].args.includes("+record-batch-create"));
   assert.ok(calls[0].args.includes("--base-token"));
+  assert.ok(calls[0].args.includes("--table-id"));
   assert.equal(id, "recNEW123");
 });

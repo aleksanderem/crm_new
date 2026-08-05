@@ -3,6 +3,7 @@ import Database from "better-sqlite3";
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { ensureSchema } from "./schema.mjs";
 
 const DB_PATH = process.env.DB_PATH || "/home/claude-bot/worker/queue.db";
 const RUN_SCRIPT = "/home/claude-bot/worker/run-claude.sh";
@@ -30,6 +31,7 @@ fs.mkdirSync(LOG_DIR, { recursive: true });
 
 const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
+ensureSchema(db);
 
 // Picks the oldest pending job whose `trigger_login` is either NOT in the
 // throttled list, or is in the list but no other job from that same user

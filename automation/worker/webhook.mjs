@@ -6,6 +6,7 @@ import crypto from "node:crypto";
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
+import { ensureSchema } from "./schema.mjs";
 
 const PORT = parseInt(process.env.PORT || "9090", 10);
 const HOST = process.env.HOST || "127.0.0.1";
@@ -27,23 +28,7 @@ if (!BOT_GH_LOGIN) {
 
 const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
-db.exec(`
-  CREATE TABLE IF NOT EXISTS jobs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    issue_number INTEGER NOT NULL,
-    repo TEXT NOT NULL,
-    event_type TEXT NOT NULL,
-    trigger_login TEXT,
-    trigger_comment_id INTEGER,
-    payload_json TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'pending',
-    created_at INTEGER NOT NULL,
-    started_at INTEGER,
-    finished_at INTEGER,
-    result TEXT
-  );
-  CREATE INDEX IF NOT EXISTS idx_status_created ON jobs(status, created_at);
-`);
+ensureSchema(db);
 const insertJob = db.prepare(`
   INSERT INTO jobs (issue_number, repo, event_type, trigger_login, trigger_comment_id, payload_json, created_at)
   VALUES (?, ?, ?, ?, ?, ?, ?)

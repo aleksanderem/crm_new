@@ -19,7 +19,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
-import { PermissionGate } from "@/hooks/use-permission";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function SchedulingSettingsSkeleton() {
@@ -67,6 +67,7 @@ const DEFAULT_HOURS: DayHours[] = Array.from({ length: 7 }, (_, i) => ({
 function SchedulingSettings() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
+  const { allowed: canEdit } = usePermission("gabinet_settings", "edit");
   const bulkSet = useAction(api.gabinet.scheduling.bulkSetWorkingHours);
   const [saving, setSaving] = useState(false);
 
@@ -297,11 +298,13 @@ function SchedulingSettings() {
         })}
       </div>
 
-      <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saving || validationErrors.length > 0 || breakErrors.length > 0}>
-          {saving ? t("common.saving") : t("common.save")}
-        </Button>
-      </div>
+      {canEdit && (
+        <div className="flex justify-end">
+          <Button onClick={handleSave} disabled={saving || validationErrors.length > 0 || breakErrors.length > 0}>
+            {saving ? t("common.saving") : t("common.save")}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

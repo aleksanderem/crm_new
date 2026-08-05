@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { PermissionGate } from "@/hooks/use-permission";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function ReminderSettingsSkeleton() {
@@ -77,6 +77,7 @@ function ChannelToggle({
 function ReminderSettings() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const { allowed: canEdit } = usePermission("gabinet_settings", "edit");
   const upsertSettings = useAction(api.orgSettings.upsert);
   const [saving, setSaving] = useState(false);
 
@@ -143,6 +144,7 @@ function ReminderSettings() {
             description={t("gabinet.reminders.sms48hDesc")}
             checked={config.sms48h}
             onCheckedChange={toggle("sms48h")}
+            disabled={!canEdit}
           />
           <ChannelToggle
             id="sms24h"
@@ -150,6 +152,7 @@ function ReminderSettings() {
             description={t("gabinet.reminders.sms24hDesc")}
             checked={config.sms24h}
             onCheckedChange={toggle("sms24h")}
+            disabled={!canEdit}
           />
         </div>
 
@@ -163,6 +166,7 @@ function ReminderSettings() {
             description={t("gabinet.reminders.email48hDesc")}
             checked={config.email48h}
             onCheckedChange={toggle("email48h")}
+            disabled={!canEdit}
           />
           <ChannelToggle
             id="email24h"
@@ -170,6 +174,7 @@ function ReminderSettings() {
             description={t("gabinet.reminders.email24hDesc")}
             checked={config.email24h}
             onCheckedChange={toggle("email24h")}
+            disabled={!canEdit}
           />
         </div>
 
@@ -177,11 +182,13 @@ function ReminderSettings() {
           {t("gabinet.reminders.noContactWarning")}
         </p>
 
-        <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? t("common.saving") : t("common.save")}
-          </Button>
-        </div>
+        {canEdit && (
+          <div className="flex justify-end">
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? t("common.saving") : t("common.save")}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

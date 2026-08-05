@@ -60,7 +60,7 @@ import type { MappedGabinetEmployee } from "@/lib/supabase/mappers/gabinet/emplo
 import type { MappedGabinetEmployeeSchedule } from "@/lib/supabase/mappers/gabinet/employee-schedules";
 import type { MappedGabinetWorkingHours } from "@/lib/supabase/mappers/gabinet/working-hours";
 import type { MappedGabinetLeave } from "@/lib/supabase/mappers/gabinet/leaves";
-import { PermissionGate } from "@/hooks/use-permission";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function TimetablePageSkeleton() {
@@ -316,6 +316,7 @@ function formatMinutesAsHours(minutes: number): string {
 function TimetablePage() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
+  const { allowed: canEdit } = usePermission("gabinet_settings", "edit");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -882,18 +883,20 @@ function TimetablePage() {
                                 </span>
                               </td>
                               <td className="px-1.5 py-2 text-right align-top">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setEditingEmployee(emp)}
-                                  aria-label={t("common.edit")}
-                                >
-                                  <Pencil
-                                    className="mr-1 h-4 w-4"
-                                    variant="stroke"
-                                  />
-                                  {t("common.edit")}
-                                </Button>
+                                {canEdit && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setEditingEmployee(emp)}
+                                    aria-label={t("common.edit")}
+                                  >
+                                    <Pencil
+                                      className="mr-1 h-4 w-4"
+                                      variant="stroke"
+                                    />
+                                    {t("common.edit")}
+                                  </Button>
+                                )}
                               </td>
                             </tr>
                           );
@@ -957,19 +960,21 @@ function TimetablePage() {
                                 )}
                               </div>
                             </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setEditingEmployee(emp)}
-                              aria-label={t("common.edit")}
-                              className="shrink-0"
-                            >
-                              <Pencil
-                                className="mr-1 h-4 w-4"
-                                variant="stroke"
-                              />
-                              {t("common.edit")}
-                            </Button>
+                            {canEdit && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setEditingEmployee(emp)}
+                                aria-label={t("common.edit")}
+                                className="shrink-0"
+                              >
+                                <Pencil
+                                  className="mr-1 h-4 w-4"
+                                  variant="stroke"
+                                />
+                                {t("common.edit")}
+                              </Button>
+                            )}
                           </div>
 
                           <div className="flex flex-col text-sm border-t border-b">

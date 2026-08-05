@@ -41,7 +41,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
-import { PermissionGate } from "@/hooks/use-permission";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function EquipmentSettingsSkeleton() {
@@ -255,6 +255,8 @@ function EquipmentCard({
   const [transferNotes, setTransferNotes] = useState("");
   const [transferring, setTransferring] = useState(false);
 
+  const { allowed: canEdit } = usePermission("gabinet_settings", "edit");
+
   const updateEquipment = useAction(api.gabinet.equipment.updateEquipment);
   const transferEquipment = useAction(api.gabinet.equipment.transferEquipment);
 
@@ -377,25 +379,29 @@ function EquipmentCard({
         />
 
         <div className="flex items-center gap-1 ml-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 px-2 text-xs"
-            onClick={() => {
-              setExpanded(true);
-            }}
-          >
-            {t("common.edit")}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 px-2 text-xs"
-            onClick={() => setTransferOpen(true)}
-          >
-            <ArrowRight className="mr-1 h-3 w-3" variant="stroke" />
-            {t("gabinet.equipment.transfer")}
-          </Button>
+          {canEdit && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-xs"
+              onClick={() => {
+                setExpanded(true);
+              }}
+            >
+              {t("common.edit")}
+            </Button>
+          )}
+          {canEdit && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-xs"
+              onClick={() => setTransferOpen(true)}
+            >
+              <ArrowRight className="mr-1 h-3 w-3" variant="stroke" />
+              {t("gabinet.equipment.transfer")}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -484,13 +490,15 @@ function EquipmentCard({
                   <ChevronRight className="h-3 w-3" variant="stroke" />
                 )}
               </Button>
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={saving || !editName.trim()}
-              >
-                {saving ? t("common.saving") : t("common.save")}
-              </Button>
+              {canEdit && (
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={saving || !editName.trim()}
+                >
+                  {saving ? t("common.saving") : t("common.save")}
+                </Button>
+              )}
             </div>
 
             {historyOpen && (
@@ -603,6 +611,8 @@ function EquipmentSettingsPage() {
   const [newParameterUnits, setNewParameterUnits] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
 
+  const { allowed: canCreate } = usePermission("gabinet_settings", "create");
+
   const queryClient = useQueryClient();
 
   const { data: equipment } = useSupabaseGabinetEquipmentList(organizationId);
@@ -669,10 +679,12 @@ function EquipmentSettingsPage() {
               {t("gabinet.equipment.title")}
             </SectionHeader.Heading>
             <SectionHeader.Actions>
-              <Button size="sm" onClick={() => setCreateOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" variant="stroke" />
-                {t("gabinet.equipment.addEquipment")}
-              </Button>
+              {canCreate && (
+                <Button size="sm" onClick={() => setCreateOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                  {t("gabinet.equipment.addEquipment")}
+                </Button>
+              )}
             </SectionHeader.Actions>
           </SectionHeader.Group>
           <UntitledAlert>{t("gabinet.equipment.description", "Zarządzaj sprzętem i zasobami gabinetu.")}</UntitledAlert>

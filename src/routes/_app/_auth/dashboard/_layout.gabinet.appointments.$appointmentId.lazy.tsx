@@ -2694,7 +2694,16 @@ function AppointmentDetail() {
               additionalAppointments={
                 (sameDayOtherAppointments ?? [])
                   .filter((a) => selectedAdditionalIds.has(a.id))
-                  .map((a) => ({ id: a.id, totalPrice: a.totalPrice }))
+                  .map((a) => ({
+                    id: a.id,
+                    totalPrice: a.totalPrice,
+                    label: [
+                      `${a.startTime.slice(0, 5)}–${a.endTime.slice(0, 5)}`,
+                      ...(a.treatmentNames.length > 0
+                        ? [a.treatmentNames.join(", ")]
+                        : []),
+                    ].join(" · "),
+                  }))
               }
               showMarkCompleted={availableTransitions.includes("completed")}
               onMarkCompleted={async () => {

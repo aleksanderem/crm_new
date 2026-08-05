@@ -92,7 +92,9 @@ jobs:
 
           Common causes:
 
-          1. The \`SUPABASE_DB_URL\` repository secret was rotated, removed, or never set. (The \`Secrets Health Check\` workflow checks for this daily — if it is also failing, that confirms the cause.)
+          1. A migration transport secret was rotated, removed, or never set. The \`Secrets Health Check\` workflow checks for this daily — if it is also failing, that confirms the cause. At least one of these must be fully configured in Settings → Secrets and variables → Actions:
+             - HTTP transport (preferred): \`SUPABASE_URL\` + \`SUPABASE_SERVICE_ROLE_KEY\`
+             - psql transport (fallback): \`SUPABASE_DB_URL\`
           2. A migration under \`supabase/migrations/\` is invalid or conflicts with the deployed schema.
           3. The Supabase instance at the configured URL is unreachable.
 

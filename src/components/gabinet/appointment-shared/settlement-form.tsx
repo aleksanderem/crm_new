@@ -217,6 +217,31 @@ export function SettlementForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkedPackageUsageId, patientPackageUsage.length]);
 
+  // When switching to split mode on an appointment booked via a linked package,
+  // pre-select that package in the first split leg so the user doesn't have to
+  // re-pick it manually (issue #3578 — package + cash in one step).
+  useEffect(() => {
+    if (!splitPayment || !linkedPackageUsageId || firstSplitPackageId) return;
+    const linked = patientPackageUsage.find(
+      (p) => p._id === linkedPackageUsageId && p.status === "active",
+    );
+    if (!linked) return;
+    setFirstSplitMethod("package");
+    setFirstSplitPackageId(linked._id);
+    setFirstSplitPackageItems(
+      linked.treatmentsUsed
+        .filter((e) => (e.usedCount ?? 0) < (e.totalCount ?? 0))
+        .map((e) => ({
+          treatmentId: e.treatmentId,
+          variantId: e.variantId,
+          treatmentName: e.treatmentName ?? t("gabinet.packages.treatment"),
+          remaining: (e.totalCount ?? 0) - (e.usedCount ?? 0),
+          qty: 0,
+        })),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [splitPayment, linkedPackageUsageId]);
+
   // Amount due = sum of junction treatment prices (priceAtBooking ?? catalog),
   // with fallback to legacy single-treatment price for pre-junction appointments.
   const treatmentPrice =
@@ -282,13 +307,58 @@ export function SettlementForm({
       )
     : 0;
 
+  // Auto-computed value for a split leg that uses "package" redemption —
+  // mirrors packageSettlementAmount for the respective leg's items (#3578).
+  const splitPackage1Amount =
+    splitPayment && firstSplitMethod === "package" && firstSplitPackageId
+      ? Math.min(
+          Math.max(0, outstanding),
+          firstSplitPackageItems
+            .filter((it) => it.qty > 0)
+            .reduce((sum: number, it: (typeof firstSplitPackageItems)[0]) => {
+              const jt = junctionTreatments.find(
+                (j) => j.treatmentId === it.treatmentId,
+              );
+              const catalogTr = treatmentsList?.find(
+                (tr) => tr._id === it.treatmentId,
+              );
+              return (
+                sum + it.qty * (jt?.priceAtBooking ?? catalogTr?.price ?? 0)
+              );
+            }, 0),
+        )
+      : 0;
+  const splitPackage2Amount =
+    splitPayment && secondSplitMethod === "package" && secondSplitPackageId
+      ? Math.min(
+          Math.max(0, outstanding - splitPackage1Amount),
+          secondSplitPackageItems
+            .filter((it) => it.qty > 0)
+            .reduce((sum: number, it: (typeof secondSplitPackageItems)[0]) => {
+              const jt = junctionTreatments.find(
+                (j) => j.treatmentId === it.treatmentId,
+              );
+              const catalogTr = treatmentsList?.find(
+                (tr) => tr._id === it.treatmentId,
+              );
+              return (
+                sum + it.qty * (jt?.priceAtBooking ?? catalogTr?.price ?? 0)
+              );
+            }, 0),
+        )
+      : 0;
+
   // Split payment derived values
   const parsedFirstSplit = isFirstSplitFixed
     ? treatmentPrice
-    : parseFloat(firstSplitAmount.replace(",", ".")) || 0;
+    : firstSplitMethod === "package"
+      ? splitPackage1Amount
+      : parseFloat(firstSplitAmount.replace(",", ".")) || 0;
   const parsedSecondSplit = isSecondSplitFixed
     ? treatmentPrice
-    : parseFloat(secondSplitAmount.replace(",", ".")) || 0;
+    : secondSplitMethod === "package"
+      ? splitPackage2Amount
+      : parseFloat(secondSplitAmount.replace(",", ".")) || 0;
   const splitTotal =
     Math.round((parsedFirstSplit + parsedSecondSplit) * 100) / 100;
   const balanceAvailable = patientCreditBalance ?? 0;
@@ -1033,11 +1103,14 @@ export function SettlementForm({
                   value={
                     isFirstSplitFixed
                       ? treatmentPrice.toFixed(2)
-                      : firstSplitAmount
+                      : firstSplitMethod === "package"
+                        ? splitPackage1Amount.toFixed(2)
+                        : firstSplitAmount
                   }
-                  disabled={isFirstSplitFixed}
+                  disabled={isFirstSplitFixed || firstSplitMethod === "package"}
                   onChange={(e) => {
-                    if (isFirstSplitFixed) return;
+                    if (isFirstSplitFixed || firstSplitMethod === "package")
+                      return;
                     const v = e.target.value;
                     if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
                       setFirstSplitAmount(v);
@@ -1047,6 +1120,14 @@ export function SettlementForm({
                 {isFirstSplitFixed && (
                   <p className="text-xs text-muted-foreground">
                     {t("gabinet.payments.amountLockedToTreatment")}
+                  </p>
+                )}
+                {firstSplitMethod === "package" && (
+                  <p className="text-xs text-muted-foreground">
+                    {t(
+                      "gabinet.packages.packageModeInfo",
+                      "Rozliczenie ilościowe z pakietu — bez płatności",
+                    )}
                   </p>
                 )}
               </div>
@@ -1098,11 +1179,16 @@ export function SettlementForm({
                   value={
                     isSecondSplitFixed
                       ? treatmentPrice.toFixed(2)
-                      : secondSplitAmount
+                      : secondSplitMethod === "package"
+                        ? splitPackage2Amount.toFixed(2)
+                        : secondSplitAmount
                   }
-                  disabled={isSecondSplitFixed}
+                  disabled={
+                    isSecondSplitFixed || secondSplitMethod === "package"
+                  }
                   onChange={(e) => {
-                    if (isSecondSplitFixed) return;
+                    if (isSecondSplitFixed || secondSplitMethod === "package")
+                      return;
                     const v = e.target.value;
                     if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
                       setSecondSplitAmount(v);
@@ -1112,6 +1198,14 @@ export function SettlementForm({
                 {isSecondSplitFixed && (
                   <p className="text-xs text-muted-foreground">
                     {t("gabinet.payments.amountLockedToTreatment")}
+                  </p>
+                )}
+                {secondSplitMethod === "package" && (
+                  <p className="text-xs text-muted-foreground">
+                    {t(
+                      "gabinet.packages.packageModeInfo",
+                      "Rozliczenie ilościowe z pakietu — bez płatności",
+                    )}
                   </p>
                 )}
               </div>

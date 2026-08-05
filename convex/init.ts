@@ -1,7 +1,8 @@
 import { asyncMap } from "convex-helpers";
 import type { RegisteredAction } from "convex/server";
 import { ERRORS } from "~/errors";
-import { internalAction, internalMutation } from "@cvx/_generated/server";
+import { internalAction, internalMutation, internalQuery } from "@cvx/_generated/server";
+import { v } from "convex/values";
 import schema, {
   CURRENCIES,
   Currency,
@@ -63,6 +64,95 @@ export const insertSeedPlan = internalMutation({
       seatLimit: args.seatLimit,
       prices: args.prices,
     });
+  },
+});
+
+export const getAllPlans = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    return ctx.db.query("plans").collect();
+  },
+});
+
+export const patchPlanPlnPrices = internalMutation({
+  args: {
+    planId: v.id("plans"),
+    monthPln: v.object({ stripeId: v.string(), amount: v.number() }),
+    yearPln: v.object({ stripeId: v.string(), amount: v.number() }),
+  },
+  handler: async (ctx, args) => {
+    const plan = await ctx.db.get(args.planId);
+    if (!plan) throw new Error("Plan not found");
+    await ctx.db.patch(args.planId, {
+      prices: {
+        ...plan.prices,
+        month: { ...plan.prices.month, [CURRENCIES.PLN]: args.monthPln },
+        year: { ...plan.prices.year, [CURRENCIES.PLN]: args.yearPln },
+      },
+    });
+  },
+});
+
+/**
+ * One-off migration for existing deployments that were set up before PLN
+ * currency support was added. Creates PLN prices in Stripe for each plan
+ * and patches the plan docs with the resulting price IDs.
+ *
+ * Safe to run multiple times — skips plans that already have PLN prices.
+ */
+export const migratePlnPrices = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const plans = await ctx.runQuery(internal.init.getAllPlans);
+
+    for (const plan of plans) {
+      // Runtime check: existing docs pre-PLN won't have the pln field
+      const existingMonthPln = (plan.prices.month as Record<string, unknown>).pln as
+        | { stripeId: string }
+        | undefined;
+      if (existingMonthPln?.stripeId) {
+        console.info(`⏭️  Plan ${plan.key}: PLN prices already exist, skipping.`);
+        continue;
+      }
+
+      const seedProduct = seedProducts.find((p) => p.key === plan.key);
+      if (!seedProduct) {
+        console.warn(`⚠️  No seed config found for plan key: ${plan.key}`);
+        continue;
+      }
+
+      const monthAmount = seedProduct.prices[INTERVALS.MONTH][CURRENCIES.PLN];
+      const yearAmount = seedProduct.prices[INTERVALS.YEAR][CURRENCIES.PLN];
+
+      const [monthPrice, yearPrice] = await Promise.all([
+        stripe.prices.create({
+          product: plan.stripeId,
+          currency: CURRENCIES.PLN,
+          unit_amount: monthAmount,
+          tax_behavior: "inclusive",
+          recurring: { interval: INTERVALS.MONTH },
+        }),
+        stripe.prices.create({
+          product: plan.stripeId,
+          currency: CURRENCIES.PLN,
+          unit_amount: yearAmount,
+          tax_behavior: "inclusive",
+          recurring: { interval: INTERVALS.YEAR },
+        }),
+      ]);
+
+      await ctx.runMutation(internal.init.patchPlanPlnPrices, {
+        planId: plan._id,
+        monthPln: { stripeId: monthPrice.id, amount: monthPrice.unit_amount ?? 0 },
+        yearPln: { stripeId: yearPrice.id, amount: yearPrice.unit_amount ?? 0 },
+      });
+
+      console.info(
+        `✅ Plan ${plan.key}: PLN prices created (month: ${monthPrice.id}, year: ${yearPrice.id})`,
+      );
+    }
+
+    console.info("🎉 PLN price migration complete.");
   },
 });
 

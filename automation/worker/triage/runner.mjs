@@ -5,7 +5,7 @@ export function nextUntriagedJob(db) {
   ).get() || null;
 }
 
-function issueFromJob(job) {
+export function issueFromJob(job) {
   let p = {};
   try { p = JSON.parse(job.payload_json || "{}"); } catch { /* ignore */ }
   const jamLink = typeof p.body === "string" ? p.body.match(/https?:\/\/[^\s)]*jam\.dev[^\s)]*/i)?.[0] : undefined;
@@ -27,6 +27,17 @@ function issueFromJob(job) {
 export async function triageJob(db, job, deps) {
   const issue = issueFromJob(job);
   const verdict = await deps.evaluate(issue, deps.planDigest);
+
+  const pr = deps.pressureReject ? deps.pressureReject(verdict) : { reject: false };
+  if (pr.reject) {
+    db.prepare(
+      `UPDATE jobs SET triage_status = 'rejected', triage_package = NULL, triage_priority = NULL,
+         triage_order = NULL, triage_confidence = ?, triage_rationale = ? WHERE id = ?`,
+    ).run(verdict.confidence, String(pr.comment).slice(0, 1000), job.id);
+    try { deps.writeRejection(issue, pr.comment); }
+    catch (e) { deps.log?.({ level: "warn", msg: "triage-rejection-write-failed", id: job.id, err: String(e).slice(0, 300) }); }
+    return { verdict, rejected: true };
+  }
 
   let recordId = null;
   try { recordId = deps.writeBase(verdict, issue); }

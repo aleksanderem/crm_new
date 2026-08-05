@@ -5,11 +5,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { ensureSchema } from "./schema.mjs";
 import { claimNextPlanned } from "./triage/claim.mjs";
-import { nextUntriagedJob, triageJob } from "./triage/runner.mjs";
+import { nextUntriagedJob, triageJob, issueFromJob } from "./triage/runner.mjs";
 import { evaluateIssue } from "./triage/evaluate.mjs";
 import { buildPlanDigest, fetchPlanRecords } from "./triage/plan.mjs";
 import { createTriageRecord } from "./triage/base-writer.mjs";
-import { postVerdict } from "./triage/github-writer.mjs";
+import { postVerdict, postRejection } from "./triage/github-writer.mjs";
+import { ensureStrikeSchema, listBannedLogins } from "./policy/strikes.mjs";
+import { relatedLoginsOf } from "./policy/detect.mjs";
+import { recentIssuesByLogins } from "./policy/history.mjs";
+import { evaluatePolicyPre, pressureOverride } from "./policy/engine.mjs";
 
 const DB_PATH = process.env.DB_PATH || "/home/claude-bot/worker/queue.db";
 const RUN_SCRIPT = "/home/claude-bot/worker/run-claude.sh";
@@ -40,11 +44,19 @@ const PAUSED_LOGINS = (process.env.PAUSED_LOGINS ?? "")
   .map((s) => s.trim())
   .filter(Boolean);
 
+// Statically-seeded permanent bans (comma-separated). Unioned each loop with
+// the ledger's auto-banned logins. Same shape as PAUSED_LOGINS.
+const BANNED_LOGINS = (process.env.BANNED_LOGINS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 fs.mkdirSync(LOG_DIR, { recursive: true });
 
 const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
 ensureSchema(db);
+ensureStrikeSchema(db);
 
 function finalizeJob(id, status, result) {
   db.prepare(
@@ -135,12 +147,28 @@ async function loop() {
     // 1) triage: evaluate one untriaged job if available (triage has priority)
     const untriaged = nextUntriagedJob(db);
     if (untriaged) {
+      // PRE-gate: block multi-account duplicates + banned logins before the LLM.
+      const gateIssue = issueFromJob(untriaged);
+      const pre = evaluatePolicyPre(db, gateIssue, {
+        priorIssues: recentIssuesByLogins(db, relatedLoginsOf(gateIssue.login), { excludeId: untriaged.id }),
+        now: Date.now,
+      });
+      if (pre.blocked) {
+        try { postRejection(gateIssue, pre.comment, { exec }); }
+        catch (e) { jlog({ level: "warn", msg: "policy-comment-failed", id: untriaged.id, err: String(e) }); }
+        db.prepare("UPDATE jobs SET triage_status='rejected', triage_rationale=? WHERE id=?")
+          .run(String(pre.comment).slice(0, 1000), untriaged.id);
+        jlog({ level: "info", msg: "policy-blocked", id: untriaged.id, flags: pre.flags, banned: pre.banned });
+        continue;
+      }
       try {
         await triageJob(db, untriaged, {
           planDigest: getPlanDigest(),
           evaluate: (issue, digest) => evaluateIssue(issue, digest, { invokeLLM }),
           writeBase: (verdict, issue) => createTriageRecord(verdict, issue, { exec }),
           writeGithub: (issue, verdict) => postVerdict(issue, verdict, { exec }),
+          writeRejection: (issue, comment) => postRejection(issue, comment, { exec }),
+          pressureReject: (verdict) => pressureOverride(verdict, gateIssue),
           now: Date.now,
           log: (o) => jlog(o),
         });
@@ -158,6 +186,7 @@ async function loop() {
     const job = claimNextPlanned(db, {
       throttledLogins: THROTTLED_LOGINS,
       pausedLogins: PAUSED_LOGINS,
+      bannedLogins: [...BANNED_LOGINS, ...listBannedLogins(db)],
       throttleIntervalMs: THROTTLE_INTERVAL_MS,
       now: Date.now,
     });

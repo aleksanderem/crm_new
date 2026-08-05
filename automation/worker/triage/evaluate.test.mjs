@@ -34,3 +34,10 @@ test("evaluateIssue throws when the LLM output has no JSON object", async () => 
   const fakeLLM = async () => "nie wiem";
   await assert.rejects(() => evaluateIssue(ISSUE, DIGEST, { invokeLLM: fakeLLM }), /verdict/i);
 });
+
+test("evaluateIssue handles JSON whose string values contain braces", async () => {
+  const fakeLLM = async () => '{"fits":true,"package":"PK1","priority":"P0","order":1,"module":"DevOps","confidence":0.9,"rationale":"Dotyczy { bramki } CI"}';
+  const v = await evaluateIssue(ISSUE, DIGEST, { invokeLLM: fakeLLM });
+  assert.equal(v.package, "PK1");
+  assert.match(v.rationale, /bramki/);
+});

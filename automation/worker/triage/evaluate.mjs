@@ -26,14 +26,24 @@ Treść:
 ${issue.body || "(brak treści)"}${jam}`;
 }
 
-// Extract the first balanced JSON object from arbitrary LLM text.
+// Extract the first balanced JSON object from arbitrary LLM text. Ignores
+// braces that appear inside string literals (respecting \" escapes) so a
+// rationale like "obiekt { tutaj }" does not truncate the object.
 function extractJson(text) {
   const start = text.indexOf("{");
   if (start === -1) return null;
-  let depth = 0;
+  let depth = 0, inStr = false, esc = false;
   for (let i = start; i < text.length; i++) {
-    if (text[i] === "{") depth++;
-    else if (text[i] === "}") { depth--; if (depth === 0) return text.slice(start, i + 1); }
+    const ch = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (ch === "\\") esc = true;
+      else if (ch === '"') inStr = false;
+      continue;
+    }
+    if (ch === '"') inStr = true;
+    else if (ch === "{") depth++;
+    else if (ch === "}") { depth--; if (depth === 0) return text.slice(start, i + 1); }
   }
   return null;
 }

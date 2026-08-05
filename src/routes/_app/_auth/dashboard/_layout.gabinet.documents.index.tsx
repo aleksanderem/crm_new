@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { PermissionGate } from "@/hooks/use-permission";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
@@ -178,6 +178,9 @@ function GabinetDocumentsPage() {
   const resolveContentJsonAction = useAction(
     api.documents.components.resolveContentJson,
   );
+
+  const { allowed: canDelete } = usePermission("document_instances", "delete");
+  const { allowed: canEdit } = usePermission("document_instances", "edit");
 
   // --- Edit mode state ---
   const [isEditing, setIsEditing] = useState(false);
@@ -562,8 +565,8 @@ function GabinetDocumentsPage() {
                 <FileText className="mr-2 h-4 w-4" />
                 {t("common.view", "Podgląd")}
               </DropdownMenuItem>
-              {item.status === "draft" ||
-              item.status === "pending_signature" ? (
+              {canEdit && (item.status === "draft" ||
+              item.status === "pending_signature") ? (
                 <DropdownMenuItem
                   onClick={() => handleResendSigningEmail(item._id)}
                 >
@@ -578,21 +581,25 @@ function GabinetDocumentsPage() {
                 <Download className="mr-2 h-4 w-4" />
                 {t("common.download", "Pobierz")}
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => handleDeleteClick(item._id)}
-                className="text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {t("common.delete", "Usuń")}
-              </DropdownMenuItem>
+              {canDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => handleDeleteClick(item._id)}
+                    className="text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    {t("common.delete", "Usuń")}
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         ),
       },
     ];
     return result;
-  }, [t, patientMap]);
+  }, [t, patientMap, canEdit, canDelete]);
 
   // --- Column visibility ---
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
@@ -752,17 +759,17 @@ function GabinetDocumentsPage() {
               label: t("common.view", "Podgląd"),
               icon: <FileText className="h-4 w-4" />,
             },
-            {
+            ...(canEdit ? [{
               value: "resend",
               label: t("gabinet.formDocuments.resendSigningEmail", "Wyślij e-mail podpisu"),
               icon: <Send className="h-4 w-4" />,
-            },
-            {
+            }] : []),
+            ...(canDelete ? [{
               value: "delete",
               label: t("common.delete", "Usuń"),
-              variant: "destructive",
+              variant: "destructive" as const,
               icon: <Trash2 className="h-4 w-4" />,
-            },
+            }] : []),
           ]}
         />
         </div>

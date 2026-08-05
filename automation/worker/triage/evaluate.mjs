@@ -29,7 +29,7 @@ ${issue.body || "(brak treści)"}${jam}`;
 // Extract the first balanced JSON object from arbitrary LLM text. Ignores
 // braces that appear inside string literals (respecting \" escapes) so a
 // rationale like "obiekt { tutaj }" does not truncate the object.
-function extractJson(text) {
+export function extractJson(text) {
   const start = text.indexOf("{");
   if (start === -1) return null;
   let depth = 0, inStr = false, esc = false;

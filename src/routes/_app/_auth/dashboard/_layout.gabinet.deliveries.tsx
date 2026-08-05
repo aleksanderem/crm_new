@@ -1699,7 +1699,7 @@ function DeliveriesPage() {
             }
             void queryClient.invalidateQueries({ queryKey });
           }}
-          saveAction={saveItemDecisionsAction as (args: { organizationId: typeof organizationId; deliveryId: string; decisions: unknown }) => Promise<void>}
+          saveAction={saveItemDecisionsAction as unknown as (args: { organizationId: Id<"organizations">; deliveryId: string; decisions: unknown }) => Promise<void>}
           postDeliveryAction={postDeliveryFromDecisionsAction as (args: { organizationId: typeof organizationId; deliveryId: string }) => Promise<PostDeliveryResult>}
           onPosted={() => {
             void queryClient.invalidateQueries({ queryKey });
@@ -2139,7 +2139,7 @@ function VerifyMatchesDialog({
 
   const handleApply = () => {
     const lineItems: LineItem[] = [];
-    proposals.items.forEach((item, idx) => {
+    proposals.items.forEach((_, idx) => {
       const productId = decisions[idx];
       if (!productId || productId === "skip") return;
       const ai = analysisItems[idx];

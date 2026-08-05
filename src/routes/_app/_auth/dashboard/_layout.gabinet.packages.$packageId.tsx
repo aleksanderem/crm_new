@@ -16,7 +16,7 @@ import { EmptyState } from "@/components/layout/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
-import { PermissionGate } from "@/hooks/use-permission";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Gift, Package } from "@/lib/ez-icons";
 import type { MappedGabinetPackageUsage } from "@/lib/supabase/mappers/gabinet/package-usage";
@@ -96,6 +96,7 @@ function PackageDetail() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const { allowed: canEdit } = usePermission("gabinet_packages", "edit");
 
   const { data: packagesData, isLoading } =
     useSupabaseGabinetTreatmentPackagesList(organizationId);
@@ -419,12 +420,11 @@ function PackageDetail() {
         </span>
       }
       avatarFallback={pkg?.name?.slice(0, 2).toUpperCase()}
-      onEdit={() =>
+      onEdit={canEdit ? () =>
         navigate({
           to: "/dashboard/gabinet/packages",
           search: { edit: packageId },
-        })
-      }
+        }) : undefined}
       fields={fields}
       expandedFieldCount={6}
       tabs={[

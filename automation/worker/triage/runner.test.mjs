@@ -62,3 +62,19 @@ test("triageJob still marks the job even if GitHub write throws (Base + status m
   assert.ok(ghCalled);
   assert.equal(db.prepare("SELECT triage_status FROM jobs WHERE id = ?").get(job.id).triage_status, "triaged");
 });
+
+test("triageJob logs when the Base write fails (deps.log invoked)", async () => {
+  const db = new Database(":memory:");
+  const job = seed(db);
+  const verdict = { fits: true, package: "PK1", priority: "P0", order: 1, module: "DevOps", confidence: 0.9, rationale: "PK1." };
+  const logs = [];
+  await triageJob(db, job, {
+    planDigest: "x", evaluate: async () => verdict,
+    writeBase: () => { throw new Error("base down"); },
+    writeGithub: () => {}, now: () => 1,
+    log: (o) => logs.push(o),
+  });
+  assert.ok(logs.some((l) => l.msg === "triage-base-write-failed"));
+  // decision still persists despite Base failure
+  assert.equal(db.prepare("SELECT triage_status FROM jobs WHERE id = ?").get(job.id).triage_status, "triaged");
+});

@@ -30,7 +30,10 @@ export async function triageJob(db, job, deps) {
 
   let recordId = null;
   try { recordId = deps.writeBase(verdict, issue); }
-  catch (e) { recordId = null; /* Base failure: still record the decision below */ }
+  catch (e) {
+    recordId = null; /* Base failure: still record the decision below */
+    deps.log?.({ level: "warn", msg: "triage-base-write-failed", id: job.id, err: String(e).slice(0, 300) });
+  }
 
   db.prepare(
     `UPDATE jobs SET triage_status = ?, triage_package = ?, triage_priority = ?,
@@ -43,7 +46,10 @@ export async function triageJob(db, job, deps) {
   );
 
   try { deps.writeGithub(issue, verdict); }
-  catch (e) { /* comment can be retried; decision already persisted */ }
+  catch (e) {
+    /* comment can be retried; decision already persisted */
+    deps.log?.({ level: "warn", msg: "triage-github-write-failed", id: job.id, err: String(e).slice(0, 300) });
+  }
 
   return { verdict, recordId };
 }

@@ -9,8 +9,8 @@ set -uo pipefail
 # with --output-format text so the caller gets plain text (no ANSI / JSON).
 # Stderr is suppressed so only the verdict JSON reaches the caller's stdout.
 if [ "${TRIAGE_MODE:-}" = "1" ]; then
-  HOME=/home/claude-bot claude -p "$TRIAGE_PROMPT" --output-format text 2>/dev/null
-  exit 0
+  HOME=/home/claude-bot claude -p "${TRIAGE_PROMPT:-}" --output-format text
+  exit $?
 fi
 
 LOG_DIR=/home/claude-bot/logs

@@ -15,7 +15,7 @@ const DB_PATH = process.env.DB_PATH || "/home/claude-bot/worker/queue.db";
 const RUN_SCRIPT = "/home/claude-bot/worker/run-claude.sh";
 const LOG_DIR = "/home/claude-bot/logs";
 const POLL_INTERVAL_MS = 3000;
-const JOB_TIMEOUT_MS = 60 * 60 * 1000; // 30 min hard cap
+const JOB_TIMEOUT_MS = 60 * 60 * 1000; // 60 min hard cap
 
 // Per-user pickup throttle. Issues filed by these GitHub logins are
 // processed at most once per THROTTLE_INTERVAL_MS — i.e. after a job
@@ -142,6 +142,7 @@ async function loop() {
           writeBase: (verdict, issue) => createTriageRecord(verdict, issue, { exec }),
           writeGithub: (issue, verdict) => postVerdict(issue, verdict, { exec }),
           now: Date.now,
+          log: (o) => jlog(o),
         });
         jlog({ level: "info", msg: "triaged", id: untriaged.id, issue: untriaged.issue_number });
       } catch (e) {

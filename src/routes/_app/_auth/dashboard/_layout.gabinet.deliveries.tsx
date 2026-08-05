@@ -51,11 +51,36 @@ import {
 import { useSupabaseProductsList, useSupabaseProductStockTotals } from "@/hooks/use-supabase-products";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import { cn } from "@/lib/utils";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function DeliveriesPageSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <Skeleton className="h-9 w-32" />
+      </div>
+      <div className="space-y-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/deliveries",
 )({
-  component: DeliveriesPage,
+  component: () => (
+    <PermissionGate feature="gabinet_inventory" action="view" loadingFallback={<DeliveriesPageSkeleton />}>
+      <DeliveriesPage />
+    </PermissionGate>
+  ),
   validateSearch: (search: Record<string, unknown>): { action?: "create" } => ({
     action: search.action === "create" ? "create" : undefined,
   }),
@@ -271,6 +296,9 @@ function DeliveriesPage() {
   const queryClient = useQueryClient();
   const routeNavigate = useNavigate();
   const { action: actionParam } = useSearch({ from: "/_app/_auth/dashboard/_layout/gabinet/deliveries" });
+  const { allowed: canCreate } = usePermission("gabinet_inventory", "create");
+  const { allowed: canEdit } = usePermission("gabinet_inventory", "edit");
+  const { allowed: canDelete } = usePermission("gabinet_inventory", "delete");
 
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen
   const listDeliveriesAction = useAction(api.warehouseDeliveries.listDeliveries);
@@ -349,14 +377,14 @@ function DeliveriesPage() {
   // refresh doesn't reopen it.
   useEffect(() => {
     if (actionParam === "create") {
-      setChoiceDialogOpen(true);
+      if (canCreate) setChoiceDialogOpen(true);
       void routeNavigate({
         to: "/dashboard/gabinet/deliveries",
         search: { action: undefined },
         replace: true,
       });
     }
-  }, [actionParam, routeNavigate]);
+  }, [actionParam, routeNavigate, canCreate]);
 
   const [editDeliveryId, setEditDeliveryId] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
@@ -764,16 +792,18 @@ function DeliveriesPage() {
           "Dokumenty przyjęcia towaru do magazynu. Zaksięgowanie dostawy automatycznie aktualizuje stany magazynowe.",
         )}
         actions={
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setInvoiceDialogOpen(true)}>
-              <FileText className="mr-2 h-4 w-4" variant="stroke" />
-              {t("gabinet.deliveries.fromInvoice", "Z faktury")}
-            </Button>
-            <Button onClick={() => setPanelOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" variant="stroke" />
-              {t("gabinet.deliveries.newDelivery", "Nowa dostawa")}
-            </Button>
-          </div>
+          canCreate ? (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setInvoiceDialogOpen(true)}>
+                <FileText className="mr-2 h-4 w-4" variant="stroke" />
+                {t("gabinet.deliveries.fromInvoice", "Z faktury")}
+              </Button>
+              <Button onClick={() => setPanelOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                {t("gabinet.deliveries.newDelivery", "Nowa dostawa")}
+              </Button>
+            </div>
+          ) : undefined
         }
       />
 
@@ -869,72 +899,76 @@ function DeliveriesPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {status === "draft" ? (
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleEditOpen(id)}
-                            disabled={editLoading}
-                            className="gap-1.5"
-                          >
-                            {t("gabinet.deliveries.editAction", "Edytuj")}
-                          </Button>
-                          {d.matchingProposals != null && (
+                      {status === “draft” ? (
+                        <div className=”flex items-center justify-end gap-2”>
+                          {canEdit && (
                             <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleOpenDecisions(d)}
-                              className="gap-1.5"
+                              size=”sm”
+                              variant=”ghost”
+                              onClick={() => handleEditOpen(id)}
+                              disabled={editLoading}
+                              className=”gap-1.5”
                             >
-                              <Sparkles className="h-3.5 w-3.5" variant="stroke" />
-                              {t("gabinet.deliveries.checkItemsAction", "Sprawdź pozycje")}
+                              {t(“gabinet.deliveries.editAction”, “Edytuj”)}
                             </Button>
                           )}
-                          {hasCreateLater ? (
+                          {canEdit && d.matchingProposals != null && (
+                            <Button
+                              size=”sm”
+                              variant=”outline”
+                              onClick={() => handleOpenDecisions(d)}
+                              className=”gap-1.5”
+                            >
+                              <Sparkles className=”h-3.5 w-3.5” variant=”stroke” />
+                              {t(“gabinet.deliveries.checkItemsAction”, “Sprawdź pozycje”)}
+                            </Button>
+                          )}
+                          {canEdit && (hasCreateLater ? (
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span className="inline-flex">
+                                  <span className=”inline-flex”>
                                     <Button
-                                      size="sm"
-                                      variant="outline"
+                                      size=”sm”
+                                      variant=”outline”
                                       disabled
-                                      className="gap-1.5 pointer-events-none"
+                                      className=”gap-1.5 pointer-events-none”
                                     >
-                                      <CheckCircle className="h-3.5 w-3.5" variant="stroke" />
-                                      {t("gabinet.deliveries.postAction", "Zaksięguj")}
+                                      <CheckCircle className=”h-3.5 w-3.5” variant=”stroke” />
+                                      {t(“gabinet.deliveries.postAction”, “Zaksięguj”)}
                                     </Button>
                                   </span>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   {t(
-                                    "gabinet.deliveries.postBlockedCreateLater",
-                                    "Najpierw rozwiąż pozycje „Utwórz później” w weryfikacji faktury.",
+                                    “gabinet.deliveries.postBlockedCreateLater”,
+                                    “Najpierw rozwiąż pozycje „Utwórz później” w weryfikacji faktury.”,
                                   )}
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
                           ) : (
                             <Button
-                              size="sm"
-                              variant="outline"
+                              size=”sm”
+                              variant=”outline”
                               onClick={() => setPostTarget({ id, label })}
-                              className="gap-1.5"
+                              className=”gap-1.5”
                             >
-                              <CheckCircle className="h-3.5 w-3.5" variant="stroke" />
-                              {t("gabinet.deliveries.postAction", "Zaksięguj")}
+                              <CheckCircle className=”h-3.5 w-3.5” variant=”stroke” />
+                              {t(“gabinet.deliveries.postAction”, “Zaksięguj”)}
+                            </Button>
+                          ))}
+                          {canDelete && (
+                            <Button
+                              size=”sm”
+                              variant=”ghost”
+                              onClick={() => setCancelTarget({ id, label })}
+                              className=”gap-1.5 text-destructive hover:text-destructive”
+                            >
+                              <Trash2 className=”h-3.5 w-3.5” variant=”stroke” />
+                              {t(“gabinet.deliveries.cancelAction”, “Usuń”)}
                             </Button>
                           )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setCancelTarget({ id, label })}
-                            className="gap-1.5 text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" variant="stroke" />
-                            {t("gabinet.deliveries.cancelAction", "Usuń")}
-                          </Button>
                         </div>
                       ) : (
                         <Button

@@ -20,20 +20,24 @@ const PR_LABEL = {
 // Map a Verdict + issue into a Base "Team OKR Tasks" fields object. Fitting
 // verdicts get package/priority/order/module; backlog verdicts carry only the
 // source + description so nothing is lost. `Triage: true` distinguishes these
-// records from native plan rows.
+// records from native plan rows. Single-select fields (Status realizacji,
+// Pakiet, Priorytet, Moduł) are written as single-element ARRAYS — the shape
+// +record-batch-create requires for select cells (a bare string is rejected
+// with a not_found-style error). Text fields (Zadanie/Opis/Źródło), the number
+// field (Kolejność) and the checkbox (Triage) stay as scalars.
 export function buildRecordFields(verdict, issue) {
   const fields = {
     "Zadanie": issue.title,
     "Opis": (verdict.rationale || "") + `\n\nŹródło: ${issue.url}`,
     "Źródło": issue.url,
-    "Status realizacji": "Do zrobienia",
+    "Status realizacji": ["Do zrobienia"],
     "Triage": true,
   };
   if (verdict.fits) {
-    fields["Pakiet"] = PK_LABEL[verdict.package];
-    fields["Priorytet"] = PR_LABEL[verdict.priority];
+    fields["Pakiet"] = [PK_LABEL[verdict.package]];
+    fields["Priorytet"] = [PR_LABEL[verdict.priority]];
     if (verdict.order !== null) fields["Kolejność"] = verdict.order;
-    if (verdict.module) fields["Moduł"] = verdict.module;
+    if (verdict.module) fields["Moduł"] = [verdict.module];
   }
   return fields;
 }

@@ -6,15 +6,16 @@ const ISSUE = { number: 42, title: "Sekret pusty", url: "https://github.com/o/r/
 const FITS = { fits: true, package: "PK1", priority: "P0", order: 1, module: "DevOps", confidence: 0.9, rationale: "PK1." };
 const BACKLOG = { fits: false, package: null, priority: null, order: null, module: null, confidence: 0.3, rationale: "Poza planem." };
 
-test("buildRecordFields maps a fitting verdict to Base labels", () => {
+test("buildRecordFields maps a fitting verdict to Base labels (selects as arrays)", () => {
   const f = buildRecordFields(FITS, ISSUE);
-  assert.match(f["Pakiet"], /^PK1 ·/);
-  assert.match(f["Priorytet"], /^P0 –/);
-  assert.equal(f["Kolejność"], 1);
-  assert.equal(f["Moduł"], "DevOps");
-  assert.match(f["Źródło"], /issues\/42/);
-  assert.equal(f["Status realizacji"], "Do zrobienia");
-  assert.equal(f["Triage"], true);
+  // single-select cells are single-element arrays for +record-batch-create
+  assert.match(f["Pakiet"][0], /^PK1 ·/);
+  assert.match(f["Priorytet"][0], /^P0 –/);
+  assert.deepEqual(f["Moduł"], ["DevOps"]);
+  assert.deepEqual(f["Status realizacji"], ["Do zrobienia"]);
+  assert.equal(f["Kolejność"], 1); // number stays scalar
+  assert.match(f["Źródło"], /issues\/42/); // text stays scalar
+  assert.equal(f["Triage"], true); // checkbox stays scalar
 });
 
 test("buildRecordFields maps a backlog verdict with no package", () => {

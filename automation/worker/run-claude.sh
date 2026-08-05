@@ -93,10 +93,15 @@ if git show-ref --verify --quiet "refs/remotes/origin/${BRANCH}"; then
   git worktree add -B "$BRANCH" "$WT_DIR" "origin/${BRANCH}"
 else
   echo "creating new branch $BRANCH from origin/main"
-  git worktree add -b "$BRANCH" "$WT_DIR" origin/main
+  # -B (not -b): cleanup_worktree removes the worktree but never deletes the
+  # local branch, so a retry of an already-merged issue (remote branch deleted
+  # by --delete-branch, local branch still present) would fatal with -b and
+  # fall through into REPO_DIR — Claude would then run inside the base repo.
+  git worktree add -B "$BRANCH" "$WT_DIR" origin/main
 fi
 
-cd "$WT_DIR"
+# Hard guard: never run the job in REPO_DIR if worktree setup failed.
+cd "$WT_DIR" || { echo "FATAL: worktree dir $WT_DIR missing after setup"; exit 1; }
 git config user.name "Claude Bot"
 git config user.email "${BOT_GIT_EMAIL:-claude-bot@example.com}"
 

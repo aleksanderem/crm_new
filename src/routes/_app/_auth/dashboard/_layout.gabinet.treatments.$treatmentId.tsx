@@ -67,7 +67,7 @@ import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { formatTreatmentError } from "@/lib/format-action-error";
-import { PermissionGate } from "@/hooks/use-permission";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function TreatmentDetailSkeleton() {
@@ -121,6 +121,8 @@ function TreatmentDetail() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { allowed: canEdit } = usePermission("gabinet_treatments", "edit");
+  const { allowed: canDelete } = usePermission("gabinet_treatments", "delete");
 
   // State
   const [editPanelOpen, setEditPanelOpen] = useState(false);
@@ -1554,17 +1556,17 @@ function TreatmentDetail() {
         title={treatment?.name ?? ""}
         subtitle={categoryName ?? t("gabinet.treatments.treatment")}
         avatarFallback={treatment?.name?.slice(0, 2).toUpperCase()}
-        onEdit={() => {
+        onEdit={canEdit ? () => {
           setEditCategoryId(treatment?.categoryId as Id<"categoryDefinitions"> | undefined);
           setEditPanelOpen(true);
-        }}
-        secondaryActions={[
+        } : undefined}
+        secondaryActions={canDelete ? [
           {
             label: t("gabinet.treatmentDetail.delete"),
             onClick: handleDelete,
             variant: "destructive" as const,
           },
-        ]}
+        ] : undefined}
         fields={detailFields}
         expandedFieldCount={5}
         sidebarExtra={sidebarExtra}

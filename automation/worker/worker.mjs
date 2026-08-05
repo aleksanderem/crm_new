@@ -26,6 +26,16 @@ const THROTTLE_INTERVAL_MS = parseInt(
   10,
 );
 
+// Full pickup pause. Jobs whose `trigger_login` is on this list are never
+// claimed — they stay `pending` (and new webhook events still enqueue), so
+// nothing is lost and unpausing is just removing the login from the env and
+// restarting the daemon. Unlike THROTTLED_LOGINS this is a hard stop, not a
+// rate limit. Configured via env (comma-separated), empty by default.
+const PAUSED_LOGINS = (process.env.PAUSED_LOGINS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 fs.mkdirSync(LOG_DIR, { recursive: true });
 
 const db = new Database(DB_PATH);
@@ -38,6 +48,10 @@ db.pragma("journal_mode = WAL");
 const claimNextStmt = db.prepare(`
   SELECT * FROM jobs
   WHERE status = 'pending'
+    AND (
+      trigger_login IS NULL
+      OR trigger_login NOT IN (${PAUSED_LOGINS.map(() => "?").join(",") || "''"})
+    )
     AND (
       trigger_login IS NULL
       OR trigger_login NOT IN (${THROTTLED_LOGINS.map(() => "?").join(",") || "''"})
@@ -53,7 +67,7 @@ const claimNextStmt = db.prepare(`
 `);
 const claimNext = db.transaction(() => {
   const cutoff = Date.now() - THROTTLE_INTERVAL_MS;
-  const job = claimNextStmt.get(...THROTTLED_LOGINS, cutoff);
+  const job = claimNextStmt.get(...PAUSED_LOGINS, ...THROTTLED_LOGINS, cutoff);
   if (!job) return null;
   db.prepare(
     `UPDATE jobs SET status = 'running', started_at = ? WHERE id = ?`

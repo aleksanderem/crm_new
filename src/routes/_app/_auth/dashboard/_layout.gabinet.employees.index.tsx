@@ -41,7 +41,7 @@ import { PlateText } from "@/components/plate-text";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { EmployeeForm } from "@/components/forms/employee-form";
 import { EventDialog } from "@/components/gabinet/calendar/event-dialog";
-import { PermissionGate } from "@/hooks/use-permission";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   FlexibleScheduleEditor,

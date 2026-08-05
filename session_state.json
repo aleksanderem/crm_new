@@ -1,18 +1,18 @@
 {
-  "session_id": "S0106",
-  "started_at": "2026-07-16T17:56:00Z",
-  "last_updated": "2026-07-16T17:57:30Z",
+  "session_id": "S0105",
+  "started_at": "2026-08-05T18:03:00Z",
+  "last_updated": "2026-08-05T19:05:00Z",
   "status": "completed",
-  "focus": "Task 3: Implement document_analysis_jobs data layer (Convex schema, TABLE_MAP, SQL migration)",
+  "focus": "GitHub/Jam triage gate — Phase 1 (SDD execution: 9 tasks, final review, PR)",
   "tasks_snapshot": {
-    "total": 1,
+    "total": 9,
     "not_started": 0,
     "in_progress": 0,
-    "passing": 1,
+    "passing": 9,
     "failing": 0,
     "blocked": 0
   },
   "active_task_ids": [],
   "blockers": [],
-  "notes": "S0106: Completed Task 3 data layer implementation. Added documentAnalysisJobs table to Convex schema (with by_org and by_orgAndKind indexes), exported DocumentAnalysisJobRow type, added TABLE_MAP entry, created 00063 SQL migration with RLS policies, regenerated TypeScript types. All tests pass (35 Convex files, 300 tests; 15 frontend files, 119 tests). Commit: 57e9e627."
+  "notes": "S0105: Phase 1 triage gate COMPLETE. All 9 SDD tasks done, final whole-branch review (opus) = ready-to-merge-with-fixes (0 Critical), fix wave a1c5f621 landed (run-claude.sh failure surfacing + runner write-failure logging). 36/36 tests. PR #3634 opened (feat/github-jam-triage → main). DEPLOY IS MANUAL: copy automation/worker/* to /home/claude-bot/worker as claude-bot (RunCloud ownership), ensure lark-cli+gh on claude-bot PATH, create triage:PK1..PK9/triage:backlog labels, restart claude-worker+claude-webhook. Next: Phase 2 (anti-abuse/strikes) + Phase 3 (Wiki feedback loop) per spec 2026-08-05-github-jam-triage-design.md."
 }

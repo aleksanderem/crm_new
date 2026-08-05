@@ -9,7 +9,7 @@ import { nextUntriagedJob, triageJob, issueFromJob } from "./triage/runner.mjs";
 import { evaluateIssue } from "./triage/evaluate.mjs";
 import { buildPlanDigest, fetchPlanRecords } from "./triage/plan.mjs";
 import { createTriageRecord } from "./triage/base-writer.mjs";
-import { postVerdict, postRejection } from "./triage/github-writer.mjs";
+import { postVerdict, postRejection, labelIssue } from "./triage/github-writer.mjs";
 import { ensureStrikeSchema, listBannedLogins } from "./policy/strikes.mjs";
 import { relatedLoginsOf } from "./policy/detect.mjs";
 import { recentIssuesByLogins } from "./policy/history.mjs";
@@ -20,7 +20,6 @@ import { assessPlanDelta } from "./wiki/assess.mjs";
 import { fetchPlanRecordsWithIds, buildDeltaDigest } from "./wiki/plan-index.mjs";
 import { markRecordDone } from "./wiki/base-status.mjs";
 import { postPlanNote, postPlanDraft } from "./wiki/wiki-note.mjs";
-import { labelIssue } from "./triage/github-writer.mjs";
 import { applyPlanDelta } from "./wiki/feedback.mjs";
 
 const DB_PATH = process.env.DB_PATH || "/home/claude-bot/worker/queue.db";
@@ -142,6 +141,7 @@ async function runFeedback(job, issue) {
   if (!looksLikePlanImpact(issue)) return;
   try {
     const records = getPlanRecords();
+    if (!records.length) return;
     const delta = await assessPlanDelta(issue, buildDeltaDigest(records), { invokeLLM });
     const write = WIKI_FEEDBACK === "on" && PLAN_WIKI_DOC !== "";
     const outcome = applyPlanDelta(delta, issue, {

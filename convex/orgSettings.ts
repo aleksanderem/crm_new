@@ -33,7 +33,6 @@ export const upsert = action({
     reminderSms24h: v.optional(v.boolean()),
     reminderEmail48h: v.optional(v.boolean()),
     reminderEmail24h: v.optional(v.boolean()),
-    appointmentWorkflowConfig: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
@@ -60,7 +59,6 @@ export const upsert = action({
       if (args.reminderSms24h !== undefined) updates.reminderSms24h = args.reminderSms24h;
       if (args.reminderEmail48h !== undefined) updates.reminderEmail48h = args.reminderEmail48h;
       if (args.reminderEmail24h !== undefined) updates.reminderEmail24h = args.reminderEmail24h;
-      if (args.appointmentWorkflowConfig !== undefined) updates.appointmentWorkflowConfig = args.appointmentWorkflowConfig;
 
       await db.patch("orgSettings", existing._id as string, updates);
       return existing._id as string;
@@ -78,7 +76,6 @@ export const upsert = action({
       reminderSms24h: args.reminderSms24h ?? null,
       reminderEmail48h: args.reminderEmail48h ?? null,
       reminderEmail24h: args.reminderEmail24h ?? null,
-      appointmentWorkflowConfig: args.appointmentWorkflowConfig ?? null,
       createdAt: now,
       updatedAt: now,
     });

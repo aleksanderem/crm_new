@@ -659,7 +659,6 @@ export function createCrmTables({
     reminderSms24h: v.optional(v.boolean()),
     reminderEmail48h: v.optional(v.boolean()),
     reminderEmail24h: v.optional(v.boolean()),
-    appointmentWorkflowConfig: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_org", ["organizationId"]),

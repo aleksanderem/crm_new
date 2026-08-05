@@ -26,7 +26,6 @@ const orgSettingsConfig: TableMigrationConfig = {
     field("resourceSharingEnabled", "resource_sharing_enabled"),
     field("reminderEnabled", "reminder_enabled"),
     field("reminderHoursBefore", "reminder_hours_before"),
-    field("appointmentWorkflowConfig", "appointment_workflow_config"),
     timestampField("createdAt", "created_at"),
     timestampField("updatedAt", "updated_at"),
   ],

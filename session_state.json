@@ -1,18 +1,18 @@
 {
   "session_id": "S0105",
   "started_at": "2026-08-05T18:03:00Z",
-  "last_updated": "2026-08-05T20:10:00Z",
+  "last_updated": "2026-08-05T21:30:00Z",
   "status": "completed",
-  "focus": "GitHub/Jam triage gate — Phase 1 (gate+dual-write+order) and Phase 2 (policy/anti-abuse) via SDD",
+  "focus": "GitHub/Jam triage system — Phase 1 (gate+dual-write+order), Phase 2 (policy/anti-abuse), Phase 3 (Wiki feedback loop) via SDD",
   "tasks_snapshot": {
-    "total": 16,
+    "total": 23,
     "not_started": 0,
     "in_progress": 0,
-    "passing": 16,
+    "passing": 23,
     "failing": 0,
     "blocked": 0
   },
   "active_task_ids": [],
   "blockers": [],
-  "notes": "S0105: BOTH PHASES COMPLETE on branch feat/github-jam-triage, PR #3634 (Phase 1 & 2). Phase 2 = 7 SDD tasks (strike ledger, detectors, history, tone, engine, ban-aware claim, worker wiring). Final whole-branch review (opus) = ready-to-merge, 0 Critical/Important, all 5 user rulings hold, all deferred minors ship-as-is. Full suite 71/71. Pressure is never a decision factor (rejects only a non-fit; fitting-but-urgent passes; no strike for pressure). DEPLOY IS MANUAL: copy automation/worker/** incl policy/ to /home/claude-bot/worker as claude-bot (RunCloud ownership); lark-cli+gh on PATH; create labels triage:PK1..PK9/triage:backlog/triage:rejected; optional BANNED_LOGINS env like PAUSED_LOGINS; restart claude-worker+claude-webhook. Phase 3 (Wiki feedback loop) remains per spec."
+  "notes": "S0105: ALL THREE PHASES COMPLETE on branch feat/github-jam-triage, PR #3634. Phase 3 = 7 SDD tasks (plan_delta column + impact gate, launch-oriented assessment, plan index w/ ids, Base status writer, Wiki note writer + label, direction-preserving feedback engine, worker wiring). Final whole-branch review (opus) = ready-to-merge, 0 Critical/Important, all 4 user rulings hold (direction safeguard: no remove/deprioritize; out-of-scope=none; auto only confident+resolvable completed; ships dormant). Both write paths (base +record-batch-update, drive +add-comment) dry-run-verified LIVE. Full suite 98/98. DEPLOY MANUAL + DORMANT: copy automation/worker/** incl policy/ + wiki/ to /home/claude-bot/worker as claude-bot; lark-cli authed in claude-bot ctx; create labels triage:PK1..PK9/triage:backlog/triage:rejected/triage:plan-change; Phase 2 optional BANNED_LOGINS env; Phase 3 set WIKI_FEEDBACK=on + PLAN_WIKI_DOC after live verify (default off); restart claude-worker+claude-webhook. Full triage system (all 3 phases) done — no phases remain per spec."
 }

@@ -2,16 +2,17 @@ import { priorityRank } from "./verdict.mjs";
 
 // Claim the next runnable job by PLAN order (not FIFO). Runnable = triaged or
 // backlog. Ordering: priority rank (P0<P1<P2<backlog) -> plan Kolejność -> age.
-// Excludes paused logins (hard stop) and preserves the per-login throttle.
+// Hard-excludes paused AND banned logins; preserves the per-login throttle.
 // Sets status='running' atomically.
-export function claimNextPlanned(db, { throttledLogins, pausedLogins, throttleIntervalMs, now }) {
+export function claimNextPlanned(db, { throttledLogins, pausedLogins, bannedLogins = [], throttleIntervalMs, now }) {
   const cutoff = now() - throttleIntervalMs;
+  const hardStop = [...pausedLogins, ...bannedLogins];
   const throttleIn = throttledLogins.map(() => "?").join(",") || "''";
-  const pausedIn = pausedLogins.map(() => "?").join(",") || "''";
+  const hardIn = hardStop.map(() => "?").join(",") || "''";
   const rows = db.prepare(
     `SELECT * FROM jobs
      WHERE status = 'pending' AND triage_status IN ('triaged','backlog')
-       AND (trigger_login IS NULL OR trigger_login NOT IN (${pausedIn}))
+       AND (trigger_login IS NULL OR trigger_login NOT IN (${hardIn}))
        AND (
          trigger_login IS NULL
          OR trigger_login NOT IN (${throttleIn})
@@ -21,7 +22,7 @@ export function claimNextPlanned(db, { throttledLogins, pausedLogins, throttleIn
              AND COALESCE(busy.finished_at, busy.started_at, 0) > ?
          )
        )`,
-  ).all(...pausedLogins, ...throttledLogins, cutoff);
+  ).all(...hardStop, ...throttledLogins, cutoff);
 
   if (rows.length === 0) return null;
   rows.sort((a, b) =>

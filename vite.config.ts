@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
 import viteReact from "@vitejs/plugin-react";
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 import path from "path";
 import { readdirSync } from "node:fs";
 
@@ -17,11 +18,32 @@ function latestMigrationVersion(): string {
   return versions.at(-1) ?? "";
 }
 
+// Upload source maps to Sentry at build time so production stack traces show
+// original TypeScript source instead of minified bundles. This requires
+// SENTRY_AUTH_TOKEN (generate at sentry.io → Settings → Auth Tokens).
+// When the token is absent (local dev, preview deploys) the plugin is omitted
+// and source-map upload is silently skipped — no build error.
+const sentryPlugin =
+  process.env.SENTRY_AUTH_TOKEN
+    ? sentryVitePlugin({
+        org: process.env.SENTRY_ORG,
+        project: process.env.SENTRY_PROJECT,
+        authToken: process.env.SENTRY_AUTH_TOKEN,
+        sourcemaps: { filesToDeleteAfterUpload: ["dist/**/*.map"] },
+        release: { inject: true },
+      })
+    : null;
+
 export default defineConfig({
   define: {
     __EXPECTED_SCHEMA_VERSION__: JSON.stringify(latestMigrationVersion()),
   },
-  plugins: [tailwindcss(), TanStackRouterVite(), viteReact()],
+  plugins: [
+    tailwindcss(),
+    TanStackRouterVite(),
+    viteReact(),
+    ...(sentryPlugin ? [sentryPlugin] : []),
+  ],
   server: {
     host: true,
     watch: {
@@ -40,6 +62,10 @@ export default defineConfig({
     },
   },
   build: {
+    // Emit source maps so Sentry can upload them when SENTRY_AUTH_TOKEN is set.
+    // The Sentry plugin deletes .map files from dist after upload so they never
+    // reach end-users; without the token the maps are simply not produced.
+    sourcemap: !!process.env.SENTRY_AUTH_TOKEN,
     rollupOptions: {
       output: {
         manualChunks: {

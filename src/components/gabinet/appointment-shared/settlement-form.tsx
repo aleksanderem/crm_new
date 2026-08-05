@@ -60,11 +60,12 @@ export interface SettlementFormProps {
   linkedPackageUsageId?: string | null;
   /**
    * Additional same-day appointments to settle in the same operation.
-   * For each entry, a payment is created with the same method and that
-   * appointment's full price. Package and split payment modes are excluded
-   * from batch (those appointments remain for manual individual settlement).
+   * For non-package, non-split modes the primary payment method is reused.
+   * For package and split-with-package modes the user selects a per-appointment
+   * fallback method inside the form (issue #3638).
+   * `label` is an optional human-readable hint shown next to the selector.
    */
-  additionalAppointments?: Array<{ id: string; totalPrice: number }>;
+  additionalAppointments?: Array<{ id: string; totalPrice: number; label?: string }>;
   /** Called after a payment is successfully created. Should close the dialog and refetch. */
   onSuccess: () => void;
   /** Called when the user cancels. Should close the dialog. */
@@ -169,6 +170,10 @@ export function SettlementForm({
       qty: number;
     }>
   >([]);
+
+  // Per-appointment fallback payment methods for the batch panel when the
+  // primary settlement is package-based (package mode or split-with-package).
+  const [batchFallbackMethods, setBatchFallbackMethods] = useState<Record<string, string>>({});
 
   // Mark completed state
   const [markCompleted, setMarkCompleted] = useState(
@@ -646,6 +651,25 @@ export function SettlementForm({
             amount: appt.totalPrice,
             currency: "PLN",
             paymentMethod: batchMethod,
+            notes: paymentNote || undefined,
+          });
+        }
+      }
+
+      // Batch-settle additional same-day appointments with per-appointment
+      // fallback methods when primary settlement is package-based (package mode
+      // or split with a package leg). Issue #3638.
+      if ((isPackageMode || splitHasPackage) && additionalAppointments.length > 0) {
+        for (const appt of additionalAppointments) {
+          if (appt.totalPrice <= 0) continue;
+          const method = batchFallbackMethods[appt.id] ?? "cash";
+          await createPayment({
+            organizationId,
+            patientId: patientId as Id<"gabinetPatients">,
+            appointmentId: appt.id as Id<"gabinetAppointments">,
+            amount: appt.totalPrice,
+            currency: "PLN",
+            paymentMethod: method as (typeof PAYMENT_METHODS)[number],
             notes: paymentNote || undefined,
           });
         }
@@ -1491,18 +1515,48 @@ export function SettlementForm({
           </div>
         )}
 
-        {/* Warning: batch exclusion — shown when the user has selected additional
-            same-day appointments but the settlement mode cannot process them
-            automatically (package-only or split with a package leg). Pure
-            split-payment (both legs are real money) is handled proportionally. */}
+        {/* Batch fallback selectors — shown when primary settlement is package-based
+            (package-only or split with a package leg). Each additional same-day
+            appointment gets its own payment method dropdown so it can be settled
+            in this same submit operation instead of being skipped (#3638). Pure
+            split-payment (both legs real money) is handled proportionally above. */}
         {(isPackageMode || splitHasPackage) && additionalAppointments.length > 0 && (
-          <div className="rounded-md border border-amber-200 bg-amber-50/50 p-2.5 dark:border-amber-800 dark:bg-amber-950/20 sm:col-span-2">
+          <div className="rounded-md border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-800 dark:bg-amber-950/20 sm:col-span-2 space-y-3">
             <p className="text-sm text-amber-700 dark:text-amber-400">
               {t(
-                "gabinet.appointments.batchSkippedForPackage",
-                "Przy rozliczeniu z pakietu pozostałe wizyty z tego dnia nie są rozliczane automatycznie — odlicz je osobno po zamknięciu tego okna.",
+                "gabinet.appointments.batchPackageFallbackHint",
+                "Przy rozliczeniu z pakietu pozostałe wizyty wymagają osobnej metody płatności:",
               )}
             </p>
+            {additionalAppointments.map((appt) => (
+              <div key={appt.id} className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {appt.label ?? t("gabinet.appointments.appointment", "Wizyta")}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatCurrencyPLN(appt.totalPrice)}
+                  </p>
+                </div>
+                <Select
+                  value={batchFallbackMethods[appt.id] ?? "cash"}
+                  onValueChange={(v) =>
+                    setBatchFallbackMethods((prev) => ({ ...prev, [appt.id]: v }))
+                  }
+                >
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAY_METHODS.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {t(`gabinet.payments.methods.${m}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
           </div>
         )}
 

@@ -50,6 +50,8 @@ import {
   CalendarCheck,
   BarChart3,
   Check,
+  UserCheck,
+  Stethoscope,
 } from "@/lib/ez-icons";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
@@ -197,6 +199,8 @@ const typeIcons: Record<string, React.ReactNode> = {
   lead: <TrendingUp className="h-4 w-4" variant="stroke" />,
   document: <FileText className="h-4 w-4" variant="stroke" />,
   product: <Package className="h-4 w-4" variant="stroke" />,
+  patient: <UserCheck className="h-4 w-4" variant="stroke" />,
+  treatment: <Stethoscope className="h-4 w-4" variant="stroke" />,
 };
 
 // Inner component runs inside the provider stack so Supabase hooks (e.g.

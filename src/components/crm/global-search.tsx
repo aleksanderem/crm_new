@@ -23,7 +23,9 @@ export interface SearchResult {
     | "document"
     | "product"
     | "call"
-    | "activity";
+    | "activity"
+    | "patient"
+    | "treatment";
   title: string;
   subtitle?: string;
   href: string;

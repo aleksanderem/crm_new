@@ -33,6 +33,7 @@
     "test:unit:frontend": "vitest run --config ./vitest.frontend.config.ts",
     "test:manifests": "vitest run --config ./vitest.frontend.config.ts src/modules/manifest-dispatches.test.ts",
     "check:convex-codegen": "node scripts/check-convex-codegen.mjs",
+    "check:convex-auth": "node scripts/check-convex-auth.mjs",
     "migrations:check": "node scripts/supabase-migrations.mjs check",
     "migrations:apply": "node scripts/supabase-migrations.mjs apply",
     "test": "npm run test:unit && npm run test:e2e",

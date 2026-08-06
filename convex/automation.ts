@@ -1016,7 +1016,7 @@ export const createRule = action({
     enabled: v.boolean(),
   },
   handler: async (ctx, args): Promise<Id<"automationRules">> => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -1126,7 +1126,7 @@ export const updateRule = action({
     enabled: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<string> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 
@@ -1197,7 +1197,7 @@ export const deleteRule = action({
     ruleId: v.string(),
   },
   handler: async (ctx, args): Promise<string> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 
@@ -1239,7 +1239,7 @@ export const listActionCapabilities = action({
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
@@ -1264,7 +1264,7 @@ export const listActionTypes = action({
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args): Promise<string[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();

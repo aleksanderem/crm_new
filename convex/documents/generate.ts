@@ -21,7 +21,7 @@ export const resolveEntityScope = action({
     entityId: v.string(),
   },
   handler: async (ctx, args): Promise<ScopeData> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
@@ -50,7 +50,7 @@ export const previewDocumentData = action({
     templateType: "document";
     contentJson: string;
   }> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 
@@ -109,7 +109,7 @@ export const generateDocument = action({
     hasClientFields: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -208,7 +208,7 @@ export const getPriorResponseData = action({
     ctx,
     args,
   ): Promise<{ formFieldValues: Record<string, string> } | null> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 

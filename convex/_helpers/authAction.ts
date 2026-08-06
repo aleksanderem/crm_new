@@ -1,39 +1,114 @@
-import { internalQuery } from "../_generated/server";
+import { internalQuery, internalAction } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { auth } from "@cvx/auth";
+import { createSupabaseDb } from "./supabaseDb";
 import type { Feature, Action, PermissionResult, Scope } from "./permissionTypes";
 import { DEFAULT_PERMISSIONS } from "./permissions";
 import { defaultGabinetScope, maxScope } from "./gabinetRolePermissions";
 import type { OrgRole } from "../schema";
+import type { Id } from "../_generated/dataModel";
 
-export const verifyOrgAccess = internalQuery({
+// ---------------------------------------------------------------------------
+// Internal helpers — read Convex-only (non-TABLE_MAP) tables from query context
+// so that action handlers can obtain this data via ctx.runQuery.
+// ---------------------------------------------------------------------------
+
+// Returns the current user document from Convex auth tables.
+export const _getAuthUser = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.userId);
+  },
+});
+
+// Returns gabinet-role permission data for a user in an org. All three tables
+// (gabinetMemberships, gabinetRolePermissions, gabinetMembershipPermissions)
+// are Convex-only mirrors maintained by gabinet/employees.ts — they are NOT in
+// TABLE_MAP and must be read via ctx.db.
+export const _getGabinetPermissionData = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const gabinetMembership = await ctx.db
+      .query("gabinetMemberships")
+      .withIndex("by_orgAndUser", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
+      )
+      .unique();
+
+    if (!gabinetMembership || !gabinetMembership.isActive) {
+      return { membership: null, rolePermissions: null, membershipPermissions: null };
+    }
+
+    const gRole = gabinetMembership.gabinetRole;
+
+    const gOverride = await ctx.db
+      .query("gabinetRolePermissions")
+      .withIndex("by_orgAndRole", (q) =>
+        q.eq("organizationId", args.organizationId).eq("gabinetRole", gRole),
+      )
+      .unique();
+
+    const membershipOverride = await ctx.db
+      .query("gabinetMembershipPermissions")
+      .withIndex("by_orgAndUser", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
+      )
+      .unique();
+
+    return {
+      membership: { gabinetRole: gRole, isActive: true },
+      rolePermissions: gOverride
+        ? (gOverride.permissions as Record<string, Record<string, string>>)
+        : null,
+      membershipPermissions: membershipOverride
+        ? (membershipOverride.permissions as Record<string, Record<string, string>>)
+        : null,
+    };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// verifyOrgAccess — reads teamMemberships from Supabase (TABLE_MAP primary).
+// Callers must use ctx.runAction (not ctx.runQuery).
+// ---------------------------------------------------------------------------
+export const verifyOrgAccess = internalAction({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
-    const user = await ctx.db.get(userId);
+
+    const user = await ctx.runQuery(internal._helpers.authAction._getAuthUser, { userId });
     if (!user) throw new Error("User not found");
 
-    const membership = await ctx.db
+    const db = createSupabaseDb();
+    const membership = await db
       .query("teamMemberships")
-      .withIndex("by_orgAndUser", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", user._id),
-      )
+      .eq("organizationId", String(args.organizationId))
+      .eq("userId", String(userId))
       .unique();
 
     if (!membership) throw new Error("Not a member of this organization");
 
     return {
-      userId: user._id,
-      userName: user.name,
-      userEmail: user.email,
-      membershipId: membership._id,
-      role: membership.role,
+      userId: userId as Id<"users">,
+      userName: user.name as string | undefined,
+      userEmail: user.email as string | undefined,
+      membershipId: membership._id as Id<"teamMemberships">,
+      role: membership.role as string,
     };
   },
 });
 
-export const checkPermission = internalQuery({
+// ---------------------------------------------------------------------------
+// checkPermission — reads teamMemberships + orgPermissions from Supabase
+// (TABLE_MAP primary). Gabinet-role data is fetched via internalQuery since
+// those tables are Convex-only mirrors. Callers must use ctx.runAction.
+// ---------------------------------------------------------------------------
+export const checkPermission = internalAction({
   args: {
     organizationId: v.id("organizations"),
     feature: v.string(),
@@ -42,14 +117,15 @@ export const checkPermission = internalQuery({
   handler: async (ctx, args): Promise<PermissionResult> => {
     const userId = await auth.getUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
-    const user = await ctx.db.get(userId);
+    const user = await ctx.runQuery(internal._helpers.authAction._getAuthUser, { userId });
     if (!user) throw new Error("User not found");
 
-    const membership = await ctx.db
+    const db = createSupabaseDb();
+
+    const membership = await db
       .query("teamMemberships")
-      .withIndex("by_orgAndUser", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", user._id),
-      )
+      .eq("organizationId", String(args.organizationId))
+      .eq("userId", String(userId))
       .unique();
 
     if (!membership) throw new Error("Not a member of this organization");
@@ -59,11 +135,10 @@ export const checkPermission = internalQuery({
       return { allowed: true, scope: "all" };
     }
 
-    const override = await ctx.db
+    const override = await db
       .query("orgPermissions")
-      .withIndex("by_orgAndRole", (q) =>
-        q.eq("organizationId", args.organizationId).eq("role", role),
-      )
+      .eq("organizationId", String(args.organizationId))
+      .eq("role", role)
       .unique();
 
     const feature = args.feature as Feature;
@@ -83,42 +158,21 @@ export const checkPermission = internalQuery({
     // --- 2. Gabinet-role scope (MAX-merge for gabinet_* features only) ---
     let effectiveScope: Scope = orgScope;
     if (feature.startsWith("gabinet_")) {
-      const gabinetMembership = await ctx.db
-        .query("gabinetMemberships")
-        .withIndex("by_orgAndUser", (q) =>
-          q.eq("organizationId", args.organizationId).eq("userId", user._id),
-        )
-        .unique();
-      if (gabinetMembership && gabinetMembership.isActive) {
-        const gRole = gabinetMembership.gabinetRole;
-        // Per-org override first, then baked-in default
-        const gOverride = await ctx.db
-          .query("gabinetRolePermissions")
-          .withIndex("by_orgAndRole", (q) =>
-            q.eq("organizationId", args.organizationId).eq("gabinetRole", gRole),
-          )
-          .unique();
-        let gabinetScope: Scope;
-        if (gOverride) {
-          const gPerms = gOverride.permissions as Record<string, Record<string, string>>;
-          gabinetScope = (gPerms?.[feature]?.[action]
-            ?? defaultGabinetScope(gRole, feature, action)) as Scope;
-        } else {
-          gabinetScope = defaultGabinetScope(gRole, feature, action);
-        }
+      const gabinetData = await ctx.runQuery(
+        internal._helpers.authAction._getGabinetPermissionData,
+        { organizationId: args.organizationId, userId },
+      );
+      if (gabinetData.membership) {
+        const gRole = gabinetData.membership.gabinetRole;
+        const gabinetScope: Scope = gabinetData.rolePermissions
+          ? ((gabinetData.rolePermissions[feature]?.[action]
+              ?? defaultGabinetScope(gRole, feature, action)) as Scope)
+          : defaultGabinetScope(gRole, feature, action);
         effectiveScope = maxScope(orgScope, gabinetScope);
 
-        // Layer 3: per-employee overrides (REPLACE semantics — allows both
-        // elevation and restriction relative to the role-derived scope)
-        const membershipOverride = await ctx.db
-          .query("gabinetMembershipPermissions")
-          .withIndex("by_orgAndUser", (q) =>
-            q.eq("organizationId", args.organizationId).eq("userId", user._id),
-          )
-          .unique();
-        if (membershipOverride) {
-          const mPerms = membershipOverride.permissions as Record<string, Record<string, string>>;
-          const membershipScope = mPerms?.[feature]?.[action];
+        // Layer 3: per-employee overrides (REPLACE semantics)
+        if (gabinetData.membershipPermissions) {
+          const membershipScope = gabinetData.membershipPermissions[feature]?.[action];
           if (membershipScope !== undefined) {
             effectiveScope = membershipScope as Scope;
           }
@@ -136,6 +190,8 @@ export const checkPermission = internalQuery({
 // Platform-admin guard for action handlers. Actions cannot call
 // requirePlatformAdmin directly (V8-only), so they delegate here via
 // ctx.runQuery(internal._helpers.authAction.verifyPlatformAdmin, {}).
+// verifyPlatformAdmin reads only `users` via ctx.db.get (auth-authoritative,
+// not flagged by the TABLE_MAP gate) so it stays as internalQuery.
 export const verifyPlatformAdmin = internalQuery({
   args: {},
   returns: v.object({ userId: v.id("users") }),

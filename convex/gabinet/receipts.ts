@@ -549,11 +549,11 @@ export const generatePdfReceipt = action({
   },
   handler: async (ctx, args): Promise<{receiptId: string; pdfUrl: string; receiptNumber: string}> => {
     // --- Auth + permission ---
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     ) as {userId: Id<"users">};
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,

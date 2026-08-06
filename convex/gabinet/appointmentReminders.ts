@@ -23,7 +23,7 @@ export const scheduleReminder = action({
   },
   handler: async (ctx, args) => {
     // Auth via internal query
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -359,7 +359,7 @@ export const cancelReminders = action({
   },
   handler: async (ctx, args) => {
     // Auth via internal query
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );

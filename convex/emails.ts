@@ -100,7 +100,7 @@ export const listByEntity = action({
     entityId: v.string(),
   },
   handler: async (ctx, args): Promise<EmailRow[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 
@@ -165,7 +165,7 @@ export const send = action({
   },
   handler: async (ctx, args) => {
     // --- Auth (via internal query) ---
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -305,7 +305,7 @@ export const markRead = action({
     emailId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -332,7 +332,7 @@ export const markUnread = action({
     emailId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -359,7 +359,7 @@ export const toggleStar = action({
     emailId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -386,7 +386,7 @@ export const listByPatient = action({
     patientId: v.string(),
   },
   handler: async (ctx, args): Promise<EmailRow[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
@@ -406,7 +406,7 @@ export const listByAppointment = action({
     appointmentId: v.string(),
   },
   handler: async (ctx, args): Promise<EmailRow[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
@@ -426,7 +426,7 @@ export const listByEmployee = action({
     employeeId: v.string(),
   },
   handler: async (ctx, args): Promise<EmailRow[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
@@ -449,7 +449,7 @@ export const linkToEntity = action({
     leadId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );

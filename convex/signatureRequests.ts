@@ -128,7 +128,7 @@ export const sendForSigning = action({
       throw new Error("Document must be approved or draft to send for signing");
     }
 
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: instance.organizationId as Id<"organizations"> },
     );
@@ -472,7 +472,7 @@ export const resend = action({
     const request = await db.get("signatureRequests", args.requestId);
     if (!request) throw new Error("Request not found");
 
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: request.organizationId as Id<"organizations"> },
     );

@@ -157,7 +157,7 @@ export const create = action({
     accessControl: accessControlValidator,
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -204,7 +204,7 @@ export const update = action({
     const template = await db.get("documentTemplates", args.id);
     if (!template) throw new Error("Template not found");
 
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: template.organizationId as Id<"organizations"> },
     );
@@ -233,7 +233,7 @@ export const publish = action({
     const template = await db.get("documentTemplates", args.id);
     if (!template) throw new Error("Template not found");
 
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: template.organizationId as Id<"organizations"> },
     );
@@ -264,7 +264,7 @@ export const archive = action({
     const template = await db.get("documentTemplates", args.id);
     if (!template) throw new Error("Template not found");
 
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: template.organizationId as Id<"organizations"> },
     );
@@ -283,7 +283,7 @@ export const duplicate = action({
     const template = await db.get("documentTemplates", args.id);
     if (!template) throw new Error("Template not found");
 
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: template.organizationId as Id<"organizations"> },
     );
@@ -361,7 +361,7 @@ export const createNewVersion = action({
     if (!template) throw new Error("Template not found");
     if (template.status !== "active") throw new Error("Can only create new version of active template");
 
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: template.organizationId as Id<"organizations"> },
     );

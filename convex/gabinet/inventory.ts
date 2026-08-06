@@ -43,10 +43,10 @@ export const getPlannedUsage = action({
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args): Promise<PlannedUsageItem[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_inventory", action: "view" },
     ) as { allowed: boolean; scope: string };
@@ -228,7 +228,7 @@ export const checkAppointmentShortage = action({
     locationId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<ShortagePreviewItem[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 

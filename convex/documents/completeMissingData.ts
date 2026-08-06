@@ -21,7 +21,7 @@ export const completeMissingData = action({
     data: v.record(v.string(), v.string()),
   },
   handler: async (ctx, args): Promise<void> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 

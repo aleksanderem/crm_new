@@ -97,11 +97,11 @@ export const create = action({
     categoryId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<string> => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "documents", action: "create" },
     );
@@ -177,11 +177,11 @@ export const update = action({
     categoryId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<string> => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "documents", action: "edit" },
     );
@@ -247,11 +247,11 @@ export const remove = action({
     documentId: v.string(),
   },
   handler: async (ctx, args): Promise<string> => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "documents", action: "delete" },
     );
@@ -319,11 +319,11 @@ export const updateStatus = action({
     status: documentStatusValidator,
   },
   handler: async (ctx, args): Promise<string> => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "documents", action: "edit" },
     );

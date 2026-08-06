@@ -20,7 +20,7 @@ export const upsert = action({
   },
   handler: async (ctx, args) => {
     // --- Auth: require admin ---
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -82,7 +82,7 @@ export const remove = action({
   },
   handler: async (ctx, args) => {
     // --- Auth: require admin ---
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );

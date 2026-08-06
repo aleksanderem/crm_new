@@ -108,7 +108,7 @@ export const updateOrgPermissions = mutation({
 export const getResourceSharingEnabled = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 
@@ -128,7 +128,7 @@ export const setResourceSharingEnabled = action({
     enabled: v.boolean(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 

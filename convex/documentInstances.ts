@@ -113,7 +113,7 @@ export const create = action({
     fieldOverrides: v.optional(v.any()),
   },
   handler: async (ctx, args): Promise<string> => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -235,7 +235,7 @@ export const updateDraft = action({
       throw new Error("Podpisanych i zarchiwizowanych dokumentów nie można edytować");
     }
 
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: instance.organizationId as Id<"organizations"> },
     );
@@ -285,7 +285,7 @@ export const updateStatus = action({
     const instance = await db.get("documentInstances", args.id);
     if (!instance) throw new Error("Document not found");
 
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: instance.organizationId as Id<"organizations"> },
     );
@@ -356,7 +356,7 @@ export const sign = action({
       throw new Error("Document is not in a signable state");
     }
 
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: instance.organizationId as Id<"organizations"> },
     );
@@ -404,7 +404,7 @@ export const createFromFile = action({
     module: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<string> => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -447,7 +447,7 @@ export const createFromFile = action({
 export const generateUploadUrl = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args): Promise<string> => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -475,7 +475,7 @@ export const remove = action({
       throw new Error("Podpisanych i zarchiwizowanych dokumentów nie można usunąć");
     }
 
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: instance.organizationId as Id<"organizations"> },
     );

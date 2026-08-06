@@ -1489,8 +1489,18 @@ export const processRun = internalAction({
     const payload = JSON.parse(run.payloadSnapshot) as Record<string, unknown>;
     const processRunDb = createSupabaseDb();
 
-    // Write run record to Supabase. The UNIQUE constraint on eventIdempotencyKey
-    // prevents duplicate rows; upsert-on-id handles action retries safely.
+    // Idempotency guard: if another processRun already claimed this eventIdempotencyKey
+    // (e.g. emitEvent was called twice due to a Convex mutation retry), skip silently.
+    // The Supabase UNIQUE constraint on event_idempotency_key is the last-line defence,
+    // but relying on it alone means the second action throws a 23505 error rather than
+    // returning cleanly. This explicit check restores the graceful early-exit behaviour
+    // that the old ctx.db dedup provided.
+    const existingRun = await processRunDb
+      .query("automationRuns")
+      .eq("eventIdempotencyKey", args.eventIdempotencyKey)
+      .first();
+    if (existingRun) return;
+
     await processRunDb.insert("automationRuns", {
       _id: args.runId,
       organizationId: args.organizationId as string,

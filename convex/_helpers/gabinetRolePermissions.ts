@@ -71,6 +71,7 @@ function buildGabinet(
     "gabinet_packages",
     "gabinet_employees",
     "gabinet_payments",
+    "gabinet_receipts",
     "gabinet_reports",
     "gabinet_financial_reports",
     "gabinet_purchase_prices",
@@ -110,6 +111,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_packages: { view: "all" },
     gabinet_employees: { view: "all" },
     gabinet_payments: { view: "all" },
+    gabinet_receipts: { view: "all" },
     gabinet_photos: { view: "all", create: "all", edit: "own", delete: "own" },
     gabinet_settings: {},
   }),
@@ -120,6 +122,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_packages: { view: "all" },
     gabinet_employees: { view: "all" },
     gabinet_payments: { view: "all" },
+    gabinet_receipts: { view: "all" },
     gabinet_photos: { view: "all", create: "all", edit: "own", delete: "own" },
     gabinet_settings: {},
   }),
@@ -130,6 +133,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_packages: { view: "all" },
     gabinet_employees: { view: "all" },
     gabinet_payments: { view: "all" },
+    gabinet_receipts: { view: "all" },
     gabinet_photos: { view: "all", create: "all", edit: "own", delete: "own" },
     gabinet_settings: {},
   }),
@@ -140,6 +144,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_packages: { view: "all" },
     gabinet_employees: { view: "all" },
     gabinet_payments: { view: "all" },
+    gabinet_receipts: { view: "all" },
     gabinet_photos: { view: "all", create: "all", edit: "own" },
     gabinet_settings: {},
   }),
@@ -152,6 +157,8 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     // Recepcja może rejestrować wpłaty i edytować je, ale NIE robi zwrotów —
     // zwrot wymaga osobnej autoryzacji administratora (issue #1690).
     gabinet_payments: { view: "all", create: "all", edit: "all" },
+    // Recepcja może drukować paragony, ale NIE unieważnia ich.
+    gabinet_receipts: { view: "all", create: "all" },
     gabinet_photos: { view: "all" },
     gabinet_online_booking: { view: "all" },
     gabinet_inventory: { view: "all" },
@@ -168,6 +175,8 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_packages: { view: "all", create: "all", edit: "all" },
     gabinet_employees: { view: "all" },
     gabinet_payments: { view: "all", create: "all", edit: "all" },
+    // Manager może drukować i unieważniać paragony (delete = void).
+    gabinet_receipts: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_reports: { view: "all" },
     gabinet_financial_reports: { view: "all" },
     gabinet_purchase_prices: { view: "all" },
@@ -183,6 +192,8 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_packages: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_employees: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_payments: { view: "all", create: "all", edit: "all", delete: "all", refund: "all" },
+    // Admin może drukować i unieważniać paragony (delete = void).
+    gabinet_receipts: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_reports: { view: "all" },
     gabinet_financial_reports: { view: "all" },
     gabinet_purchase_prices: { view: "all", create: "all", edit: "all" },
@@ -198,6 +209,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_packages: { view: "all" },
     gabinet_employees: { view: "all" },
     gabinet_payments: { view: "all" },
+    gabinet_receipts: { view: "all" },
     gabinet_settings: {},
   }),
 };

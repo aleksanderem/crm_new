@@ -13,11 +13,10 @@ export async function logActivity(
     description: string;
     metadata?: any;
     performedBy: Id<"users">;
+    actorLabel?: string;
   }
 ) {
   const occurredAt = Date.now();
-  const actorUser = await ctx.db.get(args.performedBy);
-  const actorLabel = actorUser?.name ?? actorUser?.email ?? undefined;
 
   await publishActivityEnvelope(ctx, {
     organizationId: args.organizationId,
@@ -29,7 +28,7 @@ export async function logActivity(
     actor: {
       type: "user",
       userId: args.performedBy,
-      label: actorLabel,
+      label: args.actorLabel,
     },
     payload: {
       legacyAction: args.action,

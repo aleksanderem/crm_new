@@ -931,51 +931,58 @@ async function patchLegacyAppointmentWorkflowHistory(args: {
   });
 }
 
-// automationRules is Convex-primary (createRule writes Convex first, Supabase is the mirror).
-// automationRuns/RunSteps are written to Convex by emitEvent/processRun, then mirrored to
-// Supabase via scheduler. ctx.db reads below are valid; production UI reads use the
-// useSupabaseAutomationRulesList / useSupabaseAutomationRunsList hooks instead.
-export const listRules = query({
+// listRules/listRuns/getRunSteps read from Supabase (primary read path for
+// automationRules/Runs/RunSteps). The production UI uses useSupabaseAutomation*
+// hooks directly; these actions serve the test suite and e2e tests.
+export const listRules = action({
   args: {
     organizationId: v.id("organizations"),
     module: v.optional(automationModuleValidator),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const rules = args.module
-      ? await ctx.db
-          .query("automationRules")
-          .withIndex("by_orgAndModule", (q) =>
-            q.eq("organizationId", args.organizationId).eq("module", args.module!),
-          )
-          .order("desc")
-          .collect()
-      : await ctx.db
-          .query("automationRules")
-          .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-          .order("desc")
-          .collect();
+    const db = createSupabaseDb();
+    let rules = await db
+      .query("automationRules")
+      .eq("organizationId", String(args.organizationId))
+      .order("createdAt", false)
+      .collect();
 
-    return await Promise.all(
-      rules.map(async (rule) => {
-        const recentRuns = await ctx.db
-          .query("automationRuns")
-          .withIndex("by_rule", (q) => q.eq("ruleId", rule._id))
-          .order("desc")
-          .take(1);
+    if (args.module) {
+      rules = rules.filter((rule) => rule.module === args.module);
+    }
 
-        return {
-          ...rule,
-          trigger: resolveRuleTrigger(rule),
-          lastRun: recentRuns[0] ?? null,
-        };
-      }),
-    );
+    if (rules.length === 0) return [];
+
+    // Single query for all recent runs; group by ruleId in JS.
+    const ruleIds = rules.map((r) => String(r._id));
+    const recentRuns = await db
+      .query("automationRuns")
+      .eq("organizationId", String(args.organizationId))
+      .in("ruleId", ruleIds)
+      .order("createdAt", false)
+      .collect();
+
+    const latestRunByRule = new Map<string, (typeof recentRuns)[0]>();
+    for (const run of recentRuns) {
+      const ruleId = String(run.ruleId ?? "");
+      if (ruleId && !latestRunByRule.has(ruleId)) {
+        latestRunByRule.set(ruleId, run);
+      }
+    }
+
+    return rules.map((rule) => ({
+      ...rule,
+      trigger: resolveRuleTrigger(rule as Parameters<typeof resolveRuleTrigger>[0]),
+      lastRun: latestRunByRule.get(String(rule._id)) ?? null,
+    }));
   },
 });
 
-export const listRuns = query({
+export const listRuns = action({
   args: {
     organizationId: v.id("organizations"),
     module: v.optional(automationModuleValidator),
@@ -984,39 +991,36 @@ export const listRuns = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
     const limit = args.limit ?? 100;
 
-    let runs = await ctx.db
+    let q = createSupabaseDb()
       .query("automationRuns")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .order("desc")
-      .take(limit * 3);
+      .eq("organizationId", String(args.organizationId))
+      .order("createdAt", false);
 
-    if (args.module) {
-      runs = runs.filter((run) => run.module === args.module);
-    }
-    if (args.entityType) {
-      runs = runs.filter((run) => run.entityType === args.entityType);
-    }
-    if (args.entityId) {
-      runs = runs.filter((run) => run.entityId === args.entityId);
-    }
+    if (args.module) q = q.eq("module", args.module);
+    if (args.entityType) q = q.eq("entityType", args.entityType);
+    if (args.entityId) q = q.eq("entityId", args.entityId);
 
-    return runs.slice(0, limit);
+    return await q.take(limit).collect();
   },
 });
 
-export const getRunSteps = query({
+export const getRunSteps = action({
   args: {
     organizationId: v.id("organizations"),
     runId: v.id("automationRuns"),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    return await createSupabaseDb()
       .query("automationRunSteps")
-      .withIndex("by_run", (q) => q.eq("runId", args.runId))
+      .eq("runId", String(args.runId))
       .collect();
   },
 });

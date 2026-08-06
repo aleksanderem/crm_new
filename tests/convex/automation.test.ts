@@ -356,7 +356,7 @@ describe("automation lifecycle", () => {
 
     await flushScheduled(t);
 
-    const runs = await t.withIdentity(identity).query(api.automation.listRuns, {
+    const runs = await t.withIdentity(identity).action(api.automation.listRuns, {
       organizationId,
       module: "gabinet",
       entityType: "gabinetAppointment",
@@ -365,7 +365,7 @@ describe("automation lifecycle", () => {
     });
     const run = runs.find((item) => item.eventType === "gabinet.appointment.created");
     const steps = run
-      ? await t.withIdentity(identity).query(api.automation.getRunSteps, {
+      ? await t.withIdentity(identity).action(api.automation.getRunSteps, {
           organizationId,
           runId: run._id,
         })
@@ -423,7 +423,7 @@ describe("automation lifecycle", () => {
 
     await flushScheduled(t);
 
-    const runs = await t.withIdentity(identity).query(api.automation.listRuns, {
+    const runs = await t.withIdentity(identity).action(api.automation.listRuns, {
       organizationId,
       module: "gabinet",
       entityType: "gabinetPatient",
@@ -432,7 +432,7 @@ describe("automation lifecycle", () => {
     });
     const run = runs.find((item) => item.eventType === "gabinet.patient.created");
     const steps = run
-      ? await t.withIdentity(identity).query(api.automation.getRunSteps, {
+      ? await t.withIdentity(identity).action(api.automation.getRunSteps, {
           organizationId,
           runId: run._id,
         })
@@ -496,7 +496,7 @@ describe("automation lifecycle", () => {
 
     await flushScheduled(t);
 
-    const runs = await t.withIdentity(identity).query(api.automation.listRuns, {
+    const runs = await t.withIdentity(identity).action(api.automation.listRuns, {
       organizationId,
       module: "gabinet",
       entityType: "gabinetAppointment",
@@ -505,7 +505,7 @@ describe("automation lifecycle", () => {
     });
     const run = runs.find((item) => item.eventType === "gabinet.appointment.created");
     const steps = run
-      ? await t.withIdentity(identity).query(api.automation.getRunSteps, {
+      ? await t.withIdentity(identity).action(api.automation.getRunSteps, {
           organizationId,
           runId: run._id,
         })
@@ -762,7 +762,7 @@ describe("automation lifecycle", () => {
       enabled: true,
     });
 
-    const rules = await t.withIdentity(identity).query(api.automation.listRules, {
+    const rules = await t.withIdentity(identity).action(api.automation.listRules, {
       organizationId,
       module: "gabinet",
     });
@@ -831,7 +831,7 @@ describe("automation lifecycle", () => {
 
     await flushScheduled(t);
 
-    const runs = await t.withIdentity(identity).query(api.automation.listRuns, {
+    const runs = await t.withIdentity(identity).action(api.automation.listRuns, {
       organizationId,
       module: "gabinet",
       entityType: "gabinetAppointment",
@@ -840,7 +840,7 @@ describe("automation lifecycle", () => {
     });
     const run = runs.find((item) => item.eventType === "gabinet.appointment.created");
     const steps = run
-      ? await t.withIdentity(identity).query(api.automation.getRunSteps, {
+      ? await t.withIdentity(identity).action(api.automation.getRunSteps, {
           organizationId,
           runId: run._id,
         })
@@ -936,7 +936,7 @@ describe("automation lifecycle", () => {
 
     await flushScheduled(t);
 
-    const runs = await t.withIdentity(identity).query(api.automation.listRuns, {
+    const runs = await t.withIdentity(identity).action(api.automation.listRuns, {
       organizationId,
       module: "gabinet",
       entityType: "gabinetAppointment",
@@ -945,7 +945,7 @@ describe("automation lifecycle", () => {
     });
     const run = runs.find((item) => item.eventType === "gabinet.appointment.created");
     const steps = run
-      ? await t.withIdentity(identity).query(api.automation.getRunSteps, {
+      ? await t.withIdentity(identity).action(api.automation.getRunSteps, {
           organizationId,
           runId: run._id,
         })
@@ -1011,7 +1011,7 @@ describe("automation lifecycle", () => {
 
     await flushScheduled(t);
 
-    const runs = await t.withIdentity(identity).query(api.automation.listRuns, {
+    const runs = await t.withIdentity(identity).action(api.automation.listRuns, {
       organizationId,
       module: "gabinet",
       entityType: "gabinetAppointment",
@@ -1020,7 +1020,7 @@ describe("automation lifecycle", () => {
     });
     const run = runs.find((item) => item.eventType === "gabinet.appointment.created");
     const steps = run
-      ? await t.withIdentity(identity).query(api.automation.getRunSteps, {
+      ? await t.withIdentity(identity).action(api.automation.getRunSteps, {
           organizationId,
           runId: run._id,
         })
@@ -1077,7 +1077,7 @@ describe("automation lifecycle", () => {
 
     await flushScheduled(t);
 
-    const runs = await t.withIdentity(identity).query(api.automation.listRuns, {
+    const runs = await t.withIdentity(identity).action(api.automation.listRuns, {
       organizationId,
       module: "crm",
       entityType: "lead",
@@ -1086,7 +1086,7 @@ describe("automation lifecycle", () => {
     });
     const run = runs.find((item) => item.eventType === "crm.lead.status_changed");
     const steps = run
-      ? await t.withIdentity(identity).query(api.automation.getRunSteps, {
+      ? await t.withIdentity(identity).action(api.automation.getRunSteps, {
           organizationId,
           runId: run._id,
         })
@@ -1141,7 +1141,7 @@ describe("automation lifecycle", () => {
 
     await flushScheduled(t);
 
-    const runs = await t.withIdentity(identity).query(api.automation.listRuns, {
+    const runs = await t.withIdentity(identity).action(api.automation.listRuns, {
       organizationId,
       module: "crm",
       entityType: "lead",
@@ -1150,7 +1150,7 @@ describe("automation lifecycle", () => {
     });
     const run = runs.find((item) => item.eventType === "crm.lead.status_changed");
     const steps = run
-      ? await t.withIdentity(identity).query(api.automation.getRunSteps, {
+      ? await t.withIdentity(identity).action(api.automation.getRunSteps, {
           organizationId,
           runId: run._id,
         })
@@ -1212,7 +1212,7 @@ describe("automation lifecycle", () => {
 
     await flushScheduled(t);
 
-    const runs = await t.withIdentity(admin.identity).query(api.automation.listRuns, {
+    const runs = await t.withIdentity(admin.identity).action(api.automation.listRuns, {
       organizationId: admin.organizationId,
       module: "crm",
       entityType: "lead",
@@ -1221,7 +1221,7 @@ describe("automation lifecycle", () => {
     });
     const run = runs.find((item) => item.eventType === "crm.lead.status_changed");
     const steps = run
-      ? await t.withIdentity(admin.identity).query(api.automation.getRunSteps, {
+      ? await t.withIdentity(admin.identity).action(api.automation.getRunSteps, {
           organizationId: admin.organizationId,
           runId: run._id,
         })
@@ -1279,7 +1279,7 @@ describe("automation lifecycle", () => {
 
     await flushScheduled(t);
 
-    const runs = await t.withIdentity(admin.identity).query(api.automation.listRuns, {
+    const runs = await t.withIdentity(admin.identity).action(api.automation.listRuns, {
       organizationId: admin.organizationId,
       module: "crm",
       entityType: "lead",
@@ -1288,7 +1288,7 @@ describe("automation lifecycle", () => {
     });
     const run = runs.find((item) => item.eventType === "crm.lead.status_changed");
     const steps = run
-      ? await t.withIdentity(admin.identity).query(api.automation.getRunSteps, {
+      ? await t.withIdentity(admin.identity).action(api.automation.getRunSteps, {
           organizationId: admin.organizationId,
           runId: run._id,
         })
@@ -1346,7 +1346,7 @@ describe("automation lifecycle", () => {
 
     await flushScheduled(t);
 
-    const runs = await t.withIdentity(admin.identity).query(api.automation.listRuns, {
+    const runs = await t.withIdentity(admin.identity).action(api.automation.listRuns, {
       organizationId: admin.organizationId,
       module: "crm",
       entityType: "lead",
@@ -1355,7 +1355,7 @@ describe("automation lifecycle", () => {
     });
     const run = runs.find((item) => item.eventType === "crm.lead.status_changed");
     const steps = run
-      ? await t.withIdentity(admin.identity).query(api.automation.getRunSteps, {
+      ? await t.withIdentity(admin.identity).action(api.automation.getRunSteps, {
           organizationId: admin.organizationId,
           runId: run._id,
         })
@@ -1406,7 +1406,7 @@ describe("automation lifecycle", () => {
 
     await flushScheduled(t);
 
-    const runs = await t.withIdentity(identity).query(api.automation.listRuns, {
+    const runs = await t.withIdentity(identity).action(api.automation.listRuns, {
       organizationId,
       module: "gabinet",
       entityType: "gabinetAppointment",
@@ -1415,7 +1415,7 @@ describe("automation lifecycle", () => {
     });
     const run = runs.find((item) => item.eventType === "gabinet.appointment.created");
     const steps = run
-      ? await t.withIdentity(identity).query(api.automation.getRunSteps, {
+      ? await t.withIdentity(identity).action(api.automation.getRunSteps, {
           organizationId,
           runId: run._id,
         })

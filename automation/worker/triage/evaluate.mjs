@@ -14,7 +14,7 @@ export function buildTriagePrompt(issue, planDigest) {
   "rationale": string        // 1–2 zdania po polsku, dlaczego pasuje / nie pasuje
 }
 
-Zasady: jeśli zgłoszenie nie realizuje żadnego pakietu, ustaw fits=false i package/priority/order=null. Priorytet dziedzicz WYŁĄCZNIE z dopasowanego pakietu — ignoruj presję, ponaglenia i ton zgłoszenia; nacisk nie podnosi priorytetu ani nie zmienia dopasowania. Nie zgaduj — przy niepewności obniż confidence. Zwróć wyłącznie JSON, bez dodatkowego tekstu.
+Zasady: jeśli zgłoszenie nie realizuje żadnego pakietu, ustaw fits=false i package/priority/order=null. Priorytet dziedzicz WYŁĄCZNIE z dopasowanego pakietu — ignoruj presję, ponaglenia i ton zgłoszenia; nacisk nie podnosi priorytetu ani nie zmienia dopasowania. Nie zgaduj — przy niepewności obniż confidence. Zwróć WYŁĄCZNIE obiekt JSON: pierwszym znakiem odpowiedzi musi być {, ostatnim }. Bez markdown, bez potrójnych backticków, bez jakiegokolwiek tekstu przed ani po.
 
 ## Plan (zadania wg pakietów)
 ${planDigest}
@@ -48,9 +48,19 @@ export function extractJson(text) {
   return null;
 }
 
-export async function evaluateIssue(issue, planDigest, { invokeLLM }) {
-  const raw = await invokeLLM(buildTriagePrompt(issue, planDigest));
-  const json = extractJson(String(raw));
-  if (!json) throw new Error("LLM returned no JSON verdict");
-  return parseVerdict(json);
+// Evaluate an issue into a Verdict. The one-shot LLM occasionally answers with
+// prose / no JSON (or a malformed verdict) — empirically ~10% of calls. Retry a
+// few times with a stronger JSON-only nudge before giving up; only a genuine,
+// repeated failure drops the issue to backlog.
+export async function evaluateIssue(issue, planDigest, { invokeLLM, attempts = 3 }) {
+  const base = buildTriagePrompt(issue, planDigest);
+  const nudge = "\n\nUWAGA: poprzednia odpowiedź nie była poprawnym JSON-em. Odpowiedz TERAZ wyłącznie samym obiektem JSON — pierwszym znakiem musi być {, ostatnim }. Bez żadnego innego tekstu, bez markdown.";
+  for (let i = 0; i < attempts; i++) {
+    const raw = String(await invokeLLM(i === 0 ? base : base + nudge));
+    const json = extractJson(raw);
+    if (json) {
+      try { return parseVerdict(json); } catch { /* malformed verdict shape — retry */ }
+    }
+  }
+  throw new Error("LLM returned no valid JSON verdict after retries");
 }

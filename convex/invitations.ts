@@ -1,9 +1,9 @@
-import { query, action, internalMutation, internalAction } from "./_generated/server";
+import { action, internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
-import { verifyOrgAccess, requireOrgAdmin, requireUser } from "./_helpers/auth";
+import { requireOrgAdmin, requireUser } from "./_helpers/auth";
 import { orgRoleValidator } from "@cvx/schema";
 import { logActivity } from "./_helpers/activities";
 import { logAudit } from "./auditLog";
@@ -15,52 +15,61 @@ import {
 } from "./email/templates/invitationEmail";
 import { sendViaResend, sendViaMailgun } from "./email/providers";
 
-export const listPending = query({
+export const listPending = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const invitations = await ctx.db
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+
+    const pending = await db
       .query("invitations")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", orgIdStr)
+      .eq("status", "pending")
       .collect();
 
-    const pending = invitations.filter((inv) => inv.status === "pending");
+    if (pending.length === 0) return [];
 
-    return await Promise.all(
-      pending.map(async (inv) => {
-        const inviter = await ctx.db.get(inv.invitedBy);
-        return {
-          ...inv,
-          inviterName: inviter?.name ?? null,
-        };
-      })
-    );
+    const inviterIds = [...new Set(pending.map((inv) => String(inv.invitedBy)))];
+    const inviters = await db.getMany("users", inviterIds);
+    const inviterMap = new Map(inviters.map((u) => [String(u._id), u.name ?? null]));
+
+    return pending.map((inv) => ({
+      ...inv,
+      inviterName: inviterMap.get(String(inv.invitedBy)) ?? null,
+    }));
   },
 });
 
-export const getByToken = query({
+export const getByToken = action({
   args: { token: v.string() },
   handler: async (ctx, args) => {
-    const invitation = await ctx.db
+    const db = createSupabaseDb();
+
+    const invitation = await db
       .query("invitations")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .eq("token", args.token)
       .unique();
 
     if (!invitation) return null;
 
-    const org = await ctx.db.get(invitation.organizationId);
-    const inviter = await ctx.db.get(invitation.invitedBy);
+    const [org, inviter] = await Promise.all([
+      db.get("organizations", String(invitation.organizationId)),
+      db.get("users", String(invitation.invitedBy)),
+    ]);
 
     return {
       invitation: {
-        _id: invitation._id,
+        _id: String(invitation._id),
         email: invitation.email,
         role: invitation.role,
         status: invitation.status,
         expiresAt: invitation.expiresAt,
         createdAt: invitation.createdAt,
-        module: invitation.module,
+        module: invitation.module ?? null,
       },
       orgName: org?.name ?? null,
       inviterName: inviter?.name ?? null,

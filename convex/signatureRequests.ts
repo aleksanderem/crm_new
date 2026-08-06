@@ -1,9 +1,8 @@
-import { query, action, internalMutation } from "./_generated/server";
+import { action, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { internal, api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
-import { verifyOrgAccess } from "./_helpers/auth";
 
 // Dual-write refs removed — Supabase is now primary for signature request writes
 
@@ -86,16 +85,18 @@ export const getByToken = action({
 });
 
 /** List signature requests for a document instance (authenticated). */
-export const listByInstance = query({
-  args: { instanceId: v.id("documentInstances") },
+export const listByInstance = action({
+  args: { instanceId: v.string() },
   handler: async (ctx, args) => {
-    const instance = await ctx.db.get(args.instanceId);
+    const db = createSupabaseDb();
+    const instance = await db.get("documentInstances", args.instanceId);
     if (!instance) return [];
-    await verifyOrgAccess(ctx, instance.organizationId);
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: instance.organizationId as Id<"organizations">,
+    });
 
-    return await ctx.db
-      .query("signatureRequests")
-      .withIndex("by_instance", (q) => q.eq("instanceId", args.instanceId))
+    return await db.query("signatureRequests")
+      .eq("instanceId", args.instanceId)
       .collect();
   },
 });

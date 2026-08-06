@@ -70,6 +70,10 @@ const WHITELIST_PATHS = new Set([
   "crm/seed",
   "gabinet/seed",
   "documents/seed",
+  "seedDefaults",
+  "emailTemplateSeed",
+  "seedEmailEvents",
+  "seedTemplates",
 
   // Auth/permissions helpers called from QueryCtx — Convex queries cannot
   // make HTTP calls, so createSupabaseDb() is unavailable. Mutation callers
@@ -120,6 +124,62 @@ function relToModuleKey(relPath) {
 }
 
 // ---------------------------------------------------------------------------
+// MULTILINE_PENDING — files with known ctx.db\n.query() violations that are
+// pending migration to the Supabase read path.  These files are exempt from
+// the multiline pattern check ONLY — single-line patterns are still flagged.
+// Tracked: issue #3860.  Remove entries one-by-one as files are migrated.
+// ---------------------------------------------------------------------------
+const MULTILINE_PENDING = new Set([
+  "activities",
+  "app",
+  "auditLog",
+  "automation",
+  "calls",
+  "companies",
+  "contacts",
+  "customFields",
+  "documentInstances",
+  "documentTemplateFields",
+  "documentTemplates",
+  "documents",
+  "documents/components",
+  "documents/templates",
+  "emailBrandConfig",
+  "emailEventBindings",
+  "emailEventTrigger",
+  "emailEvents",
+  "emailLayouts",
+  "emailSending",
+  "emailSequences",
+  "emailTemplates",
+  "emails",
+  "emails_internal",
+  "gabinet/_availability",
+  "gabinet/appointmentSms",
+  "gabinet/employees",
+  "gabinet/equipment",
+  "gabinet/patientAuth",
+  "gabinet/patientPortal",
+  "gabinet/patients",
+  "invitations",
+  "leads",
+  "lostReasons",
+  "mailProviders",
+  "notes",
+  "notifications",
+  "organizations",
+  "payments",
+  "permissions",
+  "pipelineStageActions",
+  "relationships",
+  "signatureRequests",
+  "sms",
+  "stripe",
+  "supabase/jwt",
+  "tagDefinitions",
+]);
+
+// ---------------------------------------------------------------------------
 // Violation detection — find ctx.db.query("TABLE_MAP_TABLE") in a file.
 //
 // Only ctx.db.query (and variables destructured from ctx as db) are flagged.
@@ -127,20 +187,15 @@ function relToModuleKey(relPath) {
 // path and is intentionally not matched here — provenance tracking via the
 // destructure pre-scan keeps these two apart.
 //
-// Current scope: single-line patterns only:
-//   ctx.db.query("table")
-//   const { db } = ctx; … db.query("table")
-//   const { db: alias } = ctx; … alias.query("table")
+// Three patterns are detected:
+//   1. ctx.db.query("table")                         — direct chained access
+//   2. const { db } = ctx; … db.query("table")       — destructure alias
+//   3. ctx.db\n      .query("table")                 — split across two lines
 //
-// Multiline patterns like
-//   ctx.db
-//     .query("table")
-// are not yet detected. The auth/permissions/seatLimits helpers that use this
-// multiline style are explicitly whitelisted (they run in QueryCtx/MutationCtx
-// and cannot reach Supabase). All other multiline violations are tracked in a
-// follow-up issue for broader migration. See issue #3861 for context.
+// Files in MULTILINE_PENDING are exempt from pattern 3 only (migration
+// backlog tracked in issue #3860).  New files are subject to all three checks.
 // ---------------------------------------------------------------------------
-function findViolations(content, tableMapKeys) {
+function findViolations(content, tableMapKeys, { detectMultiline = true } = {}) {
   const violations = [];
   const lines = content.split("\n");
 
@@ -197,6 +252,23 @@ function findViolations(content, tableMapKeys) {
         }
       }
     }
+
+    // Pattern 3 (multiline): ctx.db at end of line, .query("table") on the
+    // next line.  Skipped for files in MULTILINE_PENDING (migration backlog).
+    if (detectMultiline && /\bctx\.db\s*$/.test(line) && i + 1 < lines.length) {
+      const nextLine = lines[i + 1];
+      const nextTrimmed = nextLine.trimStart();
+      if (!nextTrimmed.startsWith("//") && !nextTrimmed.startsWith("*")) {
+        const mm = /^\s*\.query\(\s*["'](\w+)["']/.exec(nextLine);
+        if (mm && tableMapKeys.has(mm[1])) {
+          violations.push({
+            lineNum: i + 1,
+            text: line.trim() + " " + nextLine.trim(),
+            tableName: mm[1],
+          });
+        }
+      }
+    }
   }
 
   return violations;
@@ -247,7 +319,9 @@ for (const file of allFiles) {
 
   scanned++;
   const content = readFileSync(file, "utf8");
-  const violations = findViolations(content, tableMapKeys);
+  const violations = findViolations(content, tableMapKeys, {
+    detectMultiline: !MULTILINE_PENDING.has(moduleKey),
+  });
 
   if (violations.length > 0) {
     allViolations.push({ file: relPath, violations });

@@ -3,7 +3,9 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { test, expect } from "@playwright/test";
 import { ConvexHttpClient } from "convex/browser";
+import { createClient } from "@supabase/supabase-js";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import {
   loginAndGoToDashboard,
   resetStoredBrowserState,
@@ -25,15 +27,27 @@ test.describe("Gabinet — Appointments", () => {
   // written on, so don't reintroduce one.
   const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
   const envLocalPath = resolve(repoRoot, ".env.local");
+  const envLocalContent = existsSync(envLocalPath)
+    ? readFileSync(envLocalPath, "utf-8").split("\n")
+    : [];
   const convexUrl =
     process.env.VITE_CONVEX_URL?.trim() ||
-    (existsSync(envLocalPath)
-      ? readFileSync(envLocalPath, "utf-8")
-          .split("\n")
-          .find((line) => line.startsWith("VITE_CONVEX_URL="))
-          ?.split("=")[1]
-          ?.trim()
-      : undefined);
+    envLocalContent
+      .find((line) => line.startsWith("VITE_CONVEX_URL="))
+      ?.split("=")[1]
+      ?.trim();
+  const supabaseUrl =
+    process.env.VITE_SUPABASE_URL?.trim() ||
+    envLocalContent
+      .find((line) => line.startsWith("VITE_SUPABASE_URL="))
+      ?.split("=")[1]
+      ?.trim();
+  const supabaseAnonKey =
+    process.env.VITE_SUPABASE_ANON_KEY?.trim() ||
+    envLocalContent
+      .find((line) => line.startsWith("VITE_SUPABASE_ANON_KEY="))
+      ?.split("=")[1]
+      ?.trim();
 
   if (!convexUrl) {
     throw new Error(
@@ -71,16 +85,28 @@ test.describe("Gabinet — Appointments", () => {
   ) {
     const { client, organizationId } = await getConvexClientContext(page);
 
-    const existingRules = await client.action(api.automation.listRules, {
-      organizationId,
-      module: "gabinet",
-    });
-    const duplicate = existingRules.find((rule) => rule.name === name);
-    if (duplicate?._id) {
-      await client.mutation(api.automation.deleteRule, {
+    // Read automation_rules directly from Supabase (primary read path post-migration).
+    // Convex mutations still handle writes; only the duplicate-check read moves here.
+    if (supabaseUrl && supabaseAnonKey) {
+      const { token } = await client.action(api.supabase.jwt.mintSupabaseToken, {
         organizationId,
-        ruleId: duplicate._id,
       });
+      const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: `Bearer ${token}` } },
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const { data: existingRules } = await supabase
+        .from("automation_rules")
+        .select("id, name")
+        .eq("organization_id", String(organizationId))
+        .eq("module", "gabinet");
+      const duplicate = (existingRules ?? []).find((rule) => rule.name === name);
+      if (duplicate?.id) {
+        await client.mutation(api.automation.deleteRule, {
+          organizationId,
+          ruleId: duplicate.id as Id<"automationRules">,
+        });
+      }
     }
 
     await client.mutation(api.automation.createRule, {

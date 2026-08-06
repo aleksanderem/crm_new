@@ -5,6 +5,7 @@ import { currencyValidator, PLANS } from "@cvx/schema";
 import { asyncMap } from "convex-helpers";
 import { v } from "convex/values";
 import { User } from "~/types";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 export const getCurrentUser = query({
   args: {},
@@ -29,8 +30,10 @@ export const getCurrentUser = query({
     const avatarUrl = user.imageId
       ? await ctx.storage.getUrl(user.imageId)
       : user.image;
+    // Exclude isPlatformAdmin — read it from Supabase via getIsPlatformAdmin action.
+    const { isPlatformAdmin: _omit, ...userFields } = user;
     return {
-      ...user,
+      ...userFields,
       avatarUrl: avatarUrl || undefined,
       subscription:
         subscription && plan
@@ -40,6 +43,20 @@ export const getCurrentUser = query({
             }
           : undefined,
     };
+  },
+});
+
+// Returns whether the current user has the platform-admin flag, reading from
+// Supabase (the authoritative store for isPlatformAdmin post-migration).
+// Call this instead of user.isPlatformAdmin from getCurrentUser.
+export const getIsPlatformAdmin = action({
+  args: {},
+  handler: async (ctx): Promise<{ isPlatformAdmin: boolean }> => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) return { isPlatformAdmin: false };
+    const db = createSupabaseDb();
+    const user = await db.get("users", String(userId));
+    return { isPlatformAdmin: Boolean(user?.isPlatformAdmin) };
   },
 });
 

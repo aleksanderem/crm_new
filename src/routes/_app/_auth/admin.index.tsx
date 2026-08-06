@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -9,15 +9,17 @@ export const Route = createFileRoute("/_app/_auth/admin/")({
 });
 
 function AdminIndex() {
-  const { data: user, isLoading } = useQuery(
-    convexQuery(api.app.getCurrentUser, {}),
-  );
+  const getIsPlatformAdmin = useAction(api.app.getIsPlatformAdmin);
+  const { data: adminStatus, isLoading } = useQuery({
+    queryKey: ["isPlatformAdmin"],
+    queryFn: () => getIsPlatformAdmin({}),
+  });
 
   if (isLoading) {
     return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
   }
 
-  if (!user?.isPlatformAdmin) {
+  if (!adminStatus?.isPlatformAdmin) {
     return (
       <div className="mx-auto max-w-2xl p-8">
         <Card>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,9 +22,11 @@ export const Route = createFileRoute("/_app/_auth/admin/errors")({
 type SourceFilter = "all" | "convex" | "frontend";
 
 function AdminErrors() {
-  const { data: viewer, isLoading: viewerLoading } = useQuery(
-    convexQuery(api.app.getCurrentUser, {}),
-  );
+  const getIsPlatformAdmin = useAction(api.app.getIsPlatformAdmin);
+  const { data: adminStatus, isLoading: viewerLoading } = useQuery({
+    queryKey: ["isPlatformAdmin"],
+    queryFn: () => getIsPlatformAdmin({}),
+  });
 
   const [source, setSource] = useState<SourceFilter>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -33,7 +36,7 @@ function AdminErrors() {
       limit: 200,
       source: source === "all" ? undefined : source,
     }),
-    enabled: Boolean(viewer?.isPlatformAdmin),
+    enabled: Boolean(adminStatus?.isPlatformAdmin),
     refetchInterval: 5000,
   });
 
@@ -41,7 +44,7 @@ function AdminErrors() {
     return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
   }
 
-  if (!viewer?.isPlatformAdmin) {
+  if (!adminStatus?.isPlatformAdmin) {
     return (
       <div className="mx-auto max-w-2xl p-8">
         <Card>

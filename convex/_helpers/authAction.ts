@@ -187,20 +187,18 @@ export const checkPermission = internalAction({
   },
 });
 
-// Platform-admin guard for action handlers. Actions cannot call
-// requirePlatformAdmin directly (V8-only), so they delegate here via
-// ctx.runQuery(internal._helpers.authAction.verifyPlatformAdmin, {}).
-// verifyPlatformAdmin reads only `users` via ctx.db.get (auth-authoritative,
-// not flagged by the TABLE_MAP gate) so it stays as internalQuery.
-export const verifyPlatformAdmin = internalQuery({
+// Platform-admin guard for action handlers. Reads isPlatformAdmin from
+// Supabase (authoritative post-migration). Call via
+// ctx.runAction(internal._helpers.authAction.verifyPlatformAdmin, {}).
+export const verifyPlatformAdmin = internalAction({
   args: {},
-  returns: v.object({ userId: v.id("users") }),
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<{ userId: Id<"users"> }> => {
     const userId = await auth.getUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
-    const user = await ctx.db.get(userId);
+    const db = createSupabaseDb();
+    const user = await db.get("users", String(userId));
     if (!user) throw new Error("User not found");
     if (!user.isPlatformAdmin) throw new Error("Platform admin access required");
-    return { userId: user._id };
+    return { userId: userId as Id<"users"> };
   },
 });

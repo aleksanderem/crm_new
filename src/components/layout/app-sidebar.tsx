@@ -103,6 +103,12 @@ export function AppSidebar() {
   const { data: activeProducts } = useQuery(convexQuery(api.productSubscriptions.getActiveProducts, { organizationId }));
   const { data: currentUser } = useQuery(convexQuery(api.app.getCurrentUser, {}));
 
+  const getIsPlatformAdmin = useAction(api.app.getIsPlatformAdmin);
+  const { data: adminStatus } = useQuery({
+    queryKey: ["isPlatformAdmin"],
+    queryFn: () => getIsPlatformAdmin({}),
+  });
+
   const visibleModules = getVisibleModules(activeProducts);
   const hasGabinet = visibleModules.some((module) => module.id === "gabinet");
 
@@ -129,7 +135,7 @@ export function AppSidebar() {
     .flatMap((module) => module.settingsNav)
     .filter((item) => {
       if (item.adminOnly && !isAdmin) return false;
-      if (item.platformAdminOnly && !currentUser?.isPlatformAdmin) return false;
+      if (item.platformAdminOnly && !adminStatus?.isPlatformAdmin) return false;
       if (item.permissionFeature && !canView(item.permissionFeature)) return false;
       return true;
     });

@@ -9,7 +9,7 @@ import { createSupabaseDb } from "./_helpers/supabaseDb";
 export const list = action({
   args: {},
   handler: async (ctx) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyPlatformAdmin, {});
+    await ctx.runAction(internal._helpers.authAction.verifyPlatformAdmin, {});
     const db = createSupabaseDb();
     const users = await db.query("users").collect();
     return users
@@ -37,7 +37,7 @@ export const setRole = action({
     isPlatformAdmin: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const { userId: actorId } = await ctx.runQuery(
+    const { userId: actorId } = await ctx.runAction(
       internal._helpers.authAction.verifyPlatformAdmin,
       {},
     );

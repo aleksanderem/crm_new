@@ -23,11 +23,17 @@ function AdminUsers() {
     convexQuery(api.app.getCurrentUser, {}),
   );
 
+  const getIsPlatformAdmin = useAction(api.app.getIsPlatformAdmin);
+  const { data: adminStatus, isLoading: adminLoading } = useQuery({
+    queryKey: ["isPlatformAdmin"],
+    queryFn: () => getIsPlatformAdmin({}),
+  });
+
   const listAction = useAction(api.platformAdmins.list);
   const usersQuery = useQuery({
     queryKey: ["platformAdmins", "list"],
     queryFn: () => listAction({}),
-    enabled: Boolean(viewer?.isPlatformAdmin),
+    enabled: Boolean(adminStatus?.isPlatformAdmin),
   });
 
   const setRoleAction = useAction(api.platformAdmins.setRole);
@@ -47,11 +53,11 @@ function AdminUsers() {
     },
   });
 
-  if (viewerLoading) {
+  if (viewerLoading || adminLoading) {
     return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
   }
 
-  if (!viewer?.isPlatformAdmin) {
+  if (!adminStatus?.isPlatformAdmin) {
     return (
       <div className="mx-auto max-w-2xl p-8">
         <Card>
@@ -108,7 +114,7 @@ function AdminUsers() {
               <div className="p-6 text-sm text-muted-foreground">No users found.</div>
             )}
             {users.map((u) => {
-              const isSelf = u._id === viewer._id;
+              const isSelf = u._id === viewer?._id;
               return (
                 <div
                   key={u._id}

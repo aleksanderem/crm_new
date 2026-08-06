@@ -1,8 +1,7 @@
-import { query, action, internalAction } from "./_generated/server";
+import { action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
-import { verifyOrgAccess } from "./_helpers/auth";
 
 // Dual-write refs removed — Supabase is now primary for template field writes
 
@@ -38,19 +37,24 @@ const validationValidator = v.object({
 // Queries
 // ---------------------------------------------------------------------------
 
-export const listByTemplate = query({
-  args: { templateId: v.id("documentTemplates") },
+export const listByTemplate = action({
+  args: { templateId: v.string() },
   handler: async (ctx, args) => {
-    const template = await ctx.db.get(args.templateId);
-    if (!template) return [];
-    await verifyOrgAccess(ctx, template.organizationId);
+    const orgId = await ctx.runAction(internal.documentTemplateFields._verifyTemplateAccess, {
+      templateId: args.templateId,
+    });
 
-    const fields = await ctx.db
-      .query("documentTemplateFields")
-      .withIndex("by_template", (q) => q.eq("templateId", args.templateId))
+    await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: orgId },
+    );
+
+    const db = createSupabaseDb();
+    const fields = await db.query("documentTemplateFields")
+      .eq("templateId", args.templateId)
       .collect();
 
-    return fields.sort((a, b) => a.sortOrder - b.sortOrder);
+    return fields.sort((a, b) => (a.sortOrder as number) - (b.sortOrder as number));
   },
 });
 

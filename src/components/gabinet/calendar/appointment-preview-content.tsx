@@ -93,6 +93,7 @@ import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useDraggableDialog } from "@/hooks/use-draggable-dialog";
 import { useSidebarActions } from "@/components/layout/sidebar-context";
+import { usePermission } from "@/hooks/use-permission";
 import {
   useSupabaseGabinetFirstAppointmentIdsByPatient,
   useSupabaseGabinetAppointmentPackagePositions,
@@ -219,6 +220,7 @@ export function AppointmentPreviewContent({
 }: AppointmentPreviewContentProps) {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
+  const { allowed: canDelete } = usePermission("gabinet_appointments", "delete");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -495,7 +497,10 @@ export function AppointmentPreviewContent({
   const isMultiTreatment = junctionTreatments.length > 1;
   const initialTreatmentId = detail.treatments?.[0]?.treatmentId ?? "";
   const initialVariantId = "";
-  const availableTransitions = VALID_TRANSITIONS[initialStatus] ?? [];
+  const allTransitions = VALID_TRANSITIONS[initialStatus] ?? [];
+  const availableTransitions = canDelete
+    ? allTransitions
+    : allTransitions.filter((s) => s !== "cancelled");
   const patientFullName = patient
     ? `${patient.firstName ?? ""} ${patient.lastName ?? ""}`.trim()
     : "-";

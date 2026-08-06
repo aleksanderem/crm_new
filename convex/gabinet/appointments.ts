@@ -13,12 +13,6 @@ import { verifyOrgAccess } from "../_helpers/auth";
 import { checkModuleAccess } from "../_helpers/products";
 import { logActivity } from "../_helpers/activities";
 import { gabinetAppointmentStatusValidator } from "../schema";
-import {
-  checkConflict,
-  getAvailableSlots,
-  checkEmployeeQualification,
-  resolveAppointmentLocation,
-} from "./_availability";
 import { Id, Doc } from "../_generated/dataModel";
 import type {
   GabinetAppointmentRow,
@@ -778,93 +772,6 @@ export const _getOrgSettings = internalAction({
     return await db.query("orgSettings")
       .eq("organizationId", String(args.organizationId))
       .first() as Record<string, unknown> | null;
-  },
-});
-
-export const _checkConflictQuery = internalQuery({
-  args: {
-    organizationId: v.id("organizations"),
-    userId: v.string(),
-    date: v.string(),
-    startTime: v.string(),
-    endTime: v.string(),
-    roomId: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    return await checkConflict(ctx, {
-      ...args,
-      userId: args.userId as Id<"users">,
-      roomId: args.roomId as Id<"gabinetRooms"> | undefined,
-    });
-  },
-});
-
-export const _checkConflictWithExcludeQuery = internalQuery({
-  args: {
-    organizationId: v.id("organizations"),
-    userId: v.string(),
-    date: v.string(),
-    startTime: v.string(),
-    endTime: v.string(),
-    excludeAppointmentId: v.optional(v.string()),
-    roomId: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    return await checkConflict(ctx, {
-      ...args,
-      userId: args.userId as Id<"users">,
-      excludeAppointmentId: args.excludeAppointmentId as Id<"gabinetAppointments"> | undefined,
-      roomId: args.roomId as Id<"gabinetRooms"> | undefined,
-    });
-  },
-});
-
-export const _checkQualificationQuery = internalQuery({
-  args: {
-    organizationId: v.id("organizations"),
-    userId: v.string(),
-    treatmentId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    return await checkEmployeeQualification(ctx, {
-      ...args,
-      userId: args.userId as Id<"users">,
-      treatmentId: args.treatmentId as Id<"gabinetTreatments">,
-    });
-  },
-});
-
-export const _resolveLocationQuery = internalQuery({
-  args: {
-    organizationId: v.id("organizations"),
-    userId: v.string(),
-    date: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const locationId = await resolveAppointmentLocation(ctx, {
-      ...args,
-      userId: args.userId as Id<"users">,
-    });
-    return locationId ? String(locationId) : null;
-  },
-});
-
-export const _getAvailableSlotsQuery = internalQuery({
-  args: {
-    organizationId: v.id("organizations"),
-    userId: v.string(),
-    date: v.string(),
-    duration: v.number(),
-    locationId: v.optional(v.string()),
-    nowDate: v.optional(v.string()),
-    nowTime: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    return await getAvailableSlots(ctx, {
-      ...args,
-      userId: args.userId as Id<"users">,
-      locationId: args.locationId as Id<"gabinetLocations"> | undefined,
-    });
   },
 });
 

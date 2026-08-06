@@ -176,6 +176,43 @@ export const create = action({
         }
       }
 
+      // Self-heal: if the user row is missing from Supabase (users created
+      // before the Supabase migration or whose writeUserToSupabase call failed),
+      // upsert it now so the gabinet_treatments created_by FK doesn't fire.
+      // UPDATE never touches created_by, so this gap only surfaces on CREATE.
+      const userIdStr = String(authResult.userId);
+      const { data: existingUser } = await client
+        .from("users")
+        .select("id")
+        .eq("id", userIdStr)
+        .maybeSingle();
+      if (!existingUser) {
+        const convexUser = await ctx.runQuery(internal.supabase.backfill._getUser, {
+          userId: userIdStr,
+        });
+        if (convexUser) {
+          await client.from("users").upsert(
+            {
+              id: userIdStr,
+              name: convexUser.name ?? null,
+              username: convexUser.username ?? null,
+              image: convexUser.image ?? null,
+              image_storage_id: convexUser.imageId ? String(convexUser.imageId) : null,
+              email: convexUser.email ?? null,
+              phone: convexUser.phone ?? null,
+              is_anonymous: convexUser.isAnonymous ?? null,
+              customer_id: convexUser.customerId ?? null,
+              language: convexUser.language ?? null,
+              theme: convexUser.theme ?? null,
+              timezone: convexUser.timezone ?? null,
+              created_at: convexUser._creationTime,
+              updated_at: now,
+            },
+            { onConflict: "id" },
+          );
+        }
+      }
+
       // --- INSERT treatment directly to Supabase ---
       // Only include taxExempt when true — omitting it avoids a "column does
       // not exist" failure on environments where migration 00005 hasn't been

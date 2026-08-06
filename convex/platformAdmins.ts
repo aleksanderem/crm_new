@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { action, internalMutation } from "./_generated/server";
+import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 
@@ -63,11 +63,6 @@ export const setRole = action({
     await db.patch("users", String(args.userId), {
       isPlatformAdmin: args.isPlatformAdmin,
     });
-    // Dual-write to Convex so requirePlatformAdmin (ctx.db.get path) stays in sync.
-    await ctx.runMutation(internal.platformAdmins._patchAdminInConvex, {
-      userId: args.userId,
-      isPlatformAdmin: args.isPlatformAdmin,
-    });
     return {
       userId: args.userId,
       isPlatformAdmin: args.isPlatformAdmin,
@@ -76,14 +71,3 @@ export const setRole = action({
   },
 });
 
-// Convex-side patch called by setRole to keep ctx.db in sync with the
-// Supabase write. Required because requirePlatformAdmin reads from ctx.db.
-export const _patchAdminInConvex = internalMutation({
-  args: {
-    userId: v.id("users"),
-    isPlatformAdmin: v.boolean(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.userId, { isPlatformAdmin: args.isPlatformAdmin });
-  },
-});

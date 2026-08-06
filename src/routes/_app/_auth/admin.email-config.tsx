@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { toast } from "sonner";
@@ -61,7 +61,7 @@ function AdminEmailConfig() {
   }, [settings]);
 
   const saveMutation = useMutation({
-    mutationFn: useConvexMutation(api.platformSettings.set),
+    mutationFn: useAction(api.platformSettings.set),
     onSuccess: () => {
       toast.success("Platform email settings saved");
     },

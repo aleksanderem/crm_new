@@ -1,10 +1,12 @@
 import { v } from "convex/values";
 import {
+  action,
   mutation,
   internalMutation,
-  query,
+  internalQuery,
 } from "./_generated/server";
-import { requirePlatformAdmin, getCurrentUser } from "./_helpers/auth";
+import { internal } from "./_generated/api";
+import { getCurrentUser } from "./_helpers/auth";
 
 const MAX_STACK = 8000;
 const MAX_ARGS = 4000;
@@ -86,7 +88,7 @@ export const _recordInternal = internalMutation({
 
 // Platform-admin only — list recent errors. Hydrates the userId field
 // with email so the admin UI doesn't need to round-trip per row.
-export const list = query({
+export const list = action({
   args: {
     limit: v.optional(v.number()),
     scope: v.optional(v.string()),
@@ -94,7 +96,19 @@ export const list = query({
     sinceTs: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await requirePlatformAdmin(ctx);
+    await ctx.runAction(internal._helpers.authAction.verifyPlatformAdmin, {});
+    return await ctx.runQuery(internal.errorLogs._listInternal, args);
+  },
+});
+
+export const _listInternal = internalQuery({
+  args: {
+    limit: v.optional(v.number()),
+    scope: v.optional(v.string()),
+    source: v.optional(v.union(v.literal("convex"), v.literal("frontend"))),
+    sinceTs: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
     const limit = Math.min(args.limit ?? 100, 500);
 
     let rows;
@@ -129,10 +143,17 @@ export const list = query({
   },
 });
 
-export const get = query({
+export const get = action({
   args: { id: v.id("errorLogs") },
   handler: async (ctx, args) => {
-    await requirePlatformAdmin(ctx);
+    await ctx.runAction(internal._helpers.authAction.verifyPlatformAdmin, {});
+    return await ctx.runQuery(internal.errorLogs._getInternal, args);
+  },
+});
+
+export const _getInternal = internalQuery({
+  args: { id: v.id("errorLogs") },
+  handler: async (ctx, args) => {
     const row = await ctx.db.get(args.id);
     if (!row) return null;
     const user = row.userId ? await ctx.db.get(row.userId) : null;

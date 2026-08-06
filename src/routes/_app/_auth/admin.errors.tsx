@@ -2,7 +2,6 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,11 +30,10 @@ function AdminErrors() {
   const [source, setSource] = useState<SourceFilter>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  const listErrors = useAction(api.errorLogs.list);
   const errorsQuery = useQuery({
-    ...convexQuery(api.errorLogs.list, {
-      limit: 200,
-      source: source === "all" ? undefined : source,
-    }),
+    queryKey: ["errorLogs", "list", source],
+    queryFn: () => listErrors({ limit: 200, source: source === "all" ? undefined : source }),
     enabled: Boolean(adminStatus?.isPlatformAdmin),
     refetchInterval: 5000,
   });

@@ -3,7 +3,10 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
+import { useAction } from "convex/react";
+import { api } from "@cvx/_generated/api";
 import { useSupabase } from "@/components/supabase-provider";
+import { createSupabaseClient, SUPABASE_URL } from "@/lib/supabase/client";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import {
   mapOrganizationFromSupabase,
@@ -11,6 +14,56 @@ import {
   type MappedOrganization,
   type MappedOrgSettings,
 } from "@/lib/supabase/mappers";
+
+// ── My Organizations (bootstrap — no org context in JWT) ─────────────────────
+
+export interface MyOrganization extends MappedOrganization {
+  role: string;
+}
+
+/**
+ * Fetches the list of organizations the current user belongs to, sorted
+ * most-recently-joined first.
+ *
+ * This hook is intentionally called ABOVE SupabaseProvider (in DashboardLayout,
+ * before OrgProvider is mounted). It mints a user-scoped token (no org_id
+ * claim) and creates its own short-lived Supabase client so the org bootstrap
+ * query can hit Supabase instead of reading stale Convex data.
+ *
+ * Requires migration 00102 (user-own SELECT policies on team_memberships and
+ * organizations) to be applied.
+ */
+export function useSupabaseMyOrganizations(userId: string | undefined) {
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known)
+  const mintUserToken = useAction(api.supabase.jwt.mintUserToken);
+
+  return useQuery<MyOrganization[], Error>({
+    queryKey: ["supabase", "organizations", "my", userId ?? ""],
+    queryFn: async () => {
+      const { token } = await mintUserToken({});
+      const client = createSupabaseClient(SUPABASE_URL, token);
+
+      const { data, error } = await (client
+        .from("team_memberships")
+        .select(`
+          role,
+          joined_at,
+          organizations!team_memberships_organization_id_fkey (*)
+        `)
+        .order("joined_at", { ascending: false }) as any);
+
+      if (error) throw error;
+
+      return ((data as any[]) ?? [])
+        .filter((row: any) => row.organizations)
+        .map((row: any) => ({
+          ...mapOrganizationFromSupabase(row.organizations as any),
+          role: row.role as string,
+        }));
+    },
+    enabled: !!userId,
+  });
+}
 
 // ── Organization Detail ───────────────────────────────────────────────────────
 

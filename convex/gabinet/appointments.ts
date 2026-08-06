@@ -194,7 +194,7 @@ async function applyAppointmentStatusChange(
         : "Patient";
       const treatmentName = treatment?.name ?? "Treatment";
       const employeeName = employee?.name ?? "Specjalista";
-      await ctx.runMutation(internal.emailEventTrigger.triggerEmailEvent, {
+      await ctx.scheduler.runAfter(0, internal.emailEventTrigger.triggerEmailEvent, {
         organizationId: args.organizationId,
         eventType: "appointment.cancelled",
         recipientEmail: patient.email,

@@ -1611,7 +1611,7 @@ export const processRun = internalAction({
             }
 
             if (!("mode" in action)) {
-              const logId = await ctx.runMutation(internal.emailEventTrigger.triggerEmailEvent, {
+              const logId = await ctx.runAction(internal.emailEventTrigger.triggerEmailEvent, {
                 organizationId: run.organizationId,
                 eventType: action.templateEventType,
                 recipientEmail,

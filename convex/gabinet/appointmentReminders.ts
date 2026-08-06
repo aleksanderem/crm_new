@@ -282,7 +282,7 @@ export const sendReminder = internalMutation({
               ? "gabinet.appointment.reminder_1h"
               : "gabinet.appointment.reminder_custom";
 
-      await ctx.runMutation(internal.emailEventTrigger.triggerEmailEvent, {
+      await ctx.scheduler.runAfter(0, internal.emailEventTrigger.triggerEmailEvent, {
         organizationId: reminder.organizationId as Id<"organizations">,
         eventType: reminderEventType,
         recipientEmail: patient.email as string,

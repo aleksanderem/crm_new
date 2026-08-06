@@ -16,10 +16,10 @@ describe("emailEventTrigger", () => {
 
   test("triggerEmailEvent creates a pending log entry when no bindings exist", async () => {
     const t = createTestCtx();
-    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { organizationId, userId } = await seedTestUser(t);
 
     // Call triggerEmailEvent — no bindings configured for this org
-    await t.withIdentity(identity).mutation(
+    await t.action(
       internal.emailEventTrigger.triggerEmailEvent,
       {
         organizationId,
@@ -31,15 +31,17 @@ describe("emailEventTrigger", () => {
       },
     );
 
-    // A log entry must be created with status "pending"
-    const logs = await t.run(async (ctx) =>
-      ctx.db.query("emailEventLog").collect(),
-    );
+    // A log entry must be created in Supabase with status "pending"
+    const db = createSupabaseDb();
+    const logs = await db
+      .query("emailEventLog")
+      .eq("organizationId", String(organizationId))
+      .collect();
     expect(logs).toHaveLength(1);
     expect(logs[0].status).toBe("pending");
     expect(logs[0].eventType).toBe("appointment.created");
     expect(logs[0].recipientEmail).toBe("patient@example.com");
-    expect(logs[0].organizationId).toBe(organizationId);
+    expect(String(logs[0].organizationId)).toBe(String(organizationId));
   });
 
   // ─── listEnabledBindings: no bindings ─────────────────────────
@@ -146,10 +148,10 @@ describe("emailEventTrigger", () => {
 
   test("multiple triggerEmailEvent calls each create a separate log entry", async () => {
     const t = createTestCtx();
-    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { organizationId, userId } = await seedTestUser(t);
 
     for (const email of ["a@example.com", "b@example.com"]) {
-      await t.withIdentity(identity).mutation(
+      await t.action(
         internal.emailEventTrigger.triggerEmailEvent,
         {
           organizationId,
@@ -160,9 +162,11 @@ describe("emailEventTrigger", () => {
       );
     }
 
-    const logs = await t.run(async (ctx) =>
-      ctx.db.query("emailEventLog").collect(),
-    );
+    const db = createSupabaseDb();
+    const logs = await db
+      .query("emailEventLog")
+      .eq("organizationId", String(organizationId))
+      .collect();
     expect(logs).toHaveLength(2);
     const emails = logs.map((l) => l.recipientEmail).sort();
     expect(emails).toEqual(["a@example.com", "b@example.com"]);

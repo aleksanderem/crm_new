@@ -471,6 +471,108 @@ describe("payments", () => {
     expect(result.page[0].paymentMethod).toBe("card");
   });
 
+  // Split payment (#3768) -------------------------------------------------------
+
+  describe("splitMarkPaid", () => {
+    test("creates two completed payment rows that sum to the original amount", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity } = await seedTestUser(t);
+
+      const paymentId = await t.withIdentity(identity).action(
+        api.payments.create,
+        {
+          organizationId,
+          amount: 100,
+          currency: "PLN",
+          paymentMethod: "cash",
+          status: "pending",
+        },
+      );
+
+      const { firstPaymentId, secondPaymentId } = await t
+        .withIdentity(identity)
+        .action(api.payments.splitMarkPaid, {
+          organizationId,
+          paymentId,
+          firstMethod: "cash",
+          firstAmount: 60,
+          secondMethod: "card",
+          secondAmount: 40,
+        });
+
+      expect(firstPaymentId).toBe(paymentId);
+      expect(secondPaymentId).toBeTruthy();
+
+      const all = await t.withIdentity(identity).action(api.payments.list, {
+        organizationId,
+        paginationOpts: { numItems: 10, cursor: null },
+        status: "completed",
+      });
+
+      expect(all.page).toHaveLength(2);
+      const first = all.page.find((p: any) => p._id === firstPaymentId);
+      const second = all.page.find((p: any) => p._id === secondPaymentId);
+      expect(first?.amount).toBe(60);
+      expect(first?.paymentMethod).toBe("cash");
+      expect(second?.amount).toBe(40);
+      expect(second?.paymentMethod).toBe("card");
+    });
+
+    test("rejects split amounts that do not sum to original", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity } = await seedTestUser(t);
+
+      const paymentId = await t.withIdentity(identity).action(
+        api.payments.create,
+        {
+          organizationId,
+          amount: 100,
+          currency: "PLN",
+          paymentMethod: "cash",
+          status: "pending",
+        },
+      );
+
+      await expect(
+        t.withIdentity(identity).action(api.payments.splitMarkPaid, {
+          organizationId,
+          paymentId,
+          firstMethod: "cash",
+          firstAmount: 60,
+          secondMethod: "card",
+          secondAmount: 30,
+        }),
+      ).rejects.toThrow("Split amounts must sum to 100");
+    });
+
+    test("rejects identical payment methods", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity } = await seedTestUser(t);
+
+      const paymentId = await t.withIdentity(identity).action(
+        api.payments.create,
+        {
+          organizationId,
+          amount: 100,
+          currency: "PLN",
+          paymentMethod: "cash",
+          status: "pending",
+        },
+      );
+
+      await expect(
+        t.withIdentity(identity).action(api.payments.splitMarkPaid, {
+          organizationId,
+          paymentId,
+          firstMethod: "cash",
+          firstAmount: 50,
+          secondMethod: "cash",
+          secondAmount: 50,
+        }),
+      ).rejects.toThrow("Split methods must differ");
+    });
+  });
+
   // Inline approve/reject for refund authorization requests (#1722) ---------
 
   describe("refund authorization inline actions", () => {

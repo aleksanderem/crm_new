@@ -32,6 +32,13 @@ export const create = action({
       { organizationId: args.organizationId },
     );
 
+    const settings = await ctx.runQuery(internal.orgSettings._getSettings, {
+      organizationId: args.organizationId,
+    });
+    if (settings?.allowCustomLostReason === false) {
+      throw new Error("Custom lost reasons are disabled for this organization");
+    }
+
     const db = createSupabaseDb();
     const now = Date.now();
 

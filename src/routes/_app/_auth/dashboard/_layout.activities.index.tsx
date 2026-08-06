@@ -13,6 +13,7 @@ import {
   useSupabaseScheduledActivitiesOverdue,
 } from "@/hooks/use-supabase-scheduled-activities";
 import { useOrganization } from "@/components/org-context";
+import { usePermission } from "@/hooks/use-permission";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
 import type { CrmColumn } from "@/components/crm/enhanced-data-table";
@@ -76,6 +77,9 @@ function ActivitiesPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const { allowed: canCreate } = usePermission("activities", "create");
+  const { allowed: canEdit } = usePermission("activities", "edit");
+  const { allowed: canDelete } = usePermission("activities", "delete");
   const { nudge: nudgeFilter } = useSearch({ from: Route.id });
   const systemViews: SavedView[] = useMemo(() => [
     { id: "all", name: t('activities.views.all'), isSystem: true, isDefault: true },
@@ -357,13 +361,16 @@ function ActivitiesPage() {
   const { allColumns: columns, defaultHidden } = useAllColumns(mergedColumns, filterableFields);
   const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "activities");
 
-  const rowActions = (row: ActivityRow) => [
-    {
-      label: t('common.edit'),
-      icon: <Pencil className="h-4 w-4" variant="stroke" />,
-      onClick: () => openEditPanel(row),
-    },
-    {
+  const rowActions = (row: ActivityRow) => {
+    const actions = [];
+    if (canEdit) {
+      actions.push({
+        label: t('common.edit'),
+        icon: <Pencil className="h-4 w-4" variant="stroke" />,
+        onClick: () => openEditPanel(row),
+      });
+    }
+    actions.push({
       label: row.isCompleted ? t('activities.markIncomplete') : t('activities.markComplete'),
       icon: row.isCompleted ? (
         <RotateCcw className="h-4 w-4" variant="stroke" />
@@ -377,13 +384,16 @@ function ActivitiesPage() {
           markComplete({ organizationId, activityId: row._id });
         }
       },
-    },
-    {
-      label: t('common.delete'),
-      icon: <Trash2 className="h-4 w-4" variant="stroke" />,
-      onClick: () => removeActivity({ organizationId, activityId: row._id }),
-    },
-  ];
+    });
+    if (canDelete) {
+      actions.push({
+        label: t('common.delete'),
+        icon: <Trash2 className="h-4 w-4" variant="stroke" />,
+        onClick: () => removeActivity({ organizationId, activityId: row._id }),
+      });
+    }
+    return actions;
+  };
 
   return (
     <div className="space-y-4">
@@ -391,10 +401,12 @@ function ActivitiesPage() {
         title={t('activities.title')}
         description={t('activities.description')}
         actions={
-          <Button onClick={openCreatePanel}>
-            <Plus className="mr-2 h-4 w-4" variant="stroke" />
-            {t('activities.addActivity')}
-          </Button>
+          canCreate && (
+            <Button onClick={openCreatePanel}>
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
+              {t('activities.addActivity')}
+            </Button>
+          )
         }
       />
 
@@ -448,6 +460,7 @@ function ActivitiesPage() {
         enableBulkSelect
         isLoading={isLoading}
         onRowAction={(activityId) => {
+          if (!canEdit) return;
           const activity = tableData.find((a) => a._id === activityId);
           if (activity) openEditPanel(activity);
         }}

@@ -13,11 +13,11 @@ export const list = action({
     activeOnly: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<GabinetLeaveTypeRow[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "view" },
     ) as { allowed: boolean; scope: string };
@@ -37,11 +37,11 @@ export const getById = action({
     leaveTypeId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetLeaveTypeRow> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "view" },
     ) as { allowed: boolean; scope: string };
@@ -68,12 +68,12 @@ export const create = action({
   },
   handler: async (ctx, args) => {
     try {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -151,12 +151,12 @@ export const update = action({
   },
   handler: async (ctx, args) => {
     try {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -201,12 +201,12 @@ export const remove = action({
     leaveTypeId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -235,11 +235,11 @@ export const getBalances = action({
     year: v.number(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "view" },
     ) as { allowed: boolean; scope: string };
@@ -261,11 +261,11 @@ export const getAllBalances = action({
     year: v.number(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "view" },
     ) as { allowed: boolean; scope: string };
@@ -289,12 +289,12 @@ export const initializeBalance = action({
     totalDays: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -348,12 +348,12 @@ export const adjustBalance = action({
     usedDays: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -381,12 +381,12 @@ export const initializeAllBalances = action({
     year: v.number(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
     ) as { allowed: boolean; scope: string };

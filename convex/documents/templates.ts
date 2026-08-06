@@ -11,7 +11,7 @@ import { formCategoryValidator } from "../schema/documents";
 export const list = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args): Promise<FormTemplateRow[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
@@ -28,7 +28,7 @@ export const getById = action({
     templateId: v.string(),
   },
   handler: async (ctx, args): Promise<FormTemplateRow> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
@@ -63,7 +63,7 @@ export const listByEntityType = action({
     entityType: v.string(),
   },
   handler: async (ctx, args): Promise<FormTemplateRow[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
@@ -127,7 +127,7 @@ export const create = action({
   },
   handler: async (ctx, args) => {
     // requireOrgAdmin via authAction
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -170,7 +170,7 @@ export const duplicate = action({
     templateId: v.string(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -248,7 +248,7 @@ export const update = action({
     accessRoles: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -286,7 +286,7 @@ export const remove = action({
     templateId: v.string(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );

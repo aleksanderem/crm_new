@@ -33,7 +33,7 @@ export const listEquipment = action({
     locationId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<GabinetEquipmentRow[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
@@ -61,7 +61,7 @@ export const getEquipment = action({
       })
     | null
   > => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
@@ -106,12 +106,12 @@ export const createEquipment = action({
   },
   handler: async (ctx, args) => {
     try {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -198,12 +198,12 @@ export const updateEquipment = action({
   },
   handler: async (ctx, args) => {
     try {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -252,12 +252,12 @@ export const transferEquipment = action({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
     ) as { allowed: boolean; scope: string };

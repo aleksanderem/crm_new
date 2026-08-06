@@ -16,7 +16,7 @@ export interface NudgeData {
 
 async function verify(ctx: any, organizationId: string) {
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-  await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+  await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
     organizationId,
   });
 }

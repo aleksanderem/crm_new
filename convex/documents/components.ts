@@ -18,7 +18,7 @@ import {
 export const list = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -50,7 +50,7 @@ export const getById = action({
     componentId: v.string(),
   },
   handler: async (ctx, args): Promise<Record<string, unknown>> => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -84,7 +84,7 @@ export const getContent = action({
     protected: boolean;
     positionConstraint: string | null;
   } | null> => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -123,7 +123,7 @@ export const resolveContentJson = action({
     contentJson: v.string(),
   },
   handler: async (ctx, args): Promise<string> => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -148,7 +148,7 @@ export const create = action({
     ),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -195,7 +195,7 @@ export const update = action({
     ),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -239,7 +239,7 @@ export const remove = action({
     componentId: v.string(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -277,7 +277,7 @@ export const duplicate = action({
     scope: v.optional(v.union(v.literal("org"), v.literal("user"))),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );

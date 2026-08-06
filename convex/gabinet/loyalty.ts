@@ -11,7 +11,7 @@ export const getBalance = action({
     patientId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
@@ -30,7 +30,7 @@ export const getTransactions = action({
     patientId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
@@ -79,7 +79,7 @@ export const earnPoints = action({
     referenceId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -153,7 +153,7 @@ export const spendPoints = action({
     reason: v.string(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -226,7 +226,7 @@ export const adjustPoints = action({
     reason: v.string(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );

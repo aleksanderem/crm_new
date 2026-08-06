@@ -6,7 +6,7 @@ import { v } from "convex/values";
 export const list = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
@@ -27,10 +27,10 @@ export const create = action({
     color: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
-    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+    const perm = await ctx.runAction(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "tagDefinitions",
       action: "create",
@@ -75,10 +75,10 @@ export const update = action({
     color: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
-    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+    const perm = await ctx.runAction(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "tagDefinitions",
       action: "edit",
@@ -118,10 +118,10 @@ export const remove = action({
     tagId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
-    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+    const perm = await ctx.runAction(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "tagDefinitions",
       action: "delete",
@@ -156,10 +156,10 @@ export const reorder = action({
     tagIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
-    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+    const perm = await ctx.runAction(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "tagDefinitions",
       action: "edit",

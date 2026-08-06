@@ -11,7 +11,7 @@ import type { NudgeData } from "../nudges";
 // live in Supabase.
 
 async function verify(ctx: any, organizationId: string) {
-  await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+  await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
     organizationId,
   });
   await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {

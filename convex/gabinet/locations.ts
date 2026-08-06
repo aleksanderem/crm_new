@@ -15,7 +15,7 @@ type GabinetLocationWithRooms = GabinetLocationRow & { rooms: GabinetRoomRow[] }
 export const listLocations = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args): Promise<GabinetLocationRow[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
@@ -34,7 +34,7 @@ export const getLocation = action({
     locationId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetLocationWithRooms | null> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
@@ -71,12 +71,12 @@ export const createLocation = action({
   },
   handler: async (ctx, args) => {
     try {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -171,12 +171,12 @@ export const updateLocation = action({
   },
   handler: async (ctx, args) => {
     try {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -218,12 +218,12 @@ export const deleteLocation = action({
     locationId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -265,7 +265,7 @@ export const listRooms = action({
     locationId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetRoomRow[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
@@ -289,12 +289,12 @@ export const createRoom = action({
   },
   handler: async (ctx, args) => {
     try {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -379,12 +379,12 @@ export const updateRoom = action({
   },
   handler: async (ctx, args) => {
     try {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -425,12 +425,12 @@ export const deleteRoom = action({
     roomId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
     ) as { allowed: boolean; scope: string };

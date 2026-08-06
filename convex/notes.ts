@@ -74,7 +74,7 @@ export const create = action({
     parentNoteId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -155,7 +155,7 @@ export const update = action({
     content: v.string(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -234,7 +234,7 @@ export const remove = action({
     noteId: v.string(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -328,7 +328,7 @@ export const togglePin = action({
     noteId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );

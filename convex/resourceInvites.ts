@@ -38,7 +38,7 @@ export const create = action({
     accessLevel: v.union(v.literal("viewer"), v.literal("editor")),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -100,7 +100,7 @@ export const acceptByToken = action({
 
     // Get user from auth context - we need the requesting user's ID
     // Since this uses requireUser (not org-scoped), we pass through the token verification
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: invites.organizationId as any },
     );
@@ -121,7 +121,7 @@ export const revoke = action({
     inviteId: v.string(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );

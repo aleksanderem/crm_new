@@ -9,7 +9,7 @@ export const listByEntityType = action({
     entityType: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 
@@ -31,7 +31,7 @@ export const getById = action({
     viewId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 
@@ -59,7 +59,7 @@ export const create = action({
     isSystem: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -123,7 +123,7 @@ export const update = action({
     isDefault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -160,7 +160,7 @@ export const remove = action({
     viewId: v.string(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -188,7 +188,7 @@ export const reorder = action({
     viewIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 

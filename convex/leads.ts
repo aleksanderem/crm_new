@@ -148,11 +148,11 @@ export const create = action({
   },
   handler: async (ctx, args) => {
     // --- Auth + permissions (via internal queries) ---
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+    await ctx.runAction(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "leads",
       action: "create",
@@ -292,11 +292,11 @@ export const update = action({
   },
   handler: async (ctx, args) => {
     // --- Auth + permissions (via internal queries) ---
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,
@@ -534,11 +534,11 @@ export const remove = action({
   },
   handler: async (ctx, args) => {
     // --- Auth + permissions (via internal queries) ---
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,
@@ -681,11 +681,11 @@ export const moveToStage = action({
     stageOrder: v.number(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+    const perm = await ctx.runAction(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "leads",
       action: "edit",

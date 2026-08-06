@@ -45,7 +45,7 @@ export const getSetupStatus = action({
     hasSchedule: boolean;
     onboardingCompleted: boolean;
   }> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
@@ -93,10 +93,10 @@ export const completeSetup = action({
   },
   handler: async (ctx, args) => {
     // Auth + permissions via internal query
-    const { userId } = await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    const { userId } = await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
-    await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+    await ctx.runAction(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "settings",
       action: "edit",

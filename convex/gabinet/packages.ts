@@ -24,14 +24,14 @@ export const list = action({
     ctx,
     args,
   ): Promise<SupabasePaginationResult<GabinetTreatmentPackageRow>> => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
       organizationId: args.organizationId,
     });
-    const perm = (await ctx.runQuery(
+    const perm = (await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,
@@ -60,14 +60,14 @@ export const list = action({
 export const listActive = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args): Promise<GabinetTreatmentPackageRow[]> => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
       organizationId: args.organizationId,
     });
-    const perm = (await ctx.runQuery(
+    const perm = (await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,
@@ -99,14 +99,14 @@ export const getById = action({
     packageId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetTreatmentPackageRow> => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
       organizationId: args.organizationId,
     });
-    const perm = (await ctx.runQuery(
+    const perm = (await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,
@@ -154,14 +154,14 @@ export const create = action({
   },
   handler: async (ctx, args) => {
     try {
-      const authResult = await ctx.runQuery(
+      const authResult = await ctx.runAction(
         internal._helpers.authAction.verifyOrgAccess,
         { organizationId: args.organizationId },
       );
       await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
         organizationId: args.organizationId,
       });
-      const perm = (await ctx.runQuery(
+      const perm = (await ctx.runAction(
         internal._helpers.authAction.checkPermission,
         {
           organizationId: args.organizationId,
@@ -309,14 +309,14 @@ export const update = action({
   },
   handler: async (ctx, args) => {
     try {
-      const authResult = await ctx.runQuery(
+      const authResult = await ctx.runAction(
         internal._helpers.authAction.verifyOrgAccess,
         { organizationId: args.organizationId },
       );
       await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
         organizationId: args.organizationId,
       });
-      const perm = (await ctx.runQuery(
+      const perm = (await ctx.runAction(
         internal._helpers.authAction.checkPermission,
         {
           organizationId: args.organizationId,
@@ -372,14 +372,14 @@ export const remove = action({
     packageId: v.string(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
       organizationId: args.organizationId,
     });
-    const perm = (await ctx.runQuery(
+    const perm = (await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,
@@ -431,14 +431,14 @@ export const updatePackageUsage = action({
     ),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
       organizationId: args.organizationId,
     });
-    const perm = (await ctx.runQuery(
+    const perm = (await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,
@@ -481,14 +481,14 @@ export const purchaseTreatment = action({
     soldByEmployeeId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<string> => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
       organizationId: args.organizationId,
     });
-    const perm = (await ctx.runQuery(
+    const perm = (await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,
@@ -660,14 +660,14 @@ export const purchasePackage = action({
     soldByEmployeeId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
       organizationId: args.organizationId,
     });
-    const perm = (await ctx.runQuery(
+    const perm = (await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,
@@ -875,13 +875,13 @@ export const usePackageTreatment = action({
     variantId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
       organizationId: args.organizationId,
     });
-    const perm = (await ctx.runQuery(
+    const perm = (await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,
@@ -949,14 +949,14 @@ export const usePackageTreatmentsBatch = action({
     appointmentId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
       organizationId: args.organizationId,
     });
-    const perm = (await ctx.runQuery(
+    const perm = (await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,
@@ -1078,13 +1078,13 @@ export const _batchUsageSideEffects = internalMutation({
 export const getActiveUsageCounts = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args): Promise<Record<string, number>> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
       organizationId: args.organizationId,
     });
-    const perm = (await ctx.runQuery(
+    const perm = (await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,
@@ -1117,13 +1117,13 @@ export const getPatientPackages = action({
     patientId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetPackageUsageRow[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
       organizationId: args.organizationId,
     });
-    const perm = (await ctx.runQuery(
+    const perm = (await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,
@@ -1150,13 +1150,13 @@ export const getPatientPackagesEnriched = action({
     patientId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
       organizationId: args.organizationId,
     });
-    const perm = (await ctx.runQuery(
+    const perm = (await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,
@@ -1226,14 +1226,14 @@ export const assignGiftPackage = action({
     patientId: v.string(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
       organizationId: args.organizationId,
     });
-    const perm = (await ctx.runQuery(
+    const perm = (await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,
@@ -1332,13 +1332,13 @@ export const getActiveUsageDetails = action({
       }
     >
   > => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
       organizationId: args.organizationId,
     });
-    const perm = (await ctx.runQuery(
+    const perm = (await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,

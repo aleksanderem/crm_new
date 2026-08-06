@@ -86,10 +86,10 @@ export const listDeliveries = action({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args): Promise<DeliveryRow[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_inventory", action: "view" },
     ) as { allowed: boolean; scope: string };
@@ -113,10 +113,10 @@ export const getDelivery = action({
     deliveryId: v.string(),
   },
   handler: async (ctx, args): Promise<DeliveryWithUrls> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_inventory", action: "view" },
     ) as { allowed: boolean; scope: string };
@@ -175,11 +175,11 @@ export const createDelivery = action({
     })),
   },
   handler: async (ctx, args): Promise<{ deliveryId: string }> => {
-    const auth = await ctx.runQuery(
+    const auth = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_inventory", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -258,10 +258,10 @@ export const updateDelivery = action({
     }))),
   },
   handler: async (ctx, args): Promise<void> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_inventory", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -332,10 +332,10 @@ export const cancelDelivery = action({
     deliveryId: v.string(),
   },
   handler: async (ctx, args): Promise<{ warnings: string[] }> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_inventory", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -403,11 +403,11 @@ export const createDeliveryFromInvoice = action({
     locationId: v.optional(v.id("gabinetLocations")),
   },
   handler: async (ctx, args): Promise<{ deliveryId: string }> => {
-    const auth = await ctx.runQuery(
+    const auth = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_inventory", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -464,10 +464,10 @@ export const analyzeDeliveryInvoice = action({
     | { status: "failed"; error: string }
   > => {
     // 1. Auth + permission
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
-    const perm = (await ctx.runQuery(
+    const perm = (await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,
@@ -592,10 +592,10 @@ export const matchDeliveryItems = action({
     deliveryId: v.string(),
   },
   handler: async (ctx, args): Promise<MatchingProposals> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
-    const perm = (await ctx.runQuery(
+    const perm = (await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_inventory", action: "edit" },
     )) as { allowed: boolean; scope: string };
@@ -695,10 +695,10 @@ export const saveItemDecisions = action({
     decisions: v.any(),
   },
   handler: async (ctx, args): Promise<void> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_inventory", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -756,11 +756,11 @@ export const postDeliveryFromDecisions = action({
     autoMatchedCount: number;
     newMappingsLearned: number;
   }> => {
-    const auth = await ctx.runQuery(
+    const auth = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_inventory", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -973,11 +973,11 @@ export const postDelivery = action({
     note: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{ movementsCreated: number }> => {
-    const auth = await ctx.runQuery(
+    const auth = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_inventory", action: "edit" },
     ) as { allowed: boolean; scope: string };

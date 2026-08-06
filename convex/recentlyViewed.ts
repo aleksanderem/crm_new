@@ -11,7 +11,7 @@ export const track = action({
     entityLabel: v.string(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -76,7 +76,7 @@ export const list = action({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args): Promise<RecentlyViewedItem[]> => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );

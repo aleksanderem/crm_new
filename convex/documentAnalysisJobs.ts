@@ -33,7 +33,7 @@ export const createJob = action({
     context: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<string> => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -77,7 +77,7 @@ export const runJob = action({
     ctx,
     args,
   ): Promise<{ status: "ok"; resultJson: string } | { status: "error"; errorMessage: string }> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 
@@ -161,7 +161,7 @@ export const getJob = action({
     jobId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 

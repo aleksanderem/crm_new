@@ -12,13 +12,13 @@ export const listByEmployee = action({
     employeeId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetEmployeeLocationRow[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
       organizationId: args.organizationId,
     });
-    const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+    const perm = await ctx.runAction(internal._helpers.authAction.checkPermission, {
       organizationId: args.organizationId,
       feature: "gabinet_employees",
       action: "view",
@@ -43,13 +43,13 @@ export const addLocation = action({
   },
   handler: async (ctx, args): Promise<string> => {
     try {
-      await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
         organizationId: args.organizationId,
       });
       await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
         organizationId: args.organizationId,
       });
-      const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      const perm = await ctx.runAction(internal._helpers.authAction.checkPermission, {
         organizationId: args.organizationId,
         feature: "gabinet_employees",
         action: "edit",
@@ -161,13 +161,13 @@ export const removeLocation = action({
   },
   handler: async (ctx, args): Promise<void> => {
     try {
-      await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
         organizationId: args.organizationId,
       });
       await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
         organizationId: args.organizationId,
       });
-      const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      const perm = await ctx.runAction(internal._helpers.authAction.checkPermission, {
         organizationId: args.organizationId,
         feature: "gabinet_employees",
         action: "edit",
@@ -220,13 +220,13 @@ export const setPrimary = action({
   },
   handler: async (ctx, args): Promise<void> => {
     try {
-      await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
         organizationId: args.organizationId,
       });
       await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
         organizationId: args.organizationId,
       });
-      const perm = await ctx.runQuery(internal._helpers.authAction.checkPermission, {
+      const perm = await ctx.runAction(internal._helpers.authAction.checkPermission, {
         organizationId: args.organizationId,
         feature: "gabinet_employees",
         action: "edit",

@@ -7,7 +7,7 @@ async function requireOrgAdminAction(
   ctx: { runQuery: Function },
   organizationId: string,
 ) {
-  const { role } = await ctx.runQuery(
+  const { role } = await ctx.runAction(
     internal._helpers.authAction.verifyOrgAccess,
     { organizationId },
   );
@@ -130,7 +130,7 @@ export const exportPatients = action({
 export const exportProducts = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 

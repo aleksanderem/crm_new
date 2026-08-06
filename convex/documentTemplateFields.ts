@@ -81,7 +81,7 @@ export const create = action({
       templateId: args.templateId,
     });
 
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: orgId },
     );
@@ -150,7 +150,7 @@ export const update = action({
       templateId: field.templateId as string,
     });
 
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: orgId },
     );
@@ -192,7 +192,7 @@ export const remove = action({
       templateId: field.templateId as string,
     });
 
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: orgId },
     );
@@ -212,7 +212,7 @@ export const reorder = action({
       templateId: args.templateId,
     });
 
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: orgId },
     );

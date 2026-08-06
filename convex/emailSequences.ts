@@ -81,7 +81,7 @@ export const createSequence = action({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "settings", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -115,7 +115,7 @@ export const updateSequence = action({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "settings", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -147,7 +147,7 @@ export const deleteSequence = action({
     sequenceId: v.string(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "settings", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -202,7 +202,7 @@ export const upsertStep = action({
     conditionJson: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "settings", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -253,7 +253,7 @@ export const deleteStep = action({
     stepId: v.string(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "settings", action: "edit" },
     ) as { allowed: boolean; scope: string };
@@ -279,7 +279,7 @@ export const cancelEnrollment = action({
     enrollmentId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );

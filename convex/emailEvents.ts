@@ -101,7 +101,7 @@ export const registerEventType = action({
     payloadSchema: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -154,7 +154,7 @@ export const emitEvent = action({
     triggeredBy: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );

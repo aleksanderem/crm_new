@@ -15,7 +15,7 @@ export const create = action({
     visibility: v.union(v.literal("full"), v.literal("busy_only"), v.literal("hidden")),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -67,7 +67,7 @@ export const update = action({
     const config = await db.get("googleCalendarSyncConfigs", args.configId);
     if (!config) throw new Error("Config not found");
 
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: config.organizationId as any },
     );
@@ -105,7 +105,7 @@ export const remove = action({
     const config = await db.get("googleCalendarSyncConfigs", args.configId);
     if (!config) throw new Error("Config not found");
 
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: config.organizationId as any },
     );

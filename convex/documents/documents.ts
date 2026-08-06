@@ -22,7 +22,7 @@ export const listAll = action({
     status: v.optional(formDocumentStatusValidator),
   },
   handler: async (ctx, args): Promise<FormDocumentRow[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
@@ -45,7 +45,7 @@ export const listByEntity = action({
     entityId: v.string(),
   },
   handler: async (ctx, args): Promise<FormDocumentRow[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
@@ -78,7 +78,7 @@ export const reorderByEntity = action({
     documentIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 
@@ -110,7 +110,7 @@ export const getById = action({
     documentId: v.string(),
   },
   handler: async (ctx, args): Promise<FormDocumentRow> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
@@ -164,7 +164,7 @@ export const listByTemplate = action({
     templateId: v.id("formTemplates"),
   },
   handler: async (ctx, args): Promise<FormDocumentRow[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
@@ -182,7 +182,7 @@ export const listByStatus = action({
     status: formDocumentStatusValidator,
   },
   handler: async (ctx, args): Promise<FormDocumentRow[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
@@ -217,7 +217,7 @@ export const getLatestSignedIntakeByPatient = action({
     signedAt: number | null;
     templateId: string;
   } | null> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
 
@@ -326,7 +326,7 @@ export const create = action({
     signingTokenExpiresAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -361,7 +361,7 @@ export const updateStatus = action({
     status: formDocumentStatusValidator,
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -386,7 +386,7 @@ export const updateResponseData = action({
     responseData: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -475,7 +475,7 @@ export const submitEmployeeFormFields = action({
     scopeData: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -671,7 +671,7 @@ export const resendSigningEmail = action({
     documentId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -734,11 +734,11 @@ export const remove = action({
     documentId: v.string(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runQuery(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,

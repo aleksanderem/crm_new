@@ -47,10 +47,10 @@ export const getStockSummary = action({
     productId: v.string(),
   },
   handler: async (ctx, args): Promise<ProductStockSummary> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_inventory", action: "view" },
     ) as { allowed: boolean; scope: string };
@@ -68,10 +68,10 @@ export const listMovements = action({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args): Promise<StockMovementRow[]> => {
-    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_inventory", action: "view" },
     ) as { allowed: boolean; scope: string };
@@ -107,11 +107,11 @@ export const adjustStock = action({
     note: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args): Promise<{ movementId: string; balanceAfter: number; warning: string | null }> => {
-    const auth = await ctx.runQuery(
+    const auth = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    const perm = await ctx.runQuery(
+    const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_inventory", action: "edit" },
     ) as { allowed: boolean; scope: string };

@@ -70,6 +70,16 @@ const WHITELIST_PATHS = new Set([
   "crm/seed",
   "gabinet/seed",
   "documents/seed",
+
+  // Auth/permissions helpers called from QueryCtx/MutationCtx — Convex
+  // queries and mutations cannot make HTTP calls, so createSupabaseDb() is
+  // unavailable. teamMemberships, orgPermissions, and invitations are
+  // Convex-authoritative auth tables; the Supabase copies are for UI reads
+  // (RLS-scoped supabase-js) and analytics only. Server-side auth guards
+  // must read from ctx.db. Tracked in issue #3861.
+  "_helpers/auth",
+  "_helpers/permissions",
+  "_helpers/seatLimits",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -116,14 +126,16 @@ function relToModuleKey(relPath) {
 // Only ctx.db.query is flagged. A bare db.query where db = createSupabaseDb()
 // is the correct Supabase read path and is intentionally not matched here.
 //
-// Known gap: the regex below only matches single-line
+// Current scope: single-line patterns only:
 //   ctx.db.query("table")
-// patterns. Multiline splits like
+//
+// Multiline patterns like
 //   ctx.db
 //     .query("table")
-// are not detected. Many auth helper functions (auth.ts, permissions.ts,
-// seatLimits.ts) use the multiline style and would require a separate
-// bulk-migration effort to address. See issue #3857 for context.
+// are not yet detected. The auth/permissions/seatLimits helpers that use this
+// multiline style are explicitly whitelisted (they run in QueryCtx/MutationCtx
+// and cannot reach Supabase). All other multiline violations are tracked in a
+// follow-up issue for broader migration. See issue #3861 for context.
 // ---------------------------------------------------------------------------
 function findViolations(content, tableMapKeys) {
   const violations = [];

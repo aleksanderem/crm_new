@@ -1,22 +1,20 @@
-import { internalMutation } from "./_generated/server";
+import { internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeEventLogRef = internal.supabase.emailEventLog.writeEmailEventLogToSupabase;
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 /**
  * Internal email event trigger.
  *
- * Call this from Convex mutations (appointments, documents, CRM) to fire
+ * Call this from Convex actions (or schedule from mutations) to fire
  * an email event without requiring public API authentication.
  *
- * The trigger inserts a pending log entry and schedules async processing.
- * The scheduler resolves bindings → template → sends via Resend.
+ * The trigger inserts a pending log entry directly to Supabase and schedules
+ * async processing. The scheduler resolves bindings → template → sends via Resend.
  *
  * @example
- * // Inside an appointment mutation:
- * await ctx.runMutation(internal.emailEventTrigger.triggerEmailEvent, {
+ * // Inside an action, or scheduled from a mutation:
+ * await ctx.scheduler.runAfter(0, internal.emailEventTrigger.triggerEmailEvent, {
  *   organizationId: args.organizationId,
  *   eventType: "appointment.created",
  *   recipientEmail: patient.email,
@@ -31,7 +29,7 @@ const writeEventLogRef = internal.supabase.emailEventLog.writeEmailEventLogToSup
  *   triggeredBy: userId,
  * });
  */
-export const triggerEmailEvent = internalMutation({
+export const triggerEmailEvent = internalAction({
   args: {
     organizationId: v.id("organizations"),
     /** Event type key, e.g. "appointment.created", "lead.status_changed" */
@@ -50,60 +48,41 @@ export const triggerEmailEvent = internalMutation({
     triggeredBy: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
+    const db = createSupabaseDb();
+
     if (args.idempotencyKey) {
-      const existing = await ctx.db
+      const existing = await db
         .query("emailEventLog")
-        .withIndex("by_orgAndIdempotency", (q) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("idempotencyKey", args.idempotencyKey),
-        )
+        .eq("organizationId", String(args.organizationId))
+        .eq("idempotencyKey", args.idempotencyKey)
         .unique();
       if (existing) {
-        return existing._id;
+        return existing._id as string;
       }
     }
 
-    const logId = await ctx.db.insert("emailEventLog", {
-      organizationId: args.organizationId,
+    const logId = await db.insert("emailEventLog", {
+      organizationId: String(args.organizationId),
       eventType: args.eventType,
       status: "pending",
-      payload: args.payload,
-      source: args.source,
-      relatedEntityType: args.relatedEntityType,
-      relatedEntityId: args.relatedEntityId,
-      idempotencyKey: args.idempotencyKey,
+      payload: args.payload ?? null,
+      source: args.source ?? null,
+      relatedEntityType: args.relatedEntityType ?? null,
+      relatedEntityId: args.relatedEntityId ?? null,
+      idempotencyKey: args.idempotencyKey ?? null,
       recipientEmail: args.recipientEmail,
-      recipientName: args.recipientName,
-      triggeredBy: args.triggeredBy,
+      recipientName: args.recipientName ?? null,
+      triggeredBy: args.triggeredBy ? String(args.triggeredBy) : null,
       createdAt: Date.now(),
     });
 
-    // Sync to Supabase
-    await ctx.scheduler.runAfter(0, writeEventLogRef, {
-      emailEventLogId: logId as string,
-      organizationId: args.organizationId as string,
-      eventType: args.eventType,
-      status: "pending",
-      payload: args.payload,
-      source: args.source,
-      relatedEntityType: args.relatedEntityType,
-      relatedEntityId: args.relatedEntityId,
-      idempotencyKey: args.idempotencyKey,
-      recipientEmail: args.recipientEmail,
-      recipientName: args.recipientName,
-      triggeredBy: args.triggeredBy as string | undefined,
-      createdAt: Date.now(),
-    });
-
-    // Schedule async processing — non-blocking, so the calling mutation
+    // Schedule async processing — non-blocking, so the calling action
     // doesn't wait for email delivery.
     await ctx.scheduler.runAfter(0, internal.emailEvents.processEvent, {
       logId,
     });
 
     // Enroll in any active sequences triggered by this event type.
-    // Delegated to an action so the HTTP call to Supabase is allowed.
     // Silent no-op if no sequences match.
     await ctx.scheduler.runAfter(0, internal.emailSequences.enrollForEvent, {
       organizationId: args.organizationId,

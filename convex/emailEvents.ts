@@ -166,9 +166,9 @@ export const getLogEntry = internalQuery({
   handler: async (ctx, args) => ctx.db.get(args.logId),
 });
 
-export const updateLogStatus = internalMutation({
+export const updateLogStatus = internalAction({
   args: {
-    logId: v.id("emailEventLog"),
+    logId: v.string(),
     status: v.union(
       v.literal("pending"),
       v.literal("sent"),
@@ -181,35 +181,34 @@ export const updateLogStatus = internalMutation({
     renderedBody: v.optional(v.string()),
     errorMessage: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
     const processedAt = Date.now();
-    await ctx.db.patch(args.logId, {
+    await db.patch("emailEventLog", args.logId, {
       status: args.status,
-      bindingId: args.bindingId,
-      templateId: args.templateId,
-      renderedSubject: args.renderedSubject,
-      renderedBody: args.renderedBody,
-      errorMessage: args.errorMessage,
+      bindingId: args.bindingId ?? null,
+      templateId: args.templateId ?? null,
+      renderedSubject: args.renderedSubject ?? null,
+      renderedBody: args.renderedBody ?? null,
+      errorMessage: args.errorMessage ?? null,
       processedAt,
     });
 
-    const entry = await ctx.db.get(args.logId);
+    const entry = await db.get("emailEventLog", args.logId);
 
     if (!entry?.idempotencyKey) return;
 
-    const history = await ctx.db
+    const history = await db
       .query("appointmentWorkflowHistory")
-      .withIndex("by_idempotencyKey", (q) =>
-        q.eq("idempotencyKey", entry.idempotencyKey!),
-      )
+      .eq("idempotencyKey", entry.idempotencyKey as string)
       .unique();
 
     if (history) {
-      await ctx.db.patch(history._id, {
+      await db.patch("appointmentWorkflowHistory", history._id as string, {
         status: args.status,
-        renderedSubject: args.renderedSubject ?? history.renderedSubject,
-        renderedBody: args.renderedBody ?? history.renderedBody,
-        errorMessage: args.errorMessage,
+        renderedSubject: args.renderedSubject ?? (history.renderedSubject as string | null),
+        renderedBody: args.renderedBody ?? (history.renderedBody as string | null),
+        errorMessage: args.errorMessage ?? null,
         processedAt,
         updatedAt: processedAt,
       });
@@ -252,8 +251,8 @@ export const processEvent = internalAction({
       .collect();
 
     if (bindings.length === 0) {
-      await ctx.runMutation(internal.emailEvents.updateLogStatus, {
-        logId: args.logId,
+      await ctx.runAction(internal.emailEvents.updateLogStatus, {
+        logId: args.logId as string,
         status: "skipped",
         errorMessage: "No enabled bindings found for event type",
       });

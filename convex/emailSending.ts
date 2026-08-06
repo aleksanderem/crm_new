@@ -114,7 +114,7 @@ export const getTemplateAndLayout = internalQuery({
  */
 export const sendTemplateEmail = internalAction({
   args: {
-    logId: v.id("emailEventLog"),
+    logId: v.string(),
     templateId: v.string(),
     organizationId: v.id("organizations"),
     recipientEmail: v.string(),
@@ -133,7 +133,7 @@ export const sendTemplateEmail = internalAction({
     );
 
     if (!data) {
-      await ctx.runMutation(internal.emailEvents.updateLogStatus, {
+      await ctx.runAction(internal.emailEvents.updateLogStatus, {
         logId: args.logId,
         status: "failed",
         bindingId: args.bindingId,
@@ -221,7 +221,7 @@ export const sendTemplateEmail = internalAction({
 
     if (!RESEND_API_KEY) {
       console.warn("[emailSending] RESEND_API_KEY not set — skipping send");
-      await ctx.runMutation(internal.emailEvents.updateLogStatus, {
+      await ctx.runAction(internal.emailEvents.updateLogStatus, {
         logId: args.logId,
         status: "failed",
         bindingId: args.bindingId,
@@ -258,7 +258,7 @@ export const sendTemplateEmail = internalAction({
         html,
       });
 
-      await ctx.runMutation(internal.emailEvents.updateLogStatus, {
+      await ctx.runAction(internal.emailEvents.updateLogStatus, {
         logId: args.logId,
         status: "sent",
         bindingId: args.bindingId,
@@ -272,7 +272,7 @@ export const sendTemplateEmail = internalAction({
       });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown send error";
-      await ctx.runMutation(internal.emailEvents.updateLogStatus, {
+      await ctx.runAction(internal.emailEvents.updateLogStatus, {
         logId: args.logId,
         status: "failed",
         bindingId: args.bindingId,

@@ -8,7 +8,6 @@
 
 import {
   action,
-  internalMutation,
   internalAction,
 } from "./_generated/server";
 import { v } from "convex/values";
@@ -370,7 +369,7 @@ export const processNextStep = internalAction({
 
     const step = sortedSteps[enrollment.currentStep];
 
-    const logId = await ctx.runMutation(
+    const logId = await ctx.runAction(
       internal.emailSequences.insertSequenceLog,
       {
         organizationId: enrollment.organizationId,
@@ -414,11 +413,11 @@ export const processNextStep = internalAction({
 });
 
 // ---------------------------------------------------------------------------
-// Internal mutation: insert an emailEventLog entry for sequence step tracking.
-// Writes to Convex so sendTemplateEmail receives a valid Convex logId.
+// Internal action: insert an emailEventLog entry for sequence step tracking.
+// Writes directly to Supabase so the sequence path is fully Supabase-primary.
 // ---------------------------------------------------------------------------
 
-export const insertSequenceLog = internalMutation({
+export const insertSequenceLog = internalAction({
   args: {
     organizationId: v.id("organizations"),
     sequenceId: v.string(),
@@ -427,15 +426,16 @@ export const insertSequenceLog = internalMutation({
     recipientName: v.optional(v.string()),
     payload: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
     const now = Date.now();
-    const logId = await ctx.db.insert("emailEventLog", {
-      organizationId: args.organizationId,
+    const logId = await db.insert("emailEventLog", {
+      organizationId: String(args.organizationId),
       eventType: "sequence.step",
       templateId: args.templateId,
       recipientEmail: args.recipientEmail,
-      recipientName: args.recipientName,
-      payload: args.payload,
+      recipientName: args.recipientName ?? null,
+      payload: args.payload ?? null,
       status: "pending",
       createdAt: now,
     });

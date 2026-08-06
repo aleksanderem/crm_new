@@ -3,7 +3,7 @@ import { auth } from "./auth";
 import { ActionCtx, httpAction } from "@cvx/_generated/server";
 import { ERRORS } from "~/errors";
 import { stripe } from "@cvx/stripe";
-import { STRIPE_WEBHOOK_SECRET } from "@cvx/env";
+import { STRIPE_WEBHOOK_SECRET, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from "@cvx/env";
 import { z } from "zod";
 import { internal } from "@cvx/_generated/api";
 import { Currency, Interval, PLANS } from "@cvx/schema";
@@ -548,6 +548,58 @@ http.route({
   path: "/microsoft/oauth/callback",
   method: "GET",
   handler: microsoftOAuthCallback,
+});
+
+// --- Health endpoint ---
+// Checks Convex runtime liveness and Supabase connectivity.
+// Used by the uptime monitoring cron (.github/workflows/uptime.yml).
+// Returns 200 { ok: true } when all components are healthy, 503 otherwise.
+http.route({
+  path: "/health",
+  method: "GET",
+  handler: httpAction(async (_ctx, _request) => {
+    const ts = new Date().toISOString();
+
+    let supabaseStatus: "ok" | "error" = "ok";
+    let supabaseError: string | undefined;
+
+    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+          method: "HEAD",
+          headers: {
+            apikey: SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          },
+          signal: AbortSignal.timeout(5000),
+        });
+        if (!res.ok) {
+          supabaseStatus = "error";
+          supabaseError = `HTTP ${res.status}`;
+        }
+      } catch (err) {
+        supabaseStatus = "error";
+        supabaseError = err instanceof Error ? err.message : "unknown error";
+      }
+    } else {
+      supabaseStatus = "error";
+      supabaseError = "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not configured";
+    }
+
+    const ok = supabaseStatus === "ok";
+    const body: Record<string, unknown> = {
+      ok,
+      convex: "ok",
+      supabase: supabaseStatus,
+      ts,
+    };
+    if (supabaseError) body.supabase_error = supabaseError;
+
+    return new Response(JSON.stringify(body), {
+      status: ok ? 200 : 503,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
 });
 
 auth.addHttpRoutes(http);

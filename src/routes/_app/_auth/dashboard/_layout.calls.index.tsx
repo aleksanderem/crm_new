@@ -7,6 +7,7 @@ import { api } from "@cvx/_generated/api";
 import { useSupabaseCallsList } from "@/hooks/use-supabase-calls";
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
 import { useOrganization } from "@/components/org-context";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns } from "@/components/crm/enhanced-data-table";
 import type { CrmColumn } from "@/components/crm/enhanced-data-table";
@@ -79,6 +80,10 @@ function CallsPage() {
   const systemViews: SavedView[] = useMemo(() => [
     { id: "all", name: t('calls.views.all'), isSystem: true, isDefault: true },
   ], [t]);
+
+  const { allowed: canCreate } = usePermission("calls", "create");
+  const { allowed: canEdit } = usePermission("calls", "edit");
+  const { allowed: canDelete } = usePermission("calls", "delete");
 
   const {
     views, activeViewId, onViewChange, onCreateView, onDeleteView, applyFilters,
@@ -346,16 +351,24 @@ function CallsPage() {
   const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "calls");
 
   const rowActions = (row: Call) => [
-    {
-      label: t('common.edit'),
-      icon: <Pencil className="h-4 w-4" variant="stroke" />,
-      onClick: () => openEditPanel(row),
-    },
-    {
-      label: t('common.delete'),
-      icon: <Trash2 className="h-4 w-4" variant="stroke" />,
-      onClick: () => removeCall({ organizationId, callId: row._id }),
-    },
+    ...(canEdit
+      ? [
+          {
+            label: t('common.edit'),
+            icon: <Pencil className="h-4 w-4" variant="stroke" />,
+            onClick: () => openEditPanel(row),
+          },
+        ]
+      : []),
+    ...(canDelete
+      ? [
+          {
+            label: t('common.delete'),
+            icon: <Trash2 className="h-4 w-4" variant="stroke" />,
+            onClick: () => removeCall({ organizationId, callId: row._id }),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -364,10 +377,12 @@ function CallsPage() {
         title={t('calls.title')}
         description={t('calls.description')}
         actions={
-          <Button onClick={openCreatePanel}>
-            <Plus className="mr-2 h-4 w-4" variant="stroke" />
-            {t('calls.logCall')}
-          </Button>
+          <PermissionGate feature="calls" action="create">
+            <Button onClick={openCreatePanel}>
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
+              {t('calls.logCall')}
+            </Button>
+          </PermissionGate>
         }
       />
 
@@ -420,6 +435,7 @@ function CallsPage() {
         rowActions={rowActions}
         isLoading={isLoading}
         onRowAction={(callId) => {
+          if (!canEdit) return;
           const call = calls.find((c) => c._id === callId);
           if (call) openEditPanel(call);
         }}

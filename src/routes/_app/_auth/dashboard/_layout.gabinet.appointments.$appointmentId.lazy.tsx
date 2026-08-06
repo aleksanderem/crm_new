@@ -246,6 +246,7 @@ function AppointmentDetail() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { allowed: canEdit } = usePermission("gabinet_appointments", "edit");
+  const { allowed: canDelete } = usePermission("gabinet_appointments", "delete");
   const { allowed: canCreatePayment } = usePermission("gabinet_payments", "create");
   const { allowed: canEditPayment } = usePermission("gabinet_payments", "edit");
   const { allowed: canRefundPayment } = usePermission("gabinet_payments", "refund");
@@ -1105,7 +1106,10 @@ function AppointmentDetail() {
     );
   const outstanding = treatmentPrice - totalPaid;
 
-  const availableTransitions = VALID_TRANSITIONS[appointment.status] ?? [];
+  const allTransitions = VALID_TRANSITIONS[appointment.status] ?? [];
+  const availableTransitions = canDelete
+    ? allTransitions
+    : allTransitions.filter((s) => s !== "cancelled");
   const latestOutboundSms = smsEvents.find(
     (event: Record<string, unknown>) =>
       event.direction === "outbound" &&

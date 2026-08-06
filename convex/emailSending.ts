@@ -4,6 +4,7 @@ import { internal } from "./_generated/api";
 import { Resend } from "resend";
 import { RESEND_API_KEY, RESEND_FROM } from "@cvx/env";
 import { buildEmailHtml } from "./mail/emailShell";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -97,20 +98,7 @@ export const getTemplateAndLayout = internalQuery({
     const template = await ctx.db.get(args.templateId);
     if (!template || template.organizationId !== args.organizationId)
       return null;
-
-    // Load brand config (new) — preferred over legacy layout
-    const brandConfig = await ctx.db
-      .query("emailBrandConfig")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .first();
-
-    // Legacy layout fallback
-    const layout = await ctx.db
-      .query("emailLayouts")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .first();
-
-    return { template, layout, brandConfig };
+    return { template };
   },
 });
 
@@ -156,7 +144,21 @@ export const sendTemplateEmail = internalAction({
       return;
     }
 
-    const { template, layout, brandConfig } = data;
+    const { template } = data;
+
+    const db = createSupabaseDb();
+
+    // Load brand config (new) — preferred over legacy layout, read from Supabase
+    const brandConfig = await db
+      .query("emailBrandConfig")
+      .eq("organizationId", String(args.organizationId))
+      .first();
+
+    // Legacy layout fallback from Supabase
+    const layout = await db
+      .query("emailLayouts")
+      .eq("organizationId", String(args.organizationId))
+      .first();
 
     let variables: Record<string, string> = {};
     try {

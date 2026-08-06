@@ -1275,20 +1275,18 @@ export const create = action({
     }
 
     const primaryTreatmentId = treatmentsList[0].treatmentId;
-    const primaryVariantId = treatmentsList[0].variantId ?? undefined;
-    const isMultiTreatment = treatmentsList.length > 1;
-
-    // --- Employee qualification check (Supabase-primary) ---
-    // For multi-treatment appointments the UI shows a warning rather than
-    // blocking the user — per issue #3356 clarification. Callers may also pass
-    // `allowUnqualified: true` when the user has acknowledged the warning.
-    const qualification = await checkEmployeeQualificationSupabase(db, {
-      organizationId: String(args.organizationId),
-      userId: args.employeeId,
-      treatmentId: primaryTreatmentId,
-    });
-    if (!qualification.qualified && !isMultiTreatment && !args.allowUnqualified) {
-      throw new Error(qualification.reason ?? "Employee not qualified");
+    // --- Employee qualification check (issue #3602) ---
+    // All selected treatments are validated. Save is blocked if the employee
+    // is not qualified for any of them.
+    for (const t of treatmentsList) {
+      const qualification = await checkEmployeeQualificationSupabase(db, {
+        organizationId: String(args.organizationId),
+        userId: args.employeeId,
+        treatmentId: t.treatmentId,
+      });
+      if (!qualification.qualified) {
+        throw new Error("Wybrany pracownik nie wykonuje tego zabiegu.");
+      }
     }
 
     // --- Conflict check (Supabase-primary) ---
@@ -1723,6 +1721,30 @@ export const update = action({
       });
       if (conflict.hasConflict) {
         throw new Error(conflict.reason ?? "Time slot conflict");
+      }
+    }
+
+    // --- Employee qualification check on employee/treatment change (issue #3602) ---
+    if (
+      args.employeeId !== undefined ||
+      (args.treatmentId !== undefined && args.treatmentId !== null) ||
+      (args.treatments !== undefined && args.treatments.length > 0)
+    ) {
+      const effectiveTreatmentList: Array<{ treatmentId: string }> =
+        args.treatments && args.treatments.length > 0
+          ? args.treatments
+          : args.treatmentId !== undefined && args.treatmentId !== null
+            ? [{ treatmentId: args.treatmentId }]
+            : updateJunctionRows;
+      for (const t of effectiveTreatmentList) {
+        const qualification = await checkEmployeeQualificationSupabase(db, {
+          organizationId: String(args.organizationId),
+          userId: newEmployee,
+          treatmentId: t.treatmentId,
+        });
+        if (!qualification.qualified) {
+          throw new Error("Wybrany pracownik nie wykonuje tego zabiegu.");
+        }
       }
     }
 

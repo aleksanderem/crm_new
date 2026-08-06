@@ -1,8 +1,8 @@
-import { query, mutation, action } from "./_generated/server";
+import { query, action, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
-import { verifyOrgAccess, requireOrgAdmin } from "./_helpers/auth";
+import { verifyOrgAccess } from "./_helpers/auth";
 import { getEffectivePermissions } from "./_helpers/permissions";
 import { logAudit } from "./auditLog";
 
@@ -36,23 +36,26 @@ export const getMyGabinetRole = query({
   },
 });
 
-export const getOrgPermissionOverrides = query({
+export const getOrgPermissionOverrides = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx, args.organizationId);
+    const { role } = await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    if (role !== "owner" && role !== "admin") throw new Error("Admin access required");
 
-    const memberOverride = await ctx.db
+    const db = createSupabaseDb();
+
+    const memberOverride = await db
       .query("orgPermissions")
-      .withIndex("by_orgAndRole", (q) =>
-        q.eq("organizationId", args.organizationId).eq("role", "member")
-      )
+      .eq("organizationId", String(args.organizationId))
+      .eq("role", "member")
       .unique();
 
-    const viewerOverride = await ctx.db
+    const viewerOverride = await db
       .query("orgPermissions")
-      .withIndex("by_orgAndRole", (q) =>
-        q.eq("organizationId", args.organizationId).eq("role", "viewer")
-      )
+      .eq("organizationId", String(args.organizationId))
+      .eq("role", "viewer")
       .unique();
 
     return {
@@ -62,22 +65,18 @@ export const getOrgPermissionOverrides = query({
   },
 });
 
-// orgPermissions is in TABLE_MAP (Supabase-owned). The ctx.db reads in
-// getOrgPermissionOverrides and _helpers/permissions.ts are intentional:
-// QueryCtx and MutationCtx cannot make HTTP calls, so createSupabaseDb() is
-// unavailable. Migrating to the Supabase read/write path requires converting
-// these to actions (see _helpers/auth.ts → authAction.ts as prior art).
-// The ctx.db writes below are a known gap — tracked: issue #3884.
-export const updateOrgPermissions = mutation({
+// Internal mutation that syncs the write to Convex so _helpers/permissions.ts
+// (called from QueryCtx/MutationCtx, which cannot reach Supabase) stays
+// accurate until those callers are fully migrated to actions.
+export const _writeOrgPermissionsToConvex = internalMutation({
   args: {
     organizationId: v.id("organizations"),
     role: v.union(v.literal("member"), v.literal("viewer")),
     permissions: v.any(),
+    userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const { user } = await requireOrgAdmin(ctx, args.organizationId);
     const now = Date.now();
-
     const existing = await ctx.db
       .query("orgPermissions")
       .withIndex("by_orgAndRole", (q) =>
@@ -88,7 +87,7 @@ export const updateOrgPermissions = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, {
         permissions: args.permissions,
-        updatedBy: user._id,
+        updatedBy: args.userId,
         updatedAt: now,
       });
     } else {
@@ -96,16 +95,63 @@ export const updateOrgPermissions = mutation({
         organizationId: args.organizationId,
         role: args.role,
         permissions: args.permissions,
-        updatedBy: user._id,
+        updatedBy: args.userId,
         updatedAt: now,
       });
     }
 
     await logAudit(ctx, {
       organizationId: args.organizationId,
-      userId: user._id,
+      userId: args.userId,
       action: "permission_changed",
       details: JSON.stringify({ role: args.role, changes: args.permissions }),
+    });
+  },
+});
+
+export const updateOrgPermissions = action({
+  args: {
+    organizationId: v.id("organizations"),
+    role: v.union(v.literal("member"), v.literal("viewer")),
+    permissions: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const { userId, role } = await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    if (role !== "owner" && role !== "admin") throw new Error("Admin access required");
+
+    const db = createSupabaseDb();
+    const now = Date.now();
+
+    const existing = await db
+      .query("orgPermissions")
+      .eq("organizationId", String(args.organizationId))
+      .eq("role", args.role)
+      .unique();
+
+    if (existing) {
+      await db.patch("orgPermissions", existing._id as string, {
+        permissions: args.permissions,
+        updatedBy: String(userId),
+        updatedAt: now,
+      });
+    } else {
+      await db.insert("orgPermissions", {
+        organizationId: String(args.organizationId),
+        role: args.role,
+        permissions: args.permissions,
+        updatedBy: String(userId),
+        updatedAt: now,
+      });
+    }
+
+    // Dual-write to Convex so _helpers/permissions.ts (used in mutations) stays accurate.
+    await ctx.runMutation(internal.permissions._writeOrgPermissionsToConvex, {
+      organizationId: args.organizationId,
+      role: args.role,
+      permissions: args.permissions,
+      userId,
     });
   },
 });

@@ -1239,14 +1239,6 @@ export const createWithPassword = action({
   },
 });
 
-export const _getUserEmailById = internalQuery({
-  args: { userId: v.string() },
-  handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId as Id<"users">);
-    return user?.email ?? null;
-  },
-});
-
 export const changeEmployeePassword = action({
   args: {
     organizationId: v.id("organizations"),
@@ -1268,9 +1260,8 @@ export const changeEmployeePassword = action({
     const employee = await db.get("gabinetEmployees", args.employeeId);
     if (!employee) throw new Error("Pracownik nie istnieje.");
     if (!employee.userId) throw new Error("Pracownik nie ma powiązanego konta użytkownika.");
-    const email = await ctx.runQuery(internal.gabinet.employees._getUserEmailById, {
-      userId: String(employee.userId),
-    });
+    const userRow = await db.get("users", String(employee.userId));
+    const email = userRow?.email ?? null;
     if (!email) throw new Error("Nie znaleziono adresu e-mail użytkownika.");
     await modifyAccountCredentials(ctx, {
       provider: "password",

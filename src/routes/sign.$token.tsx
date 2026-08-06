@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useAction } from "convex/react";
+import { useAction } from "convex/react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -23,9 +24,19 @@ export const Route = createFileRoute("/sign/$token")({
 
 function SigningPage() {
   const { token } = Route.useParams();
-  const data = useQuery(api.signatureRequests.getByToken, { token });
+  const getByToken = useAction(api.signatureRequests.getByToken);
+  const { data, isLoading } = useQuery({
+    queryKey: ["signatureRequests.getByToken", token],
+    queryFn: () => getByToken({ token }),
+    enabled: !!token,
+    retry: (failureCount, error) => {
+      if (failureCount >= 2) return false;
+      const msg = error instanceof Error ? error.message : "";
+      return !msg.includes("not found") && !msg.includes("expired");
+    },
+  });
 
-  if (data === undefined)
+  if (isLoading)
     return (
       <PageShell>
         <Loading />

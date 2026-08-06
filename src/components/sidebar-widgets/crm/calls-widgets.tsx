@@ -1,5 +1,3 @@
-import { useQuery } from "convex/react";
-import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
 import { useTranslation } from "react-i18next";
@@ -17,6 +15,10 @@ import {
   RadialBarChart,
 } from "recharts";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import {
+  useSupabaseCallsKpis,
+  useSupabaseWeeklyCallsTrend,
+} from "@/hooks/use-supabase-sidebar-widgets";
 
 const trendConfig = {
   value: {
@@ -34,8 +36,8 @@ const answerRateConfig = {
 
 export function CallsWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
-  const kpis = useQuery(api.sidebarWidgets.getCallsKpis, { organizationId });
-  const weeklyTrend = useQuery(api.sidebarWidgets.getWeeklyCallsTrend, { organizationId });
+  const { data: kpis } = useSupabaseCallsKpis(organizationId as string);
+  const { data: weeklyTrend } = useSupabaseWeeklyCallsTrend(organizationId as string);
 
   if (!kpis) return null;
 

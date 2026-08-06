@@ -1,5 +1,3 @@
-import { useQuery } from "convex/react";
-import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
 import { useTranslation } from "react-i18next";
@@ -7,6 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import {
+  useSupabaseProductsKpis,
+  useSupabaseTopProducts,
+} from "@/hooks/use-supabase-sidebar-widgets";
 
 const PRODUCT_COLORS = [
   { bg: "bg-primary/10", text: "text-primary", indicator: "**:data-[slot=progress-indicator]:bg-primary", track: "**:data-[slot=progress-track]:bg-primary/10" },
@@ -18,8 +20,8 @@ const PRODUCT_COLORS = [
 
 export function ProductsWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
-  const kpis = useQuery(api.sidebarWidgets.getProductsKpis, { organizationId });
-  const topProducts = useQuery(api.sidebarWidgets.getTopProducts, { organizationId });
+  const { data: kpis } = useSupabaseProductsKpis(organizationId as string);
+  const { data: topProducts } = useSupabaseTopProducts(organizationId as string);
 
   if (!kpis) return null;
 

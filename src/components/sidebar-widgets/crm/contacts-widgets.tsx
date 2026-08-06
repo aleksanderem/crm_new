@@ -1,5 +1,3 @@
-import { useQuery } from "convex/react";
-import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
 import { SourceBar } from "../source-bar";
@@ -9,6 +7,11 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import {
+  useSupabaseContactsKpis,
+  useSupabaseContactsBySource,
+  useSupabaseWeeklyContactsTrend,
+} from "@/hooks/use-supabase-sidebar-widgets";
 
 const trendConfig = {
   value: {
@@ -19,9 +22,9 @@ const trendConfig = {
 
 export function ContactsWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
-  const kpis = useQuery(api.sidebarWidgets.getContactsKpis, { organizationId });
-  const sources = useQuery(api.sidebarWidgets.getContactsBySource, { organizationId });
-  const weeklyTrend = useQuery(api.sidebarWidgets.getWeeklyContactsTrend, { organizationId });
+  const { data: kpis } = useSupabaseContactsKpis(organizationId as string);
+  const { data: sources } = useSupabaseContactsBySource(organizationId as string);
+  const { data: weeklyTrend } = useSupabaseWeeklyContactsTrend(organizationId as string);
 
   if (!kpis) return null;
 

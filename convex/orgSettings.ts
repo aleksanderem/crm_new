@@ -1,8 +1,7 @@
-import { query, action, internalAction, internalQuery, internalMutation } from "./_generated/server";
+import { action, internalAction, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
-import { verifyOrgAccess } from "./_helpers/auth";
 
 export const _getSettings = internalAction({
   args: { organizationId: v.id("organizations") },
@@ -14,19 +13,20 @@ export const _getSettings = internalAction({
   },
 });
 
-export const get = query({
+export const get = action({
   args: {
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const settings = await ctx.db
+    const db = createSupabaseDb();
+    return await db
       .query("orgSettings")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .unique();
-
-    return settings;
+      .eq("organizationId", String(args.organizationId))
+      .first() as Record<string, unknown> | null;
   },
 });
 

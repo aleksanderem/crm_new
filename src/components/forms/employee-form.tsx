@@ -1,11 +1,11 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -105,23 +105,10 @@ export function EmployeeForm({
     enabled: !!organizationId,
   }) as { data: Array<{ _id: string; name: string; isActive: boolean }> | undefined };
 
-  const { data: customFieldDefs } = useQuery({
-    ...convexQuery(
-      api.customFields.getDefinitions,
-      { organizationId: organizationId!, entityType: "gabinetEmployee" as const },
-    ),
-    enabled: !!organizationId,
-  }) as {
-    data: Array<{
-      _id: string;
-      name: string;
-      fieldKey: string;
-      fieldType: any;
-      options?: string[];
-      isRequired?: boolean;
-      group?: string;
-    }> | undefined;
-  };
+  const { data: customFieldDefs } = useSupabaseCustomFieldDefinitions(
+    organizationId,
+    "gabinetEmployee",
+  );
 
   const [firstName, setFirstName] = useState(initialData?.firstName ?? "");
   const [lastName, setLastName] = useState(initialData?.lastName ?? "");

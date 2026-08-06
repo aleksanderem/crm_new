@@ -1,11 +1,11 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useSupabasePendingInvitations } from "@/hooks/use-supabase-invitations";
 import { useSupabaseSeatUsage } from "@/hooks/use-supabase-organizations";
+import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { Button } from "@/components/ui/button";
@@ -140,26 +140,11 @@ export function UserInvitationForm({
     }>;
   };
 
-  const { data: customFieldDefs } = useQuery(
-    convexQuery(
-      api.customFields.getDefinitions,
-      module === "gabinet"
-        ? { organizationId, entityType: "gabinetEmployee" }
-        : ("skip" as any),
-    ),
-  ) as {
-    data:
-      | Array<{
-          _id: string;
-          name: string;
-          fieldKey: string;
-          fieldType: any;
-          options?: string[];
-          isRequired?: boolean;
-          group?: string;
-        }>
-      | undefined;
-  };
+  const { data: customFieldDefs } = useSupabaseCustomFieldDefinitions(
+    organizationId,
+    "gabinetEmployee",
+    { enabled: module === "gabinet" },
+  );
 
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<OrgRole>("member");

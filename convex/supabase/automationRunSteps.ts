@@ -1,14 +1,13 @@
 /**
- * Convex → Supabase Automation Run Step Write Actions
+ * Supabase Automation Run Step Write Actions
  *
- * Internal actions that persist automation run step data to PostgreSQL via Supabase
- * service-role client (bypasses RLS). Dual-write pattern: Convex mutations
- * write to Convex first, then schedule these actions to replicate to Supabase.
+ * Internal actions that persist automation run step data to Supabase as the
+ * primary store. Uses createSupabaseDb() so the in-memory test mock works.
  */
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient, upsertWithFkRetry } from "./client";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 export const writeRunStep = internalAction({
   args: {
@@ -36,40 +35,33 @@ export const writeRunStep = internalAction({
   },
   returns: v.object({ success: v.boolean(), id: v.string() }),
   handler: async (_ctx, args): Promise<{ success: boolean; id: string }> => {
-    const client = createServiceRoleClient();
-
-    const row = {
-      id: args.stepId,
-      organization_id: args.organizationId,
-      run_id: args.runId,
-      rule_id: args.ruleId ?? null,
-      action_index: args.actionIndex,
-      action_type: args.actionType,
-      idempotency_key: args.idempotencyKey,
+    const db = createSupabaseDb();
+    await db.insert("automationRunSteps", {
+      _id: args.stepId,
+      organizationId: args.organizationId,
+      runId: args.runId,
+      ruleId: args.ruleId ?? null,
+      actionIndex: args.actionIndex,
+      actionType: args.actionType,
+      idempotencyKey: args.idempotencyKey,
       status: args.status,
       recipient: args.recipient ?? null,
-      recipient_name: args.recipientName ?? null,
-      linked_entity_type: args.linkedEntityType ?? null,
-      linked_entity_id: args.linkedEntityId ?? null,
-      rendered_subject: args.renderedSubject ?? null,
-      rendered_body: args.renderedBody ?? null,
-      metadata_snapshot: args.metadataSnapshot ?? null,
-      error_message: args.errorMessage ?? null,
-      email_event_log_id: args.emailEventLogId ?? null,
-      appointment_sms_event_id: args.appointmentSmsEventId ?? null,
-      processed_at: args.processedAt ?? null,
-      created_at: args.createdAt,
-      updated_at: args.updatedAt,
-    };
+      recipientName: args.recipientName ?? null,
+      linkedEntityType: args.linkedEntityType ?? null,
+      linkedEntityId: args.linkedEntityId ?? null,
+      renderedSubject: args.renderedSubject ?? null,
+      renderedBody: args.renderedBody ?? null,
+      metadataSnapshot: args.metadataSnapshot ?? null,
+      errorMessage: args.errorMessage ?? null,
+      emailEventLogId: args.emailEventLogId ?? null,
+      appointmentSmsEventId: args.appointmentSmsEventId ?? null,
+      processedAt: args.processedAt ?? null,
+      createdAt: args.createdAt,
+      updatedAt: args.updatedAt,
+    });
 
-    const data = await upsertWithFkRetry(client, "automation_run_steps", row)
-      .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        throw new Error(`supabaseDb.insert(automation_run_steps): ${msg}`);
-      });
-
-    console.info(`Automation run step written to Supabase id=${data.id} org=${args.organizationId}`);
-    return { success: true, id: data.id };
+    console.info(`Automation run step written to Supabase id=${args.stepId} org=${args.organizationId}`);
+    return { success: true, id: args.stepId };
   },
 });
 
@@ -93,45 +85,31 @@ export const updateRunStep = internalAction({
   },
   returns: v.object({ success: v.boolean(), id: v.string() }),
   handler: async (_ctx, args): Promise<{ success: boolean; id: string }> => {
-    const client = createServiceRoleClient();
+    const db = createSupabaseDb();
+    const updates: Record<string, unknown> = { updatedAt: args.updatedAt };
+    if (args.status !== undefined) updates.status = args.status;
+    if (args.recipient !== undefined) updates.recipient = args.recipient;
+    if (args.recipientName !== undefined) updates.recipientName = args.recipientName;
+    if (args.linkedEntityType !== undefined) updates.linkedEntityType = args.linkedEntityType;
+    if (args.linkedEntityId !== undefined) updates.linkedEntityId = args.linkedEntityId;
+    if (args.renderedSubject !== undefined) updates.renderedSubject = args.renderedSubject;
+    if (args.renderedBody !== undefined) updates.renderedBody = args.renderedBody;
+    if (args.metadataSnapshot !== undefined) updates.metadataSnapshot = args.metadataSnapshot;
+    if (args.errorMessage !== undefined) updates.errorMessage = args.errorMessage;
+    if (args.emailEventLogId !== undefined) updates.emailEventLogId = args.emailEventLogId;
+    if (args.appointmentSmsEventId !== undefined) updates.appointmentSmsEventId = args.appointmentSmsEventId;
+    if (args.processedAt !== undefined) updates.processedAt = args.processedAt;
 
-    const row: Record<string, unknown> = { updated_at: args.updatedAt };
-    if (args.status !== undefined) row.status = args.status;
-    if (args.recipient !== undefined) row.recipient = args.recipient;
-    if (args.recipientName !== undefined) row.recipient_name = args.recipientName;
-    if (args.linkedEntityType !== undefined) row.linked_entity_type = args.linkedEntityType;
-    if (args.linkedEntityId !== undefined) row.linked_entity_id = args.linkedEntityId;
-    if (args.renderedSubject !== undefined) row.rendered_subject = args.renderedSubject;
-    if (args.renderedBody !== undefined) row.rendered_body = args.renderedBody;
-    if (args.metadataSnapshot !== undefined) row.metadata_snapshot = args.metadataSnapshot;
-    if (args.errorMessage !== undefined) row.error_message = args.errorMessage;
-    if (args.emailEventLogId !== undefined) row.email_event_log_id = args.emailEventLogId;
-    if (args.appointmentSmsEventId !== undefined) row.appointment_sms_event_id = args.appointmentSmsEventId;
-    if (args.processedAt !== undefined) row.processed_at = args.processedAt;
-
-    const { data, error } = await client
-      .from("automation_run_steps")
-      .update(row)
-      .eq("id", args.stepId)
-      .select("id")
-      .maybeSingle();
-
-    if (error) {
-      const msg = `supabaseDb.update(automation_run_steps): ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    if (!data) {
-      // Row doesn't exist in Supabase yet (Convex-primary create hasn't mirrored).
-      // Don't throw — auxiliary audit trail.
+    try {
+      await db.patch("automationRunSteps", args.stepId, updates);
+    } catch {
       console.warn(
         `Automation run step ${args.stepId} not found in Supabase; skipping update.`,
       );
       return { success: false, id: args.stepId };
     }
 
-    console.info(`Automation run step updated in Supabase id=${data.id} org=${args.organizationId}`);
-    return { success: true, id: data.id };
+    console.info(`Automation run step updated in Supabase id=${args.stepId} org=${args.organizationId}`);
+    return { success: true, id: args.stepId };
   },
 });

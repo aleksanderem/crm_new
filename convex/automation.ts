@@ -29,8 +29,8 @@ import {
   resolveRuleTrigger,
 } from "./automationRegistry";
 
-// Dual-write refs removed — Supabase is now primary for automation rule writes
-// Run/step dual-write refs kept for internalMutation execution engine
+// Supabase-primary write refs — these are the sole write path for
+// automationRuns and automationRunSteps; ctx.db writes removed (#3933).
 // @ts-ignore
 const writeRunRef = internal.supabase.automationRuns.writeRun;
 // @ts-ignore
@@ -456,7 +456,7 @@ async function getAutomationEditPermission(
 export const _sendAutomationEmail = internalAction({
   args: {
     organizationId: v.id("organizations"),
-    stepId: v.id("automationRunSteps"),
+    stepId: v.string(),
     recipient: v.string(),
     recipientName: v.optional(v.string()),
     subject: v.string(),
@@ -590,7 +590,7 @@ export const _sendAutomationEmail = internalAction({
 export const _recordAutomationEmailResult = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    stepId: v.id("automationRunSteps"),
+    stepId: v.string(),
     success: v.boolean(),
     errorMessage: v.optional(v.string()),
     fromEmail: v.string(),
@@ -609,14 +609,8 @@ export const _recordAutomationEmailResult = internalMutation({
     const now = Date.now();
 
     if (!args.success) {
-      await ctx.db.patch(args.stepId, {
-        status: "failed",
-        errorMessage: args.errorMessage,
-        processedAt: now,
-        updatedAt: now,
-      });
       await ctx.scheduler.runAfter(0, updateRunStepRef, {
-        stepId: args.stepId as string,
+        stepId: args.stepId,
         organizationId: args.organizationId as string,
         status: "failed",
         errorMessage: args.errorMessage,
@@ -669,19 +663,8 @@ export const _recordAutomationEmailResult = internalMutation({
       });
     }
 
-    await ctx.db.patch(args.stepId, {
-      status: "processed",
-      recipient: args.recipient,
-      recipientName: args.recipientName,
-      linkedEntityType: "email",
-      linkedEntityId: String(emailId),
-      renderedSubject: args.subject,
-      renderedBody: args.bodyHtml,
-      processedAt: now,
-      updatedAt: now,
-    });
     await ctx.scheduler.runAfter(0, updateRunStepRef, {
-      stepId: args.stepId as string,
+      stepId: args.stepId,
       organizationId: args.organizationId as string,
       status: "processed",
       recipient: args.recipient,
@@ -717,7 +700,7 @@ export const _recordAutomationEmailResult = internalMutation({
 export const _applyUpdateFieldAction = internalAction({
   args: {
     organizationId: v.id("organizations"),
-    stepId: v.id("automationRunSteps"),
+    stepId: v.string(),
     actorUserId: v.optional(v.id("users")),
     targetEntityType: v.union(
       v.literal("gabinetPatient"),
@@ -801,7 +784,7 @@ export const _applyUpdateFieldAction = internalAction({
 export const _recordUpdateFieldResult = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    stepId: v.id("automationRunSteps"),
+    stepId: v.string(),
     actorUserId: v.optional(v.id("users")),
     success: v.boolean(),
     errorMessage: v.optional(v.string()),
@@ -821,14 +804,8 @@ export const _recordUpdateFieldResult = internalMutation({
     const now = Date.now();
 
     if (!args.success) {
-      await ctx.db.patch(args.stepId, {
-        status: "failed",
-        errorMessage: args.errorMessage,
-        processedAt: now,
-        updatedAt: now,
-      });
       await ctx.scheduler.runAfter(0, updateRunStepRef, {
-        stepId: args.stepId as string,
+        stepId: args.stepId,
         organizationId: args.organizationId as string,
         status: "failed",
         errorMessage: args.errorMessage,
@@ -872,16 +849,8 @@ export const _recordUpdateFieldResult = internalMutation({
       });
     }
 
-    await ctx.db.patch(args.stepId, {
-      status: "processed",
-      linkedEntityType: args.linkedEntityType,
-      linkedEntityId: args.targetId,
-      renderedBody: args.renderedBody,
-      processedAt: now,
-      updatedAt: now,
-    });
     await ctx.scheduler.runAfter(0, updateRunStepRef, {
-      stepId: args.stepId as string,
+      stepId: args.stepId,
       organizationId: args.organizationId as string,
       status: "processed",
       linkedEntityType: args.linkedEntityType,
@@ -1096,7 +1065,7 @@ export const listRuns = action({
 export const getRunSteps = action({
   args: {
     organizationId: v.id("organizations"),
-    runId: v.id("automationRuns"),
+    runId: v.string(),
   },
   handler: async (ctx, args) => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
@@ -1425,37 +1394,14 @@ export const listActionTypes = action({
 export const emitEvent = internalMutation({
   args: automationEventArgsValidator,
   handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("automationRuns")
-      .withIndex("by_eventIdempotencyKey", (q) =>
-        q.eq("eventIdempotencyKey", args.eventIdempotencyKey),
-      )
-      .unique();
-
-    if (existing) {
-      return existing._id;
-    }
-
     const now = Date.now();
-    const runId = await ctx.db.insert("automationRuns", {
-      organizationId: args.organizationId,
-      module: args.module,
-      eventType: args.eventType,
-      entityType: args.entityType,
-      entityId: args.entityId,
-      eventIdempotencyKey: args.eventIdempotencyKey,
-      correlationKey: args.correlationKey,
-      payloadSnapshot: args.payload,
-      actorUserId: args.actorUserId,
-      status: "pending",
-      occurredAt: args.occurredAt ?? now,
-      createdAt: now,
-      updatedAt: now,
-    });
+    const runId = crypto.randomUUID();
+    const occurredAt = args.occurredAt ?? now;
 
-    // Dual-write: replicate new automation run to Supabase
+    // Supabase is the primary store for automationRuns. Write there first;
+    // the UNIQUE constraint on eventIdempotencyKey prevents duplicate runs.
     await ctx.scheduler.runAfter(0, writeRunRef, {
-      runId: runId as string,
+      runId,
       organizationId: args.organizationId as string,
       module: args.module,
       eventType: args.eventType,
@@ -1466,23 +1412,63 @@ export const emitEvent = internalMutation({
       payloadSnapshot: args.payload,
       actorUserId: args.actorUserId as string | undefined,
       status: "pending",
-      occurredAt: args.occurredAt ?? now,
+      occurredAt,
       createdAt: now,
       updatedAt: now,
     });
 
     // @ts-ignore -- TS2589: type instantiation depth in generated Convex API types
     const processRunRef = internal.automation.processRun;
-    await ctx.scheduler.runAfter(0, processRunRef, { runId });
+    await ctx.scheduler.runAfter(0, processRunRef, {
+      runId,
+      organizationId: args.organizationId,
+      module: args.module,
+      eventType: args.eventType,
+      entityType: args.entityType,
+      entityId: args.entityId,
+      eventIdempotencyKey: args.eventIdempotencyKey,
+      correlationKey: args.correlationKey,
+      payloadSnapshot: args.payload,
+      actorUserId: args.actorUserId,
+      occurredAt,
+      createdAt: now,
+    });
     return runId;
   },
 });
 
 export const processRun = internalMutation({
-  args: { runId: v.id("automationRuns") },
+  args: {
+    runId: v.string(),
+    organizationId: v.id("organizations"),
+    module: automationModuleValidator,
+    eventType: v.string(),
+    entityType: v.optional(v.string()),
+    entityId: v.optional(v.string()),
+    eventIdempotencyKey: v.string(),
+    correlationKey: v.optional(v.string()),
+    payloadSnapshot: v.string(),
+    actorUserId: v.optional(v.id("users")),
+    occurredAt: v.number(),
+    createdAt: v.number(),
+  },
   handler: async (ctx, args) => {
-    const run = await ctx.db.get(args.runId);
-    if (!run || run.status !== "pending") return;
+    // Run data is passed directly from emitEvent — no Convex read needed.
+    const run = {
+      _id: args.runId,
+      organizationId: args.organizationId,
+      module: args.module,
+      eventType: args.eventType,
+      entityType: args.entityType,
+      entityId: args.entityId,
+      eventIdempotencyKey: args.eventIdempotencyKey,
+      correlationKey: args.correlationKey,
+      payloadSnapshot: args.payloadSnapshot,
+      actorUserId: args.actorUserId,
+      occurredAt: args.occurredAt,
+      createdAt: args.createdAt,
+      status: "pending" as const,
+    };
 
     const payload = JSON.parse(run.payloadSnapshot) as Record<string, unknown>;
     const rules = await ctx.db
@@ -1514,33 +1500,16 @@ export const processRun = internalMutation({
       for (let actionIndex = 0; actionIndex < rule.actions.length; actionIndex += 1) {
         const action = rule.actions[actionIndex];
         const stepIdempotencyKey = `${run.eventIdempotencyKey}:rule:${rule._id}:action:${actionIndex}`;
-        const existingStep = await ctx.db
-          .query("automationRunSteps")
-          .withIndex("by_idempotencyKey", (q) => q.eq("idempotencyKey", stepIdempotencyKey))
-          .unique();
-
-        if (existingStep) continue;
 
         const now = Date.now();
-        const baseStep = {
-          organizationId: run.organizationId,
-          runId: run._id,
-          ruleId: rule._id,
-          actionIndex,
-          actionType: action.type,
-          idempotencyKey: stepIdempotencyKey,
-          status: "pending" as const,
-          createdAt: now,
-          updatedAt: now,
-        };
+        // Supabase is the primary store for automationRunSteps. Generate a UUID
+        // for the step; writeRunStepRef handles UNIQUE-key deduplication.
+        const stepId = crypto.randomUUID();
 
-        const stepId = await ctx.db.insert("automationRunSteps", baseStep);
-
-        // Dual-write: replicate new run step to Supabase
         await ctx.scheduler.runAfter(0, writeRunStepRef, {
-          stepId: stepId as string,
+          stepId,
           organizationId: run.organizationId as string,
-          runId: run._id as string,
+          runId: run._id,
           ruleId: rule._id as string,
           actionIndex,
           actionType: action.type,
@@ -1560,14 +1529,8 @@ export const processRun = internalMutation({
               : undefined;
 
             if (!recipientEmail) {
-              await ctx.db.patch(stepId, {
-                status: "skipped",
-                errorMessage: "Missing email recipient",
-                processedAt: now,
-                updatedAt: now,
-              });
               await ctx.scheduler.runAfter(0, updateRunStepRef, {
-                stepId: stepId as string,
+                stepId,
                 organizationId: run.organizationId as string,
                 status: "skipped",
                 errorMessage: "Missing email recipient",
@@ -1605,16 +1568,8 @@ export const processRun = internalMutation({
                 source: "platform_automation",
               });
 
-              await ctx.db.patch(stepId, {
-                status: "processed",
-                recipient: recipientEmail,
-                recipientName,
-                emailEventLogId: logId,
-                processedAt: now,
-                updatedAt: now,
-              });
               await ctx.scheduler.runAfter(0, updateRunStepRef, {
-                stepId: stepId as string,
+                stepId,
                 organizationId: run.organizationId as string,
                 status: "processed",
                 recipient: recipientEmail,
@@ -1675,9 +1630,8 @@ export const processRun = internalMutation({
             // Convex mutations cannot perform fetch or read from Supabase,
             // and `emailAccounts` is Supabase-primary (see convex/emailAccounts.ts).
             // The action chains into `_recordAutomationEmailResult` which
-            // inserts the email row, patches the step to processed/failed,
-            // mirrors to the run-step dual-write, and writes the legacy
-            // appointment workflow history entry.
+            // inserts the email row, updates the step status in Supabase,
+            // and writes the legacy appointment workflow history entry.
             await ctx.scheduler.runAfter(
               0,
               internal.automation._sendAutomationEmail,
@@ -1706,14 +1660,8 @@ export const processRun = internalMutation({
             const renderedBody = applyTemplate(action.messageTemplate, payload);
 
             if (!phone) {
-              await ctx.db.patch(stepId, {
-                status: "skipped",
-                errorMessage: "Missing SMS recipient",
-                processedAt: now,
-                updatedAt: now,
-              });
               await ctx.scheduler.runAfter(0, updateRunStepRef, {
-                stepId: stepId as string,
+                stepId,
                 organizationId: run.organizationId as string,
                 status: "skipped",
                 errorMessage: "Missing SMS recipient",
@@ -1757,16 +1705,8 @@ export const processRun = internalMutation({
               });
             }
 
-            await ctx.db.patch(stepId, {
-              status: "processed",
-              recipient: phone,
-              renderedBody,
-              appointmentSmsEventId: appointmentSmsEventId ?? undefined,
-              processedAt: now,
-              updatedAt: now,
-            });
             await ctx.scheduler.runAfter(0, updateRunStepRef, {
-              stepId: stepId as string,
+              stepId,
               organizationId: run.organizationId as string,
               status: "processed",
               recipient: phone,
@@ -1802,14 +1742,8 @@ export const processRun = internalMutation({
               : undefined;
 
             if (!userId) {
-              await ctx.db.patch(stepId, {
-                status: "skipped",
-                errorMessage: "Missing notification user",
-                processedAt: now,
-                updatedAt: now,
-              });
               await ctx.scheduler.runAfter(0, updateRunStepRef, {
-                stepId: stepId as string,
+                stepId,
                 organizationId: run.organizationId as string,
                 status: "skipped",
                 errorMessage: "Missing notification user",
@@ -1828,17 +1762,8 @@ export const processRun = internalMutation({
               link,
             });
 
-            await ctx.db.patch(stepId, {
-              status: "processed",
-              linkedEntityType: "notification",
-              linkedEntityId: String(userId),
-              renderedSubject: title,
-              renderedBody: message,
-              processedAt: now,
-              updatedAt: now,
-            });
             await ctx.scheduler.runAfter(0, updateRunStepRef, {
-              stepId: stepId as string,
+              stepId,
               organizationId: run.organizationId as string,
               status: "processed",
               linkedEntityType: "notification",
@@ -1856,14 +1781,8 @@ export const processRun = internalMutation({
             const targetId = resolveAutomationTargetId(payload, run, descriptor, action.targetIdPath);
 
             if (!targetId) {
-              await ctx.db.patch(stepId, {
-                status: "skipped",
-                errorMessage: "Missing field update target",
-                processedAt: now,
-                updatedAt: now,
-              });
               await ctx.scheduler.runAfter(0, updateRunStepRef, {
-                stepId: stepId as string,
+                stepId,
                 organizationId: run.organizationId as string,
                 status: "skipped",
                 errorMessage: "Missing field update target",
@@ -1882,14 +1801,8 @@ export const processRun = internalMutation({
             );
 
             if (!permission.allowed) {
-              await ctx.db.patch(stepId, {
-                status: "failed",
-                errorMessage: permission.reason ?? "Permission denied",
-                processedAt: now,
-                updatedAt: now,
-              });
               await ctx.scheduler.runAfter(0, updateRunStepRef, {
-                stepId: stepId as string,
+                stepId,
                 organizationId: run.organizationId as string,
                 status: "failed",
                 errorMessage: permission.reason ?? "Permission denied",
@@ -1900,7 +1813,7 @@ export const processRun = internalMutation({
             }
 
             // Entity read and Supabase write happen in the action —
-            // mutations cannot use fetch(). The action patches the step.
+            // mutations cannot use fetch(). The action updates the step status.
             await ctx.scheduler.runAfter(0, internal.automation._applyUpdateFieldAction, {
               organizationId: run.organizationId,
               stepId,
@@ -1926,14 +1839,8 @@ export const processRun = internalMutation({
           const description = applyTemplate(action.descriptionTemplate, payload);
 
           if (!entityType || !entityId || !run.actorUserId) {
-            await ctx.db.patch(stepId, {
-              status: "skipped",
-              errorMessage: "Missing activity target or actor",
-              processedAt: now,
-              updatedAt: now,
-            });
             await ctx.scheduler.runAfter(0, updateRunStepRef, {
-              stepId: stepId as string,
+              stepId,
               organizationId: run.organizationId as string,
               status: "skipped",
               errorMessage: "Missing activity target or actor",
@@ -1957,16 +1864,8 @@ export const processRun = internalMutation({
             performedBy: run.actorUserId,
           });
 
-          await ctx.db.patch(stepId, {
-            status: "processed",
-            linkedEntityType: entityType,
-            linkedEntityId: entityId,
-            renderedBody: description,
-            processedAt: now,
-            updatedAt: now,
-          });
           await ctx.scheduler.runAfter(0, updateRunStepRef, {
-            stepId: stepId as string,
+            stepId,
             organizationId: run.organizationId as string,
             status: "processed",
             linkedEntityType: entityType,
@@ -1977,14 +1876,8 @@ export const processRun = internalMutation({
           });
         } catch (error) {
           sawFailure = true;
-          await ctx.db.patch(stepId, {
-            status: "failed",
-            errorMessage: error instanceof Error ? error.message : String(error),
-            processedAt: now,
-            updatedAt: now,
-          });
           await ctx.scheduler.runAfter(0, updateRunStepRef, {
-            stepId: stepId as string,
+            stepId,
             organizationId: run.organizationId as string,
             status: "failed",
             errorMessage: error instanceof Error ? error.message : String(error),
@@ -2008,18 +1901,9 @@ export const processRun = internalMutation({
     }
 
     const processedAt = Date.now();
-    await ctx.db.patch(run._id, {
-      ruleId: matchedRuleId,
-      status: sawFailure ? "failed" : processedAny ? "processed" : "skipped",
-      errorMessage: processedAny ? undefined : "No matching automation rules",
-      processedAt,
-      updatedAt: processedAt,
-    });
-
-    // Dual-write: replicate final run status to Supabase
     const finalStatus = sawFailure ? "failed" : processedAny ? "processed" : "skipped";
     await ctx.scheduler.runAfter(0, updateRunRef, {
-      runId: run._id as string,
+      runId: run._id,
       organizationId: run.organizationId as string,
       ruleId: matchedRuleId as string | undefined,
       status: finalStatus,

@@ -572,6 +572,46 @@ describe("payments", () => {
       ).rejects.toThrow("Split methods must differ");
     });
 
+    test("refunding the secondary split leg directly is rejected (issue #3776)", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity } = await seedTestUser(t);
+
+      const paymentId = await t.withIdentity(identity).action(
+        api.payments.create,
+        {
+          organizationId,
+          amount: 100,
+          currency: "PLN",
+          paymentMethod: "cash",
+          status: "pending",
+        },
+      );
+
+      const { secondPaymentId } = await t
+        .withIdentity(identity)
+        .action(api.payments.splitMarkPaid, {
+          organizationId,
+          paymentId,
+          firstMethod: "cash",
+          firstAmount: 60,
+          secondMethod: "card",
+          secondAmount: 40,
+        });
+
+      // Yield so the scheduled _createSplitReceiptRow mutation can run,
+      // establishing the consolidated receipt on the primary leg.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Refunding the secondary leg directly must be rejected.
+      await expect(
+        t.withIdentity(identity).action(api.payments.refund, {
+          organizationId,
+          paymentId: secondPaymentId,
+          reason: "test",
+        }),
+      ).rejects.toThrow("SPLIT_SECONDARY_LEG");
+    });
+
     test("refunding primary split leg also refunds the secondary leg (#3772)", async () => {
       const t = createTestCtx();
       const { organizationId, identity } = await seedTestUser(t);

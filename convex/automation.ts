@@ -617,7 +617,7 @@ export const _recordAutomationEmailResult = internalMutation({
         processedAt: now,
         updatedAt: now,
       });
-      await patchLegacyAppointmentWorkflowHistory(ctx, {
+      await patchLegacyAppointmentWorkflowHistory({
         organizationId: args.organizationId,
         appointmentId: args.appointmentId,
         actionType: args.actionType,
@@ -687,7 +687,7 @@ export const _recordAutomationEmailResult = internalMutation({
       processedAt: now,
       updatedAt: now,
     });
-    await patchLegacyAppointmentWorkflowHistory(ctx, {
+    await patchLegacyAppointmentWorkflowHistory({
       organizationId: args.organizationId,
       appointmentId: args.appointmentId,
       actionType: args.actionType,
@@ -868,35 +868,33 @@ function evaluateCondition(
   }
 }
 
-async function patchLegacyAppointmentWorkflowHistory(
-  ctx: MutationCtx,
-  args: {
-    organizationId: Id<"organizations">;
-    // Supabase UUID; gabinet appointments moved off Convex ids in #353.
-    appointmentId?: string;
-    actionType: string;
-    recipient?: string;
-    recipientName?: string;
-    renderedSubject?: string;
-    renderedBody?: string;
-    status: "pending" | "sent" | "failed" | "skipped";
-    errorMessage?: string;
-    idempotencyKey: string;
-    processedAt?: number;
-  },
-) {
+async function patchLegacyAppointmentWorkflowHistory(args: {
+  organizationId: Id<"organizations">;
+  // Supabase UUID; gabinet appointments moved off Convex ids in #353.
+  appointmentId?: string;
+  actionType: string;
+  recipient?: string;
+  recipientName?: string;
+  renderedSubject?: string;
+  renderedBody?: string;
+  status: "pending" | "sent" | "failed" | "skipped";
+  errorMessage?: string;
+  idempotencyKey: string;
+  processedAt?: number;
+}) {
   if (!args.appointmentId) return;
 
-  const existing = await ctx.db
+  const db = createSupabaseDb();
+  const existing = await db
     .query("appointmentWorkflowHistory")
-    .withIndex("by_idempotencyKey", (q) => q.eq("idempotencyKey", args.idempotencyKey))
+    .eq("idempotencyKey", args.idempotencyKey)
     .unique();
 
   const channel = args.actionType === "send_email" ? "email" : "sms";
   const now = Date.now();
 
   if (existing) {
-    await ctx.db.patch(existing._id, {
+    await db.patch("appointmentWorkflowHistory", String(existing._id), {
       recipient: args.recipient ?? existing.recipient,
       recipientName: args.recipientName ?? existing.recipientName,
       renderedSubject: args.renderedSubject ?? existing.renderedSubject,
@@ -909,7 +907,7 @@ async function patchLegacyAppointmentWorkflowHistory(
     return;
   }
 
-  await ctx.db.insert("appointmentWorkflowHistory", {
+  await db.insert("appointmentWorkflowHistory", {
     organizationId: args.organizationId,
     appointmentId: args.appointmentId,
     workflowEvent: "appointment_created",
@@ -1495,7 +1493,7 @@ export const processRun = internalMutation({
                 processedAt: now,
                 updatedAt: now,
               });
-              await patchLegacyAppointmentWorkflowHistory(ctx, {
+              await patchLegacyAppointmentWorkflowHistory({
                 organizationId: run.organizationId,
                 appointmentId:
                   run.entityType === "gabinetAppointment"
@@ -1544,7 +1542,7 @@ export const processRun = internalMutation({
                 processedAt: now,
                 updatedAt: now,
               });
-              await patchLegacyAppointmentWorkflowHistory(ctx, {
+              await patchLegacyAppointmentWorkflowHistory({
                 organizationId: run.organizationId,
                 appointmentId:
                   run.entityType === "gabinetAppointment"
@@ -1641,7 +1639,7 @@ export const processRun = internalMutation({
                 processedAt: now,
                 updatedAt: now,
               });
-              await patchLegacyAppointmentWorkflowHistory(ctx, {
+              await patchLegacyAppointmentWorkflowHistory({
                 organizationId: run.organizationId,
                 appointmentId:
                   run.entityType === "gabinetAppointment"
@@ -1698,7 +1696,7 @@ export const processRun = internalMutation({
               processedAt: now,
               updatedAt: now,
             });
-            await patchLegacyAppointmentWorkflowHistory(ctx, {
+            await patchLegacyAppointmentWorkflowHistory({
               organizationId: run.organizationId,
               appointmentId:
                 run.entityType === "gabinetAppointment"
@@ -1876,7 +1874,7 @@ export const processRun = internalMutation({
             processedAt: now,
             updatedAt: now,
           });
-          await patchLegacyAppointmentWorkflowHistory(ctx, {
+          await patchLegacyAppointmentWorkflowHistory({
             organizationId: run.organizationId,
             appointmentId:
               run.entityType === "gabinetAppointment"

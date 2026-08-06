@@ -99,6 +99,32 @@ export const create = action({
       );
     }
 
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+
+    // Validate before creating: check for duplicate pending invitation and
+    // existing membership. Both reads go to Supabase — _createInternal is an
+    // internalMutation that cannot use HTTP, so we front-load them here.
+    const existingInvitations = await db
+      .query("invitations")
+      .eq("organizationId", orgIdStr)
+      .eq("email", args.email)
+      .collect();
+    if (existingInvitations.some((inv) => inv.status === "pending")) {
+      throw new Error("A pending invitation already exists for this email");
+    }
+    const existingUser = await db.query("users").eq("email", args.email).first();
+    if (existingUser) {
+      const membership = await db
+        .query("teamMemberships")
+        .eq("organizationId", orgIdStr)
+        .eq("userId", String(existingUser._id))
+        .first();
+      if (membership) {
+        throw new Error("User is already a member of this organization");
+      }
+    }
+
     const created: {
       invitationId: string;
       email: string;
@@ -123,7 +149,6 @@ export const create = action({
     // Supabase via useSupabasePendingInvitations) sees the new pending
     // invitation immediately. Matches the pattern used by organizations.create.
     try {
-      const db = createSupabaseDb();
       await db.insert("invitations", {
         _id: created.invitationId,
         organizationId: args.organizationId,
@@ -281,34 +306,8 @@ export const _createInternal = internalMutation({
   handler: async (ctx, args) => {
     const { user } = await requireOrgAdmin(ctx, args.organizationId);
 
-    // Check no existing pending invitation for same email+org
-    const existingInvitation = await ctx.db
-      .query("invitations")
-      .withIndex("by_email", (q) =>
-        q.eq("email", args.email).eq("organizationId", args.organizationId)
-      )
-      .collect();
-    const hasPending = existingInvitation.some((inv) => inv.status === "pending");
-    if (hasPending) {
-      throw new Error("A pending invitation already exists for this email");
-    }
-
-    // Check user isn't already a member
-    const existingUser = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", args.email))
-      .unique();
-    if (existingUser) {
-      const membership = await ctx.db
-        .query("teamMemberships")
-        .withIndex("by_orgAndUser", (q) =>
-          q.eq("organizationId", args.organizationId).eq("userId", existingUser._id)
-        )
-        .unique();
-      if (membership) {
-        throw new Error("User is already a member of this organization");
-      }
-    }
+    // Duplicate and membership checks are performed in the parent create action
+    // (Supabase reads) before this mutation is called.
 
     const token = crypto.randomUUID();
     const now = Date.now();
@@ -368,29 +367,31 @@ export const accept = action({
   handler: async (ctx, args): Promise<string> => {
     const db = createSupabaseDb();
 
-    // Look up the invitation from Supabase to get orgId for the seat limit
-    // check. Accepting converts a pending slot to a member slot (net zero
-    // change), so we skip pending invitations in the count.
+    // Look up and validate the invitation in Supabase so _acceptInternal
+    // (an internalMutation) doesn't need ctx.db.query on the invitations table.
     const invitation = await db
       .query("invitations")
       .eq("token", args.token)
       .unique();
 
-    let orgOwnerId: string | undefined;
-    if (invitation) {
-      const { canAddMore, currentSeats, seatLimit } = await ctx.runAction(
-        internal._helpers.seatLimits.checkSeatLimitAction,
-        { organizationId: invitation.organizationId, skipPendingInvitations: true },
+    if (!invitation) throw new Error("Invitation not found");
+    if (invitation.status !== "pending") throw new Error("Invitation is no longer pending");
+    if (invitation.expiresAt <= Date.now()) throw new Error("Invitation has expired");
+
+    // Accepting converts a pending slot to a member slot (net zero change),
+    // so we skip pending invitations in the count.
+    const { canAddMore, currentSeats, seatLimit } = await ctx.runAction(
+      internal._helpers.seatLimits.checkSeatLimitAction,
+      { organizationId: invitation.organizationId, skipPendingInvitations: true },
+    );
+    if (!canAddMore) {
+      throw new Error(
+        `Seat limit reached (${currentSeats}/${seatLimit}). The organization needs to upgrade their plan.`,
       );
-      if (!canAddMore) {
-        throw new Error(
-          `Seat limit reached (${currentSeats}/${seatLimit}). The organization needs to upgrade their plan.`,
-        );
-      }
-      // Read org owner from Supabase so _acceptInternal (a mutation) doesn't need ctx.db.get on organizations
-      const org = await db.get("organizations", String(invitation.organizationId));
-      orgOwnerId = org?.ownerId ? String(org.ownerId) : undefined;
     }
+    // Read org owner from Supabase so _acceptInternal (a mutation) doesn't need ctx.db.get on organizations
+    const org = await db.get("organizations", String(invitation.organizationId));
+    const orgOwnerId = org?.ownerId ? String(org.ownerId) : undefined;
 
     const result: {
       organizationId: string;
@@ -399,7 +400,16 @@ export const accept = action({
       updatedAt: number;
     } = await ctx.runMutation(
       internal.invitations._acceptInternal,
-      { token: args.token, orgOwnerId },
+      {
+        orgOwnerId,
+        invitationId: String(invitation._id),
+        invitationEmail: invitation.email,
+        invitationOrgId: String(invitation.organizationId),
+        invitationRole: invitation.role,
+        invitationInvitedBy: String(invitation.invitedBy),
+        invitationModule: invitation.module ?? undefined,
+        invitationModuleData: invitation.moduleData ?? undefined,
+      },
     );
 
     // Mirror status change to Supabase so any consumer reading invitations
@@ -419,28 +429,37 @@ export const accept = action({
 });
 
 export const _acceptInternal = internalMutation({
-  args: { token: v.string(), orgOwnerId: v.optional(v.string()) },
+  args: {
+    orgOwnerId: v.optional(v.string()),
+    // Invitation data pre-fetched from Supabase by the parent accept action.
+    // internalMutations cannot make HTTP calls, so we receive these as args
+    // instead of querying ctx.db on TABLE_MAP tables.
+    invitationId: v.string(),
+    invitationEmail: v.string(),
+    invitationOrgId: v.string(),
+    invitationRole: orgRoleValidator,
+    invitationInvitedBy: v.string(),
+    invitationModule: v.optional(v.string()),
+    invitationModuleData: v.optional(v.any()),
+  },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
 
-    const invitation = await ctx.db
-      .query("invitations")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
-      .unique();
-
-    if (!invitation) throw new Error("Invitation not found");
-    if (invitation.status !== "pending") throw new Error("Invitation is no longer pending");
-    if (invitation.expiresAt <= Date.now()) throw new Error("Invitation has expired");
-    if (user.email !== invitation.email) {
+    // Status and expiry were validated in the parent accept action.
+    // Re-verify email match here — current user is only known inside the mutation.
+    if (user.email !== args.invitationEmail) {
       throw new Error("This invitation was sent to a different email address");
     }
+
+    const orgId = args.invitationOrgId as Id<"organizations">;
+    const invitedById = args.invitationInvitedBy as Id<"users">;
 
     const joinedAt = Date.now();
     const membershipId = await ctx.db.insert("teamMemberships", {
       userId: user._id,
-      organizationId: invitation.organizationId,
-      role: invitation.role,
-      invitedBy: invitation.invitedBy,
+      organizationId: orgId,
+      role: args.invitationRole,
+      invitedBy: invitedById,
       joinedAt,
     });
 
@@ -456,9 +475,9 @@ export const _acceptInternal = internalMutation({
       {
         membershipId: String(membershipId),
         userId: String(user._id),
-        organizationId: String(invitation.organizationId),
-        role: invitation.role,
-        invitedBy: String(invitation.invitedBy),
+        organizationId: String(orgId),
+        role: args.invitationRole,
+        invitedBy: args.invitationInvitedBy,
         joinedAt,
       },
     );
@@ -468,29 +487,13 @@ export const _acceptInternal = internalMutation({
     // screen entirely. The validator there is strict alphanumeric — an
     // address like "john.doe@x.com" would fail it, leaving the invitee
     // stuck. Slug derivation downstream tolerates anything (already strips
-    // non-[a-z0-9-]).
+    // non-[a-z0-9-]). Collision check is omitted — the field is informational
+    // and mutations cannot query Supabase (no HTTP in MutationCtx).
     let effectiveUsername = user.username;
     if (!user.username) {
-      const local = (user.email ?? invitation.email).split("@")[0] ?? "";
+      const local = (user.email ?? args.invitationEmail).split("@")[0] ?? "";
       const base = local.toLowerCase().replace(/[^a-z0-9]/g, "");
-      // Guarantee min length and uniqueness — collisions are non-fatal here
-      // (the field is informational; org membership is what matters), but
-      // we still prefer not to clash with an existing username.
-      let candidate = (base || "user").slice(0, 16);
-      let suffix = 0;
-      // Cheap collision walk — schema doesn't have a unique constraint on
-      // `username`, but other code uses it for org slug, so a unique-ish
-      // value is friendlier.
-      while (
-        await ctx.db
-          .query("users")
-          .filter((q) => q.eq(q.field("username"), candidate))
-          .first()
-      ) {
-        suffix += 1;
-        candidate = `${(base || "user").slice(0, 14)}${suffix}`;
-        if (suffix > 50) break; // give up; informational only
-      }
+      const candidate = (base || "user").slice(0, 16);
       await ctx.db.patch(user._id, { username: candidate });
       effectiveUsername = candidate;
     }
@@ -522,59 +525,59 @@ export const _acceptInternal = internalMutation({
     // resolves. Scheduled (not awaited) so any failure here doesn't roll back
     // the membership — the inviter can re-create the employee manually if
     // needed.
-    if (invitation.module === "gabinet" && invitation.moduleData) {
+    if (args.invitationModule === "gabinet" && args.invitationModuleData) {
       await ctx.scheduler.runAfter(
         500, // small delay so the user mirror lands first
         internal.gabinet.employees._createFromInvitation,
         {
-          organizationId: invitation.organizationId,
+          organizationId: orgId,
           userId: String(user._id),
-          invitedBy: String(invitation.invitedBy),
-          data: invitation.moduleData,
+          invitedBy: args.invitationInvitedBy,
+          data: args.invitationModuleData,
         },
       );
     }
 
     const acceptedAt = Date.now();
     const updatedAt = acceptedAt;
-    await ctx.db.patch(invitation._id, {
+    await ctx.db.patch(args.invitationId as Id<"invitations">, {
       status: "accepted",
       acceptedAt,
       updatedAt,
     });
 
     await logActivity(ctx, {
-      organizationId: invitation.organizationId,
+      organizationId: orgId,
       entityType: "organization",
-      entityId: invitation.organizationId,
+      entityId: String(orgId),
       action: "assigned",
-      description: `${user.email} accepted invitation and joined as "${invitation.role}"`,
+      description: `${user.email} accepted invitation and joined as "${args.invitationRole}"`,
       performedBy: user._id,
     });
 
     await logAudit(ctx, {
-      organizationId: invitation.organizationId,
+      organizationId: orgId,
       userId: user._id,
       action: "member_joined",
       entityType: "invitation",
-      entityId: invitation._id,
+      entityId: args.invitationId,
       details: JSON.stringify({ email: user.email }),
     });
 
     // Notify org owner using ownerId passed from the parent accept action (which read it from Supabase)
     if (args.orgOwnerId && args.orgOwnerId !== String(user._id)) {
       await createNotificationDirect(ctx, {
-        organizationId: invitation.organizationId,
+        organizationId: orgId,
         userId: args.orgOwnerId as Id<"users">,
         type: "member_joined",
         title: "New team member",
-        message: `${user.name ?? user.email ?? "A user"} joined your organization as "${invitation.role}"`,
+        message: `${user.name ?? user.email ?? "A user"} joined your organization as "${args.invitationRole}"`,
       });
     }
 
     return {
-      organizationId: String(invitation.organizationId),
-      invitationId: String(invitation._id),
+      organizationId: String(orgId),
+      invitationId: args.invitationId,
       acceptedAt,
       updatedAt,
     };
@@ -584,18 +587,25 @@ export const _acceptInternal = internalMutation({
 export const decline = action({
   args: { token: v.string() },
   handler: async (ctx, args) => {
-    const result: { invitationId: string; updatedAt: number } = await ctx.runMutation(
+    const db = createSupabaseDb();
+
+    // Validate invitation in Supabase so _declineInternal (an internalMutation)
+    // doesn't need ctx.db.query on the invitations table.
+    const invitation = await db.query("invitations").eq("token", args.token).unique();
+    if (!invitation) throw new Error("Invitation not found");
+    if (invitation.status !== "pending") throw new Error("Invitation is no longer pending");
+
+    const updatedAt: number = await ctx.runMutation(
       internal.invitations._declineInternal,
-      { token: args.token },
+      { invitationId: String(invitation._id) },
     );
 
     // Mirror status change to Supabase so any consumer reading invitations
     // from there sees the declined state.
     try {
-      const db = createSupabaseDb();
-      await db.patch("invitations", result.invitationId, {
+      await db.patch("invitations", String(invitation._id), {
         status: "declined",
-        updatedAt: result.updatedAt,
+        updatedAt,
       });
     } catch (e) {
       console.error("[invitations.decline] Supabase mirror failed:", e);
@@ -604,28 +614,17 @@ export const decline = action({
 });
 
 export const _declineInternal = internalMutation({
-  args: { token: v.string() },
+  args: { invitationId: v.string() },
   handler: async (ctx, args) => {
     await requireUser(ctx);
 
-    const invitation = await ctx.db
-      .query("invitations")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
-      .unique();
-
-    if (!invitation) throw new Error("Invitation not found");
-    if (invitation.status !== "pending") throw new Error("Invitation is no longer pending");
-
     const updatedAt = Date.now();
-    await ctx.db.patch(invitation._id, {
+    await ctx.db.patch(args.invitationId as Id<"invitations">, {
       status: "declined",
       updatedAt,
     });
 
-    return {
-      invitationId: String(invitation._id),
-      updatedAt,
-    };
+    return updatedAt;
   },
 });
 

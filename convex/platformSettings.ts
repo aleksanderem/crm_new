@@ -1,12 +1,12 @@
 import { v } from "convex/values";
 import {
   query,
-  mutation,
+  action,
   internalQuery,
+  internalMutation,
   internalAction,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { requirePlatformAdmin } from "./_helpers/auth";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 // Get the current platform settings (singleton). Returns null if not yet
@@ -41,7 +41,7 @@ export const _getInternal = internalQuery({
 // Upsert the singleton settings row. Platform admin only.
 // The frontend admin form sends the full set of fields each save;
 // undefined keys clear the override and fall back to env-based defaults.
-export const set = mutation({
+export const set = action({
   args: {
     invitationFromName: v.optional(v.string()),
     invitationFromEmail: v.optional(v.string()),
@@ -57,7 +57,34 @@ export const set = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const user = await requirePlatformAdmin(ctx);
+    const { userId } = await ctx.runAction(
+      internal._helpers.authAction.verifyPlatformAdmin,
+      {},
+    );
+    return await ctx.runMutation(internal.platformSettings._setInternal, {
+      ...args,
+      updatedBy: userId,
+    });
+  },
+});
+
+export const _setInternal = internalMutation({
+  args: {
+    invitationFromName: v.optional(v.string()),
+    invitationFromEmail: v.optional(v.string()),
+    invitationReplyToEmail: v.optional(v.string()),
+    provider: v.optional(
+      v.union(v.literal("resend"), v.literal("mailgun")),
+    ),
+    resendApiKey: v.optional(v.string()),
+    mailgunApiKey: v.optional(v.string()),
+    mailgunDomain: v.optional(v.string()),
+    mailgunRegion: v.optional(
+      v.union(v.literal("us"), v.literal("eu")),
+    ),
+    updatedBy: v.id("users"),
+  },
+  handler: async (ctx, args) => {
     const existing = await ctx.db.query("platformSettings").first();
     const now = Date.now();
     // API key fields: undefined in args = "don't touch" (preserve existing);
@@ -82,7 +109,7 @@ export const set = mutation({
       mailgunDomain: args.mailgunDomain,
       mailgunRegion: args.mailgunRegion,
       updatedAt: now,
-      updatedBy: user._id,
+      updatedBy: args.updatedBy,
     };
     if (existing) {
       await ctx.db.patch(existing._id, payload);
@@ -103,11 +130,6 @@ export const _grantPlatformAdmin = internalAction({
     const user = await db.query("users").eq("email", args.email).unique();
     if (!user) throw new Error(`No user found for email ${args.email}`);
     await db.patch("users", String(user._id), { isPlatformAdmin: true });
-    // Keep Convex in sync — requirePlatformAdmin reads isPlatformAdmin from ctx.db.
-    await ctx.runMutation(internal.platformAdmins._patchAdminInConvex, {
-      userId: user._id,
-      isPlatformAdmin: true,
-    });
     return { userId: user._id, email: args.email };
   },
 });

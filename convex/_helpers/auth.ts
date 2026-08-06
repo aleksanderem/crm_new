@@ -44,13 +44,3 @@ export async function requireOrgAdmin(
   return { user, membership };
 }
 
-// Platform-level admin guard. Used by /admin pages and the platformSettings
-// mutation. Distinct from organization roles — a platform admin can configure
-// global settings (e.g. invitation From address) regardless of org membership.
-export async function requirePlatformAdmin(ctx: QueryCtx | MutationCtx) {
-  const user = await requireUser(ctx);
-  if (!user.isPlatformAdmin) {
-    throw new Error("Platform admin access required");
-  }
-  return user;
-}

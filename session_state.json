@@ -1,9 +1,9 @@
 {
-  "session_id": "S0113",
-  "started_at": "2026-08-06T08:40:00Z",
-  "last_updated": "2026-08-06T08:45:00Z",
+  "session_id": "S0114",
+  "started_at": "2026-08-06T09:00:00Z",
+  "last_updated": "2026-08-06T09:15:00Z",
   "status": "completed",
-  "focus": "Issue #3807: Fix org_isolation RLS on delivery_name_mappings",
+  "focus": "Issue #3822: Tighten RLS for users and subscriptions tables",
   "tasks_snapshot": {
     "total": 1,
     "not_started": 0,
@@ -14,5 +14,5 @@
   },
   "active_task_ids": [],
   "blockers": [],
-  "notes": "S0113: Created 00096_delivery_name_mappings_rls.sql — drops the old ALL-operation org_isolation policy on delivery_name_mappings, replaces with four per-command policies (SELECT/INSERT/UPDATE/DELETE). INSERT and UPDATE now carry explicit WITH CHECK (current_org_id() = organization_id), closing the write-guard gap."
+  "notes": "S0114: Created 00099_users_subscriptions_rls.sql — drops the overly permissive users_select policy (USING true, any authenticated user could read all user PII), replaces with org-scoped policy: service role OR self OR EXISTS(team_memberships in current_org_id). Subscriptions policy from 00002 is already correct (user_id = current_user_id OR service_role); no change needed there."
 }

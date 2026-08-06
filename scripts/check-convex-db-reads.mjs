@@ -175,7 +175,6 @@ const MULTILINE_PENDING = new Set([
   "signatureRequests",
   "sms",
   "stripe",
-  "supabase/jwt",
   "tagDefinitions",
 ]);
 

@@ -1,0 +1,146 @@
+name: Uptime Monitoring
+
+# Polls the live application every 10 minutes and alerts via GitHub issue when
+# any component is unhealthy. Covers three signals that the existing
+# `netlify-deploy-healthcheck` cannot catch:
+#   1. Frontend URL is reachable and returning HTTP 2xx (Netlify CDN + DNS).
+#   2. Convex HTTP runtime is alive (GET /health on the Convex site URL).
+#   3. Supabase accepts connections (verified inside the /health action).
+#
+# Dedup strategy: one open issue at a time, identified by the
+# `uptime-monitoring-alert` marker in the body. Subsequent failures while the
+# issue is open are added as comments to avoid spam. Close the issue manually
+# once the incident is resolved; the next failure after closure opens a fresh one.
+#
+# Required secrets (all optional — checks are skipped gracefully if absent):
+#   SITE_URL          — Frontend URL, e.g. https://app.example.com
+#   CONVEX_SITE_URL   — Convex HTTP site URL, e.g. https://my-deployment.convex.site
+#
+# Tracking: #3724
+
+on:
+  schedule:
+    # Every 10 minutes. Offset from :00 to reduce GitHub scheduler contention.
+    - cron: "3,13,23,33,43,53 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  uptime-check:
+    name: Check application uptime
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Check frontend availability
+        id: frontend
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SITE_URL:-}" ]; then
+            echo "::warning::SITE_URL secret not set — skipping frontend check."
+            echo "ok=skip" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          http_code=$(curl --silent --max-time 10 --output /dev/null \
+            --write-out "%{http_code}" "${SITE_URL}")
+          echo "Frontend HTTP status: ${http_code}"
+
+          if [[ "$http_code" =~ ^[23] ]]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "status=${http_code}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check Convex health endpoint
+        id: convex
+        env:
+          CONVEX_SITE_URL: ${{ secrets.CONVEX_SITE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CONVEX_SITE_URL:-}" ]; then
+            echo "::warning::CONVEX_SITE_URL secret not set — skipping Convex/Supabase check."
+            echo "ok=skip" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          response=$(curl --silent --max-time 10 \
+            --write-out "\n%{http_code}" \
+            "${CONVEX_SITE_URL}/health" 2>&1 || true)
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | head -n -1)
+          echo "Convex /health HTTP status: ${http_code}"
+          echo "Convex /health body: ${body}"
+
+          if [[ "$http_code" == "200" ]]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "status=${http_code}" >> "$GITHUB_OUTPUT"
+            # Sanitize body for GitHub output (no newlines)
+            safe_body=$(echo "$body" | tr '\n' ' ' | cut -c1-500)
+            echo "body=${safe_body}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Alert on failure
+        if: steps.frontend.outputs.ok == 'false' || steps.convex.outputs.ok == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FRONTEND_OK: ${{ steps.frontend.outputs.ok }}
+          FRONTEND_STATUS: ${{ steps.frontend.outputs.status }}
+          CONVEX_OK: ${{ steps.convex.outputs.ok }}
+          CONVEX_STATUS: ${{ steps.convex.outputs.status }}
+          CONVEX_BODY: ${{ steps.convex.outputs.body }}
+          SITE_URL: ${{ secrets.SITE_URL }}
+          CONVEX_SITE_URL: ${{ secrets.CONVEX_SITE_URL }}
+        run: |
+          set -euo pipefail
+          marker="uptime-monitoring-alert"
+
+          # Build failure summary
+          summary=""
+          if [ "${FRONTEND_OK:-}" = "false" ]; then
+            summary="${summary}\n- **Frontend** (${SITE_URL}): HTTP ${FRONTEND_STATUS:-timeout/connection error}"
+          fi
+          if [ "${CONVEX_OK:-}" = "false" ]; then
+            summary="${summary}\n- **Convex + Supabase** (${CONVEX_SITE_URL}/health): HTTP ${CONVEX_STATUS:-timeout/connection error}"
+            if [ -n "${CONVEX_BODY:-}" ]; then
+              summary="${summary} — \`${CONVEX_BODY}\`"
+            fi
+          fi
+
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          existing=$(gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --search "in:body \"${marker}\"" \
+            --json number \
+            --jq '.[0].number // empty')
+
+          if [ -n "$existing" ]; then
+            comment=$(printf "**Uptime check still failing** at %s.\n\nFailing components:\n%b\n\nMonitoring run: %s\n\n(Auto-comment from \`.github/workflows/uptime.yml\`. Close this issue once the incident is resolved.)" \
+              "$ts" "$summary" "$run_url")
+            gh issue comment "$existing" \
+              --repo "$GITHUB_REPOSITORY" \
+              --body "$comment"
+            echo "Existing tracking issue #${existing} updated with failure at ${ts}."
+            exit 0
+          fi
+
+          title="Production outage detected by uptime monitoring (${ts})"
+          body=$(printf "The uptime monitoring workflow detected that one or more production components are unavailable.\n\n**Failing components:**\n%b\n\n**Monitoring run:** %s\n\n---\n\nThis issue was opened automatically by \`.github/workflows/uptime.yml\` (%s). Close it once the incident is resolved and the next uptime check passes. The next failure after closure will open a fresh tracking issue.\n\nTracking: #3724" \
+            "$summary" "$run_url" "$marker")
+
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$title" \
+            --body "$body" \
+            --label "bug"

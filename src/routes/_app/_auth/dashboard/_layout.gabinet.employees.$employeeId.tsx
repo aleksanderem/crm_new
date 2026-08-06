@@ -773,7 +773,10 @@ function EmployeeDetail() {
                   }}
                 >
                   <Settings className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
-                  <span className="flex-1 text-sm">{t("gabinet.employees.changePassword")}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">{t("gabinet.employees.changePassword")}</p>
+                    <p className="text-xs text-muted-foreground">{t("gabinet.employees.changePasswordDesc", "Ustaw nowe hasło do logowania")}</p>
+                  </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
                 </button>
                 <button
@@ -782,7 +785,10 @@ function EmployeeDetail() {
                   onClick={() => setEditDrawerOpen(true)}
                 >
                   <Pencil className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
-                  <span className="flex-1 text-sm">{t("gabinet.employees.editEmployee")}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">{t("gabinet.employees.editEmployee")}</p>
+                    <p className="text-xs text-muted-foreground">{t("gabinet.employees.editEmployeeDesc", "Zmień dane i ustawienia pracownika")}</p>
+                  </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
                 </button>
                 <button
@@ -791,7 +797,10 @@ function EmployeeDetail() {
                   onClick={handleDeactivate}
                 >
                   <Power className="h-4 w-4 text-destructive shrink-0" variant="stroke" />
-                  <span className="flex-1 text-sm text-destructive">{t("gabinet.employees.deactivate")}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-destructive">{t("gabinet.employees.deactivate")}</p>
+                    <p className="text-xs text-muted-foreground">{t("gabinet.employees.deactivateDesc", "Wyłącz dostęp pracownika do systemu")}</p>
+                  </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
                 </button>
               </div>

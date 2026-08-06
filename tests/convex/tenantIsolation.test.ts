@@ -247,6 +247,35 @@ describe("tenant isolation — notes", () => {
     ).rejects.toThrow("Not a member of this organization");
   });
 
+  test("listByEntity: org A user cannot read org B notes sharing the same entityId", async () => {
+    const t = createTestCtx();
+    const { organizationId: orgAId, userId: userAId, identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId, userId: userBId } = await seedOrgB(t);
+
+    const sharedEntityId = "contact-shared-id";
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("notes", {
+        organizationId: orgBId,
+        entityType: "contact",
+        entityId: sharedEntityId,
+        content: "Secret note from Org B",
+        isPinned: false,
+        createdBy: userBId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    const results = await t.withIdentity(identityA).query(api.notes.listByEntity, {
+      organizationId: orgAId,
+      entityType: "contact",
+      entityId: sharedEntityId,
+    });
+
+    expect(results).toHaveLength(0);
+  });
+
   test("getById: org A user cannot fetch an org B note by ID", async () => {
     const t = createTestCtx();
     const { organizationId: orgAId, identity: identityA } = await seedTestUser(t);

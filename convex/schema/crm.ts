@@ -1061,7 +1061,8 @@ export function createCrmTables({
     updatedAt: v.number(),
   })
     .index("by_entity", ["entityType", "entityId"])
-    .index("by_org", ["organizationId"]),
+    .index("by_org", ["organizationId"])
+    .index("by_org_and_entity", ["organizationId", "entityType", "entityId"]),
 
   };
 }

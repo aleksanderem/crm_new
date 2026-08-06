@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseContactsList } from "@/hooks/use-supabase-contacts";
 import { useSupabaseCompaniesList } from "@/hooks/use-supabase-companies";
+import { useSupabaseLeadsList } from "@/hooks/use-supabase-leads";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import {
@@ -321,12 +321,9 @@ export function TemplatePreviewSheet({
     limit: 50,
   });
 
-  const { data: leads } = useQuery({
-    ...convexQuery(api.leads.list, {
-      organizationId,
-      paginationOpts: { numItems: 50, cursor: null },
-    }),
+  const { data: leads } = useSupabaseLeadsList(organizationId, {
     enabled: entityType === "lead",
+    limit: 50,
   });
 
   const listEmployeesAction = useAction(api.gabinet.employees.list);

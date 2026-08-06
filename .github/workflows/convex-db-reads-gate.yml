@@ -1,0 +1,33 @@
+name: Convex DB Reads Gate
+
+# Forbids ctx.db.query on any table listed in TABLE_MAP in
+# convex/_helpers/supabaseDb.ts. Those tables are owned by Supabase;
+# reading them via ctx.db bypasses RLS and returns stale/empty data.
+# Fails if any non-whitelisted file introduces such a read.
+# See scripts/check-convex-db-reads.mjs and issue #3846.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  convex-db-reads-gate:
+    name: check:convex-db-reads
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Check no ctx.db.query on TABLE_MAP tables
+        run: npm run check:convex-db-reads

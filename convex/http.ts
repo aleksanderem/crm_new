@@ -297,6 +297,52 @@ const handleCustomerSubscriptionDeleted = async (
   return new Response(null);
 };
 
+const handleInvoiceFinalized = async (
+  _ctx: ActionCtx,
+  event: Stripe.InvoiceFinalizedEvent,
+) => {
+  const invoice = event.data.object;
+  // Log finalized invoice data for tax compliance visibility (Stripe Tax)
+  console.log("invoice.finalized", {
+    id: invoice.id,
+    customerId: invoice.customer,
+    amountDue: invoice.amount_due,
+    tax: invoice.tax,
+    totalTaxAmounts: invoice.total_tax_amounts,
+    currency: invoice.currency,
+    status: invoice.status,
+  });
+  return new Response(null);
+};
+
+const handleInvoicePaymentFailed = async (
+  ctx: ActionCtx,
+  event: Stripe.InvoicePaymentFailedEvent,
+) => {
+  const invoice = event.data.object;
+  const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
+  if (!customerId) {
+    console.error("invoice.payment_failed: missing customer id", invoice.id);
+    return new Response(null);
+  }
+
+  const user = await ctx.runQuery(internal.stripe.PREAUTH_getUserByCustomerId, {
+    customerId,
+  });
+  if (!user?.email) throw new Error(ERRORS.STRIPE_SOMETHING_WENT_WRONG);
+
+  const subscriptionId =
+    typeof invoice.subscription === "string"
+      ? invoice.subscription
+      : invoice.subscription?.id ?? invoice.id;
+
+  await sendSubscriptionErrorEmail({
+    email: user.email,
+    subscriptionId,
+  });
+  return new Response(null);
+};
+
 http.route({
   path: "/stripe/webhook",
   method: "POST",
@@ -342,6 +388,20 @@ http.route({
          */
         case "customer.subscription.deleted": {
           return handleCustomerSubscriptionDeleted(ctx, event);
+        }
+
+        /**
+         * Occurs when an invoice is finalized (Stripe Tax applies at this point).
+         */
+        case "invoice.finalized": {
+          return handleInvoiceFinalized(ctx, event);
+        }
+
+        /**
+         * Occurs when payment for an invoice fails.
+         */
+        case "invoice.payment_failed": {
+          return handleInvoicePaymentFailed(ctx, event);
         }
       }
     } catch (err: unknown) {

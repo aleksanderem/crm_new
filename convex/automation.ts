@@ -1155,10 +1155,12 @@ export const createRule = action({
 
     const now = Date.now();
 
-    // Convex is primary so the in-process rule engine (processRun) can find
-    // the rule via ctx.db. Supabase mirrors for frontend reads
-    // (useSupabaseAutomationRulesList) and cross-service analytics. Both rows
-    // share the Convex ID.
+    // createRule is Convex-first (necessary exception to the Supabase-primary
+    // pattern): processRun is an internalMutation that reads rules via ctx.db
+    // because mutations cannot use fetch(). The Convex insert happens first so
+    // the generated _id can be stored as the Supabase row id, keeping both
+    // stores on the same shared key. updateRule and deleteRule are
+    // Supabase-primary.
     const ruleId: Id<"automationRules"> = await ctx.runMutation(
       internal.automation._writeRuleToConvex,
       {
@@ -1204,7 +1206,10 @@ export const createRule = action({
   },
 });
 
-export const _patchRuleInConvex = internalMutation({
+// Best-effort mirror: Supabase is authoritative for updateRule writes.
+// Skip silently if the Convex replica is absent so a missing mirror
+// never blocks a Supabase-first update.
+export const _mirrorRulePatchToConvex = internalMutation({
   args: {
     organizationId: v.id("organizations"),
     ruleId: v.string(),
@@ -1223,13 +1228,9 @@ export const _patchRuleInConvex = internalMutation({
   },
   handler: async (ctx, args) => {
     const ruleId = ctx.db.normalizeId("automationRules", args.ruleId);
-    if (!ruleId) {
-      throw new Error("Automation rule not found");
-    }
+    if (!ruleId) return;
     const rule = await ctx.db.get(ruleId);
-    if (!rule || rule.organizationId !== args.organizationId) {
-      throw new Error("Automation rule not found");
-    }
+    if (!rule) return;
 
     const { organizationId: _orgId, ruleId: _rid, ...rest } = args;
     const updates: Record<string, unknown> = {};
@@ -1237,7 +1238,6 @@ export const _patchRuleInConvex = internalMutation({
       if (value !== undefined) updates[key] = value;
     }
     await ctx.db.patch(ruleId, updates);
-    return ruleId;
   },
 });
 
@@ -1263,10 +1263,31 @@ export const updateRule = action({
     });
 
     const updatedAt = Date.now();
+    const db = createSupabaseDb();
 
-    // Convex is primary — patch there first (and re-validate org ownership)
-    // so the engine sees the latest definition. Then mirror to Supabase.
-    await ctx.runMutation(internal.automation._patchRuleInConvex, {
+    // Supabase is the authoritative store — validate org ownership and write
+    // there first. The Convex mirror is updated afterwards so the engine
+    // (processRun) sees the latest definition; missing mirrors are skipped.
+    const supabaseRule = await db.get("automationRules", args.ruleId);
+    if (!supabaseRule || supabaseRule.organizationId !== String(args.organizationId)) {
+      throw new Error("Automation rule not found");
+    }
+
+    const updates: Record<string, unknown> = { updatedAt };
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.description !== undefined) updates.description = args.description;
+    if (args.module !== undefined) updates.module = args.module;
+    if (args.eventType !== undefined) updates.eventType = args.eventType;
+    if (args.entityType !== undefined) updates.entityType = args.entityType;
+    if (args.trigger !== undefined) updates.trigger = args.trigger;
+    if (args.graph !== undefined) updates.graph = args.graph;
+    if (args.definitionVersion !== undefined) updates.definitionVersion = args.definitionVersion;
+    if (args.conditions !== undefined) updates.conditions = args.conditions;
+    if (args.actions !== undefined) updates.actions = args.actions;
+    if (args.enabled !== undefined) updates.enabled = args.enabled;
+    await db.patch("automationRules", args.ruleId, updates);
+
+    await ctx.runMutation(internal.automation._mirrorRulePatchToConvex, {
       organizationId: args.organizationId,
       ruleId: args.ruleId,
       name: args.name,
@@ -1283,42 +1304,22 @@ export const updateRule = action({
       updatedAt,
     });
 
-    const db = createSupabaseDb();
-    const supabaseRule = await db.get("automationRules", args.ruleId);
-    if (supabaseRule && supabaseRule.organizationId === String(args.organizationId)) {
-      const updates: Record<string, unknown> = { updatedAt };
-      if (args.name !== undefined) updates.name = args.name;
-      if (args.description !== undefined) updates.description = args.description;
-      if (args.module !== undefined) updates.module = args.module;
-      if (args.eventType !== undefined) updates.eventType = args.eventType;
-      if (args.entityType !== undefined) updates.entityType = args.entityType;
-      if (args.trigger !== undefined) updates.trigger = args.trigger;
-      if (args.graph !== undefined) updates.graph = args.graph;
-      if (args.definitionVersion !== undefined) updates.definitionVersion = args.definitionVersion;
-      if (args.conditions !== undefined) updates.conditions = args.conditions;
-      if (args.actions !== undefined) updates.actions = args.actions;
-      if (args.enabled !== undefined) updates.enabled = args.enabled;
-      await db.patch("automationRules", args.ruleId, updates);
-    }
-
     return args.ruleId;
   },
 });
 
-export const _deleteRuleFromConvex = internalMutation({
+// Best-effort mirror: Supabase is authoritative for deleteRule. Org ownership
+// is validated in the action before this mutation runs, so we skip silently
+// if the Convex replica is absent.
+export const _mirrorRuleDeleteFromConvex = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
     ruleId: v.string(),
   },
   handler: async (ctx, args) => {
     const ruleId = ctx.db.normalizeId("automationRules", args.ruleId);
-    if (!ruleId) {
-      throw new Error("Automation rule not found");
-    }
+    if (!ruleId) return;
     const rule = await ctx.db.get(ruleId);
-    if (!rule || rule.organizationId !== args.organizationId) {
-      throw new Error("Automation rule not found");
-    }
+    if (!rule) return;
     await ctx.db.delete(ruleId);
   },
 });
@@ -1333,17 +1334,19 @@ export const deleteRule = action({
       organizationId: args.organizationId,
     });
 
-    // Convex is primary — delete there first (and re-validate org ownership).
-    await ctx.runMutation(internal.automation._deleteRuleFromConvex, {
-      organizationId: args.organizationId,
+    const db = createSupabaseDb();
+
+    // Supabase is the authoritative store — validate org ownership and delete
+    // there first. The Convex mirror deletion follows as best-effort.
+    const supabaseRule = await db.get("automationRules", args.ruleId);
+    if (!supabaseRule || supabaseRule.organizationId !== String(args.organizationId)) {
+      throw new Error("Automation rule not found");
+    }
+    await db.delete("automationRules", args.ruleId);
+
+    await ctx.runMutation(internal.automation._mirrorRuleDeleteFromConvex, {
       ruleId: args.ruleId,
     });
-
-    const db = createSupabaseDb();
-    const supabaseRule = await db.get("automationRules", args.ruleId);
-    if (supabaseRule && supabaseRule.organizationId === String(args.organizationId)) {
-      await db.delete("automationRules", args.ruleId);
-    }
 
     return args.ruleId;
   },

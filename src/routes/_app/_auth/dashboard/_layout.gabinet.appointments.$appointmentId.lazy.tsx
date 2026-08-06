@@ -41,7 +41,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChangeEmployeeModal } from "@/components/gabinet/change-employee-modal";
-import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 import { DocumentationTab } from "@/components/gabinet/documentation-tab";
 import { TreatmentPicker } from "@/components/gabinet/appointment-shared/treatment-picker";
 import { SettlementForm } from "@/components/gabinet/appointment-shared/settlement-form";
@@ -65,7 +64,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import {
   EntityDetailLayout,
@@ -112,9 +110,6 @@ import {
   Send,
   Inbox,
   Stethoscope,
-  MapPin,
-  Building2,
-  Clock,
 } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
@@ -263,25 +258,9 @@ function AppointmentDetail() {
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>([]);
   const [isSavingTags, setIsSavingTags] = useState(false);
 
-  // Editable scheduling/treatment state — backs the inline-editable Treatment
-  // and Scheduling cards on the Details tab. Issue #995: users want the
-  // "Edytuj" entry point to allow changing anything on the appointment.
   const [editTreatmentId, setEditTreatmentId] = useState("");
-  const [editDate, setEditDate] = useState("");
-  const [editStartTime, setEditStartTime] = useState("");
-  const [editEndTime, setEditEndTime] = useState("");
-  const [editLocationId, setEditLocationId] = useState("");
-  const [editRoomId, setEditRoomId] = useState("");
   const [treatmentPickerOpen, setTreatmentPickerOpen] = useState(false);
   const [treatmentSearch, setTreatmentSearch] = useState("");
-  const [isSavingScheduling, setIsSavingScheduling] = useState(false);
-
-  // Reminder channel overrides — editable inline on this page
-  const [editReminderSms48h, setEditReminderSms48h] = useState(false);
-  const [editReminderSms24h, setEditReminderSms24h] = useState(false);
-  const [editReminderEmail48h, setEditReminderEmail48h] = useState(false);
-  const [editReminderEmail24h, setEditReminderEmail24h] = useState(false);
-  const [isSavingReminders, setIsSavingReminders] = useState(false);
 
   const { tags: tagDefinitions } = useTagDefinitions(organizationId);
 
@@ -383,27 +362,6 @@ function AppointmentDetail() {
           price?: number;
           currency?: string;
         }>
-      | undefined;
-  };
-
-  const listLocationsAction = useAction(api.gabinet.locations.listLocations);
-  const { data: locationsList } = useQuery({
-    queryKey: ["gabinet.locations.listLocations", organizationId],
-    queryFn: () => listLocationsAction({ organizationId }),
-    enabled: !!organizationId,
-  }) as {
-    data: Array<{ _id: string; name: string; isActive: boolean }> | undefined;
-  };
-
-  const getLocationAction = useAction(api.gabinet.locations.getLocation);
-  const { data: locationWithRooms } = useQuery({
-    queryKey: ["gabinet.locations.getLocation", organizationId, editLocationId],
-    queryFn: () =>
-      getLocationAction({ organizationId, locationId: editLocationId }),
-    enabled: !!organizationId && !!editLocationId,
-  }) as {
-    data:
-      | { rooms?: Array<{ _id: string; name: string; isActive: boolean }> }
       | undefined;
   };
 
@@ -1097,52 +1055,6 @@ function AppointmentDetail() {
     }
   };
 
-  const handleSaveScheduling = async () => {
-    if (!detail) return;
-    setIsSavingScheduling(true);
-    try {
-      const apptRaw = detail.appointment as Record<string, unknown>;
-      const currentTreatmentId = apptRaw.treatmentId
-        ? String(apptRaw.treatmentId)
-        : "";
-      const currentDate = (apptRaw.date as string) ?? "";
-      const currentStart = ((apptRaw.startTime as string) ?? "").slice(0, 5);
-      const currentEnd = ((apptRaw.endTime as string) ?? "").slice(0, 5);
-      const currentLocation = apptRaw.locationId
-        ? String(apptRaw.locationId)
-        : "";
-      const currentRoom = apptRaw.roomId ? String(apptRaw.roomId) : "";
-
-      const args: Parameters<typeof updateAppointment>[0] = {
-        organizationId,
-        appointmentId: detail.appointment._id,
-      };
-      if (editTreatmentId && editTreatmentId !== currentTreatmentId) {
-        args.treatmentId = editTreatmentId;
-      }
-      if (editDate && editDate !== currentDate) args.date = editDate;
-      if (editStartTime && editStartTime !== currentStart)
-        args.startTime = editStartTime;
-      if (editEndTime && editEndTime !== currentEnd) args.endTime = editEndTime;
-      if (editLocationId !== currentLocation) {
-        args.locationId = editLocationId || null;
-      }
-      if (editRoomId !== currentRoom) {
-        args.roomId = editRoomId || null;
-      }
-
-      await updateAppointment(args);
-      toast.success(t("common.saved"));
-      await invalidateAppointmentCaches();
-      refetch();
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : t("common.error");
-      toast.error(msg);
-    } finally {
-      setIsSavingScheduling(false);
-    }
-  };
-
   const handleMarkPaid = async (paymentId: string) => {
     try {
       await markPaymentPaid({
@@ -1168,30 +1080,6 @@ function AppointmentDetail() {
     } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
-    }
-  };
-
-  const handleSaveReminders = async () => {
-    setIsSavingReminders(true);
-    try {
-      await updateAppointment({
-        organizationId,
-        appointmentId: appointment._id,
-        reminderOverrides: JSON.stringify({
-          sms48h: editReminderSms48h,
-          sms24h: editReminderSms24h,
-          email48h: editReminderEmail48h,
-          email24h: editReminderEmail24h,
-        }),
-      });
-      await invalidateAppointmentCaches();
-      refetch();
-      toast.success(t("gabinet.reminders.saved"));
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : t("common.error");
-      toast.error(msg);
-    } finally {
-      setIsSavingReminders(false);
     }
   };
 

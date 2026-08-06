@@ -1017,6 +1017,8 @@ export function createGabinetTables({
     issuedAt: v.number(),
     // Receipt lifecycle: issued (default) | void
     status: v.union(v.literal("issued"), v.literal("void")),
+    // Receipt classification: original (default) | correction (KOR/ prefix)
+    receiptType: v.union(v.literal("original"), v.literal("correction")),
     // Org data captured at issuance time so the receipt can be reproduced later.
     organizationName: v.string(),
     organizationNip: v.optional(v.string()),

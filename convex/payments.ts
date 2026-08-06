@@ -15,6 +15,11 @@ import { createNotificationDirect } from "./notifications";
 import { formatCurrencyPLN } from "./_helpers/formatCurrency";
 import { sendEmail } from "@cvx/email";
 import { AUTH_RESEND_KEY, SITE_URL } from "@cvx/env";
+import {
+  createFiscalDevice,
+  FiscalNotConfiguredError,
+  type ReceiptItem,
+} from "@cvx/fiscal/fiscalBridge";
 
 const paymentMethodValidator = v.union(
   v.literal("cash"),
@@ -1095,6 +1100,338 @@ export const _sendRefundAuthEmails = internalAction({
         );
       }
     }
+  },
+});
+
+// --- Fiscal receipt bridge (issue #3738) ---
+
+const MAX_FISCAL_RETRIES = 3;
+// Exponential back-off delays for retry scheduling (ms).
+const FISCAL_RETRY_DELAYS_MS = [30_000, 5 * 60_000, 30 * 60_000] as const;
+
+const fiscalItemValidator = v.object({
+  name: v.string(),
+  quantity: v.number(),
+  unitPrice: v.number(),
+  vatRate: v.union(
+    v.literal("A"),
+    v.literal("B"),
+    v.literal("C"),
+    v.literal("D"),
+  ),
+});
+
+function mapPaymentMethodToFiscal(
+  method: string,
+): "cash" | "card" | "transfer" | "other" {
+  if (method === "cash") return "cash";
+  if (method === "card") return "card";
+  if (method === "transfer") return "transfer";
+  return "other";
+}
+
+/**
+ * Send a fiscal receipt for a completed payment to the configured fiscal
+ * device/cloud service (issue #3738).
+ *
+ * Flow:
+ *  1. Sets fiscalStatus="pending_fiscal" on the payment row immediately.
+ *  2. Calls the fiscal bridge. On success, stores fiscalReceiptId and sets
+ *     fiscalStatus="fiscal_ok".
+ *  3. On transient failure, schedules an automatic retry (up to
+ *     MAX_FISCAL_RETRIES attempts with exponential back-off). After the last
+ *     attempt fails, fiscalStatus is set to "fiscal_error".
+ *
+ * Idempotent: calling again on a payment with fiscalStatus="fiscal_ok" returns
+ * the existing fiscalReceiptId without contacting the device again.
+ *
+ * Requires gabinet_receipts.create permission.
+ */
+export const generateReceipt = action({
+  args: {
+    organizationId: v.id("organizations"),
+    paymentId: v.string(),
+    // NIP (tax ID) of the issuing organization. Required by Polish fiscal law.
+    organizationNip: v.optional(v.string()),
+    // Line items with VAT breakdown. If omitted, a single generic item is
+    // generated for the full amount using VAT rate D (0% — medical services).
+    items: v.optional(v.array(fiscalItemValidator)),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runQuery(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    const perm = await ctx.runQuery(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_receipts",
+        action: "create",
+      },
+    );
+    if (!perm.allowed) {
+      throw new Error("Not authorized to generate fiscal receipts");
+    }
+
+    const db = createSupabaseDb();
+    const payment = await db.get("payments", args.paymentId);
+    if (!payment || String(payment.organizationId) !== String(args.organizationId)) {
+      throw new Error("Payment not found");
+    }
+
+    // Idempotency guard: already fiscalised — return cached receipt ID.
+    if (payment.fiscalStatus === "fiscal_ok") {
+      return { fiscalReceiptId: payment.fiscalReceiptId as string };
+    }
+
+    const currentAttempts = (payment.fiscalAttempts as number | null) ?? 0;
+    const newAttempts = currentAttempts + 1;
+
+    // Mark as pending so concurrent calls see a definitive state.
+    await db.patch("payments", args.paymentId, {
+      fiscalStatus: "pending_fiscal",
+      fiscalAttempts: newAttempts,
+      updatedAt: Date.now(),
+    });
+
+    const items: ReceiptItem[] = args.items ?? [
+      {
+        name: "Usługa medyczna",
+        quantity: 1,
+        unitPrice: payment.amount as number,
+        vatRate: "D", // medical services are ZW (exempt) in Poland
+      },
+    ];
+
+    let device;
+    try {
+      device = createFiscalDevice();
+    } catch (e) {
+      if (e instanceof FiscalNotConfiguredError) {
+        await db.patch("payments", args.paymentId, {
+          fiscalStatus: "fiscal_error",
+          fiscalError: "Fiscal service not configured (FISCAL_API_URL / FISCAL_API_KEY missing)",
+          updatedAt: Date.now(),
+        });
+        throw new Error("Fiscal service not configured");
+      }
+      throw e;
+    }
+
+    try {
+      const result = await device.sendReceipt({
+        organizationNip: args.organizationNip ?? "",
+        amount: payment.amount as number,
+        paymentMethod: mapPaymentMethodToFiscal(payment.paymentMethod as string),
+        items,
+        currency: (payment.currency as string) ?? "PLN",
+        externalId: args.paymentId,
+      });
+
+      await db.patch("payments", args.paymentId, {
+        fiscalStatus: "fiscal_ok",
+        fiscalReceiptId: result.fiscalReceiptId,
+        fiscalError: null,
+        updatedAt: Date.now(),
+      });
+
+      try {
+        await ctx.runMutation(internal.payments._fiscalReceiptSideEffects, {
+          paymentId: args.paymentId,
+          organizationId: args.organizationId,
+          fiscalReceiptId: result.fiscalReceiptId,
+          userId: authResult.userId,
+        });
+      } catch {
+        // side effects are best-effort
+      }
+
+      return { fiscalReceiptId: result.fiscalReceiptId };
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+
+      if (newAttempts >= MAX_FISCAL_RETRIES) {
+        await db.patch("payments", args.paymentId, {
+          fiscalStatus: "fiscal_error",
+          fiscalError: errorMsg,
+          updatedAt: Date.now(),
+        });
+        throw new Error(
+          `Fiscal receipt failed after ${MAX_FISCAL_RETRIES} attempts: ${errorMsg}`,
+        );
+      }
+
+      // Schedule retry — must go through an internalMutation to access ctx.scheduler.
+      try {
+        await ctx.runMutation(internal.payments._scheduleFiscalRetry, {
+          paymentId: args.paymentId,
+          organizationId: args.organizationId,
+          fiscalError: errorMsg,
+          attemptNumber: newAttempts,
+          organizationNip: args.organizationNip,
+          items: args.items,
+        });
+      } catch {
+        // If scheduling fails, surface the original error to the caller.
+        throw new Error(`Fiscal device error (retry scheduling failed): ${errorMsg}`);
+      }
+
+      return { queued: true, error: errorMsg };
+    }
+  },
+});
+
+export const _scheduleFiscalRetry = internalMutation({
+  args: {
+    paymentId: v.string(),
+    organizationId: v.id("organizations"),
+    fiscalError: v.string(),
+    attemptNumber: v.number(),
+    organizationNip: v.optional(v.string()),
+    items: v.optional(v.array(fiscalItemValidator)),
+  },
+  handler: async (ctx, args) => {
+    const delayMs =
+      FISCAL_RETRY_DELAYS_MS[
+        Math.min(args.attemptNumber - 1, FISCAL_RETRY_DELAYS_MS.length - 1)
+      ];
+
+    await ctx.scheduler.runAfter(delayMs, internal.payments._retryFiscal, {
+      paymentId: args.paymentId,
+      organizationId: args.organizationId,
+      organizationNip: args.organizationNip,
+      items: args.items,
+    });
+
+    // Record the transient error for observability while the retry is queued.
+    const db = createSupabaseDb();
+    await db.patch("payments", args.paymentId, {
+      fiscalError: args.fiscalError,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const _retryFiscal = internalAction({
+  args: {
+    paymentId: v.string(),
+    organizationId: v.id("organizations"),
+    organizationNip: v.optional(v.string()),
+    items: v.optional(v.array(fiscalItemValidator)),
+  },
+  handler: async (ctx, args) => {
+    const db = createSupabaseDb();
+    const payment = await db.get("payments", args.paymentId);
+    if (!payment) return;
+    if (payment.fiscalStatus === "fiscal_ok") return; // already succeeded
+
+    const currentAttempts = (payment.fiscalAttempts as number | null) ?? 0;
+    const newAttempts = currentAttempts + 1;
+
+    await db.patch("payments", args.paymentId, {
+      fiscalAttempts: newAttempts,
+      updatedAt: Date.now(),
+    });
+
+    let device;
+    try {
+      device = createFiscalDevice();
+    } catch {
+      await db.patch("payments", args.paymentId, {
+        fiscalStatus: "fiscal_error",
+        fiscalError: "Fiscal service not configured (FISCAL_API_URL / FISCAL_API_KEY missing)",
+        updatedAt: Date.now(),
+      });
+      return;
+    }
+
+    const items: ReceiptItem[] = args.items ?? [
+      {
+        name: "Usługa medyczna",
+        quantity: 1,
+        unitPrice: payment.amount as number,
+        vatRate: "D",
+      },
+    ];
+
+    try {
+      const result = await device.sendReceipt({
+        organizationNip: args.organizationNip ?? "",
+        amount: payment.amount as number,
+        paymentMethod: mapPaymentMethodToFiscal(payment.paymentMethod as string),
+        items,
+        currency: (payment.currency as string) ?? "PLN",
+        externalId: args.paymentId,
+      });
+
+      await db.patch("payments", args.paymentId, {
+        fiscalStatus: "fiscal_ok",
+        fiscalReceiptId: result.fiscalReceiptId,
+        fiscalError: null,
+        updatedAt: Date.now(),
+      });
+
+      try {
+        await ctx.runMutation(internal.payments._fiscalReceiptSideEffects, {
+          paymentId: args.paymentId,
+          organizationId: args.organizationId,
+          fiscalReceiptId: result.fiscalReceiptId,
+        });
+      } catch {
+        // side effects are best-effort
+      }
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+
+      if (newAttempts >= MAX_FISCAL_RETRIES) {
+        await db.patch("payments", args.paymentId, {
+          fiscalStatus: "fiscal_error",
+          fiscalError: errorMsg,
+          updatedAt: Date.now(),
+        });
+        return;
+      }
+
+      try {
+        await ctx.runMutation(internal.payments._scheduleFiscalRetry, {
+          paymentId: args.paymentId,
+          organizationId: args.organizationId,
+          fiscalError: errorMsg,
+          attemptNumber: newAttempts,
+          organizationNip: args.organizationNip,
+          items: args.items,
+        });
+      } catch {
+        // If we can't even schedule, leave the payment in pending_fiscal with
+        // the last error stored — an operator can re-trigger via generateReceipt.
+        await db.patch("payments", args.paymentId, {
+          fiscalError: `${errorMsg} (retry scheduling failed)`,
+          updatedAt: Date.now(),
+        });
+      }
+    }
+  },
+});
+
+export const _fiscalReceiptSideEffects = internalMutation({
+  args: {
+    paymentId: v.string(),
+    organizationId: v.id("organizations"),
+    fiscalReceiptId: v.string(),
+    // Present when triggered by a user action; absent for scheduled retries.
+    userId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    if (!args.userId) return; // scheduled retries have no actor — skip audit log
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.userId,
+      action: "fiscal_receipt_generated",
+      entityType: "payment",
+      entityId: args.paymentId as any,
+      details: JSON.stringify({ fiscalReceiptId: args.fiscalReceiptId }),
+    });
   },
 });
 

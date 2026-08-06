@@ -16,3 +16,5 @@ export const SUPABASE_JWT_SECRET = process.env.SUPABASE_JWT_SECRET;
 export const SUPABASE_URL = process.env.SUPABASE_URL;
 export const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 export const DEV_INTERCEPT_EMAILS = process.env.DEV_INTERCEPT_EMAILS;
+export const FISCAL_API_URL = process.env.FISCAL_API_URL;
+export const FISCAL_API_KEY = process.env.FISCAL_API_KEY;

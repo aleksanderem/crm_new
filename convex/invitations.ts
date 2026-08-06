@@ -376,6 +376,7 @@ export const accept = action({
       .eq("token", args.token)
       .unique();
 
+    let orgOwnerId: string | undefined;
     if (invitation) {
       const { canAddMore, currentSeats, seatLimit } = await ctx.runAction(
         internal._helpers.seatLimits.checkSeatLimitAction,
@@ -386,6 +387,9 @@ export const accept = action({
           `Seat limit reached (${currentSeats}/${seatLimit}). The organization needs to upgrade their plan.`,
         );
       }
+      // Read org owner from Supabase so _acceptInternal (a mutation) doesn't need ctx.db.get on organizations
+      const org = await db.get("organizations", String(invitation.organizationId));
+      orgOwnerId = org?.ownerId ? String(org.ownerId) : undefined;
     }
 
     const result: {
@@ -395,7 +399,7 @@ export const accept = action({
       updatedAt: number;
     } = await ctx.runMutation(
       internal.invitations._acceptInternal,
-      { token: args.token },
+      { token: args.token, orgOwnerId },
     );
 
     // Mirror status change to Supabase so any consumer reading invitations
@@ -415,7 +419,7 @@ export const accept = action({
 });
 
 export const _acceptInternal = internalMutation({
-  args: { token: v.string() },
+  args: { token: v.string(), orgOwnerId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
 
@@ -557,12 +561,11 @@ export const _acceptInternal = internalMutation({
       details: JSON.stringify({ email: user.email }),
     });
 
-    // Notify org owner
-    const org = await ctx.db.get(invitation.organizationId);
-    if (org && org.ownerId !== user._id) {
+    // Notify org owner using ownerId passed from the parent accept action (which read it from Supabase)
+    if (args.orgOwnerId && args.orgOwnerId !== String(user._id)) {
       await createNotificationDirect(ctx, {
         organizationId: invitation.organizationId,
-        userId: org.ownerId,
+        userId: args.orgOwnerId as Id<"users">,
         type: "member_joined",
         title: "New team member",
         message: `${user.name ?? user.email ?? "A user"} joined your organization as "${invitation.role}"`,

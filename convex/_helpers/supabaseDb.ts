@@ -32,7 +32,6 @@ const TABLE_MAP: Record<string, string> = {
   pipelineStageActions: "pipeline_stage_actions",
   scheduledActivities: "scheduled_activities",
   savedViews: "saved_views",
-  notifications: "notifications",
   auditLog: "audit_log",
   customFieldDefinitions: "custom_field_definitions",
   customFieldValues: "custom_field_values",

@@ -404,6 +404,7 @@ export const markEventFailed = internalMutation({
 
 export const processIncomingMessage = internalMutation({
   args: {
+    organizationId: v.string(),
     provider: v.union(v.literal("twilio"), v.literal("smsapi")),
     to: v.string(),
     from: v.string(),
@@ -437,22 +438,6 @@ export const processIncomingMessage = internalMutation({
       };
     }
 
-    const config: Doc<"orgSmsConfig"> | null = await ctx.runQuery(
-      internal.sms.getConfigForInbound,
-      {
-        provider: args.provider,
-        recipient: args.to,
-      },
-    );
-
-    if (!config) {
-      return {
-        duplicate: false,
-        processingStatus: "ignored" as const,
-        reason: "No matching SMS configuration for inbound recipient",
-      };
-    }
-
     const normalizedPhone = normalizePhoneNumber(args.from);
     const normalizedBody = normalizeSmsBody(args.body);
     const parsedIntent = parseAppointmentSmsIntent(args.body);
@@ -460,7 +445,7 @@ export const processIncomingMessage = internalMutation({
 
     const outboundEvents = (await db
       .query("appointmentSmsEvents")
-      .eq("organizationId", String(config.organizationId))
+      .eq("organizationId", args.organizationId)
       .eq("normalizedPhone", normalizedPhone)
       .order("createdAt", false)
       .collect()) as Array<Doc<"appointmentSmsEvents">>;
@@ -473,7 +458,7 @@ export const processIncomingMessage = internalMutation({
     );
 
     const eventId: string = await db.insert("appointmentSmsEvents", {
-      organizationId: config.organizationId,
+      organizationId: args.organizationId,
       appointmentId: matchingOutbound?.appointmentId,
       patientId: matchingOutbound?.patientId,
       normalizedPhone,
@@ -509,7 +494,7 @@ export const processIncomingMessage = internalMutation({
       : null;
     const matchingAppointmentBelongsToOrg =
       !!matchingAppointment &&
-      String(matchingAppointment.organizationId) === String(config.organizationId);
+      String(matchingAppointment.organizationId) === String(args.organizationId);
     const matchingAppointmentEmployeeId =
       matchingAppointmentBelongsToOrg && matchingAppointment?.employeeId
         ? (matchingAppointment.employeeId as Id<"users">)
@@ -521,7 +506,7 @@ export const processIncomingMessage = internalMutation({
       (matchingAppointmentId || matchingPatientId)
     ) {
       await logSmsSharedActivities(ctx, {
-        organizationId: config.organizationId,
+        organizationId: args.organizationId,
         appointmentId: matchingAppointmentId,
         patientId: matchingPatientId,
         action: "sms_received",
@@ -541,7 +526,7 @@ export const processIncomingMessage = internalMutation({
     }
 
     await ctx.runMutation(internal.automation.emitEvent, {
-      organizationId: config.organizationId,
+      organizationId: args.organizationId,
       module: "gabinet",
       eventType: "gabinet.appointment.sms_reply_received",
       entityType: matchingOutbound?.appointmentId ? "gabinetAppointment" : undefined,
@@ -550,9 +535,9 @@ export const processIncomingMessage = internalMutation({
         : undefined,
       actorUserId: matchingAppointmentEmployeeId,
       correlationKey: matchingOutbound?.correlationKey,
-      eventIdempotencyKey: `automation-event:${config.organizationId}:${args.idempotencyKey}`,
+      eventIdempotencyKey: `automation-event:${args.organizationId}:${args.idempotencyKey}`,
       payload: JSON.stringify({
-        organizationId: String(config.organizationId),
+        organizationId: String(args.organizationId),
         appointmentId: matchingOutbound?.appointmentId
           ? String(matchingOutbound.appointmentId)
           : null,
@@ -594,7 +579,7 @@ export const processIncomingMessage = internalMutation({
       processingStatus: "processed" | "ignored";
       reason?: string;
     } = await ctx.runMutation(internal.gabinet.appointments.applySmsReplyTransition, {
-      organizationId: config.organizationId,
+      organizationId: args.organizationId,
       appointmentId: String(matchingOutbound.appointmentId),
       intent: parsedIntent,
       smsEventId: eventId,

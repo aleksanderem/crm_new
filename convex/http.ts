@@ -542,16 +542,23 @@ http.route({
         return new Response("Unsupported SMS provider", { status: 400 });
       }
 
+      // Look up the SMS config for this recipient to get the organization.
+      // For Twilio we also verify the webhook signature here.
+      const config = await ctx.runAction(internal.sms.getConfigForInbound, {
+        provider,
+        recipient: to,
+      });
+
+      if (!config) {
+        return new Response("No matching SMS configuration", { status: 200 });
+      }
+
       let webhookSignatureVerified: boolean | undefined;
       if (provider === "twilio") {
-        const config = await ctx.runQuery(internal.sms.getConfigForInbound, {
-          provider,
-          recipient: to,
-        });
-        if (!config?.apiSecret) {
+        if (!config.apiSecret) {
           return new Response("No matching Twilio configuration", { status: 200 });
         }
-        webhookSignatureVerified = await verifyTwilioRequest(request, payload, config.apiSecret);
+        webhookSignatureVerified = await verifyTwilioRequest(request, payload, config.apiSecret as string);
         if (!webhookSignatureVerified) {
           return new Response("Invalid Twilio signature", { status: 401 });
         }
@@ -562,6 +569,7 @@ http.route({
         : `${provider}:${to}:${from}:${body.trim()}`;
 
       await ctx.runMutation(internal.gabinet.appointmentSms.processIncomingMessage, {
+        organizationId: config.organizationId as string,
         provider,
         to,
         from,

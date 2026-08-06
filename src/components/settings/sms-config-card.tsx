@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "convex/react";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
+import { useSupabaseSmsConfig } from "@/hooks/use-supabase-sms-config";
 import {
   Card,
   CardContent,
@@ -32,7 +32,7 @@ interface SmsConfigCardProps {
 
 export function SmsConfigCard({ organizationId }: SmsConfigCardProps) {
   const { t } = useTranslation();
-  const config = useQuery(api.sms.getConfig, { organizationId });
+  const { data: config } = useSupabaseSmsConfig(String(organizationId));
   const saveConfig = useAction(api.sms.saveConfig);
 
   const [provider, setProvider] = useState<"smsapi" | "twilio">("smsapi");

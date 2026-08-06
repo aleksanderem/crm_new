@@ -247,7 +247,6 @@ export const getMembers = query({
   },
 });
 
-// teamMemberships are AUTH tables — stay in Convex DB
 export const inviteMember = action({
   args: {
     organizationId: v.id("organizations"),
@@ -255,6 +254,16 @@ export const inviteMember = action({
     role: orgRoleValidator,
   },
   handler: async (ctx, args): Promise<string> => {
+    const { canAddMore, currentSeats, seatLimit } = await ctx.runAction(
+      internal._helpers.seatLimits.checkSeatLimitAction,
+      { organizationId: args.organizationId },
+    );
+    if (!canAddMore) {
+      throw new Error(
+        `Seat limit reached (${currentSeats}/${seatLimit}). Upgrade your plan to add more team members.`,
+      );
+    }
+
     const membershipId: string = await ctx.runMutation(
       internal.organizations._inviteMemberInternal,
       {
@@ -275,15 +284,6 @@ export const _inviteMemberInternal = internalMutation({
   },
   handler: async (ctx, args) => {
     const { user } = await requireOrgAdmin(ctx, args.organizationId);
-
-    const { canAddMore, currentSeats, seatLimit } = await checkSeatLimit(ctx, {
-      organizationId: args.organizationId,
-    });
-    if (!canAddMore) {
-      throw new Error(
-        `Seat limit reached (${currentSeats}/${seatLimit}). Upgrade your plan to add more team members.`
-      );
-    }
 
     const existing = await ctx.db
       .query("teamMemberships")

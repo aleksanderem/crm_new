@@ -1,5 +1,8 @@
-import { QueryCtx } from "../_generated/server";
+import { QueryCtx, internalQuery, internalAction } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { Id } from "../_generated/dataModel";
+import { v } from "convex/values";
+import { createSupabaseDb } from "./supabaseDb";
 
 /**
  * Check the seat limit for an organization based on its owner's subscription plan.
@@ -79,3 +82,81 @@ export async function checkSeatLimit(
     canAddMore: currentSeats < seatLimit,
   };
 }
+
+// Internal query for Convex-only tables (subscriptions + plans are NOT in
+// TABLE_MAP and must be read from ctx.db). Called by checkSeatLimitAction.
+export const _getSubscriptionAndPlanData = internalQuery({
+  args: { ownerId: v.id("users") },
+  handler: async (ctx, args): Promise<{ seatLimit: number }> => {
+    const subscription = await ctx.db
+      .query("subscriptions")
+      .withIndex("userId", (q) => q.eq("userId", args.ownerId))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "active"),
+          q.eq(q.field("status"), "trialing"),
+        ),
+      )
+      .first();
+
+    if (!subscription) {
+      console.warn(
+        `[seatLimits] No active subscription found for org owner ${args.ownerId}. Using default free tier limit.`,
+      );
+      return { seatLimit: 20 };
+    }
+
+    const plan = await ctx.db.get(subscription.planId);
+    if (!plan) {
+      console.warn(
+        `[seatLimits] Plan ${subscription.planId} not found for subscription ${subscription._id}. Using default seat limit.`,
+      );
+      return { seatLimit: 20 };
+    }
+
+    return { seatLimit: plan.seatLimit };
+  },
+});
+
+// Action-based seat limit check: reads TABLE_MAP tables (teamMemberships,
+// invitations, organizations) from Supabase. Call via ctx.runAction from
+// action handlers — mutations cannot make HTTP calls, so they must delegate
+// this check to the outer action layer instead.
+export const checkSeatLimitAction = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    skipPendingInvitations: v.optional(v.boolean()),
+  },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ currentSeats: number; seatLimit: number; canAddMore: boolean }> => {
+    const db = createSupabaseDb();
+
+    const members = await db
+      .query("teamMemberships")
+      .eq("organizationId", String(args.organizationId))
+      .collect();
+
+    let pendingCount = 0;
+    if (!args.skipPendingInvitations) {
+      const invitations = await db
+        .query("invitations")
+        .eq("organizationId", String(args.organizationId))
+        .collect();
+      pendingCount = invitations.filter((inv) => inv.status === "pending").length;
+    }
+
+    const currentSeats = members.length + pendingCount;
+
+    const org = await db.get("organizations", String(args.organizationId));
+    if (!org) throw new Error("Organization not found");
+
+    const { seatLimit } = await ctx.runQuery(
+      internal._helpers.seatLimits._getSubscriptionAndPlanData,
+      { ownerId: org.ownerId },
+    );
+
+    return { currentSeats, seatLimit, canAddMore: currentSeats < seatLimit };
+  },
+});

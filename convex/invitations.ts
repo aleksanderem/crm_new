@@ -4,7 +4,6 @@ import { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { verifyOrgAccess, requireOrgAdmin, requireUser } from "./_helpers/auth";
-import { checkSeatLimit } from "./_helpers/seatLimits";
 import { orgRoleValidator } from "@cvx/schema";
 import { logActivity } from "./_helpers/activities";
 import { logAudit } from "./auditLog";
@@ -81,6 +80,16 @@ export const create = action({
     moduleData: v.optional(v.any()),
   },
   handler: async (ctx, args): Promise<string> => {
+    const { canAddMore, currentSeats, seatLimit } = await ctx.runAction(
+      internal._helpers.seatLimits.checkSeatLimitAction,
+      { organizationId: args.organizationId },
+    );
+    if (!canAddMore) {
+      throw new Error(
+        `Seat limit reached (${currentSeats}/${seatLimit}). Upgrade your plan to add more team members.`,
+      );
+    }
+
     const created: {
       invitationId: string;
       email: string;
@@ -260,16 +269,6 @@ export const _createInternal = internalMutation({
   handler: async (ctx, args) => {
     const { user } = await requireOrgAdmin(ctx, args.organizationId);
 
-    // Check seat limit before creating invitation
-    const { canAddMore, currentSeats, seatLimit } = await checkSeatLimit(ctx, {
-      organizationId: args.organizationId,
-    });
-    if (!canAddMore) {
-      throw new Error(
-        `Seat limit reached (${currentSeats}/${seatLimit}). Upgrade your plan to add more team members.`
-      );
-    }
-
     // Check no existing pending invitation for same email+org
     const existingInvitation = await ctx.db
       .query("invitations")
@@ -355,6 +354,28 @@ export const _createInternal = internalMutation({
 export const accept = action({
   args: { token: v.string() },
   handler: async (ctx, args): Promise<string> => {
+    const db = createSupabaseDb();
+
+    // Look up the invitation from Supabase to get orgId for the seat limit
+    // check. Accepting converts a pending slot to a member slot (net zero
+    // change), so we skip pending invitations in the count.
+    const invitation = await db
+      .query("invitations")
+      .eq("token", args.token)
+      .unique();
+
+    if (invitation) {
+      const { canAddMore, currentSeats, seatLimit } = await ctx.runAction(
+        internal._helpers.seatLimits.checkSeatLimitAction,
+        { organizationId: invitation.organizationId, skipPendingInvitations: true },
+      );
+      if (!canAddMore) {
+        throw new Error(
+          `Seat limit reached (${currentSeats}/${seatLimit}). The organization needs to upgrade their plan.`,
+        );
+      }
+    }
+
     const result: {
       organizationId: string;
       invitationId: string;
@@ -368,7 +389,6 @@ export const accept = action({
     // Mirror status change to Supabase so any consumer reading invitations
     // from there (e.g. team-settings page) sees the accepted state.
     try {
-      const db = createSupabaseDb();
       await db.patch("invitations", result.invitationId, {
         status: "accepted",
         acceptedAt: result.acceptedAt,
@@ -397,19 +417,6 @@ export const _acceptInternal = internalMutation({
     if (invitation.expiresAt <= Date.now()) throw new Error("Invitation has expired");
     if (user.email !== invitation.email) {
       throw new Error("This invitation was sent to a different email address");
-    }
-
-    // Check seat limit at acceptance time. Skip pending invitations here because
-    // accepting converts a pending slot to a member slot — net seat change is zero.
-    // Only check that there is room measured by actual members.
-    const { canAddMore, currentSeats, seatLimit } = await checkSeatLimit(ctx, {
-      organizationId: invitation.organizationId,
-      skipPendingInvitations: true,
-    });
-    if (!canAddMore) {
-      throw new Error(
-        `Seat limit reached (${currentSeats}/${seatLimit}). The organization needs to upgrade their plan.`
-      );
     }
 
     const joinedAt = Date.now();

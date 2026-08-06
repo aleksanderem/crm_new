@@ -48,14 +48,35 @@ export async function seedTestUser(
       updatedAt: Date.now(),
     });
 
-    await ctx.db.insert("teamMemberships", {
+    const membershipId = await ctx.db.insert("teamMemberships", {
       organizationId,
       userId,
       role,
       joinedAt: Date.now(),
     });
 
-    return { userId, organizationId };
+    return { userId, organizationId, membershipId };
+  });
+
+  // Mirror to in-memory Supabase so action handlers that read TABLE_MAP
+  // tables via createSupabaseDb() (e.g. checkSeatLimitAction) see consistent
+  // state with the Convex db.
+  const db = createSupabaseDb();
+  const now = Date.now();
+  await db.insert("organizations", {
+    _id: String(ids.organizationId),
+    name: "Test Org",
+    slug: "test-org",
+    ownerId: String(ids.userId),
+    createdAt: now,
+    updatedAt: now,
+  });
+  await db.insert("teamMemberships", {
+    _id: String(ids.membershipId),
+    organizationId: String(ids.organizationId),
+    userId: String(ids.userId),
+    role,
+    joinedAt: now,
   });
 
   // auth.getUserId splits identity.subject by "|" and takes first part
@@ -84,14 +105,25 @@ export async function seedSecondUser(
       email: "second@example.com",
     });
 
-    await ctx.db.insert("teamMemberships", {
+    const membershipId = await ctx.db.insert("teamMemberships", {
       organizationId,
       userId,
       role,
       joinedAt: Date.now(),
     });
 
-    return { userId };
+    return { userId, membershipId };
+  });
+
+  // Mirror to in-memory Supabase so action handlers that read TABLE_MAP
+  // tables via createSupabaseDb() see consistent state.
+  const db = createSupabaseDb();
+  await db.insert("teamMemberships", {
+    _id: String(ids.membershipId),
+    organizationId: String(organizationId),
+    userId: String(ids.userId),
+    role,
+    joinedAt: Date.now(),
   });
 
   const identity = {

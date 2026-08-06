@@ -1,8 +1,6 @@
 import {
   action,
   internalAction,
-  internalMutation,
-  internalQuery,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
@@ -102,17 +100,10 @@ export const emitEvent = action({
       createdAt: now,
     });
 
-    // Schedule async processing via internalMutation to bridge back to Convex
+    // Schedule async processing directly — Supabase logId is the canonical ID
     try {
-      await ctx.runMutation(internal.emailEvents._scheduleProcessing, {
+      await ctx.scheduler.runAfter(0, internal.emailEvents.processEvent, {
         logId,
-        organizationId: args.organizationId,
-        eventType: args.eventType,
-        payload: args.payload,
-        recipientEmail: args.recipientEmail,
-        recipientName: args.recipientName,
-        triggeredBy: args.triggeredBy,
-        createdAt: now,
       });
     } catch (e) {
       console.error("[emailEvents.emitEvent] Schedule processing FAILED:", e);
@@ -122,49 +113,6 @@ export const emitEvent = action({
   },
 });
 
-/**
- * Internal mutation to insert the log entry into Convex and schedule processing.
- * This bridges the action-based emitEvent back to Convex's scheduler.
- */
-export const _scheduleProcessing = internalMutation({
-  args: {
-    logId: v.string(),
-    organizationId: v.id("organizations"),
-    eventType: v.string(),
-    payload: v.optional(v.string()),
-    recipientEmail: v.string(),
-    recipientName: v.optional(v.string()),
-    triggeredBy: v.optional(v.string()),
-    createdAt: v.number(),
-  },
-  handler: async (ctx, args) => {
-    // Insert a Convex-side log entry so processEvent can read it
-    const convexLogId = await ctx.db.insert("emailEventLog", {
-      organizationId: args.organizationId,
-      eventType: args.eventType,
-      status: "pending",
-      payload: args.payload,
-      recipientEmail: args.recipientEmail,
-      recipientName: args.recipientName,
-      triggeredBy: args.triggeredBy ? args.triggeredBy as any : undefined,
-      createdAt: args.createdAt,
-    });
-
-    // Schedule async processing — non-blocking
-    await ctx.scheduler.runAfter(0, internal.emailEvents.processEvent, {
-      logId: convexLogId,
-    });
-  },
-});
-
-// ---------------------------------------------------------------------------
-// Internal queries / mutations (used by processEvent action)
-// ---------------------------------------------------------------------------
-
-export const getLogEntry = internalQuery({
-  args: { logId: v.id("emailEventLog") },
-  handler: async (ctx, args) => ctx.db.get(args.logId),
-});
 
 export const updateLogStatus = internalAction({
   args: {
@@ -230,18 +178,16 @@ export const updateLogStatus = internalAction({
  * Idempotent: exits early if status is already non-pending.
  */
 export const processEvent = internalAction({
-  args: { logId: v.id("emailEventLog") },
+  args: { logId: v.string() },
   handler: async (ctx, args) => {
-    const entry = await ctx.runQuery(internal.emailEvents.getLogEntry, {
-      logId: args.logId,
-    });
+    const db = createSupabaseDb();
+    const entry = await db.get("emailEventLog", args.logId);
 
     if (!entry || entry.status !== "pending") {
       return; // Already processed or missing
     }
 
     // Find enabled bindings for this org + eventType, sorted by priority
-    const db = createSupabaseDb();
     const bindings = await db
       .query("emailEventBindings")
       .eq("organizationId", String(entry.organizationId))
@@ -252,7 +198,7 @@ export const processEvent = internalAction({
 
     if (bindings.length === 0) {
       await ctx.runAction(internal.emailEvents.updateLogStatus, {
-        logId: args.logId as string,
+        logId: args.logId,
         status: "skipped",
         errorMessage: "No enabled bindings found for event type",
       });

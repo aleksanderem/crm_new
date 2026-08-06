@@ -522,7 +522,7 @@ export const analyzeDeliveryInvoice = action({
       .slice()
       .sort((a, b) => a.position - b.position);
 
-    const transport = getDocumentTransport(
+    const transport = await getDocumentTransport(
       (id: string) => ctx.storage.get(id as unknown as Id<"_storage">),
     );
 

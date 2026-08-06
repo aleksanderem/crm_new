@@ -8,7 +8,6 @@
 // Current implementation: OpenAIDocumentAnalyzer when OPENAI_API_KEY is set,
 // NullDocumentTransport otherwise.
 
-import { OpenAIDocumentAnalyzer } from "./providers/openaiDocumentAnalyzer";
 
 // ---------------------------------------------------------------------------
 // Input — ordered pages that together form one document (#3035).
@@ -146,10 +145,15 @@ class NullDocumentTransport implements DocumentTransport {
 // NullDocumentTransport. The model can be overridden via OPENAI_INVOICE_MODEL.
 // `fetchFile` is provided by the calling action (ctx.storage.get) so the
 // provider can fetch bytes server-side without exposing public URLs.
-export function getDocumentTransport(fetchFile: StorageFetcher): DocumentTransport {
+//
+// Dynamic import ensures the `openai` npm package is only resolved at runtime
+// when the API key is actually set — keeping the module loadable in test
+// environments where the package is not installed.
+export async function getDocumentTransport(fetchFile: StorageFetcher): Promise<DocumentTransport> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (apiKey) {
     const model = process.env.OPENAI_INVOICE_MODEL ?? "gpt-4o";
+    const { OpenAIDocumentAnalyzer } = await import("./providers/openaiDocumentAnalyzer");
     return new OpenAIDocumentAnalyzer(apiKey, model, fetchFile);
   }
   return new NullDocumentTransport();

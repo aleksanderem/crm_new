@@ -70,6 +70,8 @@ export const sendPortalOtp = action({
       .eq("patientId", patientId)
       .first();
 
+    const tokenHashVal = await sha256(token);
+
     if (existingSession) {
       const windowStart = (existingSession.otpSendWindowStart as number) ?? 0;
       const sendCount = (existingSession.otpSendCount as number) ?? 0;
@@ -83,7 +85,7 @@ export const sendPortalOtp = action({
       await db.patch("gabinetPortalSessions", String(existingSession._id), {
         otpHash,
         otpExpiresAt: now + 10 * 60 * 1000,
-        tokenHash: token,
+        tokenHash: tokenHashVal,
         isActive: false,
         lastAccessedAt: now,
         verifyFailCount: 0,
@@ -95,7 +97,7 @@ export const sendPortalOtp = action({
       await db.insert("gabinetPortalSessions", {
         patientId,
         organizationId: String(args.organizationId),
-        tokenHash: token,
+        tokenHash: tokenHashVal,
         otpHash,
         otpExpiresAt: now + 10 * 60 * 1000,
         isActive: false,
@@ -210,7 +212,7 @@ export const verifyPortalOtp = action({
       .first();
 
     if (!session) {
-      return { success: false as const, error: "No pending OTP" };
+      return { success: false as const, error: "Invalid credentials" };
     }
 
     const now = Date.now();
@@ -221,7 +223,7 @@ export const verifyPortalOtp = action({
     }
 
     if (!session.otpHash || !session.otpExpiresAt) {
-      return { success: false as const, error: "No pending OTP" };
+      return { success: false as const, error: "Invalid credentials" };
     }
 
     if (now > (session.otpExpiresAt as number)) {
@@ -249,9 +251,13 @@ export const verifyPortalOtp = action({
       };
     }
 
-    // Success — activate session, clear OTP, reset counters
+    // Success — generate a fresh session token, store its hash, activate session
+    const sessionToken = generateToken();
+    const sessionTokenHash = await sha256(sessionToken);
+
     await db.patch("gabinetPortalSessions", sessionId, {
       isActive: true,
+      tokenHash: sessionTokenHash,
       otpHash: null,
       otpExpiresAt: null,
       lastAccessedAt: now,
@@ -262,7 +268,7 @@ export const verifyPortalOtp = action({
 
     return {
       success: true as const,
-      sessionToken: session.tokenHash as string,
+      sessionToken,
       patientId: patient._id as string,
       patientName: `${patient.firstName} ${patient.lastName}`,
     };
@@ -320,9 +326,10 @@ export const logoutPortal = action({
   },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
+    const hashedToken = await sha256(args.tokenHash);
 
     const session = await db.query("gabinetPortalSessions")
-      .eq("tokenHash", args.tokenHash)
+      .eq("tokenHash", hashedToken)
       .first();
 
     if (session) {

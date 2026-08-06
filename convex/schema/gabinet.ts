@@ -1012,8 +1012,11 @@ export function createGabinetTables({
     paymentId: v.string(),
     appointmentId: v.optional(v.string()),
     patientId: v.optional(v.string()),
-    receiptNumber: v.string(), // e.g. REC/2026/00001
+    locationId: v.optional(v.id("gabinetLocations")),
+    receiptNumber: v.string(), // e.g. 2026/001/LOC
     issuedAt: v.number(),
+    // Receipt lifecycle: issued (default) | void
+    status: v.union(v.literal("issued"), v.literal("void")),
     // Org data captured at issuance time so the receipt can be reproduced later.
     organizationName: v.string(),
     organizationNip: v.optional(v.string()),
@@ -1037,6 +1040,22 @@ export function createGabinetTables({
   })
     .index("by_org", ["organizationId"])
     .index("by_payment", ["paymentId"])
-    .index("by_orgAndNumber", ["organizationId", "receiptNumber"]),
+    .index("by_orgAndNumber", ["organizationId", "receiptNumber"])
+    .index("by_orgAndLocation", ["organizationId", "locationId"]),
+
+  // --- Gabinet: Receipt Sequences (issue #3736) ---
+  // Atomic per-location-per-year counter for generating legally-compliant
+  // receipt numbers in the format YYYY/NNN/LOC.
+  // lastNumber is incremented inside a Convex mutation (serialised by Convex's
+  // OCC) so no two receipts can get the same number within an org+location+year.
+  gabinetReceiptSequences: defineTable({
+    organizationId: v.id("organizations"),
+    locationId: v.optional(v.id("gabinetLocations")),
+    year: v.number(),
+    lastNumber: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgLocationYear", ["organizationId", "locationId", "year"]),
   };
 }

@@ -147,9 +147,9 @@ describe("reminderEnabled: controls whether appointment creation schedules a rem
       userId,
     );
 
-    // Seed reminderEnabled=true in Convex (read by _getOrgSettings internalQuery).
-    // No Supabase 4-toggle config → falls through to legacy 24h mode in _createSideEffects.
-    await seedConvexOrgSettings(t, organizationId, { reminderEnabled: true });
+    // Seed reminderEnabled=true in Supabase (read by _getOrgSettings internalAction).
+    // No 4-toggle config → falls through to legacy 24h mode in _createSideEffects.
+    await seedSupabaseOrgSettings(String(organizationId), { reminderEnabled: true });
 
     // Create appointment without an explicit sendReminder arg so the action
     // picks up the value from orgSettings.reminderEnabled.
@@ -177,7 +177,7 @@ describe("reminderEnabled: controls whether appointment creation schedules a rem
       userId,
     );
 
-    await seedConvexOrgSettings(t, organizationId, { reminderEnabled: false });
+    await seedSupabaseOrgSettings(String(organizationId), { reminderEnabled: false });
 
     await createFutureAppointment(t, identity, {
       organizationId,
@@ -207,8 +207,8 @@ describe("reminderHoursBefore: controls legacy single-reminder offset", () => {
       userId,
     );
 
-    // Seed 48h offset. No Supabase 4-toggle config → legacy mode uses this value.
-    await seedConvexOrgSettings(t, organizationId, { reminderHoursBefore: 48 });
+    // Seed 48h offset in Supabase. No 4-toggle config → legacy mode uses this value.
+    await seedSupabaseOrgSettings(String(organizationId), { reminderHoursBefore: 48 });
 
     await createFutureAppointment(t, identity, {
       organizationId,

@@ -152,5 +152,11 @@ export const setResourceSharingEnabled = action({
         updatedAt: now,
       });
     }
+
+    // Mirror to Convex so the getResourceSharingEnabled query stays in sync.
+    await ctx.runMutation(internal.orgSettings._syncResourceSharingToConvex, {
+      organizationId: args.organizationId,
+      resourceSharingEnabled: args.enabled,
+    });
   },
 });

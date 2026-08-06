@@ -490,3 +490,87 @@ describe("allowCustomLostReason: controls whether lostReasons.create is permitte
     ).resolves.toBeDefined();
   });
 });
+
+// =============================================================================
+// lostReasonRequired
+// =============================================================================
+
+describe("lostReasonRequired: blocks leads.update to 'lost' status when no lostReason provided", () => {
+  async function seedLead(organizationId: string, userId: string): Promise<string> {
+    const db = createSupabaseDb();
+    const now = Date.now();
+    return db.insert("leads", {
+      organizationId,
+      title: "Test Lead",
+      status: "open",
+      createdBy: userId,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  test("lostReasonRequired=true blocks marking a lead lost without a reason", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+
+    await seedConvexOrgSettings(t, organizationId, { lostReasonRequired: true });
+    const leadId = await seedLead(String(organizationId), String(userId));
+
+    await expect(
+      t.withIdentity(identity).action(api.leads.update, {
+        organizationId,
+        leadId,
+        status: "lost",
+      }),
+    ).rejects.toThrow("A lost reason is required");
+  });
+
+  test("lostReasonRequired=true allows marking a lead lost when lostReason is provided", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+
+    await seedConvexOrgSettings(t, organizationId, { lostReasonRequired: true });
+    const leadId = await seedLead(String(organizationId), String(userId));
+
+    await expect(
+      t.withIdentity(identity).action(api.leads.update, {
+        organizationId,
+        leadId,
+        status: "lost",
+        lostReason: "Price too high",
+      }),
+    ).resolves.toBeDefined();
+  });
+
+  test("lostReasonRequired=false allows marking a lead lost without a reason", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+
+    await seedConvexOrgSettings(t, organizationId, { lostReasonRequired: false });
+    const leadId = await seedLead(String(organizationId), String(userId));
+
+    await expect(
+      t.withIdentity(identity).action(api.leads.update, {
+        organizationId,
+        leadId,
+        status: "lost",
+      }),
+    ).resolves.toBeDefined();
+  });
+
+  test("lostReasonRequired defaults to not required (fail-open) when orgSettings not configured", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+
+    // No orgSettings row — leads.update to "lost" should succeed without a reason
+    const leadId = await seedLead(String(organizationId), String(userId));
+
+    await expect(
+      t.withIdentity(identity).action(api.leads.update, {
+        organizationId,
+        leadId,
+        status: "lost",
+      }),
+    ).resolves.toBeDefined();
+  });
+});

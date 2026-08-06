@@ -321,6 +321,16 @@ export const update = action({
       throw new Error("Permission denied: you can only edit your own records");
     }
 
+    // Enforce lostReasonRequired when marking a lead as lost
+    if (args.status === "lost") {
+      const settings = await ctx.runQuery(internal.orgSettings._getSettings, {
+        organizationId: args.organizationId,
+      });
+      if (settings?.lostReasonRequired && !args.lostReason) {
+        throw new Error("A lost reason is required");
+      }
+    }
+
     const now = Date.now();
     const { organizationId, leadId, customFields, ...updates } = args;
 

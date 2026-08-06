@@ -3,7 +3,6 @@ import {
   hasAnySimpleFilter,
   applyStockFilter,
   EMPTY_SIMPLE_FILTERS,
-  type SimpleFiltersState,
   type StockStatus,
 } from "./products-filters";
 

@@ -71,6 +71,7 @@ import { Route as AppAuthDashboardLayoutSettingsEmailTemplatesRouteImport } from
 import { Route as AppAuthDashboardLayoutSettingsEmailSequencesRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.email-sequences'
 import { Route as AppAuthDashboardLayoutSettingsEmailEventsRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.email-events'
 import { Route as AppAuthDashboardLayoutSettingsDocumentComponentsRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.document-components'
+import { Route as AppAuthDashboardLayoutSettingsDataProcessingRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.data-processing'
 import { Route as AppAuthDashboardLayoutSettingsCustomFieldsRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.custom-fields'
 import { Route as AppAuthDashboardLayoutSettingsBillingRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.billing'
 import { Route as AppAuthDashboardLayoutSettingsAutomationsRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.automations'
@@ -467,6 +468,12 @@ const AppAuthDashboardLayoutSettingsDocumentComponentsRoute =
     path: '/document-components',
     getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
   } as any)
+const AppAuthDashboardLayoutSettingsDataProcessingRoute =
+  AppAuthDashboardLayoutSettingsDataProcessingRouteImport.update({
+    id: '/data-processing',
+    path: '/data-processing',
+    getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
+  } as any)
 const AppAuthDashboardLayoutSettingsCustomFieldsRoute =
   AppAuthDashboardLayoutSettingsCustomFieldsRouteImport.update({
     id: '/custom-fields',
@@ -813,6 +820,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/settings/automations': typeof AppAuthDashboardLayoutSettingsAutomationsRouteWithChildren
   '/dashboard/settings/billing': typeof AppAuthDashboardLayoutSettingsBillingRoute
   '/dashboard/settings/custom-fields': typeof AppAuthDashboardLayoutSettingsCustomFieldsRoute
+  '/dashboard/settings/data-processing': typeof AppAuthDashboardLayoutSettingsDataProcessingRoute
   '/dashboard/settings/document-components': typeof AppAuthDashboardLayoutSettingsDocumentComponentsRouteWithChildren
   '/dashboard/settings/email-events': typeof AppAuthDashboardLayoutSettingsEmailEventsRoute
   '/dashboard/settings/email-sequences': typeof AppAuthDashboardLayoutSettingsEmailSequencesRoute
@@ -914,6 +922,7 @@ export interface FileRoutesByTo {
   '/dashboard/settings/audit-log': typeof AppAuthDashboardLayoutSettingsAuditLogRoute
   '/dashboard/settings/billing': typeof AppAuthDashboardLayoutSettingsBillingRoute
   '/dashboard/settings/custom-fields': typeof AppAuthDashboardLayoutSettingsCustomFieldsRoute
+  '/dashboard/settings/data-processing': typeof AppAuthDashboardLayoutSettingsDataProcessingRoute
   '/dashboard/settings/email-events': typeof AppAuthDashboardLayoutSettingsEmailEventsRoute
   '/dashboard/settings/email-sequences': typeof AppAuthDashboardLayoutSettingsEmailSequencesRoute
   '/dashboard/settings/email-templates': typeof AppAuthDashboardLayoutSettingsEmailTemplatesRoute
@@ -1023,6 +1032,7 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/settings/automations': typeof AppAuthDashboardLayoutSettingsAutomationsRouteWithChildren
   '/_app/_auth/dashboard/_layout/settings/billing': typeof AppAuthDashboardLayoutSettingsBillingRoute
   '/_app/_auth/dashboard/_layout/settings/custom-fields': typeof AppAuthDashboardLayoutSettingsCustomFieldsRoute
+  '/_app/_auth/dashboard/_layout/settings/data-processing': typeof AppAuthDashboardLayoutSettingsDataProcessingRoute
   '/_app/_auth/dashboard/_layout/settings/document-components': typeof AppAuthDashboardLayoutSettingsDocumentComponentsRouteWithChildren
   '/_app/_auth/dashboard/_layout/settings/email-events': typeof AppAuthDashboardLayoutSettingsEmailEventsRoute
   '/_app/_auth/dashboard/_layout/settings/email-sequences': typeof AppAuthDashboardLayoutSettingsEmailSequencesRoute
@@ -1133,6 +1143,7 @@ export interface FileRouteTypes {
     | '/dashboard/settings/automations'
     | '/dashboard/settings/billing'
     | '/dashboard/settings/custom-fields'
+    | '/dashboard/settings/data-processing'
     | '/dashboard/settings/document-components'
     | '/dashboard/settings/email-events'
     | '/dashboard/settings/email-sequences'
@@ -1234,6 +1245,7 @@ export interface FileRouteTypes {
     | '/dashboard/settings/audit-log'
     | '/dashboard/settings/billing'
     | '/dashboard/settings/custom-fields'
+    | '/dashboard/settings/data-processing'
     | '/dashboard/settings/email-events'
     | '/dashboard/settings/email-sequences'
     | '/dashboard/settings/email-templates'
@@ -1342,6 +1354,7 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/settings/automations'
     | '/_app/_auth/dashboard/_layout/settings/billing'
     | '/_app/_auth/dashboard/_layout/settings/custom-fields'
+    | '/_app/_auth/dashboard/_layout/settings/data-processing'
     | '/_app/_auth/dashboard/_layout/settings/document-components'
     | '/_app/_auth/dashboard/_layout/settings/email-events'
     | '/_app/_auth/dashboard/_layout/settings/email-sequences'
@@ -1846,6 +1859,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsDocumentComponentsRouteImport
       parentRoute: typeof AppAuthDashboardLayoutSettingsRoute
     }
+    '/_app/_auth/dashboard/_layout/settings/data-processing': {
+      id: '/_app/_auth/dashboard/_layout/settings/data-processing'
+      path: '/data-processing'
+      fullPath: '/dashboard/settings/data-processing'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsDataProcessingRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutSettingsRoute
+    }
     '/_app/_auth/dashboard/_layout/settings/custom-fields': {
       id: '/_app/_auth/dashboard/_layout/settings/custom-fields'
       path: '/custom-fields'
@@ -2273,6 +2293,7 @@ interface AppAuthDashboardLayoutSettingsRouteChildren {
   AppAuthDashboardLayoutSettingsAutomationsRoute: typeof AppAuthDashboardLayoutSettingsAutomationsRouteWithChildren
   AppAuthDashboardLayoutSettingsBillingRoute: typeof AppAuthDashboardLayoutSettingsBillingRoute
   AppAuthDashboardLayoutSettingsCustomFieldsRoute: typeof AppAuthDashboardLayoutSettingsCustomFieldsRoute
+  AppAuthDashboardLayoutSettingsDataProcessingRoute: typeof AppAuthDashboardLayoutSettingsDataProcessingRoute
   AppAuthDashboardLayoutSettingsDocumentComponentsRoute: typeof AppAuthDashboardLayoutSettingsDocumentComponentsRouteWithChildren
   AppAuthDashboardLayoutSettingsEmailEventsRoute: typeof AppAuthDashboardLayoutSettingsEmailEventsRoute
   AppAuthDashboardLayoutSettingsEmailSequencesRoute: typeof AppAuthDashboardLayoutSettingsEmailSequencesRoute
@@ -2304,6 +2325,8 @@ const AppAuthDashboardLayoutSettingsRouteChildren: AppAuthDashboardLayoutSetting
       AppAuthDashboardLayoutSettingsBillingRoute,
     AppAuthDashboardLayoutSettingsCustomFieldsRoute:
       AppAuthDashboardLayoutSettingsCustomFieldsRoute,
+    AppAuthDashboardLayoutSettingsDataProcessingRoute:
+      AppAuthDashboardLayoutSettingsDataProcessingRoute,
     AppAuthDashboardLayoutSettingsDocumentComponentsRoute:
       AppAuthDashboardLayoutSettingsDocumentComponentsRouteWithChildren,
     AppAuthDashboardLayoutSettingsEmailEventsRoute:

@@ -79,11 +79,6 @@ function fmtPrice(unitPriceGross: number | null): string {
   return formatCurrencyPLN(unitPriceGross, "zł");
 }
 
-function fmtCost(qty: number, unitPriceGross: number | null): string {
-  const cost = computeItemCost(qty, unitPriceGross);
-  if (cost === null) return "—";
-  return formatCurrencyPLN(cost, "zł");
-}
 
 // ---------------------------------------------------------------------------
 // Print view
@@ -493,7 +488,7 @@ export function WarehouseShoppingListDialog({
                           </tr>
                         </thead>
                         <tbody>
-                          {itemRows.map(({ item, qty, cost }) => {
+                          {itemRows.map(({ item, qty: _qty, cost }) => {
                             const unit = item.product.stockUnit?.trim() || "";
                             const override = quantities.get(item.product._id);
                             const displayVal = override ?? String(item.defaultQty);

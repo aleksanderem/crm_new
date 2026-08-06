@@ -386,7 +386,7 @@ export const backfillPatients = internalAction({
       { organizationId: args.organizationId },
     );
 
-    const rows = patients.map((p) => ({
+    const rows = patients.map((p: any) => ({
       id: p._id,
       organization_id: p.organizationId,
       contact_id: p.contactId ?? null,
@@ -432,7 +432,7 @@ export const backfillAppointments = internalAction({
       { organizationId: args.organizationId },
     );
 
-    const rows = appointments.map((a) => ({
+    const rows = appointments.map((a: any) => ({
       id: a._id,
       organization_id: a.organizationId,
       patient_id: String(a.patientId),
@@ -495,7 +495,7 @@ export const backfillTreatments = internalAction({
       { organizationId: args.organizationId },
     );
 
-    const rows = treatments.map((t) => ({
+    const rows = treatments.map((t: any) => ({
       id: t._id,
       organization_id: t.organizationId,
       name: t.name,
@@ -545,7 +545,7 @@ export const backfillInvitations = internalAction({
       { organizationId: args.organizationId },
     );
 
-    const rows = invitations.map((inv) => ({
+    const rows = invitations.map((inv: any) => ({
       id: String(inv._id),
       organization_id: String(inv.organizationId),
       email: inv.email,
@@ -576,7 +576,7 @@ export const backfillEmployees = internalAction({
       { organizationId: args.organizationId },
     );
 
-    const rows = employees.map((e) => ({
+    const rows = employees.map((e: any) => ({
       id: e._id,
       organization_id: e.organizationId,
       user_id: String(e.userId),
@@ -763,7 +763,7 @@ export const backfillAll = internalAction({
 
     // Users FIRST — all other tables have FK on created_by/employee_id → users(id)
     const allUsers = await ctx.runQuery(internal.supabase.backfill._listUsers, {});
-    const userRows = allUsers.map((u) => ({
+    const userRows = allUsers.map((u: any) => ({
       id: u._id,
       name: u.name ?? null,
       username: u.username ?? null,

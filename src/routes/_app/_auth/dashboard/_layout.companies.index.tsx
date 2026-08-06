@@ -298,7 +298,7 @@ function CompaniesIndex() {
 
   const mergedColumns = useMemo(() => [...columns, ...cfColumns], [columns, cfColumns]);
   const { allColumns, defaultHidden } = useAllColumns(mergedColumns, filterableFields);
-  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "companies");
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns: _setHiddenColumns } = useColumnVisibility(defaultHidden, "companies");
 
   const handleCreate = useCallback(
     async (

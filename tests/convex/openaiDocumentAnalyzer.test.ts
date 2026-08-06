@@ -90,7 +90,7 @@ beforeEach(() => {
 describe("getDocumentTransport — no configuration", () => {
   test("returns not_implemented when OPENAI_API_KEY is absent", async () => {
     vi.stubEnv("OPENAI_API_KEY", "");
-    const transport = getDocumentTransport(NOOP_FETCHER);
+    const transport = await getDocumentTransport(NOOP_FETCHER);
     const page: DocumentPage = { storageId: "x", mimeType: "image/jpeg", position: 1 };
     const result = await analyzeInvoice(transport, [page]);
     expect(result.status).toBe("not_implemented");
@@ -99,7 +99,7 @@ describe("getDocumentTransport — no configuration", () => {
 
   test("NullDocumentTransport returns no_pages for empty pages", async () => {
     vi.stubEnv("OPENAI_API_KEY", "");
-    const transport = getDocumentTransport(NOOP_FETCHER);
+    const transport = await getDocumentTransport(NOOP_FETCHER);
     const result = await analyzeInvoice(transport, []);
     expect(result.status).toBe("no_pages");
     vi.unstubAllEnvs();
@@ -107,7 +107,7 @@ describe("getDocumentTransport — no configuration", () => {
 
   test("NullDocumentTransport returns unsupported_format for unknown MIME", async () => {
     vi.stubEnv("OPENAI_API_KEY", "");
-    const transport = getDocumentTransport(NOOP_FETCHER);
+    const transport = await getDocumentTransport(NOOP_FETCHER);
     const result = await analyzeInvoice(transport, [
       { storageId: "x", mimeType: "image/gif", position: 1 },
     ]);

@@ -40,7 +40,7 @@ export function ProductsWidgets({ organizationId }: { organizationId: Id<"organi
       {/* TODO: Widget „Najlepsze produkty" został celowo ukryty. Kod pozostawiono do możliwego
           wykorzystania w przyszłości jako panel statystyk, alertów lub AI Insights.
           Aby przywrócić: usuń `false &&` z poniższego warunku. */}
-      {false && topProducts && topProducts.length > 0 && (
+      {false && (topProducts?.length ?? 0) > 0 && (
         <Card className="overflow-hidden gap-0 border-0 bg-blue-500 py-4 shadow-none">
           <CardHeader className="px-4">
             <span className="text-base font-medium text-white">
@@ -49,7 +49,7 @@ export function ProductsWidgets({ organizationId }: { organizationId: Id<"organi
           </CardHeader>
           <CardContent className="px-4">
             <div className="bg-card flex flex-col gap-5 rounded-xl p-4">
-              {topProducts.map((product, i) => {
+              {(topProducts ?? []).map((product, i) => {
                 const color = PRODUCT_COLORS[i % PRODUCT_COLORS.length];
                 const pct = Math.round((product.value / maxValue) * 100);
                 return (

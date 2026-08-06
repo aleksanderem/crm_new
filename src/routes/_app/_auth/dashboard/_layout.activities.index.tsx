@@ -359,7 +359,7 @@ function ActivitiesPage() {
     [baseColumns, cfColumns]
   );
   const { allColumns: columns, defaultHidden } = useAllColumns(mergedColumns, filterableFields);
-  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "activities");
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns: _setHiddenColumns } = useColumnVisibility(defaultHidden, "activities");
 
   const rowActions = (row: ActivityRow) => {
     const actions = [];

@@ -282,7 +282,7 @@ function ContactsIndex() {
 
   const mergedColumns = useMemo(() => [...columns, ...cfColumns], [columns, cfColumns]);
   const { allColumns, defaultHidden } = useAllColumns(mergedColumns, filterableFields);
-  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "contacts");
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns: _setHiddenColumns } = useColumnVisibility(defaultHidden, "contacts");
 
   const handleCreate = useCallback(
     async (

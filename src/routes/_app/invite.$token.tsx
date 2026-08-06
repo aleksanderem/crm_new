@@ -5,6 +5,7 @@ import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { useAction } from "convex/react";
 import { convexQuery, useConvexAuth } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import { useAnonSupabaseInvitationByToken } from "@/hooks/use-supabase-invitations";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/ui/button";
@@ -23,9 +24,7 @@ function InviteAcceptPage() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
 
-  const { data: inviteData, isLoading: inviteLoading } = useQuery(
-    convexQuery(api.invitations.getByToken, { token })
-  );
+  const { data: inviteData, isLoading: inviteLoading } = useAnonSupabaseInvitationByToken(token);
 
   const { data: currentUser } = useQuery({
     ...convexQuery(api.app.getCurrentUser, {}),

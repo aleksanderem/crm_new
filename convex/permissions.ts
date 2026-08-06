@@ -67,7 +67,10 @@ export const getOrgPermissionOverrides = action({
 
 // Internal mutation that syncs the write to Convex so _helpers/permissions.ts
 // (called from QueryCtx/MutationCtx, which cannot reach Supabase) stays
-// accurate until those callers are fully migrated to actions.
+// accurate. NOTE: Convex queries cannot access Supabase at all, so query
+// callers (getMyPermissions, contacts.list, companies.list, etc.) will
+// permanently rely on ctx.db for orgPermissions — this dual-write is NOT a
+// temporary migration shim; it is a permanent necessity for the query path.
 export const _writeOrgPermissionsToConvex = internalMutation({
   args: {
     organizationId: v.id("organizations"),
@@ -146,7 +149,8 @@ export const updateOrgPermissions = action({
       });
     }
 
-    // Dual-write to Convex so _helpers/permissions.ts (used in mutations) stays accurate.
+    // Dual-write to Convex so _helpers/permissions.ts stays accurate.
+    // Query callers cannot reach Supabase and rely on ctx.db permanently.
     await ctx.runMutation(internal.permissions._writeOrgPermissionsToConvex, {
       organizationId: args.organizationId,
       role: args.role,

@@ -2038,7 +2038,30 @@
     "documentTemplates": "Szablony dokumentów",
     "documentComponents": "Biblioteka komponentów",
     "pipelines": "Pipeline",
-    "googleCalendar": "Kalendarz Google"
+    "googleCalendar": "Kalendarz Google",
+    "dataProcessing": "Przetwarzanie danych"
+  },
+  "dataProcessing": {
+    "title": "Przetwarzanie danych osobowych",
+    "description": "Lista podprocesorów i podmiotów przetwarzających dane osobowe w imieniu organizacji zgodnie z art. 28 RODO.",
+    "subprocessorList": "Lista podprocesorów",
+    "subprocessorListDescription": "Poniżej znajdują się podmioty, którym powierzono przetwarzanie danych osobowych. Każdy podprocesor zawarł umowę powierzenia przetwarzania danych (DPA) zapewniającą zgodność z RODO.",
+    "columns": {
+      "name": "Nazwa",
+      "purpose": "Cel przetwarzania",
+      "country": "Kraj",
+      "links": "Dokumenty"
+    },
+    "privacyPolicy": "Polityka prywatności",
+    "lastUpdated": "Ostatnia aktualizacja: {{date}}",
+    "subprocessors": {
+      "convex": "Funkcje serverless, uwierzytelnianie, przechowywanie plików",
+      "netlify": "Hosting aplikacji i sieć dostarczania treści (CDN)",
+      "resend": "Wysyłka wiadomości e-mail transakcyjnych",
+      "stripe": "Przetwarzanie płatności",
+      "google": "Uwierzytelnianie OAuth, integracja Gmail i Kalendarza Google",
+      "hetzner": "Infrastruktura serwerowa dla self-hosted bazy danych"
+    }
   },
   "activityTimeline": {
     "relative": {

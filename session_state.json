@@ -1,18 +1,18 @@
 {
-  "session_id": "S0116",
-  "started_at": "2026-08-06T15:00:00Z",
-  "last_updated": "2026-08-06T15:20:00Z",
-  "status": "completed",
-  "focus": "Issue #3908: Add column-level RLS to org_sms_config to block api_token/api_secret",
+  "session_id": "S0117",
+  "started_at": "2026-08-06T20:00:00Z",
+  "last_updated": "2026-08-06T20:00:00Z",
+  "status": "active",
+  "focus": "Issue #3971: Migrate emailEventLog writes in insertSequenceLog to Supabase",
   "tasks_snapshot": {
     "total": 1,
     "not_started": 0,
-    "in_progress": 0,
-    "passing": 1,
+    "in_progress": 1,
+    "passing": 0,
     "failing": 0,
     "blocked": 0
   },
-  "active_task_ids": [],
+  "active_task_ids": [1],
   "blockers": [],
-  "notes": "S0116: Added column-level security for org_sms_config. Migration 00101 REVOKEs table-level SELECT and re-GRANTs safe columns only; creates security-barrier view org_sms_config_summary. Updated hook to query view. Updated gen-db-types.mjs to support CREATE VIEW. Regenerated database.types.ts and database.columns.ts."
+  "notes": "Migrating insertSequenceLog from Convex to Supabase. Plan: (1) insertSequenceLog becomes internalAction using createSupabaseDb; (2) processNextStep uses ctx.runAction; (3) sendTemplateEmail logId becomes v.string(); (4) updateLogStatus becomes internalAction using Supabase; (5) all callers of updateLogStatus switch from runMutation to runAction."
 }

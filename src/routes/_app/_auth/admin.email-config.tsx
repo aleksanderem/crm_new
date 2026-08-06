@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
-import { useMutation } from "@tanstack/react-query";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -27,9 +27,11 @@ type ProviderChoice = "env" | "resend" | "mailgun";
 
 function AdminEmailConfig() {
   const { t } = useTranslation();
-  const { data: user, isLoading: userLoading } = useQuery(
-    convexQuery(api.app.getCurrentUser, {}),
-  );
+  const getIsPlatformAdmin = useAction(api.app.getIsPlatformAdmin);
+  const { data: adminStatus, isLoading: userLoading } = useQuery({
+    queryKey: ["isPlatformAdmin"],
+    queryFn: () => getIsPlatformAdmin({}),
+  });
   const { data: settings, isLoading: settingsLoading } = useQuery(
     convexQuery(api.platformSettings.get, {}),
   );
@@ -77,7 +79,7 @@ function AdminEmailConfig() {
     return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
   }
 
-  if (!user?.isPlatformAdmin) {
+  if (!adminStatus?.isPlatformAdmin) {
     return (
       <div className="mx-auto max-w-2xl p-8">
         <Card>

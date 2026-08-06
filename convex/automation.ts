@@ -29,8 +29,6 @@ import {
   resolveRuleTrigger,
 } from "./automationRegistry";
 
-// Supabase-primary write refs — these are the sole write path for
-// automationRuns and automationRunSteps; ctx.db writes removed (#3933).
 // @ts-ignore
 const writeRunRef = internal.supabase.automationRuns.writeRun;
 // @ts-ignore

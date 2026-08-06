@@ -41,7 +41,7 @@ function PatientDocuments() {
   const getPortalSession = useAction(api.gabinet.patientAuth.getPortalSession);
   const { data: portalSession } = useQuery({
     queryKey: ["gabinet.patientAuth.getPortalSession", tokenHash],
-    queryFn: () => getPortalSession({ tokenHash }),
+    queryFn: () => getPortalSession({ token: tokenHash }),
     enabled: !!tokenHash,
   });
 

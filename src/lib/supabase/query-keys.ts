@@ -104,6 +104,7 @@ export const supabaseKeys = {
   notifications: entityKeys("notifications"),
   recentlyViewed: entityKeys("recentlyViewed"),
   orgSettings: entityKeys("orgSettings"),
+  orgSmsConfig: entityKeys("orgSmsConfig"),
   auditLog: entityKeys("auditLog"),
   activityTypes: entityKeys("activityTypes"),
 } as const;

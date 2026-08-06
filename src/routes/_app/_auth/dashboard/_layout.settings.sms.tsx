@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseSmsConfig } from "@/hooks/use-supabase-sms-config";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,9 +34,7 @@ function SmsSettings() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
 
-  const { data: config } = useQuery(
-    convexQuery(api.sms.getConfig, { organizationId })
-  );
+  const { data: config } = useSupabaseSmsConfig(String(organizationId));
 
   const saveConfig = useAction(api.sms.saveConfig);
   const toggleActive = useAction(api.sms.toggleActive);

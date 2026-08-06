@@ -1,26 +1,43 @@
-import { action, query, internalAction, internalQuery } from "./_generated/server";
+import { action, internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
+
+type OrgSmsConfigRow = {
+  _id: string;
+  organizationId: string;
+  provider: "smsapi" | "twilio";
+  apiToken: string;
+  apiSecret?: string | null;
+  senderId?: string | null;
+  fromNumber?: string | null;
+  isActive: boolean;
+  createdAt: number;
+  updatedAt: number;
+};
 
 // ---------------------------------------------------------------------------
 // SMS Config (authenticated, org-scoped)
 // ---------------------------------------------------------------------------
 
-export const getConfig = query({
+export const getConfig = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    const config = await ctx.db
-      .query("orgSmsConfig")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .unique();
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    const config = await db
+      .query<OrgSmsConfigRow>("orgSmsConfig")
+      .eq("organizationId", String(args.organizationId))
+      .first();
     if (!config) return null;
     // Never return the raw API token to the client
     return {
       _id: config._id,
       provider: config.provider,
-      senderId: config.senderId,
-      fromNumber: config.fromNumber,
+      senderId: config.senderId ?? undefined,
+      fromNumber: config.fromNumber ?? undefined,
       isActive: config.isActive,
       hasToken: !!config.apiToken,
       hasSecret: !!config.apiSecret,
@@ -117,8 +134,7 @@ export const sendOtpSms = action({
     code: v.string(),
   },
   handler: async (ctx, args) => {
-    // Load SMS config via internal query
-    const config = await ctx.runQuery(internal.sms.getConfigInternal, {
+    const config = await ctx.runAction(internal.sms.getConfigInternal, {
       organizationId: args.organizationId,
     });
     if (!config) throw new Error("SMS not configured for this organization");
@@ -139,14 +155,15 @@ export const sendOtpSms = action({
   },
 });
 
-/** Internal query to get full SMS config (with secrets) — only callable from internal functions. */
-export const getConfigInternal = internalQuery({
+/** Internal action to get full SMS config (with secrets) — only callable from internal functions. */
+export const getConfigInternal = internalAction({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("orgSmsConfig")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .unique();
+  handler: async (_ctx, args): Promise<OrgSmsConfigRow | null> => {
+    const db = createSupabaseDb();
+    return await db
+      .query<OrgSmsConfigRow>("orgSmsConfig")
+      .eq("organizationId", String(args.organizationId))
+      .first();
   },
 });
 
@@ -168,29 +185,26 @@ function normalizePhoneNumber(phone: string): string {
   return `+${digits}`;
 }
 
-export const getConfigForInbound = internalQuery({
+export const getConfigForInbound = internalAction({
   args: {
     provider: v.union(v.literal("smsapi"), v.literal("twilio")),
     recipient: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args): Promise<OrgSmsConfigRow | null> => {
+    const db = createSupabaseDb();
     if (args.provider === "twilio") {
-      return await ctx.db
-        .query("orgSmsConfig")
-        .withIndex("by_providerAndFromNumber", (q) =>
-          q
-            .eq("provider", args.provider)
-            .eq("fromNumber", normalizePhoneNumber(args.recipient)),
-        )
-        .unique();
+      return await db
+        .query<OrgSmsConfigRow>("orgSmsConfig")
+        .eq("provider", args.provider)
+        .eq("fromNumber", normalizePhoneNumber(args.recipient))
+        .first();
     }
 
-    return await ctx.db
-      .query("orgSmsConfig")
-      .withIndex("by_providerAndSenderId", (q) =>
-        q.eq("provider", args.provider).eq("senderId", args.recipient),
-      )
-      .unique();
+    return await db
+      .query<OrgSmsConfigRow>("orgSmsConfig")
+      .eq("provider", args.provider)
+      .eq("senderId", args.recipient)
+      .first();
   },
 });
 
@@ -309,7 +323,7 @@ export const sendSigningLinkSms = internalAction({
     expiresAt: v.number(),
   },
   handler: async (ctx, args) => {
-    const config = await ctx.runQuery(internal.sms.getConfigInternal, {
+    const config = await ctx.runAction(internal.sms.getConfigInternal, {
       organizationId: args.organizationId,
     });
     if (!config || !config.isActive) {
@@ -347,7 +361,7 @@ export const sendAppointmentSms = internalAction({
     eventId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const config = await ctx.runQuery(internal.sms.getConfigInternal, {
+    const config = await ctx.runAction(internal.sms.getConfigInternal, {
       organizationId: args.organizationId,
     });
 

@@ -83,6 +83,14 @@ const WHITELIST_PATHS = new Set([
   "_helpers/auth",
   "_helpers/permissions",
   "_helpers/seatLimits",
+
+  // notifications — Convex is the authoritative real-time store for in-app
+  // notifications. Writes go through ctx.db so that the notification bell
+  // receives live-query push updates without polling. The Supabase table
+  // exists for long-term archival / RLS-scoped reads by the portal, but
+  // the primary read path for the bell and notification page stays on Convex.
+  // Resolved via issue #3904 (option A).
+  "notifications",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -166,14 +174,12 @@ const MULTILINE_PENDING = new Set([
   "lostReasons",
   "mailProviders",
   "notes",
-  "notifications",
   "organizations",
   "payments",
   "permissions",
   "pipelineStageActions",
   "relationships",
   "signatureRequests",
-  "sms",
   "stripe",
   "tagDefinitions",
 ]);

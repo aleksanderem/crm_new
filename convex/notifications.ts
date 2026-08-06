@@ -1,6 +1,5 @@
 import { query, action, internalMutation, MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { requireUser } from "./_helpers/auth";
@@ -44,25 +43,22 @@ export const getUnreadCount = query({
 
 export const markAsRead = action({
   args: {
-    notificationId: v.string(),
+    notificationId: v.id("notifications"),
   },
   handler: async (ctx, args): Promise<string> => {
-    await ctx.runAction(
-      internal._helpers.authAction.verifyOrgAccess,
-      // notifications are user-scoped, we pass a dummy org to verify auth
-      // Actually notifications use requireUser, not verifyOrgAccess
-      // We'll use a simpler pattern here
-      { organizationId: "skip" as any },
-    ).catch(() => null);
-
-    const db = createSupabaseDb();
-    const notification = await db.get("notifications", args.notificationId);
-    if (!notification) {
-      throw new Error("Notification not found");
-    }
-
-    await db.patch("notifications", args.notificationId, { isRead: true });
+    await ctx.runMutation(internal.notifications._markAsReadInternal, {
+      notificationId: args.notificationId,
+    });
     return args.notificationId;
+  },
+});
+
+export const _markAsReadInternal = internalMutation({
+  args: { notificationId: v.id("notifications") },
+  handler: async (ctx, args) => {
+    const notification = await ctx.db.get(args.notificationId);
+    if (!notification) return;
+    await ctx.db.patch(args.notificationId, { isRead: true });
   },
 });
 
@@ -71,22 +67,25 @@ export const markAllRead = action({
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args): Promise<number> => {
-    const authResult = await ctx.runAction(
-      internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: args.organizationId },
-    );
+    return await ctx.runMutation(internal.notifications._markAllReadInternal, {
+      organizationId: args.organizationId,
+    });
+  },
+});
 
-    const db = createSupabaseDb();
-    const unread = await db
+export const _markAllReadInternal = internalMutation({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    const unread = await ctx.db
       .query("notifications")
-      .eq("userId", String(authResult.userId))
-      .eq("isRead", false)
+      .withIndex("by_userAndRead", (q) =>
+        q.eq("userId", user._id).eq("isRead", false)
+      )
       .collect();
-
     for (const notification of unread) {
-      await db.patch("notifications", notification._id as string, { isRead: true });
+      await ctx.db.patch(notification._id, { isRead: true });
     }
-
     return unread.length;
   },
 });
@@ -122,13 +121,10 @@ export async function createNotificationDirect(
     metadata?: unknown;
   }
 ) {
-  // Still write to Convex DB for real-time subscriptions
+  // Notifications live in Convex for real-time push (live queries on the bell).
   await ctx.db.insert("notifications", {
     ...data,
     isRead: false,
     createdAt: Date.now(),
   });
-
-  // Also write to Supabase (best-effort, no scheduler needed since we're in a mutation)
-  // This stays as a Convex DB write because notifications need real-time reactivity
 }

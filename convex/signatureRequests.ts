@@ -39,47 +39,48 @@ const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_OTP_ATTEMPTS = 3;
 
 // ---------------------------------------------------------------------------
-// Queries
+// Public read action
 // ---------------------------------------------------------------------------
 
-/** Public query — no auth required. Validates token and returns signing context. */
-export const getByToken = query({
+/** Public action — no auth required. Validates token and returns signing context. */
+export const getByToken = action({
   args: { token: v.string() },
-  handler: async (ctx, args) => {
-    const request = await ctx.db
-      .query("signatureRequests")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
-      .unique();
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+
+    const request = await db.query("signatureRequests")
+      .eq("token", args.token)
+      .first();
 
     if (!request) return null;
     if (request.status !== "pending") return { expired: true };
-    if (Date.now() > request.expiresAt) return { expired: true };
+    if (Date.now() > (request.expiresAt as number)) return { expired: true };
 
-    const instance = await ctx.db.get(request.instanceId);
+    const instance = await db.get("documentInstances", request.instanceId as string);
     if (!instance) return null;
 
-    const org = await ctx.db.get(request.organizationId);
+    const org = await db.get("organizations", request.organizationId as string);
 
     return {
       expired: false,
       request: {
-        _id: request._id,
-        slotId: request.slotId,
-        signerName: request.signerName,
-        signerEmail: request.signerEmail,
+        _id: request._id as string,
+        slotId: request.slotId as string,
+        signerName: request.signerName as string | undefined,
+        signerEmail: request.signerEmail as string | undefined,
         signerPhone: request.signerPhone
-          ? request.signerPhone.replace(/(\+\d{2}\s?\d{3})\s?\d{3}\s?(\d{3})/, "$1 *** $2")
+          ? (request.signerPhone as string).replace(/(\+\d{2}\s?\d{3})\s?\d{3}\s?(\d{3})/, "$1 *** $2")
           : undefined,
-        verificationMethod: request.verificationMethod,
-        status: request.status,
+        verificationMethod: request.verificationMethod as string,
+        status: request.status as string,
       },
       document: {
-        _id: instance._id,
-        title: instance.title,
-        renderedContent: instance.renderedContent,
-        status: instance.status,
+        _id: instance._id as string,
+        title: instance.title as string,
+        renderedContent: instance.renderedContent as string | undefined,
+        status: instance.status as string,
       },
-      organization: org ? { name: org.name } : undefined,
+      organization: org ? { name: org.name as string } : undefined,
     };
   },
 });

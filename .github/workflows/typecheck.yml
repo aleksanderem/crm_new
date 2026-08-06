@@ -1,8 +1,11 @@
-name: Convex Typecheck
+name: Typecheck
 
-# Catches type errors in convex/ on every PR so they cannot silently freeze
-# production deploys for ~24h (see #1015 → #1119). Runs the same tsconfig
-# Convex itself uses to typecheck function code at deploy time.
+# Catches type errors on every PR.
+# convex-typecheck: checks convex/ backend — same tsconfig Convex uses at
+#   deploy time, so errors here freeze production for ~24h (see #1015 → #1119).
+# app-typecheck: checks the React frontend (tsconfig.app.json) and Vite config
+#   (tsconfig.node.json). Previously only run inside E2E, so UI type regressions
+#   passed CI whenever E2E was skipped (see #3745).
 
 on:
   pull_request:
@@ -32,3 +35,25 @@ jobs:
 
       - name: Check convex/_generated/api.d.ts is in sync
         run: npm run check:convex-codegen
+
+  app-typecheck:
+    name: tsc -p tsconfig.app.json
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Typecheck app (src/)
+        run: npx tsc -p tsconfig.app.json
+
+      - name: Typecheck node config (vite.config.ts)
+        run: npx tsc -p tsconfig.node.json

@@ -657,6 +657,19 @@ export function AppointmentDialog({
     }
   }, [qualifiedEmployees, employeeId]);
 
+  // Clear employee when the primary treatment changes and the current employee
+  // is no longer qualified. This covers removing the first treatment (which
+  // makes the second become primary) — handleTreatmentAdd already covers
+  // selecting the very first treatment.
+  useEffect(() => {
+    if (!employeeId || !treatmentId || !employees) return;
+    const isQualified = qualifiedEmployees.some((e) => e.userId === employeeId);
+    if (!isQualified) {
+      setEmployeeId("");
+      setSelectedSlot(null);
+    }
+  }, [qualifiedEmployees, employeeId, treatmentId, employees]);
+
   // -------------------------------------------------------------------------
   // Reset downstream state when upstream selection changes
   // -------------------------------------------------------------------------

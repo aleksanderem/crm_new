@@ -1,7 +1,6 @@
 import {
   internalAction,
   internalMutation,
-  internalQuery,
   action,
   query,
   MutationCtx,
@@ -927,6 +926,10 @@ async function patchLegacyAppointmentWorkflowHistory(args: {
   });
 }
 
+// automationRules is Convex-primary (createRule writes Convex first, Supabase is the mirror).
+// automationRuns/RunSteps are written to Convex by emitEvent/processRun, then mirrored to
+// Supabase via scheduler. ctx.db reads below are valid; production UI reads use the
+// useSupabaseAutomationRulesList / useSupabaseAutomationRunsList hooks instead.
 export const listRules = query({
   args: {
     organizationId: v.id("organizations"),
@@ -1059,10 +1062,10 @@ export const createRule = action({
 
     const now = Date.now();
 
-    // Convex is primary so the in-process rule engine (processRun,
-    // getEnabledRulesForEvent) can find the rule via ctx.db. Supabase mirrors
-    // for frontend reads (useSupabaseAutomationRulesList) and cross-service
-    // analytics. Both rows share the Convex ID.
+    // Convex is primary so the in-process rule engine (processRun) can find
+    // the rule via ctx.db. Supabase mirrors for frontend reads
+    // (useSupabaseAutomationRulesList) and cross-service analytics. Both rows
+    // share the Convex ID.
     const ruleId: Id<"automationRules"> = await ctx.runMutation(
       internal.automation._writeRuleToConvex,
       {
@@ -1322,24 +1325,6 @@ export const listActionTypes = action({
   },
 });
 
-export const listEntityRuns = query({
-  args: {
-    organizationId: v.id("organizations"),
-    entityType: v.string(),
-    entityId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    return await ctx.db
-      .query("automationRuns")
-      .withIndex("by_entity", (q) =>
-        q.eq("entityType", args.entityType).eq("entityId", args.entityId),
-      )
-      .order("desc")
-      .collect();
-  },
-});
 
 export const emitEvent = internalMutation({
   args: automationEventArgsValidator,
@@ -1913,17 +1898,3 @@ export const processRun = internalMutation({
   },
 });
 
-export const getEnabledRulesForEvent = internalQuery({
-  args: {
-    organizationId: v.id("organizations"),
-    eventType: v.string(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("automationRules")
-      .withIndex("by_orgAndEventType", (q) =>
-        q.eq("organizationId", args.organizationId).eq("eventType", args.eventType),
-      )
-      .collect();
-  },
-});

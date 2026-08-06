@@ -133,6 +133,53 @@ export function useSupabaseAutomationRunsList(
 }
 
 // ---------------------------------------------------------------------------
+// Entity Runs (runs scoped to a specific entity)
+// ---------------------------------------------------------------------------
+
+interface UseSupabaseAutomationEntityRunsOptions {
+  enabled?: boolean;
+}
+
+/**
+ * Fetches automation_runs for a specific entity (entityType + entityId),
+ * ordered by created_at desc.
+ */
+export function useSupabaseAutomationEntityRuns(
+  organizationId: string,
+  entityType: string,
+  entityId: string,
+  options: UseSupabaseAutomationEntityRunsOptions = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  return useQuery<MappedAutomationRun[], Error>({
+    queryKey: [
+      ...supabaseKeys.automationRuns.all,
+      "byEntity",
+      organizationId,
+      entityType,
+      entityId,
+    ],
+    queryFn: async (): Promise<MappedAutomationRun[]> => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      const { data, error } = await client
+        .from("automation_runs")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .eq("entity_type", entityType)
+        .eq("entity_id", entityId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return (data ?? []).map(mapAutomationRunFromSupabase);
+    },
+    enabled: enabled && isReady && !!organizationId && !!entityId,
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Run Steps
 // ---------------------------------------------------------------------------
 

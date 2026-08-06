@@ -1,9 +1,9 @@
 {
-  "session_id": "S0115",
-  "started_at": "2026-08-06T09:30:00Z",
-  "last_updated": "2026-08-06T09:35:00Z",
+  "session_id": "S0116",
+  "started_at": "2026-08-06T15:00:00Z",
+  "last_updated": "2026-08-06T15:20:00Z",
   "status": "completed",
-  "focus": "Issue #3835: CI gate — every public Convex function must reach an auth guard",
+  "focus": "Issue #3908: Add column-level RLS to org_sms_config to block api_token/api_secret",
   "tasks_snapshot": {
     "total": 1,
     "not_started": 0,
@@ -14,5 +14,5 @@
   },
   "active_task_ids": [],
   "blockers": [],
-  "notes": "S0115: Implemented check-convex-auth gate. scripts/check-convex-auth.mjs scans all public Convex functions (query/mutation/action), understands one-level delegation to internalMutation/internalQuery, checks 7 auth helpers + local guard wrappers, has a whitelist for intentionally unauthenticated endpoints. Verified: 623 public functions, all pass. Added npm run check:convex-auth script and .github/workflows/convex-auth-gate.yml CI workflow."
+  "notes": "S0116: Added column-level security for org_sms_config. Migration 00101 REVOKEs table-level SELECT and re-GRANTs safe columns only; creates security-barrier view org_sms_config_summary. Updated hook to query view. Updated gen-db-types.mjs to support CREATE VIEW. Regenerated database.types.ts and database.columns.ts."
 }

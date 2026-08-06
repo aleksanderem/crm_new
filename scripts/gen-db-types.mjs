@@ -48,7 +48,7 @@ const migrationFiles = readdirSync(MIGRATIONS_DIR)
   .filter((f) => f.endsWith(".sql"))
   .sort();
 
-// ─── ENUM types & tables accumulate across all migrations ────────────────────
+// ─── ENUM types, tables, and views accumulate across all migrations ──────────
 /** @type {Map<string, string[]>} */
 const enums = new Map();
 
@@ -56,11 +56,16 @@ const enums = new Map();
  * @typedef {{ name: string, tsType: string, nullable: boolean, hasDefault: boolean, isPk: boolean, isGenerated: boolean, fk?: { referencedTable: string, referencedColumn: string } }} Col
  * @typedef {{ foreignKeyName: string, columns: string[], isOneToOne: boolean, referencedRelation: string, referencedColumns: string[] }} Relationship
  * @typedef {{ tableName: string, columns: Col[], relationships: Relationship[] }} Table
+ * @typedef {{ viewName: string, columns: Array<{ name: string, tsType: string, nullable: boolean }> }} View
  */
 
 /** Tables keyed by name to allow incremental updates from ALTER TABLE. */
 /** @type {Map<string, Table>} */
 const tables = new Map();
+
+/** Views keyed by name. Read-only: only a Row type is emitted. */
+/** @type {Map<string, View>} */
+const views = new Map();
 
 /**
  * Functions in the `public` schema callable via PostgREST RPC, keyed by name.
@@ -172,7 +177,78 @@ function parseFunctionArgs(argsBlob) {
 }
 
 /**
- * Apply a single migration's SQL to the running enum / table state.
+ * Split a SELECT column list at top-level commas (ignoring commas inside
+ * parentheses) and return trimmed, non-empty items.
+ *
+ * @param {string} body
+ * @returns {string[]}
+ */
+function splitSelectItems(body) {
+  const items = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < body.length; i++) {
+    if (body[i] === "(") { depth++; continue; }
+    if (body[i] === ")") { depth--; continue; }
+    if (body[i] === "," && depth === 0) {
+      items.push(body.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  const last = body.slice(start).trim();
+  if (last) items.push(last);
+  return items.filter(Boolean);
+}
+
+/**
+ * Resolve the TypeScript type for a single SELECT item from a view definition.
+ * Handles:
+ *   - Simple column references (`col` or `table.col`) — looked up from tables
+ *   - Computed expressions with aliases (`(expr) AS alias`) — inferred from expr
+ *
+ * @param {string} item - raw SELECT item text
+ * @returns {{ name: string, tsType: string, nullable: boolean } | null}
+ */
+function parseViewItem(item) {
+  // Strip trailing semicolons / whitespace
+  const raw = item.replace(/;+\s*$/, "").trim();
+
+  // Check for AS alias
+  const asMatch = raw.match(/\bAS\s+"?(\w+)"?\s*$/i);
+  if (asMatch) {
+    const alias = asMatch[1];
+    const exprPart = raw.slice(0, raw.length - asMatch[0].length).trim();
+    // Boolean if the expression contains null checks or boolean logic
+    if (/\bIS\s+(?:NOT\s+)?NULL\b|\bAND\b|\bOR\b/i.test(exprPart)) {
+      return { name: alias, tsType: "boolean", nullable: false };
+    }
+    // Explicit BOOLEAN cast
+    if (/::BOOLEAN\b/i.test(exprPart)) {
+      return { name: alias, tsType: "boolean", nullable: false };
+    }
+    // Numeric casts
+    if (/::(?:INT(?:EGER)?|BIGINT|NUMERIC)\b/i.test(exprPart)) {
+      return { name: alias, tsType: "number", nullable: true };
+    }
+    return { name: alias, tsType: "string", nullable: true };
+  }
+
+  // Simple column reference: `col` or `schema.col` or `table.col`
+  const colMatch = raw.match(/"?(\w+)"?\s*$/);
+  if (!colMatch) return null;
+  const colName = colMatch[1];
+
+  // Look up the type from known tables
+  for (const table of tables.values()) {
+    const col = table.columns.find((c) => c.name === colName);
+    if (col) return { name: colName, tsType: col.tsType, nullable: col.nullable };
+  }
+
+  return { name: colName, tsType: "string", nullable: true };
+}
+
+/**
+ * Apply a single migration's SQL to the running enum / table / view state.
  * @param {string} sql
  */
 function applyMigration(sql) {
@@ -295,6 +371,39 @@ function applyMigration(sql) {
     if (returnsTs === null) continue;
     functions.set(name, { args, returnsTs });
   }
+
+  // ─── CREATE [OR REPLACE] VIEW <name> [WITH (...)] AS SELECT ... FROM ... ──
+  // Captures the body between AS and the closing semicolon, then extracts the
+  // SELECT column list (items between SELECT and the first top-level FROM).
+  const viewRe =
+    /CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\s+"?(\w+)"?\s*(?:WITH\s*\([^)]*\)\s*)?AS\s+([\s\S]+?);/gi;
+  for (const m of sql.matchAll(viewRe)) {
+    const viewName = m[1];
+    const body = m[2];
+
+    // Locate SELECT and the first top-level FROM after it
+    const selectIdx = body.search(/\bSELECT\b/i);
+    if (selectIdx === -1) continue;
+
+    let depth = 0;
+    let fromIdx = -1;
+    for (let i = selectIdx + "SELECT".length; i < body.length; i++) {
+      if (body[i] === "(") { depth++; continue; }
+      if (body[i] === ")") { depth--; continue; }
+      if (depth === 0 && /^\bFROM\b/i.test(body.slice(i))) {
+        fromIdx = i;
+        break;
+      }
+    }
+    if (fromIdx === -1) continue;
+
+    const selectBody = body.slice(selectIdx + "SELECT".length, fromIdx).trim();
+    const items = splitSelectItems(selectBody);
+    const columns = items.map(parseViewItem).filter(/** @type {(x: any) => x is NonNullable<typeof x>} */ Boolean);
+
+    if (columns.length === 0) continue;
+    views.set(viewName, { viewName, columns });
+  }
 }
 
 for (const file of migrationFiles) {
@@ -378,7 +487,23 @@ for (const table of tablesList) {
 }
 
 lines.push(`    };`);
-lines.push(`    Views: Record<string, never>;`);
+if (views.size === 0) {
+  lines.push(`    Views: Record<string, never>;`);
+} else {
+  lines.push(`    Views: {`);
+  for (const view of views.values()) {
+    lines.push(`      ${view.viewName}: {`);
+    lines.push(`        Row: {`);
+    for (const col of view.columns) {
+      const nullSuffix = col.nullable ? " | null" : "";
+      lines.push(`          ${col.name}: ${col.tsType}${nullSuffix};`);
+    }
+    lines.push(`        };`);
+    lines.push(`        Relationships: [];`);
+    lines.push(`      };`);
+  }
+  lines.push(`    };`);
+}
 if (functions.size === 0) {
   lines.push(`    Functions: Record<string, never>;`);
 } else {
@@ -484,6 +609,7 @@ writeFileSync(outPath, out, "utf-8");
 console.log(`✅ Generated ${outPath}`);
 console.log(`   Migrations: ${migrationFiles.length}`);
 console.log(`   Tables: ${tablesList.length}`);
+console.log(`   Views: ${views.size}`);
 console.log(`   Row types: ${tablesList.length} (one per table)`);
 console.log(`   Functions: ${functions.size}`);
 

@@ -155,8 +155,6 @@ const MULTILINE_PENDING = new Set([
   "app",
   "automation",
   "calls",
-  "companies",
-  "contacts",
   "customFields",
   "documentInstances",
   "documentTemplateFields",

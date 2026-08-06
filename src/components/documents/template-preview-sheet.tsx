@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
+import { useSupabaseContactsList } from "@/hooks/use-supabase-contacts";
+import { useSupabaseCompaniesList } from "@/hooks/use-supabase-companies";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import {
@@ -299,12 +301,9 @@ export function TemplatePreviewSheet({
     enabled: entityType === "patient" && !!organizationId,
   }) as { data: { page: any[] } | undefined };
 
-  const { data: contacts } = useQuery({
-    ...convexQuery(api.contacts.list, {
-      organizationId,
-      paginationOpts: { numItems: 50, cursor: null },
-    }),
+  const { data: contacts } = useSupabaseContactsList(organizationId, {
     enabled: entityType === "contact",
+    limit: 50,
   });
 
   const listAppointmentsAction = useAction(api.gabinet.appointments.list);
@@ -317,12 +316,9 @@ export function TemplatePreviewSheet({
     enabled: entityType === "appointment" && !!organizationId,
   }) as { data: { page: any[] } | undefined };
 
-  const { data: companies } = useQuery({
-    ...convexQuery(api.companies.list, {
-      organizationId,
-      paginationOpts: { numItems: 50, cursor: null },
-    }),
+  const { data: companies } = useSupabaseCompaniesList(organizationId, {
     enabled: entityType === "company",
+    limit: 50,
   });
 
   const { data: leads } = useQuery({
@@ -356,10 +352,10 @@ export function TemplatePreviewSheet({
   // Normalize entity lists to a common shape
   const entityList = useMemo((): Array<Record<string, unknown>> => {
     if (!entityType) return [];
-    // All queries use pagination, so extract .page
+    // Supabase hooks return arrays directly; Convex action queries return { page: [] }
     const raw = { patient: patients, contact: contacts, appointment: appointments, company: companies, lead: leads, employee: employees, treatment: treatments }[entityType];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const items: unknown[] = (raw as any)?.page ?? [];
+    const items: unknown[] = Array.isArray(raw) ? raw : ((raw as any)?.page ?? []);
     return (items as Record<string, unknown>[]).filter((item) => {
       if (!searchQuery.trim()) return true;
       const config = ENTITY_CONFIG[entityType];

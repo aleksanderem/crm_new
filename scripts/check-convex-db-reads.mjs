@@ -1,20 +1,20 @@
 #!/usr/bin/env node
 /**
- * CI gate: ctx.db.query on TABLE_MAP tables is forbidden.
+ * CI gate: ctx.db.query and ctx.db.get on TABLE_MAP tables are forbidden.
  *
  * Tables listed in convex/_helpers/supabaseDb.ts TABLE_MAP are owned by
- * Supabase (self-hosted Postgres). Reading them via ctx.db.query hits the
- * Convex document store, which is either stale or empty after the migration,
- * and bypasses Supabase RLS entirely.
+ * Supabase (self-hosted Postgres). Reading them via ctx.db.query or
+ * ctx.db.get hits the Convex document store, which is either stale or empty
+ * after the migration, and bypasses Supabase RLS entirely.
  *
  * Use the Supabase read path instead:
  *   Browser:          use-supabase-*.ts hooks (supabase-js with RLS)
  *   Convex functions: createSupabaseDb() service client
  *                     (see convex/_helpers/supabaseDb.ts)
  *
- * Files that intentionally use ctx.db.query on TABLE_MAP tables (backfill
- * scripts, seed utilities, migration helpers) are listed in WHITELIST_PATHS
- * or auto-skipped via shouldSkipFile.
+ * Files that intentionally use ctx.db.query / ctx.db.get on TABLE_MAP tables
+ * (backfill scripts, seed utilities, migration helpers) are listed in
+ * WHITELIST_PATHS or auto-skipped via shouldSkipFile.
  *
  * Usage:
  *   node scripts/check-convex-db-reads.mjs
@@ -145,6 +145,27 @@ function relToModuleKey(relPath) {
 }
 
 // ---------------------------------------------------------------------------
+// GET_PENDING — files with known ctx.db.get violations on TABLE_MAP tables
+// that are pending migration to the Supabase read path.
+// ctx.db.get detection only fires for explicit `as Id<"tableName">` casts —
+// the table name is otherwise encoded in the TypeScript type and not visible
+// to a regex scan.  These files are fully exempt from get detection.
+// Tracked: issue #3968.  Remove entries one-by-one as files are migrated.
+// ---------------------------------------------------------------------------
+const GET_PENDING = new Set([
+  // documentInstances.ts — ctx.db.get on users for reviewer lookup.
+  "documentInstances",
+  // documentTemplateFields.ts — ctx.db.get on documentTemplates.
+  "documentTemplateFields",
+  // gabinet/employees.ts — ctx.db.get on users for employee user lookup.
+  "gabinet/employees",
+  // invitations.ts — ctx.db.get on users for inviter lookup.
+  "invitations",
+  // signatureRequests.ts — ctx.db.get on users, organizations, documentInstances.
+  "signatureRequests",
+]);
+
+// ---------------------------------------------------------------------------
 // MULTILINE_PENDING — files with known ctx.db\n.query() violations that are
 // pending migration to the Supabase read path.  These files are exempt from
 // the multiline pattern check ONLY — single-line patterns are still flagged.
@@ -179,22 +200,30 @@ const MULTILINE_PENDING = new Set([
 ]);
 
 // ---------------------------------------------------------------------------
-// Violation detection — find ctx.db.query("TABLE_MAP_TABLE") in a file.
+// Violation detection — find ctx.db.query/get on TABLE_MAP tables in a file.
 //
-// Only ctx.db.query (and variables destructured from ctx as db) are flagged.
-// A bare db.query where db = createSupabaseDb() is the correct Supabase read
-// path and is intentionally not matched here — provenance tracking via the
-// destructure pre-scan keeps these two apart.
+// Only ctx.db.query / ctx.db.get (and variables destructured from ctx as db)
+// are flagged.  A bare db.query where db = createSupabaseDb() is the correct
+// Supabase read path and is intentionally not matched here — provenance
+// tracking via the destructure pre-scan keeps these two apart.
 //
-// Three patterns are detected:
-//   1. ctx.db.query("table")                         — direct chained access
-//   2. const { db } = ctx; … db.query("table")       — destructure alias
-//   3. ctx.db\n      .query("table")                 — split across two lines
+// Six patterns are detected:
+//   1. ctx.db.query("table")                                — direct chained
+//   2. const { db } = ctx; … db.query("table")             — destructure alias
+//   3. ctx.db\n      .query("table")                       — split two lines
+//   4. ctx.db.get(x as Id<"table">)                        — direct chained get
+//   5. const { db } = ctx; … db.get(x as Id<"table">)      — alias get
+//   6. ctx.db\n      .get(x as Id<"table">)                — split two lines
 //
-// Files in MULTILINE_PENDING are exempt from pattern 3 only (migration
-// backlog tracked in issue #3860).  New files are subject to all three checks.
+// Patterns 1-3 require a string-literal table name in the call.
+// Patterns 4-6 require an explicit `as Id<"tableName">` cast — untyped
+// ctx.db.get(id) calls where the table is only known from the TypeScript type
+// are not detectable by this regex-based gate.
+//
+// Files in MULTILINE_PENDING are exempt from pattern 3 only.
+// Files in GET_PENDING are exempt from patterns 4-6.
 // ---------------------------------------------------------------------------
-function findViolations(content, tableMapKeys, { detectMultiline = true } = {}) {
+function findViolations(content, tableMapKeys, { detectMultiline = true, detectGet = true } = {}) {
   const violations = [];
   const lines = content.split("\n");
 
@@ -254,17 +283,59 @@ function findViolations(content, tableMapKeys, { detectMultiline = true } = {}) 
 
     // Pattern 3 (multiline): ctx.db at end of line, .query("table") on the
     // next line.  Skipped for files in MULTILINE_PENDING (migration backlog).
-    if (detectMultiline && /\bctx\.db\s*$/.test(line) && i + 1 < lines.length) {
+    if (/\bctx\.db\s*$/.test(line) && i + 1 < lines.length) {
       const nextLine = lines[i + 1];
       const nextTrimmed = nextLine.trimStart();
       if (!nextTrimmed.startsWith("//") && !nextTrimmed.startsWith("*")) {
-        const mm = /^\s*\.query\(\s*["'](\w+)["']/.exec(nextLine);
-        if (mm && tableMapKeys.has(mm[1])) {
-          violations.push({
-            lineNum: i + 1,
-            text: line.trim() + " " + nextLine.trim(),
-            tableName: mm[1],
-          });
+        if (detectMultiline) {
+          const mm = /^\s*\.query\(\s*["'](\w+)["']/.exec(nextLine);
+          if (mm && tableMapKeys.has(mm[1])) {
+            violations.push({
+              lineNum: i + 1,
+              text: line.trim() + " " + nextLine.trim(),
+              tableName: mm[1],
+            });
+          }
+        }
+        // Pattern 6 (multiline get): ctx.db at end of line, .get(x as Id<"table">)
+        // on the next line.  Skipped for files in GET_PENDING.
+        if (detectGet) {
+          const gm = /^\s*\.get\([^)]*\bas\s+Id<["'](\w+)["']/.exec(nextLine);
+          if (gm && tableMapKeys.has(gm[1])) {
+            violations.push({
+              lineNum: i + 1,
+              text: line.trim() + " " + nextLine.trim(),
+              tableName: gm[1],
+            });
+          }
+        }
+      }
+    }
+
+    // Pattern 4: ctx.db.get(x as Id<"table">) — direct chained get.
+    // Only detectable when the argument includes an explicit `as Id<"tableName">`
+    // cast; untyped get(id) calls where the table is only in the TS type are
+    // invisible to regex analysis.  Skipped for files in GET_PENDING.
+    if (detectGet) {
+      const getReWithCast = /\bctx\.db\.get\([^)]*\bas\s+Id<["'](\w+)["']/g;
+      let gm;
+      while ((gm = getReWithCast.exec(line)) !== null) {
+        if (tableMapKeys.has(gm[1])) {
+          violations.push({ lineNum: i + 1, text: line.trim(), tableName: gm[1] });
+        }
+      }
+
+      // Pattern 5: alias.get(x as Id<"table">) where alias was destructured from ctx.db.
+      for (const alias of ctxDbAliases) {
+        const aliasGetRe = new RegExp(
+          String.raw`\b${alias}\.get\([^)]*\bas\s+Id<["'](\w+)["']`,
+          "g",
+        );
+        let agm;
+        while ((agm = aliasGetRe.exec(line)) !== null) {
+          if (tableMapKeys.has(agm[1])) {
+            violations.push({ lineNum: i + 1, text: line.trim(), tableName: agm[1] });
+          }
         }
       }
     }
@@ -320,6 +391,7 @@ for (const file of allFiles) {
   const content = readFileSync(file, "utf8");
   const violations = findViolations(content, tableMapKeys, {
     detectMultiline: !MULTILINE_PENDING.has(moduleKey),
+    detectGet: !GET_PENDING.has(moduleKey),
   });
 
   if (violations.length > 0) {
@@ -332,7 +404,7 @@ for (const file of allFiles) {
 // ---------------------------------------------------------------------------
 if (allViolations.length === 0) {
   console.log(
-    `✓ convex-db-reads-gate: no ctx.db reads on TABLE_MAP tables detected` +
+    `✓ convex-db-reads-gate: no ctx.db.query / ctx.db.get reads on TABLE_MAP tables detected` +
       ` (${scanned} files scanned, ${tableMapKeys.size} TABLE_MAP tables tracked).`,
   );
   process.exit(0);
@@ -354,21 +426,26 @@ for (const { file, violations } of allViolations) {
 }
 
 console.error(`
-TABLE_MAP tables live in Supabase. Reading them via ctx.db (directly or via
-destructuring) hits the Convex document store which is stale or empty
-post-migration, and bypasses Supabase RLS.
+TABLE_MAP tables live in Supabase. Reading them via ctx.db.query or ctx.db.get
+(directly or via destructuring) hits the Convex document store which is stale
+or empty post-migration, and bypasses Supabase RLS.
 
 Correct read paths:
   Browser:          use-supabase-*.ts hooks (supabase-js, RLS-scoped)
   Convex functions: createSupabaseDb() service client
                     (see convex/_helpers/supabaseDb.ts)
 
+Note: ctx.db.get detection only fires for explicit \`as Id<"tableName">\` casts.
+Untyped ctx.db.get(id) calls where the table is encoded only in the TypeScript
+type are not detectable by this gate — prefer explicit casts when reading
+TABLE_MAP tables so violations are visible here.
+
 To add a legitimate exemption (backfill script, seed utility, migration helper,
 dev tool), add the module path (relative to convex/, no .ts extension) to
 WHITELIST_PATHS in scripts/check-convex-db-reads.mjs with a comment explaining
 why the Convex read is intentional.
 
-See issue #3846 for context.
+See issue #3846 (query gate) and issue #3968 (get gate) for context.
 `);
 
 process.exit(1);

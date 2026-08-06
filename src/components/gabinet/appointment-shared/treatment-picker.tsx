@@ -47,6 +47,7 @@ interface TreatmentPickerProps {
   triggerIcon?: ReactNode;
   triggerClassName?: string;
   triggerTestId?: string;
+  disabled?: boolean;
 }
 
 export function TreatmentPicker({
@@ -66,6 +67,7 @@ export function TreatmentPicker({
   triggerIcon,
   triggerClassName,
   triggerTestId,
+  disabled,
 }: TreatmentPickerProps) {
   const list = treatments ?? [];
   const filtered = (() => {
@@ -98,6 +100,7 @@ export function TreatmentPicker({
           aria-expanded={open}
           className={cn("w-full justify-between font-normal", triggerClassName)}
           data-testid={triggerTestId}
+          disabled={disabled}
         >
           {triggerIcon ? (
             <span className="flex items-center gap-2 truncate">

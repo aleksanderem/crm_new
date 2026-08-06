@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { useQuery, useMutation, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseOrgSettings } from "@/hooks/use-supabase-organizations";
@@ -88,14 +88,20 @@ function PermissionsSettings() {
 
   const isAdmin = role === "owner" || role === "admin";
 
-  const overrides = useQuery(
-    api.permissions.getOrgPermissionOverrides,
-    isAdmin ? { organizationId } : "skip",
-  );
+  const getOrgPermissionOverrides = useAction(api.permissions.getOrgPermissionOverrides);
+  const [overrides, setOverrides] = useState<{ member: unknown; viewer: unknown } | undefined>(undefined);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    getOrgPermissionOverrides({ organizationId })
+      .then(setOverrides)
+      .catch(() => setOverrides({ member: null, viewer: null }));
+  }, [organizationId, isAdmin, getOrgPermissionOverrides]);
+
   const { data: orgSettings } = useSupabaseOrgSettings(organizationId);
   const resourceSharingEnabled = orgSettings?.resourceSharingEnabled ?? true;
 
-  const updatePermissions = useMutation(api.permissions.updateOrgPermissions);
+  const updatePermissions = useAction(api.permissions.updateOrgPermissions);
   const setResourceSharing = useAction(api.permissions.setResourceSharingEnabled);
 
   const [memberPerms, setMemberPerms] = useState<PermissionsMap>(() => buildPermissionsMap(null));

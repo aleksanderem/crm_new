@@ -98,7 +98,7 @@ async function setMemberLeadEditScope(
   organizationId: any,
   scope: "none" | "own" | "all",
 ) {
-  await t.withIdentity(identity).mutation(api.permissions.updateOrgPermissions, {
+  await t.withIdentity(identity).action(api.permissions.updateOrgPermissions, {
     organizationId,
     role: "member",
     permissions: {

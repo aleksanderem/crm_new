@@ -526,7 +526,7 @@ function DocumentSigningFlow({ token, document, template }: FlowProps) {
             ),
       );
       setInvalidFieldId(firstInvalidId);
-      const el = document.getElementById(`ff_portal_${firstInvalidId}`);
+      const el = window.document.getElementById(`ff_portal_${firstInvalidId}`);
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
         const focusable = el.querySelector("input, textarea, select");

@@ -603,7 +603,7 @@ function GabinetDocumentsPage() {
 
   // --- Column visibility ---
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
-  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "gabinetDocuments");
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns: _setHiddenColumns } = useColumnVisibility(defaultHidden, "gabinetDocuments");
 
   // --- Handlers ---
   const handleResendSigningEmail = (docId: string) => {

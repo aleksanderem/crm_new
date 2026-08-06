@@ -102,7 +102,7 @@ function PatientsIndex() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { nudge: nudgeFilter } = useSearch({ from: Route.id });
-  const { allowed: canCreate } = usePermission("gabinet_patients", "create");
+  const { allowed: _canCreate } = usePermission("gabinet_patients", "create");
   const { allowed: canEdit } = usePermission("gabinet_patients", "edit");
   const { allowed: canDelete } = usePermission("gabinet_patients", "delete");
 

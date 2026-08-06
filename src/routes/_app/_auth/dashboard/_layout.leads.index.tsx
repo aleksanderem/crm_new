@@ -490,7 +490,7 @@ function LeadsIndex() {
     [columns, cfColumns],
   );
   const { allColumns, defaultHidden } = useAllColumns(mergedColumns, filterableFields);
-  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "leads");
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns: _setHiddenColumns } = useColumnVisibility(defaultHidden, "leads");
 
   const handleMarkWon = async (lead: LeadRow) => {
     await updateLead({ organizationId, leadId: lead._id, status: "won" });

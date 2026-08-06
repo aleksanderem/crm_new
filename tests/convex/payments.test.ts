@@ -638,6 +638,12 @@ describe("payments", () => {
           secondAmount: 40,
         });
 
+      // Yield so the scheduled _createSplitReceiptRow mutation can run and
+      // create the gabinet_receipts row on the primary leg. Without this, the
+      // refund guard (which checks for a receipt row to distinguish primary from
+      // secondary) would block the primary-leg refund (#3776 regression).
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
       // Refund the primary (cash) leg only.
       await t.withIdentity(identity).action(api.payments.refund, {
         organizationId,

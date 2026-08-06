@@ -27,7 +27,7 @@ import { Loader2 } from "@/lib/ez-icons";
 import { PlateText } from "@/components/plate-text";
 import { formatActionError } from "@/lib/format-action-error";
 import { formatCurrencyPLN } from "@/lib/format-currency";
-import { usePackagePaymentForm } from "@/hooks/use-package-payment-form";
+import { usePackagePaymentForm, type PackagePaymentMethod } from "@/hooks/use-package-payment-form";
 import { PackageSplitPaymentSection } from "./package-split-payment-section";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
 
@@ -178,8 +178,8 @@ export function PackagePurchaseDrawer({
     try {
       const currency = selectedPkg.currency ?? "PLN";
       let usagePaymentMethod = paymentMethod;
-      if (splitPayment) usagePaymentMethod = "split";
-      if (isInstallment) usagePaymentMethod = "installment";
+      if (splitPayment) usagePaymentMethod = "split" as PackagePaymentMethod;
+      if (isInstallment) usagePaymentMethod = "installment" as PackagePaymentMethod;
       const usageId = await purchasePackage({
         organizationId,
         patientId,
@@ -472,7 +472,7 @@ export function PackagePurchaseDrawer({
             <Label>{t("gabinet.packages.paymentMethod", "Payment Method")}</Label>
             <Select
               value={paymentMethod}
-              onValueChange={setPaymentMethod}
+              onValueChange={(v) => setPaymentMethod(v as PackagePaymentMethod)}
               disabled={isOneTime && splitPayment}
             >
               <SelectTrigger>

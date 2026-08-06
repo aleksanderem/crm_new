@@ -1,13 +1,14 @@
 import {
   action,
+  internalAction,
   internalMutation,
   internalQuery,
 } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
+import { Id } from "../_generated/dataModel";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { logAudit } from "../auditLog";
-import type { Id } from "../_generated/dataModel";
 
 // VAT multipliers for each Polish fiscal rate code.
 // A=23%, B=8%, C=5%, D=ZW (exempt, 0% — applies to medical services).
@@ -330,7 +331,7 @@ export const _getOrgName = internalQuery({
 // Internal mutation: store PDF in Convex file storage + insert receipt row
 // ---------------------------------------------------------------------------
 
-export const _storePdfAndCreateReceipt = internalMutation({
+export const _storePdfAndCreateReceipt = internalAction({
   args: {
     pdfData: v.bytes(),
     organizationId: v.id("organizations"),
@@ -455,12 +456,12 @@ export const generatePdfReceipt = action({
       ),
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{receiptId: string; pdfUrl: string; receiptNumber: string}> => {
     // --- Auth + permission ---
     const authResult = await ctx.runQuery(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
-    );
+    ) as {userId: Id<"users">};
     const perm = await ctx.runQuery(
       internal._helpers.authAction.checkPermission,
       {
@@ -506,7 +507,7 @@ export const generatePdfReceipt = action({
     }
 
     // --- Org name from Convex native DB ---
-    const orgName =
+    const orgName: string =
       (await ctx.runQuery(internal.gabinet.receipts._getOrgName, {
         organizationId: args.organizationId,
       })) ?? "Placówka medyczna";
@@ -565,7 +566,7 @@ export const generatePdfReceipt = action({
     });
 
     // --- Store PDF + persist receipt record ---
-    const { receiptId, pdfUrl } = await ctx.runMutation(
+    const { receiptId, pdfUrl } = await ctx.runAction(
       internal.gabinet.receipts._storePdfAndCreateReceipt,
       {
         pdfData: pdfBytes.buffer as ArrayBuffer,
@@ -589,7 +590,7 @@ export const generatePdfReceipt = action({
           (payment.fiscalReceiptId as string | null | undefined) ?? undefined,
         createdBy: authResult.userId,
       },
-    );
+    ) as {receiptId: string; pdfUrl: string};
 
     // --- Audit log (best-effort) ---
     try {

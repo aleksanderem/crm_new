@@ -520,7 +520,7 @@ function ProductsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { nudge: nudgeFilter } = useSearch({ from: Route.id });
-  const { allowed: canCreate } = usePermission("products", "create");
+  const { allowed: _canCreate } = usePermission("products", "create");
   const { allowed: canEdit } = usePermission("products", "edit");
   const { allowed: canDelete } = usePermission("products", "delete");
   const systemViews: SavedView[] = useMemo(() => [
@@ -1067,7 +1067,7 @@ function ProductsPage() {
     d.add("salePriceNet");
     return d;
   }, [autoDefaultHidden]);
-  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "products");
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns: _setHiddenColumns } = useColumnVisibility(defaultHidden, "products");
 
   const rowActions = (row: Product) => {
     const actions = [];

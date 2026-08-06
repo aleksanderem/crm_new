@@ -416,7 +416,7 @@ function DocumentsPage() {
   );
 
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
-  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns: _setHiddenColumns } = useColumnVisibility(
     defaultHidden,
     "documents",
   );

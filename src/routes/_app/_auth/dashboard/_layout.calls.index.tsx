@@ -81,7 +81,7 @@ function CallsPage() {
     { id: "all", name: t('calls.views.all'), isSystem: true, isDefault: true },
   ], [t]);
 
-  const { allowed: canCreate } = usePermission("calls", "create");
+  const { allowed: _canCreate } = usePermission("calls", "create");
   const { allowed: canEdit } = usePermission("calls", "edit");
   const { allowed: canDelete } = usePermission("calls", "delete");
 
@@ -348,7 +348,7 @@ function CallsPage() {
   ];
 
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
-  const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "calls");
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns: _setHiddenColumns } = useColumnVisibility(defaultHidden, "calls");
 
   const rowActions = (row: Call) => [
     ...(canEdit

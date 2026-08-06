@@ -9,7 +9,6 @@ import { createSupabaseDb } from "../_helpers/supabaseDb";
 import type { GabinetEmployeeRow, SupabasePaginationResult } from "../_helpers/supabaseRows";
 import { Id } from "../_generated/dataModel";
 import { createAccount, modifyAccountCredentials } from "@convex-dev/auth/server";
-import { checkSeatLimit } from "../_helpers/seatLimits";
 
 // Dual-write refs removed — Supabase is now primary for employee writes
 
@@ -979,15 +978,6 @@ export const _finalisePasswordUser = internalMutation({
   handler: async (ctx, args) => {
     const userId = args.userId as Id<"users">;
 
-    const { canAddMore, currentSeats, seatLimit } = await checkSeatLimit(ctx, {
-      organizationId: args.organizationId,
-    });
-    if (!canAddMore) {
-      throw new Error(
-        `Seat limit reached (${currentSeats}/${seatLimit}). Upgrade your plan to add more team members.`,
-      );
-    }
-
     const existing = await ctx.db
       .query("teamMemberships")
       .withIndex("by_orgAndUser", (q) =>
@@ -1100,6 +1090,16 @@ export const createWithPassword = action({
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
       organizationId: args.organizationId,
     });
+
+    const { canAddMore, currentSeats, seatLimit } = await ctx.runAction(
+      internal._helpers.seatLimits.checkSeatLimitAction,
+      { organizationId: args.organizationId },
+    );
+    if (!canAddMore) {
+      throw new Error(
+        `Seat limit reached (${currentSeats}/${seatLimit}). Upgrade your plan to add more team members.`,
+      );
+    }
 
     const name =
       [args.firstName, args.lastName].filter(Boolean).join(" ") || undefined;

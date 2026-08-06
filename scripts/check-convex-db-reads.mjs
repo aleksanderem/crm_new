@@ -71,12 +71,11 @@ const WHITELIST_PATHS = new Set([
   "gabinet/seed",
   "documents/seed",
 
-  // Auth/permissions helpers called from QueryCtx/MutationCtx — Convex
-  // queries and mutations cannot make HTTP calls, so createSupabaseDb() is
-  // unavailable. teamMemberships, orgPermissions, and invitations are
-  // Convex-authoritative auth tables; the Supabase copies are for UI reads
-  // (RLS-scoped supabase-js) and analytics only. Server-side auth guards
-  // must read from ctx.db. Tracked in issue #3861.
+  // Auth/permissions helpers called from QueryCtx — Convex queries cannot
+  // make HTTP calls, so createSupabaseDb() is unavailable. Mutation callers
+  // have been migrated to action-based variants (authAction.ts for auth/perms,
+  // seatLimits.checkSeatLimitAction for seat checks). Only query-context
+  // callers remain here (getSeatUsage, verifyOrgAccess in queries, etc.).
   "_helpers/auth",
   "_helpers/permissions",
   "_helpers/seatLimits",

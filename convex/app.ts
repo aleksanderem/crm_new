@@ -30,10 +30,8 @@ export const getCurrentUser = query({
     const avatarUrl = user.imageId
       ? await ctx.storage.getUrl(user.imageId)
       : user.image;
-    // Exclude isPlatformAdmin — read it from Supabase via getIsPlatformAdmin action.
-    const { isPlatformAdmin: _omit, ...userFields } = user;
     return {
-      ...userFields,
+      ...user,
       avatarUrl: avatarUrl || undefined,
       subscription:
         subscription && plan

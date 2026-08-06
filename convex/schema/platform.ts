@@ -34,10 +34,6 @@ export function createPlatformTables({
       v.union(v.literal("light"), v.literal("dark"), v.literal("system")),
     ),
     timezone: v.optional(v.string()),
-    // Platform-level admin flag. Distinct from organization roles; grants
-    // access to the /admin area and ability to configure global platform
-    // settings (e.g. invitation email From address).
-    isPlatformAdmin: v.optional(v.boolean()),
   })
     .index("email", ["email"])
     .index("customerId", ["customerId"]),

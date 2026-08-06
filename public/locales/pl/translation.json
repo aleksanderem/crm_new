@@ -4083,6 +4083,15 @@
         "settings": "Ustawienia",
         "dashboard": "Pulpit"
       }
+    },
+    "receipts": {
+      "download": "Pobierz paragon",
+      "generating": "Generowanie...",
+      "noUrl": "Brak URL paragonu PDF",
+      "title": "Paragon",
+      "receiptNumber": "Nr paragonu",
+      "issuedAt": "Data wystawienia",
+      "totalGross": "Kwota brutto"
     }
   },
   "customFields": {

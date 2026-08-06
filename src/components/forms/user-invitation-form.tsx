@@ -5,6 +5,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useSupabasePendingInvitations } from "@/hooks/use-supabase-invitations";
+import { useSupabaseSeatUsage } from "@/hooks/use-supabase-organizations";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { Button } from "@/components/ui/button";
@@ -103,9 +104,7 @@ export function UserInvitationForm({
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
 
-  const { data: seatUsage } = useQuery(
-    convexQuery(api.organizations.getSeatUsage, { organizationId })
-  ) as { data: { currentSeats: number; seatLimit: number; canAddMore: boolean } | undefined };
+  const { data: seatUsage } = useSupabaseSeatUsage(organizationId);
   const { data: pendingInvitations } = useSupabasePendingInvitations(organizationId);
 
   // Gabinet-specific data sources — only fetched lazily once Gabinet is picked.

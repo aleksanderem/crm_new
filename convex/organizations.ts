@@ -500,3 +500,31 @@ export const getSeatUsage = query({
     return await checkSeatLimit(ctx, args);
   },
 });
+
+// Returns only the seat limit (from subscriptions/plans, which are Convex-only tables).
+// Seat counts (team_memberships + invitations) are read from Supabase by the frontend hook.
+export const getSeatLimit = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await verifyOrgAccess(ctx, args.organizationId);
+
+    const org = await ctx.db.get(args.organizationId);
+    if (!org) throw new Error("Organization not found");
+
+    const subscription = await ctx.db
+      .query("subscriptions")
+      .withIndex("userId", (q) => q.eq("userId", org.ownerId))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "active"),
+          q.eq(q.field("status"), "trialing"),
+        ),
+      )
+      .first();
+
+    if (!subscription) return { seatLimit: 20 };
+
+    const plan = await ctx.db.get(subscription.planId);
+    return { seatLimit: plan?.seatLimit ?? 20 };
+  },
+});

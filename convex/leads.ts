@@ -1,11 +1,9 @@
-import { query, action, internalMutation } from "./_generated/server";
+import { action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
-import { checkPermission } from "./_helpers/permissions";
 import { leadStatusValidator, leadPriorityValidator } from "@cvx/schema";
 import { logAudit } from "./auditLog";
 import { createNotificationDirect } from "./notifications";
@@ -546,50 +544,64 @@ export const _removeSideEffects = internalMutation({
   },
 });
 
-export const getByPipeline = query({
+export const getByPipeline = action({
   args: {
     organizationId: v.id("organizations"),
     pipelineId: v.id("pipelines"),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "leads",
-      "view",
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
     );
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "leads", action: "view" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const stages = await ctx.db
+    const db = createSupabaseDb();
+
+    const stages = await db
       .query("pipelineStages")
-      .withIndex("by_pipeline", (q) => q.eq("pipelineId", args.pipelineId))
+      .eq("organizationId", String(args.organizationId))
+      .eq("pipelineId", String(args.pipelineId))
+      .order("order", true)
       .collect();
 
-    const stagesWithLeads = await Promise.all(
-      stages.map(async (stage) => {
-        const leads = await ctx.db
-          .query("leads")
-          .withIndex("by_pipelineStage", (q) =>
-            q.eq("pipelineStageId", stage._id),
+    if (stages.length === 0) return [];
+
+    const stageIds = stages.map((s) => String(s._id));
+
+    const allLeads = await db
+      .query("leads")
+      .eq("organizationId", String(args.organizationId))
+      .in("pipelineStageId", stageIds)
+      .collect();
+
+    const filtered =
+      perm.scope === "own"
+        ? allLeads.filter(
+            (l) =>
+              l.createdBy === String(authResult.userId) ||
+              l.assignedTo === String(authResult.userId),
           )
-          .collect();
+        : allLeads;
 
-        // Sort by stageOrder client-side since index returns in order
-        leads.sort((a, b) => (a.stageOrder ?? 0) - (b.stageOrder ?? 0));
+    const leadsByStage = new Map<string, typeof filtered>();
+    for (const lead of filtered) {
+      const sid = String(lead.pipelineStageId);
+      if (!leadsByStage.has(sid)) leadsByStage.set(sid, []);
+      leadsByStage.get(sid)!.push(lead);
+    }
+    for (const leads of leadsByStage.values()) {
+      leads.sort((a, b) => ((a.stageOrder as number) ?? 0) - ((b.stageOrder as number) ?? 0));
+    }
 
-        const filtered =
-          perm.scope === "own"
-            ? leads.filter(
-                (l) => l.createdBy === user._id || l.assignedTo === user._id,
-              )
-            : leads;
-
-        return { ...stage, leads: filtered };
-      }),
-    );
-
-    return stagesWithLeads;
+    return stages.map((stage) => ({
+      ...stage,
+      leads: leadsByStage.get(String(stage._id)) ?? [],
+    }));
   },
 });
 

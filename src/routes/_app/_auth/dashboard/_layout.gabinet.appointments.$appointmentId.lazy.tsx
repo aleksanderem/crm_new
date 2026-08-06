@@ -261,6 +261,7 @@ function AppointmentDetail() {
   const [editTreatmentId, setEditTreatmentId] = useState("");
   const [treatmentPickerOpen, setTreatmentPickerOpen] = useState(false);
   const [treatmentSearch, setTreatmentSearch] = useState("");
+  const [isSavingTreatment, setIsSavingTreatment] = useState(false);
 
   const { tags: tagDefinitions } = useTagDefinitions(organizationId);
 
@@ -1055,6 +1056,25 @@ function AppointmentDetail() {
     }
   };
 
+  const handleSaveTreatment = async (newTreatmentId: string) => {
+    if (!newTreatmentId) return;
+    setIsSavingTreatment(true);
+    try {
+      await updateAppointment({
+        organizationId,
+        appointmentId: appointment._id,
+        treatmentId: newTreatmentId,
+      });
+      toast.success(t("common.saved"));
+      refetch();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
+    } finally {
+      setIsSavingTreatment(false);
+    }
+  };
+
   const handleMarkPaid = async (paymentId: string) => {
     try {
       await markPaymentPaid({
@@ -1323,32 +1343,41 @@ function AppointmentDetail() {
                   <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                     {t("common.name")}
                   </Label>
-                  <TreatmentPicker
-                    treatments={treatmentsList}
-                    value={editTreatmentId}
-                    onSelect={(id) => {
-                      setEditTreatmentId(id);
-                      setTreatmentPickerOpen(false);
-                      setTreatmentSearch("");
-                    }}
-                    open={treatmentPickerOpen}
-                    onOpenChange={setTreatmentPickerOpen}
-                    search={treatmentSearch}
-                    onSearchChange={setTreatmentSearch}
-                    formatPrice={(price, currency) =>
-                      formatCurrencyPLN(price ?? 0, currency ?? "PLN")
-                    }
-                    placeholder={t("gabinet.appointments.selectTreatment")}
-                    searchPlaceholder={t(
-                      "gabinet.appointments.searchTreatment",
-                    )}
-                    emptyText={t("common.noResults")}
-                    closeLabel={t("common.close")}
-                    selectedLabel={treatment?.name}
-                    triggerIcon={
+                  {canEdit ? (
+                    <TreatmentPicker
+                      treatments={treatmentsList}
+                      value={editTreatmentId}
+                      onSelect={(id) => {
+                        setEditTreatmentId(id);
+                        setTreatmentPickerOpen(false);
+                        setTreatmentSearch("");
+                        void handleSaveTreatment(id);
+                      }}
+                      open={treatmentPickerOpen}
+                      onOpenChange={setTreatmentPickerOpen}
+                      search={treatmentSearch}
+                      onSearchChange={setTreatmentSearch}
+                      formatPrice={(price, currency) =>
+                        formatCurrencyPLN(price ?? 0, currency ?? "PLN")
+                      }
+                      placeholder={t("gabinet.appointments.selectTreatment")}
+                      searchPlaceholder={t(
+                        "gabinet.appointments.searchTreatment",
+                      )}
+                      emptyText={t("common.noResults")}
+                      closeLabel={t("common.close")}
+                      selectedLabel={treatment?.name}
+                      triggerIcon={
+                        <Stethoscope className="size-4 shrink-0 text-primary" />
+                      }
+                      disabled={isSavingTreatment}
+                    />
+                  ) : (
+                    <span className="flex items-center gap-2 text-sm font-medium">
                       <Stethoscope className="size-4 shrink-0 text-primary" />
-                    }
-                  />
+                      {treatment?.name ?? "-"}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">

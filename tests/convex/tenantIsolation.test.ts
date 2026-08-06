@@ -172,7 +172,7 @@ describe("tenant isolation — leads", () => {
     const { organizationId: orgBId } = await seedOrgB(t);
 
     await expect(
-      t.withIdentity(identityA).query(api.leads.list, {
+      t.withIdentity(identityA).action(api.leads.list, {
         organizationId: orgBId,
         paginationOpts: PAGINATION,
       }),

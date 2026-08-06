@@ -13,51 +13,44 @@ import { Id } from "./_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for lead writes
 
-export const list = query({
+export const list = action({
   args: {
     organizationId: v.id("organizations"),
     paginationOpts: paginationOptsValidator,
     status: v.optional(leadStatusValidator),
   },
   handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "leads",
-      "view",
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
     );
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "leads", action: "view" },
+    ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
-    const isOwn = perm.scope === "own";
-    const ownFilter = (r: any) =>
-      r.createdBy === user._id || r.assignedTo === user._id;
+    const db = createSupabaseDb();
+    let q = db
+      .query<{ createdBy: string; assignedTo: string | null }>("leads")
+      .eq("organizationId", String(args.organizationId));
+    if (args.status) q = q.eq("status", args.status);
 
-    if (args.status) {
-      const result = await ctx.db
-        .query("leads")
-        .withIndex("by_orgAndStatus", (q) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("status", args.status!),
-        )
-        .order("desc")
-        .paginate(args.paginationOpts);
-      if (isOwn) {
-        return { ...result, page: result.page.filter(ownFilter) };
-      }
-      return result;
-    }
+    const rows = await q
+      .order("createdAt", false)
+      .take(args.paginationOpts.numItems)
+      .collect();
 
-    const result = await ctx.db
-      .query("leads")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .order("desc")
-      .paginate(args.paginationOpts);
-    if (isOwn) {
-      return { ...result, page: result.page.filter(ownFilter) };
-    }
-    return result;
+    const page =
+      perm.scope === "own"
+        ? rows.filter(
+            (r) =>
+              r.createdBy === String(authResult.userId) ||
+              r.assignedTo === String(authResult.userId),
+          )
+        : rows;
+
+    return { page, isDone: true, continueCursor: "" };
   },
 });
 

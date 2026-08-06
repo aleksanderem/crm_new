@@ -22,7 +22,7 @@
  */
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 
 const CONVEX_DIR = "convex";
 
@@ -147,18 +147,69 @@ function relToModuleKey(relPath) {
 // ---------------------------------------------------------------------------
 // GET_PENDING — files with known ctx.db.get violations on TABLE_MAP tables
 // that are pending migration to the Supabase read path.
-// ctx.db.get detection only fires for explicit `as Id<"tableName">` casts —
-// the table name is otherwise encoded in the TypeScript type and not visible
-// to a regex scan.  These files are fully exempt from get detection.
-// Tracked: issue #3968.  Remove entries one-by-one as files are migrated.
+// Both the regex scan (for explicit `as Id<"tableName">` casts) and the
+// TypeScript type-checker scan (see findUntypedGetViolationsViaTypeChecker)
+// skip files listed here.  Remove entries one-by-one as files are migrated.
+// Tracked: issue #4021 (type-checker extension), issue #3968 (original gate).
 // ---------------------------------------------------------------------------
 const GET_PENDING = new Set([
-  // documentInstances.ts — ctx.db.get on users for reviewer lookup.
+  // documentInstances.ts — ctx.db.get(args.id) on documentInstances and
+  // ctx.db.get(templateId) on documentTemplates; args.id: Id<"documentInstances">.
   "documentInstances",
-  // documentTemplateFields.ts — ctx.db.get on documentTemplates.
-  "documentTemplateFields",
-  // gabinet/employees.ts — ctx.db.get on users for employee user lookup.
+
+  // gabinet/employees.ts — ctx.db.get(args.userId as Id<"users">) for employee
+  // user lookup; one explicit-cast call remaining at line 971.
   "gabinet/employees",
+
+  // --- Violations newly detected by the TypeScript type-checker (issue #4021) ---
+  // These files were invisible to the regex scan because the table name is
+  // encoded only in the TypeScript type, not in an explicit `as Id<"...">` cast.
+  // Migrate each file to use createSupabaseDb() and remove its entry here.
+
+  // _helpers/activities.ts — ctx.db.get(args.performedBy) where performedBy: Id<"users">.
+  "_helpers/activities",
+
+  // activities.ts — ctx.db.get(activity.performedBy) where performedBy: Id<"users">
+  // inferred from the activities schema.
+  "activities",
+
+  // app.ts — ctx.db.get(userId) where userId: Id<"users"> from auth.getUserId(ctx).
+  "app",
+
+  // documentTemplates.ts — ctx.db.get(args.id) where id: v.id("documentTemplates").
+  "documentTemplates",
+
+  // emails.ts — ctx.db.get(args.emailId) where emailId: v.id("emails").
+  "emails",
+
+  // gabinet/_availability.ts — ctx.db.get(eqId) where eqId: Id<"gabinetEquipment">
+  // and ctx.db.get(equipment.currentLocationId) where currentLocationId: Id<"gabinetLocations">.
+  "gabinet/_availability",
+
+  // gabinet/appointments.ts — ctx.db.get(args.appointment._id) where
+  // _id: Id<"gabinetAppointments">. Intentional migration compatibility read
+  // (patches Convex if the record still exists there during Supabase-primary transition).
+  "gabinet/appointments",
+
+  // gabinet/equipment.ts — ctx.db.get(args.equipmentId) where
+  // equipmentId: v.id("gabinetEquipment").
+  "gabinet/equipment",
+
+  // gabinet/packages.ts — ctx.db.get(args.packageId as Id<"gabinetTreatmentPackages">)
+  // where the cast spans two lines (also a multiline regex gap — the existing
+  // pattern 4 regex requires the cast to be on the same line as ctx.db.get().
+  "gabinet/packages",
+
+  // payments.ts — ctx.db.get(m.userId) where m.userId: Id<"users"> (from
+  // teamMemberships document; used to fetch email for admin notification).
+  "payments",
+
+  // resourceInvites.ts — ctx.db.get(args.organizationId) where
+  // organizationId: v.id("organizations").
+  "resourceInvites",
+
+  // stripe.ts — ctx.db.get(args.userId) where userId: v.id("users").
+  "stripe",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -359,67 +410,271 @@ function walk(dir, out = []) {
 }
 
 // ---------------------------------------------------------------------------
-// Main
+// TypeScript type-checker scan — catches ctx.db.get(id) calls where the table
+// name is encoded only in the TypeScript type (no explicit `as Id<"...">`cast).
+//
+// Requires the `typescript` package to be installed (it is a devDependency).
+// Falls back gracefully when TypeScript is unavailable (fresh worktree without
+// npm ci), so the regex scan still runs in that case.
+//
+// Files in GET_PENDING are skipped by this scan too (same exemption list).
 // ---------------------------------------------------------------------------
-const tableMapKeys = extractTableMapKeys();
 
-if (tableMapKeys.size === 0) {
-  console.error(
-    "convex-db-reads-gate: could not extract TABLE_MAP keys from convex/_helpers/supabaseDb.ts",
-  );
-  process.exit(1);
+function collectCtxDbAliases(node, aliases, ts) {
+  if (
+    ts.isVariableDeclaration(node) &&
+    ts.isObjectBindingPattern(node.name) &&
+    node.initializer &&
+    ts.isIdentifier(node.initializer) &&
+    node.initializer.text === "ctx"
+  ) {
+    for (const element of node.name.elements) {
+      if (ts.isBindingElement(element)) {
+        const propName = element.propertyName ?? element.name;
+        if (ts.isIdentifier(propName) && propName.text === "db") {
+          if (ts.isIdentifier(element.name)) {
+            aliases.add(element.name.text);
+          }
+        }
+      }
+    }
+  }
+  ts.forEachChild(node, (child) => collectCtxDbAliases(child, aliases, ts));
 }
 
-const allFiles = walk(CONVEX_DIR);
-const allViolations = [];
-let scanned = 0;
+function tableNameFromIdTypeString(typeStr) {
+  // Match Id<"table">, GenericId<"table">, or import("...").Id<"table"> etc.
+  const m = /(?:\bId|\bGenericId)<["'](\w+)["']>$/.exec(typeStr);
+  return m ? m[1] : null;
+}
 
-for (const file of allFiles) {
-  const relPath = relative(CONVEX_DIR, file);
-  if (shouldSkipFile(relPath)) continue;
+function visitForGetCalls(
+  node,
+  checker,
+  tableMapKeys,
+  aliases,
+  violations,
+  sourceFile,
+  ts,
+) {
+  if (ts.isCallExpression(node)) {
+    const expr = node.expression;
+    if (ts.isPropertyAccessExpression(expr) && expr.name.text === "get") {
+      const obj = expr.expression;
+      let isCtxDbGet = false;
 
-  const moduleKey = relToModuleKey(relPath);
-  if (WHITELIST_PATHS.has(moduleKey)) continue;
+      // ctx.db.get(...)
+      if (
+        ts.isPropertyAccessExpression(obj) &&
+        obj.name.text === "db" &&
+        ts.isIdentifier(obj.expression) &&
+        obj.expression.text === "ctx"
+      ) {
+        isCtxDbGet = true;
+      }
 
-  scanned++;
-  const content = readFileSync(file, "utf8");
-  const violations = findViolations(content, tableMapKeys, {
-    detectMultiline: !MULTILINE_PENDING.has(moduleKey),
-    detectGet: !GET_PENDING.has(moduleKey),
+      // alias.get(...) where alias was destructured from ctx as db
+      if (!isCtxDbGet && ts.isIdentifier(obj) && aliases.has(obj.text)) {
+        isCtxDbGet = true;
+      }
+
+      if (isCtxDbGet && node.arguments.length > 0) {
+        const arg = node.arguments[0];
+        try {
+          const argType = checker.getTypeAtLocation(arg);
+          const typeStr = checker.typeToString(argType);
+          const tableName = tableNameFromIdTypeString(typeStr);
+          if (tableName && tableMapKeys.has(tableName)) {
+            const { line } =
+              sourceFile.getLineAndCharacterOfPosition(node.getStart());
+            violations.push({
+              lineNum: line + 1,
+              text: sourceFile.text.split("\n")[line].trim(),
+              tableName,
+            });
+          }
+        } catch {
+          // Type resolution failed for this node — skip.
+        }
+      }
+    }
+  }
+  ts.forEachChild(node, (child) =>
+    visitForGetCalls(
+      child,
+      checker,
+      tableMapKeys,
+      aliases,
+      violations,
+      sourceFile,
+      ts,
+    ),
+  );
+}
+
+async function findUntypedGetViolationsViaTypeChecker(tableMapKeys) {
+  // Dynamically import TypeScript — devDependency, not always installed in
+  // fresh worktrees without npm ci.  Return null to signal skip to caller.
+  let ts;
+  try {
+    const mod = await import("typescript");
+    ts = mod.default ?? mod;
+  } catch {
+    return null;
+  }
+
+  const convexAbsDir = resolve(CONVEX_DIR);
+  const configPath = join(convexAbsDir, "tsconfig.json");
+
+  const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
+  if (configFile.error) return null;
+
+  const parsedConfig = ts.parseJsonConfigFileContent(
+    configFile.config,
+    ts.sys,
+    convexAbsDir,
+  );
+
+  const program = ts.createProgram(parsedConfig.fileNames, {
+    ...parsedConfig.options,
+    noEmit: true,
   });
+  const checker = program.getTypeChecker();
+  const results = [];
 
-  if (violations.length > 0) {
-    allViolations.push({ file: relPath, violations });
+  for (const sourceFile of program.getSourceFiles()) {
+    if (sourceFile.isDeclarationFile) continue;
+
+    const filePath = sourceFile.fileName;
+    const slashDir = convexAbsDir.split(sep).join("/");
+    if (
+      !filePath.startsWith(slashDir + "/") &&
+      !filePath.startsWith(convexAbsDir + sep)
+    )
+      continue;
+
+    const relPath = relative(convexAbsDir, filePath).split("/").join(sep);
+    if (shouldSkipFile(relPath)) continue;
+
+    const moduleKey = relToModuleKey(relPath);
+    if (WHITELIST_PATHS.has(moduleKey)) continue;
+    if (GET_PENDING.has(moduleKey)) continue;
+
+    // Two-pass: collect ctx.db aliases first, then check get calls.
+    const aliases = new Set();
+    collectCtxDbAliases(sourceFile, aliases, ts);
+
+    const violations = [];
+    visitForGetCalls(
+      sourceFile,
+      checker,
+      tableMapKeys,
+      aliases,
+      violations,
+      sourceFile,
+      ts,
+    );
+
+    if (violations.length > 0) {
+      results.push({ file: relPath, violations });
+    }
   }
+
+  return results;
 }
 
 // ---------------------------------------------------------------------------
-// Output
+// Main (async to support dynamic TypeScript import for type-checker scan)
 // ---------------------------------------------------------------------------
-if (allViolations.length === 0) {
-  console.log(
-    `✓ convex-db-reads-gate: no ctx.db.query / ctx.db.get reads on TABLE_MAP tables detected` +
-      ` (${scanned} files scanned, ${tableMapKeys.size} TABLE_MAP tables tracked).`,
+async function main() {
+  const tableMapKeys = extractTableMapKeys();
+
+  if (tableMapKeys.size === 0) {
+    console.error(
+      "convex-db-reads-gate: could not extract TABLE_MAP keys from convex/_helpers/supabaseDb.ts",
+    );
+    process.exit(1);
+  }
+
+  const allFiles = walk(CONVEX_DIR);
+  const allViolations = [];
+  let scanned = 0;
+
+  for (const file of allFiles) {
+    const relPath = relative(CONVEX_DIR, file);
+    if (shouldSkipFile(relPath)) continue;
+
+    const moduleKey = relToModuleKey(relPath);
+    if (WHITELIST_PATHS.has(moduleKey)) continue;
+
+    scanned++;
+    const content = readFileSync(file, "utf8");
+    const violations = findViolations(content, tableMapKeys, {
+      detectMultiline: !MULTILINE_PENDING.has(moduleKey),
+      detectGet: !GET_PENDING.has(moduleKey),
+    });
+
+    if (violations.length > 0) {
+      allViolations.push({ file: relPath, violations });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Supplementary type-checker scan: catches ctx.db.get(id) calls where the
+  // table name is only in the TypeScript type, not in an explicit cast.
+  // Results are merged with the regex violations; duplicates (same file+line)
+  // are deduplicated so explicit-cast calls are not reported twice.
+  // ---------------------------------------------------------------------------
+  const tcViolations =
+    await findUntypedGetViolationsViaTypeChecker(tableMapKeys);
+
+  if (tcViolations === null) {
+    console.warn(
+      "convex-db-reads-gate: TypeScript not available — untyped ctx.db.get scan skipped." +
+        " Run `npm ci` to enable the full check.",
+    );
+  } else {
+    for (const { file, violations } of tcViolations) {
+      const existing = allViolations.find((v) => v.file === file);
+      if (existing) {
+        for (const v of violations) {
+          if (!existing.violations.some((ev) => ev.lineNum === v.lineNum)) {
+            existing.violations.push(v);
+          }
+        }
+      } else {
+        allViolations.push({ file, violations });
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Output
+  // ---------------------------------------------------------------------------
+  if (allViolations.length === 0) {
+    console.log(
+      `✓ convex-db-reads-gate: no ctx.db.query / ctx.db.get reads on TABLE_MAP tables detected` +
+        ` (${scanned} files scanned, ${tableMapKeys.size} TABLE_MAP tables tracked).`,
+    );
+    process.exit(0);
+  }
+
+  const totalViolations = allViolations.reduce(
+    (n, f) => n + f.violations.length,
+    0,
   );
-  process.exit(0);
-}
+  console.error(
+    `\nconvex-db-reads-gate: ${totalViolations} forbidden ctx.db read(s) on TABLE_MAP tables.\n`,
+  );
 
-const totalViolations = allViolations.reduce(
-  (n, f) => n + f.violations.length,
-  0,
-);
-console.error(
-  `\nconvex-db-reads-gate: ${totalViolations} forbidden ctx.db read(s) on TABLE_MAP tables.\n`,
-);
-
-for (const { file, violations } of allViolations) {
-  for (const v of violations) {
-    console.error(`  convex/${file}:${v.lineNum}  — table: "${v.tableName}"`);
-    console.error(`    ${v.text}`);
+  for (const { file, violations } of allViolations) {
+    for (const v of violations) {
+      console.error(`  convex/${file}:${v.lineNum}  — table: "${v.tableName}"`);
+      console.error(`    ${v.text}`);
+    }
   }
-}
 
-console.error(`
+  console.error(`
 TABLE_MAP tables live in Supabase. Reading them via ctx.db.query or ctx.db.get
 (directly or via destructuring) hits the Convex document store which is stale
 or empty post-migration, and bypasses Supabase RLS.
@@ -429,17 +684,25 @@ Correct read paths:
   Convex functions: createSupabaseDb() service client
                     (see convex/_helpers/supabaseDb.ts)
 
-Note: ctx.db.get detection only fires for explicit \`as Id<"tableName">\` casts.
-Untyped ctx.db.get(id) calls where the table is encoded only in the TypeScript
-type are not detectable by this gate — prefer explicit casts when reading
-TABLE_MAP tables so violations are visible here.
+ctx.db.get detection uses two complementary approaches:
+  Regex scan: catches explicit \`as Id<"tableName">\` casts and same-line patterns.
+  Type-checker scan: catches all ctx.db.get(id) calls where id's TypeScript type
+    is Id<"tableName"> for any TABLE_MAP table, even without an explicit cast.
+    Requires the typescript devDependency to be installed (npm ci).
 
 To add a legitimate exemption (backfill script, seed utility, migration helper,
 dev tool), add the module path (relative to convex/, no .ts extension) to
 WHITELIST_PATHS in scripts/check-convex-db-reads.mjs with a comment explaining
 why the Convex read is intentional.
 
-See issue #3846 (query gate) and issue #3968 (get gate) for context.
+See issue #3846 (query gate), issue #3968 (get gate), issue #4021 (type-checker
+extension) for context.
 `);
 
-process.exit(1);
+  process.exit(1);
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

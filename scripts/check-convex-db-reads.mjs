@@ -165,7 +165,6 @@ const MULTILINE_PENDING = new Set([
   "documents/templates",
   "emailEventTrigger",
   "emailEvents",
-  "emailSequences",
   "emails",
   "emails_internal",
   "gabinet/_availability",

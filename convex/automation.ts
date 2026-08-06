@@ -356,12 +356,16 @@ async function getAutomationEditPermission(
     };
   }
 
-  const db = createSupabaseDb();
-
-  const membership = await db
+  // teamMemberships and orgPermissions are dual-written to Convex
+  // (_writeOrgPermissionsToConvex, ctx.db.insert in teams/invitations).
+  // ctx.db reads are the permanent pattern for mutation callers — identical
+  // to checkPermission in _helpers/permissions.ts. Do NOT replace with
+  // createSupabaseDb(): mutations cannot use fetch in the Convex runtime.
+  const membership = await ctx.db
     .query("teamMemberships")
-    .eq("organizationId", String(organizationId))
-    .eq("userId", String(actorUserId))
+    .withIndex("by_orgAndUser", (q) =>
+      q.eq("organizationId", organizationId).eq("userId", actorUserId),
+    )
     .unique();
 
   if (!membership) {
@@ -386,11 +390,12 @@ async function getAutomationEditPermission(
     };
   }
 
-  // Org-level permission override (reads from Supabase, TABLE_MAP primary)
-  const override = await db
+  // orgPermissions is kept in sync via dual-write; ctx.db is permanent here.
+  const override = await ctx.db
     .query("orgPermissions")
-    .eq("organizationId", String(organizationId))
-    .eq("role", role)
+    .withIndex("by_orgAndRole", (q) =>
+      q.eq("organizationId", organizationId).eq("role", role),
+    )
     .unique();
 
   let orgScope: Scope;

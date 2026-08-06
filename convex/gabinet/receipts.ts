@@ -356,6 +356,28 @@ export const _storePdfAndCreateReceipt = internalAction({
     createdBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    // Idempotency guard: if a receipt already exists for this payment do not
+    // consume another sequence number. This prevents gaps when
+    // generatePdfReceipt retries after a partial _storePdfAndCreateReceipt
+    // failure — the outer idempotency check would pass (no committed row) but
+    // this inner check catches the same case right before the counter is
+    // incremented (#3791).
+    const dbCheck = createSupabaseDb();
+    const clientCheck = dbCheck.raw();
+    const { data: existingReceipt } = await clientCheck
+      .from("gabinet_receipts")
+      .select("id, pdf_url, receipt_number")
+      .eq("payment_id", args.paymentId)
+      .limit(1)
+      .maybeSingle();
+    if (existingReceipt) {
+      return {
+        receiptId: existingReceipt.id as string,
+        pdfUrl: (existingReceipt.pdf_url as string | null) ?? "",
+        receiptNumber: existingReceipt.receipt_number as string,
+      };
+    }
+
     // Increment the sequence and generate the PDF in one action so that a
     // failure in either step does not leave a consumed sequence number without
     // a corresponding receipt row (the gap described in #3790).

@@ -200,11 +200,9 @@ describe("verifyPortalOtp", () => {
 
     const knownOtp = "654321";
     const knownOtpHash = sha256Sync(knownOtp);
-    const knownToken = "test-token-aaaabbbb-cccc-dddd-eeee-ffffffffffff";
     const now = Date.now();
 
     await seedPortalSession(String(patientId), String(organizationId), {
-      tokenHash: knownToken,
       otpHash: knownOtpHash,
       otpExpiresAt: now + 10 * 60 * 1000,
     });
@@ -216,8 +214,19 @@ describe("verifyPortalOtp", () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.sessionToken).toBe(knownToken);
+      // verifyPortalOtp generates a fresh random token on each success (#3824);
+      // the seeded tokenHash is overwritten — we can only assert it's non-empty.
+      expect(result.sessionToken).toBeTruthy();
       expect(result.patientId).toBe(patientId);
+
+      // Confirm the returned token's hash was persisted and the session is active.
+      const db = createSupabaseDb();
+      const stored = await db
+        .query("gabinetPortalSessions")
+        .eq("tokenHash", sha256Sync(result.sessionToken))
+        .first();
+      expect(stored).not.toBeNull();
+      expect(stored!.isActive).toBe(true);
     }
   });
 

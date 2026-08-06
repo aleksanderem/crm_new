@@ -221,29 +221,32 @@ export const _updateOrgInternal = internalMutation({
   },
 });
 
-export const getMembers = query({
+export const getMembers = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const memberships = await ctx.db
+    const db = createSupabaseDb();
+    const memberships = await db
       .query("teamMemberships")
-      .withIndex("by_organizationId", (q) =>
-        q.eq("organizationId", args.organizationId)
-      )
+      .eq("organizationId", String(args.organizationId))
       .collect();
 
-    return await Promise.all(
-      memberships.map(async (m) => {
-        const user = await ctx.db.get(m.userId);
-        return {
-          ...m,
-          user: user
-            ? { _id: user._id, name: user.name, email: user.email, image: user.image }
-            : null,
-        };
-      })
-    );
+    const userIds = [...new Set(memberships.map((m) => String(m.userId)))];
+    const users = await db.getMany("users", userIds);
+    const userById = new Map(users.map((u) => [String(u._id), u]));
+
+    return memberships.map((m) => {
+      const user = userById.get(String(m.userId));
+      return {
+        ...m,
+        user: user
+          ? { _id: String(user._id), name: (user.name as string | null) ?? null, email: (user.email as string | null) ?? null, image: (user.image as string | null) ?? null }
+          : null,
+      };
+    });
   },
 });
 

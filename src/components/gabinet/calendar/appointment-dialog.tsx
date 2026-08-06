@@ -8,7 +8,6 @@ import {
 } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
@@ -96,7 +95,7 @@ import { TreatmentPicker } from "@/components/gabinet/appointment-shared/treatme
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
-import { useSupabaseOrgSettings } from "@/hooks/use-supabase-organizations";
+import { useSupabaseOrgSettings, useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
 import { formatPhoneNumber } from "@/lib/phone";
 
 // ---------------------------------------------------------------------------
@@ -238,9 +237,7 @@ export function AppointmentDialog({
     enabled: !!organizationId,
   }) as { data: any[] | undefined };
 
-  const { data: members } = useQuery(
-    convexQuery(api.organizations.getMembers, { organizationId }),
-  );
+  const { data: members } = useSupabaseOrganizationMembers(String(organizationId));
 
   const listLocationsAction = useAction(api.gabinet.locations.listLocations);
   const { data: locations } = useQuery({

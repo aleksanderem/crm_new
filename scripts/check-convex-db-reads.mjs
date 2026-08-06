@@ -91,6 +91,14 @@ const WHITELIST_PATHS = new Set([
   // the primary read path for the bell and notification page stays on Convex.
   // Resolved via issue #3904 (option A).
   "notifications",
+
+  // permissions — _writeOrgPermissionsToConvex (internalMutation) dual-writes
+  // orgPermissions to ctx.db so that _helpers/permissions.ts (QueryCtx) can
+  // read them via ctx.db. Convex queries cannot make HTTP calls, so
+  // createSupabaseDb() is permanently unavailable in QueryCtx. This dual-write
+  // is NOT a migration backlog item; it is a permanent architectural necessity.
+  // See convex/permissions.ts lines 68-73 for the inline rationale.
+  "permissions",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -173,7 +181,6 @@ const MULTILINE_PENDING = new Set([
   "notes",
   "organizations",
   "payments",
-  "permissions",
   "pipelineStageActions",
   "relationships",
   "signatureRequests",

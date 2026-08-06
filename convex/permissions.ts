@@ -62,7 +62,12 @@ export const getOrgPermissionOverrides = query({
   },
 });
 
-// orgPermissions is an AUTH table — stays as mutation in Convex DB
+// orgPermissions is in TABLE_MAP (Supabase-owned). The ctx.db reads in
+// getOrgPermissionOverrides and _helpers/permissions.ts are intentional:
+// QueryCtx and MutationCtx cannot make HTTP calls, so createSupabaseDb() is
+// unavailable. Migrating to the Supabase read/write path requires converting
+// these to actions (see _helpers/auth.ts → authAction.ts as prior art).
+// The ctx.db writes below are a known gap — tracked: issue #3884.
 export const updateOrgPermissions = mutation({
   args: {
     organizationId: v.id("organizations"),

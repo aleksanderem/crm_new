@@ -442,21 +442,6 @@ export const automationGraphValidator = v.object({
 });
 export type AutomationGraph = Infer<typeof automationGraphValidator>;
 
-export const automationRunStatusValidator = v.union(
-  v.literal("pending"),
-  v.literal("processed"),
-  v.literal("failed"),
-  v.literal("skipped"),
-);
-export type AutomationRunStatus = Infer<typeof automationRunStatusValidator>;
-
-export const automationStepStatusValidator = v.union(
-  v.literal("pending"),
-  v.literal("processed"),
-  v.literal("failed"),
-  v.literal("skipped"),
-);
-export type AutomationStepStatus = Infer<typeof automationStepStatusValidator>;
 
 export const gabinetPackageUsageStatusValidator = v.union(
   v.literal("active"),
@@ -550,8 +535,6 @@ const automationTables = createAutomationTables({
   automationGraphValidator,
   automationConditionValidator,
   automationRuleActionValidator,
-  automationRunStatusValidator,
-  automationStepStatusValidator,
 });
 
 // --- Tag & Category Definitions (org-wide tags, per-entity-type categories) ---

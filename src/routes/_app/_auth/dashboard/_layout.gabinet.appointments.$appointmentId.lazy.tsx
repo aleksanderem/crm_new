@@ -15,7 +15,7 @@ import { formatCurrencyPLN } from "@/lib/format-currency";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
 import { useSupabaseGabinetEquipmentList } from "@/hooks/use-supabase-gabinet-equipment";
 import { useSupabaseGabinetSameDayAppointments } from "@/hooks/use-supabase-gabinet-appointments";
-import { useSupabaseOrgSettings } from "@/hooks/use-supabase-organizations";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -409,10 +409,6 @@ function AppointmentDetail() {
     }),
   );
 
-  const { data: orgSettings } = useSupabaseOrgSettings(
-    organizationId as string,
-  );
-
   // Same-day appointments for the same patient — used to warn staff that more
   // Other same-day appointments for the same patient — shown in the settlement
   // dialog so staff can batch-settle multiple visits at once (issue #3578).
@@ -492,11 +488,6 @@ function AppointmentDetail() {
           ? String(appt.treatmentId)
           : "",
     );
-    setEditDate((appt.date as string) ?? "");
-    setEditStartTime(((appt.startTime as string) ?? "").slice(0, 5));
-    setEditEndTime(((appt.endTime as string) ?? "").slice(0, 5));
-    setEditLocationId(appt.locationId ? String(appt.locationId) : "");
-    setEditRoomId(appt.roomId ? String(appt.roomId) : "");
   }, [detail]);
 
   // Initialize tagIds from appointment data
@@ -505,42 +496,6 @@ function AppointmentDetail() {
       (detail?.appointment.tagIds as Id<"tagDefinitions">[] | undefined) ?? [],
     );
   }, [detail?.appointment._id, detail?.appointment.tagIds]);
-
-  // Seed reminder toggles from per-appointment overrides (falling back to org defaults).
-  // Uses a ref guard so user edits are not overwritten by query refetches.
-  const reminderInitRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!detail || !orgSettings) return;
-    if (reminderInitRef.current === detail.appointment._id) return;
-    reminderInitRef.current = detail.appointment._id;
-    const appt = detail.appointment as Record<string, unknown>;
-    let overrides: Record<string, boolean> = {};
-    if (appt.reminderOverrides) {
-      try {
-        overrides = JSON.parse(String(appt.reminderOverrides));
-      } catch {}
-    }
-    setEditReminderSms48h(
-      "sms48h" in overrides
-        ? overrides.sms48h
-        : (orgSettings.reminderSms48h ?? false),
-    );
-    setEditReminderSms24h(
-      "sms24h" in overrides
-        ? overrides.sms24h
-        : (orgSettings.reminderSms24h ?? false),
-    );
-    setEditReminderEmail48h(
-      "email48h" in overrides
-        ? overrides.email48h
-        : (orgSettings.reminderEmail48h ?? false),
-    );
-    setEditReminderEmail24h(
-      "email24h" in overrides
-        ? overrides.email24h
-        : (orgSettings.reminderEmail24h ?? false),
-    );
-  }, [detail, orgSettings]);
 
   // Track recently viewed
   useEffect(() => {
@@ -634,9 +589,9 @@ function AppointmentDetail() {
   const sidebarExtra = (() => {
     if (!detail) return null;
     const {
-      appointment: appt,
+      appointment: _appt,
       patient: pat,
-      treatment: treat,
+      treatment: _treat,
       employee: emp,
       patientPackageUsage: pkgUsage,
       loyaltyBalance: loyBal,
@@ -920,10 +875,6 @@ function AppointmentDetail() {
 
   const formatTime = (time: string) => {
     return time.slice(0, 5);
-  };
-
-  const formatDateTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleString(i18n.language);
   };
 
   const getEmployeeName = () => {

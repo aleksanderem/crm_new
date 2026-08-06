@@ -157,7 +157,6 @@ function EmployeeDetail() {
   const [activityDrawerOpen, setActivityDrawerOpen] = useState(false);
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [treatmentSearch, setTreatmentSearch] = useState("");
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -314,15 +313,6 @@ function EmployeeDetail() {
     return map;
   }, [treatments]);
 
-  const availableTreatments = useMemo(() => {
-    if (!treatments || !employee) return [];
-    const assignedSet = new Set(employee.qualifiedTreatmentIds);
-    const filtered = treatments.filter((tr) => !assignedSet.has(tr._id));
-    if (!treatmentSearch) return filtered;
-    const q = treatmentSearch.toLowerCase();
-    return filtered.filter((tr) => tr.name.toLowerCase().includes(q));
-  }, [treatments, employee, treatmentSearch]);
-
   // Feature 1: Calendar week dates and filtered appointments
   const calendarWeekDates = useMemo(() => {
     const d = new Date(calendarWeekStart + "T00:00:00");
@@ -444,29 +434,6 @@ function EmployeeDetail() {
     } finally {
       setChangePasswordSubmitting(false);
     }
-  };
-
-  const handleAddTreatment = async (treatmentId: string) => {
-    if (!employee) return;
-    const updated = [...employee.qualifiedTreatmentIds, treatmentId] as Id<"gabinetTreatments">[];
-    await setQualifiedTreatments({
-      organizationId,
-      employeeId: employeeId as Id<"gabinetEmployees">,
-      treatmentIds: updated,
-    });
-    invalidateEmployeeCache();
-    setTreatmentSearch("");
-  };
-
-  const handleRemoveTreatment = async (treatmentId: string) => {
-    if (!employee) return;
-    const updated = employee.qualifiedTreatmentIds.filter((id) => id !== treatmentId);
-    await setQualifiedTreatments({
-      organizationId,
-      employeeId: employeeId as Id<"gabinetEmployees">,
-      treatmentIds: updated as Id<"gabinetTreatments">[],
-    });
-    invalidateEmployeeCache();
   };
 
   const handleUpdateActivity = async (data: {

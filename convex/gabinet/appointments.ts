@@ -1372,9 +1372,6 @@ export const create = action({
         totalPriceAtBooking = (totalPriceAtBooking ?? 0) + tPrice;
       }
     }
-    // Backward-compat: single-treatment price resolves as before.
-    const priceAtBooking = totalPriceAtBooking;
-
     // --- INSERT first appointment directly to Supabase ---
     const baseRow: Record<string, unknown> = {
       organizationId: String(args.organizationId),

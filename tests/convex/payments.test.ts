@@ -571,6 +571,56 @@ describe("payments", () => {
         }),
       ).rejects.toThrow("Split methods must differ");
     });
+
+    test("refunding primary split leg also refunds the secondary leg (#3772)", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity } = await seedTestUser(t);
+
+      const paymentId = await t.withIdentity(identity).action(
+        api.payments.create,
+        {
+          organizationId,
+          amount: 100,
+          currency: "PLN",
+          paymentMethod: "cash",
+          status: "pending",
+        },
+      );
+
+      const { firstPaymentId, secondPaymentId } = await t
+        .withIdentity(identity)
+        .action(api.payments.splitMarkPaid, {
+          organizationId,
+          paymentId,
+          firstMethod: "cash",
+          firstAmount: 60,
+          secondMethod: "card",
+          secondAmount: 40,
+        });
+
+      // Refund the primary (cash) leg only.
+      await t.withIdentity(identity).action(api.payments.refund, {
+        organizationId,
+        paymentId: firstPaymentId,
+        reason: "Patient request",
+      });
+
+      // Yield so the scheduled _createReceiptRowForPayment mutation can run.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const all = await t.withIdentity(identity).action(api.payments.list, {
+        organizationId,
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+
+      const primary = all.page.find((p: any) => p._id === firstPaymentId);
+      const secondary = all.page.find((p: any) => p._id === secondPaymentId);
+
+      expect(primary?.status).toBe("refunded");
+      // Secondary leg must also be refunded — a split receipt void covers the
+      // full transaction, so leaving the secondary as "completed" is inconsistent.
+      expect(secondary?.status).toBe("refunded");
+    });
   });
 
   // Inline approve/reject for refund authorization requests (#1722) ---------

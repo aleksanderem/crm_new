@@ -249,6 +249,12 @@ class InMemoryRawQuery {
     return this;
   }
 
+  neq(field: string, value: unknown) {
+    const camelField = snakeToCamel(field);
+    this.filters.push((r) => r[camelField] !== value);
+    return this;
+  }
+
   not(field: string, op: string, value: unknown) {
     const camelField = snakeToCamel(field);
     this.filters.push((r) => {
@@ -257,6 +263,23 @@ class InMemoryRawQuery {
       }
       return r[camelField] !== value;
     });
+    return this;
+  }
+
+  like(field: string, pattern: string) {
+    const camelField = snakeToCamel(field);
+    const regexStr = pattern
+      .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+      .replace(/%/g, ".*")
+      .replace(/_/g, ".");
+    const re = new RegExp(`^${regexStr}$`);
+    this.filters.push(
+      (r) => typeof r[camelField] === "string" && re.test(r[camelField] as string),
+    );
+    return this;
+  }
+
+  limit(_n: number) {
     return this;
   }
 

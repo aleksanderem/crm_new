@@ -608,7 +608,7 @@ export const _createReceiptRowForPayment = internalMutation({
     // Skip if a receipt already exists for this payment (normal path).
     const { data: existing } = await client
       .from("gabinet_receipts")
-      .select("id, status")
+      .select("id, status, payment_method, total_gross")
       .eq("payment_id", args.paymentId)
       .order("issued_at", { ascending: false })
       .limit(1)
@@ -632,19 +632,40 @@ export const _createReceiptRowForPayment = internalMutation({
     const year = new Date(now).getFullYear();
 
     if (args.isRefund) {
-      // Void the most recent issued receipt for this payment.
-      if (existing && (existing as Record<string, unknown>).status === "issued") {
+      const existingRec = existing as Record<string, unknown> | null;
+
+      // A split consolidated receipt has payment_method "firstMethod+secondMethod"
+      // and total_gross covering both legs. Detect it so we can (a) use the
+      // correct full amount for the KOR document and (b) refund the secondary
+      // payment leg that has no receipt of its own.
+      const isSplitReceipt =
+        typeof existingRec?.payment_method === "string" &&
+        (existingRec.payment_method as string).includes("+");
+
+      // Void the most recent issued receipt for this payment. Guard is
+      // "not already void" so that rows without an explicit status (legacy
+      // receipts created before the status column existed) are also voided.
+      if (existingRec && existingRec.status !== "void") {
         await client
           .from("gabinet_receipts")
           .update({ status: "void", updated_at: now })
-          .eq("id", (existing as Record<string, unknown>).id as string);
+          .eq("id", existingRec.id as string);
       }
+
+      // For a consolidated split receipt total_gross covers both legs, so the
+      // KOR must reverse the full transaction amount, not just one leg's amount.
+      const korAmount = existingRec
+        ? Math.abs(Number(existingRec.total_gross))
+        : Math.abs(amount);
+      const korPaymentMethod = isSplitReceipt
+        ? (existingRec!.payment_method as string)
+        : (payment.paymentMethod as string);
 
       // Correction receipt with negative amounts (KOR/ prefix).
       const lineItem = computeLineItem(
         "Korekta: Usluga medyczna",
         1,
-        -Math.abs(amount),
+        -korAmount,
         "D",
         DEFAULT_PKWIU,
       );
@@ -664,13 +685,42 @@ export const _createReceiptRowForPayment = internalMutation({
         totalNet: lineItem.netAmount,
         totalVat: lineItem.vatAmount,
         totalGross: lineItem.grossAmount,
-        paymentMethod: payment.paymentMethod as string,
+        paymentMethod: korPaymentMethod,
         itemsJson: JSON.stringify([lineItem]),
         fiscalReceiptId: null,
         createdBy: String(args.createdBy),
         createdAt: now,
         updatedAt: now,
       });
+
+      // When voiding a consolidated split receipt, mark the secondary payment
+      // leg as refunded so both rows share consistent status. The secondary
+      // shares the same paidAt timestamp as the primary and always has
+      // "split:" in its notes. Narrow further by appointmentId or
+      // packageUsageId when available to guard against astronomically
+      // unlikely same-millisecond collisions between separate transactions.
+      if (isSplitReceipt) {
+        let q = client
+          .from("payments")
+          .select("id")
+          .eq("organization_id", String(args.organizationId))
+          .eq("status", "completed")
+          .eq("paid_at", payment.paidAt as number)
+          .neq("id", args.paymentId)
+          .like("notes", "%split:%");
+        const apptId = payment.appointmentId as string | null;
+        const pkgId = payment.packageUsageId as string | null;
+        if (apptId) q = q.eq("appointment_id", apptId);
+        else if (pkgId) q = q.eq("package_usage_id", pkgId);
+        const { data: secondaryRows } = await q;
+        for (const sp of secondaryRows ?? []) {
+          await client
+            .from("payments")
+            .update({ status: "refunded", updated_at: now })
+            .eq("id", (sp as Record<string, unknown>).id as string);
+        }
+      }
+
       return;
     }
 

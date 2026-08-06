@@ -19,8 +19,11 @@ export const listByEntity = query({
 
     const notes = await ctx.db
       .query("notes")
-      .withIndex("by_entity", (q) =>
-        q.eq("entityType", args.entityType).eq("entityId", args.entityId)
+      .withIndex("by_org_and_entity", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("entityType", args.entityType)
+          .eq("entityId", args.entityId)
       )
       .collect();
 

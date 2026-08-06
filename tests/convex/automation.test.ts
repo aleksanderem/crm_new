@@ -161,11 +161,12 @@ describe("automation lifecycle", () => {
       enabled: true,
     });
 
-    const rule = await t.run(async (ctx) => ctx.db.get(ruleId));
+    const db = createSupabaseDb();
+    const rule = await db.get("automationRules", ruleId);
 
     expect(rule?._id).toBe(ruleId);
-    expect(rule?.organizationId).toBe(organizationId);
-    expect(rule?.createdBy).toBe(userId);
+    expect(rule?.organizationId).toBe(String(organizationId));
+    expect(rule?.createdBy).toBe(String(userId));
     expect(rule?.module).toBe("gabinet");
     expect(rule?.eventType).toBe("gabinet.appointment.created");
     expect(rule?.entityType).toBe("gabinetAppointment");
@@ -223,7 +224,8 @@ describe("automation lifecycle", () => {
       ],
     });
 
-    const rule = await t.run(async (ctx) => ctx.db.get(ruleId));
+    const db = createSupabaseDb();
+    const rule = await db.get("automationRules", ruleId);
 
     expect(rule?.name).toBe("Updated rule");
     expect(rule?.description).toBe("After update");
@@ -310,9 +312,10 @@ describe("automation lifecycle", () => {
       ruleId: deleteRuleId,
     });
 
-    const deletedRule = await t.run(async (ctx) => ctx.db.get(deleteRuleId));
-    const keptRule = await t.run(async (ctx) => ctx.db.get(keepRuleId));
-    const otherRule = await t.run(async (ctx) => ctx.db.get(otherOrgRuleId));
+    const db = createSupabaseDb();
+    const deletedRule = await db.get("automationRules", deleteRuleId);
+    const keptRule = await db.get("automationRules", keepRuleId);
+    const otherRule = await db.get("automationRules", otherOrgRuleId);
 
     expect(deletedRule).toBeNull();
     expect(keptRule?._id).toBe(keepRuleId);

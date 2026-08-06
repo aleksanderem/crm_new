@@ -445,8 +445,73 @@ async function getAutomationEditPermission(
   };
 }
 
-// Resend send call extracted to an internalAction so processRun (mutation)
-// does not perform network I/O — Convex mutations cannot use fetch().
+// Thin internalMutation wrappers called via ctx.runMutation from processRun
+// (now an internalAction). These keep the mutation context for Convex writes.
+
+export const _getAutomationPermission = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    actorUserId: v.optional(v.id("users")),
+    feature: v.string(),
+    requireAdmin: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    return await getAutomationEditPermission(
+      ctx,
+      args.organizationId,
+      args.actorUserId,
+      args.feature as Feature,
+      args.requireAdmin ? { requireAdmin: true } : undefined,
+    );
+  },
+});
+
+export const _createNotificationForRun = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    type: v.string(),
+    title: v.string(),
+    message: v.string(),
+    link: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await createNotificationDirect(ctx, args);
+  },
+});
+
+export const _logActivityForRun = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    entityType: v.string(),
+    entityId: v.string(),
+    activityAction: v.string(),
+    description: v.string(),
+    automationRunId: v.string(),
+    automationRuleId: v.string(),
+    sourceEventType: v.string(),
+    performedBy: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: args.entityType,
+      entityId: args.entityId,
+      action: args.activityAction as import("@cvx/schema").ActivityAction,
+      description: args.description,
+      metadata: {
+        automationRunId: args.automationRunId,
+        automationRuleId: args.automationRuleId,
+        sourceEventType: args.sourceEventType,
+      },
+      performedBy: args.performedBy,
+    });
+  },
+});
+
+// Resend send call extracted to an internalAction so processRun does not
+// perform network I/O as a mutation. Now that processRun is an internalAction,
+// this remains a separate action to keep the email-sending logic isolated.
 // The default email account is looked up from Supabase (the email_accounts
 // source of truth, see convex/emailAccounts.ts header); reading via ctx.db
 // in production returns the empty Convex mirror and would always fail with
@@ -1076,29 +1141,6 @@ export const getRunSteps = action({
   },
 });
 
-export const _writeRuleToConvex = internalMutation({
-  args: {
-    organizationId: v.id("organizations"),
-    name: v.string(),
-    description: v.optional(v.string()),
-    module: automationModuleValidator,
-    eventType: v.string(),
-    entityType: v.optional(v.string()),
-    trigger: v.optional(automationTriggerDefinitionValidator),
-    graph: v.optional(automationGraphValidator),
-    definitionVersion: v.optional(v.number()),
-    conditions: v.array(automationConditionValidator),
-    actions: v.array(automationRuleActionValidator),
-    enabled: v.boolean(),
-    createdBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("automationRules", args);
-  },
-});
-
 export const createRule = action({
   args: {
     organizationId: v.id("organizations"),
@@ -1114,40 +1156,17 @@ export const createRule = action({
     actions: v.array(automationRuleActionValidator),
     enabled: v.boolean(),
   },
-  handler: async (ctx, args): Promise<Id<"automationRules">> => {
+  handler: async (ctx, args): Promise<string> => {
     const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
 
     const now = Date.now();
-
-    // createRule is Convex-first (necessary exception to the Supabase-primary
-    // pattern): processRun is an internalMutation that reads rules via ctx.db
-    // because mutations cannot use fetch(). The Convex insert happens first so
-    // the generated _id can be stored as the Supabase row id, keeping both
-    // stores on the same shared key. updateRule and deleteRule are
-    // Supabase-primary.
-    const ruleId: Id<"automationRules"> = await ctx.runMutation(
-      internal.automation._writeRuleToConvex,
-      {
-        organizationId: args.organizationId,
-        name: args.name,
-        description: args.description,
-        module: args.module,
-        eventType: args.eventType,
-        entityType: args.entityType,
-        trigger: args.trigger,
-        graph: args.graph,
-        definitionVersion: args.definitionVersion,
-        conditions: args.conditions,
-        actions: args.actions,
-        enabled: args.enabled,
-        createdBy: authResult.userId,
-        createdAt: now,
-        updatedAt: now,
-      },
-    );
+    // Supabase-primary: generate a UUID here and write to Supabase first.
+    // processRun is now an internalAction that reads rules from Supabase, so
+    // a Convex replica is no longer required for the engine to find this rule.
+    const ruleId = crypto.randomUUID();
 
     const db = createSupabaseDb();
     await db.insert("automationRules", {
@@ -1435,7 +1454,7 @@ export const emitEvent = internalMutation({
   },
 });
 
-export const processRun = internalMutation({
+export const processRun = internalAction({
   args: {
     runId: v.string(),
     organizationId: v.id("organizations"),
@@ -1469,11 +1488,11 @@ export const processRun = internalMutation({
     };
 
     const payload = JSON.parse(run.payloadSnapshot) as Record<string, unknown>;
-    const rules = await ctx.db
+    const processRunDb = createSupabaseDb();
+    const rules = await processRunDb
       .query("automationRules")
-      .withIndex("by_orgAndEventType", (q) =>
-        q.eq("organizationId", run.organizationId).eq("eventType", run.eventType),
-      )
+      .eq("organizationId", String(run.organizationId))
+      .eq("eventType", run.eventType)
       .collect();
 
     const enabledRules = rules.filter(
@@ -1482,7 +1501,7 @@ export const processRun = internalMutation({
         (!rule.entityType || !run.entityType || rule.entityType === run.entityType),
     );
 
-    let matchedRuleId: Id<"automationRules"> | undefined;
+    let matchedRuleId: string | undefined;
     let sawFailure = false;
     let processedAny = false;
 
@@ -1492,7 +1511,7 @@ export const processRun = internalMutation({
       );
       if (!matches) continue;
 
-      matchedRuleId = rule._id;
+      matchedRuleId = String(rule._id);
       processedAny = true;
 
       for (let actionIndex = 0; actionIndex < rule.actions.length; actionIndex += 1) {
@@ -1596,8 +1615,8 @@ export const processRun = internalMutation({
             let renderedBody = "";
 
             if (action.mode === "template") {
-              const template = await ctx.db.get(action.templateId);
-              if (!template || template.organizationId !== run.organizationId) {
+              const template = await processRunDb.get("emailTemplates", String(action.templateId));
+              if (!template || template.organizationId !== String(run.organizationId)) {
                 throw new Error("Email template not found");
               }
 
@@ -1751,7 +1770,7 @@ export const processRun = internalMutation({
               continue;
             }
 
-            await createNotificationDirect(ctx, {
+            await ctx.runMutation(internal.automation._createNotificationForRun, {
               organizationId: run.organizationId,
               userId,
               type: "automation_rule",
@@ -1790,12 +1809,14 @@ export const processRun = internalMutation({
               continue;
             }
 
-            const permission = await getAutomationEditPermission(
-              ctx,
-              run.organizationId,
-              run.actorUserId,
-              descriptor.permissionFeature,
-              descriptor.requireAdmin ? { requireAdmin: true } : undefined,
+            const permission = await ctx.runMutation(
+              internal.automation._getAutomationPermission,
+              {
+                organizationId: run.organizationId,
+                actorUserId: run.actorUserId,
+                feature: descriptor.permissionFeature,
+                requireAdmin: descriptor.requireAdmin,
+              },
             );
 
             if (!permission.allowed) {
@@ -1848,18 +1869,16 @@ export const processRun = internalMutation({
             continue;
           }
 
-          await logActivity(ctx, {
+          await ctx.runMutation(internal.automation._logActivityForRun, {
             organizationId: run.organizationId,
             entityType,
             entityId,
-            action: action.activityAction,
+            activityAction: action.activityAction,
             description,
-            metadata: {
-              automationRunId: run._id,
-              automationRuleId: rule._id,
-              sourceEventType: run.eventType,
-            },
-            performedBy: run.actorUserId,
+            automationRunId: run._id,
+            automationRuleId: String(rule._id),
+            sourceEventType: run.eventType,
+            performedBy: run.actorUserId!,
           });
 
           await ctx.scheduler.runAfter(0, updateRunStepRef, {
@@ -1903,7 +1922,7 @@ export const processRun = internalMutation({
     await ctx.scheduler.runAfter(0, updateRunRef, {
       runId: run._id,
       organizationId: run.organizationId as string,
-      ruleId: matchedRuleId as string | undefined,
+      ruleId: matchedRuleId,
       status: finalStatus,
       errorMessage: processedAny ? undefined : "No matching automation rules",
       processedAt,

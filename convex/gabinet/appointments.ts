@@ -878,7 +878,7 @@ export const _checkDocumentGateQuery = internalQuery({
     ),
   },
   handler: async (ctx, args) => {
-    return await checkDocumentGate(ctx, args.appointmentId as Id<"gabinetAppointments">, args.timing);
+    return await checkDocumentGate(args.appointmentId as Id<"gabinetAppointments">, args.timing);
   },
 });
 
@@ -2695,7 +2695,6 @@ export const getDocumentGateStatus = query({
     await checkModuleAccess(ctx, args.organizationId, "appointments");
 
     return await checkDocumentGate(
-      ctx,
       args.appointmentId as Id<"gabinetAppointments">,
       args.timing,
     );

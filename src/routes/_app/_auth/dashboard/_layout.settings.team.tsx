@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
-import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
+import { useSupabaseOrganizationMembers, useSupabaseSeatUsage } from "@/hooks/use-supabase-organizations";
 import { useSupabasePendingInvitations } from "@/hooks/use-supabase-invitations";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
@@ -72,11 +71,7 @@ function TeamSettings() {
 
   const { data: invitations } = useSupabasePendingInvitations(organizationId);
 
-  // Seat usage stays on Convex — involves plan/subscription lookup logic
-  const { data: seatUsage } = useQuery(
-    // @ts-ignore — TS2589: convexQuery type instantiation too deep, runtime is correct
-    convexQuery(api.organizations.getSeatUsage, { organizationId })
-  ) as { data: { currentSeats: number; seatLimit: number; canAddMore: boolean } | undefined };
+  const { data: seatUsage } = useSupabaseSeatUsage(organizationId);
 
   const seatPercentage = seatUsage
     ? Math.round((seatUsage.currentSeats / seatUsage.seatLimit) * 100)

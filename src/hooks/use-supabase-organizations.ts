@@ -2,7 +2,9 @@
  * React Query hooks for fetching organizations, members, settings, and usage from Supabase.
  */
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useSupabase } from "@/components/supabase-provider";
@@ -227,4 +229,52 @@ export function useSupabaseOrgUsageStats(organizationId: string, options?: { ena
     },
     enabled: enabled && isReady && !!organizationId,
   });
+}
+
+// ── Seat Usage ────────────────────────────────────────────────────────────────
+
+export interface SeatUsage {
+  currentSeats: number;
+  seatLimit: number;
+  canAddMore: boolean;
+}
+
+/**
+ * Reads seat counts (team_memberships + pending invitations) from Supabase and
+ * seat limit from Convex (subscriptions/plans are Convex-only tables).
+ */
+export function useSupabaseSeatUsage(organizationId: string, options?: { enabled?: boolean }) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options ?? {};
+
+  const countsQuery = useQuery<{ memberCount: number; pendingCount: number }, Error>({
+    queryKey: [...supabaseKeys.teamMemberships.list(organizationId), "seatCounts"],
+    queryFn: async () => {
+      if (!client) throw new Error("Supabase client not ready");
+      const [members, invitations] = await Promise.all([
+        client.from("team_memberships").select("id", { count: "exact", head: true }).eq("organization_id", organizationId),
+        client.from("invitations").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("status", "pending"),
+      ]);
+      if (members.error) throw members.error;
+      if (invitations.error) throw invitations.error;
+      return { memberCount: members.count ?? 0, pendingCount: invitations.count ?? 0 };
+    },
+    enabled: enabled && isReady && !!organizationId,
+  });
+
+  // @ts-ignore — TS2589: convexQuery type instantiation too deep, runtime is correct
+  const limitQuery = useQuery(convexQuery(api.organizations.getSeatLimit, { organizationId }));
+
+  const data = useMemo<SeatUsage | undefined>(() => {
+    if (!countsQuery.data || !limitQuery.data) return undefined;
+    const currentSeats = countsQuery.data.memberCount + countsQuery.data.pendingCount;
+    const seatLimit = (limitQuery.data as { seatLimit: number }).seatLimit;
+    return { currentSeats, seatLimit, canAddMore: currentSeats < seatLimit };
+  }, [countsQuery.data, limitQuery.data]);
+
+  return {
+    data,
+    isLoading: countsQuery.isLoading || limitQuery.isLoading,
+    error: countsQuery.error ?? limitQuery.error ?? null,
+  };
 }

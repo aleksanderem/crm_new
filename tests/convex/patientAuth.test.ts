@@ -365,11 +365,12 @@ describe("getPortalSession", () => {
   test("returns session for valid active token", async () => {
     const { t, organizationId, identity, patientId } = await setupPatient();
 
-    const token = "valid-session-token-for-test";
+    const rawToken = "valid-session-token-for-test";
+    const tokenHash = sha256Sync(rawToken);
     const now = Date.now();
 
     await seedPortalSession(String(patientId), String(organizationId), {
-      tokenHash: token,
+      tokenHash,
       isActive: true,
       lastAccessedAt: now,
       createdAt: now,
@@ -378,7 +379,7 @@ describe("getPortalSession", () => {
 
     const session = await t.withIdentity(identity).action(
       api.gabinet.patientAuth.getPortalSession,
-      { tokenHash: token },
+      { tokenHash: rawToken },
     );
 
     expect(session).not.toBeNull();
@@ -388,11 +389,12 @@ describe("getPortalSession", () => {
   test("returns null for inactive session", async () => {
     const { t, organizationId, identity, patientId } = await setupPatient();
 
-    const token = "inactive-session-token";
+    const rawToken = "inactive-session-token";
+    const tokenHash = sha256Sync(rawToken);
     const now = Date.now();
 
     await seedPortalSession(String(patientId), String(organizationId), {
-      tokenHash: token,
+      tokenHash,
       isActive: false,
       lastAccessedAt: now,
       createdAt: now,
@@ -401,7 +403,7 @@ describe("getPortalSession", () => {
 
     const session = await t.withIdentity(identity).action(
       api.gabinet.patientAuth.getPortalSession,
-      { tokenHash: token },
+      { tokenHash: rawToken },
     );
 
     expect(session).toBeNull();
@@ -410,11 +412,12 @@ describe("getPortalSession", () => {
   test("returns null for expired session", async () => {
     const { t, organizationId, identity, patientId } = await setupPatient();
 
-    const token = "expired-session-token";
+    const rawToken = "expired-session-token";
+    const tokenHash = sha256Sync(rawToken);
     const now = Date.now();
 
     await seedPortalSession(String(patientId), String(organizationId), {
-      tokenHash: token,
+      tokenHash,
       isActive: true,
       lastAccessedAt: now,
       createdAt: now,
@@ -423,10 +426,41 @@ describe("getPortalSession", () => {
 
     const session = await t.withIdentity(identity).action(
       api.gabinet.patientAuth.getPortalSession,
-      { tokenHash: token },
+      { tokenHash: rawToken },
     );
 
     expect(session).toBeNull();
+  });
+
+  test("refreshes lastAccessedAt on each valid session access", async () => {
+    const { t, organizationId, identity, patientId } = await setupPatient();
+
+    const rawToken = "session-token-for-lastaccessed-test";
+    const tokenHash = sha256Sync(rawToken);
+    const pastTime = Date.now() - 60_000;
+
+    await seedPortalSession(String(patientId), String(organizationId), {
+      tokenHash,
+      isActive: true,
+      lastAccessedAt: pastTime,
+      createdAt: pastTime,
+      expiresAt: pastTime + 30 * 24 * 60 * 60 * 1000,
+    });
+
+    const before = Date.now();
+    const session = await t.withIdentity(identity).action(
+      api.gabinet.patientAuth.getPortalSession,
+      { tokenHash: rawToken },
+    );
+    const after = Date.now();
+
+    expect(session).not.toBeNull();
+
+    const db = createSupabaseDb();
+    const row = await db.query("gabinetPortalSessions").eq("tokenHash", tokenHash).first();
+    expect(row).not.toBeNull();
+    expect(row!.lastAccessedAt as number).toBeGreaterThanOrEqual(before);
+    expect(row!.lastAccessedAt as number).toBeLessThanOrEqual(after);
   });
 });
 
@@ -442,44 +476,45 @@ describe("full OTP auth flow", () => {
 
     const knownOtp = "987654";
     const knownOtpHash = sha256Sync(knownOtp);
-    const knownToken = "integration-test-token-" + Date.now();
     const now = Date.now();
 
+    // Seed a session with OTP hash ready for verification
     await seedPortalSession(String(patientId), String(organizationId), {
-      tokenHash: knownToken,
       otpHash: knownOtpHash,
       otpExpiresAt: now + 10 * 60 * 1000,
     });
 
-    // Verify OTP
+    // Verify OTP — generates a fresh session token, stores its SHA-256 hash,
+    // and returns the raw token to the client (as per the #3824 fix).
     const verifyResult = await t.withIdentity(identity).action(
       api.gabinet.patientAuth.verifyPortalOtp,
       { email: "jan@example.com", organizationId, otp: knownOtp },
     );
     expect(verifyResult.success).toBe(true);
-    if (verifyResult.success) {
-      expect(verifyResult.sessionToken).toBe(knownToken);
-      expect(verifyResult.patientId).toBe(patientId);
-    }
+    if (!verifyResult.success) return;
 
-    // Session should now be active in the Supabase store
+    const sessionToken = verifyResult.sessionToken;
+    const sessionTokenHash = sha256Sync(sessionToken);
+    expect(verifyResult.patientId).toBe(patientId);
+
+    // Session should now be active; look it up by the stored hash
     const db = createSupabaseDb();
     const afterVerify = await db
       .query("gabinetPortalSessions")
-      .eq("tokenHash", knownToken)
+      .eq("tokenHash", sessionTokenHash)
       .first();
     expect(afterVerify).not.toBeNull();
     expect(afterVerify!.isActive).toBe(true);
 
-    // Logout deactivates the session
+    // Logout receives the raw token, hashes it internally, deactivates the session
     await t.withIdentity(identity).action(
       api.gabinet.patientAuth.logoutPortal,
-      { tokenHash: knownToken },
+      { tokenHash: sessionToken },
     );
 
     const afterLogout = await db
       .query("gabinetPortalSessions")
-      .eq("tokenHash", knownToken)
+      .eq("tokenHash", sessionTokenHash)
       .first();
     expect(afterLogout).not.toBeNull();
     expect(afterLogout!.isActive).toBe(false);

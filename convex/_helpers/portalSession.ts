@@ -39,6 +39,10 @@ export async function validatePortalSessionSupabase(
     throw new Error("Invalid or expired session");
   }
 
+  await db.patch("gabinetPortalSessions", String(session._id), {
+    lastAccessedAt: Date.now(),
+  });
+
   return {
     patientId: String(session.patientId),
     organizationId: String(session.organizationId),

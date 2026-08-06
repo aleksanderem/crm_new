@@ -568,7 +568,6 @@ export interface Database {
           resource_sharing_enabled: boolean | null;
           reminder_enabled: boolean | null;
           reminder_hours_before: number | null;
-          appointment_workflow_config: string | null;
           created_at: number;
           updated_at: number;
           reminder_sms_48h: boolean | null;
@@ -586,7 +585,6 @@ export interface Database {
           resource_sharing_enabled?: boolean | null;
           reminder_enabled?: boolean | null;
           reminder_hours_before?: number | null;
-          appointment_workflow_config?: string | null;
           created_at: number;
           updated_at: number;
           reminder_sms_48h?: boolean | null;
@@ -604,7 +602,6 @@ export interface Database {
           resource_sharing_enabled?: boolean | null;
           reminder_enabled?: boolean | null;
           reminder_hours_before?: number | null;
-          appointment_workflow_config?: string | null;
           created_at?: number;
           updated_at?: number;
           reminder_sms_48h?: boolean | null;

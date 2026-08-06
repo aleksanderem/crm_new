@@ -125,7 +125,7 @@ export const _setInternal = internalMutation({
 // can be granted via the admin UI once one exists.
 export const _grantPlatformAdmin = internalAction({
   args: { email: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const user = await db.query("users").eq("email", args.email).unique();
     if (!user) throw new Error(`No user found for email ${args.email}`);

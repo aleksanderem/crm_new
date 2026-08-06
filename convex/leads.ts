@@ -323,7 +323,7 @@ export const update = action({
 
     // Enforce lostReasonRequired when marking a lead as lost
     if (args.status === "lost") {
-      const settings = await ctx.runQuery(internal.orgSettings._getSettings, {
+      const settings = await ctx.runAction(internal.orgSettings._getSettings, {
         organizationId: args.organizationId,
       });
       if (settings?.lostReasonRequired && !args.lostReason) {

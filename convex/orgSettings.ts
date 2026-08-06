@@ -1,16 +1,16 @@
-import { query, action, internalQuery, internalMutation } from "./_generated/server";
+import { query, action, internalAction, internalQuery, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
 
-export const _getSettings = internalQuery({
+export const _getSettings = internalAction({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("orgSettings")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .unique();
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    return await db.query("orgSettings")
+      .eq("organizationId", String(args.organizationId))
+      .first() as Record<string, unknown> | null;
   },
 });
 

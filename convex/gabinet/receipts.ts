@@ -356,33 +356,46 @@ export const _storePdfAndCreateReceipt = internalAction({
     const storageId = await ctx.storage.store(blob);
     const pdfUrl = await ctx.storage.getUrl(storageId);
 
-    const db = createSupabaseDb();
-    const now = Date.now();
-    const receiptId = await db.insert("gabinetReceipts", {
-      organizationId: args.organizationId as string,
-      paymentId: args.paymentId,
-      appointmentId: args.appointmentId ?? null,
-      patientId: args.patientId ?? null,
-      receiptNumber: args.receiptNumber,
-      issuedAt: args.issuedAt,
-      organizationName: args.organizationName,
-      organizationNip: args.organizationNip ?? null,
-      organizationAddress: args.organizationAddress ?? null,
-      totalNet: args.totalNet,
-      totalVat: args.totalVat,
-      totalGross: args.totalGross,
-      paymentMethod: args.paymentMethod,
-      itemsJson: args.itemsJson,
-      fiscalReceiptId: args.fiscalReceiptId ?? null,
-      receiptType: "original",
-      pdfStorageId: storageId,
-      pdfUrl: pdfUrl ?? null,
-      createdBy: args.createdBy as string,
-      createdAt: now,
-      updatedAt: now,
-    });
+    try {
+      const db = createSupabaseDb();
+      const now = Date.now();
+      const receiptId = await db.insert("gabinetReceipts", {
+        organizationId: args.organizationId as string,
+        paymentId: args.paymentId,
+        appointmentId: args.appointmentId ?? null,
+        patientId: args.patientId ?? null,
+        receiptNumber: args.receiptNumber,
+        issuedAt: args.issuedAt,
+        organizationName: args.organizationName,
+        organizationNip: args.organizationNip ?? null,
+        organizationAddress: args.organizationAddress ?? null,
+        totalNet: args.totalNet,
+        totalVat: args.totalVat,
+        totalGross: args.totalGross,
+        paymentMethod: args.paymentMethod,
+        itemsJson: args.itemsJson,
+        fiscalReceiptId: args.fiscalReceiptId ?? null,
+        receiptType: "original",
+        pdfStorageId: storageId,
+        pdfUrl: pdfUrl ?? null,
+        createdBy: args.createdBy as string,
+        createdAt: now,
+        updatedAt: now,
+      });
 
-    return { receiptId, pdfUrl: pdfUrl ?? "" };
+      return { receiptId, pdfUrl: pdfUrl ?? "" };
+    } catch (err) {
+      // Compensating cleanup: the blob was already written to Convex storage but
+      // the receipt row in Supabase failed. Delete the orphaned blob so it doesn't
+      // leak storage. Best-effort — if the delete also fails we still re-throw
+      // the original error so the caller can retry.
+      try {
+        await ctx.storage.delete(storageId);
+      } catch {
+        // ignore secondary failure
+      }
+      throw err;
+    }
   },
 });
 

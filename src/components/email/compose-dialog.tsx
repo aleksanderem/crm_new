@@ -107,7 +107,7 @@ export function ComposeDialog({
   const { data: renderedTemplate } = useQuery({
     ...convexQuery(api.emailTemplates.renderTemplate, {
       organizationId,
-      templateId: selectedTemplateId as Id<"emailTemplates">,
+      templateId: selectedTemplateId,
       contactId,
       companyId,
       leadId,

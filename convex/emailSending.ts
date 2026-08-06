@@ -94,9 +94,10 @@ export const getTemplateAndLayout = internalQuery({
     templateId: v.string(),
     organizationId: v.id("organizations"),
   },
-  handler: async (ctx, args) => {
-    const template = await ctx.db.get(args.templateId as any);
-    if (!template || template.organizationId !== args.organizationId)
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    const template = await db.get("emailTemplates", args.templateId);
+    if (!template || String(template.organizationId) !== String(args.organizationId))
       return null;
     return { template };
   },

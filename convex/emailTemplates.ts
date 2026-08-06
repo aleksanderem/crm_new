@@ -96,7 +96,7 @@ export const listVariableSources = query({
 export const renderTemplate = query({
   args: {
     organizationId: v.id("organizations"),
-    templateId: v.id("emailTemplates"),
+    templateId: v.string(),
     // CRM entities
     contactId: v.optional(v.id("contacts")),
     companyId: v.optional(v.id("companies")),
@@ -109,8 +109,9 @@ export const renderTemplate = query({
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
 
-    const template = await ctx.db.get(args.templateId);
-    if (!template || template.organizationId !== args.organizationId) {
+    const db = createSupabaseDb();
+    const template = await db.get("emailTemplates", args.templateId);
+    if (!template || String(template.organizationId) !== String(args.organizationId)) {
       throw new Error("Email template not found");
     }
 

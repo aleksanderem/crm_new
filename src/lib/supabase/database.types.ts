@@ -7551,6 +7551,20 @@ export interface Database {
         Args: Record<string, never>;
         Returns: string;
       };
+      get_invitation_by_token: {
+        Args: { p_token: string };
+        Returns: {
+          id: string;
+          email: string;
+          role: string;
+          status: string;
+          expires_at: number;
+          created_at: number;
+          module: string | null;
+          org_name: string | null;
+          inviter_name: string | null;
+        }[];
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

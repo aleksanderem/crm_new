@@ -18,6 +18,7 @@ import { Route as GabinetRoute } from "@/routes/_app/_auth/dashboard/_layout.gab
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery, useConvexAuth } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
+import { useAnonSupabaseInvitationByToken } from "@/hooks/use-supabase-invitations";
 import Logo from "@/assets/svg/logo";
 
 export const Route = createFileRoute("/_app/login/_layout/")({
@@ -57,8 +58,9 @@ function Login() {
   });
 
   // Fetch invitation context for the banner shown above the OTP form.
-  const { data: inviteData } = useQuery({
-    ...convexQuery(api.invitations.getByToken, { token: inviteToken ?? "" }),
+  // Uses the anon Supabase client (no JWT needed) via the get_invitation_by_token
+  // SECURITY DEFINER function, since this page renders outside SupabaseProvider.
+  const { data: inviteData } = useAnonSupabaseInvitationByToken(inviteToken ?? "", {
     enabled: Boolean(inviteToken),
   });
 

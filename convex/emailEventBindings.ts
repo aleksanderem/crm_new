@@ -1,8 +1,7 @@
-import { query, action, internalQuery } from "./_generated/server";
+import { action, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
-import { verifyOrgAccess } from "./_helpers/auth";
 
 // Dual-write refs removed — Supabase is now primary for event binding writes
 
@@ -27,113 +26,6 @@ export const listEnabledBindings = internalQuery({
       .collect();
 
     return bindings.sort((a, b) => a.priority - b.priority);
-  },
-});
-
-// ---------------------------------------------------------------------------
-// Queries
-// ---------------------------------------------------------------------------
-
-export const listBindings = query({
-  args: {
-    organizationId: v.id("organizations"),
-    eventType: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    const bindings = args.eventType
-      ? await ctx.db
-          .query("emailEventBindings")
-          .withIndex("by_orgAndEventType", (q) =>
-            q
-              .eq("organizationId", args.organizationId)
-              .eq("eventType", args.eventType!),
-          )
-          .collect()
-      : await ctx.db
-          .query("emailEventBindings")
-          .withIndex("by_org", (q) =>
-            q.eq("organizationId", args.organizationId),
-          )
-          .collect();
-
-    const withTemplates = await Promise.all(
-      bindings.map(async (b) => {
-        const template = await ctx.db.get(b.templateId);
-        return {
-          ...b,
-          templateName: template?.name ?? null,
-          templateIsActive: template?.isActive ?? false,
-        };
-      }),
-    );
-
-    return withTemplates;
-  },
-});
-
-export const listEventLog = query({
-  args: {
-    organizationId: v.id("organizations"),
-    eventType: v.optional(v.string()),
-    status: v.optional(
-      v.union(
-        v.literal("pending"),
-        v.literal("sent"),
-        v.literal("failed"),
-        v.literal("skipped"),
-      ),
-    ),
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    const limit = args.limit ?? 100;
-
-    let entries;
-    if (args.status) {
-      entries = await ctx.db
-        .query("emailEventLog")
-        .withIndex("by_orgAndStatus", (q) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("status", args.status!),
-        )
-        .order("desc")
-        .take(limit);
-    } else if (args.eventType) {
-      entries = await ctx.db
-        .query("emailEventLog")
-        .withIndex("by_orgAndEventType", (q) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("eventType", args.eventType!),
-        )
-        .order("desc")
-        .take(limit);
-    } else {
-      entries = await ctx.db
-        .query("emailEventLog")
-        .withIndex("by_orgAndCreatedAt", (q) =>
-          q.eq("organizationId", args.organizationId),
-        )
-        .order("desc")
-        .take(limit);
-    }
-
-    const withTemplates = await Promise.all(
-      entries.map(async (e) => {
-        const template = e.templateId ? await ctx.db.get(e.templateId) : null;
-        return {
-          ...e,
-          templateName: template?.name ?? null,
-        };
-      }),
-    );
-
-    return withTemplates;
   },
 });
 

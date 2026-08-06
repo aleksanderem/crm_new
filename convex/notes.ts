@@ -1,69 +1,11 @@
-import { query, action, internalMutation } from "./_generated/server";
+import { action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
-import { verifyOrgAccess } from "./_helpers/auth";
 import { publishActivityEnvelope } from "./_helpers/activityEnvelope";
 import { Id } from "./_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for note writes
-
-export const listByEntity = query({
-  args: {
-    organizationId: v.id("organizations"),
-    entityType: v.string(),
-    entityId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    const notes = await ctx.db
-      .query("notes")
-      .withIndex("by_org_and_entity", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("entityType", args.entityType)
-          .eq("entityId", args.entityId)
-      )
-      .collect();
-
-    // Sort: pinned first, then by createdAt desc
-    notes.sort((a, b) => {
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-      return b.createdAt - a.createdAt;
-    });
-
-    // Enrich with author names
-    const authorIds = [...new Set(notes.map((n) => n.createdBy))];
-    const authors = await Promise.all(authorIds.map((id) => ctx.db.get(id)));
-    const authorMap = new Map(
-      authors.filter(Boolean).map((u) => [u!._id, u!.name ?? u!.email ?? null]),
-    );
-
-    return notes.map((n) => ({
-      ...n,
-      authorName: authorMap.get(n.createdBy) ?? null,
-    }));
-  },
-});
-
-export const getById = query({
-  args: {
-    organizationId: v.id("organizations"),
-    noteId: v.id("notes"),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    const note = await ctx.db.get(args.noteId);
-    if (!note || note.organizationId !== args.organizationId) {
-      throw new Error("Note not found");
-    }
-
-    return note;
-  },
-});
 
 export const create = action({
   args: {

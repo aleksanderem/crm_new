@@ -1,25 +1,7 @@
-import { query, action } from "./_generated/server";
+import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
-import { verifyOrgAccess } from "./_helpers/auth";
-
-export const list = query({
-  args: {
-    organizationId: v.id("organizations"),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    const reasons = await ctx.db
-      .query("lostReasons")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-
-    reasons.sort((a, b) => a.order - b.order);
-    return reasons;
-  },
-});
 
 export const create = action({
   args: {

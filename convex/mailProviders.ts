@@ -1,8 +1,7 @@
-import { query, action, internalAction } from "./_generated/server";
+import { action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
-import { verifyOrgAccess } from "./_helpers/auth";
 
 // Dual-write refs removed — Supabase is now primary for mail provider writes
 
@@ -17,55 +16,6 @@ const capabilitiesValidator = v.object({
   canSend: v.boolean(),
   canReceive: v.boolean(),
   canSync: v.boolean(),
-});
-
-export const list = query({
-  args: {
-    organizationId: v.id("organizations"),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    const providers = await ctx.db
-      .query("mailProviders")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-
-    return providers.sort((a, b) => b.createdAt - a.createdAt);
-  },
-});
-
-export const getById = query({
-  args: {
-    organizationId: v.id("organizations"),
-    providerId: v.id("mailProviders"),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    const provider = await ctx.db.get(args.providerId);
-    if (!provider || provider.organizationId !== args.organizationId) {
-      throw new Error("Mail provider not found");
-    }
-
-    return provider;
-  },
-});
-
-export const getDefault = query({
-  args: {
-    organizationId: v.id("organizations"),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    return await ctx.db
-      .query("mailProviders")
-      .withIndex("by_org_default", (q) =>
-        q.eq("organizationId", args.organizationId).eq("isDefault", true)
-      )
-      .first();
-  },
 });
 
 export const create = action({

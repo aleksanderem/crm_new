@@ -1,6 +1,5 @@
 import { query, mutation, action, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { verifyOrgAccess } from "./_helpers/auth";
@@ -10,75 +9,6 @@ import { documentCategoryValidator, documentStatusValidator } from "@cvx/schema"
 import type { Id } from "./_generated/dataModel";
 
 // Dual-write refs removed — Supabase is primary for document writes
-
-export const list = query({
-  args: {
-    organizationId: v.id("organizations"),
-    paginationOpts: paginationOptsValidator,
-    category: v.optional(documentCategoryValidator),
-  },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "documents", "view");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const isOwn = perm.scope === "own";
-    const ownFilter = (r: any) => r.createdBy === user._id;
-
-    if (args.category) {
-      const result = await ctx.db
-        .query("documents")
-        .withIndex("by_orgAndCategory", (q) =>
-          q.eq("organizationId", args.organizationId).eq("category", args.category!)
-        )
-        .order("desc")
-        .paginate(args.paginationOpts);
-      if (isOwn) {
-        return { ...result, page: result.page.filter(ownFilter) };
-      }
-      return result;
-    }
-
-    const result = await ctx.db
-      .query("documents")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .order("desc")
-      .paginate(args.paginationOpts);
-    if (isOwn) {
-      return { ...result, page: result.page.filter(ownFilter) };
-    }
-    return result;
-  },
-});
-
-export const getById = query({
-  args: {
-    organizationId: v.id("organizations"),
-    documentId: v.id("documents"),
-  },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "documents", "view");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const doc = await ctx.db.get(args.documentId);
-    if (!doc || doc.organizationId !== args.organizationId) {
-      throw new Error("Document not found");
-    }
-    if (perm.scope === "own" && doc.createdBy !== user._id) {
-      throw new Error("Permission denied");
-    }
-
-    const customFieldValues = await ctx.db
-      .query("customFieldValues")
-      .withIndex("by_entity", (q) =>
-        q.eq("entityType", "document").eq("entityId", args.documentId)
-      )
-      .collect();
-
-    return { ...doc, customFieldValues };
-  },
-});
 
 export const create = action({
   args: {

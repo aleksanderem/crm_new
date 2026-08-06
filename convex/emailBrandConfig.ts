@@ -1,21 +1,9 @@
-import { action, query } from "./_generated/server";
+import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
-import { verifyOrgAccess } from "./_helpers/auth";
 
 // Dual-write refs removed — Supabase is now primary for brand config writes
-
-export const getForOrg = query({
-  args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
-      .query("emailBrandConfig")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .first();
-  },
-});
 
 export const upsert = action({
   args: {

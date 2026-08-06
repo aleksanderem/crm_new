@@ -683,6 +683,11 @@ function TreatmentDetail() {
     toast.success(t("common.saved"));
   };
 
+  const invalidateTreatmentEmployeeCache = () => {
+    void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(organizationId) });
+    void queryClient.invalidateQueries({ queryKey: ["gabinet.treatments.getTreatmentEmployees", organizationId, treatmentId] });
+  };
+
   const handleAssignEmployee = async (employeeId: string) => {
     const emp = allEmps.find((e) => e._id === employeeId);
     if (!emp) return;
@@ -692,6 +697,7 @@ function TreatmentDetail() {
       employeeId: employeeId as Id<"gabinetEmployees">,
       treatmentIds: updated,
     });
+    invalidateTreatmentEmployeeCache();
     setEmpSearchQuery("");
     toast.success(t("common.saved"));
   };
@@ -705,6 +711,7 @@ function TreatmentDetail() {
       employeeId: employeeId as Id<"gabinetEmployees">,
       treatmentIds: updated as Id<"gabinetTreatments">[],
     });
+    invalidateTreatmentEmployeeCache();
     toast.success(t("common.saved"));
   };
 

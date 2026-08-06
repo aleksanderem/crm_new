@@ -24,12 +24,12 @@ export function useSupabaseSmsConfig(
     queryFn: async () => {
       if (!client) throw new Error("Supabase client not ready");
 
-      // Select only non-sensitive columns; derive hasToken / hasSecret server-side.
+      // Query the security-barrier view which only exposes non-credential
+      // columns; api_token / api_secret are blocked at the column-privilege
+      // level on the underlying table (migration 00101).
       const { data, error } = await client
-        .from("org_sms_config")
-        .select(
-          "id, provider, sender_id, from_number, is_active, (api_token is not null and api_token != '') as has_token, (api_secret is not null and api_secret != '') as has_secret",
-        )
+        .from("org_sms_config_summary")
+        .select("id, provider, sender_id, from_number, is_active, has_token, has_secret")
         .eq("organization_id", organizationId)
         .maybeSingle();
 

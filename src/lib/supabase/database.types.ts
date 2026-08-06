@@ -80,6 +80,32 @@
  *   • 00073_payments_discount_columns.sql
  *   • 00074_gabinet_employees_bio_avatar.sql
  *   • 00075_gabinet_packages_tags_category.sql
+ *   • 00076_drop_gabinet_appointments_legacy_treatment_columns.sql
+ *   • 00077_gabinet_treatments_hard_delete.sql
+ *   • 00078_gabinet_appointments_package_treatment_id.sql
+ *   • 00079_invitations_module_columns.sql
+ *   • 00080_drop_org_settings_appointment_workflow_config.sql
+ *   • 00081_gabinet_locations_fiscal_register_id.sql
+ *   • 00082_payments_fiscal_fields.sql
+ *   • 00083_gabinet_receipts.sql
+ *   • 00084_gabinet_receipt_sequences.sql
+ *   • 00085_gabinet_receipt_sequence_fn.sql
+ *   • 00086_gabinet_receipts_receipt_type.sql
+ *   • 00087_gabinet_receipt_sequence_location_fn.sql
+ *   • 00088_gabinet_receipt_atomic_insert_fn.sql
+ *   • 00089_gabinet_receipt_orphan_pdf_idx.sql
+ *   • 00090_gabinet_patient_retention_policy.sql
+ *   • 00091_product_stock_rls.sql
+ *   • 00092_gabinet_treatment_products_rls.sql
+ *   • 00093_document_components_rls.sql
+ *   • 00094_warehouse_deliveries_rls.sql
+ *   • 00095_gabinet_appointment_treatments_rls.sql
+ *   • 00096_delivery_name_mappings_rls.sql
+ *   • 00097_gabinet_receipts_rls.sql
+ *   • 00098_gabinet_receipt_sequences_rls.sql
+ *   • 00099_users_subscriptions_rls.sql
+ *   • 00100_users_is_platform_admin.sql
+ *   • 00101_org_sms_config_column_security.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -255,6 +281,7 @@ export interface Database {
           timezone: string | null;
           created_at: number | null;
           updated_at: number | null;
+          is_platform_admin: boolean | null;
         };
         Insert: {
           id?: string;
@@ -273,6 +300,7 @@ export interface Database {
           timezone?: string | null;
           created_at?: number | null;
           updated_at?: number | null;
+          is_platform_admin?: boolean | null;
         };
         Update: {
           id?: string;
@@ -291,6 +319,7 @@ export interface Database {
           timezone?: string | null;
           created_at?: number | null;
           updated_at?: number | null;
+          is_platform_admin?: boolean | null;
         };
         Relationships: [];
       };
@@ -568,12 +597,14 @@ export interface Database {
           resource_sharing_enabled: boolean | null;
           reminder_enabled: boolean | null;
           reminder_hours_before: number | null;
+          appointment_workflow_config: string | null;
           created_at: number;
           updated_at: number;
           reminder_sms_48h: boolean | null;
           reminder_sms_24h: boolean | null;
           reminder_email_48h: boolean | null;
           reminder_email_24h: boolean | null;
+          patient_retention_months: number | null;
         };
         Insert: {
           id?: string;
@@ -585,12 +616,14 @@ export interface Database {
           resource_sharing_enabled?: boolean | null;
           reminder_enabled?: boolean | null;
           reminder_hours_before?: number | null;
+          appointment_workflow_config?: string | null;
           created_at: number;
           updated_at: number;
           reminder_sms_48h?: boolean | null;
           reminder_sms_24h?: boolean | null;
           reminder_email_48h?: boolean | null;
           reminder_email_24h?: boolean | null;
+          patient_retention_months?: number | null;
         };
         Update: {
           id?: string;
@@ -602,12 +635,14 @@ export interface Database {
           resource_sharing_enabled?: boolean | null;
           reminder_enabled?: boolean | null;
           reminder_hours_before?: number | null;
+          appointment_workflow_config?: string | null;
           created_at?: number;
           updated_at?: number;
           reminder_sms_48h?: boolean | null;
           reminder_sms_24h?: boolean | null;
           reminder_email_48h?: boolean | null;
           reminder_email_24h?: boolean | null;
+          patient_retention_months?: number | null;
         };
         Relationships: [
           {
@@ -3434,6 +3469,10 @@ export interface Database {
           kind: string | null;
           discount_amount: number | null;
           discount_percent: number | null;
+          fiscal_receipt_id: string | null;
+          fiscal_status: string | null;
+          fiscal_attempts: number | null;
+          fiscal_error: string | null;
         };
         Insert: {
           id?: string;
@@ -3455,6 +3494,10 @@ export interface Database {
           kind?: string | null;
           discount_amount?: number | null;
           discount_percent?: number | null;
+          fiscal_receipt_id?: string | null;
+          fiscal_status?: string | null;
+          fiscal_attempts?: number | null;
+          fiscal_error?: string | null;
         };
         Update: {
           id?: string;
@@ -3476,6 +3519,10 @@ export interface Database {
           kind?: string | null;
           discount_amount?: number | null;
           discount_percent?: number | null;
+          fiscal_receipt_id?: string | null;
+          fiscal_status?: string | null;
+          fiscal_attempts?: number | null;
+          fiscal_error?: string | null;
         };
         Relationships: [
           {
@@ -3575,6 +3622,7 @@ export interface Database {
           created_by: string;
           created_at: number;
           updated_at: number | null;
+          fiscal_register_id: string | null;
         };
         Insert: {
           id?: string;
@@ -3588,6 +3636,7 @@ export interface Database {
           created_by: string;
           created_at: number;
           updated_at?: number | null;
+          fiscal_register_id?: string | null;
         };
         Update: {
           id?: string;
@@ -3601,6 +3650,7 @@ export interface Database {
           created_by?: string;
           created_at?: number;
           updated_at?: number | null;
+          fiscal_register_id?: string | null;
         };
         Relationships: [
           {
@@ -4740,6 +4790,7 @@ export interface Database {
           id: string;
           organization_id: string;
           patient_id: string;
+          treatment_id: string | null;
           employee_id: string;
           date: string;
           start_time: string;
@@ -4779,14 +4830,18 @@ export interface Database {
           created_at: number;
           updated_at: number;
           contraindication_alerts_reviewed: boolean | null;
+          price_at_booking: number | null;
           reminder_overrides: string | null;
+          variant_id: string | null;
           stock_deducted: boolean;
           package_deducted: boolean;
+          package_treatment_id: string | null;
         };
         Insert: {
           id?: string;
           organization_id: string;
           patient_id: string;
+          treatment_id?: string | null;
           employee_id: string;
           date: string;
           start_time: string;
@@ -4826,14 +4881,18 @@ export interface Database {
           created_at: number;
           updated_at: number;
           contraindication_alerts_reviewed?: boolean | null;
+          price_at_booking?: number | null;
           reminder_overrides?: string | null;
+          variant_id?: string | null;
           stock_deducted?: boolean;
           package_deducted?: boolean;
+          package_treatment_id?: string | null;
         };
         Update: {
           id?: string;
           organization_id?: string;
           patient_id?: string;
+          treatment_id?: string | null;
           employee_id?: string;
           date?: string;
           start_time?: string;
@@ -4873,9 +4932,12 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
           contraindication_alerts_reviewed?: boolean | null;
+          price_at_booking?: number | null;
           reminder_overrides?: string | null;
+          variant_id?: string | null;
           stock_deducted?: boolean;
           package_deducted?: boolean;
+          package_treatment_id?: string | null;
         };
         Relationships: [
           {
@@ -4890,6 +4952,13 @@ export interface Database {
             columns: ["patient_id"];
             isOneToOne: false;
             referencedRelation: "gabinet_patients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_appointments_treatment_id_fkey";
+            columns: ["treatment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatments";
             referencedColumns: ["id"];
           },
           {
@@ -4953,6 +5022,20 @@ export interface Database {
             columns: ["package_usage_id"];
             isOneToOne: false;
             referencedRelation: "gabinet_package_usage";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_appointments_variant_id_fkey";
+            columns: ["variant_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatment_variants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_appointments_package_treatment_id_fkey";
+            columns: ["package_treatment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatments";
             referencedColumns: ["id"];
           },
         ];
@@ -7288,8 +7371,181 @@ export interface Database {
           },
         ];
       };
+      gabinet_receipts: {
+        Row: {
+          id: string;
+          organization_id: string;
+          payment_id: string;
+          appointment_id: string | null;
+          patient_id: string | null;
+          receipt_number: string;
+          issued_at: number;
+          organization_name: string;
+          organization_nip: string | null;
+          organization_address: string | null;
+          payment_method: string;
+          items_json: string;
+          fiscal_receipt_id: string | null;
+          pdf_storage_id: string | null;
+          pdf_url: string | null;
+          created_by: string;
+          created_at: number;
+          updated_at: number;
+          location_id: string | null;
+          status: string;
+          receipt_type: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          payment_id: string;
+          appointment_id?: string | null;
+          patient_id?: string | null;
+          receipt_number: string;
+          issued_at: number;
+          organization_name: string;
+          organization_nip?: string | null;
+          organization_address?: string | null;
+          payment_method: string;
+          items_json: string;
+          fiscal_receipt_id?: string | null;
+          pdf_storage_id?: string | null;
+          pdf_url?: string | null;
+          created_by: string;
+          created_at: number;
+          updated_at: number;
+          location_id?: string | null;
+          status?: string;
+          receipt_type?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          payment_id?: string;
+          appointment_id?: string | null;
+          patient_id?: string | null;
+          receipt_number?: string;
+          issued_at?: number;
+          organization_name?: string;
+          organization_nip?: string | null;
+          organization_address?: string | null;
+          payment_method?: string;
+          items_json?: string;
+          fiscal_receipt_id?: string | null;
+          pdf_storage_id?: string | null;
+          pdf_url?: string | null;
+          created_by?: string;
+          created_at?: number;
+          updated_at?: number;
+          location_id?: string | null;
+          status?: string;
+          receipt_type?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_receipts_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_receipts_payment_id_fkey";
+            columns: ["payment_id"];
+            isOneToOne: false;
+            referencedRelation: "payments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_receipts_appointment_id_fkey";
+            columns: ["appointment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_appointments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_receipts_patient_id_fkey";
+            columns: ["patient_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_patients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_receipts_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_receipts_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_locations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      gabinet_receipt_sequences: {
+        Row: {
+          id: string;
+          organization_id: string;
+          location_id: string | null;
+          year: number;
+          last_number: number;
+          updated_at: number;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          location_id?: string | null;
+          year: number;
+          last_number?: number;
+          updated_at: number;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          location_id?: string | null;
+          year?: number;
+          last_number?: number;
+          updated_at?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_receipt_sequences_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_receipt_sequences_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_locations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
-    Views: Record<string, never>;
+    Views: {
+      org_sms_config_summary: {
+        Row: {
+          id: string;
+          organization_id: string;
+          provider: string;
+          sender_id: string | null;
+          from_number: string | null;
+          is_active: boolean;
+          created_at: number;
+          updated_at: number;
+          has_token: boolean;
+          has_secret: boolean;
+        };
+        Relationships: [];
+      };
+    };
     Functions: {
       app_schema_version: {
         Args: Record<string, never>;
@@ -7447,6 +7703,3 @@ export type GabinetLoyaltyPointsUpdate = Database["public"]["Tables"]["gabinet_l
 export type GabinetLoyaltyTransactionRow = Database["public"]["Tables"]["gabinet_loyalty_transactions"]["Row"];
 export type GabinetLoyaltyTransactionInsert = Database["public"]["Tables"]["gabinet_loyalty_transactions"]["Insert"];
 export type GabinetLoyaltyTransactionUpdate = Database["public"]["Tables"]["gabinet_loyalty_transactions"]["Update"];
-export type GoogleCalendarSyncConfigRow = Database["public"]["Tables"]["google_calendar_sync_configs"]["Row"];
-export type GoogleCalendarSyncConfigInsert = Database["public"]["Tables"]["google_calendar_sync_configs"]["Insert"];
-export type GoogleCalendarSyncConfigUpdate = Database["public"]["Tables"]["google_calendar_sync_configs"]["Update"];

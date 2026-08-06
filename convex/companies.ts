@@ -32,54 +32,6 @@ export const list = query({
   },
 });
 
-export const getById = query({
-  args: {
-    organizationId: v.id("organizations"),
-    companyId: v.id("companies"),
-  },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "companies", "view");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const company = await ctx.db.get(args.companyId);
-    if (!company || company.organizationId !== args.organizationId) {
-      throw new Error("Company not found");
-    }
-    if (perm.scope === "own" && company.createdBy !== user._id) {
-      throw new Error("Permission denied");
-    }
-
-    const [customFieldValues, relationships] = await Promise.all([
-      ctx.db
-        .query("customFieldValues")
-        .withIndex("by_entity", (q) =>
-          q.eq("entityType", "company").eq("entityId", args.companyId)
-        )
-        .collect(),
-      ctx.db
-        .query("objectRelationships")
-        .withIndex("by_source", (q) =>
-          q.eq("sourceType", "company").eq("sourceId", args.companyId)
-        )
-        .collect(),
-    ]);
-
-    const targetRelationships = await ctx.db
-      .query("objectRelationships")
-      .withIndex("by_target", (q) =>
-        q.eq("targetType", "company").eq("targetId", args.companyId)
-      )
-      .collect();
-
-    return {
-      ...company,
-      customFieldValues,
-      relationships: [...relationships, ...targetRelationships],
-    };
-  },
-});
-
 export const create = action({
   args: {
     organizationId: v.id("organizations"),

@@ -1,9 +1,7 @@
-import { query, action } from "./_generated/server";
+import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
-import { verifyOrgAccess } from "./_helpers/auth";
-import { checkPermission } from "./_helpers/permissions";
 
 const configValidator = v.object({
   activityTypeId: v.optional(v.string()),
@@ -11,23 +9,6 @@ const configValidator = v.object({
   description: v.optional(v.string()),
   dueInDays: v.number(),
   assignToOwner: v.boolean(),
-});
-
-export const listByStage = query({
-  args: {
-    organizationId: v.id("organizations"),
-    stageId: v.id("pipelineStages"),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "pipelines", "view");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    return await ctx.db
-      .query("pipelineStageActions")
-      .withIndex("by_stage", (q) => q.eq("stageId", args.stageId))
-      .collect();
-  },
 });
 
 export const create = action({

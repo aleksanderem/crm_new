@@ -7,7 +7,6 @@
  */
 
 import {
-  query,
   action,
   internalMutation,
   internalAction,
@@ -15,56 +14,9 @@ import {
 } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { verifyOrgAccess } from "./_helpers/auth";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 // Dual-write refs removed — Supabase is now primary for sequence writes
-
-// ---------------------------------------------------------------------------
-// Queries
-// ---------------------------------------------------------------------------
-
-/**
- * List all sequences for an org.
- */
-export const listSequences = query({
-  args: {
-    organizationId: v.id("organizations"),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return ctx.db
-      .query("emailSequences")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-  },
-});
-
-/**
- * Get a single sequence with all its steps.
- */
-export const getSequence = query({
-  args: {
-    organizationId: v.id("organizations"),
-    sequenceId: v.id("emailSequences"),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const sequence = await ctx.db.get(args.sequenceId);
-    if (!sequence || sequence.organizationId !== args.organizationId) {
-      return null;
-    }
-    const steps = await ctx.db
-      .query("emailSequenceSteps")
-      .withIndex("by_sequence", (q) => q.eq("sequenceId", args.sequenceId))
-      .collect();
-    // Return steps sorted by order
-    return {
-      ...sequence,
-      steps: steps.sort((a, b) => a.order - b.order),
-    };
-  },
-});
 
 // ---------------------------------------------------------------------------
 // Actions — admin-gated CRUD (Supabase-primary)

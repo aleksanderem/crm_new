@@ -1,8 +1,7 @@
-import { query, action, internalMutation, internalQuery } from "./_generated/server";
+import { action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
-import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
 import { Id } from "./_generated/dataModel";
 
@@ -95,90 +94,6 @@ export const getForSources = action({
   },
 });
 
-export const getForEntity = query({
-  args: {
-    organizationId: v.id("organizations"),
-    entityType: v.string(),
-    entityId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    const [asSource, asTarget] = await Promise.all([
-      ctx.db
-        .query("objectRelationships")
-        .withIndex("by_source", (q) =>
-          q.eq("sourceType", args.entityType).eq("sourceId", args.entityId)
-        )
-        .collect(),
-      ctx.db
-        .query("objectRelationships")
-        .withIndex("by_target", (q) =>
-          q.eq("targetType", args.entityType).eq("targetId", args.entityId)
-        )
-        .collect(),
-    ]);
-
-    const allRels = [...asSource, ...asTarget];
-
-    // Resolve entity names for each relationship
-    const resolved = await Promise.all(
-      allRels.map(async (rel) => {
-        // For asSource records, the "other" entity is target; for asTarget, it's source
-        const isSource = rel.sourceType === args.entityType && rel.sourceId === args.entityId;
-        const otherType = isSource ? rel.targetType : rel.sourceType;
-        const otherId = isSource ? rel.targetId : rel.sourceId;
-
-        let targetName = otherId;
-        let targetSublabel: string | undefined;
-
-        try {
-          if (otherType === "contact") {
-            const contact = await ctx.db.get(otherId as any);
-            if (contact) {
-              targetName = `${(contact as any).firstName}${(contact as any).lastName ? ` ${(contact as any).lastName}` : ""}`;
-              targetSublabel = (contact as any).email;
-            }
-          } else if (otherType === "company") {
-            const company = await ctx.db.get(otherId as any);
-            if (company) {
-              targetName = (company as any).name;
-              targetSublabel = (company as any).domain;
-            }
-          } else if (otherType === "lead" || otherType === "deal") {
-            const lead = await ctx.db.get(otherId as any);
-            if (lead) {
-              targetName = (lead as any).title;
-              targetSublabel = (lead as any).value
-                ? `$${(lead as any).value.toLocaleString()}`
-                : undefined;
-            }
-          } else if (otherType === "document") {
-            const doc = await ctx.db.get(otherId as any);
-            if (doc) {
-              targetName = (doc as any).name;
-              targetSublabel = (doc as any).category;
-            }
-          }
-        } catch {
-          // Entity may have been deleted — keep the raw ID
-        }
-
-        return {
-          ...rel,
-          // Normalize: always expose the "other" side as target for the frontend
-          targetType: otherType,
-          targetId: otherId,
-          targetName,
-          targetSublabel,
-        };
-      })
-    );
-
-    return resolved;
-  },
-});
-
 export const create = action({
   args: {
     organizationId: v.id("organizations"),
@@ -194,21 +109,28 @@ export const create = action({
       { organizationId: args.organizationId },
     );
 
-    // Check for duplicate via internalMutation (needs ctx.db queries with indexes)
-    const hasDuplicate = await ctx.runQuery(
-      internal.relationships._checkDuplicate,
-      {
-        organizationId: args.organizationId,
-        sourceType: args.sourceType,
-        sourceId: args.sourceId,
-        targetType: args.targetType,
-        targetId: args.targetId,
-      },
-    );
-    if (hasDuplicate) throw new Error("Relationship already exists");
-
     const now = Date.now();
     const db = createSupabaseDb();
+
+    // Check for duplicates in both directions via Supabase
+    const orgIdStr = String(args.organizationId);
+    const [forward, reverse] = await Promise.all([
+      db.query("objectRelationships")
+        .eq("organizationId", orgIdStr)
+        .eq("sourceType", args.sourceType)
+        .eq("sourceId", args.sourceId)
+        .eq("targetType", args.targetType)
+        .eq("targetId", args.targetId)
+        .first(),
+      db.query("objectRelationships")
+        .eq("organizationId", orgIdStr)
+        .eq("sourceType", args.targetType)
+        .eq("sourceId", args.targetId)
+        .eq("targetType", args.sourceType)
+        .eq("targetId", args.sourceId)
+        .first(),
+    ]);
+    if (forward || reverse) throw new Error("Relationship already exists");
 
     const relId = await db.insert("objectRelationships", {
       organizationId: String(args.organizationId),
@@ -235,45 +157,6 @@ export const create = action({
     }
 
     return relId;
-  },
-});
-
-export const _checkDuplicate = internalQuery({
-  args: {
-    organizationId: v.id("organizations"),
-    sourceType: v.string(),
-    sourceId: v.string(),
-    targetType: v.string(),
-    targetId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const [forward, reverse] = await Promise.all([
-      ctx.db
-        .query("objectRelationships")
-        .withIndex("by_sourceAndTarget", (q) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("sourceType", args.sourceType)
-            .eq("sourceId", args.sourceId)
-            .eq("targetType", args.targetType)
-        )
-        .collect(),
-      ctx.db
-        .query("objectRelationships")
-        .withIndex("by_sourceAndTarget", (q) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("sourceType", args.targetType)
-            .eq("sourceId", args.targetId)
-            .eq("targetType", args.sourceType)
-        )
-        .collect(),
-    ]);
-
-    const duplicate =
-      forward.find((r) => r.targetId === args.targetId) ||
-      reverse.find((r) => r.targetId === args.sourceId);
-    return !!duplicate;
   },
 });
 

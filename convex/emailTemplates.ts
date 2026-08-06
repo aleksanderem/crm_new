@@ -62,51 +62,6 @@ export async function renderTemplateString(
   });
 }
 
-// ---------------------------------------------------------------------------
-// Queries
-// ---------------------------------------------------------------------------
-
-export const list = query({
-  args: {
-    organizationId: v.id("organizations"),
-    activeOnly: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    if (args.activeOnly) {
-      return ctx.db
-        .query("emailTemplates")
-        .withIndex("by_org_active", (q) =>
-          q.eq("organizationId", args.organizationId).eq("isActive", true),
-        )
-        .collect();
-    }
-
-    return ctx.db
-      .query("emailTemplates")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-  },
-});
-
-export const getById = query({
-  args: {
-    organizationId: v.id("organizations"),
-    templateId: v.id("emailTemplates"),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    const template = await ctx.db.get(args.templateId);
-    if (!template || template.organizationId !== args.organizationId) {
-      throw new Error("Email template not found");
-    }
-
-    return template;
-  },
-});
-
 /**
  * List available variable sources and their fields for the UI variable picker.
  * When module is provided, returns platform sources + module-specific sources.

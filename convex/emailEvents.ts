@@ -1,5 +1,4 @@
 import {
-  query,
   action,
   internalAction,
   internalMutation,
@@ -8,7 +7,6 @@ import {
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
-import { verifyOrgAccess } from "./_helpers/auth";
 
 // Dual-write refs removed — Supabase is now primary for event writes
 
@@ -17,75 +15,6 @@ const moduleValidator = v.union(
   v.literal("gabinet"),
   v.literal("platform"),
 );
-
-// ---------------------------------------------------------------------------
-// Queries
-// ---------------------------------------------------------------------------
-
-export const listEventTypes = query({
-  args: {
-    organizationId: v.id("organizations"),
-    module: v.optional(moduleValidator),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    if (args.module) {
-      return ctx.db
-        .query("emailEventTypes")
-        .withIndex("by_orgAndModule", (q) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("module", args.module!),
-        )
-        .filter((q) => q.eq(q.field("isActive"), true))
-        .collect();
-    }
-
-    return ctx.db
-      .query("emailEventTypes")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .filter((q) => q.eq(q.field("isActive"), true))
-      .collect();
-  },
-});
-
-export const getEventLog = query({
-  args: {
-    organizationId: v.id("organizations"),
-    status: v.optional(
-      v.union(
-        v.literal("pending"),
-        v.literal("sent"),
-        v.literal("failed"),
-        v.literal("skipped"),
-      ),
-    ),
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    const limit = args.limit ?? 100;
-
-    if (args.status) {
-      return ctx.db
-        .query("emailEventLog")
-        .withIndex("by_orgAndStatus", (q) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("status", args.status!),
-        )
-        .order("desc")
-        .take(limit);
-    }
-
-    return ctx.db
-      .query("emailEventLog")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .order("desc")
-      .take(limit);
-  },
-});
 
 // ---------------------------------------------------------------------------
 // Actions (Supabase-primary)

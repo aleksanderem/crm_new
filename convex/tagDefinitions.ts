@@ -1,4 +1,4 @@
-import { action, internalMutation } from "./_generated/server";
+import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
@@ -137,16 +137,6 @@ export const remove = action({
     // Soft-delete in Supabase
     const deletedAt = Date.now();
     await db.patch("tagDefinitions", args.tagId, { isDeleted: true, updatedAt: deletedAt });
-
-    // Schedule background cleanup of entity references (still uses Convex DB)
-    try {
-      await ctx.runMutation(internal.tagDefinitions.cleanupTagReferences, {
-        organizationId: args.organizationId,
-        tagId: args.tagId as any,
-      });
-    } catch {
-      // cleanup is best-effort
-    }
   },
 });
 
@@ -175,64 +165,3 @@ export const reorder = action({
   },
 });
 
-export const cleanupTagReferences = internalMutation({
-  args: {
-    organizationId: v.id("organizations"),
-    tagId: v.id("tagDefinitions"),
-  },
-  handler: async (ctx, args) => {
-    const crmTables = [
-      "contacts", "companies", "leads", "documents",
-      "products", "calls",
-    ] as const;
-
-    for (const table of crmTables) {
-      const entities = await ctx.db
-        .query(table)
-        .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-        .collect();
-      for (const entity of entities) {
-        const tagIds = (entity as any).tagIds as string[] | undefined;
-        if (tagIds?.includes(args.tagId)) {
-          await ctx.db.patch(entity._id, {
-            tagIds: tagIds.filter((id) => id !== args.tagId),
-          } as any);
-        }
-      }
-    }
-
-    // scheduledActivities
-    const activities = await ctx.db
-      .query("scheduledActivities")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-    for (const entity of activities) {
-      const tagIds = (entity as any).tagIds as string[] | undefined;
-      if (tagIds?.includes(args.tagId)) {
-        await ctx.db.patch(entity._id, {
-          tagIds: tagIds.filter((id) => id !== args.tagId),
-        } as any);
-      }
-    }
-
-    const gabinetTables = [
-      "gabinetPatients", "gabinetTreatments", "gabinetAppointments",
-      "gabinetEmployees",
-    ] as const;
-
-    for (const table of gabinetTables) {
-      const entities = await ctx.db
-        .query(table)
-        .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-        .collect();
-      for (const entity of entities) {
-        const tagIds = (entity as any).tagIds as string[] | undefined;
-        if (tagIds?.includes(args.tagId)) {
-          await ctx.db.patch(entity._id, {
-            tagIds: tagIds.filter((id) => id !== args.tagId),
-          } as any);
-        }
-      }
-    }
-  },
-});

@@ -442,3 +442,51 @@ describe("resourceSharingEnabled: controls permissions.getResourceSharingEnabled
     expect(result).toBe(true);
   });
 });
+
+// =============================================================================
+// allowCustomLostReason
+// =============================================================================
+
+describe("allowCustomLostReason: controls whether lostReasons.create is permitted", () => {
+  test("allowCustomLostReason=true allows creating a custom lost reason", async () => {
+    const t = createTestCtx();
+    const { organizationId, identity } = await seedTestUser(t);
+
+    await seedConvexOrgSettings(t, organizationId, { allowCustomLostReason: true });
+
+    await expect(
+      t.withIdentity(identity).action(api.lostReasons.create, {
+        organizationId,
+        label: "Custom reason",
+      }),
+    ).resolves.toBeDefined();
+  });
+
+  test("allowCustomLostReason=false blocks creating a custom lost reason", async () => {
+    const t = createTestCtx();
+    const { organizationId, identity } = await seedTestUser(t);
+
+    await seedConvexOrgSettings(t, organizationId, { allowCustomLostReason: false });
+
+    await expect(
+      t.withIdentity(identity).action(api.lostReasons.create, {
+        organizationId,
+        label: "Blocked reason",
+      }),
+    ).rejects.toThrow("Custom lost reasons are disabled");
+  });
+
+  test("allowCustomLostReason defaults to allow (fail-open) when orgSettings not configured", async () => {
+    const t = createTestCtx();
+    const { organizationId, identity } = await seedTestUser(t);
+
+    // No orgSettings row — lostReasons.create should succeed (settings?.allowCustomLostReason === false is false when settings is null)
+
+    await expect(
+      t.withIdentity(identity).action(api.lostReasons.create, {
+        organizationId,
+        label: "Default allow reason",
+      }),
+    ).resolves.toBeDefined();
+  });
+});

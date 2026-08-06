@@ -1,4 +1,4 @@
-import { action, internalMutation, internalQuery } from "../_generated/server";
+import { action, internalAction, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
@@ -519,8 +519,8 @@ export const bookFromPortal = action({
       throw new Error(conflict.reason ?? "Time slot is no longer available");
     }
 
-    // Find org owner via internalQuery
-    const ownerUserId = await ctx.runQuery(
+    // Find org owner via internalAction (teamMemberships is Supabase-primary)
+    const ownerUserId = await ctx.runAction(
       internal.gabinet.patientPortal._findOrgOwner,
       { organizationId },
     ) as string;
@@ -571,13 +571,14 @@ export const bookFromPortal = action({
 /**
  * Internal: find org owner user ID.
  */
-export const _findOrgOwner = internalQuery({
+export const _findOrgOwner = internalAction({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    const ownerMembership = await ctx.db
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    const ownerMembership = await db
       .query("teamMemberships")
-      .withIndex("by_organizationId", (q) => q.eq("organizationId", args.organizationId))
-      .filter((q) => q.eq(q.field("role"), "owner"))
+      .eq("organizationId", args.organizationId)
+      .eq("role", "owner")
       .first();
 
     if (!ownerMembership) {
@@ -601,9 +602,10 @@ export const _bookingNotifications = internalMutation({
     time: v.string(),
   },
   handler: async (ctx, args) => {
-    const staffMemberships = await ctx.db
+    const db = createSupabaseDb();
+    const staffMemberships = await db
       .query("teamMemberships")
-      .withIndex("by_organizationId", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", args.organizationId)
       .collect();
 
     const staffToNotify = staffMemberships.filter(
@@ -734,11 +736,10 @@ export const _rescheduleNotifications = internalMutation({
     requestedTime: v.string(),
   },
   handler: async (ctx, args) => {
-    const staffMemberships = await ctx.db
+    const db = createSupabaseDb();
+    const staffMemberships = await db
       .query("teamMemberships")
-      .withIndex("by_organizationId", (q) =>
-        q.eq("organizationId", args.organizationId),
-      )
+      .eq("organizationId", args.organizationId)
       .collect();
 
     const staffToNotify = staffMemberships.filter(

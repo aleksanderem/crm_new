@@ -187,9 +187,9 @@ export const queueAutomationSms = internalMutation({
     const patientId = appointment.patientId as Id<"gabinetPatients">;
     const employeeId = appointment.employeeId as Id<"users">;
 
-    const config = await ctx.db
+    const config = await db
       .query("orgSmsConfig")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", args.organizationId)
       .unique();
 
     const normalizedPhone = normalizePhoneNumber(args.phone);
@@ -287,10 +287,10 @@ export const queueConfirmationRequest = internalMutation({
       return null;
     }
 
-    const org = await ctx.db.get(args.organizationId);
-    const config = await ctx.db
+    const org = await db.get("organizations", args.organizationId);
+    const config = await db
       .query("orgSmsConfig")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", args.organizationId)
       .unique();
 
     const normalizedPhone = normalizePhoneNumber(patientPhone);

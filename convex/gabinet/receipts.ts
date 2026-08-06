@@ -91,23 +91,43 @@ function paymentMethodPL(method: string): string {
  * Returns the next sequential receipt number for the org in the given year.
  * Format: PREFIX/YYYY/NNNNN (e.g. REC/2026/00001, KOR/2026/00001).
  *
- * Delegates to the `next_gabinet_receipt_number` Postgres function (migration
- * 00085) which uses INSERT ... ON CONFLICT DO UPDATE RETURNING for an atomic
- * counter increment — no read-modify-write race condition under concurrent
- * writes (fixes #3766).
+ * When locationId is provided, delegates to
+ * `next_gabinet_receipt_number_for_location` (migration 00087) which keys the
+ * counter on (org, location, year) — each location gets its own independent
+ * sequence. When locationId is omitted, delegates to
+ * `next_gabinet_receipt_number` (migration 00085) keyed on (org, year) for
+ * orgs without multi-location setup.
+ *
+ * Both functions use INSERT ... ON CONFLICT DO UPDATE RETURNING for an atomic
+ * counter increment with no read-modify-write race condition (fixes #3766).
  */
 async function nextReceiptNumber(
   orgId: string,
   year: number,
   prefix = "REC",
+  locationId?: string,
 ): Promise<string> {
   const db = createSupabaseDb();
   const client = db.raw();
-  const { data, error } = await client.rpc("next_gabinet_receipt_number", {
-    p_org_id: orgId,
-    p_year: year,
-    p_prefix: prefix,
-  });
+  let data: unknown;
+  let error: { message: string } | null;
+  if (locationId) {
+    ({ data, error } = await client.rpc(
+      "next_gabinet_receipt_number_for_location",
+      {
+        p_org_id: orgId,
+        p_year: year,
+        p_prefix: prefix,
+        p_location_id: locationId,
+      },
+    ));
+  } else {
+    ({ data, error } = await client.rpc("next_gabinet_receipt_number", {
+      p_org_id: orgId,
+      p_year: year,
+      p_prefix: prefix,
+    }));
+  }
   if (error) throw new Error(`nextReceiptNumber: ${error.message}`);
   return data as string;
 }

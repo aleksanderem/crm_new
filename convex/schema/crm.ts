@@ -598,6 +598,24 @@ export function createCrmTables({
     kind: v.optional(
       v.union(v.literal("payment"), v.literal("credit_refund")),
     ),
+    // Fiscal receipt fields (issue #3738).
+    // fiscalReceiptId: ID returned by the fiscal device/service after printing.
+    // fiscalStatus: tracks the fiscalisation lifecycle for this payment.
+    //   pending_fiscal — sent to device, awaiting confirmation or retry.
+    //   fiscal_ok      — receipt printed; fiscalReceiptId is set.
+    //   fiscal_error   — all retry attempts exhausted; fiscalError has details.
+    // fiscalAttempts: total delivery attempts (used to cap retries at 3).
+    // fiscalError: last error message from the device/service (debug only).
+    fiscalReceiptId: v.optional(v.string()),
+    fiscalStatus: v.optional(
+      v.union(
+        v.literal("pending_fiscal"),
+        v.literal("fiscal_ok"),
+        v.literal("fiscal_error"),
+      ),
+    ),
+    fiscalAttempts: v.optional(v.number()),
+    fiscalError: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

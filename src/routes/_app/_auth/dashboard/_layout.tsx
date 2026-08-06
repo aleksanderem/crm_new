@@ -9,6 +9,7 @@ import { useSupabase } from "@/components/supabase-provider";
 import { supabaseGlobalSearch } from "@/hooks/use-supabase-search";
 import { useSupabaseScheduledActivityById } from "@/hooks/use-supabase-scheduled-activities";
 import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
+import { useSupabaseMyOrganizations } from "@/hooks/use-supabase-organizations";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppFooter } from "@/components/layout/app-footer";
 import { RouteErrorBoundary } from "@/components/layout/route-error-boundary";
@@ -1085,9 +1086,7 @@ function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
 function DashboardLayout() {
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const { data: user } = useQuery(convexQuery(api.app.getCurrentUser, {}));
-  const { data: orgs } = useQuery(
-    convexQuery(api.organizations.getMyOrganizations, {})
-  );
+  const { data: orgs } = useSupabaseMyOrganizations(user?._id);
   if (!user || !orgs) return null;
   const savedOrgId = localStorage.getItem(getOrgStorageKey(user._id));
   const firstOrg =

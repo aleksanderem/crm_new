@@ -1,6 +1,6 @@
 import { QueryCtx, MutationCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
-import { verifyOrgAccess, requireUser } from "./auth";
+import { verifyOrgAccess } from "./auth";
 import { OrgRole } from "../schema";
 import {
   FEATURES,
@@ -235,33 +235,6 @@ export async function checkPermission(
   }
 
   return { allowed: effectiveScope !== "none", scope: effectiveScope };
-}
-
-// --- checkResourceAccess ---
-
-export async function checkResourceAccess(
-  ctx: QueryCtx | MutationCtx,
-  resourceType: string,
-  resourceId: string,
-): Promise<{ allowed: boolean; accessLevel: "viewer" | "editor" | null }> {
-  const user = await requireUser(ctx);
-
-  const invites = await ctx.db
-    .query("resourceInvites")
-    .withIndex("by_resource", (q) =>
-      q.eq("resourceType", resourceType).eq("resourceId", resourceId)
-    )
-    .collect();
-
-  const match = invites.find(
-    (inv) => inv.status === "accepted" && inv.userId === user._id
-  );
-
-  if (!match) {
-    return { allowed: false, accessLevel: null };
-  }
-
-  return { allowed: true, accessLevel: match.accessLevel };
 }
 
 // --- getEffectivePermissions ---

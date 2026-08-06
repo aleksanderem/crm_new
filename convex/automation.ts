@@ -706,134 +706,190 @@ export const _recordAutomationEmailResult = internalMutation({
   },
 });
 
-async function applyUpdateFieldAction(
-  ctx: MutationCtx,
+// Entity read + Supabase write extracted to an internalAction — mutations
+// cannot use fetch(), and createSupabaseDb() makes HTTP calls to Supabase.
+// Permission check (ctx.db reads) stays in the mutation caller; scope and
+// targetId are passed as arguments so the action can finish the "own" check
+// against the entity it reads. The action chains into _recordUpdateFieldResult
+// which does the Convex mirror write, activity log, and step status patch.
+export const _applyUpdateFieldAction = internalAction({
   args: {
-    organizationId: Id<"organizations">;
-    actorUserId?: Id<"users">;
-    payload: Record<string, unknown>;
-    run: {
-      entityType?: string;
-      entityId?: string;
-      _id: Id<"automationRuns">;
-      eventType: string;
-    };
-    action: {
-      targetEntityType: AutomationTargetEntityType;
-      targetIdPath?: string;
-      fieldKind: "standard" | "custom";
-      fieldKey: string;
-      valueTemplate: string;
-      valueType: "string" | "number" | "boolean" | "date";
-    };
+    organizationId: v.id("organizations"),
+    stepId: v.id("automationRunSteps"),
+    actorUserId: v.optional(v.id("users")),
+    targetEntityType: v.union(
+      v.literal("gabinetPatient"),
+      v.literal("gabinetAppointment"),
+      v.literal("gabinetEmployee"),
+      v.literal("lead"),
+    ),
+    targetId: v.string(),
+    permissionScope: v.union(v.literal("none"), v.literal("own"), v.literal("all")),
+    fieldKind: v.union(v.literal("standard"), v.literal("custom")),
+    fieldKey: v.string(),
+    valueTemplate: v.string(),
+    valueType: v.union(v.literal("string"), v.literal("number"), v.literal("boolean"), v.literal("date")),
+    payload: v.any(),
   },
-) {
-  const descriptor = AUTOMATION_UPDATE_FIELD_DESCRIPTORS[args.action.targetEntityType];
-  const targetId = resolveAutomationTargetId(
-    args.payload,
-    args.run,
-    descriptor,
-    args.action.targetIdPath,
-  );
-  if (!targetId) {
-    throw new Error("Missing field update target");
-  }
+  handler: async (ctx, args) => {
+    const descriptor = AUTOMATION_UPDATE_FIELD_DESCRIPTORS[args.targetEntityType];
+    let errorMessage: string | undefined;
+    let resultUpdates: Record<string, unknown> | undefined;
+    let renderedBody: string | undefined;
 
-  const permission = await getAutomationEditPermission(
-    ctx,
-    args.organizationId,
-    args.actorUserId,
-    descriptor.permissionFeature,
-    descriptor.requireAdmin ? { requireAdmin: true } : undefined,
-  );
-  if (!permission.allowed) {
-    throw new Error(permission.reason ?? "Permission denied");
-  }
+    try {
+      const db = createSupabaseDb();
+      const entity = (await db.get(descriptor.table, args.targetId)) as
+        | ({ organizationId?: string; customFields?: unknown } & Record<string, unknown>)
+        | null;
+      if (!entity || String(entity.organizationId) !== String(args.organizationId)) {
+        throw new Error(descriptor.notFoundMessage);
+      }
+      if (args.permissionScope === "own" && !descriptor.canEditOwn(entity, args.actorUserId)) {
+        throw new Error("Permission denied: you can only edit your own records");
+      }
 
-  // Read entity from Supabase — leads/patients/appointments/employees are all
-  // Supabase-primary, so ctx.db.get against Convex returns null in prod for
-  // entities written by the new action handlers.
-  const db = createSupabaseDb();
-  const entity = (await db.get(descriptor.table, targetId)) as
-    | ({ organizationId?: string; customFields?: unknown } & Record<string, unknown>)
-    | null;
-  if (!entity || String(entity.organizationId) !== String(args.organizationId)) {
-    throw new Error(descriptor.notFoundMessage);
-  }
-  if (permission.scope === "own" && !descriptor.canEditOwn(entity, args.actorUserId)) {
-    throw new Error("Permission denied: you can only edit your own records");
-  }
+      const renderedValue = applyTemplate(args.valueTemplate, args.payload as Record<string, unknown>);
+      const coercedValue = coerceAutomationFieldValue(renderedValue, args.valueType);
+      const now = Date.now();
 
-  const renderedValue = applyTemplate(args.action.valueTemplate, args.payload);
-  const coercedValue = coerceAutomationFieldValue(renderedValue, args.action.valueType);
-  const now = Date.now();
+      let updates: Record<string, unknown>;
+      if (args.fieldKind === "custom") {
+        if (!descriptor.supportsCustom) {
+          throw new Error(descriptor.unsupportedCustomFieldMessage);
+        }
+        const existingCustomFields =
+          entity.customFields && typeof entity.customFields === "object"
+            ? (entity.customFields as Record<string, unknown>)
+            : {};
+        updates = {
+          customFields: { ...existingCustomFields, [args.fieldKey]: coercedValue },
+          updatedAt: now,
+        };
+      } else {
+        if (!STANDARD_FIELD_ALLOWLIST[descriptor.linkedEntityType].has(args.fieldKey)) {
+          throw new Error(descriptor.unsupportedStandardFieldMessage);
+        }
+        updates = { [args.fieldKey]: coercedValue, updatedAt: now };
+      }
 
-  let updates: Record<string, unknown>;
-  if (args.action.fieldKind === "custom") {
-    if (!descriptor.supportsCustom) {
-      throw new Error(descriptor.unsupportedCustomFieldMessage);
+      await db.patch(descriptor.table, args.targetId, updates);
+      resultUpdates = updates;
+      renderedBody = `${args.fieldKind}:${args.fieldKey}=${String(coercedValue)}`;
+    } catch (err) {
+      errorMessage = err instanceof Error ? err.message : String(err);
     }
 
-    const existingCustomFields =
-      entity.customFields && typeof entity.customFields === "object"
-        ? (entity.customFields as Record<string, unknown>)
-        : {};
-    updates = {
-      customFields: {
-        ...existingCustomFields,
-        [args.action.fieldKey]: coercedValue,
-      },
-      updatedAt: now,
-    };
-  } else {
-    if (!STANDARD_FIELD_ALLOWLIST[descriptor.linkedEntityType].has(args.action.fieldKey)) {
-      throw new Error(descriptor.unsupportedStandardFieldMessage);
-    }
-    updates = {
-      [args.action.fieldKey]: coercedValue,
-      updatedAt: now,
-    };
-  }
-
-  // Write to Supabase (primary).
-  await db.patch(descriptor.table, targetId, updates);
-
-  // Mirror to Convex if a doc with this id still exists there (gabinet
-  // entities seeded by tests, or legacy data not yet migrated). For
-  // Supabase-only ids (e.g. UUIDs returned by leads.create), normalizeId
-  // returns null and we silently skip the Convex write.
-  const convexId = ctx.db.normalizeId(descriptor.table, targetId);
-  if (convexId) {
-    const convexDoc = await ctx.db.get(convexId);
-    if (convexDoc) {
-      await ctx.db.patch(convexId, updates as never);
-    }
-  }
-
-  if (args.actorUserId) {
-    const activityLabelByEntity: Record<AutomationTargetEntityType, string> = {
-      gabinetPatient: "patient",
-      gabinetAppointment: "appointment",
-      gabinetEmployee: "employee",
-      lead: "lead",
-    };
-
-    await logActivity(ctx, {
+    await ctx.runMutation(internal.automation._recordUpdateFieldResult, {
       organizationId: args.organizationId,
-      entityType: descriptor.linkedEntityType,
-      entityId: targetId,
-      action: "updated",
-      description: `Updated ${activityLabelByEntity[descriptor.linkedEntityType]} field ${args.action.fieldKey} via automation`,
-      performedBy: args.actorUserId,
+      stepId: args.stepId,
+      actorUserId: args.actorUserId,
+      success: resultUpdates !== undefined,
+      errorMessage,
+      targetEntityType: args.targetEntityType,
+      targetId: args.targetId,
+      linkedEntityType: descriptor.linkedEntityType,
+      fieldKey: args.fieldKey,
+      renderedBody,
+      updates: resultUpdates,
     });
-  }
+  },
+});
 
-  return {
-    linkedEntityType: descriptor.linkedEntityType,
-    linkedEntityId: targetId,
-    renderedBody: `${args.action.fieldKind}:${args.action.fieldKey}=${String(coercedValue)}`,
-  };
-}
+export const _recordUpdateFieldResult = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    stepId: v.id("automationRunSteps"),
+    actorUserId: v.optional(v.id("users")),
+    success: v.boolean(),
+    errorMessage: v.optional(v.string()),
+    targetEntityType: v.optional(v.union(
+      v.literal("gabinetPatient"),
+      v.literal("gabinetAppointment"),
+      v.literal("gabinetEmployee"),
+      v.literal("lead"),
+    )),
+    targetId: v.optional(v.string()),
+    linkedEntityType: v.optional(v.string()),
+    fieldKey: v.optional(v.string()),
+    renderedBody: v.optional(v.string()),
+    updates: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    if (!args.success) {
+      await ctx.db.patch(args.stepId, {
+        status: "failed",
+        errorMessage: args.errorMessage,
+        processedAt: now,
+        updatedAt: now,
+      });
+      await ctx.scheduler.runAfter(0, updateRunStepRef, {
+        stepId: args.stepId as string,
+        organizationId: args.organizationId as string,
+        status: "failed",
+        errorMessage: args.errorMessage,
+        processedAt: now,
+        updatedAt: now,
+      });
+      return;
+    }
+
+    // Mirror to Convex if a doc with this id still exists there (gabinet
+    // entities seeded by tests, or legacy data not yet migrated). For
+    // Supabase-only ids, normalizeId returns null and we silently skip.
+    if (args.targetEntityType && args.targetId && args.updates) {
+      const descriptor = AUTOMATION_UPDATE_FIELD_DESCRIPTORS[args.targetEntityType];
+      const convexId = ctx.db.normalizeId(descriptor.table, args.targetId);
+      if (convexId) {
+        const convexDoc = await ctx.db.get(convexId);
+        if (convexDoc) {
+          await ctx.db.patch(convexId, args.updates as never);
+        }
+      }
+    }
+
+    if (args.actorUserId && args.linkedEntityType && args.targetId && args.fieldKey) {
+      const activityLabelByEntity: Record<AutomationTargetEntityType, string> = {
+        gabinetPatient: "patient",
+        gabinetAppointment: "appointment",
+        gabinetEmployee: "employee",
+        lead: "lead",
+      };
+      const entityLabel = args.targetEntityType
+        ? (activityLabelByEntity[args.targetEntityType] ?? args.targetEntityType)
+        : args.linkedEntityType;
+      await logActivity(ctx, {
+        organizationId: args.organizationId,
+        entityType: args.linkedEntityType,
+        entityId: args.targetId,
+        action: "updated",
+        description: `Updated ${entityLabel} field ${args.fieldKey} via automation`,
+        performedBy: args.actorUserId,
+      });
+    }
+
+    await ctx.db.patch(args.stepId, {
+      status: "processed",
+      linkedEntityType: args.linkedEntityType,
+      linkedEntityId: args.targetId,
+      renderedBody: args.renderedBody,
+      processedAt: now,
+      updatedAt: now,
+    });
+    await ctx.scheduler.runAfter(0, updateRunStepRef, {
+      stepId: args.stepId as string,
+      organizationId: args.organizationId as string,
+      status: "processed",
+      linkedEntityType: args.linkedEntityType,
+      linkedEntityId: args.targetId,
+      renderedBody: args.renderedBody,
+      processedAt: now,
+      updatedAt: now,
+    });
+  },
+});
 
 function evaluateCondition(
   payload: Record<string, unknown>,
@@ -1765,31 +1821,67 @@ export const processRun = internalMutation({
           }
 
           if (action.type === "update_field") {
-            const result = await applyUpdateFieldAction(ctx, {
-              organizationId: run.organizationId,
-              actorUserId: run.actorUserId,
-              payload,
-              run,
-              action,
-            });
+            const descriptor = AUTOMATION_UPDATE_FIELD_DESCRIPTORS[action.targetEntityType];
+            const targetId = resolveAutomationTargetId(payload, run, descriptor, action.targetIdPath);
 
-            await ctx.db.patch(stepId, {
-              status: "processed",
-              linkedEntityType: result.linkedEntityType,
-              linkedEntityId: result.linkedEntityId,
-              renderedBody: result.renderedBody,
-              processedAt: now,
-              updatedAt: now,
-            });
-            await ctx.scheduler.runAfter(0, updateRunStepRef, {
-              stepId: stepId as string,
-              organizationId: run.organizationId as string,
-              status: "processed",
-              linkedEntityType: result.linkedEntityType,
-              linkedEntityId: result.linkedEntityId,
-              renderedBody: result.renderedBody,
-              processedAt: now,
-              updatedAt: now,
+            if (!targetId) {
+              await ctx.db.patch(stepId, {
+                status: "skipped",
+                errorMessage: "Missing field update target",
+                processedAt: now,
+                updatedAt: now,
+              });
+              await ctx.scheduler.runAfter(0, updateRunStepRef, {
+                stepId: stepId as string,
+                organizationId: run.organizationId as string,
+                status: "skipped",
+                errorMessage: "Missing field update target",
+                processedAt: now,
+                updatedAt: now,
+              });
+              continue;
+            }
+
+            const permission = await getAutomationEditPermission(
+              ctx,
+              run.organizationId,
+              run.actorUserId,
+              descriptor.permissionFeature,
+              descriptor.requireAdmin ? { requireAdmin: true } : undefined,
+            );
+
+            if (!permission.allowed) {
+              await ctx.db.patch(stepId, {
+                status: "failed",
+                errorMessage: permission.reason ?? "Permission denied",
+                processedAt: now,
+                updatedAt: now,
+              });
+              await ctx.scheduler.runAfter(0, updateRunStepRef, {
+                stepId: stepId as string,
+                organizationId: run.organizationId as string,
+                status: "failed",
+                errorMessage: permission.reason ?? "Permission denied",
+                processedAt: now,
+                updatedAt: now,
+              });
+              continue;
+            }
+
+            // Entity read and Supabase write happen in the action —
+            // mutations cannot use fetch(). The action patches the step.
+            await ctx.scheduler.runAfter(0, internal.automation._applyUpdateFieldAction, {
+              organizationId: run.organizationId,
+              stepId,
+              actorUserId: run.actorUserId,
+              targetEntityType: action.targetEntityType,
+              targetId,
+              permissionScope: permission.scope,
+              fieldKind: action.fieldKind,
+              fieldKey: action.fieldKey,
+              valueTemplate: action.valueTemplate,
+              valueType: action.valueType,
+              payload,
             });
             continue;
           }

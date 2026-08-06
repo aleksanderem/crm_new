@@ -90,6 +90,7 @@ export const crmManifest: ModuleManifest = {
     { labelKey: "settingsNav.team", to: "/dashboard/settings/team" },
     { sectionKey: "settings.administratorSection", labelKey: "settingsNav.auditLog", to: "/dashboard/settings/audit-log", adminOnly: true },
     { labelKey: "settingsNav.permissions", to: "/dashboard/settings/permissions", adminOnly: true },
+    { labelKey: "settingsNav.dataProcessing", to: "/dashboard/settings/data-processing", adminOnly: true },
     { labelKey: "settingsNav.errorLog", to: "/admin/errors", platformAdminOnly: true },
   ],
   pageContexts: [

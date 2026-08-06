@@ -2035,7 +2035,30 @@
     "documentTemplates": "Document Templates",
     "documentComponents": "Component Library",
     "pipelines": "Pipelines",
-    "googleCalendar": "Google Calendar"
+    "googleCalendar": "Google Calendar",
+    "dataProcessing": "Data Processing"
+  },
+  "dataProcessing": {
+    "title": "Personal Data Processing",
+    "description": "List of subprocessors and entities processing personal data on behalf of the organization pursuant to Art. 28 GDPR.",
+    "subprocessorList": "Subprocessor List",
+    "subprocessorListDescription": "The following entities have been entrusted with processing personal data. Each subprocessor has signed a Data Processing Agreement (DPA) ensuring GDPR compliance.",
+    "columns": {
+      "name": "Name",
+      "purpose": "Purpose",
+      "country": "Country",
+      "links": "Documents"
+    },
+    "privacyPolicy": "Privacy Policy",
+    "lastUpdated": "Last updated: {{date}}",
+    "subprocessors": {
+      "convex": "Serverless functions, authentication, file storage",
+      "netlify": "Application hosting and content delivery network (CDN)",
+      "resend": "Transactional email delivery",
+      "stripe": "Payment processing",
+      "google": "OAuth authentication, Gmail and Google Calendar integration",
+      "hetzner": "Server infrastructure for self-hosted database"
+    }
   },
   "activityTimeline": {
     "relative": {

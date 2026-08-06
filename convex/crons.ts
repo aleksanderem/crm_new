@@ -44,4 +44,13 @@ crons.hourly(
   internal.gabinet.receipts._backfillOrphanedPdfReceipts,
 );
 
+// GDPR patient retention: auto-anonymize inactive gabinet patients whose
+// updatedAt exceeds the org's patientRetentionMonths setting (#3785).
+// Runs nightly at 02:15 UTC (off-peak, offset from other daily jobs).
+crons.daily(
+  "purge-expired-patients-gdpr",
+  { hourUTC: 2, minuteUTC: 15 },
+  internal.gabinet.patients._purgeExpiredPatients,
+);
+
 export default crons;

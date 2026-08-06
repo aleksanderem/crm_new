@@ -1,4 +1,4 @@
-import { action, internalMutation } from "../_generated/server";
+import { action, internalAction, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
@@ -1213,6 +1213,126 @@ export const _gdprEraseSideEffects = internalMutation({
       description: "RODO: dane klienta zostały usunięte",
       performedBy: erasedByUserId,
     });
+  },
+});
+
+// Nightly GDPR retention cron: anonymizes inactive patients whose updatedAt is
+// older than the org's patientRetentionMonths setting. Processes up to 50
+// patients per org per run to stay within action time limits.
+export const _purgeExpiredPatients = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const db = createSupabaseDb();
+    const nowMs = Date.now();
+
+    type OrgSettingsRow = { organizationId: string; patientRetentionMonths: number };
+    const orgsWithPolicy = (await db
+      .query<OrgSettingsRow>("orgSettings")
+      .gt("patientRetentionMonths", 0)
+      .collect()) as OrgSettingsRow[];
+
+    for (const { organizationId: orgId, patientRetentionMonths } of orgsWithPolicy) {
+      const cutoffMs = nowMs - patientRetentionMonths * 30 * 24 * 60 * 60 * 1000;
+
+      type MemberRow = { userId: string; role: string };
+      const owners = (await db
+        .query<MemberRow>("teamMemberships")
+        .eq("organizationId", orgId)
+        .eq("role", "owner")
+        .collect()) as MemberRow[];
+      const performedBy = owners[0]?.userId;
+      if (!performedBy) continue;
+
+      type PatientRow = { id: string; firstName: string; lastName: string };
+      const expiredPatients = (await db
+        .query<PatientRow>("gabinetPatients")
+        .eq("organizationId", orgId)
+        .eq("isActive", false)
+        .lt("updatedAt", cutoffMs)
+        .neq("firstName", "ANONIMOWY")
+        .take(50)
+        .collect()) as PatientRow[];
+
+      const client = db.raw();
+      const GDPR_REDACTED = "[RODO: dane usunięte]";
+
+      for (const patient of expiredPatients) {
+        const anonSuffix = patient.id.slice(-6).toUpperCase();
+
+        await db.patch("gabinetPatients", patient.id, {
+          firstName: "ANONIMOWY",
+          lastName: `#${anonSuffix}`,
+          email: `deleted-${anonSuffix}@gdpr.invalid`,
+          phone: null,
+          pesel: null,
+          dateOfBirth: null,
+          address: null,
+          medicalNotes: null,
+          allergies: null,
+          bloodType: null,
+          emergencyContactName: null,
+          emergencyContactPhone: null,
+          referralSource: null,
+          referredByPatientId: null,
+          contactId: null,
+          tags: null,
+          tagIds: null,
+          categoryId: null,
+          customFields: null,
+          updatedAt: nowMs,
+        });
+
+        await client
+          .from("gabinet_portal_sessions")
+          .delete()
+          .eq("organization_id", orgId)
+          .eq("patient_id", patient.id);
+
+        await client
+          .from("activities")
+          .update({ description: GDPR_REDACTED })
+          .eq("organization_id", orgId)
+          .eq("entity_type", "gabinetPatient")
+          .eq("entity_id", patient.id);
+
+        await client
+          .from("notes")
+          .update({ content: GDPR_REDACTED, updated_at: nowMs })
+          .eq("organization_id", orgId)
+          .eq("entity_type", "gabinetPatient")
+          .eq("entity_id", patient.id);
+
+        await client
+          .from("gabinet_appointments")
+          .update({
+            interview_notes: null,
+            notes: null,
+            internal_notes: null,
+            clinical_remarks: null,
+            body_chart_data: null,
+            treatment_parameter_values: null,
+          })
+          .eq("organization_id", orgId)
+          .eq("patient_id", patient.id);
+
+        const originalName = `${patient.firstName} ${patient.lastName}`.trim();
+        try {
+          await ctx.runMutation(internal.gabinet.patients._gdprEraseSideEffects, {
+            patientId: patient.id,
+            organizationId: orgId as Id<"organizations">,
+            originalName,
+            erasedBy: performedBy,
+          });
+        } catch (e) {
+          console.error(
+            "[patients._purgeExpiredPatients] Side effects failed for patient",
+            patient.id,
+            ":",
+            e,
+          );
+        }
+      }
+    }
   },
 });
 

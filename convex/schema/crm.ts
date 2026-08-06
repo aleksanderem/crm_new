@@ -677,6 +677,9 @@ export function createCrmTables({
     reminderSms24h: v.optional(v.boolean()),
     reminderEmail48h: v.optional(v.boolean()),
     reminderEmail24h: v.optional(v.boolean()),
+    // GDPR retention: months of inactivity after which inactive patients are
+    // auto-anonymized by the nightly retention cron (#3785). null = disabled.
+    patientRetentionMonths: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_org", ["organizationId"]),

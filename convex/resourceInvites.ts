@@ -65,6 +65,7 @@ export const create = action({
 
     // Side effects (notifications, audit) via internal mutation
     try {
+      const org = await db.get("organizations", String(args.organizationId));
       await ctx.runMutation(internal.resourceInvites._createSideEffects, {
         organizationId: args.organizationId,
         userId: authResult.userId,
@@ -73,6 +74,7 @@ export const create = action({
         resourceType: args.resourceType,
         resourceId: args.resourceId,
         accessLevel: args.accessLevel,
+        orgOwnerId: (org?.ownerId as string | undefined) ?? undefined,
       });
     } catch {
       // side effects are best-effort
@@ -164,13 +166,13 @@ export const _createSideEffects = internalMutation({
     resourceType: v.string(),
     resourceId: v.string(),
     accessLevel: v.string(),
+    orgOwnerId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const org = await ctx.db.get(args.organizationId);
-    if (org) {
+    if (args.orgOwnerId) {
       await createNotificationDirect(ctx, {
         organizationId: args.organizationId,
-        userId: org.ownerId,
+        userId: args.orgOwnerId as any,
         type: "resource_invite",
         title: "Resource shared",
         message: `${args.userName} shared a ${args.resourceType} with ${args.email}`,

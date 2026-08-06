@@ -50,6 +50,22 @@ DEFAULT_PERMISSIONS.viewer.gabinet_payments = {
   view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
 };
 
+// --- Per-feature overrides for gabinet_receipts ---
+// Receipts are financial documents tied to payments. view = view/print; delete = void.
+// owner/admin: full control incl. void; member: view+print (no void); viewer: view only.
+DEFAULT_PERMISSIONS.owner.gabinet_receipts = {
+  view: "all", create: "all", edit: "all", delete: "all", approve: "none", sign: "none", refund: "none",
+};
+DEFAULT_PERMISSIONS.admin.gabinet_receipts = {
+  view: "all", create: "all", edit: "all", delete: "all", approve: "none", sign: "none", refund: "none",
+};
+DEFAULT_PERMISSIONS.member.gabinet_receipts = {
+  view: "all", create: "all", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
+};
+DEFAULT_PERMISSIONS.viewer.gabinet_receipts = {
+  view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
+};
+
 // --- Per-feature overrides for gabinet_reports ---
 // owner/admin: all (default). member: view only (reports are read-only).
 // viewer: no access by default — financial summaries are sensitive.

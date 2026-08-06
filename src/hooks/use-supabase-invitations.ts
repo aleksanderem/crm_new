@@ -4,6 +4,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useSupabase } from "@/components/supabase-provider";
+import { createAnonSupabaseClient } from "@/lib/supabase/client";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { mapInvitationFromSupabase, type MappedInvitation } from "@/lib/supabase/mappers";
 
@@ -42,6 +43,48 @@ export interface InvitationByTokenResult {
   };
   orgName: string | null;
   inviterName: string | null;
+}
+
+// Module-level singleton — avoids creating a new client on every render.
+// No auth header; relies on SECURITY DEFINER functions granted to the anon role.
+const anonClient = createAnonSupabaseClient();
+
+/**
+ * Fetches invitation details by token without requiring SupabaseProvider.
+ *
+ * Uses an unauthenticated (anon-key-only) client and calls the
+ * `get_invitation_by_token` SECURITY DEFINER function. Intended for the
+ * login-page invite banner, which renders before the user has a JWT.
+ */
+export function useAnonSupabaseInvitationByToken(token: string, options?: { enabled?: boolean }) {
+  const { enabled = true } = options ?? {};
+
+  return useQuery<InvitationByTokenResult | null, Error>({
+    queryKey: ["supabase", "invitations", "byToken", "anon", token],
+    queryFn: async () => {
+      const { data, error } = await anonClient
+        .rpc("get_invitation_by_token", { p_token: token });
+
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : null;
+      if (!row) return null;
+
+      return {
+        invitation: {
+          _id: row.id,
+          email: row.email,
+          role: row.role,
+          status: row.status,
+          expiresAt: row.expires_at,
+          createdAt: row.created_at,
+          module: row.module ?? null,
+        },
+        orgName: row.org_name ?? null,
+        inviterName: row.inviter_name ?? null,
+      };
+    },
+    enabled: enabled && !!token,
+  });
 }
 
 export function useSupabaseInvitationByToken(token: string, options?: { enabled?: boolean }) {

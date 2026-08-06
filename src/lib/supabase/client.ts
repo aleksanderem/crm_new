@@ -67,3 +67,20 @@ export function createSupabaseClient(
     },
   });
 }
+
+/**
+ * Create an unauthenticated Supabase client using only the anon key.
+ *
+ * This client cannot access RLS-protected tables directly, but it can call
+ * SECURITY DEFINER Postgres functions that are granted to the `anon` role
+ * (e.g. `get_invitation_by_token`). Use this only outside SupabaseProvider
+ * where no Convex JWT is available.
+ */
+export function createAnonSupabaseClient(): SupabaseClient<Database> {
+  return createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+}

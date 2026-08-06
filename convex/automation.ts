@@ -20,8 +20,10 @@ import {
 } from "./schema";
 import { AUTH_EMAIL, AUTH_RESEND_KEY } from "@cvx/env";
 import { renderTemplateString } from "./emailTemplates";
-import { checkPermission } from "./_helpers/permissions";
+import { DEFAULT_PERMISSIONS } from "./_helpers/permissions";
 import type { Feature, Scope } from "./_helpers/permissionTypes";
+import type { OrgRole } from "./schema";
+import { defaultGabinetScope, maxScope } from "./_helpers/gabinetRolePermissions";
 import {
   buildActionCapabilities,
   listEventCatalogEntries,
@@ -355,23 +357,15 @@ async function getAutomationEditPermission(
     };
   }
 
-  const actorCtx = {
-    ...ctx,
-    auth: {
-      ...ctx.auth,
-      getUserIdentity: async () => ({
-        subject: `${actorUserId}|automation`,
-        issuer: "automation",
-        tokenIdentifier: `automation|${actorUserId}`,
-      }),
-    },
-  } as MutationCtx;
+  const db = createSupabaseDb();
 
-  let membershipRole: string;
-  try {
-    const { membership } = await verifyOrgAccess(actorCtx, organizationId);
-    membershipRole = membership.role;
-  } catch {
+  const membership = await db
+    .query("teamMemberships")
+    .eq("organizationId", String(organizationId))
+    .eq("userId", String(actorUserId))
+    .unique();
+
+  if (!membership) {
     return {
       allowed: false,
       scope: "none",
@@ -379,17 +373,13 @@ async function getAutomationEditPermission(
     };
   }
 
-  const permission = await checkPermission(actorCtx, organizationId, feature, "edit");
+  const role = membership.role as OrgRole;
 
-  if (!permission.allowed) {
-    return {
-      allowed: false,
-      scope: permission.scope,
-      reason: "Permission denied",
-    };
+  if (role === "owner" || role === "admin") {
+    return { allowed: true, scope: "all" };
   }
 
-  if (options?.requireAdmin && membershipRole !== "owner" && membershipRole !== "admin") {
+  if (options?.requireAdmin) {
     return {
       allowed: false,
       scope: "none",
@@ -397,9 +387,57 @@ async function getAutomationEditPermission(
     };
   }
 
+  // Org-level permission override (reads from Supabase, TABLE_MAP primary)
+  const override = await db
+    .query("orgPermissions")
+    .eq("organizationId", String(organizationId))
+    .eq("role", role)
+    .unique();
+
+  let orgScope: Scope;
+  if (override) {
+    const perms = override.permissions as Record<string, Record<string, string>>;
+    orgScope = (perms?.[feature]?.edit ?? DEFAULT_PERMISSIONS[role]?.[feature]?.edit ?? "none") as Scope;
+  } else {
+    orgScope = DEFAULT_PERMISSIONS[role]?.[feature]?.edit ?? "none";
+  }
+
+  // Gabinet-role scope (MAX-merge for gabinet_* features). gabinetMemberships,
+  // gabinetRolePermissions, and gabinetMembershipPermissions are Convex-only
+  // mirrors (not in TABLE_MAP) so they must be read via ctx.runQuery.
+  let effectiveScope: Scope = orgScope;
+  if (feature.startsWith("gabinet_")) {
+    const gabinetData = await ctx.runQuery(
+      internal._helpers.authAction._getGabinetPermissionData,
+      { organizationId, userId: actorUserId },
+    );
+    if (gabinetData.membership) {
+      const gRole = gabinetData.membership.gabinetRole;
+      const gabinetScope: Scope = gabinetData.rolePermissions
+        ? ((gabinetData.rolePermissions[feature]?.edit ?? defaultGabinetScope(gRole, feature, "edit")) as Scope)
+        : defaultGabinetScope(gRole, feature, "edit");
+      effectiveScope = maxScope(orgScope, gabinetScope);
+
+      if (gabinetData.membershipPermissions) {
+        const membershipScope = gabinetData.membershipPermissions[feature]?.edit;
+        if (membershipScope !== undefined) {
+          effectiveScope = membershipScope as Scope;
+        }
+      }
+    }
+  }
+
+  if (effectiveScope === "none") {
+    return {
+      allowed: false,
+      scope: effectiveScope,
+      reason: "Permission denied",
+    };
+  }
+
   return {
     allowed: true,
-    scope: permission.scope,
+    scope: effectiveScope,
   };
 }
 

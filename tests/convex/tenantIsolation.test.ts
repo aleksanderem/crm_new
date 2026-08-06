@@ -1,6 +1,7 @@
 /**
  * Tenant isolation tests — verifies that an authenticated user from Org A
- * cannot read rows that belong to Org B through any Convex query endpoint.
+ * cannot read rows that belong to Org B through any Convex query or action
+ * endpoint.
  *
  * Two attack vectors are tested for each endpoint:
  *   1. Cross-org list: pass Org B's organizationId while authenticated as a
@@ -8,14 +9,17 @@
  *   2. Cross-ID fetch: pass Org A's organizationId but an entity ID that
  *      belongs to Org B → the per-entity org ownership check must throw.
  *
- * These tests cover the Convex query layer. Supabase RLS (the other half of the
- * read-path protection) cannot be exercised with the in-memory stub; it is
- * validated by the RLS coverage audit (#3709 dependency).
+ * These tests cover both the Convex query layer and the Convex action layer
+ * (action endpoints that call ctx.runQuery(internal._helpers.authAction.verifyOrgAccess)
+ * are tested via t.withIdentity(identity).action(...)). Supabase RLS (the other
+ * half of the read-path protection) cannot be exercised with the in-memory stub;
+ * it is validated by the RLS coverage audit (#3709 dependency).
  */
 
 import { afterEach, describe, expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
 import { createTestCtx, seedTestUser } from "../../convex/_test_helpers";
+import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
 
 afterEach(async () => {
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -313,6 +317,106 @@ describe("tenant isolation — auditLog", () => {
     await expect(
       t.withIdentity(identityA).query(api.auditLog.list, {
         organizationId: orgBId,
+      }),
+    ).rejects.toThrow("Not a member of this organization");
+  });
+});
+
+// ─── Pipelines (action-based, Supabase-primary) ───────────────────────────────
+//
+// These endpoints are `action` type and call ctx.runQuery(verifyOrgAccess)
+// internally. The Convex auth layer is fully testable via convex-test's
+// .action() runner; Supabase RLS enforcement is covered separately (#3709).
+
+describe("tenant isolation — pipelines (actions)", () => {
+  test("list: org A user cannot list org B pipelines", async () => {
+    const t = createTestCtx();
+    const { identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    await expect(
+      t.withIdentity(identityA).action(api.pipelines.list, {
+        organizationId: orgBId,
+      }),
+    ).rejects.toThrow("Not a member of this organization");
+  });
+
+  test("getById: org A user cannot access org B pipeline using org B's orgId", async () => {
+    const t = createTestCtx();
+    const { identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    await expect(
+      t.withIdentity(identityA).action(api.pipelines.getById, {
+        organizationId: orgBId,
+        pipelineId: "some-pipeline-id",
+      }),
+    ).rejects.toThrow("Not a member of this organization");
+  });
+
+  test("getById: org A user cannot fetch an org B pipeline by ID using org A's orgId", async () => {
+    const t = createTestCtx();
+    const { organizationId: orgAId, identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    // Insert a pipeline belonging to Org B into the in-memory Supabase store.
+    const db = createSupabaseDb();
+    const pipelineBId = await db.insert("pipelines", {
+      organizationId: String(orgBId),
+      name: "Org B Pipeline",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    // Org A user passes Org A's orgId but Org B's pipeline ID.
+    // verifyOrgAccess passes (user is in Org A), but the pipeline ownership
+    // check (pipeline.organizationId !== orgAId) must throw.
+    await expect(
+      t.withIdentity(identityA).action(api.pipelines.getById, {
+        organizationId: orgAId,
+        pipelineId: pipelineBId,
+      }),
+    ).rejects.toThrow("Pipeline not found");
+  });
+
+  test("getStages: org A user cannot list stages for an org B pipeline", async () => {
+    const t = createTestCtx();
+    const { identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    await expect(
+      t.withIdentity(identityA).action(api.pipelines.getStages, {
+        organizationId: orgBId,
+        pipelineId: "some-pipeline-id",
+      }),
+    ).rejects.toThrow("Not a member of this organization");
+  });
+
+  test("getAllStages: org A user cannot list all stages of org B", async () => {
+    const t = createTestCtx();
+    const { identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    await expect(
+      t.withIdentity(identityA).action(api.pipelines.getAllStages, {
+        organizationId: orgBId,
+      }),
+    ).rejects.toThrow("Not a member of this organization");
+  });
+});
+
+// ─── Gabinet patients (action-based, Supabase-primary) ────────────────────────
+
+describe("tenant isolation — gabinet patients (actions)", () => {
+  test("list: org A user cannot list org B patients", async () => {
+    const t = createTestCtx();
+    const { identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    await expect(
+      t.withIdentity(identityA).action(api.gabinet.patients.list, {
+        organizationId: orgBId,
+        paginationOpts: PAGINATION,
       }),
     ).rejects.toThrow("Not a member of this organization");
   });

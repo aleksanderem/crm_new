@@ -82,7 +82,12 @@ function paymentMethodPL(method: string): string {
 
 /**
  * Returns the next sequential receipt number for the org in the given year.
- * Format: REC/YYYY/NNNNN (e.g. REC/2026/00001).
+ * Format: PREFIX/YYYY/NNNNN (e.g. REC/2026/00001, KOR/2026/00001).
+ *
+ * Delegates to the `next_gabinet_receipt_number` Postgres function (migration
+ * 00085) which uses INSERT ... ON CONFLICT DO UPDATE RETURNING for an atomic
+ * counter increment — no read-modify-write race condition under concurrent
+ * writes (fixes #3766).
  */
 async function nextReceiptNumber(
   orgId: string,
@@ -91,22 +96,13 @@ async function nextReceiptNumber(
 ): Promise<string> {
   const db = createSupabaseDb();
   const client = db.raw();
-  const fullPrefix = `${prefix}/${year}/`;
-  const { data } = await client
-    .from("gabinet_receipts")
-    .select("receipt_number")
-    .eq("organization_id", orgId)
-    .like("receipt_number", `${fullPrefix}%`)
-    .order("receipt_number", { ascending: false })
-    .limit(1);
-
-  let next = 1;
-  if (data && data.length > 0) {
-    const last = (data[0].receipt_number as string).slice(fullPrefix.length);
-    const parsed = parseInt(last, 10);
-    if (!isNaN(parsed)) next = parsed + 1;
-  }
-  return `${fullPrefix}${String(next).padStart(5, "0")}`;
+  const { data, error } = await client.rpc("next_gabinet_receipt_number", {
+    p_org_id: orgId,
+    p_year: year,
+    p_prefix: prefix,
+  });
+  if (error) throw new Error(`nextReceiptNumber: ${error.message}`);
+  return data as string;
 }
 
 // ---------------------------------------------------------------------------

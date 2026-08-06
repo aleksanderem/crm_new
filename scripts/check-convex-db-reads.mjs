@@ -161,8 +161,6 @@ const GET_PENDING = new Set([
   "gabinet/employees",
   // invitations.ts — ctx.db.get on users for inviter lookup.
   "invitations",
-  // signatureRequests.ts — ctx.db.get on users, organizations, documentInstances.
-  "signatureRequests",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -195,7 +193,6 @@ const MULTILINE_PENDING = new Set([
   "notes",
   "organizations",
   "payments",
-  "signatureRequests",
   "stripe",
 ]);
 

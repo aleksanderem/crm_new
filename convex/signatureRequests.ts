@@ -1,4 +1,4 @@
-import { action, internalMutation } from "./_generated/server";
+import { action, internalAction, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { internal, api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -166,7 +166,7 @@ export const sendForSigning = action({
       let signerEmail = signer.signerEmail;
       if (signer.signerType === "internal" && signer.signerUserId) {
         try {
-          const userData = await ctx.runMutation(internal.signatureRequests._resolveUser, {
+          const userData = await ctx.runAction(internal.signatureRequests._resolveUser, {
             userId: signer.signerUserId,
           });
           signerName = signerName || userData.name || "";
@@ -227,8 +227,10 @@ export const sendForSigning = action({
 
     // Schedule email notifications via side effects
     try {
+      const orgData = await db.get("organizations", instance.organizationId as string);
       await ctx.runMutation(internal.signatureRequests._sendSigningEmails, {
         organizationId: instance.organizationId as string,
+        orgName: (orgData?.name as string) ?? "Organizacja",
         instanceTitle: instance.title as string,
         createdTokens: JSON.stringify(createdTokens),
         signatures: JSON.stringify(updatedSignatures),
@@ -242,13 +244,14 @@ export const sendForSigning = action({
   },
 });
 
-export const _resolveUser = internalMutation({
+export const _resolveUser = internalAction({
   args: { userId: v.string() },
-  handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId as Id<"users">);
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    const user = await db.get("users", args.userId);
     return {
-      name: user?.name ?? "",
-      email: user?.email ?? "",
+      name: (user?.name as string) ?? "",
+      email: (user?.email as string) ?? "",
     };
   },
 });
@@ -256,14 +259,14 @@ export const _resolveUser = internalMutation({
 export const _sendSigningEmails = internalMutation({
   args: {
     organizationId: v.string(),
+    orgName: v.string(),
     instanceTitle: v.string(),
     createdTokens: v.string(),
     signatures: v.string(),
     expiresAt: v.number(),
   },
   handler: async (ctx, args) => {
-    const org = await ctx.db.get(args.organizationId as Id<"organizations">);
-    const orgName = org?.name ?? "Organizacja";
+    const orgName = args.orgName;
     const tokens = JSON.parse(args.createdTokens) as Array<{ slotId: string; token: string; requestId: string }>;
     const sigs = JSON.parse(args.signatures) as any[];
 
@@ -354,8 +357,17 @@ export const signExternal = action({
 
     // Notify document author via side effects
     try {
+      let authorEmail: string | undefined;
+      let authorName: string | undefined;
+      if (instance.createdBy) {
+        const authorUser = await db.get("users", String(instance.createdBy));
+        authorEmail = authorUser?.email as string | undefined;
+        authorName = (authorUser?.name as string) ?? authorEmail;
+      }
       await ctx.runMutation(internal.signatureRequests._notifyAuthor, {
-        instanceId: request.instanceId as string,
+        authorEmail,
+        authorName,
+        documentTitle: instance.title as string,
         signerName: (request.signerName as string) ?? (request.signerEmail as string) ?? "Sygnatariusz",
         slotLabel: signatures[slotIndex].slotLabel ?? "",
         allSigned,
@@ -370,26 +382,23 @@ export const signExternal = action({
 
 export const _notifyAuthor = internalMutation({
   args: {
-    instanceId: v.string(),
+    authorEmail: v.optional(v.string()),
+    authorName: v.optional(v.string()),
+    documentTitle: v.string(),
     signerName: v.string(),
     slotLabel: v.string(),
     allSigned: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const instance = await ctx.db.get(args.instanceId as Id<"documentInstances">);
-    if (!instance) return;
-
-    const author = await ctx.db.get(instance.createdBy as Id<"users">);
-    if (author?.email) {
-      await ctx.scheduler.runAfter(0, api.signingEmails.sendSlotSignedNotification, {
-        authorEmail: author.email,
-        authorName: author.name ?? author.email,
-        documentTitle: instance.title as string,
-        signerName: args.signerName,
-        slotLabel: args.slotLabel,
-        allSigned: args.allSigned,
-      });
-    }
+    if (!args.authorEmail) return;
+    await ctx.scheduler.runAfter(0, api.signingEmails.sendSlotSignedNotification, {
+      authorEmail: args.authorEmail,
+      authorName: args.authorName ?? args.authorEmail,
+      documentTitle: args.documentTitle,
+      signerName: args.signerName,
+      slotLabel: args.slotLabel,
+      allSigned: args.allSigned,
+    });
   },
 });
 
@@ -504,9 +513,11 @@ export const resend = action({
 
     // Dispatch email/SMS notification with the new token
     const instance = await db.get("documentInstances", String(request.instanceId));
+    const orgData = await db.get("organizations", String(request.organizationId));
     try {
       await ctx.runMutation(internal.signatureRequests._sendSigningEmails, {
         organizationId: String(request.organizationId),
+        orgName: (orgData?.name as string) ?? "Organizacja",
         instanceTitle: String(instance?.title ?? ""),
         createdTokens: JSON.stringify([{ slotId: request.slotId, token, requestId: newId }]),
         signatures: JSON.stringify([{

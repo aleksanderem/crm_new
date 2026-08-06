@@ -132,6 +132,7 @@
     "openai": "^6.46.0",
     "oslo": "^1.2.1",
     "papaparse": "^5.5.3",
+    "pdf-lib": "^1.17.1",
     "platejs": "^52.3.4",
     "primereact": "^11.0.0-alpha.1",
     "radix-ui": "^1.4.3",

@@ -4062,6 +4062,15 @@
         "settings": "Settings",
         "dashboard": "Dashboard"
       }
+    },
+    "receipts": {
+      "download": "Download receipt",
+      "generating": "Generating...",
+      "noUrl": "Receipt PDF URL not available",
+      "title": "Receipt",
+      "receiptNumber": "Receipt number",
+      "issuedAt": "Issued at",
+      "totalGross": "Total (gross)"
     }
   },
   "customFields": {

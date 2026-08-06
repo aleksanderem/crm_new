@@ -1004,5 +1004,39 @@ export function createGabinetTables({
     .index("by_equipment", ["equipmentId"])
     .index("by_org", ["organizationId"])
     .index("by_orgAndTime", ["organizationId", "transferredAt"]),
+
+  // --- Gabinet: PDF Receipts (issue #3739) ---
+
+  gabinetReceipts: defineTable({
+    organizationId: v.id("organizations"),
+    paymentId: v.string(),
+    appointmentId: v.optional(v.string()),
+    patientId: v.optional(v.string()),
+    receiptNumber: v.string(), // e.g. REC/2026/00001
+    issuedAt: v.number(),
+    // Org data captured at issuance time so the receipt can be reproduced later.
+    organizationName: v.string(),
+    organizationNip: v.optional(v.string()),
+    organizationAddress: v.optional(v.string()),
+    // Monetary totals in PLN
+    totalNet: v.number(),
+    totalVat: v.number(),
+    totalGross: v.number(),
+    paymentMethod: v.string(),
+    // Line items serialised as JSON at issuance time:
+    // [{ name, pkwiu, quantity, unitPriceGross, vatRate, netAmount, vatAmount, grossAmount }]
+    itemsJson: v.string(),
+    // Fiscal reference: copied from payment.fiscalReceiptId when available.
+    fiscalReceiptId: v.optional(v.string()),
+    // PDF stored in Convex file storage.
+    pdfStorageId: v.optional(v.id("_storage")),
+    pdfUrl: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_payment", ["paymentId"])
+    .index("by_orgAndNumber", ["organizationId", "receiptNumber"]),
   };
 }

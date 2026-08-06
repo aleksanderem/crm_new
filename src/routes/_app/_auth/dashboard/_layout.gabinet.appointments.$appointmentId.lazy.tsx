@@ -249,6 +249,7 @@ function AppointmentDetail() {
   const { allowed: canCreatePayment } = usePermission("gabinet_payments", "create");
   const { allowed: canEditPayment } = usePermission("gabinet_payments", "edit");
   const { allowed: canRefundPayment } = usePermission("gabinet_payments", "refund");
+  const { allowed: canGenerateReceipt } = usePermission("gabinet_receipts", "create");
 
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -327,6 +328,8 @@ function AppointmentDetail() {
   // Payment actions (Supabase-primary)
   const markPaymentPaid = useAction(api.payments.markPaid);
   const refundPayment = useAction(api.payments.refund);
+  const generatePdfReceipt = useAction(api.gabinet.receipts.generatePdfReceipt);
+  const [generatingReceiptFor, setGeneratingReceiptFor] = useState<string | null>(null);
 
   // Package usage mutation
   const usePackageTreatmentsBatch = useAction(
@@ -1051,6 +1054,26 @@ function AppointmentDetail() {
     } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
+    }
+  };
+
+  const handleDownloadReceipt = async (paymentId: string) => {
+    setGeneratingReceiptFor(paymentId);
+    try {
+      const result = await generatePdfReceipt({
+        organizationId,
+        paymentId,
+      });
+      if (result.pdfUrl) {
+        window.open(result.pdfUrl, "_blank", "noopener,noreferrer");
+      } else {
+        toast.error(t("gabinet.receipts.noUrl"));
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
+    } finally {
+      setGeneratingReceiptFor(null);
     }
   };
 
@@ -1868,6 +1891,20 @@ function AppointmentDetail() {
                                   }
                                 >
                                   {t("gabinet.payments.refund")}
+                                </Button>
+                              )}
+                              {payment.status === "completed" && canGenerateReceipt && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={generatingReceiptFor === (payment._id as string)}
+                                  onClick={() =>
+                                    handleDownloadReceipt(payment._id as string)
+                                  }
+                                >
+                                  {generatingReceiptFor === (payment._id as string)
+                                    ? t("gabinet.receipts.generating")
+                                    : t("gabinet.receipts.download")}
                                 </Button>
                               )}
                             </td>

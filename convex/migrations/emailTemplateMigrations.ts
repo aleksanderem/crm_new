@@ -1,23 +1,49 @@
-import type { RegisteredMutation } from "convex/server";
-import { internalMutation } from "../_generated/server";
+import { internalAction } from "../_generated/server";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
+
+type EmailLayoutRow = {
+  _id: string;
+  organizationId: string;
+  primaryColor: string | null;
+  backgroundColor: string | null;
+  contentBackgroundColor: string | null;
+  logoUrl: string | null;
+  companyName: string | null;
+  footerText: string | null;
+  updatedBy: string | null;
+  updatedAt: number | null;
+};
+
+type EmailTemplateRow = {
+  _id: string;
+  slug: string | null;
+  body: string | null;
+  renderedHtml: string | null;
+  variables: Array<{ source: string }> | null;
+  requiredSources: string[] | null;
+};
+
+type EmailEventBindingRow = {
+  _id: string;
+  templateId: string;
+  templateSlug: string | null;
+};
 
 /** Migration 1: Copy emailLayouts data into emailBrandConfig */
-export const migrateLayoutsToBrandConfig: RegisteredMutation<
-  "internal",
-  Record<string, never>,
-  Promise<{ migrated: number }>
-> = internalMutation({
-  handler: async (ctx) => {
-    const layouts = await ctx.db.query("emailLayouts").collect();
+export const migrateLayoutsToBrandConfig = internalAction({
+  args: {},
+  handler: async (_ctx) => {
+    const db = createSupabaseDb();
+    const layouts = (await db.query("emailLayouts").collect()) as EmailLayoutRow[];
     let migrated = 0;
     for (const layout of layouts) {
-      const existing = await ctx.db
-        .query("emailBrandConfig" as any)
-        .withIndex("by_org", (q: any) => q.eq("organizationId", layout.organizationId))
+      const existing = await db
+        .query("emailBrandConfig")
+        .eq("organizationId", layout.organizationId)
         .first();
       if (existing) continue;
 
-      await ctx.db.insert("emailBrandConfig" as any, {
+      await db.insert("emailBrandConfig", {
         organizationId: layout.organizationId,
         primaryColor: layout.primaryColor ?? "#2563eb",
         backgroundColor: layout.backgroundColor,
@@ -40,20 +66,18 @@ export const migrateLayoutsToBrandConfig: RegisteredMutation<
 });
 
 /** Migration 2: Extract requiredSources from variables array */
-export const migrateVariablesToRequiredSources: RegisteredMutation<
-  "internal",
-  Record<string, never>,
-  Promise<{ migrated: number }>
-> = internalMutation({
-  handler: async (ctx) => {
-    const templates = await ctx.db.query("emailTemplates").collect();
+export const migrateVariablesToRequiredSources = internalAction({
+  args: {},
+  handler: async (_ctx) => {
+    const db = createSupabaseDb();
+    const templates = (await db.query("emailTemplates").collect()) as EmailTemplateRow[];
     let migrated = 0;
     for (const tmpl of templates) {
-      if ((tmpl as any).requiredSources && (tmpl as any).requiredSources.length > 0) continue;
+      if (tmpl.requiredSources && tmpl.requiredSources.length > 0) continue;
       if (!tmpl.variables || tmpl.variables.length === 0) continue;
 
-      const sources = [...new Set(tmpl.variables.map((v: { source: string }) => v.source))];
-      await ctx.db.patch(tmpl._id, { requiredSources: sources } as any);
+      const sources = [...new Set(tmpl.variables.map((v) => v.source))];
+      await db.patch("emailTemplates", tmpl._id, { requiredSources: sources });
       migrated++;
     }
     return { migrated };
@@ -61,16 +85,15 @@ export const migrateVariablesToRequiredSources: RegisteredMutation<
 });
 
 /** Migration 3: Extract renderedHtml from GrapesJS body JSON */
-export const migrateBodyToRenderedHtml: RegisteredMutation<
-  "internal",
-  Record<string, never>,
-  Promise<{ migrated: number }>
-> = internalMutation({
-  handler: async (ctx) => {
-    const templates = await ctx.db
+export const migrateBodyToRenderedHtml = internalAction({
+  args: {},
+  handler: async (_ctx) => {
+    const db = createSupabaseDb();
+    const templates = (await db
       .query("emailTemplates")
-      .filter((q) => q.eq(q.field("renderedHtml" as any), undefined))
-      .take(100);
+      .or("rendered_html.is.null")
+      .take(100)
+      .collect()) as EmailTemplateRow[];
     let migrated = 0;
     for (const tmpl of templates) {
       if (!tmpl.body) continue;
@@ -81,7 +104,7 @@ export const migrateBodyToRenderedHtml: RegisteredMutation<
       } catch {
         // body is already raw HTML, use as-is
       }
-      await ctx.db.patch(tmpl._id, { renderedHtml: html } as any);
+      await db.patch("emailTemplates", tmpl._id, { renderedHtml: html });
       migrated++;
     }
     return { migrated };
@@ -89,19 +112,20 @@ export const migrateBodyToRenderedHtml: RegisteredMutation<
 });
 
 /** Migration 4: Add templateSlug to emailEventBindings for locale-aware lookup */
-export const migrateEventBindingsToSlug: RegisteredMutation<
-  "internal",
-  Record<string, never>,
-  Promise<{ migrated: number }>
-> = internalMutation({
-  handler: async (ctx) => {
-    const bindings = await ctx.db.query("emailEventBindings").collect();
+export const migrateEventBindingsToSlug = internalAction({
+  args: {},
+  handler: async (_ctx) => {
+    const db = createSupabaseDb();
+    const bindings = (await db.query("emailEventBindings").collect()) as EmailEventBindingRow[];
     let migrated = 0;
     for (const binding of bindings) {
-      if ((binding as any).templateSlug) continue;
-      const template = await ctx.db.get(binding.templateId);
-      if ((template as any)?.slug) {
-        await ctx.db.patch(binding._id, { templateSlug: (template as any).slug } as any);
+      if (binding.templateSlug) continue;
+      const template = (await db.get(
+        "emailTemplates",
+        binding.templateId,
+      )) as EmailTemplateRow | null;
+      if (template?.slug) {
+        await db.patch("emailEventBindings", binding._id, { templateSlug: template.slug });
         migrated++;
       }
     }

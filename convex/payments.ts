@@ -231,6 +231,20 @@ export const create = action({
       // side effects are best-effort
     }
 
+    // Schedule receipt creation for completed payments (issue #3737).
+    // Skipped for credit_refund ledger entries (no printable receipt needed).
+    if (status === "completed" && insertRow.kind !== "credit_refund") {
+      try {
+        await ctx.runMutation(internal.payments._scheduleReceiptForPayment, {
+          paymentId,
+          organizationId: args.organizationId,
+          userId: authResult.userId,
+        });
+      } catch {
+        // best-effort
+      }
+    }
+
     return paymentId;
   },
 });
@@ -397,6 +411,17 @@ export const refundCredit = action({
       // side effects are best-effort
     }
 
+    // Cash/card refund back to patient is a real fiscal transaction (issue #3737).
+    try {
+      await ctx.runMutation(internal.payments._scheduleReceiptForPayment, {
+        paymentId,
+        organizationId: args.organizationId,
+        userId: authResult.userId,
+      });
+    } catch {
+      // best-effort
+    }
+
     return paymentId;
   },
 });
@@ -510,6 +535,17 @@ export const markPaid = action({
       // side effects are best-effort
     }
 
+    // Schedule receipt for the newly completed payment (issue #3737).
+    try {
+      await ctx.runMutation(internal.payments._scheduleReceiptForPayment, {
+        paymentId: args.paymentId,
+        organizationId: args.organizationId,
+        userId: authResult.userId,
+      });
+    } catch {
+      // best-effort
+    }
+
     return args.paymentId;
   },
 });
@@ -609,6 +645,22 @@ export const splitMarkPaid = action({
       // side effects are best-effort
     }
 
+    // Schedule receipts for both split payment rows (issue #3737).
+    try {
+      await ctx.runMutation(internal.payments._scheduleReceiptForPayment, {
+        paymentId: args.paymentId,
+        organizationId: args.organizationId,
+        userId: authResult.userId,
+      });
+      await ctx.runMutation(internal.payments._scheduleReceiptForPayment, {
+        paymentId: newPaymentId,
+        organizationId: args.organizationId,
+        userId: authResult.userId,
+      });
+    } catch {
+      // best-effort
+    }
+
     return { firstPaymentId: args.paymentId, secondPaymentId: newPaymentId };
   },
 });
@@ -656,11 +708,49 @@ export const refund = action({
       // side effects are best-effort
     }
 
+    // Void the original receipt and create a correction receipt (issue #3737).
+    try {
+      await ctx.runMutation(internal.payments._scheduleReceiptForPayment, {
+        paymentId: args.paymentId,
+        organizationId: args.organizationId,
+        userId: authResult.userId,
+        isRefund: true,
+      });
+    } catch {
+      // best-effort
+    }
+
     return args.paymentId;
   },
 });
 
 // --- Internal side-effect mutations ---
+
+/**
+ * Schedules _createReceiptRowForPayment for a completed payment so every
+ * payment path produces a gabinet_receipts row (issue #3737).
+ * Called as best-effort from each action that results in status="completed".
+ */
+export const _scheduleReceiptForPayment = internalMutation({
+  args: {
+    paymentId: v.string(),
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    isRefund: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.scheduler.runAfter(
+      0,
+      internal.gabinet.receipts._createReceiptRowForPayment,
+      {
+        paymentId: args.paymentId,
+        organizationId: args.organizationId,
+        createdBy: args.userId,
+        isRefund: args.isRefund,
+      },
+    );
+  },
+});
 
 export const _createPaymentSideEffects = internalMutation({
   args: {
@@ -1581,6 +1671,17 @@ export const approveRefundAuth = action({
       decision: "approved",
       paymentId,
     });
+
+    // Approved credit refund = cash/card back to patient → issue receipt (issue #3737).
+    try {
+      await ctx.runMutation(internal.payments._scheduleReceiptForPayment, {
+        paymentId,
+        organizationId: args.organizationId,
+        userId: authResult.userId,
+      });
+    } catch {
+      // best-effort
+    }
 
     return { paymentId };
   },

@@ -186,6 +186,21 @@ export const create = action({
       updatedAt: now,
     });
 
+    // --- Write custom field values to Supabase ---
+    if (args.customFields) {
+      for (const field of args.customFields) {
+        await db.insert("customFieldValues", {
+          organizationId: String(args.organizationId),
+          fieldDefinitionId: field.fieldDefinitionId,
+          entityType: "lead",
+          entityId: leadId,
+          value: field.value,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+
     // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.leads._createSideEffects, {
@@ -193,7 +208,6 @@ export const create = action({
         organizationId: args.organizationId,
         title: args.title,
         assignedTo: args.assignedTo ?? undefined,
-        customFields: args.customFields,
         createdBy: String(authResult.userId),
         createdAt: now,
       });
@@ -211,34 +225,11 @@ export const _createSideEffects = internalMutation({
     organizationId: v.id("organizations"),
     title: v.string(),
     assignedTo: v.optional(v.string()),
-    customFields: v.optional(
-      v.array(
-        v.object({
-          fieldDefinitionId: v.string(),
-          value: v.any(),
-        }),
-      ),
-    ),
     createdBy: v.string(),
     createdAt: v.number(),
   },
   handler: async (ctx, args) => {
     const createdByUserId = args.createdBy as Id<"users">;
-
-    // Insert custom field values into Convex
-    if (args.customFields) {
-      for (const field of args.customFields) {
-        await ctx.db.insert("customFieldValues", {
-          organizationId: args.organizationId,
-          fieldDefinitionId: field.fieldDefinitionId as Id<"customFieldDefinitions">,
-          entityType: "lead",
-          entityId: args.leadId as Id<"leads">,
-          value: field.value,
-          createdAt: args.createdAt,
-          updatedAt: args.createdAt,
-        });
-      }
-    }
 
     await logActivity(ctx, {
       organizationId: args.organizationId,
@@ -347,6 +338,31 @@ export const update = action({
     // --- PATCH to Supabase ---
     await db.patch("leads", leadId, supabaseUpdates);
 
+    // --- Update custom field values in Supabase ---
+    if (customFields) {
+      for (const field of customFields) {
+        const existing = await db.query("customFieldValues")
+          .eq("organizationId", String(organizationId))
+          .eq("entityType", "lead")
+          .eq("entityId", leadId)
+          .eq("fieldDefinitionId", field.fieldDefinitionId)
+          .unique();
+        if (existing) {
+          await db.patch("customFieldValues", existing._id as string, { value: field.value, updatedAt: now });
+        } else {
+          await db.insert("customFieldValues", {
+            organizationId: String(organizationId),
+            fieldDefinitionId: field.fieldDefinitionId,
+            entityType: "lead",
+            entityId: leadId,
+            value: field.value,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+      }
+    }
+
     // --- Delegate post-write side effects ---
     try {
       await ctx.runMutation(internal.leads._updateSideEffects, {
@@ -358,7 +374,6 @@ export const update = action({
         oldAssignedTo: lead.assignedTo ? String(lead.assignedTo) : undefined,
         newAssignedTo: updates.assignedTo ?? undefined,
         leadOwnerId: String(lead.assignedTo ?? lead.createdBy),
-        customFields,
         updatedBy: String(authResult.userId),
         updatedAt: now,
       });
@@ -380,53 +395,12 @@ export const _updateSideEffects = internalMutation({
     oldAssignedTo: v.optional(v.string()),
     newAssignedTo: v.optional(v.string()),
     leadOwnerId: v.string(),
-    customFields: v.optional(
-      v.array(
-        v.object({
-          fieldDefinitionId: v.string(),
-          value: v.any(),
-        }),
-      ),
-    ),
     updatedBy: v.string(),
     updatedAt: v.number(),
   },
   handler: async (ctx, args) => {
     const updatedByUserId = args.updatedBy as Id<"users">;
     const now = args.updatedAt;
-
-    // Update custom field values in Convex
-    if (args.customFields) {
-      for (const field of args.customFields) {
-        const existing = await ctx.db
-          .query("customFieldValues")
-          .withIndex("by_orgEntityField", (q) =>
-            q
-              .eq("organizationId", args.organizationId)
-              .eq("entityType", "lead")
-              .eq("entityId", args.leadId as Id<"leads">)
-              .eq("fieldDefinitionId", field.fieldDefinitionId as Id<"customFieldDefinitions">),
-          )
-          .unique();
-
-        if (existing) {
-          await ctx.db.patch(existing._id, {
-            value: field.value,
-            updatedAt: now,
-          });
-        } else {
-          await ctx.db.insert("customFieldValues", {
-            organizationId: args.organizationId,
-            fieldDefinitionId: field.fieldDefinitionId as Id<"customFieldDefinitions">,
-            entityType: "lead",
-            entityId: args.leadId as Id<"leads">,
-            value: field.value,
-            createdAt: now,
-            updatedAt: now,
-          });
-        }
-      }
-    }
 
     if (args.newStatus && args.newStatus !== args.oldStatus) {
       await logActivity(ctx, {
@@ -570,6 +544,28 @@ export const remove = action({
 
     // --- Delegate post-write side effects ---
     try {
+      // Delete custom field values from Supabase
+      const customValues = await db.query("customFieldValues")
+        .eq("entityType", "lead")
+        .eq("entityId", args.leadId)
+        .collect();
+      for (const cv of customValues) {
+        await db.delete("customFieldValues", cv._id as string);
+      }
+
+      // Delete relationships where this lead is source or target from Supabase
+      const sourceRels = await db.query("objectRelationships")
+        .eq("sourceType", "lead")
+        .eq("sourceId", args.leadId)
+        .collect();
+      const targetRels = await db.query("objectRelationships")
+        .eq("targetType", "lead")
+        .eq("targetId", args.leadId)
+        .collect();
+      for (const rel of [...sourceRels, ...targetRels]) {
+        await db.delete("objectRelationships", rel._id as string);
+      }
+
       await ctx.runMutation(internal.leads._removeSideEffects, {
         leadId: args.leadId,
         organizationId: args.organizationId,
@@ -593,17 +589,6 @@ export const _removeSideEffects = internalMutation({
   },
   handler: async (ctx, args) => {
     const deletedByUserId = args.deletedBy as Id<"users">;
-
-    // Delete custom field values from Convex
-    const customValues = await ctx.db
-      .query("customFieldValues")
-      .withIndex("by_entity", (q) =>
-        q.eq("entityType", "lead").eq("entityId", args.leadId as Id<"leads">),
-      )
-      .collect();
-    for (const cv of customValues) {
-      await ctx.db.delete(cv._id);
-    }
 
     await logActivity(ctx, {
       organizationId: args.organizationId,

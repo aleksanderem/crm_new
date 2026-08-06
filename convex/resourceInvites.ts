@@ -1,28 +1,27 @@
-import { query, action, internalMutation } from "./_generated/server";
+import { action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
-import { verifyOrgAccess } from "./_helpers/auth";
 import { createNotificationDirect } from "./notifications";
 import { logAudit } from "./auditLog";
 
-export const listByResource = query({
+export const listByResource = action({
   args: {
     organizationId: v.id("organizations"),
     resourceType: v.string(),
     resourceId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const invites = await ctx.db
+    const db = createSupabaseDb();
+    const invites = await db
       .query("resourceInvites")
-      .withIndex("by_orgAndResource", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("resourceType", args.resourceType)
-          .eq("resourceId", args.resourceId)
-      )
+      .eq("organizationId", String(args.organizationId))
+      .eq("resourceType", args.resourceType)
+      .eq("resourceId", args.resourceId)
       .collect();
 
     return invites.filter((i) => i.status !== "revoked");

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseOrgSettings } from "@/hooks/use-supabase-organizations";
@@ -49,12 +48,10 @@ export function ShareDialog({
   const { data: orgSettings } = useSupabaseOrgSettings(organizationId, { enabled: open && !!organizationId });
   const sharingEnabled = orgSettings?.resourceSharingEnabled ?? true;
 
+  const listByResource = useAction(api.resourceInvites.listByResource);
   const { data: invites } = useQuery({
-    ...convexQuery(api.resourceInvites.listByResource, {
-      organizationId,
-      resourceType,
-      resourceId,
-    }),
+    queryKey: ["resourceInvites.listByResource", organizationId, resourceType, resourceId],
+    queryFn: () => listByResource({ organizationId, resourceType, resourceId }),
     enabled: open && !!organizationId,
   });
 

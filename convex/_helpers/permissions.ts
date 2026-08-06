@@ -165,6 +165,12 @@ DEFAULT_PERMISSIONS.viewer.categoryDefinitions = {
 
 // --- checkPermission ---
 
+// Accepts both QueryCtx and MutationCtx. The ctx.db reads for orgPermissions,
+// gabinetMemberships, gabinetRolePermissions, and gabinetMembershipPermissions
+// are PERMANENT for query callers — Convex queries cannot access Supabase, so
+// orgPermissions is kept in sync via dual-write (_writeOrgPermissionsToConvex
+// in convex/permissions.ts). This is not a migration TODO; it is the intended
+// architecture for the query read path. See #3893 and #3896.
 export async function checkPermission(
   ctx: QueryCtx | MutationCtx,
   orgId: Id<"organizations">,
@@ -239,6 +245,8 @@ export async function checkPermission(
 
 // --- getEffectivePermissions ---
 
+// Same dual-path note as checkPermission above: ctx.db reads are permanent
+// for query callers. (#3893 / #3896)
 export async function getEffectivePermissions(
   ctx: QueryCtx | MutationCtx,
   orgId: Id<"organizations">,

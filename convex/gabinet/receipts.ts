@@ -328,17 +328,21 @@ export const _getOrgName = internalQuery({
 });
 
 // ---------------------------------------------------------------------------
-// Internal mutation: store PDF in Convex file storage + insert receipt row
+// Internal action: generate PDF receipt + store blob + insert receipt row
+// Receipt number is incremented here (not in the caller) so the sequence
+// counter is only consumed when all three steps succeed (#3790).
 // ---------------------------------------------------------------------------
 
 export const _storePdfAndCreateReceipt = internalAction({
   args: {
-    pdfData: v.bytes(),
     organizationId: v.id("organizations"),
     paymentId: v.string(),
     appointmentId: v.optional(v.string()),
     patientId: v.optional(v.string()),
-    receiptNumber: v.string(),
+    // Sequence parameters — receipt number is generated inside this action so
+    // the counter only increments on a successful write (no gap on failure).
+    prefix: v.optional(v.string()),
+    locationId: v.optional(v.string()),
     issuedAt: v.number(),
     organizationName: v.string(),
     organizationNip: v.optional(v.string()),
@@ -352,7 +356,33 @@ export const _storePdfAndCreateReceipt = internalAction({
     createdBy: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const blob = new Blob([args.pdfData], { type: "application/pdf" });
+    // Increment the sequence and generate the PDF in one action so that a
+    // failure in either step does not leave a consumed sequence number without
+    // a corresponding receipt row (the gap described in #3790).
+    const year = new Date(args.issuedAt).getFullYear();
+    const receiptNumber = await nextReceiptNumber(
+      String(args.organizationId),
+      year,
+      args.prefix ?? "REC",
+      args.locationId,
+    );
+
+    const lineItems = JSON.parse(args.itemsJson) as ReceiptLineItem[];
+    const pdfBytes = await buildReceiptPdf({
+      receiptNumber,
+      issuedAt: args.issuedAt,
+      organizationName: args.organizationName,
+      organizationNip: args.organizationNip,
+      organizationAddress: args.organizationAddress,
+      items: lineItems,
+      totalNet: args.totalNet,
+      totalVat: args.totalVat,
+      totalGross: args.totalGross,
+      paymentMethod: args.paymentMethod,
+      fiscalReceiptId: args.fiscalReceiptId,
+    });
+
+    const blob = new Blob([pdfBytes.buffer as ArrayBuffer], { type: "application/pdf" });
     const storageId = await ctx.storage.store(blob);
     const pdfUrl = await ctx.storage.getUrl(storageId);
 
@@ -364,7 +394,7 @@ export const _storePdfAndCreateReceipt = internalAction({
         paymentId: args.paymentId,
         appointmentId: args.appointmentId ?? null,
         patientId: args.patientId ?? null,
-        receiptNumber: args.receiptNumber,
+        receiptNumber,
         issuedAt: args.issuedAt,
         organizationName: args.organizationName,
         organizationNip: args.organizationNip ?? null,
@@ -383,7 +413,7 @@ export const _storePdfAndCreateReceipt = internalAction({
         updatedAt: now,
       });
 
-      return { receiptId, pdfUrl: pdfUrl ?? "" };
+      return { receiptId, pdfUrl: pdfUrl ?? "", receiptNumber };
     } catch (err) {
       // Compensating cleanup: the blob was already written to Convex storage but
       // the receipt row in Supabase failed. Delete the orphaned blob so it doesn't
@@ -527,7 +557,6 @@ export const generatePdfReceipt = action({
 
     // --- Build line items ---
     const now = Date.now();
-    const year = new Date(now).getFullYear();
 
     const lineItems: ReceiptLineItem[] = args.items
       ? args.items.map((it) =>
@@ -556,40 +585,19 @@ export const generatePdfReceipt = action({
     const totalVat =
       Math.round(lineItems.reduce((s, i) => s + i.vatAmount, 0) * 100) / 100;
 
-    // --- Sequential receipt number ---
-    const receiptNumber = await nextReceiptNumber(
-      String(args.organizationId),
-      year,
-    );
-
-    // --- Generate PDF bytes ---
-    const pdfBytes = await buildReceiptPdf({
-      receiptNumber,
-      issuedAt: now,
-      organizationName: orgName,
-      organizationNip: args.organizationNip,
-      organizationAddress: args.organizationAddress,
-      items: lineItems,
-      totalNet,
-      totalVat,
-      totalGross,
-      paymentMethod: payment.paymentMethod as string,
-      fiscalReceiptId:
-        (payment.fiscalReceiptId as string | null | undefined) ?? undefined,
-    });
-
     // --- Store PDF + persist receipt record ---
-    const { receiptId, pdfUrl } = await ctx.runAction(
+    // The sequence number is generated inside _storePdfAndCreateReceipt so it
+    // is only incremented when the full write (PDF generation + blob storage +
+    // DB insert) succeeds, preventing gaps on partial failures (#3790).
+    const { receiptId, pdfUrl, receiptNumber } = await ctx.runAction(
       internal.gabinet.receipts._storePdfAndCreateReceipt,
       {
-        pdfData: pdfBytes.buffer as ArrayBuffer,
         organizationId: args.organizationId,
         paymentId: args.paymentId,
         appointmentId:
           (payment.appointmentId as string | null | undefined) ?? undefined,
         patientId:
           (payment.patientId as string | null | undefined) ?? undefined,
-        receiptNumber,
         issuedAt: now,
         organizationName: orgName,
         organizationNip: args.organizationNip,
@@ -603,7 +611,7 @@ export const generatePdfReceipt = action({
           (payment.fiscalReceiptId as string | null | undefined) ?? undefined,
         createdBy: authResult.userId,
       },
-    ) as {receiptId: string; pdfUrl: string};
+    ) as {receiptId: string; pdfUrl: string; receiptNumber: string};
 
     // --- Audit log (best-effort) ---
     try {

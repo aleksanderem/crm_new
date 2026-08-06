@@ -921,7 +921,7 @@ export function createGabinetTables({
     status: appointmentWorkflowStatusValidator,
     renderedSubject: v.optional(v.string()),
     renderedBody: v.optional(v.string()),
-    emailEventLogId: v.optional(v.id("emailEventLog")),
+    emailEventLogId: v.optional(v.string()),
     errorMessage: v.optional(v.string()),
     idempotencyKey: v.string(),
     processedAt: v.optional(v.number()),

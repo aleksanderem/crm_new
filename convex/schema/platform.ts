@@ -140,37 +140,6 @@ export function createPlatformTables({
     .index("by_orgAndEventType", ["organizationId", "eventType"])
     .index("by_orgAndEnabled", ["organizationId", "enabled"]),
 
-  emailEventLog: defineTable({
-    organizationId: v.id("organizations"),
-    eventType: v.string(),
-    bindingId: v.optional(v.string()),
-    templateId: v.optional(v.string()),
-    recipientEmail: v.string(),
-    recipientName: v.optional(v.string()),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("sent"),
-      v.literal("failed"),
-      v.literal("skipped"),
-    ),
-    payload: v.optional(v.string()),
-    source: v.optional(v.string()),
-    relatedEntityType: v.optional(v.string()),
-    relatedEntityId: v.optional(v.string()),
-    idempotencyKey: v.optional(v.string()),
-    renderedSubject: v.optional(v.string()),
-    renderedBody: v.optional(v.string()),
-    errorMessage: v.optional(v.string()),
-    triggeredBy: v.optional(v.id("users")),
-    processedAt: v.optional(v.number()),
-    createdAt: v.number(),
-  })
-    .index("by_org", ["organizationId"])
-    .index("by_orgAndStatus", ["organizationId", "status"])
-    .index("by_orgAndEventType", ["organizationId", "eventType"])
-    .index("by_orgAndCreatedAt", ["organizationId", "createdAt"])
-    .index("by_orgAndIdempotency", ["organizationId", "idempotencyKey"]),
-
   // ---------------------------------------------------------------------------
   // Email Sequences
   // ---------------------------------------------------------------------------
@@ -281,10 +250,8 @@ export function createPlatformTables({
   // triggered the send, template (when applicable), provider used, final
   // status, error message on failure, recipient and timestamp.
   //
-  // This is intentionally separate from `emailEventLog` (which tracks the
-  // email-event-bus / template binding pipeline) so non-templated sends
-  // (signing emails, ad-hoc compose, OTP, system invitations) are visible
-  // in one place. See `/dashboard/settings/mail` → "Logs" tab.
+  // Covers non-templated sends (signing emails, ad-hoc compose, OTP, system
+  // invitations). See `/dashboard/settings/mail` → "Logs" tab.
   emailSendLog: defineTable({
     organizationId: v.id("organizations"),
     source: v.union(

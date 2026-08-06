@@ -597,6 +597,42 @@ export const generatePdfReceipt = action({
       };
     }
 
+    // --- Split payment detection ---
+    // The primary leg of a split payment has "split:" in notes and holds only
+    // firstMethod/firstAmount. Detect this and consolidate with the secondary
+    // leg so the PDF shows the full amount and combined method — matching what
+    // _createSplitReceiptRow would have stored in the normal flow.
+    let resolvedAmount = payment.amount as number;
+    let resolvedPaymentMethod = payment.paymentMethod as string;
+
+    const isSplitLeg =
+      typeof payment.notes === "string" &&
+      (payment.notes as string).includes("split:");
+
+    if (isSplitLeg) {
+      let q = client
+        .from("payments")
+        .select("amount, payment_method")
+        .eq("organization_id", String(args.organizationId))
+        .eq("status", "completed")
+        .eq("paid_at", payment.paidAt as number)
+        .neq("id", args.paymentId)
+        .like("notes", "%split:%");
+      const apptId = payment.appointmentId as string | null | undefined;
+      const pkgId = payment.packageUsageId as string | null | undefined;
+      if (apptId) q = q.eq("appointment_id", apptId);
+      else if (pkgId) q = q.eq("package_usage_id", pkgId);
+      const { data: sibling } = await q.limit(1).maybeSingle();
+      if (sibling) {
+        const s = sibling as Record<string, unknown>;
+        resolvedAmount =
+          Math.round(
+            ((payment.amount as number) + (s.amount as number)) * 100,
+          ) / 100;
+        resolvedPaymentMethod = `${payment.paymentMethod as string}+${s.payment_method as string}`;
+      }
+    }
+
     // --- Org name from Convex native DB ---
     const orgName: string =
       (await ctx.runQuery(internal.gabinet.receipts._getOrgName, {
@@ -620,7 +656,7 @@ export const generatePdfReceipt = action({
           computeLineItem(
             "Usluga medyczna",
             1,
-            payment.amount as number,
+            resolvedAmount,
             "D",
             DEFAULT_PKWIU,
           ),
@@ -653,7 +689,7 @@ export const generatePdfReceipt = action({
         totalNet,
         totalVat,
         totalGross,
-        paymentMethod: payment.paymentMethod as string,
+        paymentMethod: resolvedPaymentMethod,
         itemsJson: JSON.stringify(lineItems),
         fiscalReceiptId:
           (payment.fiscalReceiptId as string | null | undefined) ?? undefined,

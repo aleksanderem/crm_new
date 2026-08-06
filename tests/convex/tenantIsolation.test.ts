@@ -108,19 +108,6 @@ describe("tenant isolation — permissions", () => {
 // ─── Contacts ─────────────────────────────────────────────────────────────────
 
 describe("tenant isolation — contacts", () => {
-  test("list: org A user cannot list org B contacts", async () => {
-    const t = createTestCtx();
-    const { identity: identityA } = await seedTestUser(t);
-    const { organizationId: orgBId } = await seedOrgB(t);
-
-    await expect(
-      t.withIdentity(identityA).query(api.contacts.list, {
-        organizationId: orgBId,
-        paginationOpts: PAGINATION,
-      }),
-    ).rejects.toThrow("Not a member of this organization");
-  });
-
   test("getById: org A user cannot fetch an org B contact by ID", async () => {
     const t = createTestCtx();
     const { organizationId: orgAId, identity: identityA } = await seedTestUser(t);
@@ -152,19 +139,6 @@ describe("tenant isolation — contacts", () => {
 // ─── Companies ────────────────────────────────────────────────────────────────
 
 describe("tenant isolation — companies", () => {
-  test("list: org A user cannot list org B companies", async () => {
-    const t = createTestCtx();
-    const { identity: identityA } = await seedTestUser(t);
-    const { organizationId: orgBId } = await seedOrgB(t);
-
-    await expect(
-      t.withIdentity(identityA).query(api.companies.list, {
-        organizationId: orgBId,
-        paginationOpts: PAGINATION,
-      }),
-    ).rejects.toThrow("Not a member of this organization");
-  });
-
   test("getById: org A user cannot fetch an org B company by ID", async () => {
     const t = createTestCtx();
     const { organizationId: orgAId, identity: identityA } = await seedTestUser(t);

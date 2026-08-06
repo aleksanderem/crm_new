@@ -1,36 +1,12 @@
-import { query, action, internalMutation } from "./_generated/server";
+import { action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
-import { verifyOrgAccess } from "./_helpers/auth";
 import { logActivity } from "./_helpers/activities";
-import { checkPermission } from "./_helpers/permissions";
 import { Id } from "./_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for contact writes
-
-export const list = query({
-  args: {
-    organizationId: v.id("organizations"),
-    paginationOpts: paginationOptsValidator,
-  },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(ctx, args.organizationId, "contacts", "view");
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const result = await ctx.db
-      .query("contacts")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .order("desc")
-      .paginate(args.paginationOpts);
-    if (perm.scope === "own") {
-      return { ...result, page: result.page.filter((r) => r.createdBy === user._id) };
-    }
-    return result;
-  },
-});
+// list query removed — browser reads contacts directly from Supabase via use-supabase-contacts.ts
 
 export const create = action({
   args: {

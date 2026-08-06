@@ -187,6 +187,39 @@ export const checkPermission = internalAction({
   },
 });
 
+// ---------------------------------------------------------------------------
+// checkResourceAccess — reads resourceInvites from Supabase (TABLE_MAP primary).
+// Checks whether the current user has an accepted invite for a given resource.
+// Callers must use ctx.runAction (not ctx.runQuery).
+// ---------------------------------------------------------------------------
+export const checkResourceAccess = internalAction({
+  args: {
+    resourceType: v.string(),
+    resourceId: v.string(),
+  },
+  handler: async (ctx, args): Promise<{ allowed: boolean; accessLevel: "viewer" | "editor" | null }> => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const db = createSupabaseDb();
+    const invites = await db
+      .query("resourceInvites")
+      .eq("resourceType", args.resourceType)
+      .eq("resourceId", args.resourceId)
+      .collect();
+
+    const match = invites.find(
+      (inv) => inv.status === "accepted" && inv.userId === String(userId),
+    );
+
+    if (!match) {
+      return { allowed: false, accessLevel: null };
+    }
+
+    return { allowed: true, accessLevel: match.accessLevel };
+  },
+});
+
 // Platform-admin guard for action handlers. Reads isPlatformAdmin from
 // Supabase (authoritative post-migration). Call via
 // ctx.runAction(internal._helpers.authAction.verifyPlatformAdmin, {}).

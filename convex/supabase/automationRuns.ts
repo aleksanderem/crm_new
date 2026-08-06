@@ -1,14 +1,13 @@
 /**
- * Convex → Supabase Automation Run Write Actions
+ * Supabase Automation Run Write Actions
  *
- * Internal actions that persist automation run data to PostgreSQL via Supabase
- * service-role client (bypasses RLS). Dual-write pattern: Convex mutations
- * write to Convex first, then schedule these actions to replicate to Supabase.
+ * Internal actions that persist automation run data to Supabase as the primary
+ * store. Uses createSupabaseDb() so the in-memory test mock works correctly.
  */
 
 import { v } from "convex/values";
 import { internalAction } from "@cvx/_generated/server";
-import { createServiceRoleClient, upsertWithFkRetry } from "./client";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 export const writeRun = internalAction({
   args: {
@@ -32,36 +31,29 @@ export const writeRun = internalAction({
   },
   returns: v.object({ success: v.boolean(), id: v.string() }),
   handler: async (_ctx, args): Promise<{ success: boolean; id: string }> => {
-    const client = createServiceRoleClient();
-
-    const row = {
-      id: args.runId,
-      organization_id: args.organizationId,
-      rule_id: args.ruleId ?? null,
+    const db = createSupabaseDb();
+    await db.insert("automationRuns", {
+      _id: args.runId,
+      organizationId: args.organizationId,
+      ruleId: args.ruleId ?? null,
       module: args.module,
-      event_type: args.eventType,
-      entity_type: args.entityType ?? null,
-      entity_id: args.entityId ?? null,
-      event_idempotency_key: args.eventIdempotencyKey,
-      correlation_key: args.correlationKey ?? null,
-      payload_snapshot: args.payloadSnapshot,
-      actor_user_id: args.actorUserId ?? null,
+      eventType: args.eventType,
+      entityType: args.entityType ?? null,
+      entityId: args.entityId ?? null,
+      eventIdempotencyKey: args.eventIdempotencyKey,
+      correlationKey: args.correlationKey ?? null,
+      payloadSnapshot: args.payloadSnapshot,
+      actorUserId: args.actorUserId ?? null,
       status: args.status,
-      error_message: args.errorMessage ?? null,
-      occurred_at: args.occurredAt,
-      processed_at: args.processedAt ?? null,
-      created_at: args.createdAt,
-      updated_at: args.updatedAt,
-    };
+      errorMessage: args.errorMessage ?? null,
+      occurredAt: args.occurredAt,
+      processedAt: args.processedAt ?? null,
+      createdAt: args.createdAt,
+      updatedAt: args.updatedAt,
+    });
 
-    const data = await upsertWithFkRetry(client, "automation_runs", row)
-      .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        throw new Error(`supabaseDb.insert(automation_runs): ${msg}`);
-      });
-
-    console.info(`Automation run written to Supabase id=${data.id} org=${args.organizationId}`);
-    return { success: true, id: data.id };
+    console.info(`Automation run written to Supabase id=${args.runId} org=${args.organizationId}`);
+    return { success: true, id: args.runId };
   },
 });
 
@@ -77,37 +69,23 @@ export const updateRun = internalAction({
   },
   returns: v.object({ success: v.boolean(), id: v.string() }),
   handler: async (_ctx, args): Promise<{ success: boolean; id: string }> => {
-    const client = createServiceRoleClient();
+    const db = createSupabaseDb();
+    const updates: Record<string, unknown> = { updatedAt: args.updatedAt };
+    if (args.ruleId !== undefined) updates.ruleId = args.ruleId;
+    if (args.status !== undefined) updates.status = args.status;
+    if (args.errorMessage !== undefined) updates.errorMessage = args.errorMessage;
+    if (args.processedAt !== undefined) updates.processedAt = args.processedAt;
 
-    const row: Record<string, unknown> = { updated_at: args.updatedAt };
-    if (args.ruleId !== undefined) row.rule_id = args.ruleId;
-    if (args.status !== undefined) row.status = args.status;
-    if (args.errorMessage !== undefined) row.error_message = args.errorMessage;
-    if (args.processedAt !== undefined) row.processed_at = args.processedAt;
-
-    const { data, error } = await client
-      .from("automation_runs")
-      .update(row)
-      .eq("id", args.runId)
-      .select("id")
-      .maybeSingle();
-
-    if (error) {
-      const msg = `supabaseDb.update(automation_runs): ${error.message} (code=${error.code})`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-
-    if (!data) {
-      // Row doesn't exist in Supabase yet (Convex-primary create hasn't mirrored).
-      // Don't throw — auxiliary audit trail.
+    try {
+      await db.patch("automationRuns", args.runId, updates);
+    } catch {
       console.warn(
         `Automation run ${args.runId} not found in Supabase; skipping update.`,
       );
       return { success: false, id: args.runId };
     }
 
-    console.info(`Automation run updated in Supabase id=${data.id} org=${args.organizationId}`);
-    return { success: true, id: data.id };
+    console.info(`Automation run updated in Supabase id=${args.runId} org=${args.organizationId}`);
+    return { success: true, id: args.runId };
   },
 });

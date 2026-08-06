@@ -61,63 +61,6 @@ export const list = query({
   },
 });
 
-export const getById = query({
-  args: {
-    organizationId: v.id("organizations"),
-    leadId: v.id("leads"),
-  },
-  handler: async (ctx, args) => {
-    const { user } = await verifyOrgAccess(ctx, args.organizationId);
-    const perm = await checkPermission(
-      ctx,
-      args.organizationId,
-      "leads",
-      "view",
-    );
-    if (!perm.allowed) throw new Error("Permission denied");
-
-    const lead = await ctx.db.get(args.leadId);
-    if (!lead || lead.organizationId !== args.organizationId) {
-      throw new Error("Lead not found");
-    }
-    if (
-      perm.scope === "own" &&
-      lead.createdBy !== user._id &&
-      lead.assignedTo !== user._id
-    ) {
-      throw new Error("Permission denied");
-    }
-
-    const [customFieldValues, company, assignedUser, stage] = await Promise.all(
-      [
-        ctx.db
-          .query("customFieldValues")
-          .withIndex("by_entity", (q) =>
-            q.eq("entityType", "lead").eq("entityId", args.leadId),
-          )
-          .collect(),
-        lead.companyId ? ctx.db.get(lead.companyId) : null,
-        lead.assignedTo ? ctx.db.get(lead.assignedTo) : null,
-        lead.pipelineStageId ? ctx.db.get(lead.pipelineStageId) : null,
-      ],
-    );
-
-    return {
-      ...lead,
-      customFieldValues,
-      company,
-      assignedUser: assignedUser
-        ? {
-            _id: assignedUser._id,
-            name: assignedUser.name,
-            email: assignedUser.email,
-            image: assignedUser.image,
-          }
-        : null,
-      stage,
-    };
-  },
-});
 
 export const create = action({
   args: {

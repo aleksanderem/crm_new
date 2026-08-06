@@ -166,7 +166,6 @@ const MULTILINE_PENDING = new Set([
   "emailEventBindings",
   "emailEventTrigger",
   "emailEvents",
-  "emailSending",
   "emailSequences",
   "emails",
   "emails_internal",

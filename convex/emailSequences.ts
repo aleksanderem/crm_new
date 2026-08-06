@@ -10,7 +10,6 @@ import {
   action,
   internalMutation,
   internalAction,
-  internalQuery,
 } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
@@ -260,8 +259,9 @@ export const cancelEnrollment = action({
 /**
  * Enroll a recipient into a sequence and schedule the first step.
  * Called by emailEventTrigger when a matching sequence is found.
+ * Reads steps from Supabase (primary store) and writes enrollment to Supabase.
  */
-export const enrollRecipient = internalMutation({
+export const enrollRecipient = internalAction({
   args: {
     sequenceId: v.id("emailSequences"),
     organizationId: v.id("organizations"),
@@ -270,31 +270,30 @@ export const enrollRecipient = internalMutation({
     payload: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Load first step (order 0)
-    const steps = await ctx.db
+    const db = createSupabaseDb();
+
+    const steps = await db
       .query("emailSequenceSteps")
-      .withIndex("by_sequence", (q) => q.eq("sequenceId", args.sequenceId))
+      .eq("sequenceId", String(args.sequenceId))
       .collect();
 
     const sortedSteps = steps.sort((a, b) => a.order - b.order);
     if (sortedSteps.length === 0) {
-      // No steps — nothing to enroll
       return null;
     }
 
     const now = Date.now();
-    const enrollmentId = await ctx.db.insert("emailSequenceEnrollments", {
-      sequenceId: args.sequenceId,
-      organizationId: args.organizationId,
+    const enrollmentId = await db.insert("emailSequenceEnrollments", {
+      sequenceId: String(args.sequenceId),
+      organizationId: String(args.organizationId),
       recipientEmail: args.recipientEmail,
-      recipientName: args.recipientName,
-      payload: args.payload,
+      recipientName: args.recipientName ?? null,
+      payload: args.payload ?? null,
       currentStep: 0,
       status: "active",
       enrolledAt: now,
     });
 
-    // Schedule first step
     const firstStep = sortedSteps[0];
     await ctx.scheduler.runAfter(
       firstStep.delayMs,
@@ -308,75 +307,70 @@ export const enrollRecipient = internalMutation({
 
 /**
  * Process the current step for an enrollment.
- * Sends the step's template email, then schedules the next step (or completes).
+ * Reads enrollment and steps from Supabase, sends the step's template email,
+ * then schedules the next step (or marks completed).
  */
 export const processNextStep = internalAction({
   args: {
-    enrollmentId: v.id("emailSequenceEnrollments"),
+    enrollmentId: v.string(),
   },
   handler: async (ctx, args) => {
-    const enrollment = await ctx.runQuery(
-      internal.emailSequences.getEnrollmentInternal,
-      { enrollmentId: args.enrollmentId },
-    );
+    const db = createSupabaseDb();
 
+    const enrollment = await db.get("emailSequenceEnrollments", args.enrollmentId);
     if (!enrollment) return;
-    if (enrollment.status !== "active") return; // cancelled or completed
+    if (enrollment.status !== "active") return;
 
-    // Load all steps sorted by order
-    const steps = await ctx.runQuery(
-      internal.emailSequences.getStepsInternal,
-      { sequenceId: enrollment.sequenceId },
-    );
+    const steps = await db
+      .query("emailSequenceSteps")
+      .eq("sequenceId", String(enrollment.sequenceId))
+      .collect();
+    const sortedSteps = steps.sort((a, b) => a.order - b.order);
 
-    if (enrollment.currentStep >= steps.length) {
-      // No more steps — mark completed
-      await ctx.runMutation(internal.emailSequences.markEnrollmentCompleted, {
-        enrollmentId: args.enrollmentId,
+    if (enrollment.currentStep >= sortedSteps.length) {
+      await db.patch("emailSequenceEnrollments", args.enrollmentId, {
+        status: "completed",
+        completedAt: Date.now(),
       });
       return;
     }
 
-    const step = steps[enrollment.currentStep];
+    const step = sortedSteps[enrollment.currentStep];
 
-    // Insert an emailEventLog entry so sendTemplateEmail can log status
     const logId = await ctx.runMutation(
       internal.emailSequences.insertSequenceLog,
       {
         organizationId: enrollment.organizationId,
-        sequenceId: enrollment.sequenceId,
-        templateId: step.templateId,
+        sequenceId: String(enrollment.sequenceId),
+        templateId: String(step.templateId),
         recipientEmail: enrollment.recipientEmail,
-        recipientName: enrollment.recipientName,
-        payload: enrollment.payload,
+        recipientName: enrollment.recipientName ?? undefined,
+        payload: enrollment.payload ?? undefined,
       },
     );
 
-    // Send the email via existing sendTemplateEmail infrastructure
     await ctx.runAction(internal.emailSending.sendTemplateEmail, {
       logId,
-      templateId: step.templateId,
+      templateId: String(step.templateId),
       organizationId: enrollment.organizationId,
       recipientEmail: enrollment.recipientEmail,
-      recipientName: enrollment.recipientName,
+      recipientName: enrollment.recipientName ?? undefined,
       variables: enrollment.payload ?? "{}",
     });
 
     const nextStepIndex = enrollment.currentStep + 1;
 
-    if (nextStepIndex >= steps.length) {
-      // All steps done — complete the enrollment
-      await ctx.runMutation(internal.emailSequences.markEnrollmentCompleted, {
-        enrollmentId: args.enrollmentId,
+    if (nextStepIndex >= sortedSteps.length) {
+      await db.patch("emailSequenceEnrollments", args.enrollmentId, {
+        status: "completed",
+        completedAt: Date.now(),
       });
       return;
     }
 
-    // Advance to next step and schedule it
-    const nextStep = steps[nextStepIndex];
-    await ctx.runMutation(internal.emailSequences.advanceEnrollmentStep, {
-      enrollmentId: args.enrollmentId,
-      nextStep: nextStepIndex,
+    const nextStep = sortedSteps[nextStepIndex];
+    await db.patch("emailSequenceEnrollments", args.enrollmentId, {
+      currentStep: nextStepIndex,
     });
     await ctx.scheduler.runAfter(
       nextStep.delayMs,
@@ -387,55 +381,15 @@ export const processNextStep = internalAction({
 });
 
 // ---------------------------------------------------------------------------
-// Internal helpers (queries/mutations used by processNextStep)
+// Internal mutation: insert an emailEventLog entry for sequence step tracking.
+// Writes to Convex so sendTemplateEmail receives a valid Convex logId.
 // ---------------------------------------------------------------------------
-
-export const getEnrollmentInternal = internalQuery({
-  args: { enrollmentId: v.id("emailSequenceEnrollments") },
-  handler: async (ctx, args) => {
-    return ctx.db.get(args.enrollmentId);
-  },
-});
-
-export const getStepsInternal = internalQuery({
-  args: { sequenceId: v.id("emailSequences") },
-  handler: async (ctx, args) => {
-    const steps = await ctx.db
-      .query("emailSequenceSteps")
-      .withIndex("by_sequence", (q) => q.eq("sequenceId", args.sequenceId))
-      .collect();
-    return steps.sort((a, b) => a.order - b.order);
-  },
-});
-
-export const markEnrollmentCompleted = internalMutation({
-  args: { enrollmentId: v.id("emailSequenceEnrollments") },
-  handler: async (ctx, args) => {
-    const now = Date.now();
-    await ctx.db.patch(args.enrollmentId, {
-      status: "completed",
-      completedAt: now,
-    });
-  },
-});
-
-export const advanceEnrollmentStep = internalMutation({
-  args: {
-    enrollmentId: v.id("emailSequenceEnrollments"),
-    nextStep: v.number(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.enrollmentId, {
-      currentStep: args.nextStep,
-    });
-  },
-});
 
 export const insertSequenceLog = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    sequenceId: v.id("emailSequences"),
-    templateId: v.id("emailTemplates"),
+    sequenceId: v.string(),
+    templateId: v.string(),
     recipientEmail: v.string(),
     recipientName: v.optional(v.string()),
     payload: v.optional(v.string()),
@@ -444,7 +398,7 @@ export const insertSequenceLog = internalMutation({
     const now = Date.now();
     const logId = await ctx.db.insert("emailEventLog", {
       organizationId: args.organizationId,
-      eventType: `sequence.step`,
+      eventType: "sequence.step",
       templateId: args.templateId,
       recipientEmail: args.recipientEmail,
       recipientName: args.recipientName,

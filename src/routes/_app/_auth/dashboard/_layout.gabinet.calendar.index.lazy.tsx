@@ -137,7 +137,7 @@ function GabinetCalendarPage() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
   const { allowed: canCreate } = usePermission("gabinet_appointments", "create");
-  const { allowed: canUpdate } = usePermission("gabinet_appointments", "update");
+  const { allowed: canUpdate } = usePermission("gabinet_appointments", "edit");
   const search = useSearch({ from: "/_app/_auth/dashboard/_layout/gabinet/calendar/" });
   const routeNavigate = useNavigate();
   const nudgeFilter = search.nudge;

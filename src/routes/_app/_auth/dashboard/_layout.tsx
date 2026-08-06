@@ -1087,7 +1087,7 @@ function DashboardLayout() {
   if (!user || !orgs) return null;
   const savedOrgId = localStorage.getItem(getOrgStorageKey(user._id));
   const firstOrg =
-    (savedOrgId && orgs.find((o) => o._id === savedOrgId)) || orgs[0];
+    (savedOrgId ? orgs.find((o) => o?._id === savedOrgId) : undefined) ?? orgs[0];
   if (!firstOrg) return null;
 
   return (

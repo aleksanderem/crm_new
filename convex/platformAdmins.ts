@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { action, internalAction, internalMutation } from "./_generated/server";
+import { action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 
@@ -85,18 +85,5 @@ export const _patchAdminInConvex = internalMutation({
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.userId, { isPlatformAdmin: args.isPlatformAdmin });
-  },
-});
-
-// Supabase-side patch called by _grantPlatformAdmin (internalMutation) which
-// cannot reach Supabase directly (V8 runtime). Scheduled via ctx.scheduler.
-export const _syncAdminFlagToSupabase = internalAction({
-  args: {
-    userId: v.string(),
-    isPlatformAdmin: v.boolean(),
-  },
-  handler: async (_ctx, args) => {
-    const db = createSupabaseDb();
-    await db.patch("users", args.userId, { isPlatformAdmin: args.isPlatformAdmin });
   },
 });

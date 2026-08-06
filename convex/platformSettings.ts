@@ -3,10 +3,11 @@ import {
   query,
   mutation,
   internalQuery,
-  internalMutation,
+  internalAction,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { requirePlatformAdmin } from "./_helpers/auth";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 // Get the current platform settings (singleton). Returns null if not yet
 // configured. Reading is allowed for any authenticated context but API key
@@ -95,22 +96,18 @@ export const set = mutation({
 // Intended to be called via `npx convex run` (requires admin token), exactly
 // once per environment, to seed the first platform admin. Subsequent admins
 // can be granted via the admin UI once one exists.
-export const _grantPlatformAdmin = internalMutation({
+export const _grantPlatformAdmin = internalAction({
   args: { email: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", args.email))
-      .unique();
+    const db = createSupabaseDb();
+    const user = await db.query("users").eq("email", args.email).unique();
     if (!user) throw new Error(`No user found for email ${args.email}`);
-    await ctx.db.patch(user._id, { isPlatformAdmin: true });
-    // Sync the flag to Supabase asynchronously — internalMutation runs in the
-    // V8 runtime and cannot call Supabase directly.
-    await ctx.scheduler.runAfter(
-      0,
-      internal.platformAdmins._syncAdminFlagToSupabase,
-      { userId: String(user._id), isPlatformAdmin: true },
-    );
+    await db.patch("users", String(user._id), { isPlatformAdmin: true });
+    // Keep Convex in sync — requirePlatformAdmin reads isPlatformAdmin from ctx.db.
+    await ctx.runMutation(internal.platformAdmins._patchAdminInConvex, {
+      userId: user._id,
+      isPlatformAdmin: true,
+    });
     return { userId: user._id, email: args.email };
   },
 });

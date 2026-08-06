@@ -115,6 +115,15 @@ function relToModuleKey(relPath) {
 //
 // Only ctx.db.query is flagged. A bare db.query where db = createSupabaseDb()
 // is the correct Supabase read path and is intentionally not matched here.
+//
+// Known gap: the regex below only matches single-line
+//   ctx.db.query("table")
+// patterns. Multiline splits like
+//   ctx.db
+//     .query("table")
+// are not detected. Many auth helper functions (auth.ts, permissions.ts,
+// seatLimits.ts) use the multiline style and would require a separate
+// bulk-migration effort to address. See issue #3857 for context.
 // ---------------------------------------------------------------------------
 function findViolations(content, tableMapKeys) {
   const violations = [];

@@ -91,11 +91,11 @@ function buildHtml(
 
 export const getTemplateAndLayout = internalQuery({
   args: {
-    templateId: v.id("emailTemplates"),
+    templateId: v.string(),
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
-    const template = await ctx.db.get(args.templateId);
+    const template = await ctx.db.get(args.templateId as any);
     if (!template || template.organizationId !== args.organizationId)
       return null;
     return { template };
@@ -114,13 +114,13 @@ export const getTemplateAndLayout = internalQuery({
 export const sendTemplateEmail = internalAction({
   args: {
     logId: v.id("emailEventLog"),
-    templateId: v.id("emailTemplates"),
+    templateId: v.string(),
     organizationId: v.id("organizations"),
     recipientEmail: v.string(),
     recipientName: v.optional(v.string()),
     /** JSON string: Record<string, string> of variable key → value */
     variables: v.string(),
-    bindingId: v.optional(v.id("emailEventBindings")),
+    bindingId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const data = await ctx.runQuery(

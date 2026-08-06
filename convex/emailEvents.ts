@@ -175,8 +175,8 @@ export const updateLogStatus = internalMutation({
       v.literal("failed"),
       v.literal("skipped"),
     ),
-    bindingId: v.optional(v.id("emailEventBindings")),
-    templateId: v.optional(v.id("emailTemplates")),
+    bindingId: v.optional(v.string()),
+    templateId: v.optional(v.string()),
     renderedSubject: v.optional(v.string()),
     renderedBody: v.optional(v.string()),
     errorMessage: v.optional(v.string()),
@@ -242,13 +242,14 @@ export const processEvent = internalAction({
     }
 
     // Find enabled bindings for this org + eventType, sorted by priority
-    const bindings = await ctx.runQuery(
-      internal.emailEventBindings.listEnabledBindings,
-      {
-        organizationId: entry.organizationId,
-        eventType: entry.eventType,
-      },
-    );
+    const db = createSupabaseDb();
+    const bindings = await db
+      .query("emailEventBindings")
+      .eq("organizationId", String(entry.organizationId))
+      .eq("eventType", entry.eventType)
+      .eq("enabled", true)
+      .order("priority", true)
+      .collect();
 
     if (bindings.length === 0) {
       await ctx.runMutation(internal.emailEvents.updateLogStatus, {

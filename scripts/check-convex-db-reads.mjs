@@ -63,11 +63,6 @@ const WHITELIST_PATHS = new Set([
   // called only by _backfillAllTeamMembershipsToSupabase. Same sync pattern.
   "supabase/organizations",
 
-  // platformAdmins.ts — queries ctx.db("users") for isPlatformAdmin, which is
-  // a @convex-dev/auth-managed field written via ctx.db.patch and not yet
-  // synced to the Supabase users table. Intentionally Convex-side.
-  "platformAdmins",
-
   // dev/helpers.ts — deployed only in non-production namespaces.
   "dev/helpers",
 

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useAction } from "convex/react";
+import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { toast } from "sonner";
@@ -22,16 +23,19 @@ function AdminUsers() {
     convexQuery(api.app.getCurrentUser, {}),
   );
 
+  const listAction = useAction(api.platformAdmins.list);
   const usersQuery = useQuery({
-    ...convexQuery(api.platformAdmins.list, {}),
+    queryKey: ["platformAdmins", "list"],
+    queryFn: () => listAction({}),
     enabled: Boolean(viewer?.isPlatformAdmin),
   });
 
+  const setRoleAction = useAction(api.platformAdmins.setRole);
   const setRoleMutation = useMutation({
-    mutationFn: useConvexMutation(api.platformAdmins.setRole),
+    mutationFn: setRoleAction,
     onSuccess: () => {
       toast.success("Role updated");
-      queryClient.invalidateQueries({ queryKey: ["convexQuery"] });
+      queryClient.invalidateQueries({ queryKey: ["platformAdmins", "list"] });
     },
     onError: (e: Error) => {
       toast.error(
@@ -130,7 +134,7 @@ function AdminUsers() {
                     size="sm"
                     variant={u.isPlatformAdmin ? "outline" : "default"}
                     disabled={setRoleMutation.isPending}
-                    onClick={() => handleToggle(u._id, u.isPlatformAdmin)}
+                    onClick={() => handleToggle(u._id as Id<"users">, u.isPlatformAdmin)}
                   >
                     {u.isPlatformAdmin ? "Revoke admin" : "Grant admin"}
                   </Button>

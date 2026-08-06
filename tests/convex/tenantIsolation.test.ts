@@ -421,3 +421,400 @@ describe("tenant isolation — gabinet patients (actions)", () => {
     ).rejects.toThrow("Not a member of this organization");
   });
 });
+
+// ─── Scheduled Activities (action-based, Supabase-primary) ───────────────────
+//
+// All public query endpoints were deleted as part of the Supabase migration.
+// Only write actions remain; each calls verifyOrgAccess before mutating data.
+
+describe("tenant isolation — scheduledActivities (actions)", () => {
+  test("create: org A user cannot create activity in org B", async () => {
+    const t = createTestCtx();
+    const { identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId, userId: userBId } = await seedOrgB(t);
+
+    await expect(
+      t.withIdentity(identityA).action(api.scheduledActivities.create, {
+        organizationId: orgBId,
+        title: "Cross-org activity",
+        activityType: "task",
+        dueDate: Date.now() + 86400000,
+        ownerId: String(userBId),
+      }),
+    ).rejects.toThrow("Not a member of this organization");
+  });
+
+  test("update: org A user cannot update using org B's organizationId", async () => {
+    const t = createTestCtx();
+    const { identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    await expect(
+      t.withIdentity(identityA).action(api.scheduledActivities.update, {
+        organizationId: orgBId,
+        activityId: "some-activity-id",
+        title: "Hijacked",
+      }),
+    ).rejects.toThrow("Not a member of this organization");
+  });
+
+  test("update: org A user cannot update org B activity using org A's orgId", async () => {
+    const t = createTestCtx();
+    const { organizationId: orgAId, identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId, userId: userBId } = await seedOrgB(t);
+
+    const db = createSupabaseDb();
+    const activityBId = await db.insert("scheduledActivities", {
+      organizationId: String(orgBId),
+      title: "Org B Activity",
+      activityType: "task",
+      dueDate: Date.now() + 86400000,
+      isCompleted: false,
+      ownerId: String(userBId),
+      createdBy: String(userBId),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    await expect(
+      t.withIdentity(identityA).action(api.scheduledActivities.update, {
+        organizationId: orgAId,
+        activityId: activityBId,
+        title: "Hijacked",
+      }),
+    ).rejects.toThrow("Scheduled activity not found");
+  });
+
+  test("remove: org A user cannot delete using org B's organizationId", async () => {
+    const t = createTestCtx();
+    const { identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    await expect(
+      t.withIdentity(identityA).action(api.scheduledActivities.remove, {
+        organizationId: orgBId,
+        activityId: "some-activity-id",
+      }),
+    ).rejects.toThrow("Not a member of this organization");
+  });
+
+  test("remove: org A user cannot delete org B activity using org A's orgId", async () => {
+    const t = createTestCtx();
+    const { organizationId: orgAId, identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId, userId: userBId } = await seedOrgB(t);
+
+    const db = createSupabaseDb();
+    const activityBId = await db.insert("scheduledActivities", {
+      organizationId: String(orgBId),
+      title: "Org B Activity",
+      activityType: "call",
+      dueDate: Date.now() + 86400000,
+      isCompleted: false,
+      ownerId: String(userBId),
+      createdBy: String(userBId),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    await expect(
+      t.withIdentity(identityA).action(api.scheduledActivities.remove, {
+        organizationId: orgAId,
+        activityId: activityBId,
+      }),
+    ).rejects.toThrow("Scheduled activity not found");
+  });
+
+  test("markComplete: org A user cannot complete org B activity using org A's orgId", async () => {
+    const t = createTestCtx();
+    const { organizationId: orgAId, identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId, userId: userBId } = await seedOrgB(t);
+
+    const db = createSupabaseDb();
+    const activityBId = await db.insert("scheduledActivities", {
+      organizationId: String(orgBId),
+      title: "Org B Activity",
+      activityType: "meeting",
+      dueDate: Date.now() + 86400000,
+      isCompleted: false,
+      ownerId: String(userBId),
+      createdBy: String(userBId),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    await expect(
+      t.withIdentity(identityA).action(api.scheduledActivities.markComplete, {
+        organizationId: orgAId,
+        activityId: activityBId,
+      }),
+    ).rejects.toThrow("Scheduled activity not found");
+  });
+
+  test("markIncomplete: org A user cannot reopen org B activity using org A's orgId", async () => {
+    const t = createTestCtx();
+    const { organizationId: orgAId, identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId, userId: userBId } = await seedOrgB(t);
+
+    const db = createSupabaseDb();
+    const activityBId = await db.insert("scheduledActivities", {
+      organizationId: String(orgBId),
+      title: "Org B Completed Activity",
+      activityType: "email",
+      dueDate: Date.now() + 86400000,
+      isCompleted: true,
+      ownerId: String(userBId),
+      createdBy: String(userBId),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    await expect(
+      t.withIdentity(identityA).action(api.scheduledActivities.markIncomplete, {
+        organizationId: orgAId,
+        activityId: activityBId,
+      }),
+    ).rejects.toThrow("Scheduled activity not found");
+  });
+});
+
+// ─── Custom Fields ────────────────────────────────────────────────────────────
+//
+// getDefinitions / getValues / getValuesBulk are Convex queries using
+// verifyOrgAccess. updateDefinition / deleteDefinition are actions that also
+// enforce per-resource org ownership.
+
+describe("tenant isolation — customFields", () => {
+  test("getDefinitions: org A user cannot list org B field definitions", async () => {
+    const t = createTestCtx();
+    const { identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    await expect(
+      t.withIdentity(identityA).query(api.customFields.getDefinitions, {
+        organizationId: orgBId,
+        entityType: "contact",
+      }),
+    ).rejects.toThrow("Not a member of this organization");
+  });
+
+  test("getValues: org A user cannot fetch org B entity field values", async () => {
+    const t = createTestCtx();
+    const { identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    await expect(
+      t.withIdentity(identityA).query(api.customFields.getValues, {
+        organizationId: orgBId,
+        entityType: "contact",
+        entityId: "some-contact-id",
+      }),
+    ).rejects.toThrow("Not a member of this organization");
+  });
+
+  test("getValuesBulk: org A user cannot bulk-fetch org B field values", async () => {
+    const t = createTestCtx();
+    const { identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    await expect(
+      t.withIdentity(identityA).query(api.customFields.getValuesBulk, {
+        organizationId: orgBId,
+        entityType: "contact",
+        entityIds: ["some-id"],
+      }),
+    ).rejects.toThrow("Not a member of this organization");
+  });
+
+  test("updateDefinition: org A user cannot update using org B's organizationId", async () => {
+    const t = createTestCtx();
+    const { identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    await expect(
+      t.withIdentity(identityA).action(api.customFields.updateDefinition, {
+        organizationId: orgBId,
+        definitionId: "some-definition-id",
+        name: "Hijacked",
+      }),
+    ).rejects.toThrow("Not a member of this organization");
+  });
+
+  test("updateDefinition: org A user cannot update org B definition using org A's orgId", async () => {
+    const t = createTestCtx();
+    const { organizationId: orgAId, identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    const db = createSupabaseDb();
+    const defBId = await db.insert("customFieldDefinitions", {
+      organizationId: String(orgBId),
+      entityType: "contact",
+      name: "Org B Field",
+      fieldKey: "org_b_secret",
+      fieldType: "text",
+      order: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    await expect(
+      t.withIdentity(identityA).action(api.customFields.updateDefinition, {
+        organizationId: orgAId,
+        definitionId: defBId,
+        name: "Hijacked",
+      }),
+    ).rejects.toThrow("Field definition not found");
+  });
+
+  test("deleteDefinition: org A user cannot delete using org B's organizationId", async () => {
+    const t = createTestCtx();
+    const { identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    await expect(
+      t.withIdentity(identityA).action(api.customFields.deleteDefinition, {
+        organizationId: orgBId,
+        definitionId: "some-definition-id",
+      }),
+    ).rejects.toThrow("Not a member of this organization");
+  });
+
+  test("deleteDefinition: org A user cannot delete org B definition using org A's orgId", async () => {
+    const t = createTestCtx();
+    const { organizationId: orgAId, identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    const db = createSupabaseDb();
+    const defBId = await db.insert("customFieldDefinitions", {
+      organizationId: String(orgBId),
+      entityType: "lead",
+      name: "Org B Secret Field",
+      fieldKey: "org_b_secret_lead",
+      fieldType: "text",
+      order: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    await expect(
+      t.withIdentity(identityA).action(api.customFields.deleteDefinition, {
+        organizationId: orgAId,
+        definitionId: defBId,
+      }),
+    ).rejects.toThrow("Field definition not found");
+  });
+});
+
+// ─── Saved Views (action-based, Supabase-primary) ────────────────────────────
+
+describe("tenant isolation — savedViews (actions)", () => {
+  test("listByEntityType: org A user cannot list org B saved views", async () => {
+    const t = createTestCtx();
+    const { identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    await expect(
+      t.withIdentity(identityA).action(api.savedViews.listByEntityType, {
+        organizationId: orgBId,
+        entityType: "contact",
+      }),
+    ).rejects.toThrow("Not a member of this organization");
+  });
+
+  test("getById: org A user cannot fetch using org B's organizationId", async () => {
+    const t = createTestCtx();
+    const { identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    await expect(
+      t.withIdentity(identityA).action(api.savedViews.getById, {
+        organizationId: orgBId,
+        viewId: "some-view-id",
+      }),
+    ).rejects.toThrow("Not a member of this organization");
+  });
+
+  test("getById: org A user cannot fetch org B view using org A's orgId", async () => {
+    const t = createTestCtx();
+    const { organizationId: orgAId, identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId, userId: userBId } = await seedOrgB(t);
+
+    const db = createSupabaseDb();
+    const viewBId = await db.insert("savedViews", {
+      organizationId: String(orgBId),
+      entityType: "contact",
+      name: "Org B Secret View",
+      filters: {},
+      isSystem: false,
+      createdBy: String(userBId),
+      order: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    await expect(
+      t.withIdentity(identityA).action(api.savedViews.getById, {
+        organizationId: orgAId,
+        viewId: viewBId,
+      }),
+    ).rejects.toThrow("Saved view not found");
+  });
+});
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+//
+// list / getUnreadCount are scoped by userId via requireUser (not
+// verifyOrgAccess) — they return only the authenticated user's own
+// notifications regardless of the organizationId argument.
+// markAllRead is action-based and uses verifyOrgAccess.
+
+describe("tenant isolation — notifications", () => {
+  test("list: org A user only sees own notifications even when passing org B's orgId", async () => {
+    const t = createTestCtx();
+    const { organizationId: orgAId, userId: userAId, identity: identityA } =
+      await seedTestUser(t);
+    const { organizationId: orgBId, userId: userBId } = await seedOrgB(t);
+
+    // Insert a notification for org B user in Convex DB
+    await t.run(async (ctx) => {
+      await ctx.db.insert("notifications", {
+        organizationId: orgBId,
+        userId: userBId,
+        type: "info",
+        title: "Org B Secret",
+        message: "This belongs to Org B",
+        isRead: false,
+        createdAt: Date.now(),
+      });
+      // Insert one for org A user to confirm that one shows up
+      await ctx.db.insert("notifications", {
+        organizationId: orgAId,
+        userId: userAId,
+        type: "info",
+        title: "Org A Notification",
+        message: "This belongs to Org A user",
+        isRead: false,
+        createdAt: Date.now(),
+      });
+    });
+
+    // Org A user passes org B's orgId — should only see their own notification
+    const result = await t.withIdentity(identityA).query(api.notifications.list, {
+      organizationId: orgBId,
+    });
+
+    expect(result).toHaveLength(1);
+    expect((result[0] as any).title).toBe("Org A Notification");
+  });
+
+  test("markAllRead: org A user cannot mark org B notifications as read", async () => {
+    const t = createTestCtx();
+    const { identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    await expect(
+      t.withIdentity(identityA).action(api.notifications.markAllRead, {
+        organizationId: orgBId,
+      }),
+    ).rejects.toThrow("Not a member of this organization");
+  });
+});

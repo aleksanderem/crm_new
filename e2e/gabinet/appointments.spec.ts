@@ -71,7 +71,7 @@ test.describe("Gabinet — Appointments", () => {
   ) {
     const { client, organizationId } = await getConvexClientContext(page);
 
-    const existingRules = await client.query(api.automation.listRules, {
+    const existingRules = await client.action(api.automation.listRules, {
       organizationId,
       module: "gabinet",
     });

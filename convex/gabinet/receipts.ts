@@ -87,25 +87,26 @@ function paymentMethodPL(method: string): string {
 async function nextReceiptNumber(
   orgId: string,
   year: number,
+  prefix = "REC",
 ): Promise<string> {
   const db = createSupabaseDb();
   const client = db.raw();
-  const prefix = `REC/${year}/`;
+  const fullPrefix = `${prefix}/${year}/`;
   const { data } = await client
     .from("gabinet_receipts")
     .select("receipt_number")
     .eq("organization_id", orgId)
-    .like("receipt_number", `${prefix}%`)
+    .like("receipt_number", `${fullPrefix}%`)
     .order("receipt_number", { ascending: false })
     .limit(1);
 
   let next = 1;
   if (data && data.length > 0) {
-    const last = (data[0].receipt_number as string).slice(prefix.length);
+    const last = (data[0].receipt_number as string).slice(fullPrefix.length);
     const parsed = parseInt(last, 10);
     if (!isNaN(parsed)) next = parsed + 1;
   }
-  return `${prefix}${String(next).padStart(5, "0")}`;
+  return `${fullPrefix}${String(next).padStart(5, "0")}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -580,5 +581,125 @@ export const generatePdfReceipt = action({
     }
 
     return { receiptId, pdfUrl, receiptNumber };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Internal mutation: auto-create a gabinet_receipts row for a payment.
+// Scheduled via ctx.scheduler from convex/payments.ts after each completed
+// payment so that every payment path produces a receipt record.
+// ---------------------------------------------------------------------------
+
+export const _createReceiptRowForPayment = internalMutation({
+  args: {
+    paymentId: v.string(),
+    organizationId: v.id("organizations"),
+    createdBy: v.id("users"),
+    // When true: void the existing issued receipt and create a KOR correction.
+    isRefund: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const db = createSupabaseDb();
+    const client = db.raw();
+
+    // Skip if a receipt already exists for this payment (normal path).
+    const { data: existing } = await client
+      .from("gabinet_receipts")
+      .select("id, status")
+      .eq("payment_id", args.paymentId)
+      .order("issued_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existing && !args.isRefund) return;
+
+    const payment = await db.get("payments", args.paymentId);
+    if (!payment) return;
+
+    // Skip zero-amount payments (fully credit-covered visits; no money changed hands).
+    const amount = payment.amount as number;
+    if (!args.isRefund && amount <= 0) return;
+
+    const orgDoc = await ctx.db.get(args.organizationId);
+    const orgName =
+      (orgDoc as Record<string, unknown> | null)?.name as string ??
+      "Placówka medyczna";
+
+    const now = Date.now();
+    const year = new Date(now).getFullYear();
+
+    if (args.isRefund) {
+      // Void the most recent issued receipt for this payment.
+      if (existing && (existing as Record<string, unknown>).status === "issued") {
+        await client
+          .from("gabinet_receipts")
+          .update({ status: "void", updated_at: now })
+          .eq("id", (existing as Record<string, unknown>).id as string);
+      }
+
+      // Correction receipt with negative amounts (KOR/ prefix).
+      const lineItem = computeLineItem(
+        "Korekta: Usluga medyczna",
+        1,
+        -Math.abs(amount),
+        "D",
+        DEFAULT_PKWIU,
+      );
+      const receiptNumber = await nextReceiptNumber(
+        String(args.organizationId),
+        year,
+        "KOR",
+      );
+      await db.insert("gabinetReceipts", {
+        organizationId: String(args.organizationId),
+        paymentId: args.paymentId,
+        appointmentId: (payment.appointmentId as string | null) ?? null,
+        patientId: (payment.patientId as string | null) ?? null,
+        receiptNumber,
+        issuedAt: now,
+        organizationName: orgName,
+        totalNet: lineItem.netAmount,
+        totalVat: lineItem.vatAmount,
+        totalGross: lineItem.grossAmount,
+        paymentMethod: payment.paymentMethod as string,
+        itemsJson: JSON.stringify([lineItem]),
+        fiscalReceiptId: null,
+        createdBy: String(args.createdBy),
+        createdAt: now,
+        updatedAt: now,
+      });
+      return;
+    }
+
+    // Normal receipt for a completed payment.
+    const lineItem = computeLineItem(
+      "Usluga medyczna",
+      1,
+      amount,
+      "D",
+      DEFAULT_PKWIU,
+    );
+    const receiptNumber = await nextReceiptNumber(
+      String(args.organizationId),
+      year,
+    );
+    await db.insert("gabinetReceipts", {
+      organizationId: String(args.organizationId),
+      paymentId: args.paymentId,
+      appointmentId: (payment.appointmentId as string | null) ?? null,
+      patientId: (payment.patientId as string | null) ?? null,
+      receiptNumber,
+      issuedAt: now,
+      organizationName: orgName,
+      totalNet: lineItem.netAmount,
+      totalVat: lineItem.vatAmount,
+      totalGross: lineItem.grossAmount,
+      paymentMethod: payment.paymentMethod as string,
+      itemsJson: JSON.stringify([lineItem]),
+      fiscalReceiptId: (payment.fiscalReceiptId as string | null) ?? null,
+      createdBy: String(args.createdBy),
+      createdAt: now,
+      updatedAt: now,
+    });
   },
 });

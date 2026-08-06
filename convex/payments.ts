@@ -688,6 +688,26 @@ export const refund = action({
       throw new Error(`Cannot refund a ${payment.status} payment`);
     }
 
+    // Block refund on the secondary leg of a split payment (issue #3776).
+    // The secondary leg has "split:" in notes but no gabinet_receipts row —
+    // the consolidated receipt lives on the primary leg only. Refunding via
+    // the secondary would emit a partial KOR and leave the consolidated receipt
+    // unvoided; callers must refund the primary leg instead.
+    if (typeof payment.notes === "string" && payment.notes.includes("split:")) {
+      const { data: receiptRow } = await db
+        .raw()
+        .from("gabinet_receipts")
+        .select("id")
+        .eq("payment_id", args.paymentId)
+        .limit(1)
+        .maybeSingle();
+      if (!receiptRow) {
+        throw new Error(
+          "SPLIT_SECONDARY_LEG: cannot refund the secondary leg of a split payment — refund the primary payment instead",
+        );
+      }
+    }
+
     await db.patch("payments", args.paymentId, {
       status: "refunded",
       notes: args.reason

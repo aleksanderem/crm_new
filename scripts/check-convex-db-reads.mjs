@@ -122,11 +122,15 @@ function relToModuleKey(relPath) {
 // ---------------------------------------------------------------------------
 // Violation detection — find ctx.db.query("TABLE_MAP_TABLE") in a file.
 //
-// Only ctx.db.query is flagged. A bare db.query where db = createSupabaseDb()
-// is the correct Supabase read path and is intentionally not matched here.
+// Only ctx.db.query (and variables destructured from ctx as db) are flagged.
+// A bare db.query where db = createSupabaseDb() is the correct Supabase read
+// path and is intentionally not matched here — provenance tracking via the
+// destructure pre-scan keeps these two apart.
 //
 // Current scope: single-line patterns only:
 //   ctx.db.query("table")
+//   const { db } = ctx; … db.query("table")
+//   const { db: alias } = ctx; … alias.query("table")
 //
 // Multiline patterns like
 //   ctx.db
@@ -140,6 +144,28 @@ function findViolations(content, tableMapKeys) {
   const violations = [];
   const lines = content.split("\n");
 
+  // Pre-scan: collect every variable that holds ctx.db via destructuring so we
+  // can flag bare alias.query("table") calls with the same precision as
+  // ctx.db.query("table") — without catching db from createSupabaseDb().
+  //
+  // Matches (single-line destructures):
+  //   const { db } = ctx          → alias "db"
+  //   const { db: myDb } = ctx    → alias "myDb"
+  //   const { db, scheduler } = ctx → alias "db"
+  const ctxDbAliases = new Set();
+  {
+    const destructureRe = /\{([^}]+)\}\s*=\s*ctx\b/g;
+    let dm;
+    while ((dm = destructureRe.exec(content)) !== null) {
+      const body = dm[1];
+      const dbRe = /\bdb\s*(?::\s*(\w+))?/g;
+      let dbm;
+      while ((dbm = dbRe.exec(body)) !== null) {
+        ctxDbAliases.add(dbm[1] ?? "db");
+      }
+    }
+  }
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
@@ -147,14 +173,28 @@ function findViolations(content, tableMapKeys) {
     const trimmed = line.trimStart();
     if (trimmed.startsWith("//") || trimmed.startsWith("*")) continue;
 
-    // Require ctx.db.query specifically — not a bare db.query — to avoid
-    // false positives on Supabase reads via createSupabaseDb().
+    // Pattern 1: ctx.db.query("table") — direct chained access.
     const re = /\bctx\.db\.query\(\s*["'](\w+)["']/g;
     let m;
     while ((m = re.exec(line)) !== null) {
       const tableName = m[1];
       if (tableMapKeys.has(tableName)) {
         violations.push({ lineNum: i + 1, text: line.trim(), tableName });
+      }
+    }
+
+    // Pattern 2: alias.query("table") where alias was destructured from ctx.db.
+    for (const alias of ctxDbAliases) {
+      const aliasRe = new RegExp(
+        String.raw`\b${alias}\.query\(\s*["'](\w+)["']`,
+        "g",
+      );
+      let am;
+      while ((am = aliasRe.exec(line)) !== null) {
+        const tableName = am[1];
+        if (tableMapKeys.has(tableName)) {
+          violations.push({ lineNum: i + 1, text: line.trim(), tableName });
+        }
       }
     }
   }
@@ -219,7 +259,7 @@ for (const file of allFiles) {
 // ---------------------------------------------------------------------------
 if (allViolations.length === 0) {
   console.log(
-    `✓ convex-db-reads-gate: no ctx.db.query on TABLE_MAP tables detected` +
+    `✓ convex-db-reads-gate: no ctx.db reads on TABLE_MAP tables detected` +
       ` (${scanned} files scanned, ${tableMapKeys.size} TABLE_MAP tables tracked).`,
   );
   process.exit(0);
@@ -230,7 +270,7 @@ const totalViolations = allViolations.reduce(
   0,
 );
 console.error(
-  `\nconvex-db-reads-gate: ${totalViolations} forbidden ctx.db.query call(s) on TABLE_MAP tables.\n`,
+  `\nconvex-db-reads-gate: ${totalViolations} forbidden ctx.db read(s) on TABLE_MAP tables.\n`,
 );
 
 for (const { file, violations } of allViolations) {
@@ -241,9 +281,9 @@ for (const { file, violations } of allViolations) {
 }
 
 console.error(`
-TABLE_MAP tables live in Supabase. Reading them via ctx.db.query hits the
-Convex document store which is stale or empty post-migration, and bypasses
-Supabase RLS.
+TABLE_MAP tables live in Supabase. Reading them via ctx.db (directly or via
+destructuring) hits the Convex document store which is stale or empty
+post-migration, and bypasses Supabase RLS.
 
 Correct read paths:
   Browser:          use-supabase-*.ts hooks (supabase-js, RLS-scoped)

@@ -1,7 +1,20 @@
 import type { SupabaseDb } from "./supabaseDb";
 
+async function sha256(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const buf = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 /**
  * Validate a patient-portal session token via Supabase.
+ *
+ * Accepts the raw bearer token (as stored in the client's localStorage) and
+ * hashes it before comparing against the stored token_hash. This ensures
+ * that even a full read of the gabinet_portal_sessions table yields no
+ * usable session tokens.
  *
  * `gabinetPortalSessions` is Supabase-only since the dual-write cleanup, so
  * portal session validation must hit Supabase — a Convex `ctx.db` reader
@@ -9,8 +22,10 @@ import type { SupabaseDb } from "./supabaseDb";
  */
 export async function validatePortalSessionSupabase(
   db: SupabaseDb,
-  tokenHash: string,
+  rawToken: string,
 ): Promise<{ patientId: string; organizationId: string }> {
+  const tokenHash = await sha256(rawToken);
+
   const session = await db
     .query("gabinetPortalSessions")
     .eq("tokenHash", tokenHash)

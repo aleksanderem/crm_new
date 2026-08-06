@@ -1,5 +1,3 @@
-import { useQuery } from "convex/react";
-import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { KpiRow } from "../kpi-row";
 import { MiniFunnel } from "../mini-funnel";
@@ -19,6 +17,11 @@ import {
   RadialBarChart,
 } from "recharts";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import {
+  useSupabaseDealsKpis,
+  useSupabaseLeadsByStage,
+  useSupabaseWeeklyDealsTrend,
+} from "@/hooks/use-supabase-sidebar-widgets";
 
 const trendConfig = {
   created: {
@@ -40,9 +43,9 @@ const winRateConfig = {
 
 export function DealsWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
-  const kpis = useQuery(api.sidebarWidgets.getDealsKpis, { organizationId });
-  const stages = useQuery(api.sidebarWidgets.getLeadsByStage, { organizationId });
-  const weeklyTrend = useQuery(api.sidebarWidgets.getWeeklyDealsTrend, { organizationId });
+  const { data: kpis } = useSupabaseDealsKpis(organizationId as string);
+  const { data: stages } = useSupabaseLeadsByStage(organizationId as string);
+  const { data: weeklyTrend } = useSupabaseWeeklyDealsTrend(organizationId as string);
 
   if (!kpis) return null;
 

@@ -1,4 +1,4 @@
-import { useQuery, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { useQuery as useTanstackQuery } from "@tanstack/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
@@ -12,6 +12,12 @@ import { Separator } from "@/components/ui/separator";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
+import {
+  useSupabaseFormDocumentsKpis,
+  useSupabaseFormDocumentsByStatus,
+  useSupabaseWeeklyFormDocumentsTrend,
+  useSupabaseTopDocumentCategories,
+} from "@/hooks/use-supabase-sidebar-widgets";
 
 const trendConfig = {
   value: {
@@ -30,10 +36,10 @@ const CATEGORY_COLORS = [
 
 export function DocumentsWidgets({ organizationId }: { organizationId: Id<"organizations"> }) {
   const { t } = useTranslation();
-  const kpis = useQuery(api.sidebarWidgets.getFormDocumentsKpis, { organizationId });
-  const byStatus = useQuery(api.sidebarWidgets.getFormDocumentsByStatus, { organizationId });
-  const weeklyTrend = useQuery(api.sidebarWidgets.getWeeklyFormDocumentsTrend, { organizationId });
-  const topCategories = useQuery(api.sidebarWidgets.getTopDocumentCategories, { organizationId });
+  const { data: kpis } = useSupabaseFormDocumentsKpis(organizationId as string);
+  const { data: byStatus } = useSupabaseFormDocumentsByStatus(organizationId as string);
+  const { data: weeklyTrend } = useSupabaseWeeklyFormDocumentsTrend(organizationId as string);
+  const { data: topCategories } = useSupabaseTopDocumentCategories(organizationId as string);
   const listTagDefinitionsAction = useAction(api.tagDefinitions.list);
   const { data: tagDefinitions } = useTanstackQuery({
     queryKey: ["tagDefinitions.list", organizationId],

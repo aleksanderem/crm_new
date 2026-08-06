@@ -508,17 +508,6 @@ export function AppointmentDialog({
     );
   }, [employees, treatmentId]);
 
-  // Warning: selected employee is unqualified for one or more additional treatments.
-  const hasQualificationWarning = useMemo(() => {
-    if (!employeeId || !employees || selectedTreatments.length <= 1) return false;
-    const emp = employees.find((e) => e.userId === employeeId);
-    if (!emp || emp.qualifiedTreatmentIds.length === 0) return false;
-    return selectedTreatments.some(
-      (t) =>
-        !emp.qualifiedTreatmentIds.includes(t.treatmentId as Id<"gabinetTreatments">),
-    );
-  }, [employees, employeeId, selectedTreatments]);
-
   // Filter patients by search
   const filteredPatients = useMemo(() => {
     const all = patients?.page ?? [];
@@ -992,7 +981,6 @@ export function AppointmentDialog({
         packageTreatmentId: packageTreatmentId ?? undefined,
         allowPast: recordWalkIn || undefined,
         allowConflict: hasBookingConflict || undefined,
-        allowUnqualified: hasQualificationWarning || undefined,
       });
       // Refresh the calendar immediately — Convex actions don't invalidate
       // the Supabase React Query cache automatically.
@@ -1034,7 +1022,6 @@ export function AppointmentDialog({
     packageTreatmentId,
     recordWalkIn,
     hasBookingConflict,
-    hasQualificationWarning,
     onOpenChange,
     queryClient,
     t,
@@ -1425,16 +1412,6 @@ export function AppointmentDialog({
                     triggerTestId="appointment-treatment-trigger"
                   />
                 </div>
-
-                {/* Qualification warning for multi-treatment */}
-                {hasQualificationWarning && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400">
-                    {t(
-                      "gabinet.appointments.warnings.qualificationPartial",
-                      "Pracownik nie ma kwalifikacji do wszystkich wybranych zabiegów",
-                    )}
-                  </p>
-                )}
 
                 {/* Eligible patient packages — render one selector per selected
                     treatment so packages are discovered regardless of which

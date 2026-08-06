@@ -1184,10 +1184,6 @@ export const create = action({
     // explicit warning before the user opts in. Hard constraints (working
     // hours, approved leave, clinic closed) still block creation. Issue #1526.
     allowConflict: v.optional(v.boolean()),
-    // When true, allow booking even if the employee is not qualified for one or
-    // more of the selected treatments. The UI shows a warning; this flag lets
-    // the user proceed anyway. Per issue #3356 clarification: warn-not-block.
-    allowUnqualified: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     try {

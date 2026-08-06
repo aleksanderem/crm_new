@@ -159,8 +159,6 @@ const GET_PENDING = new Set([
   "documentTemplateFields",
   // gabinet/employees.ts — ctx.db.get on users for employee user lookup.
   "gabinet/employees",
-  // invitations.ts — ctx.db.get on users for inviter lookup.
-  "invitations",
 ]);
 
 // ---------------------------------------------------------------------------

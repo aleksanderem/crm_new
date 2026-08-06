@@ -1,4 +1,4 @@
-import { query, action, internalMutation, internalAction, internalQuery } from "./_generated/server";
+import { query, action, internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
@@ -163,13 +163,16 @@ export const _sendInvitationEmail = internalAction({
     inviterUserId: v.string(),
   },
   handler: async (ctx, args) => {
-    const [ctxInfo, platformSettings] = await Promise.all([
-      ctx.runQuery(internal.invitations._getEmailContext, {
-        organizationId: args.organizationId,
-        inviterUserId: args.inviterUserId,
-      }),
+    const supabase = createSupabaseDb();
+    const [org, inviter, platformSettings] = await Promise.all([
+      supabase.get("organizations", args.organizationId),
+      supabase.get("users", args.inviterUserId),
       ctx.runQuery(internal.platformSettings._getInternal, {}),
     ]);
+    const ctxInfo = {
+      orgName: org?.name ?? "your team",
+      inviterName: inviter?.name ?? inviter?.email ?? "A teammate",
+    };
 
     const fromName = platformSettings?.invitationFromName;
     const fromEmail = platformSettings?.invitationFromEmail;
@@ -857,24 +860,6 @@ export const _adminResendInternal = internalMutation({
       invitedBy: String(inv.invitedBy),
       expiresAt,
       updatedAt,
-    };
-  },
-});
-
-// Lightweight internal query used by _sendInvitationEmail to load the bits of
-// context that the email template needs (org name, inviter name) without
-// re-fetching from a Node action.
-export const _getEmailContext = internalQuery({
-  args: {
-    organizationId: v.id("organizations"),
-    inviterUserId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const org = await ctx.db.get(args.organizationId);
-    const inviter = await ctx.db.get(args.inviterUserId as Id<"users">);
-    return {
-      orgName: org?.name ?? "your team",
-      inviterName: inviter?.name ?? inviter?.email ?? "A teammate",
     };
   },
 });

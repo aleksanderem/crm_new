@@ -108,7 +108,7 @@ export const runJob = action({
       }
     }
 
-    const transport = getDocumentTransport(
+    const transport = await getDocumentTransport(
       (id: string) => ctx.storage.get(id as unknown as Id<"_storage">),
     );
     const res = await analyzeDocument(transport, kind, pages, context);

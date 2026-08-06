@@ -15,6 +15,7 @@ import {
   type LotBatch,
 } from "@/hooks/use-supabase-products";
 import { useOrganization } from "@/components/org-context";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
@@ -519,6 +520,9 @@ function ProductsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { nudge: nudgeFilter } = useSearch({ from: Route.id });
+  const { allowed: canCreate } = usePermission("products", "create");
+  const { allowed: canEdit } = usePermission("products", "edit");
+  const { allowed: canDelete } = usePermission("products", "delete");
   const systemViews: SavedView[] = useMemo(() => [
     { id: "all", name: t('products.views.all'), isSystem: true, isDefault: true },
     { id: "active", name: t('products.views.active'), isSystem: true, isDefault: false },
@@ -1066,13 +1070,14 @@ function ProductsPage() {
   const { hiddenColumnIds, toggleColumn, setHiddenColumns } = useColumnVisibility(defaultHidden, "products");
 
   const rowActions = (row: Product) => {
-    const actions = [
-      {
+    const actions = [];
+    if (canEdit) {
+      actions.push({
         label: t('common.edit'),
         icon: <Pencil className="h-4 w-4" variant="stroke" />,
         onClick: () => openEditPanel(row),
-      },
-    ];
+      });
+    }
     if (row.trackStock) {
       actions.push({
         label: t("products.stock.receive.action", { defaultValue: "Przyjęcie magazynowe" }),
@@ -1095,8 +1100,8 @@ function ProductsPage() {
         onClick: () => setLotBatchesProduct(row),
       });
     }
-    actions.push(
-      {
+    if (canEdit) {
+      actions.push({
         label: row.isActive ? t('products.deactivate') : t('products.activate'),
         icon: <Power className="h-4 w-4" variant="stroke" />,
         onClick: async () => {
@@ -1112,13 +1117,15 @@ function ProductsPage() {
             );
           }
         },
-      },
-      {
+      });
+    }
+    if (canDelete) {
+      actions.push({
         label: t('common.delete'),
         icon: <Trash2 className="h-4 w-4" variant="stroke" />,
         onClick: () => setDeleteTarget({ id: row._id, label: row.name }),
-      },
-    );
+      });
+    }
     return actions;
   };
 
@@ -1129,10 +1136,12 @@ function ProductsPage() {
         description={t('products.description')}
         actions={
           <div className="flex items-center gap-2">
-            <Button onClick={openCreatePanel}>
-              <Plus className="mr-2 h-4 w-4" variant="stroke" />
-              {t('products.addProduct')}
-            </Button>
+            <PermissionGate feature="products" action="create">
+              <Button onClick={openCreatePanel}>
+                <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                {t('products.addProduct')}
+              </Button>
+            </PermissionGate>
           </div>
         }
       />
@@ -1365,6 +1374,7 @@ function ProductsPage() {
         rowActions={rowActions}
         isLoading={isLoading}
         onRowAction={(productId) => {
+          if (!canEdit) return;
           const product = products.find((p) => p._id === productId);
           if (product) openEditPanel(product);
         }}

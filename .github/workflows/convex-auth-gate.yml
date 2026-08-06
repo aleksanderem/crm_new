@@ -1,0 +1,32 @@
+name: Convex Auth Gate
+
+# Every public Convex function (query / mutation / action) must reach an
+# authorization guard or be explicitly whitelisted with a safety explanation.
+# Fails if any new unguarded public function is introduced.
+# See scripts/check-convex-auth.mjs and issue #3835.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  convex-auth-gate:
+    name: check:convex-auth
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Check every public Convex function has an auth guard
+        run: npm run check:convex-auth

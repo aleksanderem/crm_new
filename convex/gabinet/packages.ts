@@ -1061,9 +1061,8 @@ export const _batchUsageSideEffects = internalMutation({
     createdBy: v.string(),
   },
   handler: async (ctx, args) => {
-    const pkg = await ctx.db.get(
-      args.packageId as Id<"gabinetTreatmentPackages">,
-    );
+    const db = createSupabaseDb();
+    const pkg = await db.get("gabinetTreatmentPackages", args.packageId);
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "gabinetPackage",

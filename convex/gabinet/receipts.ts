@@ -89,48 +89,76 @@ function paymentMethodPL(method: string): string {
 }
 
 /**
- * Returns the next sequential receipt number for the org in the given year.
- * Format: PREFIX/YYYY/NNNNN (e.g. REC/2026/00001, KOR/2026/00001).
+ * Atomically increments the receipt sequence counter and inserts a new
+ * gabinet_receipts row in a single Postgres transaction (migration 00088,
+ * issue #3793).
  *
- * When locationId is provided, delegates to
- * `next_gabinet_receipt_number_for_location` (migration 00087) which keys the
- * counter on (org, location, year) — each location gets its own independent
- * sequence. When locationId is omitted, delegates to
- * `next_gabinet_receipt_number` (migration 00085) keyed on (org, year) for
- * orgs without multi-location setup.
- *
- * Both functions use INSERT ... ON CONFLICT DO UPDATE RETURNING for an atomic
- * counter increment with no read-modify-write race condition (fixes #3766).
+ * Previously the sequence was incremented before blob storage and the DB
+ * insert, so a failure at either step consumed a counter value without
+ * producing a receipt — a gap in the legally-required sequential numbering.
+ * The new Postgres function runs both operations in one transaction: if the
+ * INSERT fails, the counter UPDATE is rolled back automatically.
  */
-async function nextReceiptNumber(
-  orgId: string,
-  year: number,
-  prefix = "REC",
-  locationId?: string,
-): Promise<string> {
+async function insertReceiptWithAtomicNumber(params: {
+  orgId: string;
+  year: number;
+  prefix: string;
+  locationId?: string | null;
+  paymentId: string;
+  appointmentId?: string | null;
+  patientId?: string | null;
+  issuedAt: number;
+  organizationName: string;
+  organizationNip?: string | null;
+  organizationAddress?: string | null;
+  totalNet: number;
+  totalVat: number;
+  totalGross: number;
+  paymentMethod: string;
+  itemsJson: string;
+  fiscalReceiptId?: string | null;
+  receiptType: string;
+  pdfStorageId?: string | null;
+  pdfUrl?: string | null;
+  createdBy: string;
+  now: number;
+}): Promise<{ receiptId: string; receiptNumber: string }> {
   const db = createSupabaseDb();
   const client = db.raw();
-  let data: unknown;
-  let error: { message: string } | null;
-  if (locationId) {
-    ({ data, error } = await client.rpc(
-      "next_gabinet_receipt_number_for_location",
-      {
-        p_org_id: orgId,
-        p_year: year,
-        p_prefix: prefix,
-        p_location_id: locationId,
-      },
-    ));
-  } else {
-    ({ data, error } = await client.rpc("next_gabinet_receipt_number", {
-      p_org_id: orgId,
-      p_year: year,
-      p_prefix: prefix,
-    }));
-  }
-  if (error) throw new Error(`nextReceiptNumber: ${error.message}`);
-  return data as string;
+  const { data, error } = await client.rpc(
+    "insert_gabinet_receipt_with_number",
+    {
+      p_org_id:               params.orgId,
+      p_year:                 params.year,
+      p_prefix:               params.prefix,
+      p_location_id:          params.locationId ?? null,
+      p_payment_id:           params.paymentId,
+      p_appointment_id:       params.appointmentId ?? null,
+      p_patient_id:           params.patientId ?? null,
+      p_issued_at:            params.issuedAt,
+      p_organization_name:    params.organizationName,
+      p_organization_nip:     params.organizationNip ?? null,
+      p_organization_address: params.organizationAddress ?? null,
+      p_total_net:            params.totalNet,
+      p_total_vat:            params.totalVat,
+      p_total_gross:          params.totalGross,
+      p_payment_method:       params.paymentMethod,
+      p_items_json:           params.itemsJson,
+      p_fiscal_receipt_id:    params.fiscalReceiptId ?? null,
+      p_receipt_type:         params.receiptType,
+      p_pdf_storage_id:       params.pdfStorageId ?? null,
+      p_pdf_url:              params.pdfUrl ?? null,
+      p_created_by:           params.createdBy,
+      p_now:                  params.now,
+    },
+  );
+  if (error) throw new Error(`insertReceiptWithAtomicNumber: ${error.message}`);
+  const row = (Array.isArray(data) ? data[0] : data) as
+    | { receipt_id: string; receipt_number: string }
+    | null
+    | undefined;
+  if (!row) throw new Error("insertReceiptWithAtomicNumber: no row returned");
+  return { receiptId: row.receipt_id, receiptNumber: row.receipt_number };
 }
 
 // ---------------------------------------------------------------------------
@@ -339,8 +367,8 @@ export const _storePdfAndCreateReceipt = internalAction({
     paymentId: v.string(),
     appointmentId: v.optional(v.string()),
     patientId: v.optional(v.string()),
-    // Sequence parameters — receipt number is generated inside this action so
-    // the counter only increments on a successful write (no gap on failure).
+    // Sequence parameters — receipt number is generated atomically with the
+    // DB insert via insert_gabinet_receipt_with_number (no gap on failure).
     prefix: v.optional(v.string()),
     locationId: v.optional(v.string()),
     issuedAt: v.number(),
@@ -378,18 +406,42 @@ export const _storePdfAndCreateReceipt = internalAction({
       };
     }
 
-    // Increment the sequence and generate the PDF in one action so that a
-    // failure in either step does not leave a consumed sequence number without
-    // a corresponding receipt row (the gap described in #3790).
+    // Atomically increment the sequence counter and insert the receipt row in
+    // one Postgres transaction (#3793).  The counter is only consumed when the
+    // row is successfully committed — if the INSERT fails, Postgres rolls back
+    // the UPDATE to gabinet_receipt_sequences, leaving no gap.
+    // PDF generation is deferred until after the row exists so the receipt
+    // number printed on the PDF matches the committed DB row exactly.
     const year = new Date(args.issuedAt).getFullYear();
-    const receiptNumber = await nextReceiptNumber(
-      String(args.organizationId),
-      year,
-      args.prefix ?? "REC",
-      args.locationId,
-    );
-
     const lineItems = JSON.parse(args.itemsJson) as ReceiptLineItem[];
+    const now = Date.now();
+
+    const { receiptId, receiptNumber } = await insertReceiptWithAtomicNumber({
+      orgId:              String(args.organizationId),
+      year,
+      prefix:             args.prefix ?? "REC",
+      locationId:         args.locationId,
+      paymentId:          args.paymentId,
+      appointmentId:      args.appointmentId,
+      patientId:          args.patientId,
+      issuedAt:           args.issuedAt,
+      organizationName:   args.organizationName,
+      organizationNip:    args.organizationNip,
+      organizationAddress: args.organizationAddress,
+      totalNet:           args.totalNet,
+      totalVat:           args.totalVat,
+      totalGross:         args.totalGross,
+      paymentMethod:      args.paymentMethod,
+      itemsJson:          args.itemsJson,
+      fiscalReceiptId:    args.fiscalReceiptId,
+      receiptType:        "original",
+      pdfStorageId:       null,
+      pdfUrl:             null,
+      createdBy:          args.createdBy as string,
+      now,
+    });
+
+    // Generate and store the PDF now that we have the committed receipt number.
     const pdfBytes = await buildReceiptPdf({
       receiptNumber,
       issuedAt: args.issuedAt,
@@ -408,46 +460,20 @@ export const _storePdfAndCreateReceipt = internalAction({
     const storageId = await ctx.storage.store(blob);
     const pdfUrl = await ctx.storage.getUrl(storageId);
 
+    // Back-fill pdf_storage_id and pdf_url on the receipt row. This is best-
+    // effort: the receipt row and sequence number are already committed, so a
+    // failure here only means the PDF link is missing (not a sequence gap).
     try {
-      const db = createSupabaseDb();
-      const now = Date.now();
-      const receiptId = await db.insert("gabinetReceipts", {
-        organizationId: args.organizationId as string,
-        paymentId: args.paymentId,
-        appointmentId: args.appointmentId ?? null,
-        patientId: args.patientId ?? null,
-        receiptNumber,
-        issuedAt: args.issuedAt,
-        organizationName: args.organizationName,
-        organizationNip: args.organizationNip ?? null,
-        organizationAddress: args.organizationAddress ?? null,
-        totalNet: args.totalNet,
-        totalVat: args.totalVat,
-        totalGross: args.totalGross,
-        paymentMethod: args.paymentMethod,
-        itemsJson: args.itemsJson,
-        fiscalReceiptId: args.fiscalReceiptId ?? null,
-        receiptType: "original",
-        pdfStorageId: storageId,
-        pdfUrl: pdfUrl ?? null,
-        createdBy: args.createdBy as string,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      return { receiptId, pdfUrl: pdfUrl ?? "", receiptNumber };
-    } catch (err) {
-      // Compensating cleanup: the blob was already written to Convex storage but
-      // the receipt row in Supabase failed. Delete the orphaned blob so it doesn't
-      // leak storage. Best-effort — if the delete also fails we still re-throw
-      // the original error so the caller can retry.
-      try {
-        await ctx.storage.delete(storageId);
-      } catch {
-        // ignore secondary failure
-      }
-      throw err;
+      const dbPdf = createSupabaseDb();
+      await dbPdf.raw()
+        .from("gabinet_receipts")
+        .update({ pdf_storage_id: storageId, pdf_url: pdfUrl, updated_at: now })
+        .eq("id", receiptId);
+    } catch {
+      // Non-fatal: the receipt row exists, PDF can be regenerated on demand.
     }
+
+    return { receiptId, pdfUrl: pdfUrl ?? "", receiptNumber };
   },
 });
 
@@ -734,30 +760,24 @@ export const _createReceiptRowForPayment = internalMutation({
         "D",
         DEFAULT_PKWIU,
       );
-      const receiptNumber = await nextReceiptNumber(
-        String(args.organizationId),
+      await insertReceiptWithAtomicNumber({
+        orgId:           String(args.organizationId),
         year,
-        "KOR",
-      );
-      await db.insert("gabinetReceipts", {
-        organizationId: String(args.organizationId),
-        paymentId: args.paymentId,
-        appointmentId: (payment.appointmentId as string | null) ?? null,
-        patientId: (payment.patientId as string | null) ?? null,
-        receiptNumber,
-        issuedAt: now,
+        prefix:          "KOR",
+        locationId:      null,
+        paymentId:       args.paymentId,
+        appointmentId:   (payment.appointmentId as string | null) ?? null,
+        patientId:       (payment.patientId as string | null) ?? null,
+        issuedAt:        now,
         organizationName: orgName,
-        status: "issued",
-        receiptType: "correction",
-        totalNet: lineItem.netAmount,
-        totalVat: lineItem.vatAmount,
-        totalGross: lineItem.grossAmount,
-        paymentMethod: korPaymentMethod,
-        itemsJson: JSON.stringify([lineItem]),
-        fiscalReceiptId: null,
-        createdBy: String(args.createdBy),
-        createdAt: now,
-        updatedAt: now,
+        totalNet:        lineItem.netAmount,
+        totalVat:        lineItem.vatAmount,
+        totalGross:      lineItem.grossAmount,
+        paymentMethod:   korPaymentMethod,
+        itemsJson:       JSON.stringify([lineItem]),
+        receiptType:     "correction",
+        createdBy:       String(args.createdBy),
+        now,
       });
 
       // When voiding a consolidated split receipt, mark the secondary payment
@@ -799,29 +819,25 @@ export const _createReceiptRowForPayment = internalMutation({
       "D",
       DEFAULT_PKWIU,
     );
-    const receiptNumber = await nextReceiptNumber(
-      String(args.organizationId),
+    await insertReceiptWithAtomicNumber({
+      orgId:           String(args.organizationId),
       year,
-    );
-    await db.insert("gabinetReceipts", {
-      organizationId: String(args.organizationId),
-      paymentId: args.paymentId,
-      appointmentId: (payment.appointmentId as string | null) ?? null,
-      patientId: (payment.patientId as string | null) ?? null,
-      receiptNumber,
-      issuedAt: now,
+      prefix:          "REC",
+      locationId:      null,
+      paymentId:       args.paymentId,
+      appointmentId:   (payment.appointmentId as string | null) ?? null,
+      patientId:       (payment.patientId as string | null) ?? null,
+      issuedAt:        now,
       organizationName: orgName,
-      status: "issued",
-      receiptType: "original",
-      totalNet: lineItem.netAmount,
-      totalVat: lineItem.vatAmount,
-      totalGross: lineItem.grossAmount,
-      paymentMethod: payment.paymentMethod as string,
-      itemsJson: JSON.stringify([lineItem]),
+      totalNet:        lineItem.netAmount,
+      totalVat:        lineItem.vatAmount,
+      totalGross:      lineItem.grossAmount,
+      paymentMethod:   payment.paymentMethod as string,
+      itemsJson:       JSON.stringify([lineItem]),
       fiscalReceiptId: (payment.fiscalReceiptId as string | null) ?? null,
-      createdBy: String(args.createdBy),
-      createdAt: now,
-      updatedAt: now,
+      receiptType:     "original",
+      createdBy:       String(args.createdBy),
+      now,
     });
   },
 });
@@ -883,34 +899,28 @@ export const _createSplitReceiptRow = internalMutation({
       "D",
       DEFAULT_PKWIU,
     );
-    const receiptNumber = await nextReceiptNumber(
-      String(args.organizationId),
-      year,
-    );
-
     // Combined method string (e.g. "cash+card") signals a split transaction.
     // paymentMethodPL() in the PDF builder handles the "+" separator.
     const paymentMethod = `${args.firstMethod}+${args.secondMethod}`;
 
-    await db.insert("gabinetReceipts", {
-      organizationId: String(args.organizationId),
-      paymentId: args.primaryPaymentId,
-      appointmentId: (primaryPayment.appointmentId as string | null) ?? null,
-      patientId: (primaryPayment.patientId as string | null) ?? null,
-      receiptNumber,
-      issuedAt: now,
+    await insertReceiptWithAtomicNumber({
+      orgId:           String(args.organizationId),
+      year,
+      prefix:          "REC",
+      locationId:      null,
+      paymentId:       args.primaryPaymentId,
+      appointmentId:   (primaryPayment.appointmentId as string | null) ?? null,
+      patientId:       (primaryPayment.patientId as string | null) ?? null,
+      issuedAt:        now,
       organizationName: orgName,
-      status: "issued",
-      receiptType: "original",
-      totalNet: lineItem.netAmount,
-      totalVat: lineItem.vatAmount,
-      totalGross: lineItem.grossAmount,
+      totalNet:        lineItem.netAmount,
+      totalVat:        lineItem.vatAmount,
+      totalGross:      lineItem.grossAmount,
       paymentMethod,
-      itemsJson: JSON.stringify([lineItem]),
-      fiscalReceiptId: null,
-      createdBy: String(args.createdBy),
-      createdAt: now,
-      updatedAt: now,
+      itemsJson:       JSON.stringify([lineItem]),
+      receiptType:     "original",
+      createdBy:       String(args.createdBy),
+      now,
     });
   },
 });

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
+import { useSupabasePendingInvitations } from "@/hooks/use-supabase-invitations";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { Button } from "@/components/ui/button";
@@ -105,9 +106,7 @@ export function UserInvitationForm({
   const { data: seatUsage } = useQuery(
     convexQuery(api.organizations.getSeatUsage, { organizationId })
   ) as { data: { currentSeats: number; seatLimit: number; canAddMore: boolean } | undefined };
-  const { data: pendingInvitations } = useQuery(
-    convexQuery(api.invitations.listPending, { organizationId })
-  );
+  const { data: pendingInvitations } = useSupabasePendingInvitations(organizationId);
 
   // Gabinet-specific data sources — only fetched lazily once Gabinet is picked.
   const [module, setModule] = useState<InviteModule>(defaultModule);

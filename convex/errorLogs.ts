@@ -7,6 +7,7 @@ import {
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getCurrentUser } from "./_helpers/auth";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 const MAX_STACK = 8000;
 const MAX_ARGS = 4000;
@@ -97,7 +98,19 @@ export const list = action({
   },
   handler: async (ctx, args) => {
     await ctx.runAction(internal._helpers.authAction.verifyPlatformAdmin, {});
-    return await ctx.runQuery(internal.errorLogs._listInternal, args);
+    const rows = await ctx.runQuery(internal.errorLogs._listInternal, args);
+
+    const userIds = Array.from(
+      new Set(rows.map((r) => r.userId).filter((id): id is NonNullable<typeof id> => Boolean(id))),
+    );
+    const db = createSupabaseDb();
+    const users = userIds.length > 0 ? await db.getMany("users", userIds.map(String)) : [];
+    const userMap = new Map(users.map((u) => [String(u._id), { name: (u.name as string | null) ?? null, email: (u.email as string | null) ?? null }]));
+
+    return rows.map((r) => ({
+      ...r,
+      _user: r.userId ? userMap.get(String(r.userId)) ?? null : null,
+    }));
   },
 });
 
@@ -128,18 +141,7 @@ export const _listInternal = internalQuery({
       return true;
     });
 
-    const userIds = Array.from(
-      new Set(filtered.map((r) => r.userId).filter((v): v is NonNullable<typeof v> => Boolean(v))),
-    );
-    const users = await Promise.all(userIds.map((id) => ctx.db.get(id)));
-    const userMap = new Map(
-      users.filter((u): u is NonNullable<typeof u> => u !== null).map((u) => [u._id, { name: u.name ?? null, email: u.email ?? null }]),
-    );
-
-    return filtered.map((r) => ({
-      ...r,
-      _user: r.userId ? userMap.get(r.userId) ?? null : null,
-    }));
+    return filtered;
   },
 });
 
@@ -147,19 +149,21 @@ export const get = action({
   args: { id: v.id("errorLogs") },
   handler: async (ctx, args) => {
     await ctx.runAction(internal._helpers.authAction.verifyPlatformAdmin, {});
-    return await ctx.runQuery(internal.errorLogs._getInternal, args);
+    const row = await ctx.runQuery(internal.errorLogs._getInternal, args);
+    if (!row) return null;
+
+    const db = createSupabaseDb();
+    const user = row.userId ? await db.get("users", String(row.userId)) : null;
+    return {
+      ...row,
+      _user: user ? { name: (user.name as string | null) ?? null, email: (user.email as string | null) ?? null } : null,
+    };
   },
 });
 
 export const _getInternal = internalQuery({
   args: { id: v.id("errorLogs") },
   handler: async (ctx, args) => {
-    const row = await ctx.db.get(args.id);
-    if (!row) return null;
-    const user = row.userId ? await ctx.db.get(row.userId) : null;
-    return {
-      ...row,
-      _user: user ? { name: user.name ?? null, email: user.email ?? null } : null,
-    };
+    return await ctx.db.get(args.id);
   },
 });

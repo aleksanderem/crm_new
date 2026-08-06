@@ -199,8 +199,8 @@ function ChooseMethodForm({
 
       <p className="text-muted-foreground text-center text-sm">
         {t("login.chooseMethod.legalLead")}{" "}
-        <a className="text-foreground hover:underline" href="#">{t("login.chooseMethod.legalTerms")}</a>{" "}{t("login.chooseMethod.legalAnd")}{" "}
-        <a className="text-foreground hover:underline" href="#">{t("login.chooseMethod.legalPrivacy")}</a>
+        <a className="text-foreground hover:underline" href="/terms">{t("login.chooseMethod.legalTerms")}</a>{" "}{t("login.chooseMethod.legalAnd")}{" "}
+        <a className="text-foreground hover:underline" href="/privacy">{t("login.chooseMethod.legalPrivacy")}</a>
       </p>
     </>
   );

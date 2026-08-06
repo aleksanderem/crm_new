@@ -1,9 +1,9 @@
 {
-  "session_id": "S0110",
-  "started_at": "2026-08-06T08:00:00Z",
-  "last_updated": "2026-08-06T08:10:00Z",
+  "session_id": "S0111",
+  "started_at": "2026-08-06T08:15:00Z",
+  "last_updated": "2026-08-06T08:20:00Z",
   "status": "completed",
-  "focus": "Issue #3801: Upgrade gabinet_treatment_products RLS to per-command policies with WITH CHECK",
+  "focus": "Issue #3805: Fix org_isolation RLS on warehouse_deliveries and warehouse_delivery_items",
   "tasks_snapshot": {
     "total": 1,
     "not_started": 0,
@@ -14,5 +14,5 @@
   },
   "active_task_ids": [],
   "blockers": [],
-  "notes": "S0110: Created 00092_gabinet_treatment_products_rls.sql — drops the old ALL-operation org_isolation policy and replaces with four per-command policies (SELECT/INSERT/UPDATE/DELETE). INSERT and UPDATE now carry explicit WITH CHECK (current_org_id() = organization_id), closing the write-guard gap."
+  "notes": "S0111: Created 00094_warehouse_deliveries_rls.sql — drops the old ALL-operation org_isolation policies on warehouse_deliveries and warehouse_delivery_items, replaces with four per-command policies each (SELECT/INSERT/UPDATE/DELETE). INSERT and UPDATE now carry explicit WITH CHECK (current_org_id() = organization_id), closing the write-guard gap."
 }

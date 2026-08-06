@@ -252,12 +252,14 @@ const MULTILINE_PENDING = new Set([
 // Supabase read path and is intentionally not matched here — provenance
 // tracking via the destructure pre-scan keeps these two apart.
 //
-// Six patterns are detected:
+// Eight patterns are detected:
 //   1. ctx.db.query("table")                                — direct chained
 //   2. const { db } = ctx; … db.query("table")             — destructure alias
 //   3. ctx.db\n      .query("table")                       — split two lines
-//   4. ctx.db.get(x as Id<"table">)                        — direct chained get
-//   5. const { db } = ctx; … db.get(x as Id<"table">)      — alias get
+//   4. ctx.db.get(x as Id<"table">)                        — direct chained get (same line)
+//   4b. ctx.db.get(\n  x as Id<"table">)                   — explicit-cast get, cast on next line
+//   5. const { db } = ctx; … db.get(x as Id<"table">)      — alias get (same line)
+//   5b. alias.get(\n  x as Id<"table">)                    — alias get, cast on next line
 //   6. ctx.db\n      .get(x as Id<"table">)                — split two lines
 //
 // Patterns 1-3 require a string-literal table name in the call.
@@ -380,6 +382,45 @@ function findViolations(content, tableMapKeys, { detectMultiline = true, detectG
         while ((agm = aliasGetRe.exec(line)) !== null) {
           if (tableMapKeys.has(agm[1])) {
             violations.push({ lineNum: i + 1, text: line.trim(), tableName: agm[1] });
+          }
+        }
+      }
+
+      // Pattern 4b (multiline explicit-cast get): ctx.db.get( opens on one line
+      // and the `as Id<"table">` cast appears on the next line.
+      // Catches: ctx.db.get(\n  x as Id<"table">\n)
+      if (/\bctx\.db\.get\(/.test(line) && i + 1 < lines.length) {
+        const nextLine = lines[i + 1];
+        const nextTrimmed = nextLine.trimStart();
+        if (!nextTrimmed.startsWith("//") && !nextTrimmed.startsWith("*")) {
+          const gm = /\bas\s+Id<["'](\w+)["']/.exec(nextLine);
+          if (gm && tableMapKeys.has(gm[1])) {
+            violations.push({
+              lineNum: i + 1,
+              text: line.trim() + " " + nextLine.trim(),
+              tableName: gm[1],
+            });
+          }
+        }
+      }
+
+      // Pattern 5b (multiline alias explicit-cast get): alias.get( on one line,
+      // `as Id<"table">` cast on the next line.
+      if (ctxDbAliases.size > 0 && i + 1 < lines.length) {
+        for (const alias of ctxDbAliases) {
+          if (new RegExp(`\\b${alias}\\.get\\(`).test(line)) {
+            const nextLine = lines[i + 1];
+            const nextTrimmed = nextLine.trimStart();
+            if (!nextTrimmed.startsWith("//") && !nextTrimmed.startsWith("*")) {
+              const gm = /\bas\s+Id<["'](\w+)["']/.exec(nextLine);
+              if (gm && tableMapKeys.has(gm[1])) {
+                violations.push({
+                  lineNum: i + 1,
+                  text: line.trim() + " " + nextLine.trim(),
+                  tableName: gm[1],
+                });
+              }
+            }
           }
         }
       }

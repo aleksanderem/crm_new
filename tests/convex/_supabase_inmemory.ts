@@ -165,18 +165,25 @@ function createInMemoryRawClient() {
       return new InMemoryRawQuery(snakeToCamel(table));
     },
 
-    // Minimal stub for the `next_gabinet_receipt_number` Postgres function
-    // used by receipts.ts. Returns a formatted receipt number using an
-    // in-memory counter so receipt-related mutations work under vitest.
+    // Minimal stub for the `next_gabinet_receipt_number` and
+    // `next_gabinet_receipt_number_for_location` Postgres functions used by
+    // receipts.ts. Uses an in-memory counter keyed on
+    // `${orgId}:${locationId}:${year}:${prefix}` so each (org, location, year,
+    // prefix) combination has an independent sequence — matching production
+    // behaviour (fixes #3770).
     async rpc(
       fn: string,
       params: Record<string, unknown>,
     ): Promise<{ data: unknown; error: null | { message: string } }> {
-      if (fn === "next_gabinet_receipt_number") {
+      if (
+        fn === "next_gabinet_receipt_number" ||
+        fn === "next_gabinet_receipt_number_for_location"
+      ) {
         const orgId = String(params.p_org_id ?? "");
         const year = Number(params.p_year ?? new Date().getFullYear());
         const prefix = String(params.p_prefix ?? "REC");
-        const key = `${orgId}:${year}:${prefix}`;
+        const locationId = params.p_location_id ? String(params.p_location_id) : "";
+        const key = `${orgId}:${locationId}:${year}:${prefix}`;
         const next = (receiptSequenceCounters.get(key) ?? 0) + 1;
         receiptSequenceCounters.set(key, next);
         const formatted = `${prefix}/${year}/${String(next).padStart(5, "0")}`;

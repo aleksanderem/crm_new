@@ -163,7 +163,6 @@ const MULTILINE_PENDING = new Set([
   "emails",
   "emails_internal",
   "gabinet/_availability",
-  "gabinet/employees",
   "gabinet/equipment",
   "gabinet/patientAuth",
   "gabinet/patients",

@@ -961,12 +961,42 @@ export const _setQualifiedSideEffects = internalMutation({
 });
 
 /**
- * Internal mutation: finalise team membership for a user created via manual
- * password flow. Checks seat limit, prevents duplicate membership, derives a
- * username, creates the teamMemberships row, and schedules Supabase mirrors.
- * Called from `createWithPassword` action after the auth account is created.
+ * Internal query: read a user row from the Convex auth store. Used by
+ * `_finalisePasswordUser` which needs user data immediately after account
+ * creation, before the Supabase mirror has run.
  */
-export const _finalisePasswordUser = internalMutation({
+export const _getConvexUser = internalQuery({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.userId as Id<"users">);
+  },
+});
+
+/**
+ * Internal mutation: write a derived username back into the Convex auth record.
+ * Called by `_finalisePasswordUser` after uniqueness is confirmed against
+ * Supabase. The Convex patch keeps the auth record consistent; the username is
+ * carried to Supabase in the subsequent `writeUserToSupabase` call.
+ */
+export const _patchConvexUsername = internalMutation({
+  args: { userId: v.string(), username: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId as Id<"users">, { username: args.username });
+  },
+});
+
+/**
+ * Internal action: finalise team membership for a user created via manual
+ * password flow. Prevents duplicate membership, derives a username, mirrors
+ * the user to Supabase, then inserts the team_memberships row directly into
+ * Supabase (primary store post-migration).
+ *
+ * Converted from internalMutation so it can reach Supabase for the authoritative
+ * duplicate-membership check and username-uniqueness scan. The user is read from
+ * Convex (via _getConvexUser) because createAccount has just written it there and
+ * the Supabase mirror has not yet run.
+ */
+export const _finalisePasswordUser = internalAction({
   args: {
     userId: v.string(),
     email: v.string(),
@@ -976,73 +1006,68 @@ export const _finalisePasswordUser = internalMutation({
     invitedBy: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = args.userId as Id<"users">;
+    const db = createSupabaseDb();
 
-    const existing = await ctx.db
+    // Duplicate-membership guard — Supabase is authoritative post-migration.
+    const existing = await db
       .query("teamMemberships")
-      .withIndex("by_orgAndUser", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", userId),
-      )
-      .unique();
+      .eq("organizationId", String(args.organizationId))
+      .eq("userId", args.userId)
+      .first();
     if (existing) {
       throw new Error("Ten użytkownik jest już członkiem tej organizacji.");
     }
 
-    const user = await ctx.db.get(userId);
+    // The user was just created by Convex auth (createAccount) and is not yet
+    // mirrored to Supabase — intentional Convex-side read.
+    const user = await ctx.runQuery(internal.gabinet.employees._getConvexUser, {
+      userId: args.userId,
+    });
     if (!user) throw new Error("User not found after account creation");
 
-    let effectiveUsername = user.username;
+    let effectiveUsername = user.username ?? undefined;
     if (!user.username) {
       const local = args.email.split("@")[0] ?? "";
       const base = local.toLowerCase().replace(/[^a-z0-9]/g, "");
       let candidate = (base || "user").slice(0, 16);
       let suffix = 0;
-      while (
-        await ctx.db
-          .query("users")
-          .filter((q) => q.eq(q.field("username"), candidate))
-          .first()
-      ) {
+      // Username uniqueness check against Supabase (authoritative post-migration).
+      while ((await db.query("users").eq("username", candidate).first()) !== null) {
         suffix += 1;
         candidate = `${(base || "user").slice(0, 14)}${suffix}`;
         if (suffix > 50) break;
       }
-      await ctx.db.patch(userId, { username: candidate });
+      // Patch the Convex auth record so auth flows see the derived username.
+      await ctx.runMutation(internal.gabinet.employees._patchConvexUsername, {
+        userId: args.userId,
+        username: candidate,
+      });
       effectiveUsername = candidate;
     }
 
-    const joinedAt = Date.now();
-    const membershipId = await ctx.db.insert("teamMemberships", {
-      userId,
-      organizationId: args.organizationId,
-      role: args.teamRole,
-      invitedBy: args.invitedBy as Id<"users">,
-      joinedAt,
-    });
+    const now = Date.now();
 
-    await ctx.scheduler.runAfter(0, internal.supabase.users.writeUserToSupabase, {
-      userId: String(userId),
+    // Mirror user to Supabase synchronously so the FK exists when we insert
+    // team_memberships below. Supabase enforces team_memberships.user_id → users.id.
+    await ctx.runAction(internal.supabase.users.writeUserToSupabase, {
+      userId: args.userId,
       email: args.email,
       name: args.name,
       username: effectiveUsername,
       createdAt: Math.floor(user._creationTime),
-      updatedAt: Date.now(),
+      updatedAt: now,
     });
 
-    await ctx.scheduler.runAfter(
-      500,
-      internal.supabase.organizations.writeTeamMembershipToSupabase,
-      {
-        membershipId: String(membershipId),
-        userId: String(userId),
-        organizationId: String(args.organizationId),
-        role: args.teamRole,
-        invitedBy: args.invitedBy,
-        joinedAt,
-      },
-    );
+    // Insert team membership directly into Supabase (primary store post-migration).
+    await db.insert("teamMemberships", {
+      organizationId: String(args.organizationId),
+      userId: args.userId,
+      role: args.teamRole,
+      invitedBy: args.invitedBy,
+      joinedAt: now,
+    });
 
-    return { userId: String(userId) };
+    return { userId: args.userId };
   },
 });
 
@@ -1112,7 +1137,7 @@ export const createWithPassword = action({
       shouldLinkViaPhone: false,
     });
 
-    const { userId } = await ctx.runMutation(
+    const { userId } = await ctx.runAction(
       internal.gabinet.employees._finalisePasswordUser,
       {
         userId: String(user._id),

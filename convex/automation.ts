@@ -39,6 +39,8 @@ const updateRunRef = internal.supabase.automationRuns.updateRun;
 const writeRunStepRef = internal.supabase.automationRunSteps.writeRunStep;
 // @ts-ignore
 const updateRunStepRef = internal.supabase.automationRunSteps.updateRunStep;
+// @ts-ignore
+const patchLegacyRef = internal.automation._patchLegacyAppointmentWorkflowHistory;
 
 const automationModuleValidator = v.union(
   v.literal("crm"),
@@ -621,7 +623,7 @@ export const _recordAutomationEmailResult = internalMutation({
         processedAt: now,
         updatedAt: now,
       });
-      await patchLegacyAppointmentWorkflowHistory({
+      await ctx.scheduler.runAfter(0, patchLegacyRef, {
         organizationId: args.organizationId,
         appointmentId: args.appointmentId,
         actionType: args.actionType,
@@ -691,7 +693,7 @@ export const _recordAutomationEmailResult = internalMutation({
       processedAt: now,
       updatedAt: now,
     });
-    await patchLegacyAppointmentWorkflowHistory({
+    await ctx.scheduler.runAfter(0, patchLegacyRef, {
       organizationId: args.organizationId,
       appointmentId: args.appointmentId,
       actionType: args.actionType,
@@ -986,6 +988,32 @@ async function patchLegacyAppointmentWorkflowHistory(args: {
     updatedAt: now,
   });
 }
+
+// Extracted to internalAction so mutations can schedule this via ctx.scheduler —
+// createSupabaseDb() makes HTTP calls which are forbidden inside mutations.
+export const _patchLegacyAppointmentWorkflowHistory = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    appointmentId: v.optional(v.string()),
+    actionType: v.string(),
+    recipient: v.optional(v.string()),
+    recipientName: v.optional(v.string()),
+    renderedSubject: v.optional(v.string()),
+    renderedBody: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("sent"),
+      v.literal("failed"),
+      v.literal("skipped"),
+    ),
+    errorMessage: v.optional(v.string()),
+    idempotencyKey: v.string(),
+    processedAt: v.optional(v.number()),
+  },
+  handler: async (_ctx, args) => {
+    await patchLegacyAppointmentWorkflowHistory(args);
+  },
+});
 
 // listRules/listRuns/getRunSteps read from Supabase (primary read path for
 // automationRules/Runs/RunSteps). The production UI uses useSupabaseAutomation*
@@ -1543,7 +1571,7 @@ export const processRun = internalMutation({
                 processedAt: now,
                 updatedAt: now,
               });
-              await patchLegacyAppointmentWorkflowHistory({
+              await ctx.scheduler.runAfter(0, patchLegacyRef, {
                 organizationId: run.organizationId,
                 appointmentId:
                   run.entityType === "gabinetAppointment"
@@ -1592,7 +1620,7 @@ export const processRun = internalMutation({
                 processedAt: now,
                 updatedAt: now,
               });
-              await patchLegacyAppointmentWorkflowHistory({
+              await ctx.scheduler.runAfter(0, patchLegacyRef, {
                 organizationId: run.organizationId,
                 appointmentId:
                   run.entityType === "gabinetAppointment"
@@ -1689,7 +1717,7 @@ export const processRun = internalMutation({
                 processedAt: now,
                 updatedAt: now,
               });
-              await patchLegacyAppointmentWorkflowHistory({
+              await ctx.scheduler.runAfter(0, patchLegacyRef, {
                 organizationId: run.organizationId,
                 appointmentId:
                   run.entityType === "gabinetAppointment"
@@ -1746,7 +1774,7 @@ export const processRun = internalMutation({
               processedAt: now,
               updatedAt: now,
             });
-            await patchLegacyAppointmentWorkflowHistory({
+            await ctx.scheduler.runAfter(0, patchLegacyRef, {
               organizationId: run.organizationId,
               appointmentId:
                 run.entityType === "gabinetAppointment"
@@ -1960,7 +1988,7 @@ export const processRun = internalMutation({
             processedAt: now,
             updatedAt: now,
           });
-          await patchLegacyAppointmentWorkflowHistory({
+          await ctx.scheduler.runAfter(0, patchLegacyRef, {
             organizationId: run.organizationId,
             appointmentId:
               run.entityType === "gabinetAppointment"

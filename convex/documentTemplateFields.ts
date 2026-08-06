@@ -1,7 +1,6 @@
-import { query, action, internalMutation } from "./_generated/server";
+import { query, action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { verifyOrgAccess } from "./_helpers/auth";
 
@@ -76,8 +75,7 @@ export const create = action({
     width: v.union(v.literal("full"), v.literal("half")),
   },
   handler: async (ctx, args) => {
-    // Verify org access via template lookup (needs Convex db)
-    const orgId = await ctx.runMutation(internal.documentTemplateFields._verifyTemplateAccess, {
+    const orgId = await ctx.runAction(internal.documentTemplateFields._verifyTemplateAccess, {
       templateId: args.templateId,
     });
 
@@ -115,12 +113,13 @@ export const create = action({
   },
 });
 
-export const _verifyTemplateAccess = internalMutation({
+export const _verifyTemplateAccess = internalAction({
   args: { templateId: v.string() },
-  handler: async (ctx, args) => {
-    const template = await ctx.db.get(args.templateId as Id<"documentTemplates">);
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    const template = await db.get("documentTemplates", args.templateId);
     if (!template) throw new Error("Template not found");
-    return template.organizationId;
+    return template.organizationId as string;
   },
 });
 
@@ -146,7 +145,7 @@ export const update = action({
     if (!field) throw new Error("Field not found");
 
     // Verify org access via template
-    const orgId = await ctx.runMutation(internal.documentTemplateFields._verifyTemplateAccess, {
+    const orgId = await ctx.runAction(internal.documentTemplateFields._verifyTemplateAccess, {
       templateId: field.templateId as string,
     });
 
@@ -188,7 +187,7 @@ export const remove = action({
     if (!field) throw new Error("Field not found");
 
     // Verify org access via template
-    const orgId = await ctx.runMutation(internal.documentTemplateFields._verifyTemplateAccess, {
+    const orgId = await ctx.runAction(internal.documentTemplateFields._verifyTemplateAccess, {
       templateId: field.templateId as string,
     });
 
@@ -208,7 +207,7 @@ export const reorder = action({
   },
   handler: async (ctx, args) => {
     // Verify org access via template
-    const orgId = await ctx.runMutation(internal.documentTemplateFields._verifyTemplateAccess, {
+    const orgId = await ctx.runAction(internal.documentTemplateFields._verifyTemplateAccess, {
       templateId: args.templateId,
     });
 

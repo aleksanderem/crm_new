@@ -257,13 +257,46 @@ export const cancelEnrollment = action({
 // ---------------------------------------------------------------------------
 
 /**
- * Enroll a recipient into a sequence and schedule the first step.
- * Called by emailEventTrigger when a matching sequence is found.
- * Reads steps from Supabase (primary store) and writes enrollment to Supabase.
+ * Reads active sequences from Supabase for the given org + eventType, then
+ * schedules enrollRecipient for each match.  Called by triggerEmailEvent so
+ * the mutation doesn't attempt an HTTP call (mutations can't do I/O).
  */
+export const enrollForEvent = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    eventType: v.string(),
+    recipientEmail: v.string(),
+    recipientName: v.optional(v.string()),
+    payload: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const db = createSupabaseDb();
+    const sequences = await db
+      .query("emailSequences")
+      .eq("organizationId", String(args.organizationId))
+      .eq("isActive", true)
+      .eq("triggerEventType", args.eventType)
+      .collect();
+
+    for (const sequence of sequences) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.emailSequences.enrollRecipient,
+        {
+          sequenceId: sequence._id as string,
+          organizationId: args.organizationId,
+          recipientEmail: args.recipientEmail,
+          recipientName: args.recipientName,
+          payload: args.payload,
+        },
+      );
+    }
+  },
+});
+
 export const enrollRecipient = internalAction({
   args: {
-    sequenceId: v.id("emailSequences"),
+    sequenceId: v.string(),
     organizationId: v.id("organizations"),
     recipientEmail: v.string(),
     recipientName: v.optional(v.string()),

@@ -103,27 +103,15 @@ export const triggerEmailEvent = internalMutation({
     });
 
     // Enroll in any active sequences triggered by this event type.
+    // Delegated to an action so the HTTP call to Supabase is allowed.
     // Silent no-op if no sequences match.
-    const sequences = await ctx.db
-      .query("emailSequences")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-
-    for (const sequence of sequences) {
-      if (sequence.isActive && sequence.triggerEventType === args.eventType) {
-        await ctx.scheduler.runAfter(
-          0,
-          internal.emailSequences.enrollRecipient,
-          {
-            sequenceId: sequence._id,
-            organizationId: args.organizationId,
-            recipientEmail: args.recipientEmail,
-            recipientName: args.recipientName,
-            payload: args.payload,
-          },
-        );
-      }
-    }
+    await ctx.scheduler.runAfter(0, internal.emailSequences.enrollForEvent, {
+      organizationId: args.organizationId,
+      eventType: args.eventType,
+      recipientEmail: args.recipientEmail,
+      recipientName: args.recipientName,
+      payload: args.payload,
+    });
 
     return logId;
   },

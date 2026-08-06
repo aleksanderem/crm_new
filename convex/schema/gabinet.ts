@@ -946,6 +946,7 @@ export function createGabinetTables({
     phone: v.optional(v.string()),
     email: v.optional(v.string()),
     color: v.optional(v.string()),
+    fiscalRegisterId: v.optional(v.string()),
     isActive: v.boolean(),
     createdBy: v.id("users"),
     createdAt: v.number(),

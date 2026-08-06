@@ -1,48 +1,54 @@
-import type { RegisteredMutation } from "convex/server";
-import { internalMutation } from "../_generated/server";
+import { internalAction } from "../_generated/server";
+import { createServiceRoleClient } from "../supabase/client";
 
 /**
  * Migration: Rename provider "gmail" -> "google" on existing emails,
  * then match emails to mailProviders by org + fromEmail.
  * Run in batches until processed === 0.
  */
-export const backfillEmailProviders: RegisteredMutation<
-  "internal",
-  Record<string, never>,
-  Promise<{ processed: number }>
-> = internalMutation({
-  handler: async (ctx) => {
-    // 1. Rename provider "gmail" -> "google"
-    const gmailEmails = await ctx.db
-      .query("emails")
-      .filter((q) => q.eq(q.field("provider"), "gmail" as any))
-      .take(100);
+export const backfillEmailProviders = internalAction({
+  args: {},
+  handler: async (_ctx, _args): Promise<{ processed: number }> => {
+    const client = createServiceRoleClient();
 
-    for (const email of gmailEmails) {
-      await ctx.db.patch(email._id, { provider: "google" as any });
+    // 1. Rename provider "gmail" -> "google"
+    const { data: gmailEmails } = await client
+      .from("emails")
+      .select("id")
+      .eq("provider", "gmail")
+      .limit(100);
+
+    for (const email of gmailEmails ?? []) {
+      await client.from("emails").update({ provider: "google" }).eq("id", email.id);
     }
 
     // 2. Match emails to mailProviders by org + fromEmail
-    const unmatchedEmails = await ctx.db
-      .query("emails")
-      .filter((q) => q.eq(q.field("mailProviderId"), undefined))
-      .take(100);
+    const { data: unmatchedEmails } = await client
+      .from("emails")
+      .select("id, organization_id, from")
+      .is("mail_provider_id", null)
+      .not("from", "is", null)
+      .limit(100);
 
-    for (const email of unmatchedEmails) {
-      if (!email.from) continue;
-      const provider = await ctx.db
-        .query("mailProviders")
-        .withIndex("by_org_email", (q) =>
-          q.eq("organizationId", email.organizationId).eq("fromEmail", email.from!)
-        )
-        .first();
+    for (const email of unmatchedEmails ?? []) {
+      const { data: provider } = await client
+        .from("mail_providers")
+        .select("id")
+        .eq("organization_id", email.organization_id)
+        .eq("from_email", email.from!)
+        .maybeSingle();
 
       if (provider) {
-        await ctx.db.patch(email._id, { mailProviderId: provider._id });
+        await client
+          .from("emails")
+          .update({ mail_provider_id: provider.id })
+          .eq("id", email.id);
       }
     }
 
-    return { processed: gmailEmails.length + unmatchedEmails.length };
+    return {
+      processed: (gmailEmails?.length ?? 0) + (unmatchedEmails?.length ?? 0),
+    };
   },
 });
 
@@ -50,39 +56,40 @@ export const backfillEmailProviders: RegisteredMutation<
  * Migration: Convert existing emailAccounts to mailProviders.
  * Run once after deploying the new schema.
  */
-export const migrateEmailAccounts: RegisteredMutation<
-  "internal",
-  Record<string, never>,
-  Promise<{ migrated: number }>
-> = internalMutation({
-  handler: async (ctx) => {
-    const accounts = await ctx.db.query("emailAccounts").collect();
+export const migrateEmailAccounts = internalAction({
+  args: {},
+  handler: async (_ctx, _args): Promise<{ migrated: number }> => {
+    const client = createServiceRoleClient();
+
+    const { data: accounts } = await client.from("email_accounts").select("*");
+
     let migrated = 0;
 
-    for (const account of accounts) {
-      const existing = await ctx.db
-        .query("mailProviders")
-        .withIndex("by_org_email", (q) =>
-          q.eq("organizationId", account.organizationId).eq("fromEmail", account.fromEmail)
-        )
-        .first();
+    for (const account of accounts ?? []) {
+      const { data: existing } = await client
+        .from("mail_providers")
+        .select("id")
+        .eq("organization_id", account.organization_id)
+        .eq("from_email", account.from_email)
+        .maybeSingle();
 
       if (existing) continue;
 
-      await ctx.db.insert("mailProviders", {
-        organizationId: account.organizationId,
-        name: account.fromName,
-        providerType: "resend",
-        fromName: account.fromName,
-        fromEmail: account.fromEmail,
+      const { error } = await client.from("mail_providers").insert({
+        organization_id: account.organization_id,
+        name: account.from_name,
+        provider_type: "resend",
+        from_name: account.from_name,
+        from_email: account.from_email,
         capabilities: { canSend: true, canReceive: false, canSync: false },
-        isDefault: account.isDefault,
-        isShared: true,
+        is_default: account.is_default,
+        is_shared: true,
         status: "active",
-        createdAt: account.createdAt,
-        updatedAt: account.updatedAt,
+        created_at: account.created_at,
+        updated_at: account.updated_at,
       });
-      migrated++;
+
+      if (!error) migrated++;
     }
 
     return { migrated };

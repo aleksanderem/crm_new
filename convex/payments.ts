@@ -645,17 +645,18 @@ export const splitMarkPaid = action({
       // side effects are best-effort
     }
 
-    // Schedule receipts for both split payment rows (issue #3737).
+    // Polish fiscal law requires one receipt per transaction, regardless of the
+    // number of payment methods used. Schedule a single consolidated receipt
+    // for both split legs instead of two separate ones (issue #3768).
     try {
-      await ctx.runMutation(internal.payments._scheduleReceiptForPayment, {
-        paymentId: args.paymentId,
+      await ctx.runMutation(internal.payments._scheduleSplitReceipt, {
+        primaryPaymentId: args.paymentId,
         organizationId: args.organizationId,
         userId: authResult.userId,
-      });
-      await ctx.runMutation(internal.payments._scheduleReceiptForPayment, {
-        paymentId: newPaymentId,
-        organizationId: args.organizationId,
-        userId: authResult.userId,
+        firstMethod: args.firstMethod,
+        firstAmount: args.firstAmount,
+        secondMethod: args.secondMethod,
+        secondAmount: args.secondAmount,
       });
     } catch {
       // best-effort
@@ -747,6 +748,37 @@ export const _scheduleReceiptForPayment = internalMutation({
         organizationId: args.organizationId,
         createdBy: args.userId,
         isRefund: args.isRefund,
+      },
+    );
+  },
+});
+
+/**
+ * Schedules _createSplitReceiptRow so that a split payment produces exactly
+ * one consolidated receipt document (issue #3768).
+ */
+export const _scheduleSplitReceipt = internalMutation({
+  args: {
+    primaryPaymentId: v.string(),
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    firstMethod: paymentMethodValidator,
+    firstAmount: v.number(),
+    secondMethod: paymentMethodValidator,
+    secondAmount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.scheduler.runAfter(
+      0,
+      internal.gabinet.receipts._createSplitReceiptRow,
+      {
+        primaryPaymentId: args.primaryPaymentId,
+        organizationId: args.organizationId,
+        createdBy: args.userId,
+        firstMethod: args.firstMethod,
+        firstAmount: args.firstAmount,
+        secondMethod: args.secondMethod,
+        secondAmount: args.secondAmount,
       },
     );
   },

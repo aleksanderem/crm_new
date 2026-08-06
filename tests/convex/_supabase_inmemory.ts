@@ -33,6 +33,7 @@ function getTable(name: string): Map<string, Row> {
 
 export function resetInMemoryStore() {
   inMemoryStore.clear();
+  receiptSequenceCounters.clear();
 }
 
 function withConvexId<T extends Row>(row: T): T {
@@ -154,10 +155,34 @@ function convertKeysToSnake(row: Row): Record<string, unknown> {
  * Returns `{ data, error }` matching PostgREST semantics. `data` contains
  * the matched rows (all fields, camelCase keys matching the in-memory store).
  */
+// In-memory counter for next_gabinet_receipt_number RPC (issue #3768).
+// Key: `${orgId}:${year}:${prefix}`, value: last sequence number issued.
+const receiptSequenceCounters = new Map<string, number>();
+
 function createInMemoryRawClient() {
   return {
     from(table: string) {
       return new InMemoryRawQuery(snakeToCamel(table));
+    },
+
+    // Minimal stub for the `next_gabinet_receipt_number` Postgres function
+    // used by receipts.ts. Returns a formatted receipt number using an
+    // in-memory counter so receipt-related mutations work under vitest.
+    async rpc(
+      fn: string,
+      params: Record<string, unknown>,
+    ): Promise<{ data: unknown; error: null | { message: string } }> {
+      if (fn === "next_gabinet_receipt_number") {
+        const orgId = String(params.p_org_id ?? "");
+        const year = Number(params.p_year ?? new Date().getFullYear());
+        const prefix = String(params.p_prefix ?? "REC");
+        const key = `${orgId}:${year}:${prefix}`;
+        const next = (receiptSequenceCounters.get(key) ?? 0) + 1;
+        receiptSequenceCounters.set(key, next);
+        const formatted = `${prefix}/${year}/${String(next).padStart(5, "0")}`;
+        return { data: formatted, error: null };
+      }
+      return { data: null, error: { message: `rpc stub: unknown function ${fn}` } };
     },
   };
 }

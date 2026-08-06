@@ -68,6 +68,13 @@ function formatDate(ms: number): string {
 }
 
 function paymentMethodPL(method: string): string {
+  // Handle compound split-payment methods like "cash+card".
+  if (method.includes("+")) {
+    return method
+      .split("+")
+      .map((m) => paymentMethodPL(m.trim()))
+      .join(" + ");
+  }
   const map: Record<string, string> = {
     cash: "Gotowka",
     card: "Karta platnicza",
@@ -693,6 +700,93 @@ export const _createReceiptRowForPayment = internalMutation({
       paymentMethod: payment.paymentMethod as string,
       itemsJson: JSON.stringify([lineItem]),
       fiscalReceiptId: (payment.fiscalReceiptId as string | null) ?? null,
+      createdBy: String(args.createdBy),
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Internal mutation: create ONE consolidated receipt for a split payment.
+//
+// Polish fiscal law requires a single receipt per transaction, regardless of
+// how many payment methods are used. `splitMarkPaid` creates two payment rows
+// (one per method) but must produce only one receipt document (issue #3768).
+//
+// The receipt is linked to the primary (original) payment row and records the
+// combined payment method as "firstMethod+secondMethod" (e.g. "cash+card").
+// The secondary payment row never gets its own receipt row.
+// ---------------------------------------------------------------------------
+
+export const _createSplitReceiptRow = internalMutation({
+  args: {
+    primaryPaymentId: v.string(),
+    organizationId: v.id("organizations"),
+    createdBy: v.id("users"),
+    firstMethod: v.string(),
+    firstAmount: v.number(),
+    secondMethod: v.string(),
+    secondAmount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const db = createSupabaseDb();
+    const client = db.raw();
+
+    // Idempotency: skip if a receipt already exists for the primary payment.
+    const { data: existing } = await client
+      .from("gabinet_receipts")
+      .select("id")
+      .eq("payment_id", args.primaryPaymentId)
+      .limit(1)
+      .maybeSingle();
+
+    if (existing) return;
+
+    const primaryPayment = await db.get("payments", args.primaryPaymentId);
+    if (!primaryPayment) return;
+
+    const orgDoc = await ctx.db.get(args.organizationId);
+    const orgName =
+      (orgDoc as Record<string, unknown> | null)?.name as string ??
+      "Placówka medyczna";
+
+    const now = Date.now();
+    const year = new Date(now).getFullYear();
+
+    // Full transaction amount is the sum of both legs.
+    const totalAmount =
+      Math.round((args.firstAmount + args.secondAmount) * 100) / 100;
+    const lineItem = computeLineItem(
+      "Usluga medyczna",
+      1,
+      totalAmount,
+      "D",
+      DEFAULT_PKWIU,
+    );
+    const receiptNumber = await nextReceiptNumber(
+      String(args.organizationId),
+      year,
+    );
+
+    // Combined method string (e.g. "cash+card") signals a split transaction.
+    // paymentMethodPL() in the PDF builder handles the "+" separator.
+    const paymentMethod = `${args.firstMethod}+${args.secondMethod}`;
+
+    await db.insert("gabinetReceipts", {
+      organizationId: String(args.organizationId),
+      paymentId: args.primaryPaymentId,
+      appointmentId: (primaryPayment.appointmentId as string | null) ?? null,
+      patientId: (primaryPayment.patientId as string | null) ?? null,
+      receiptNumber,
+      issuedAt: now,
+      organizationName: orgName,
+      totalNet: lineItem.netAmount,
+      totalVat: lineItem.vatAmount,
+      totalGross: lineItem.grossAmount,
+      paymentMethod,
+      itemsJson: JSON.stringify([lineItem]),
+      fiscalReceiptId: null,
       createdBy: String(args.createdBy),
       createdAt: now,
       updatedAt: now,

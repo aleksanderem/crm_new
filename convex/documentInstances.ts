@@ -336,9 +336,10 @@ export const updateStatus = action({
 
 export const _resolveReviewerName = internalMutation({
   args: { reviewerId: v.string() },
-  handler: async (ctx, args) => {
-    const reviewer = await ctx.db.get(args.reviewerId as Id<"users">);
-    return reviewer?.name ?? "";
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    const reviewer = await db.get("users", args.reviewerId);
+    return (reviewer?.name as string) ?? "";
   },
 });
 

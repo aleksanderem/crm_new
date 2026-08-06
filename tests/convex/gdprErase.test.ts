@@ -159,6 +159,32 @@ describe("gabinet/patients.gdprErase — activity and note anonymization", () =>
     expect(appointments[0].treatmentParameterValues).toBeUndefined();
   });
 
+  test("writes an audit log entry with action gdpr_patient_erased", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId } = await seedGabinetPrereqs(t, organizationId, userId);
+    const patientIdStr = String(patientId);
+
+    await t.withIdentity(identity).action(api.gabinet.patients.gdprErase, {
+      organizationId,
+      patientId: patientIdStr,
+    });
+
+    const auditEntries = await t.run(async (ctx) =>
+      ctx.db
+        .query("auditLog")
+        .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
+        .collect(),
+    );
+
+    const erasureEntry = auditEntries.find(
+      (e) => e.action === "gdpr_patient_erased",
+    );
+    expect(erasureEntry).toBeDefined();
+    expect(erasureEntry?.entityType).toBe("gabinetPatient");
+    expect(erasureEntry?.entityId).toBe(patientIdStr);
+  });
+
   test("new erasure activity entry does not contain original patient name", async () => {
     const t = createTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);

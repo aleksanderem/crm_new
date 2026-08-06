@@ -1,33 +1,9 @@
-import { action, internalQuery } from "./_generated/server";
+import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 
 // Dual-write refs removed — Supabase is now primary for event binding writes
-
-// ---------------------------------------------------------------------------
-// Internal Queries (used by processEvent action)
-// ---------------------------------------------------------------------------
-
-export const listEnabledBindings = internalQuery({
-  args: {
-    organizationId: v.id("organizations"),
-    eventType: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const bindings = await ctx.db
-      .query("emailEventBindings")
-      .withIndex("by_orgAndEventType", (q) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("eventType", args.eventType),
-      )
-      .filter((q) => q.eq(q.field("enabled"), true))
-      .collect();
-
-    return bindings.sort((a, b) => a.priority - b.priority);
-  },
-});
 
 // ---------------------------------------------------------------------------
 // Actions (Supabase-primary)

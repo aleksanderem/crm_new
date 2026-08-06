@@ -143,8 +143,8 @@ export function createPlatformTables({
   emailEventLog: defineTable({
     organizationId: v.id("organizations"),
     eventType: v.string(),
-    bindingId: v.optional(v.id("emailEventBindings")),
-    templateId: v.optional(v.id("emailTemplates")),
+    bindingId: v.optional(v.string()),
+    templateId: v.optional(v.string()),
     recipientEmail: v.string(),
     recipientName: v.optional(v.string()),
     status: v.union(

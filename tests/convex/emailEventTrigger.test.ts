@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { internal } from "../../convex/_generated/api";
 import { createTestCtx, seedTestUser } from "../../convex/_test_helpers";
+import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
 
 afterEach(async () => {
   // Let any pending setTimeout(0) side-effect callbacks from the test fire
@@ -44,20 +45,15 @@ describe("emailEventTrigger", () => {
   // ─── listEnabledBindings: no bindings ─────────────────────────
 
   test("listEnabledBindings returns empty when no bindings configured", async () => {
-    const t = createTestCtx();
-    const { organizationId } = await seedTestUser(t);
+    const { organizationId } = await seedTestUser(createTestCtx());
 
-    const bindings = await t.run(async (ctx) =>
-      ctx.db
-        .query("emailEventBindings")
-        .withIndex("by_orgAndEventType", (q) =>
-          q
-            .eq("organizationId", organizationId)
-            .eq("eventType", "appointment.created"),
-        )
-        .filter((q) => q.eq(q.field("enabled"), true))
-        .collect(),
-    );
+    const db = createSupabaseDb();
+    const bindings = await db
+      .query("emailEventBindings")
+      .eq("organizationId", String(organizationId))
+      .eq("eventType", "appointment.created")
+      .eq("enabled", true)
+      .collect();
 
     expect(bindings).toHaveLength(0);
   });
@@ -65,51 +61,40 @@ describe("emailEventTrigger", () => {
   // ─── listEnabledBindings: active binding found ─────────────────
 
   test("listEnabledBindings returns active binding for matching event type", async () => {
-    const t = createTestCtx();
-    const { organizationId, userId } = await seedTestUser(t);
+    const { organizationId, userId } = await seedTestUser(createTestCtx());
 
-    // Seed: email template + enabled binding
-    const { templateId, bindingId } = await t.run(async (ctx) => {
-      const now = Date.now();
+    const db = createSupabaseDb();
+    const now = Date.now();
 
-      const templateId = await ctx.db.insert("emailTemplates", {
-        organizationId,
-        name: "Appointment Created",
-        subject: "Your appointment is confirmed",
-        body: "Hello {{patientName}}, your appointment is confirmed.",
-        variables: [{ key: "patientName", label: "Patient Name", source: "patient.name" }],
-        createdBy: userId,
-        isActive: true,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      const bindingId = await ctx.db.insert("emailEventBindings", {
-        organizationId,
-        eventType: "appointment.created",
-        templateId,
-        enabled: true,
-        priority: 1,
-        createdBy: userId,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      return { templateId, bindingId };
+    const templateId = await db.insert("emailTemplates", {
+      organizationId: String(organizationId),
+      name: "Appointment Created",
+      subject: "Your appointment is confirmed",
+      body: "Hello {{patientName}}, your appointment is confirmed.",
+      createdBy: String(userId),
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
     });
 
-    // Verify the binding is discoverable
-    const bindings = await t.run(async (ctx) =>
-      ctx.db
-        .query("emailEventBindings")
-        .withIndex("by_orgAndEventType", (q) =>
-          q
-            .eq("organizationId", organizationId)
-            .eq("eventType", "appointment.created"),
-        )
-        .filter((q) => q.eq(q.field("enabled"), true))
-        .collect(),
-    );
+    const bindingId = await db.insert("emailEventBindings", {
+      organizationId: String(organizationId),
+      eventType: "appointment.created",
+      templateId,
+      enabled: true,
+      priority: 1,
+      createdBy: String(userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const bindings = await db
+      .query("emailEventBindings")
+      .eq("organizationId", String(organizationId))
+      .eq("eventType", "appointment.created")
+      .eq("enabled", true)
+      .order("priority", true)
+      .collect();
 
     expect(bindings).toHaveLength(1);
     expect(bindings[0]._id).toBe(bindingId);
@@ -120,48 +105,39 @@ describe("emailEventTrigger", () => {
   // ─── Disabled binding not returned ────────────────────────────
 
   test("listEnabledBindings ignores disabled bindings", async () => {
-    const t = createTestCtx();
-    const { organizationId, userId } = await seedTestUser(t);
+    const { organizationId, userId } = await seedTestUser(createTestCtx());
 
-    await t.run(async (ctx) => {
-      const now = Date.now();
+    const db = createSupabaseDb();
+    const now = Date.now();
 
-      const templateId = await ctx.db.insert("emailTemplates", {
-        organizationId,
-        name: "Appointment Created",
-        subject: "Appointment confirmed",
-        body: "Hello {{patientName}}",
-        variables: [],
-        createdBy: userId,
-        isActive: true,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      // Insert a DISABLED binding
-      await ctx.db.insert("emailEventBindings", {
-        organizationId,
-        eventType: "appointment.created",
-        templateId,
-        enabled: false, // disabled
-        priority: 1,
-        createdBy: userId,
-        createdAt: now,
-        updatedAt: now,
-      });
+    const templateId = await db.insert("emailTemplates", {
+      organizationId: String(organizationId),
+      name: "Appointment Created",
+      subject: "Appointment confirmed",
+      body: "Hello {{patientName}}",
+      createdBy: String(userId),
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
     });
 
-    const bindings = await t.run(async (ctx) =>
-      ctx.db
-        .query("emailEventBindings")
-        .withIndex("by_orgAndEventType", (q) =>
-          q
-            .eq("organizationId", organizationId)
-            .eq("eventType", "appointment.created"),
-        )
-        .filter((q) => q.eq(q.field("enabled"), true))
-        .collect(),
-    );
+    await db.insert("emailEventBindings", {
+      organizationId: String(organizationId),
+      eventType: "appointment.created",
+      templateId,
+      enabled: false,
+      priority: 1,
+      createdBy: String(userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const bindings = await db
+      .query("emailEventBindings")
+      .eq("organizationId", String(organizationId))
+      .eq("eventType", "appointment.created")
+      .eq("enabled", true)
+      .collect();
 
     expect(bindings).toHaveLength(0);
   });

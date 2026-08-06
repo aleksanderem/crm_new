@@ -163,7 +163,6 @@ const MULTILINE_PENDING = new Set([
   "documentTemplates",
   "documents/components",
   "documents/templates",
-  "emailEventBindings",
   "emailEventTrigger",
   "emailEvents",
   "emailSequences",

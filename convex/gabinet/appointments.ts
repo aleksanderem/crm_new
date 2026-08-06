@@ -1,4 +1,4 @@
-import { query, action, internalMutation, internalQuery, MutationCtx } from "../_generated/server";
+import { query, action, internalMutation, internalQuery, internalAction, MutationCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import {
@@ -771,13 +771,13 @@ export const checkQualification = action({
 // Internal helpers for the create action (actions can't access ctx.db)
 // ---------------------------------------------------------------------------
 
-export const _getOrgSettings = internalQuery({
+export const _getOrgSettings = internalAction({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("orgSettings")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .unique();
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    return await db.query("orgSettings")
+      .eq("organizationId", String(args.organizationId))
+      .first() as Record<string, unknown> | null;
   },
 });
 
@@ -1039,11 +1039,7 @@ export const _createSideEffects = internalMutation({
           if (need24h) timingsHours.push(24);
         } else {
           // Legacy: single reminder at configured hours (default 24)
-          const orgSettings = await ctx.db
-            .query("orgSettings")
-            .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-            .unique();
-          const reminderHours = (orgSettings as any)?.reminderHoursBefore ?? 24;
+          const reminderHours = (supaOrgSettings?.reminderHoursBefore as number) ?? 24;
           timingsHours = [reminderHours];
         }
 
@@ -1248,7 +1244,7 @@ export const create = action({
     }
 
     // --- Org settings (reminder default) ---
-    const orgSettings = await ctx.runQuery(
+    const orgSettings = await ctx.runAction(
       internal.gabinet.appointments._getOrgSettings,
       { organizationId: args.organizationId },
     );

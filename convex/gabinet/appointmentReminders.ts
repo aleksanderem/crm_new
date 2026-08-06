@@ -38,7 +38,7 @@ export const scheduleReminder = action({
     }
 
     // Get org settings for reminder config
-    const orgSettings = await ctx.runQuery(
+    const orgSettings = await ctx.runAction(
       internal.gabinet.appointments._getOrgSettings,
       { organizationId: args.organizationId },
     ) as Record<string, unknown> | null;
@@ -425,13 +425,12 @@ export const scheduleReminderInternal = internalMutation({
     if (!appointment) return null;
 
     // Get org settings for reminder config
-    const orgSettings = await ctx.db
-      .query("orgSettings")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .unique();
+    const orgSettings = await db.query("orgSettings")
+      .eq("organizationId", String(args.organizationId))
+      .first();
 
     const reminderHours =
-      orgSettings?.reminderHoursBefore ?? DEFAULT_REMINDER_HOURS;
+      (orgSettings as any)?.reminderHoursBefore ?? DEFAULT_REMINDER_HOURS;
 
     const appointmentMs = new Date(
       `${appointment.date}T${appointment.startTime}:00`

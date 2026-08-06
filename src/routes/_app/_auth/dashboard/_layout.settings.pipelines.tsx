@@ -14,15 +14,31 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Trash2, GripVertical } from "@/lib/ez-icons";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Id } from "@cvx/_generated/dataModel";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
+
+function PipelinesSettingsSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-7 w-48" />
+      <Skeleton className="h-32 w-full" />
+      <Skeleton className="h-32 w-full" />
+    </div>
+  );
+}
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/pipelines"
 )({
-  component: PipelinesSettings,
+  component: () => (
+    <PermissionGate feature="pipelines" action="view" loadingFallback={<PipelinesSettingsSkeleton />}>
+      <PipelinesSettings />
+    </PermissionGate>
+  ),
 });
 
 function PipelinesSettings() {
@@ -33,6 +49,7 @@ function PipelinesSettings() {
   const [newStageName, setNewStageName] = useState("");
   const [newStageColor, setNewStageColor] = useState("#3b82f6");
   const [addingStageFor, setAddingStageFor] = useState<string | null>(null);
+  const { allowed: canCreate } = usePermission("pipelines", "create");
 
   // @ts-ignore — TS2589 excessive depth in useAction type instantiation (pre-existing)
   const createPipeline = useAction(api.pipelines.create);
@@ -53,36 +70,38 @@ function PipelinesSettings() {
         <UntitledAlert>{t("settings.pipelines.description")}</UntitledAlert>
       </SectionHeader.Root>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t("settings.pipelines.createPipeline")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form
-            className="flex gap-2"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (!newPipelineName.trim()) return;
-              await createPipeline({
-                organizationId,
-                name: newPipelineName,
-              });
-              queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelines.all });
-              setNewPipelineName("");
-            }}
-          >
-            <Input
-              value={newPipelineName}
-              onChange={(e) => setNewPipelineName(e.target.value)}
-              placeholder={t("settings.pipelines.pipelineNamePlaceholder")}
-            />
-            <Button type="submit" disabled={!newPipelineName.trim()}>
-              <Plus className="mr-2 h-4 w-4" variant="stroke" />
-              {t("common.create")}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      {canCreate && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">{t("settings.pipelines.createPipeline")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form
+              className="flex gap-2"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!newPipelineName.trim()) return;
+                await createPipeline({
+                  organizationId,
+                  name: newPipelineName,
+                });
+                queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelines.all });
+                setNewPipelineName("");
+              }}
+            >
+              <Input
+                value={newPipelineName}
+                onChange={(e) => setNewPipelineName(e.target.value)}
+                placeholder={t("settings.pipelines.pipelineNamePlaceholder")}
+              />
+              <Button type="submit" disabled={!newPipelineName.trim()}>
+                <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                {t("common.create")}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {pipelines?.map((pipeline) => (
         <PipelineCard
@@ -132,6 +151,8 @@ function PipelineCard({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const { allowed: canEdit } = usePermission("pipelines", "edit");
+  const { allowed: canDelete } = usePermission("pipelines", "delete");
   const { data: stages } = useSupabasePipelineStages(
     organizationId,
     pipeline._id,
@@ -141,14 +162,16 @@ function PipelineCard({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-base">{pipeline.name}</CardTitle>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => setDeleteDialogOpen(true)}
-        >
-          <Trash2 className="h-4 w-4" variant="stroke" />
-        </Button>
+        {canDelete && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setDeleteDialogOpen(true)}
+          >
+            <Trash2 className="h-4 w-4" variant="stroke" />
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         {stages?.map((stage) => (
@@ -164,18 +187,20 @@ function PipelineCard({
                 )}
                 <span className="text-sm">{stage.name}</span>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() =>
-                  onRemoveStage({ organizationId, stageId: stage._id }).then(() => {
-                    queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelineStages.all });
-                  })
-                }
-              >
-                <Trash2 className="h-4 w-4" variant="stroke" />
-              </Button>
+              {canDelete && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() =>
+                    onRemoveStage({ organizationId, stageId: stage._id }).then(() => {
+                      queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelineStages.all });
+                    })
+                  }
+                >
+                  <Trash2 className="h-4 w-4" variant="stroke" />
+                </Button>
+              )}
             </div>
             <StageActions organizationId={organizationId} stageId={stage._id} />
           </div>
@@ -183,66 +208,68 @@ function PipelineCard({
 
         <Separator />
 
-        {addingStageFor === pipeline._id ? (
-          <form
-            className="flex items-end gap-2"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (!newStageName.trim()) return;
-              await onAddStage({
-                organizationId,
-                pipelineId: pipeline._id,
-                name: newStageName,
-                color: newStageColor,
-                order: (stages?.length ?? 0) + 1,
-              });
-              queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelineStages.all });
-              setNewStageName("");
-              setAddingStageFor(null);
-            }}
-          >
-            <div className="flex-1 space-y-1">
-              <Label className="text-xs">{t("settings.pipelines.stageName")}</Label>
-              <Input
-                value={newStageName}
-                onChange={(e) => setNewStageName(e.target.value)}
-                placeholder={t("settings.pipelines.stageNamePlaceholder")}
-                autoFocus
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">{t("settings.pipelines.color")}</Label>
-              <input
-                type="color"
-                value={newStageColor}
-                onChange={(e) => setNewStageColor(e.target.value)}
-                className="h-9 w-12 cursor-pointer rounded-md border"
-              />
-            </div>
-            <Button type="submit" size="sm">
-              {t("common.add")}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setAddingStageFor(null)}
+        {canEdit && (
+          addingStageFor === pipeline._id ? (
+            <form
+              className="flex items-end gap-2"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!newStageName.trim()) return;
+                await onAddStage({
+                  organizationId,
+                  pipelineId: pipeline._id,
+                  name: newStageName,
+                  color: newStageColor,
+                  order: (stages?.length ?? 0) + 1,
+                });
+                queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelineStages.all });
+                setNewStageName("");
+                setAddingStageFor(null);
+              }}
             >
-              {t("common.cancel")}
+              <div className="flex-1 space-y-1">
+                <Label className="text-xs">{t("settings.pipelines.stageName")}</Label>
+                <Input
+                  value={newStageName}
+                  onChange={(e) => setNewStageName(e.target.value)}
+                  placeholder={t("settings.pipelines.stageNamePlaceholder")}
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">{t("settings.pipelines.color")}</Label>
+                <input
+                  type="color"
+                  value={newStageColor}
+                  onChange={(e) => setNewStageColor(e.target.value)}
+                  className="h-9 w-12 cursor-pointer rounded-md border"
+                />
+              </div>
+              <Button type="submit" size="sm">
+                {t("common.add")}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setAddingStageFor(null)}
+              >
+                {t("common.cancel")}
+              </Button>
+            </form>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setAddingStageFor(pipeline._id);
+                setNewStageName("");
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
+              {t("settings.pipelines.addStage")}
             </Button>
-          </form>
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setAddingStageFor(pipeline._id);
-              setNewStageName("");
-            }}
-          >
-            <Plus className="mr-2 h-4 w-4" variant="stroke" />
-            {t("settings.pipelines.addStage")}
-          </Button>
+          )
         )}
       </CardContent>
 
@@ -290,6 +317,8 @@ function StageActions({
   const [dueInDays, setDueInDays] = useState(3);
   const [assignToOwner, setAssignToOwner] = useState(true);
   const [description, setDescription] = useState("");
+  const { allowed: canEdit } = usePermission("pipelines", "edit");
+  const { allowed: canDelete } = usePermission("pipelines", "delete");
 
   const createAction = useAction(api.pipelineStageActions.create);
   const removeAction = useAction(api.pipelineStageActions.remove);
@@ -300,6 +329,7 @@ function StageActions({
   );
 
   if (!actions?.length && !isAdding) {
+    if (!canEdit) return null;
     return (
       <div className="ml-6">
         <Button
@@ -337,23 +367,25 @@ function StageActions({
                 : ""}
             </span>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5"
-            onClick={() =>
-              removeAction({ organizationId, actionId: action._id as Id<"pipelineStageActions"> }).then(() => {
-                queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelineStageActions.all });
-              })
-            }
-          >
-            <Trash2 className="h-3 w-3" variant="stroke" />
-          </Button>
+          {canDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5"
+              onClick={() =>
+                removeAction({ organizationId, actionId: action._id as Id<"pipelineStageActions"> }).then(() => {
+                  queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelineStageActions.all });
+                })
+              }
+            >
+              <Trash2 className="h-3 w-3" variant="stroke" />
+            </Button>
+          )}
         </div>
         );
       })}
 
-      {isAdding ? (
+      {canEdit && isAdding ? (
         <form
           className="space-y-2 rounded border border-dashed p-2"
           onSubmit={async (e) => {
@@ -434,7 +466,7 @@ function StageActions({
             </Button>
           </div>
         </form>
-      ) : (
+      ) : canEdit ? (
         <Button
           variant="ghost"
           size="sm"
@@ -444,7 +476,7 @@ function StageActions({
           <Plus className="mr-1 h-3 w-3" variant="stroke" />
           {t("stageActions.addAutoAction")}
         </Button>
-      )}
+      ) : null}
     </div>
   );
 }

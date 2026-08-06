@@ -21,7 +21,7 @@ function PatientLayout() {
 
   const { data: session, isLoading } = useQuery({
     queryKey: ["gabinet.patientAuth.getPortalSession", token ?? ""],
-    queryFn: () => getPortalSession({ tokenHash: token ?? "" }),
+    queryFn: () => getPortalSession({ token: token ?? "" }),
     enabled: !!token,
   });
 
@@ -35,7 +35,7 @@ function PatientLayout() {
   const handleLogout = useCallback(async () => {
     if (token) {
       try {
-        await logout({ tokenHash: token });
+        await logout({ token });
       } catch { /* logout may fail if token expired */ }
     }
     localStorage.removeItem("patientPortalToken");

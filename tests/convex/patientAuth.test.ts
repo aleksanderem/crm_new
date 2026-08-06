@@ -388,7 +388,7 @@ describe("getPortalSession", () => {
 
     const session = await t.withIdentity(identity).action(
       api.gabinet.patientAuth.getPortalSession,
-      { tokenHash: rawToken },
+      { token: rawToken },
     );
 
     expect(session).not.toBeNull();
@@ -412,7 +412,7 @@ describe("getPortalSession", () => {
 
     const session = await t.withIdentity(identity).action(
       api.gabinet.patientAuth.getPortalSession,
-      { tokenHash: rawToken },
+      { token: rawToken },
     );
 
     expect(session).toBeNull();
@@ -435,7 +435,7 @@ describe("getPortalSession", () => {
 
     const session = await t.withIdentity(identity).action(
       api.gabinet.patientAuth.getPortalSession,
-      { tokenHash: rawToken },
+      { token: rawToken },
     );
 
     expect(session).toBeNull();
@@ -459,7 +459,7 @@ describe("getPortalSession", () => {
     const before = Date.now();
     const session = await t.withIdentity(identity).action(
       api.gabinet.patientAuth.getPortalSession,
-      { tokenHash: rawToken },
+      { token: rawToken },
     );
     const after = Date.now();
 
@@ -518,7 +518,7 @@ describe("full OTP auth flow", () => {
     // Logout receives the raw token, hashes it internally, deactivates the session
     await t.withIdentity(identity).action(
       api.gabinet.patientAuth.logoutPortal,
-      { tokenHash: sessionToken },
+      { token: sessionToken },
     );
 
     const afterLogout = await db

@@ -291,7 +291,7 @@ export const getOrgBySlug = query({
 // `ctx.db` would never see rows written by the OTP flow (#540).
 export const getPortalSession = action({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
   },
   handler: async (_ctx, args): Promise<{
     patientId: string;
@@ -303,7 +303,7 @@ export const getPortalSession = action({
 
     let validated: { patientId: string; organizationId: string };
     try {
-      validated = await validatePortalSessionSupabase(db, args.tokenHash);
+      validated = await validatePortalSessionSupabase(db, args.token);
     } catch {
       return null;
     }
@@ -322,11 +322,11 @@ export const getPortalSession = action({
 
 export const logoutPortal = action({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
   },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
-    const hashedToken = await sha256(args.tokenHash);
+    const hashedToken = await sha256(args.token);
 
     const session = await db.query("gabinetPortalSessions")
       .eq("tokenHash", hashedToken)

@@ -6,7 +6,6 @@ import {
 } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
-import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
@@ -15,6 +14,7 @@ import { formatCurrencyPLN } from "@/lib/format-currency";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
 import { useSupabaseGabinetEquipmentList } from "@/hooks/use-supabase-gabinet-equipment";
 import { useSupabaseGabinetSameDayAppointments } from "@/hooks/use-supabase-gabinet-appointments";
+import { useSupabaseAutomationEntityRuns } from "@/hooks/use-supabase-automation";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -405,12 +405,10 @@ function AppointmentDetail() {
     appointmentId,
   );
 
-  const { data: automationRuns = [] } = useQuery(
-    convexQuery(api.automation.listEntityRuns, {
-      organizationId,
-      entityType: "gabinetAppointment",
-      entityId: appointmentId,
-    }),
+  const { data: automationRuns = [] } = useSupabaseAutomationEntityRuns(
+    organizationId,
+    "gabinetAppointment",
+    appointmentId,
   );
 
   // Same-day appointments for the same patient — used to warn staff that more
@@ -1143,13 +1141,13 @@ function AppointmentDetail() {
       status: e.processingStatus as string | undefined,
       parsedIntent: e.parsedIntent as string | undefined,
     })) as SmsEventEntry[],
-    automationRuns: automationRuns.map((r: Record<string, unknown>) => ({
-      _id: r._id as string,
-      ruleName: r.ruleName as string | undefined,
-      status: r.status as string,
-      createdAt: r.createdAt as number,
-      actionsSummary: r.actionsSummary as string | undefined,
-    })) as AutomationRunEntry[],
+    automationRuns: automationRuns.map((r) => ({
+      _id: r._id,
+      ruleName: undefined,
+      status: r.status,
+      createdAt: r.createdAt,
+      actionsSummary: undefined,
+    })) satisfies AutomationRunEntry[],
     t,
   });
 

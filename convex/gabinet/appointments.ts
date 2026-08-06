@@ -1677,6 +1677,21 @@ export const update = action({
     ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
 
+    // Cancellation requires delete permission — same gate as the dedicated
+    // cancel action. Without this check a user with only edit permission could
+    // bypass RBAC by setting status="cancelled" via the update path.
+    if (args.status === "cancelled") {
+      const cancelPerm = await ctx.runQuery(
+        internal._helpers.authAction.checkPermission,
+        {
+          organizationId: args.organizationId,
+          feature: "gabinet_appointments",
+          action: "delete",
+        },
+      ) as { allowed: boolean; scope: string };
+      if (!cancelPerm.allowed) throw new Error("Permission denied: cancelling an appointment requires delete permission");
+    }
+
     const db = createSupabaseDb();
 
     // --- Read appointment from Supabase ---
@@ -2195,6 +2210,21 @@ export const updateStatus = action({
       },
     ) as { allowed: boolean; scope: string };
     if (!perm.allowed) throw new Error("Permission denied");
+
+    // Cancellation requires delete permission — same gate as the dedicated
+    // cancel action. Without this check a user with only edit permission could
+    // bypass RBAC by calling updateStatus with status="cancelled".
+    if (args.status === "cancelled") {
+      const cancelPerm = await ctx.runQuery(
+        internal._helpers.authAction.checkPermission,
+        {
+          organizationId: args.organizationId,
+          feature: "gabinet_appointments",
+          action: "delete",
+        },
+      ) as { allowed: boolean; scope: string };
+      if (!cancelPerm.allowed) throw new Error("Permission denied: cancelling an appointment requires delete permission");
+    }
 
     const db = createSupabaseDb();
 

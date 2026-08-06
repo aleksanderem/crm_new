@@ -69,6 +69,7 @@ type LocationWithRooms = {
   phone?: string;
   email?: string;
   color?: string;
+  fiscalRegisterId?: string;
   isActive: boolean;
   rooms: Array<{
     _id: Id<"gabinetRooms">;
@@ -101,6 +102,7 @@ function LocationCard({
   const [editPhone, setEditPhone] = useState<string | null>(null);
   const [editEmail, setEditEmail] = useState<string | null>(null);
   const [editColor, setEditColor] = useState<string | null>(null);
+  const [editFiscalRegisterId, setEditFiscalRegisterId] = useState<string | null>(null);
   const [editStreet, setEditStreet] = useState<string | null>(null);
   const [editCity, setEditCity] = useState<string | null>(null);
   const [editPostal, setEditPostal] = useState<string | null>(null);
@@ -134,6 +136,7 @@ function LocationCard({
         setEditPhone(displayData.phone ?? "");
         setEditEmail(displayData.email ?? "");
         setEditColor(displayData.color ?? "");
+        setEditFiscalRegisterId(displayData.fiscalRegisterId ?? "");
         setEditStreet(displayData.address?.street ?? "");
         setEditCity(displayData.address?.city ?? "");
         setEditPostal(displayData.address?.postalCode ?? "");
@@ -148,6 +151,7 @@ function LocationCard({
     setEditPhone(data.phone ?? "");
     setEditEmail(data.email ?? "");
     setEditColor(data.color ?? "");
+    setEditFiscalRegisterId(data.fiscalRegisterId ?? "");
     setEditStreet(data.address?.street ?? "");
     setEditCity(data.address?.city ?? "");
     setEditPostal(data.address?.postalCode ?? "");
@@ -170,6 +174,7 @@ function LocationCard({
         phone: editPhone?.trim() || null,
         email: editEmail?.trim() || null,
         color: editColor?.trim() || null,
+        fiscalRegisterId: editFiscalRegisterId?.trim() || null,
         address: {
           street: editStreet?.trim() || null,
           city: editCity?.trim() || null,
@@ -358,6 +363,15 @@ function LocationCard({
                     className="flex-1"
                   />
                 </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={`loc-fiscal-${locationId}`}>{t("gabinet.locations.fiscalRegisterId", "Nr kasy fiskalnej")}</Label>
+                <Input
+                  id={`loc-fiscal-${locationId}`}
+                  value={editFiscalRegisterId ?? ""}
+                  onChange={(e) => setEditFiscalRegisterId(e.target.value)}
+                  placeholder="KFP-01"
+                />
               </div>
             </div>
 
@@ -554,6 +568,7 @@ function LocationsSettingsPage() {
   const [newPhone, setNewPhone] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newCity, setNewCity] = useState("");
+  const [newFiscalRegisterId, setNewFiscalRegisterId] = useState("");
   const [creating, setCreating] = useState(false);
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const queryClient = useQueryClient();
@@ -572,6 +587,7 @@ function LocationsSettingsPage() {
         phone: newPhone.trim() || null,
         email: newEmail.trim() || null,
         address: newCity.trim() ? { city: newCity.trim() } : null,
+        fiscalRegisterId: newFiscalRegisterId.trim() || null,
       });
       toast.success(t("gabinet.locations.addLocation"));
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLocations.list(organizationId) });
@@ -580,6 +596,7 @@ function LocationsSettingsPage() {
       setNewPhone("");
       setNewEmail("");
       setNewCity("");
+      setNewFiscalRegisterId("");
     } catch (e) {
       toast.error(
         formatActionError(e, t, {
@@ -671,6 +688,14 @@ function LocationsSettingsPage() {
               <Input
                 value={newCity}
                 onChange={(e) => setNewCity(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t("gabinet.locations.fiscalRegisterId", "Nr kasy fiskalnej")}</Label>
+              <Input
+                value={newFiscalRegisterId}
+                onChange={(e) => setNewFiscalRegisterId(e.target.value)}
+                placeholder="KFP-01"
               />
             </div>
             <div className="flex justify-end gap-2">

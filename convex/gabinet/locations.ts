@@ -67,6 +67,7 @@ export const createLocation = action({
     phone: v.optional(v.union(v.string(), v.null())),
     email: v.optional(v.union(v.string(), v.null())),
     color: v.optional(v.union(v.string(), v.null())),
+    fiscalRegisterId: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     try {
@@ -122,6 +123,7 @@ export const createLocation = action({
       phone: args.phone ?? null,
       email: args.email ?? null,
       color: args.color ?? null,
+      fiscalRegisterId: args.fiscalRegisterId ?? null,
       isActive: true,
       createdBy: String(authResult.userId),
       createdAt: now,
@@ -164,6 +166,7 @@ export const updateLocation = action({
     phone: v.optional(v.union(v.string(), v.null())),
     email: v.optional(v.union(v.string(), v.null())),
     color: v.optional(v.union(v.string(), v.null())),
+    fiscalRegisterId: v.optional(v.union(v.string(), v.null())),
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {

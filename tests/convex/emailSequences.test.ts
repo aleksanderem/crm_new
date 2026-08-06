@@ -25,7 +25,7 @@ describe("emailSequences.enrollRecipient", () => {
     });
 
     const result = await t.action(internal.emailSequences.enrollRecipient, {
-      sequenceId: sequenceId as any,
+      sequenceId: sequenceId,
       organizationId,
       recipientEmail: "test@example.com",
     });
@@ -70,7 +70,7 @@ describe("emailSequences.enrollRecipient", () => {
     });
 
     const enrollmentId = await t.action(internal.emailSequences.enrollRecipient, {
-      sequenceId: sequenceId as any,
+      sequenceId: sequenceId,
       organizationId,
       recipientEmail: "patient@example.com",
       recipientName: "Jan Kowalski",
@@ -132,7 +132,7 @@ describe("emailSequences.enrollRecipient", () => {
     });
 
     const enrollmentId = await t.action(internal.emailSequences.enrollRecipient, {
-      sequenceId: sequenceId as any,
+      sequenceId: sequenceId,
       organizationId,
       recipientEmail: "lead@example.com",
     });

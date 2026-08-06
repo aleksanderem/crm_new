@@ -35,4 +35,13 @@ crons.hourly(
   internal.documents.documents.expireSigningTokens,
 );
 
+// Back-fill pdf_url on receipt rows created with a NULL pdf_url (issue #3797).
+// Rows are left orphaned when blob storage fails after the atomic DB insert.
+// Runs hourly at :30 so it doesn't cluster with other hourly jobs (:15).
+crons.hourly(
+  "backfill-orphaned-pdf-receipts",
+  { minuteUTC: 30 },
+  internal.gabinet.receipts._backfillOrphanedPdfReceipts,
+);
+
 export default crons;

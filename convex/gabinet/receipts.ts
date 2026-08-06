@@ -679,6 +679,74 @@ export const generatePdfReceipt = action({
 });
 
 // ---------------------------------------------------------------------------
+// Internal action: back-fill pdf_storage_id / pdf_url on orphaned receipt rows.
+//
+// A receipt row can end up with pdf_url = NULL when blob storage fails after
+// the atomic Postgres insert (issue #3797). This action finds up to 50 such
+// rows and regenerates their PDFs from the data already committed to the DB —
+// all fields required to reproduce the PDF are stored in each row at issuance
+// time. Designed to be called from a cron job (crons.ts, hourly). Idempotent:
+// rows that already have a pdf_url are skipped by the Postgres query filter.
+// ---------------------------------------------------------------------------
+
+export const _backfillOrphanedPdfReceipts = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const db = createSupabaseDb();
+    const client = db.raw();
+
+    const { data: orphans } = await client
+      .from("gabinet_receipts")
+      .select(
+        "id, receipt_number, issued_at, organization_name, organization_nip, organization_address, total_net, total_vat, total_gross, payment_method, items_json, fiscal_receipt_id",
+      )
+      .is("pdf_url", null)
+      .is("pdf_storage_id", null)
+      .eq("status", "issued")
+      .limit(50);
+
+    if (!orphans || orphans.length === 0) return { processed: 0 };
+
+    let processed = 0;
+    const now = Date.now();
+
+    for (const row of orphans as Record<string, unknown>[]) {
+      try {
+        const lineItems = JSON.parse(row.items_json as string) as ReceiptLineItem[];
+        const pdfBytes = await buildReceiptPdf({
+          receiptNumber:     row.receipt_number as string,
+          issuedAt:          Number(row.issued_at),
+          organizationName:  row.organization_name as string,
+          organizationNip:   (row.organization_nip as string | null) ?? undefined,
+          organizationAddress: (row.organization_address as string | null) ?? undefined,
+          items:             lineItems,
+          totalNet:          Number(row.total_net),
+          totalVat:          Number(row.total_vat),
+          totalGross:        Number(row.total_gross),
+          paymentMethod:     row.payment_method as string,
+          fiscalReceiptId:   (row.fiscal_receipt_id as string | null) ?? undefined,
+        });
+
+        const blob = new Blob([pdfBytes.buffer as ArrayBuffer], { type: "application/pdf" });
+        const storageId = await ctx.storage.store(blob);
+        const pdfUrl = await ctx.storage.getUrl(storageId);
+
+        await client
+          .from("gabinet_receipts")
+          .update({ pdf_storage_id: storageId, pdf_url: pdfUrl, updated_at: now })
+          .eq("id", row.id as string);
+
+        processed++;
+      } catch {
+        // Continue to the next orphan; transient failures are retried next run.
+      }
+    }
+
+    return { processed };
+  },
+});
+
+// ---------------------------------------------------------------------------
 // Internal mutation: auto-create a gabinet_receipts row for a payment.
 // Scheduled via ctx.scheduler from convex/payments.ts after each completed
 // payment so that every payment path produces a receipt record.

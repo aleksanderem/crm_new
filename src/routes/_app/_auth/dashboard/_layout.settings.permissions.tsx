@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseOrgSettings } from "@/hooks/use-supabase-organizations";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,7 +92,8 @@ function PermissionsSettings() {
     api.permissions.getOrgPermissionOverrides,
     isAdmin ? { organizationId } : "skip",
   );
-  const resourceSharingEnabled = useQuery(api.permissions.getResourceSharingEnabled, { organizationId });
+  const { data: orgSettings } = useSupabaseOrgSettings(organizationId);
+  const resourceSharingEnabled = orgSettings?.resourceSharingEnabled ?? true;
 
   const updatePermissions = useMutation(api.permissions.updateOrgPermissions);
   const setResourceSharing = useAction(api.permissions.setResourceSharingEnabled);

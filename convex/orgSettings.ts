@@ -1,4 +1,4 @@
-import { action, internalAction, internalMutation } from "./_generated/server";
+import { action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
@@ -94,31 +94,3 @@ export const upsert = action({
   },
 });
 
-// Mirrors resourceSharingEnabled into the Convex table so the public
-// getResourceSharingEnabled query (which can't reach Supabase) stays in sync.
-export const _syncResourceSharingToConvex = internalMutation({
-  args: {
-    organizationId: v.id("organizations"),
-    resourceSharingEnabled: v.boolean(),
-  },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("orgSettings")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .unique();
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        resourceSharingEnabled: args.resourceSharingEnabled,
-      });
-    } else {
-      await ctx.db.insert("orgSettings", {
-        organizationId: args.organizationId,
-        allowCustomLostReason: false,
-        lostReasonRequired: false,
-        resourceSharingEnabled: args.resourceSharingEnabled,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-    }
-  },
-});

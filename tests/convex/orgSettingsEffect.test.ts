@@ -13,8 +13,8 @@
  *   reminderSms24h/48h      → _createSideEffects 4-toggle mode: determines which
  *   reminderEmail24h/48h      timing slots (24h, 48h) are scheduled
  *                             (appointments.ts:1023–1048)
- *   resourceSharingEnabled  → permissions.getResourceSharingEnabled query:
- *                             returned directly to callers (permissions.ts:118)
+ *   resourceSharingEnabled  → permissions.getResourceSharingEnabled action:
+ *                             reads from Supabase, returned directly to callers (permissions.ts:118)
  *
  * Resolved follow-ups (issue #3678):
  *   timezone                — wired up: appointment-dialog now reads orgSettings.timezone
@@ -403,13 +403,13 @@ describe("resourceSharingEnabled: controls permissions.getResourceSharingEnabled
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    await seedConvexOrgSettings(t, organizationId, {
+    await seedSupabaseOrgSettings(String(organizationId), {
       resourceSharingEnabled: false,
     });
 
     const result = await t
       .withIdentity(identity)
-      .query(api.permissions.getResourceSharingEnabled, { organizationId });
+      .action(api.permissions.getResourceSharingEnabled, { organizationId });
 
     expect(result).toBe(false);
   });
@@ -418,13 +418,13 @@ describe("resourceSharingEnabled: controls permissions.getResourceSharingEnabled
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    await seedConvexOrgSettings(t, organizationId, {
+    await seedSupabaseOrgSettings(String(organizationId), {
       resourceSharingEnabled: true,
     });
 
     const result = await t
       .withIdentity(identity)
-      .query(api.permissions.getResourceSharingEnabled, { organizationId });
+      .action(api.permissions.getResourceSharingEnabled, { organizationId });
 
     expect(result).toBe(true);
   });
@@ -437,7 +437,7 @@ describe("resourceSharingEnabled: controls permissions.getResourceSharingEnabled
 
     const result = await t
       .withIdentity(identity)
-      .query(api.permissions.getResourceSharingEnabled, { organizationId });
+      .action(api.permissions.getResourceSharingEnabled, { organizationId });
 
     expect(result).toBe(true);
   });

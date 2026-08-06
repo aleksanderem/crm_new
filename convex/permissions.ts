@@ -105,17 +105,20 @@ export const updateOrgPermissions = mutation({
   },
 });
 
-export const getResourceSharingEnabled = query({
+export const getResourceSharingEnabled = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runQuery(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const settings = await ctx.db
+    const db = createSupabaseDb();
+    const settings = await db
       .query("orgSettings")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .unique();
+      .eq("organizationId", String(args.organizationId))
+      .first();
 
-    return settings?.resourceSharingEnabled ?? true;
+    return (settings?.resourceSharingEnabled as boolean | undefined) ?? true;
   },
 });
 
@@ -153,10 +156,5 @@ export const setResourceSharingEnabled = action({
       });
     }
 
-    // Mirror to Convex so the getResourceSharingEnabled query stays in sync.
-    await ctx.runMutation(internal.orgSettings._syncResourceSharingToConvex, {
-      organizationId: args.organizationId,
-      resourceSharingEnabled: args.enabled,
-    });
   },
 });

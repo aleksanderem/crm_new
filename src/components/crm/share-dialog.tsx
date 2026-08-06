@@ -4,6 +4,7 @@ import { useAction } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { useSupabaseOrgSettings } from "@/hooks/use-supabase-organizations";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Share2, X, Mail } from "@/lib/ez-icons";
@@ -45,12 +46,8 @@ export function ShareDialog({
   const [accessLevel, setAccessLevel] = useState<"viewer" | "editor">("viewer");
   const [isSending, setIsSending] = useState(false);
 
-  const { data: sharingEnabled } = useQuery({
-    ...convexQuery(api.permissions.getResourceSharingEnabled, {
-      organizationId,
-    }),
-    enabled: open && !!organizationId,
-  });
+  const { data: orgSettings } = useSupabaseOrgSettings(organizationId, { enabled: open && !!organizationId });
+  const sharingEnabled = orgSettings?.resourceSharingEnabled ?? true;
 
   const { data: invites } = useQuery({
     ...convexQuery(api.resourceInvites.listByResource, {

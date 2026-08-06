@@ -18,6 +18,8 @@ type CompanyRow = Database["public"]["Tables"]["companies"]["Row"];
 type LeadRow = Database["public"]["Tables"]["leads"]["Row"];
 type DocumentRow = Database["public"]["Tables"]["documents"]["Row"];
 type ProductRow = Database["public"]["Tables"]["products"]["Row"];
+type GabinetPatientRow = Database["public"]["Tables"]["gabinet_patients"]["Row"];
+type GabinetTreatmentRow = Database["public"]["Tables"]["gabinet_treatments"]["Row"];
 
 // ── Types (match convex/search.ts output shape) ──────────────────────────────
 
@@ -64,8 +66,26 @@ export async function supabaseGlobalSearch(
     );
   }
 
-  const [contactsRes, companiesRes, leadsRes, documentsRes, productsRes] =
-    await Promise.all([
+  let patientsQuery = supabase
+    .from("gabinet_patients")
+    .select("*")
+    .eq("organization_id", orgId);
+  for (const token of tokens) {
+    const tokenPattern = `%${token}%`;
+    patientsQuery = patientsQuery.or(
+      `first_name.ilike.${tokenPattern},last_name.ilike.${tokenPattern}`,
+    );
+  }
+
+  const [
+    contactsRes,
+    companiesRes,
+    leadsRes,
+    documentsRes,
+    productsRes,
+    patientsRes,
+    treatmentsRes,
+  ] = await Promise.all([
       contactsQuery.limit(5),
 
       supabase
@@ -91,6 +111,15 @@ export async function supabaseGlobalSearch(
 
       supabase
         .from("products")
+        .select("*")
+        .eq("organization_id", orgId)
+        .ilike("name", pattern)
+        .limit(5),
+
+      patientsQuery.limit(5),
+
+      supabase
+        .from("gabinet_treatments")
         .select("*")
         .eq("organization_id", orgId)
         .ilike("name", pattern)
@@ -167,6 +196,34 @@ export async function supabaseGlobalSearch(
         title: p.name,
         subtitle: p.unit_price ? `${p.unit_price} PLN` : undefined,
         href: `/dashboard/products`,
+      })),
+    });
+  }
+
+  // Gabinet Patients
+  const patients = (patientsRes.data ?? []) as GabinetPatientRow[];
+  if (patients.length > 0) {
+    groups.push({
+      type: "patient",
+      results: patients.map((p) => ({
+        id: p.id,
+        title: [p.first_name, p.last_name].filter(Boolean).join(" "),
+        subtitle: p.email ?? undefined,
+        href: `/dashboard/gabinet/patients/${p.id}`,
+      })),
+    });
+  }
+
+  // Gabinet Treatments
+  const treatments = (treatmentsRes.data ?? []) as GabinetTreatmentRow[];
+  if (treatments.length > 0) {
+    groups.push({
+      type: "treatment",
+      results: treatments.map((t) => ({
+        id: t.id,
+        title: t.name,
+        subtitle: t.price ? `${t.price} PLN` : undefined,
+        href: `/dashboard/gabinet/treatments/${t.id}`,
       })),
     });
   }

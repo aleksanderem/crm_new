@@ -2186,7 +2186,9 @@
       "company": "Firmy",
       "lead": "Transakcje",
       "document": "Dokumenty",
-      "product": "Produkty"
+      "product": "Produkty",
+      "patient": "Pacjenci",
+      "treatment": "Zabiegi"
     }
   },
   "quickCreate": {

@@ -2173,7 +2173,9 @@
       "company": "Companies",
       "lead": "Deals",
       "document": "Documents",
-      "product": "Products"
+      "product": "Products",
+      "patient": "Patients",
+      "treatment": "Treatments"
     }
   },
   "quickCreate": {

@@ -5,6 +5,7 @@ import {
   internalQuery,
   internalMutation,
 } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { requirePlatformAdmin } from "./_helpers/auth";
 
 // Get the current platform settings (singleton). Returns null if not yet
@@ -103,6 +104,13 @@ export const _grantPlatformAdmin = internalMutation({
       .unique();
     if (!user) throw new Error(`No user found for email ${args.email}`);
     await ctx.db.patch(user._id, { isPlatformAdmin: true });
+    // Sync the flag to Supabase asynchronously — internalMutation runs in the
+    // V8 runtime and cannot call Supabase directly.
+    await ctx.scheduler.runAfter(
+      0,
+      internal.platformAdmins._syncAdminFlagToSupabase,
+      { userId: String(user._id), isPlatformAdmin: true },
+    );
     return { userId: user._id, email: args.email };
   },
 });

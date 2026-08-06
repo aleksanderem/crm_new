@@ -132,3 +132,19 @@ export const checkPermission = internalQuery({
     };
   },
 });
+
+// Platform-admin guard for action handlers. Actions cannot call
+// requirePlatformAdmin directly (V8-only), so they delegate here via
+// ctx.runQuery(internal._helpers.authAction.verifyPlatformAdmin, {}).
+export const verifyPlatformAdmin = internalQuery({
+  args: {},
+  returns: v.object({ userId: v.id("users") }),
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found");
+    if (!user.isPlatformAdmin) throw new Error("Platform admin access required");
+    return { userId: user._id };
+  },
+});

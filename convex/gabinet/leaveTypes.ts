@@ -558,10 +558,10 @@ export const initializeAllBalances = action({
     year: v.number(),
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
-    );
+    ) as { userId: Id<"users">; userName?: string; userEmail?: string };
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
@@ -594,7 +594,7 @@ export const initializeAllBalances = action({
           .first();
 
         if (!existing) {
-          await db.insert("gabinetLeaveBalances", {
+          const balanceId = await db.insert("gabinetLeaveBalances", {
             organizationId: String(args.organizationId),
             employeeId: emp._id as string,
             leaveTypeId: lt._id as string,
@@ -604,6 +604,19 @@ export const initializeAllBalances = action({
             createdAt: now,
             updatedAt: now,
           });
+
+          try {
+            await ctx.runMutation(internal.gabinet.leaveTypes._initializeBalanceSideEffects, {
+              organizationId: args.organizationId,
+              balanceId,
+              year: args.year,
+              action: "created",
+              performedBy: String(authResult.userId),
+              actorLabel: authResult.userName ?? authResult.userEmail,
+            });
+          } catch (e) {
+            console.error("[leaveTypes.initializeAllBalances] Side effects FAILED:", e);
+          }
 
           created++;
         }

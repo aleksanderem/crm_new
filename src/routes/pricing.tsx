@@ -1,11 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "convex/react";
+import { api } from "@cvx/_generated/api";
 import Logo from "@/assets/svg/logo";
+
+function formatPln(amount: number): string {
+  return `${Math.round(amount / 100)} zł`;
+}
 
 export const Route = createFileRoute("/pricing")({
   component: PricingPage,
 });
 
 function PricingPage() {
+  const pricingPlans = useQuery(api.app.getPublicPricingPlans);
+  const crmProPrice = pricingPlans != null ? formatPln(pricingPlans.crm.monthPln) : "99 zł";
+  const gabinetProPrice = pricingPlans != null ? formatPln(pricingPlans.gabinet.monthPln) : "149 zł";
+
   return (
     <div className="min-h-dvh bg-background text-foreground">
       {/* Nav */}
@@ -78,7 +88,7 @@ function PricingPage() {
                 },
                 {
                   name: "Pro",
-                  price: "99 zł",
+                  price: crmProPrice,
                   interval: "/ miesiąc",
                   description: "Pełen CRM dla całego zespołu",
                   features: [
@@ -117,7 +127,7 @@ function PricingPage() {
                 },
                 {
                   name: "Pro",
-                  price: "149 zł",
+                  price: gabinetProPrice,
                   interval: "/ miesiąc",
                   description: "Kompletny system dla gabinetu",
                   features: [

@@ -244,6 +244,41 @@ export const removeUserImage = mutation({
   },
 });
 
+// Public query — no auth required. Returns PLN monthly/yearly prices for the
+// CRM Pro and Gabinet Pro plans so the public pricing page can display live
+// prices instead of hardcoded placeholders. Returns null when plans have not
+// been seeded yet (Stripe not configured).
+export const getPublicPricingPlans = query({
+  args: {},
+  handler: async (ctx) => {
+    const [crmPro, gabinetPro] = await Promise.all([
+      ctx.db
+        .query("plans")
+        .withIndex("by_productAndKey", (q) =>
+          q.eq("productKey", PRODUCT_KEYS.CRM).eq("key", PLANS.PRO),
+        )
+        .unique(),
+      ctx.db
+        .query("plans")
+        .withIndex("by_productAndKey", (q) =>
+          q.eq("productKey", PRODUCT_KEYS.GABINET).eq("key", PLANS.PRO),
+        )
+        .unique(),
+    ]);
+    if (!crmPro || !gabinetPro) return null;
+    return {
+      crm: {
+        monthPln: crmPro.prices.month.pln.amount,
+        yearPln: crmPro.prices.year.pln.amount,
+      },
+      gabinet: {
+        monthPln: gabinetPro.prices.month.pln.amount,
+        yearPln: gabinetPro.prices.year.pln.amount,
+      },
+    };
+  },
+});
+
 export const getActivePlans = query({
   args: { productKey: v.optional(productKeyValidator) },
   handler: async (ctx, args) => {

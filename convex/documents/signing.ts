@@ -163,7 +163,15 @@ export const sendSigningEmailInternal = internalAction({
       senderName: defaultAccount?.fromName as string | undefined,
     };
 
-    const signingUrl = `${getAppUrl()}/sign/form/${data.signingToken}`;
+    // Create a single-use redirect stub so the raw signing token never appears
+    // in email provider logs (Resend, Gmail) or browser history / Referer headers.
+    const stubId = await ctx.runMutation(internal.signingStubs.createStub, {
+      token: data.signingToken,
+      organizationId: data.organizationId as Id<"organizations">,
+      signingTokenExpiresAt: newExpiry,
+      destination: "sign_form",
+    });
+    const signingUrl = `${getAppUrl()}/sign-stub/${stubId}`;
 
     // Context-aware messaging
     const ctaText = data.needsFormFill

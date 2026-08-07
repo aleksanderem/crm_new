@@ -22,8 +22,12 @@ function SigningStubPage() {
     called.current = true;
 
     resolveStub({ stubId })
-      .then((token) => {
-        void navigate({ to: "/sign/$token", params: { token } });
+      .then(({ token, destination }) => {
+        if (destination === "sign_form") {
+          void navigate({ to: "/sign/form/$token", params: { token } });
+        } else {
+          void navigate({ to: "/sign/$token", params: { token } });
+        }
       })
       .catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : "";

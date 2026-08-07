@@ -1,5 +1,6 @@
 import { internalAction } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { Resend } from "resend";
 import { RESEND_API_KEY, RESEND_FROM } from "@cvx/env";
 
@@ -17,15 +18,24 @@ export const sendSigningRequestEmail = internalAction({
     organizationName: v.string(),
     token: v.string(),
     expiresAt: v.number(),
+    organizationId: v.id("organizations"),
   },
-  handler: async (_ctx, args): Promise<{ sent: boolean }> => {
+  handler: async (ctx, args): Promise<{ sent: boolean }> => {
     if (!RESEND_API_KEY) {
       console.warn("RESEND_API_KEY not set — skipping email");
       return { sent: false };
     }
 
+    // Create a single-use redirect stub so the raw signing token never appears
+    // in email provider logs or browser history / Referer headers.
+    const stubId = await ctx.runMutation(internal.signingStubs.createStub, {
+      token: args.token,
+      organizationId: args.organizationId,
+      signingTokenExpiresAt: args.expiresAt,
+    });
+
     const resend = new Resend(RESEND_API_KEY);
-    const signingUrl = `${APP_URL}/sign/${args.token}`;
+    const signingUrl = `${APP_URL}/sign-stub/${stubId}`;
     const expiryDate = new Date(args.expiresAt).toLocaleDateString("pl-PL");
 
     await resend.emails.send({

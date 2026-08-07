@@ -1,0 +1,20 @@
+# Lefthook — git hook manager
+# Hooks are installed automatically on npm install (via the prepare script).
+# To install manually: npx lefthook install
+# Docs: https://github.com/evilmartians/lefthook
+
+pre-commit:
+  commands:
+    gitleaks:
+      # Scan staged files for secrets before they reach a commit.
+      # Hard-fails if gitleaks detects a secret; warns and passes if gitleaks is not installed.
+      # Install gitleaks: brew install gitleaks (macOS/Linux)
+      # See docs/secrets.md § "Pre-commit hook" for details.
+      run: |
+        if command -v gitleaks >/dev/null 2>&1; then
+          gitleaks protect --staged --redact
+        else
+          echo "⚠  gitleaks not installed — pre-commit secret scan skipped."
+          echo "   Install: brew install gitleaks"
+          echo "   See docs/secrets.md for details."
+        fi

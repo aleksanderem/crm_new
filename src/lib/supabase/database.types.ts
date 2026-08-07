@@ -372,6 +372,7 @@ export interface Database {
           current_period_start: number;
           current_period_end: number;
           cancel_at_period_end: boolean;
+          trial_end_date: number | null;
         };
         Insert: {
           id?: string;
@@ -385,6 +386,7 @@ export interface Database {
           current_period_start: number;
           current_period_end: number;
           cancel_at_period_end: boolean;
+          trial_end_date?: number | null;
         };
         Update: {
           id?: string;
@@ -398,6 +400,7 @@ export interface Database {
           current_period_start?: number;
           current_period_end?: number;
           cancel_at_period_end?: boolean;
+          trial_end_date?: number | null;
         };
         Relationships: [
           {
@@ -506,6 +509,7 @@ export interface Database {
           current_period_start: number | null;
           current_period_end: number | null;
           cancel_at_period_end: boolean;
+          trial_end_date: number | null;
           created_at: number;
           updated_at: number;
         };
@@ -518,6 +522,7 @@ export interface Database {
           current_period_start?: number | null;
           current_period_end?: number | null;
           cancel_at_period_end: boolean;
+          trial_end_date?: number | null;
           created_at: number;
           updated_at: number;
         };
@@ -530,6 +535,7 @@ export interface Database {
           current_period_start?: number | null;
           current_period_end?: number | null;
           cancel_at_period_end?: boolean;
+          trial_end_date?: number | null;
           created_at?: number;
           updated_at?: number;
         };

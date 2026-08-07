@@ -233,6 +233,7 @@ export const create = action({
           organizationId: args.organizationId,
           name: args.name,
           createdBy: String(authResult.userId),
+          actorLabel: authResult.userName ?? authResult.userEmail,
         });
       } catch (e) {
         console.error(
@@ -271,6 +272,7 @@ export const _createSideEffects = internalMutation({
     organizationId: v.id("organizations"),
     name: v.string(),
     createdBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -280,6 +282,7 @@ export const _createSideEffects = internalMutation({
       action: "created",
       description: `Created package ${args.name}`,
       performedBy: args.createdBy as Id<"users">,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -1043,6 +1046,7 @@ export const usePackageTreatmentsBatch = action({
         packageId: String(usage.packageId),
         totalUsed: args.items.reduce((sum, i) => sum + i.quantity, 0),
         createdBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error(
@@ -1059,6 +1063,7 @@ export const _batchUsageSideEffects = internalMutation({
     packageId: v.string(),
     totalUsed: v.number(),
     createdBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
@@ -1070,6 +1075,7 @@ export const _batchUsageSideEffects = internalMutation({
       action: "updated",
       description: `Used ${args.totalUsed} treatment(s) from package ${pkg?.name ?? ""}`,
       performedBy: args.createdBy as Id<"users">,
+      actorLabel: args.actorLabel,
     });
   },
 });

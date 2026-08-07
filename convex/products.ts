@@ -116,6 +116,7 @@ export const create = action({
         organizationId: args.organizationId,
         name: args.name,
         createdBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[products.create] Side effects FAILED for product", productId, ":", e);
@@ -131,6 +132,7 @@ export const _createSideEffects = internalMutation({
     organizationId: v.id("organizations"),
     name: v.string(),
     createdBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -140,6 +142,7 @@ export const _createSideEffects = internalMutation({
       action: "created",
       description: `Created product "${args.name}"`,
       performedBy: args.createdBy as Id<"users">,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -223,6 +226,7 @@ export const update = action({
         organizationId,
         name: (product.name as string) ?? "",
         updatedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[products.update] Side effects FAILED for product", productId, ":", e);
@@ -238,6 +242,7 @@ export const _updateSideEffects = internalMutation({
     organizationId: v.id("organizations"),
     name: v.string(),
     updatedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -247,6 +252,7 @@ export const _updateSideEffects = internalMutation({
       action: "updated",
       description: `Updated product "${args.name}"`,
       performedBy: args.updatedBy as Id<"users">,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -293,6 +299,7 @@ export const remove = action({
         organizationId: args.organizationId,
         name: (product.name as string) ?? "",
         deletedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[products.remove] Side effects FAILED for product", args.productId, ":", e);
@@ -308,6 +315,7 @@ export const _removeSideEffects = internalMutation({
     organizationId: v.id("organizations"),
     name: v.string(),
     deletedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -317,6 +325,7 @@ export const _removeSideEffects = internalMutation({
       action: "deleted",
       description: `Deleted product "${args.name}"`,
       performedBy: args.deletedBy as Id<"users">,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -360,6 +369,7 @@ export const toggleActive = action({
         name: (product.name as string) ?? "",
         wasActive: !!product.isActive,
         updatedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[products.toggleActive] Side effects FAILED for product", args.productId, ":", e);
@@ -376,6 +386,7 @@ export const _toggleActiveSideEffects = internalMutation({
     name: v.string(),
     wasActive: v.boolean(),
     updatedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -385,6 +396,7 @@ export const _toggleActiveSideEffects = internalMutation({
       action: "updated",
       description: `${args.wasActive ? "Deactivated" : "Activated"} product "${args.name}"`,
       performedBy: args.updatedBy as Id<"users">,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -474,6 +486,7 @@ export const addToDeal = action({
         dealId: args.dealId,
         productName: (product.name as string) ?? "",
         addedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[products.addToDeal] Side effects FAILED:", e);
@@ -489,6 +502,7 @@ export const _addToDealSideEffects = internalMutation({
     dealId: v.string(),
     productName: v.string(),
     addedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -498,6 +512,7 @@ export const _addToDealSideEffects = internalMutation({
       action: "updated",
       description: `Added product "${args.productName}" to deal`,
       performedBy: args.addedBy as Id<"users">,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -536,6 +551,7 @@ export const removeFromDeal = action({
         dealId: String(dealProduct.dealId),
         productName: (product?.name as string) ?? "unknown",
         removedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[products.removeFromDeal] Side effects FAILED:", e);
@@ -551,6 +567,7 @@ export const _removeFromDealSideEffects = internalMutation({
     dealId: v.string(),
     productName: v.string(),
     removedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -560,6 +577,7 @@ export const _removeFromDealSideEffects = internalMutation({
       action: "updated",
       description: `Removed product "${args.productName}" from deal`,
       performedBy: args.removedBy as Id<"users">,
+      actorLabel: args.actorLabel,
     });
   },
 });

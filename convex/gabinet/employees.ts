@@ -240,6 +240,7 @@ export const create = action({
         employeeId,
         organizationId: args.organizationId,
         createdBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[employees.create] Side effects FAILED for employee", employeeId, ":", e);
@@ -567,6 +568,7 @@ export const _createSideEffects = internalMutation({
     employeeId: v.string(),
     organizationId: v.id("organizations"),
     createdBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const createdByUserId = args.createdBy as Id<"users">;
@@ -578,6 +580,7 @@ export const _createSideEffects = internalMutation({
       action: "created",
       description: `Created employee profile`,
       performedBy: createdByUserId,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -715,6 +718,7 @@ export const update = action({
         employeeId,
         organizationId,
         updatedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[employees.update] Side effects FAILED for employee", employeeId, ":", e);
@@ -763,6 +767,7 @@ export const _updateSideEffects = internalMutation({
     employeeId: v.string(),
     organizationId: v.id("organizations"),
     updatedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const updatedByUserId = args.updatedBy as Id<"users">;
@@ -774,6 +779,7 @@ export const _updateSideEffects = internalMutation({
       action: "updated",
       description: `Updated employee profile`,
       performedBy: updatedByUserId,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -823,6 +829,7 @@ export const remove = action({
         employeeId: args.employeeId,
         organizationId: args.organizationId,
         deletedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[employees.remove] Side effects FAILED for employee", args.employeeId, ":", e);
@@ -845,6 +852,7 @@ export const _removeSideEffects = internalMutation({
     employeeId: v.string(),
     organizationId: v.id("organizations"),
     deletedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const deletedByUserId = args.deletedBy as Id<"users">;
@@ -856,6 +864,7 @@ export const _removeSideEffects = internalMutation({
       action: "deleted",
       description: `Deactivated employee profile`,
       performedBy: deletedByUserId,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -932,6 +941,7 @@ export const setQualifiedTreatments = action({
         organizationId: args.organizationId,
         treatmentCount: args.treatmentIds.length,
         updatedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[employees.setQualifiedTreatments] Side effects FAILED:", e);
@@ -945,6 +955,7 @@ export const _setQualifiedSideEffects = internalMutation({
     organizationId: v.id("organizations"),
     treatmentCount: v.number(),
     updatedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const updatedByUserId = args.updatedBy as Id<"users">;
@@ -956,6 +967,7 @@ export const _setQualifiedSideEffects = internalMutation({
       action: "updated",
       description: `Updated treatment qualifications (${args.treatmentCount} treatments)`,
       performedBy: updatedByUserId,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -1223,6 +1235,7 @@ export const createWithPassword = action({
         employeeId: String(employeeId),
         organizationId: args.organizationId,
         createdBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[employees.createWithPassword] side effects failed:", e);

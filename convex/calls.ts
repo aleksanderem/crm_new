@@ -136,6 +136,7 @@ export const create = action({
         organizationId: args.organizationId,
         outcome: args.outcome,
         createdBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[calls.create] Side effects FAILED for call", callId, ":", e);
@@ -151,6 +152,7 @@ export const _createSideEffects = internalMutation({
     organizationId: v.id("organizations"),
     outcome: v.string(),
     createdBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -160,6 +162,7 @@ export const _createSideEffects = internalMutation({
       action: "created",
       description: `Logged a call with outcome "${args.outcome}"`,
       performedBy: args.createdBy as Id<"users">,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -203,6 +206,7 @@ export const update = action({
         callId,
         organizationId,
         updatedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[calls.update] Side effects FAILED for call", callId, ":", e);
@@ -217,6 +221,7 @@ export const _updateSideEffects = internalMutation({
     callId: v.string(),
     organizationId: v.id("organizations"),
     updatedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -226,6 +231,7 @@ export const _updateSideEffects = internalMutation({
       action: "updated",
       description: `Updated call`,
       performedBy: args.updatedBy as Id<"users">,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -269,6 +275,7 @@ export const remove = action({
         callId: args.callId,
         organizationId: args.organizationId,
         deletedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[calls.remove] Side effects FAILED for call", args.callId, ":", e);
@@ -298,6 +305,7 @@ export const _removeSideEffects = internalMutation({
     callId: v.string(),
     organizationId: v.id("organizations"),
     deletedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -307,6 +315,7 @@ export const _removeSideEffects = internalMutation({
       action: "deleted",
       description: `Deleted call`,
       performedBy: args.deletedBy as Id<"users">,
+      actorLabel: args.actorLabel,
     });
   },
 });

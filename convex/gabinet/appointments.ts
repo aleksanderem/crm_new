@@ -145,6 +145,7 @@ async function applyAppointmentStatusChange(
     treatmentId?: string | null;
     variantId?: string | null;
     priceAtBooking?: number | null;
+    actorLabel?: string;
   },
 ) {
   const now = Date.now();
@@ -261,6 +262,7 @@ async function applyAppointmentStatusChange(
       newStatus: args.nextStatus,
     },
     performedBy: args.actorUserId,
+    actorLabel: args.actorLabel,
   });
 
   await logAudit(ctx, {
@@ -836,6 +838,7 @@ export const _createSideEffects = internalMutation({
       appointmentId: v.string(),
       activityId: v.string(),
     })),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = args.createdAt;
@@ -907,6 +910,7 @@ export const _createSideEffects = internalMutation({
       action: "created",
       description: `Created appointment for ${args.date} at ${args.startTime}`,
       performedBy: createdByUserId,
+      actorLabel: args.actorLabel,
     });
 
     // --- 6. Schedule reminders (inline — avoid DB read since appointment is in Supabase) ---
@@ -1469,6 +1473,7 @@ export const create = action({
           packageUsageId: resolvedPackageUsageId ?? undefined,
           scheduledActivityId,
           recurActivityIds,
+          actorLabel: authResult.userName ?? authResult.userEmail,
         },
       );
     } catch (e) {
@@ -1880,6 +1885,7 @@ export const update = action({
           employeeChanged: !!args.employeeId,
           updatedFields: Object.keys(updates),
           updatedAt: now,
+          actorLabel: authResult.userName ?? authResult.userEmail,
         },
       );
     } catch (e) {
@@ -1931,6 +1937,7 @@ export const _updateSideEffects = internalMutation({
     employeeChanged: v.boolean(),
     updatedFields: v.array(v.string()),
     updatedAt: v.number(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const actorUserId = args.actorUserId as Id<"users">;
@@ -1971,6 +1978,7 @@ export const _updateSideEffects = internalMutation({
         updatedFields: args.updatedFields,
       },
       performedBy: actorUserId,
+      actorLabel: args.actorLabel,
     });
 
     // A "significant" reschedule is one where the patient's calendar changes:
@@ -2232,6 +2240,7 @@ export const updateStatus = action({
           packageUsageId: (appt.packageUsageId as string) ?? undefined,
           patientEmail: (appt as any).patientEmail ?? undefined,
           patientPhone: (appt as any).patientPhone ?? undefined,
+          actorLabel: authResult.userName ?? authResult.userEmail,
         },
       );
     } catch (e) {
@@ -2519,6 +2528,7 @@ export const _updateStatusSideEffects = internalMutation({
     packageUsageId: v.optional(v.string()),
     patientEmail: v.optional(v.string()),
     patientPhone: v.optional(v.string()),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const actorUserId = args.actorUserId as Id<"users">;
@@ -2566,6 +2576,7 @@ export const _updateStatusSideEffects = internalMutation({
       treatmentId: args.treatmentId ?? null,
       variantId: args.variantId ?? null,
       priceAtBooking: args.priceAtBooking ?? null,
+      actorLabel: args.actorLabel,
     });
 
     // After completing: auto-generate "after_completion" documents
@@ -2790,6 +2801,7 @@ export const cancel = action({
           startTime: appt.startTime as string,
           previousStatus: appt.status as string,
           packageUsageId: (appt.packageUsageId as string) ?? undefined,
+          actorLabel: authResult.userName ?? authResult.userEmail,
         },
       );
     } catch (e) {
@@ -2813,6 +2825,7 @@ export const _cancelSideEffects = internalMutation({
     startTime: v.string(),
     previousStatus: v.string(),
     packageUsageId: v.optional(v.string()),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const actorUserId = args.actorUserId as Id<"users">;
@@ -2834,6 +2847,7 @@ export const _cancelSideEffects = internalMutation({
       action: "status_changed",
       description: `Cancelled appointment${args.reason ? `: ${args.reason}` : ""}`,
       performedBy: actorUserId,
+      actorLabel: args.actorLabel,
     });
 
     await logAudit(ctx, {

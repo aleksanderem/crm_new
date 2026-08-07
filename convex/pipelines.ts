@@ -130,6 +130,7 @@ export const _sideEffects = internalMutation({
     migrateToStageId: v.optional(v.string()),
     stageId: v.optional(v.string()),
     leadIds: v.optional(v.array(v.string())),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = args.userId as any;
@@ -142,6 +143,7 @@ export const _sideEffects = internalMutation({
         action: "created",
         description: `Created pipeline "${args.pipelineName}"`,
         performedBy: userId,
+        actorLabel: args.actorLabel,
       });
     } else if (args.type === "pipeline_updated" && args.pipelineId) {
       await logActivity(ctx, {
@@ -151,6 +153,7 @@ export const _sideEffects = internalMutation({
         action: "updated",
         description: `Updated pipeline "${args.pipelineName}"`,
         performedBy: userId,
+        actorLabel: args.actorLabel,
       });
     } else if (args.type === "pipeline_deleted" && args.pipelineId) {
       // Unlink leads from deleted stages
@@ -172,6 +175,7 @@ export const _sideEffects = internalMutation({
         action: "deleted",
         description: `Deleted pipeline "${args.pipelineName}"`,
         performedBy: userId,
+        actorLabel: args.actorLabel,
       });
     } else if (args.type === "stage_added" && args.pipelineId) {
       await logActivity(ctx, {
@@ -181,6 +185,7 @@ export const _sideEffects = internalMutation({
         action: "updated",
         description: `Added stage "${args.stageName}" to pipeline`,
         performedBy: userId,
+        actorLabel: args.actorLabel,
       });
     } else if (args.type === "stage_updated" && args.pipelineId) {
       await logActivity(ctx, {
@@ -190,6 +195,7 @@ export const _sideEffects = internalMutation({
         action: "updated",
         description: `Updated stage "${args.stageName}"`,
         performedBy: userId,
+        actorLabel: args.actorLabel,
       });
     } else if (args.type === "stage_removed" && args.pipelineId) {
       // Migrate or unlink leads
@@ -218,6 +224,7 @@ export const _sideEffects = internalMutation({
         action: "updated",
         description: `Removed stage "${args.stageName}"${args.migrateToStageId ? " (leads migrated)" : ""}`,
         performedBy: userId,
+        actorLabel: args.actorLabel,
       });
     } else if (args.type === "stages_reordered" && args.pipelineId) {
       await logActivity(ctx, {
@@ -227,6 +234,7 @@ export const _sideEffects = internalMutation({
         action: "updated",
         description: "Reordered pipeline stages",
         performedBy: userId,
+        actorLabel: args.actorLabel,
       });
     }
   },
@@ -359,6 +367,7 @@ export const create = action({
         userId: String(authResult.userId),
         pipelineId,
         pipelineName: args.name,
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[pipelines.create] side effects error:", e);
@@ -413,6 +422,7 @@ export const update = action({
         userId: String(authResult.userId),
         pipelineId: args.pipelineId,
         pipelineName: (args.name ?? pipeline.name) as string,
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[pipelines.update] side effects error:", e);
@@ -478,6 +488,7 @@ export const remove = action({
         pipelineId: args.pipelineId,
         pipelineName: pipeline.name as string,
         leadIds: allLeadIds,
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[pipelines.remove] side effects error:", e);
@@ -537,6 +548,7 @@ export const addStage = action({
         userId: String(authResult.userId),
         pipelineId: args.pipelineId,
         stageName: args.name,
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[pipelines.addStage] side effects error:", e);
@@ -590,6 +602,7 @@ export const updateStage = action({
         userId: String(authResult.userId),
         pipelineId: stage.pipelineId as string,
         stageName: (args.name ?? stage.name) as string,
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[pipelines.updateStage] side effects error:", e);
@@ -655,6 +668,7 @@ export const removeStage = action({
         stageId: args.stageId,
         migrateToStageId: args.migrateToStageId,
         leadIds,
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[pipelines.removeStage] side effects error:", e);
@@ -701,6 +715,7 @@ export const reorderStages = action({
         organizationId: args.organizationId,
         userId: String(authResult.userId),
         pipelineId: args.pipelineId,
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[pipelines.reorderStages] side effects error:", e);

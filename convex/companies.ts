@@ -91,6 +91,7 @@ export const create = action({
         organizationId: args.organizationId,
         name: args.name,
         createdBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[companies.create] Side effects FAILED for company", companyId, ":", e);
@@ -106,6 +107,7 @@ export const _createSideEffects = internalMutation({
     organizationId: v.id("organizations"),
     name: v.string(),
     createdBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const createdByUserId = args.createdBy as Id<"users">;
@@ -117,6 +119,7 @@ export const _createSideEffects = internalMutation({
       action: "created",
       description: `Created company "${args.name}"`,
       performedBy: createdByUserId,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -211,6 +214,7 @@ export const update = action({
         organizationId,
         name: (company.name as string) ?? "",
         updatedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[companies.update] Side effects FAILED for company", companyId, ":", e);
@@ -226,6 +230,7 @@ export const _updateSideEffects = internalMutation({
     organizationId: v.id("organizations"),
     name: v.string(),
     updatedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const updatedByUserId = args.updatedBy as Id<"users">;
@@ -237,6 +242,7 @@ export const _updateSideEffects = internalMutation({
       action: "updated",
       description: `Updated company "${args.name}"`,
       performedBy: updatedByUserId,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -305,6 +311,7 @@ export const remove = action({
         organizationId: args.organizationId,
         name: (company.name as string) ?? "",
         deletedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[companies.remove] Side effects FAILED for company", args.companyId, ":", e);
@@ -320,6 +327,7 @@ export const _removeSideEffects = internalMutation({
     organizationId: v.id("organizations"),
     name: v.string(),
     deletedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const deletedByUserId = args.deletedBy as Id<"users">;
@@ -331,6 +339,7 @@ export const _removeSideEffects = internalMutation({
       action: "deleted",
       description: `Deleted company "${args.name}"`,
       performedBy: deletedByUserId,
+      actorLabel: args.actorLabel,
     });
   },
 });

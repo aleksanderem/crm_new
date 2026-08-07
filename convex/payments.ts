@@ -530,6 +530,7 @@ export const markPaid = action({
         amount: payment.amount as number,
         currency: payment.currency as string,
         appointmentId: (payment.appointmentId as string) ?? null,
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch {
       // side effects are best-effort
@@ -633,6 +634,7 @@ export const splitMarkPaid = action({
         amount: args.firstAmount,
         currency: payment.currency as string,
         appointmentId: (payment.appointmentId as string) ?? null,
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
       await ctx.runMutation(internal.payments._createPaymentSideEffects, {
         paymentId: newPaymentId,
@@ -851,6 +853,7 @@ export const _markPaidSideEffects = internalMutation({
     amount: v.number(),
     currency: v.string(),
     appointmentId: v.union(v.string(), v.null()),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -860,6 +863,7 @@ export const _markPaidSideEffects = internalMutation({
       action: "updated",
       description: `Payment of ${args.amount} ${args.currency} marked as paid`,
       performedBy: args.userId,
+      actorLabel: args.actorLabel,
     });
 
     await logAudit(ctx, {

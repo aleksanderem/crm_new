@@ -266,6 +266,7 @@ export const create = action({
           organizationId: args.organizationId,
           name: args.name,
           createdBy: String(authResult.userId),
+          actorLabel: authResult.userName ?? authResult.userEmail,
         });
       } catch (e) {
         console.error("[treatments.create] Side effects FAILED for treatment", treatmentId, ":", e);
@@ -306,6 +307,7 @@ export const _createSideEffects = internalMutation({
     organizationId: v.id("organizations"),
     name: v.string(),
     createdBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const createdByUserId = args.createdBy as Id<"users">;
@@ -317,6 +319,7 @@ export const _createSideEffects = internalMutation({
       action: "created",
       description: `Created treatment "${args.name}"`,
       performedBy: createdByUserId,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -425,6 +428,7 @@ export const update = action({
           organizationId,
           treatmentName: (treatment.name as string) ?? "",
           updatedBy: String(authResult.userId),
+          actorLabel: authResult.userName ?? authResult.userEmail,
         });
       } catch (e) {
         console.error("[treatments.update] Side effects FAILED for treatment", treatmentId, ":", e);
@@ -457,6 +461,7 @@ export const _updateSideEffects = internalMutation({
     organizationId: v.id("organizations"),
     treatmentName: v.string(),
     updatedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const updatedByUserId = args.updatedBy as Id<"users">;
@@ -468,6 +473,7 @@ export const _updateSideEffects = internalMutation({
       action: "updated",
       description: `Updated treatment "${args.treatmentName}"`,
       performedBy: updatedByUserId,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -519,6 +525,7 @@ export const remove = action({
         organizationId: args.organizationId,
         treatmentName: (treatment.name as string) ?? "",
         deletedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[treatments.remove] Side effects FAILED for treatment", args.treatmentId, ":", e);
@@ -534,6 +541,7 @@ export const _removeSideEffects = internalMutation({
     organizationId: v.id("organizations"),
     treatmentName: v.string(),
     deletedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const deletedByUserId = args.deletedBy as Id<"users">;
@@ -545,6 +553,7 @@ export const _removeSideEffects = internalMutation({
       action: "deleted",
       description: `Deleted treatment "${args.treatmentName}"`,
       performedBy: deletedByUserId,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -760,6 +769,7 @@ export const setTreatmentProducts = action({
           organizationId: args.organizationId,
           treatmentName: (treatment.name as string) ?? "",
           updatedBy: String(authResult.userId),
+          actorLabel: authResult.userName ?? authResult.userEmail,
         });
       } catch (e) {
         console.error("[treatments.setTreatmentProducts] Side effects FAILED:", e);
@@ -1352,6 +1362,7 @@ export const setRequiredFormTemplates = action({
         organizationId: args.organizationId,
         treatmentName: (treatment.name as string) ?? "",
         updatedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[treatments.setRequiredFormTemplates] Side effects FAILED:", e);
@@ -1419,6 +1430,7 @@ export const saveTreatmentParameters = action({
           organizationId: args.organizationId,
           treatmentName: (treatment.name as string) ?? "",
           updatedBy: String(authResult.userId),
+          actorLabel: authResult.userName ?? authResult.userEmail,
         });
       } catch (e) {
         console.error("[treatments.saveTreatmentParameters] Side effects FAILED:", e);
@@ -1652,6 +1664,7 @@ export const createVariant = action({
         organizationId: args.organizationId,
         name: `Added variant "${args.name}" to treatment "${(treatment.name as string) ?? ""}"`,
         createdBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[treatments.createVariant] Side effects FAILED:", e);
@@ -1752,6 +1765,7 @@ export const updateVariant = action({
         organizationId: args.organizationId,
         treatmentName: `Updated variant "${(variant.name as string) ?? ""}"`,
         updatedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[treatments.updateVariant] Side effects FAILED:", e);
@@ -1814,6 +1828,7 @@ export const deleteVariant = action({
         organizationId: args.organizationId,
         treatmentName: `Deleted variant "${(variant.name as string) ?? ""}"`,
         updatedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[treatments.deleteVariant] Side effects FAILED:", e);

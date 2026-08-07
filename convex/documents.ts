@@ -65,6 +65,7 @@ export const create = action({
         documentId: docId,
         name: args.name,
         performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[documents.create] Side effects FAILED for document", docId, ":", e);
@@ -80,6 +81,7 @@ export const _createSideEffects = internalMutation({
     documentId: v.string(),
     name: v.string(),
     performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -89,6 +91,7 @@ export const _createSideEffects = internalMutation({
       action: "document_uploaded",
       description: `Uploaded document "${args.name}"`,
       performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -143,6 +146,7 @@ export const update = action({
         documentId,
         name: doc.name as string,
         performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[documents.update] Side effects FAILED for document", documentId, ":", e);
@@ -158,6 +162,7 @@ export const _updateSideEffects = internalMutation({
     documentId: v.string(),
     name: v.string(),
     performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -167,6 +172,7 @@ export const _updateSideEffects = internalMutation({
       action: "updated",
       description: `Updated document "${args.name}"`,
       performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -214,6 +220,7 @@ export const remove = action({
         documentId: args.documentId,
         name: doc.name as string,
         performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[documents.remove] Side effects FAILED for document", args.documentId, ":", e);
@@ -229,6 +236,7 @@ export const _removeSideEffects = internalMutation({
     documentId: v.string(),
     name: v.string(),
     performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -238,6 +246,7 @@ export const _removeSideEffects = internalMutation({
       action: "deleted",
       description: `Deleted document "${args.name}"`,
       performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -290,6 +299,7 @@ export const updateStatus = action({
         oldStatus: (doc.status as string) ?? null,
         newStatus: args.status,
         performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[documents.updateStatus] Side effects FAILED for document", args.documentId, ":", e);
@@ -307,6 +317,7 @@ export const _updateStatusSideEffects = internalMutation({
     oldStatus: v.union(v.string(), v.null()),
     newStatus: v.string(),
     performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -317,6 +328,7 @@ export const _updateStatusSideEffects = internalMutation({
       description: `Changed document "${args.name}" status to "${args.newStatus}"`,
       metadata: { oldStatus: args.oldStatus, newStatus: args.newStatus },
       performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
     });
   },
 });

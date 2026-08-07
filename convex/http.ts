@@ -10,6 +10,7 @@ import { Currency, Interval, PLANS } from "@cvx/schema";
 import {
   sendSubscriptionErrorEmail,
   sendSubscriptionSuccessEmail,
+  sendTrialWillEndEmail,
 } from "@cvx/email/templates/subscriptionEmail";
 import Stripe from "stripe";
 import { Doc, Id } from "@cvx/_generated/dataModel";
@@ -374,6 +375,28 @@ const handleCustomerSubscriptionDeleted = async (
   return new Response(null);
 };
 
+const handleCustomerSubscriptionTrialWillEnd = async (
+  ctx: ActionCtx,
+  event: Stripe.CustomerSubscriptionTrialWillEndEvent,
+) => {
+  const subscription = event.data.object;
+  const { customer: customerId } = z
+    .object({ customer: z.string() })
+    .parse(subscription);
+
+  const user = await ctx.runQuery(internal.stripe.PREAUTH_getUserByCustomerId, {
+    customerId,
+  });
+  if (!user?.email) throw new Error(ERRORS.SOMETHING_WENT_WRONG);
+
+  const trialEnd = subscription.trial_end;
+  const trialEndDate = trialEnd ? new Date(trialEnd * 1000) : new Date();
+
+  await sendTrialWillEndEmail({ email: user.email, trialEndDate });
+
+  return new Response(null);
+};
+
 const handleInvoiceFinalized = async (
   _ctx: ActionCtx,
   event: Stripe.InvoiceFinalizedEvent,
@@ -465,6 +488,14 @@ http.route({
          */
         case "customer.subscription.deleted": {
           return handleCustomerSubscriptionDeleted(ctx, event);
+        }
+
+        /**
+         * Occurs 3 days before a trial subscription ends.
+         * Sends a pre-expiry reminder email to the user.
+         */
+        case "customer.subscription.trial_will_end": {
+          return handleCustomerSubscriptionTrialWillEnd(ctx, event);
         }
 
         /**

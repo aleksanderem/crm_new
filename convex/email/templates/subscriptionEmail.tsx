@@ -62,6 +62,78 @@ export function SubscriptionSuccessEmail({ email }: SubscriptionEmailOptions) {
   );
 }
 
+type TrialWillEndEmailOptions = {
+  email: string;
+  trialEndDate: Date;
+};
+
+export function TrialWillEndEmail({ email, trialEndDate }: TrialWillEndEmailOptions) {
+  const formattedDate = trialEndDate.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  return (
+    <Html>
+      <Head />
+      <Preview>Your free trial ends in 3 days</Preview>
+      <Body
+        style={{
+          backgroundColor: "#ffffff",
+          fontFamily:
+            '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
+        }}
+      >
+        <Container style={{ margin: "0 auto", padding: "20px 0 48px" }}>
+          <Img
+            src={`${SITE_URL}/images/convex-logo-email.jpg`}
+            width="40"
+            height="37"
+            alt=""
+          />
+          <Text style={{ fontSize: "16px", lineHeight: "26px" }}>
+            Hello {email}!
+          </Text>
+          <Text style={{ fontSize: "16px", lineHeight: "26px" }}>
+            Your free trial ends on <strong>{formattedDate}</strong>.
+            <br />
+            To keep access to all PRO features, make sure your billing information is up to date.
+          </Text>
+          <Text style={{ fontSize: "16px", lineHeight: "26px" }}>
+            <Link href={`${SITE_URL}/dashboard/settings/billing`}>
+              Manage your subscription
+            </Link>
+          </Text>
+          <Text style={{ fontSize: "16px", lineHeight: "26px" }}>
+            The <Link href={SITE_URL}>Unify</Link> team.
+          </Text>
+          <Hr style={{ borderColor: "#cccccc", margin: "20px 0" }} />
+          <Text style={{ color: "#8898aa", fontSize: "12px" }}>
+            200 domain-name.com
+          </Text>
+        </Container>
+      </Body>
+    </Html>
+  );
+}
+
+export function renderTrialWillEndEmail(args: TrialWillEndEmailOptions) {
+  return render(<TrialWillEndEmail {...args} />);
+}
+
+export async function sendTrialWillEndEmail({
+  email,
+  trialEndDate,
+}: TrialWillEndEmailOptions) {
+  const html = renderTrialWillEndEmail({ email, trialEndDate });
+  await sendEmail({
+    to: email,
+    subject: "Your free trial ends in 3 days",
+    html,
+  });
+}
+
 export function SubscriptionErrorEmail({ email }: SubscriptionEmailOptions) {
   return (
     <Html>

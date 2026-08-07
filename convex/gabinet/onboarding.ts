@@ -85,11 +85,26 @@ export const getSetupStatus = action({
 
 /**
  * Mark onboarding as completed for an organization.
+ * Persists wizard-collected data (org name, currency, treatments, working hours)
+ * in addition to seeding document templates.
  * Organizations table is an auth table that stays in Convex.
  */
 export const completeSetup = action({
   args: {
     organizationId: v.id("organizations"),
+    organizationName: v.optional(v.string()),
+    currency: v.optional(v.string()),
+    treatments: v.optional(v.array(v.object({
+      name: v.string(),
+      price: v.number(),
+      duration: v.number(),
+    }))),
+    workingHours: v.optional(v.array(v.object({
+      dayOfWeek: v.number(),
+      startTime: v.string(),
+      endTime: v.string(),
+      isOpen: v.boolean(),
+    }))),
   },
   handler: async (ctx, args) => {
     // Auth + permissions via internal query
@@ -103,6 +118,90 @@ export const completeSetup = action({
     }).then((perm: { allowed: boolean; scope: string }) => {
       if (!perm.allowed) throw new Error("Permission denied");
     });
+
+    const now = Date.now();
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+
+    // Update organization name in Convex (auth table)
+    if (args.organizationName) {
+      await ctx.runMutation(internal.organizations._updateOrgInternal, {
+        organizationId: args.organizationId,
+        name: args.organizationName,
+      });
+    }
+
+    // Upsert default currency in orgSettings (Supabase)
+    if (args.currency) {
+      const existingSettings = await db
+        .query("orgSettings")
+        .eq("organizationId", orgIdStr)
+        .first();
+      if (existingSettings) {
+        await db.patch("orgSettings", existingSettings._id as string, {
+          defaultCurrency: args.currency,
+          updatedAt: now,
+        });
+      } else {
+        await db.insert("orgSettings", {
+          organizationId: orgIdStr,
+          allowCustomLostReason: false,
+          lostReasonRequired: false,
+          defaultCurrency: args.currency,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+
+    // Seed treatments entered in the wizard
+    if (args.treatments && args.treatments.length > 0) {
+      for (const t of args.treatments) {
+        await db.insert("gabinetTreatments", {
+          organizationId: orgIdStr,
+          name: t.name,
+          price: t.price,
+          duration: t.duration,
+          isActive: true,
+          createdBy: String(userId),
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+
+    // Seed working hours configured in the wizard (upsert by dayOfWeek)
+    if (args.workingHours && args.workingHours.length > 0) {
+      for (const wh of args.workingHours) {
+        const existing = await db
+          .query("gabinetWorkingHours")
+          .eq("organizationId", orgIdStr)
+          .eq("dayOfWeek", wh.dayOfWeek)
+          .first();
+        if (existing) {
+          await db.patch("gabinetWorkingHours", existing._id as string, {
+            startTime: wh.startTime,
+            endTime: wh.endTime,
+            isOpen: wh.isOpen,
+            updatedAt: now,
+          });
+        } else {
+          await db.insert("gabinetWorkingHours", {
+            organizationId: orgIdStr,
+            dayOfWeek: wh.dayOfWeek,
+            startTime: wh.startTime,
+            endTime: wh.endTime,
+            isOpen: wh.isOpen,
+            breakStart: null,
+            breakEnd: null,
+            locationId: null,
+            createdBy: String(userId),
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+      }
+    }
 
     // Delegate Convex-only org patch to internalMutation
     await ctx.runMutation(

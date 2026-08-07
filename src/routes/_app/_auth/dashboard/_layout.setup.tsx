@@ -96,10 +96,33 @@ function SetupWizard() {
 
   const handleNext = async () => {
     if (currentStep === STEPS.length - 1) {
-      // Fix #2: Call completeSetup mutation
       setIsSubmitting(true);
       try {
-        await completeSetup({ organizationId });
+        // dayOfWeek convention: 0=Sun, 1=Mon, ..., 6=Sat (matches JS Date.getDay())
+        const workingHoursToSave = days
+          .map((day, i) => ({
+            dayOfWeek: (i + 1) % 7,
+            startTime: schedule[day]?.start || "09:00",
+            endTime: schedule[day]?.end || "17:00",
+            isOpen: schedule[day]?.enabled === true,
+          }))
+          .filter((wh) => wh.isOpen);
+
+        const treatmentsToSave = treatments
+          .filter((t) => t.name.trim().length > 0)
+          .map((t) => ({
+            name: t.name.trim(),
+            price: parseFloat(t.price) || 0,
+            duration: parseInt(t.duration) || 60,
+          }));
+
+        await completeSetup({
+          organizationId,
+          organizationName: orgName.trim() || undefined,
+          currency: currency || undefined,
+          treatments: treatmentsToSave.length > 0 ? treatmentsToSave : undefined,
+          workingHours: workingHoursToSave.length > 0 ? workingHoursToSave : undefined,
+        });
         navigate({ to: DashboardRoute.fullPath });
       } catch (error) {
         console.error("Setup failed:", error);

@@ -83,16 +83,6 @@ const WHITELIST = new Set([
   //   Auth is the signing token (pre-validated by signatureRequests.verifyOtp).
   "documents/documents:recordSignature",
 
-  // ── Signing email notifications ───────────────────────────────────────────
-  // These three are invoked only from authenticated actions (sendForSigning,
-  // requestOtp) that have already validated org membership. They are thin
-  // notification helpers that should ideally be internalAction but changing
-  // their visibility would break existing callers in this release cycle.
-  // They write only to outbound email queues, never to org data tables.
-  "signingEmails:sendSigningRequestEmail",
-  "signingEmails:sendOtpEmail",
-  "signingEmails:sendSlotSignedNotification",
-
   // ── SMS OTP orchestration ─────────────────────────────────────────────────
   // requestOtp (sms module): orchestrates createOtp + SMS/email delivery for
   //   the document signing flow. The underlying createOtp validates the

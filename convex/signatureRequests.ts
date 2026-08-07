@@ -273,7 +273,7 @@ export const _sendSigningEmails = internalMutation({
     for (const ct of tokens) {
       const sig = sigs.find((s: any) => s.slotId === ct.slotId);
       if (sig?.signerEmail) {
-        await ctx.scheduler.runAfter(0, api.signingEmails.sendSigningRequestEmail, {
+        await ctx.scheduler.runAfter(0, internal.signingEmails.sendSigningRequestEmail, {
           signerName: sig.signerName ?? sig.signerEmail,
           signerEmail: sig.signerEmail,
           documentTitle: args.instanceTitle,
@@ -422,7 +422,7 @@ export const _notifyAuthor = internalMutation({
   },
   handler: async (ctx, args) => {
     if (!args.authorEmail) return;
-    await ctx.scheduler.runAfter(0, api.signingEmails.sendSlotSignedNotification, {
+    await ctx.scheduler.runAfter(0, internal.signingEmails.sendSlotSignedNotification, {
       authorEmail: args.authorEmail,
       authorName: args.authorName ?? args.authorEmail,
       documentTitle: args.documentTitle,

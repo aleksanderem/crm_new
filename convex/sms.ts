@@ -437,7 +437,7 @@ export const requestOtp = action({
       });
     } else if (verificationMethod === "email_otp") {
       if (!signerEmail) throw new Error("No email address for OTP delivery");
-      await ctx.runAction(api.signingEmails.sendOtpEmail, {
+      await ctx.runAction(internal.signingEmails.sendOtpEmail, {
         signerEmail,
         code: result.code,
       });

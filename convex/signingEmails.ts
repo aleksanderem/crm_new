@@ -1,4 +1,4 @@
-import { action } from "./_generated/server";
+import { internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { Resend } from "resend";
 import { RESEND_API_KEY, RESEND_FROM } from "@cvx/env";
@@ -9,7 +9,7 @@ const APP_URL = process.env.APP_URL ?? "https://app.example.com";
 // Send signing request email
 // ---------------------------------------------------------------------------
 
-export const sendSigningRequestEmail = action({
+export const sendSigningRequestEmail = internalAction({
   args: {
     signerName: v.string(),
     signerEmail: v.string(),
@@ -63,7 +63,7 @@ export const sendSigningRequestEmail = action({
 // Send OTP code via email for email_otp verification
 // ---------------------------------------------------------------------------
 
-export const sendOtpEmail = action({
+export const sendOtpEmail = internalAction({
   args: {
     signerEmail: v.string(),
     code: v.string(),
@@ -98,7 +98,7 @@ export const sendOtpEmail = action({
 // Notify document author when a slot is signed
 // ---------------------------------------------------------------------------
 
-export const sendSlotSignedNotification = action({
+export const sendSlotSignedNotification = internalAction({
   args: {
     authorEmail: v.string(),
     authorName: v.string(),

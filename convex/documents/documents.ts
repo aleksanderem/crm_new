@@ -667,26 +667,25 @@ export const recordSignature = action({
 
     // Audit log: record the signing event. Best-effort — a log failure must
     // never roll back a successfully completed signature.
-    const createdBy = doc.createdBy ? String(doc.createdBy) : null;
-    if (createdBy) {
-      try {
-        await ctx.scheduler.runAfter(0, internal.supabase.auditLog.writeAuditLogToSupabase, {
-          auditLogId: crypto.randomUUID(),
-          organizationId: String(doc.organizationId),
-          userId: createdBy,
-          action: "document.signed",
-          entityType: "formDocument",
-          entityId: String(doc._id),
-          details: JSON.stringify({
-            signedByName: resolvedSignedByName || undefined,
-            signedByEmail: args.signedByEmail || undefined,
-            signedByIp: args.signedByIp || undefined,
-          }),
-          createdAt: now,
-        });
-      } catch (err) {
-        console.error("[recordSignature] audit log write failed", err);
-      }
+    // When createdBy is null (auto-generated / system documents) we still
+    // write the entry with userId omitted so all signing events are auditable.
+    try {
+      await ctx.scheduler.runAfter(0, internal.supabase.auditLog.writeAuditLogToSupabase, {
+        auditLogId: crypto.randomUUID(),
+        organizationId: String(doc.organizationId),
+        userId: doc.createdBy ? String(doc.createdBy) : undefined,
+        action: "document.signed",
+        entityType: "formDocument",
+        entityId: String(doc._id),
+        details: JSON.stringify({
+          signedByName: resolvedSignedByName || undefined,
+          signedByEmail: args.signedByEmail || undefined,
+          signedByIp: args.signedByIp || undefined,
+        }),
+        createdAt: now,
+      });
+    } catch (err) {
+      console.error("[recordSignature] audit log write failed", err);
     }
 
     return doc._id as string;

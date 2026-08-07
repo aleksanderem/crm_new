@@ -259,6 +259,20 @@ export const notifyWaitlistOnSlotOpen = internalAction({
     const db = createSupabaseDb();
     const orgIdStr = String(args.organizationId);
 
+    // gabinet_appointments.employee_id references users(id), but
+    // gabinet_waitlist.employee_id references gabinet_employees(id).
+    // Resolve the user ID to a gabinet_employees row ID so we can filter correctly.
+    let gabinetEmployeeId: string | null = null;
+    if (args.employeeUserId) {
+      const empRows = await db
+        .query("gabinetEmployees")
+        .eq("organizationId", orgIdStr)
+        .eq("userId", args.employeeUserId)
+        .collect();
+      const empRow = empRows[0];
+      if (empRow?._id) gabinetEmployeeId = String(empRow._id);
+    }
+
     const allWaiting = await db
       .query("gabinetWaitlist")
       .eq("organizationId", orgIdStr)
@@ -271,6 +285,12 @@ export const notifyWaitlistOnSlotOpen = internalAction({
       if (entry.treatmentId && entry.treatmentId !== args.treatmentId) return false;
       const preferred = entry.preferredDates as string[] | null;
       if (preferred && preferred.length > 0 && !preferred.includes(args.date)) return false;
+      // If the waitlist entry has an employee preference, it must match the
+      // resolved gabinet employee ID. If we couldn't resolve the employee,
+      // err on the side of not notifying to avoid sending to the wrong patient.
+      if (entry.employeeId) {
+        if (!gabinetEmployeeId || entry.employeeId !== gabinetEmployeeId) return false;
+      }
       return true;
     });
 

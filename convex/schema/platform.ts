@@ -57,6 +57,7 @@ export function createPlatformTables({
   subscriptions: defineTable({
     userId: v.id("users"),
     planId: v.id("plans"),
+    productKey: v.optional(productKeyValidator),
     priceStripeId: v.string(),
     stripeId: v.string(),
     currency: currencyValidator,
@@ -67,7 +68,8 @@ export function createPlatformTables({
     cancelAtPeriodEnd: v.boolean(),
   })
     .index("userId", ["userId"])
-    .index("stripeId", ["stripeId"]),
+    .index("stripeId", ["stripeId"])
+    .index("by_userId_and_productKey", ["userId", "productKey"]),
 
   // --- Product Subscriptions (per organization, per product) ---
 

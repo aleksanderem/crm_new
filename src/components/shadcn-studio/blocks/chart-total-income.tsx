@@ -111,7 +111,7 @@ const TotalIncomeCard = ({
           </DropdownMenu>
         </CardHeader>
         <CardContent className='relative pb-0'>
-          <ChartContainer config={totalIncomeChartConfig} className='max-h-80 min-h-48 w-full max-[400px]:max-w-73'>
+          <ChartContainer config={totalIncomeChartConfig} className='max-h-80 min-h-48 w-full max-[400px]:max-w-73' role='img' aria-label={title}>
             <AreaChart
               data={chartData}
               margin={{

@@ -107,7 +107,7 @@ const EarningReportCard = ({ title, subTitle, statData, chartData = defaultEarni
           </div>
         ))}
         <div className='relative'>
-          <ChartContainer config={earningReportChartConfig} className='h-45 w-full'>
+          <ChartContainer config={earningReportChartConfig} className='h-45 w-full' role='img' aria-label={title}>
             <BarChart
               accessibilityLayer
               data={chartData}

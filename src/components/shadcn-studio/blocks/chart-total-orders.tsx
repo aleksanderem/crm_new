@@ -129,7 +129,7 @@ const TotalOrdersCard = ({
             <span className='text-muted-foreground text-sm'>{totalLabel}</span>
           </div>
           <div>
-            <ChartContainer config={chartConfig} className='h-30 w-full'>
+            <ChartContainer config={chartConfig} className='h-30 w-full' role='img' aria-label={title}>
               <PieChart margin={{ top: 0, bottom: 0, left: 0, right: 0 }}>
                 {!blurred && <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />}
                 <Pie

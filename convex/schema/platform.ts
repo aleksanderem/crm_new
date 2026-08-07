@@ -36,6 +36,8 @@ export function createPlatformTables({
       v.union(v.literal("light"), v.literal("dark"), v.literal("system")),
     ),
     timezone: v.optional(v.string()),
+    // Stored in Supabase (is_platform_admin column); present here for SupabaseRow<"users"> type coverage.
+    isPlatformAdmin: v.optional(v.boolean()),
   })
     .index("email", ["email"])
     .index("customerId", ["customerId"]),

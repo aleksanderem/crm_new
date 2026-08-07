@@ -2562,7 +2562,23 @@
         "documents": "Documents",
         "loyalty": "Loyalty",
         "credit": "Credit",
-        "activity": "Activity"
+        "activity": "Activity",
+        "billing": "Billing"
+      },
+      "billing": {
+        "title": "Billing",
+        "description": "Receipts issued to this patient.",
+        "noReceipts": "No receipts issued yet.",
+        "receiptNumber": "Receipt number",
+        "issuedAt": "Issued at",
+        "totalGross": "Total (gross)",
+        "type": "Type",
+        "receiptTypes": {
+          "original": "Receipt",
+          "correction": "Correction"
+        },
+        "download": "Download",
+        "generating": "Generating..."
       },
       "beautyPlan": {
         "title": "Beauty plan history",

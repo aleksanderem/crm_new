@@ -119,3 +119,9 @@ export {
   mapGabinetLoyaltyTransactionToSupabase,
   type MappedGabinetLoyaltyTransaction,
 } from "./loyalty-transactions";
+
+export {
+  mapGabinetReceiptFromSupabase,
+  mapGabinetReceiptToSupabase,
+  type MappedGabinetReceipt,
+} from "./receipts";

@@ -39,6 +39,8 @@ export default function DashboardSettingsLayout() {
               <Link
                 key={item.to}
                 to={item.to}
+                // @ts-ignore — generic nav items may carry typed search for specific routes
+                search={item.search}
                 className={cn(
                   "shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm transition-colors",
                   isActive

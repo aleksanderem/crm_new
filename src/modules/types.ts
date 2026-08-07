@@ -61,6 +61,7 @@ export interface ModuleSettingsNavItem {
   adminOnly?: boolean;
   platformAdminOnly?: boolean;
   permissionFeature?: Feature;
+  search?: Record<string, string>;
 }
 
 export interface ModuleManifest {

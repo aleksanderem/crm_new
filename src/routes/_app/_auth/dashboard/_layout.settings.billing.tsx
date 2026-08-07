@@ -1,23 +1,38 @@
 import { useState } from "react";
 import { Switch } from "@/ui/switch";
 import { Button } from "@/ui/button";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { api } from "~/convex/_generated/api";
 import { convexQuery, useConvexAction } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { getLocaleCurrency } from "@/utils/misc";
-import { CURRENCIES, PLANS } from "@cvx/schema";
+import { cn, getLocaleCurrency } from "@/utils/misc";
+import { CURRENCIES, PLANS, PRODUCT_KEYS } from "@cvx/schema";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
 import { useTranslation } from "react-i18next";
+import { useOrganization } from "@/components/org-context";
+import { z } from "zod";
+
+const PRODUCT_KEY_ENUM = ["crm", "gabinet", "magazyn"] as ["crm", "gabinet", "magazyn"];
+type BillingProductKey = (typeof PRODUCT_KEY_ENUM)[number];
+
+const MODULE_LABELS: Record<BillingProductKey, string> = {
+  crm: "CRM",
+  gabinet: "Gabinet",
+  magazyn: "Magazyn",
+};
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/billing",
 )({
   component: BillingSettings,
-  beforeLoad: async ({ context }) => {
+  validateSearch: z.object({
+    productKey: z.enum(PRODUCT_KEY_ENUM).optional(),
+  }),
+  beforeLoad: async ({ context, search }) => {
+    const productKey = search.productKey ?? PRODUCT_KEYS.CRM;
     await context.queryClient.ensureQueryData(
-      convexQuery(api.app.getActivePlans, {}),
+      convexQuery(api.app.getActivePlans, { productKey }),
     );
     return {
       title: "Billing",
@@ -29,8 +44,19 @@ export const Route = createFileRoute(
 
 export default function BillingSettings() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { organizationId } = useOrganization();
+  const { productKey: selectedModule = PRODUCT_KEYS.CRM } = Route.useSearch();
+
   const { data: user } = useQuery(convexQuery(api.app.getCurrentUser, {}));
-  const { data: plans } = useQuery(convexQuery(api.app.getActivePlans, {}));
+  const { data: plans } = useQuery(
+    convexQuery(api.app.getActivePlans, { productKey: selectedModule }),
+  );
+
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen
+  const { data: activeProducts } = useQuery(
+    convexQuery(api.productSubscriptions.getActiveProducts, { organizationId }),
+  );
 
   const [selectedPlanId, setSelectedPlanId] = useState(
     user?.subscription?.planId,
@@ -81,6 +107,10 @@ export default function BillingSettings() {
     window.location.href = customerPortalUrl;
   };
 
+  const visibleModules = PRODUCT_KEY_ENUM.filter(
+    (key) => !activeProducts || activeProducts.includes(key),
+  );
+
   if (!user || !plans) {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-8">
@@ -101,6 +131,32 @@ export default function BillingSettings() {
         </SectionHeader.Group>
         <UntitledAlert>{t("billing.description", "Manage billing and your subscription plan.")}</UntitledAlert>
       </SectionHeader.Root>
+
+      {/* Module selector — shown when multiple modules are active */}
+      {visibleModules.length > 1 && (
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1 w-fit">
+          {visibleModules.map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() =>
+                navigate({
+                  to: "/dashboard/settings/billing",
+                  search: { productKey: key },
+                })
+              }
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                selectedModule === key
+                  ? "bg-primary/10 text-primary"
+                  : "text-primary/60 hover:text-primary",
+              )}
+            >
+              {MODULE_LABELS[key]}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Plans */}
       <div className="flex w-full flex-col items-start rounded-lg border border-border bg-card">

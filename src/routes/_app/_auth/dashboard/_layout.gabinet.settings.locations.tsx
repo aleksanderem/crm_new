@@ -29,9 +29,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Id } from "@cvx/_generated/dataModel";
-import { Plus, Trash2, ChevronDown, ChevronRight, MapPin, Phone } from "@/lib/ez-icons";
+import { Plus, Trash2, ChevronDown, ChevronRight, MapPin, Phone, History } from "@/lib/ez-icons";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
+import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
+import type { ActivityWithMetadata } from "@/components/activity-timeline/presenter/activity-presenter";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
 import { PermissionGate, usePermission } from "@/hooks/use-permission";
@@ -79,6 +82,101 @@ type LocationWithRooms = {
   }>;
 };
 
+function RoomRow({
+  room,
+  organizationId,
+  canEdit,
+  canDelete,
+  onToggle,
+  onDelete,
+}: {
+  room: { _id: Id<"gabinetRooms">; name: string; floor?: string; isActive: boolean };
+  organizationId: Id<"organizations">;
+  canEdit: boolean;
+  canDelete: boolean;
+  onToggle: (roomId: Id<"gabinetRooms">, isActive: boolean) => void;
+  onDelete: (roomId: Id<"gabinetRooms">) => void;
+}) {
+  const { t } = useTranslation();
+  const [showActivity, setShowActivity] = useState(false);
+
+  const { data: roomActivities } = useSupabaseActivitiesByEntity(
+    organizationId as string,
+    "gabinetRoom",
+    room._id as string,
+    { enabled: showActivity },
+  );
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 px-3 py-2">
+        <span className="flex-1 text-sm">{room.name}</span>
+        {room.floor && (
+          <span className="text-xs text-muted-foreground">
+            {t("gabinet.locations.floor")}: {room.floor}
+          </span>
+        )}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+          onClick={() => setShowActivity((v) => !v)}
+          title={t("dashboard.recentActivity")}
+        >
+          <History className="h-3.5 w-3.5" variant="stroke" />
+        </Button>
+        {canEdit ? (
+          <button
+            type="button"
+            onClick={() => onToggle(room._id, room.isActive)}
+            className="text-xs"
+          >
+            {room.isActive ? (
+              <Badge variant="default" className="text-[10px] cursor-pointer">
+                {t("common.active")}
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="text-[10px] cursor-pointer">
+                {t("common.inactive")}
+              </Badge>
+            )}
+          </button>
+        ) : (
+          <span className="text-xs">
+            {room.isActive ? (
+              <Badge variant="default" className="text-[10px]">
+                {t("common.active")}
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="text-[10px]">
+                {t("common.inactive")}
+              </Badge>
+            )}
+          </span>
+        )}
+        {canDelete && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+            onClick={() => onDelete(room._id)}
+          >
+            <Trash2 className="h-3.5 w-3.5" variant="stroke" />
+          </Button>
+        )}
+      </div>
+      {showActivity && (
+        <div className="px-3 pb-2">
+          <ActivityTimeline
+            activities={(roomActivities ?? []) as ActivityWithMetadata[]}
+            maxHeight="180px"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LocationCard({
   locationId,
   organizationId,
@@ -123,6 +221,13 @@ function LocationCard({
   const createRoom = useAction(api.gabinet.locations.createRoom);
   const updateRoom = useAction(api.gabinet.locations.updateRoom);
   const deleteRoom = useAction(api.gabinet.locations.deleteRoom);
+
+  const { data: locationActivities } = useSupabaseActivitiesByEntity(
+    organizationId as string,
+    "gabinetLocation",
+    locationId as string,
+    { enabled: expanded },
+  );
 
   // Summary card always uses the list data (passed via parent), so we need the basic info
   // Use the fetched data when expanded, otherwise use the location prop from parent list
@@ -442,56 +547,29 @@ function LocationCard({
               ) : (
                 <div className="rounded-md border divide-y">
                   {location.rooms.map((room) => (
-                    <div key={room._id} className="flex items-center gap-3 px-3 py-2">
-                      <span className="flex-1 text-sm">{room.name}</span>
-                      {room.floor && (
-                        <span className="text-xs text-muted-foreground">
-                          {t("gabinet.locations.floor")}: {room.floor}
-                        </span>
-                      )}
-                      {canEdit ? (
-                        <button
-                          type="button"
-                          onClick={() => handleToggleRoom(room._id, room.isActive)}
-                          className="text-xs"
-                        >
-                          {room.isActive ? (
-                            <Badge variant="default" className="text-[10px] cursor-pointer">
-                              {t("common.active")}
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-[10px] cursor-pointer">
-                              {t("common.inactive")}
-                            </Badge>
-                          )}
-                        </button>
-                      ) : (
-                        <span className="text-xs">
-                          {room.isActive ? (
-                            <Badge variant="default" className="text-[10px]">
-                              {t("common.active")}
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-[10px]">
-                              {t("common.inactive")}
-                            </Badge>
-                          )}
-                        </span>
-                      )}
-                      {canDelete && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                          onClick={() => handleDeleteRoom(room._id)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" variant="stroke" />
-                        </Button>
-                      )}
-                    </div>
+                    <RoomRow
+                      key={room._id}
+                      room={room}
+                      organizationId={organizationId}
+                      canEdit={canEdit}
+                      canDelete={canDelete}
+                      onToggle={handleToggleRoom}
+                      onDelete={handleDeleteRoom}
+                    />
                   ))}
                 </div>
               )}
+            </div>
+
+            <Separator />
+
+            {/* Location activity section */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium">{t("dashboard.recentActivity")}</h4>
+              <ActivityTimeline
+                activities={(locationActivities ?? []) as ActivityWithMetadata[]}
+                maxHeight="200px"
+              />
             </div>
           </div>
         </>

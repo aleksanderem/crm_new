@@ -18,6 +18,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Pencil } from "@/lib/ez-icons";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
+import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
+import type { ActivityWithMetadata } from "@/components/activity-timeline/presenter/activity-presenter";
 import { toast } from "sonner";
 import { Id } from "@cvx/_generated/dataModel";
 import { formatActionError } from "@/lib/format-action-error";
@@ -170,6 +173,8 @@ function LeaveTypesSettings() {
           open={!!editingId}
           onClose={() => setEditingId(null)}
           initial={editing}
+          leaveTypeId={editingId ?? undefined}
+          organizationId={organizationId as string}
           onSubmit={async (data) => {
             await updateLeaveType({ organizationId, leaveTypeId: editingId! as Id<"gabinetLeaveTypes">, ...data });
             toast.success(t("common.saved"));
@@ -215,6 +220,8 @@ function LeaveTypeDialog({
   open,
   onClose,
   initial,
+  leaveTypeId,
+  organizationId,
   onSubmit,
   onDelete,
   t,
@@ -229,6 +236,8 @@ function LeaveTypeDialog({
     requiresApproval: boolean;
     isActive: boolean;
   };
+  leaveTypeId?: string;
+  organizationId?: string;
   onSubmit: (data: {
     name: string;
     color?: string;
@@ -247,6 +256,13 @@ function LeaveTypeDialog({
   const [requiresApproval, setRequiresApproval] = useState(initial?.requiresApproval ?? true);
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
   const [saving, setSaving] = useState(false);
+
+  const { data: leaveTypeActivities } = useSupabaseActivitiesByEntity(
+    organizationId ?? "",
+    "gabinetLeaveType",
+    leaveTypeId,
+    { enabled: !!leaveTypeId && !!organizationId },
+  );
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
@@ -335,6 +351,16 @@ function LeaveTypeDialog({
             </label>
           )}
         </div>
+
+        {leaveTypeId && leaveTypeActivities && leaveTypeActivities.length > 0 && (
+          <div className="space-y-1.5 border-t pt-3">
+            <p className="text-xs font-medium text-muted-foreground">{t("dashboard.recentActivity")}</p>
+            <ActivityTimeline
+              activities={leaveTypeActivities as ActivityWithMetadata[]}
+              maxHeight="180px"
+            />
+          </div>
+        )}
 
         <DialogFooter className="flex gap-2">
           {onDelete && (

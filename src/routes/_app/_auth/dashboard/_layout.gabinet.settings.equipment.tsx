@@ -38,6 +38,9 @@ import {
   Trash2,
 } from "@/lib/ez-icons";
 import { useState } from "react";
+import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
+import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
+import type { ActivityWithMetadata } from "@/components/activity-timeline/presenter/activity-presenter";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
@@ -250,6 +253,7 @@ function EquipmentCard({
   const [saving, setSaving] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
   const [transferLocationId, setTransferLocationId] = useState<string>("");
   const [transferRoomId, setTransferRoomId] = useState<string>("");
   const [transferNotes, setTransferNotes] = useState("");
@@ -259,6 +263,13 @@ function EquipmentCard({
 
   const updateEquipment = useAction(api.gabinet.equipment.updateEquipment);
   const transferEquipment = useAction(api.gabinet.equipment.transferEquipment);
+
+  const { data: equipmentActivities } = useSupabaseActivitiesByEntity(
+    organizationId as string,
+    "gabinetEquipment",
+    item._id as string,
+    { enabled: expanded && activityOpen },
+  );
 
   const getLocationAction = useAction(api.gabinet.locations.getLocation);
   const { data: selectedLocationData } = useQuery({
@@ -476,20 +487,35 @@ function EquipmentCard({
             </div>
 
             <div className="flex items-center justify-between pt-2">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="gap-1.5 text-muted-foreground"
-                onClick={() => setHistoryOpen((v) => !v)}
-              >
-                <History className="h-4 w-4" variant="stroke" />
-                {t("gabinet.equipment.transferHistory")}
-                {historyOpen ? (
-                  <ChevronDown className="h-3 w-3" variant="stroke" />
-                ) : (
-                  <ChevronRight className="h-3 w-3" variant="stroke" />
-                )}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="gap-1.5 text-muted-foreground"
+                  onClick={() => setHistoryOpen((v) => !v)}
+                >
+                  <History className="h-4 w-4" variant="stroke" />
+                  {t("gabinet.equipment.transferHistory")}
+                  {historyOpen ? (
+                    <ChevronDown className="h-3 w-3" variant="stroke" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3" variant="stroke" />
+                  )}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="gap-1.5 text-muted-foreground"
+                  onClick={() => setActivityOpen((v) => !v)}
+                >
+                  {t("dashboard.recentActivity")}
+                  {activityOpen ? (
+                    <ChevronDown className="h-3 w-3" variant="stroke" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3" variant="stroke" />
+                  )}
+                </Button>
+              </div>
               {canEdit && (
                 <Button
                   size="sm"
@@ -506,6 +532,13 @@ function EquipmentCard({
                 equipmentId={item._id as Id<"gabinetEquipment">}
                 organizationId={organizationId}
                 locations={locations}
+              />
+            )}
+
+            {activityOpen && (
+              <ActivityTimeline
+                activities={(equipmentActivities ?? []) as ActivityWithMetadata[]}
+                maxHeight="200px"
               />
             )}
           </div>

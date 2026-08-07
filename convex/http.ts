@@ -12,7 +12,7 @@ import {
   sendSubscriptionSuccessEmail,
 } from "@cvx/email/templates/subscriptionEmail";
 import Stripe from "stripe";
-import { Doc } from "@cvx/_generated/dataModel";
+import { Doc, Id } from "@cvx/_generated/dataModel";
 import { createLogger } from "@cvx/_helpers/logger";
 
 function normalizeWebhookValue(value: FormDataEntryValue | unknown): string | undefined {
@@ -105,6 +105,18 @@ async function verifyTwilioRequest(
 
 const http = httpRouter();
 
+const PRODUCT_SUBSCRIPTION_STATUSES = new Set([
+  "active", "trialing", "past_due", "canceled", "incomplete",
+]);
+
+function toProductSubscriptionStatus(
+  stripeStatus: string,
+): "active" | "trialing" | "past_due" | "canceled" | "incomplete" {
+  return PRODUCT_SUBSCRIPTION_STATUSES.has(stripeStatus)
+    ? (stripeStatus as "active" | "trialing" | "past_due" | "canceled" | "incomplete")
+    : "incomplete";
+}
+
 /**
  * Gets and constructs a Stripe event signature.
  *
@@ -164,6 +176,9 @@ const handleCheckoutSessionCompleted = async (
     .object({ customer: z.string(), subscription: z.string() })
     .parse(session);
 
+  const productKey = session.metadata?.productKey;
+  const organizationId = session.metadata?.organizationId;
+
   const user = await ctx.runQuery(internal.stripe.PREAUTH_getUserByCustomerId, {
     customerId,
   });
@@ -179,6 +194,21 @@ const handleCheckoutSessionCompleted = async (
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
   await handleUpdateSubscription(ctx, user, subscription);
+
+  // Sync per-org per-module entitlement table so getActiveProducts() reflects
+  // the newly purchased module without requiring manual backfill.
+  if (organizationId && productKey) {
+    const normalizedStatus = toProductSubscriptionStatus(subscription.status);
+    await ctx.runMutation(internal.stripe.PREAUTH_upsertProductSubscription, {
+      organizationId: organizationId as Id<"organizations">,
+      productId: productKey,
+      stripeSubscriptionId: subscription.id,
+      status: normalizedStatus,
+      currentPeriodStart: subscription.current_period_start,
+      currentPeriodEnd: subscription.current_period_end,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+    });
+  }
 
   await sendSubscriptionSuccessEmail({
     email: user.email,
@@ -243,6 +273,21 @@ const handleCustomerSubscriptionUpdated = async (
 
   await handleUpdateSubscription(ctx, user, subscription);
 
+  const productKey = subscription.metadata?.productKey;
+  const organizationId = subscription.metadata?.organizationId;
+  if (organizationId && productKey) {
+    const normalizedStatus = toProductSubscriptionStatus(subscription.status);
+    await ctx.runMutation(internal.stripe.PREAUTH_upsertProductSubscription, {
+      organizationId: organizationId as Id<"organizations">,
+      productId: productKey,
+      stripeSubscriptionId: subscription.id,
+      status: normalizedStatus,
+      currentPeriodStart: subscription.current_period_start,
+      currentPeriodEnd: subscription.current_period_end,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+    });
+  }
+
   return new Response(null);
 };
 
@@ -284,6 +329,21 @@ const handleCustomerSubscriptionCreated = async (
 
   await handleUpdateSubscription(ctx, user, subscription);
 
+  const productKey = subscription.metadata?.productKey;
+  const organizationId = subscription.metadata?.organizationId;
+  if (organizationId && productKey) {
+    const normalizedStatus = toProductSubscriptionStatus(subscription.status);
+    await ctx.runMutation(internal.stripe.PREAUTH_upsertProductSubscription, {
+      organizationId: organizationId as Id<"organizations">,
+      productId: productKey,
+      stripeSubscriptionId: subscription.id,
+      status: normalizedStatus,
+      currentPeriodStart: subscription.current_period_start,
+      currentPeriodEnd: subscription.current_period_end,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+    });
+  }
+
   return new Response(null);
 };
 
@@ -295,6 +355,19 @@ const handleCustomerSubscriptionDeleted = async (
   await ctx.runMutation(internal.stripe.PREAUTH_deleteSubscription, {
     subscriptionStripeId: subscription.id,
   });
+
+  const productKey = subscription.metadata?.productKey;
+  const organizationId = subscription.metadata?.organizationId;
+  if (organizationId && productKey) {
+    await ctx.runMutation(internal.stripe.PREAUTH_upsertProductSubscription, {
+      organizationId: organizationId as Id<"organizations">,
+      productId: productKey,
+      stripeSubscriptionId: subscription.id,
+      status: "canceled",
+      cancelAtPeriodEnd: false,
+    });
+  }
+
   return new Response(null);
 };
 

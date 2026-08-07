@@ -10,7 +10,7 @@ import type { Doc } from "@cvx/_generated/dataModel";
 import { v } from "convex/values";
 import { ERRORS } from "~/errors";
 import { auth } from "@cvx/auth";
-import { currencyValidator, intervalValidator, PLANS } from "@cvx/schema";
+import { currencyValidator, intervalValidator, PLANS, PRODUCT_KEYS } from "@cvx/schema";
 import { api, internal } from "~/convex/_generated/api";
 import { SITE_URL, STRIPE_SECRET_KEY } from "@cvx/env";
 import { asyncMap } from "convex-helpers";
@@ -124,7 +124,7 @@ export const PREAUTH_getUserByCustomerId = internalQuery({
     const subscription = await ctx.db
       .query("subscriptions")
       .withIndex("userId", (q) => q.eq("userId", user._id))
-      .unique();
+      .first();
     if (!subscription) {
       throw new Error(ERRORS.STRIPE_SOMETHING_WENT_WRONG);
     }
@@ -209,14 +209,7 @@ export const PREAUTH_replaceSubscription = internalMutation({
     }),
   },
   handler: async (ctx, args) => {
-    const subscription = await ctx.db
-      .query("subscriptions")
-      .withIndex("userId", (q) => q.eq("userId", args.userId))
-      .unique();
-    if (!subscription) {
-      throw new Error(ERRORS.STRIPE_SOMETHING_WENT_WRONG);
-    }
-    await ctx.db.delete(subscription._id);
+    // Look up the new plan first to get its productKey for targeted replacement
     const plan = await ctx.db
       .query("plans")
       .withIndex("stripeId", (q) => q.eq("stripeId", args.input.planStripeId))
@@ -224,6 +217,33 @@ export const PREAUTH_replaceSubscription = internalMutation({
     if (!plan) {
       throw new Error(ERRORS.STRIPE_SOMETHING_WENT_WRONG);
     }
+
+    // Find the subscription to replace: when productKey is known, only replace
+    // the subscription for that module so other modules are not disturbed.
+    let existingSubscription = null;
+    if (plan.productKey) {
+      const userSubs = await ctx.db
+        .query("subscriptions")
+        .withIndex("userId", (q) => q.eq("userId", args.userId))
+        .collect();
+      for (const sub of userSubs) {
+        const subPlan = await ctx.db.get(sub.planId);
+        if (subPlan?.productKey === plan.productKey) {
+          existingSubscription = sub;
+          break;
+        }
+      }
+    } else {
+      existingSubscription = await ctx.db
+        .query("subscriptions")
+        .withIndex("userId", (q) => q.eq("userId", args.userId))
+        .first();
+    }
+
+    if (existingSubscription) {
+      await ctx.db.delete(existingSubscription._id);
+    }
+
     const newSubId = await ctx.db.insert("subscriptions", {
       userId: args.userId,
       planId: plan._id,
@@ -267,6 +287,61 @@ export const PREAUTH_deleteSubscription = internalMutation({
       throw new Error(ERRORS.STRIPE_SOMETHING_WENT_WRONG);
     }
     await ctx.db.delete(subscription._id);
+  },
+});
+
+/**
+ * Upserts a per-organization per-product subscription record.
+ * Called from Stripe webhook handlers to keep the productSubscriptions table
+ * in sync with actual Stripe subscription state.
+ */
+export const PREAUTH_upsertProductSubscription = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    productId: v.string(),
+    stripeSubscriptionId: v.string(),
+    status: v.union(
+      v.literal("active"),
+      v.literal("trialing"),
+      v.literal("past_due"),
+      v.literal("canceled"),
+      v.literal("incomplete"),
+    ),
+    currentPeriodStart: v.optional(v.number()),
+    currentPeriodEnd: v.optional(v.number()),
+    cancelAtPeriodEnd: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("productSubscriptions")
+      .withIndex("by_orgAndProduct", (q) =>
+        q.eq("organizationId", args.organizationId).eq("productId", args.productId)
+      )
+      .first();
+
+    const now = Date.now();
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        stripeSubscriptionId: args.stripeSubscriptionId,
+        status: args.status,
+        currentPeriodStart: args.currentPeriodStart,
+        currentPeriodEnd: args.currentPeriodEnd,
+        cancelAtPeriodEnd: args.cancelAtPeriodEnd,
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.insert("productSubscriptions", {
+        organizationId: args.organizationId,
+        productId: args.productId,
+        stripeSubscriptionId: args.stripeSubscriptionId,
+        status: args.status,
+        currentPeriodStart: args.currentPeriodStart,
+        currentPeriodEnd: args.currentPeriodEnd,
+        cancelAtPeriodEnd: args.cancelAtPeriodEnd,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
   },
 });
 
@@ -327,7 +402,7 @@ export const getCurrentUserSubscription = internalQuery({
       ctx.db
         .query("subscriptions")
         .withIndex("userId", (q) => q.eq("userId", userId))
-        .unique(),
+        .first(),
       ctx.db.get(args.planId),
     ]);
     if (!currentSubscription) {
@@ -350,6 +425,7 @@ export const getCurrentUserSubscription = internalQuery({
 export const createSubscriptionCheckout = action({
   args: {
     userId: v.id("users"),
+    organizationId: v.id("organizations"),
     planId: v.id("plans"),
     planInterval: intervalValidator,
     currency: currencyValidator,
@@ -374,6 +450,7 @@ export const createSubscriptionCheckout = action({
     }
 
     const price = newPlan?.prices[args.planInterval][args.currency];
+    const productKey = newPlan?.productKey ?? PRODUCT_KEYS.CRM;
 
     const checkout = await stripe.checkout.sessions.create({
       customer: user.customerId,
@@ -382,6 +459,16 @@ export const createSubscriptionCheckout = action({
       payment_method_types: ["card"],
       success_url: `${SITE_URL}/dashboard/checkout`,
       cancel_url: `${SITE_URL}/dashboard/settings/billing`,
+      metadata: {
+        productKey,
+        organizationId: args.organizationId,
+      },
+      subscription_data: {
+        metadata: {
+          productKey,
+          organizationId: args.organizationId,
+        },
+      },
     });
     if (!checkout) {
       throw new Error(ERRORS.STRIPE_SOMETHING_WENT_WRONG);

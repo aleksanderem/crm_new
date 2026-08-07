@@ -30,6 +30,7 @@ export type GabinetLoyaltyTransactionRow = SupabaseRow<"gabinetLoyaltyTransactio
 export type GabinetLoyaltyTierRow = SupabaseRow<"gabinetLoyaltyTiers">;
 export type GabinetCashTransactionRow = SupabaseRow<"gabinetCashTransactions">;
 export type GabinetDayCloseRow = SupabaseRow<"gabinetDayCloses">;
+export type GabinetWaitlistRow = SupabaseRow<"gabinetWaitlist">;
 export type AppointmentWorkflowHistoryRow = SupabaseRow<"appointmentWorkflowHistory">;
 export type PaymentRow = SupabaseRow<"payments">;
 export type NoteRow = SupabaseRow<"notes">;

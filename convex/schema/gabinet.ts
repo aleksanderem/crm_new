@@ -9,6 +9,7 @@ interface GabinetSchemaDeps {
   gabinetPackageUsageStatusValidator: typeof import("../schema").gabinetPackageUsageStatusValidator;
   gabinetLoyaltyTierValidator: typeof import("../schema").gabinetLoyaltyTierValidator;
   gabinetLoyaltyTxTypeValidator: typeof import("../schema").gabinetLoyaltyTxTypeValidator;
+  gabinetWaitlistStatusValidator: typeof import("../schema").gabinetWaitlistStatusValidator;
   appointmentSmsDirectionValidator: typeof import("../schema").appointmentSmsDirectionValidator;
   appointmentSmsIntentValidator: typeof import("../schema").appointmentSmsIntentValidator;
   appointmentSmsProcessingStatusValidator: typeof import("../schema").appointmentSmsProcessingStatusValidator;
@@ -25,6 +26,7 @@ export function createGabinetTables({
   gabinetPackageUsageStatusValidator,
   gabinetLoyaltyTierValidator,
   gabinetLoyaltyTxTypeValidator,
+  gabinetWaitlistStatusValidator,
   appointmentSmsDirectionValidator,
   appointmentSmsIntentValidator,
   appointmentSmsProcessingStatusValidator,
@@ -1115,5 +1117,29 @@ export function createGabinetTables({
   })
     .index("by_org", ["organizationId"])
     .index("by_orgAndDate", ["organizationId", "date"]),
+
+  // --- Gabinet: Waitlist (issue #4166) ---
+  // Patients waiting for an appointment slot. Supports optional treatment and
+  // employee preference, flexible preferred-date/time arrays, and priority
+  // ordering within the queue.
+  gabinetWaitlist: defineTable({
+    organizationId: v.id("organizations"),
+    patientId: v.id("gabinetPatients"),
+    treatmentId: v.optional(v.id("gabinetTreatments")),
+    employeeId: v.optional(v.id("gabinetEmployees")),
+    preferredDates: v.optional(v.array(v.string())), // YYYY-MM-DD
+    preferredTimes: v.optional(v.array(v.string())), // HH:MM
+    notes: v.optional(v.string()),
+    status: gabinetWaitlistStatusValidator,
+    notifiedAt: v.optional(v.number()),
+    priority: v.number(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndStatus", ["organizationId", "status"])
+    .index("by_orgAndPatient", ["organizationId", "patientId"])
+    .index("by_orgAndPriority", ["organizationId", "priority"]),
   };
 }

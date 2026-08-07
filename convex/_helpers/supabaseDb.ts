@@ -97,6 +97,7 @@ const TABLE_MAP: Record<string, string> = {
   gabinetReceiptSequences: "gabinet_receipt_sequences",
   gabinetCashTransactions: "gabinet_cash_transactions",
   gabinetDayCloses: "gabinet_day_closes",
+  gabinetWaitlist: "gabinet_waitlist",
 };
 
 function toSnakeCase(str: string): string {

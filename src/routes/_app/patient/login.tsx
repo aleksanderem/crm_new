@@ -172,6 +172,7 @@ function PatientLogin() {
               {loading ? t("common.loading") : t("patientPortal.login.verify")}
             </Button>
             <button
+              type="button"
               className="w-full text-xs text-muted-foreground hover:text-foreground"
               onClick={() => { setStep("email"); setOtp(""); }}
             >

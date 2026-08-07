@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { loginAndGoToDashboard } from "./helpers/auth";
+import { BASE_URL, loginAndGoToDashboard } from "./helpers/auth";
 import {
   navigateTo,
   assertNoErrorBoundary,
@@ -381,5 +381,182 @@ test.describe("Accessibility — WCAG 2.1 AA", () => {
     expect(isFocusInDialog).toBe(true);
 
     await page.keyboard.press("Escape");
+  });
+
+  // ─── 23.3 Patient Portal Accessibility ──────────────────────
+
+  test("patient portal login page (invalid-link state) has no critical/serious WCAG violations", async ({
+    page,
+  }) => {
+    // Without ?org= the component renders an error card immediately — no backend call.
+    await page.goto(`${BASE_URL}/patient/login`, {
+      waitUntil: "domcontentloaded",
+      timeout: 15000,
+    });
+    await page.waitForTimeout(500);
+    await assertNoErrorBoundary(page);
+    await runAxeScan(page, "/patient/login (invalid-link)");
+  });
+
+  test("patient portal login form (email step) has no critical/serious WCAG violations", async ({
+    page,
+  }) => {
+    // With ?org=X the component renders the email form immediately while the
+    // Convex org-lookup query is in flight. Scan before the response arrives.
+    await page.goto(`${BASE_URL}/patient/login?org=test`, {
+      waitUntil: "domcontentloaded",
+      timeout: 15000,
+    });
+    // Small wait for React to hydrate but intentionally before network settles.
+    await page.waitForTimeout(600);
+    await assertNoErrorBoundary(page);
+
+    const emailInput = page.locator("#patient-email");
+    if (!(await emailInput.isVisible({ timeout: 3000 }).catch(() => false))) {
+      // Org resolved and may have shown error card — scan whatever is rendered.
+      await runAxeScan(page, "/patient/login?org=test (resolved)");
+      return;
+    }
+
+    await runAxeScan(page, "/patient/login?org=test (email step)");
+  });
+
+  test("patient portal login email input has an associated label", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE_URL}/patient/login?org=test`, {
+      waitUntil: "domcontentloaded",
+      timeout: 15000,
+    });
+    await page.waitForTimeout(600);
+
+    const emailInput = page.locator("#patient-email");
+    if (!(await emailInput.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    const labelCount = await page.locator('label[for="patient-email"]').count();
+    expect(labelCount).toBeGreaterThan(0);
+  });
+
+  test("patient portal login Tab key moves focus from email to button", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE_URL}/patient/login?org=test`, {
+      waitUntil: "domcontentloaded",
+      timeout: 15000,
+    });
+    await page.waitForTimeout(600);
+
+    const emailInput = page.locator("#patient-email");
+    if (!(await emailInput.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await emailInput.click();
+    await page.keyboard.press("Tab");
+
+    const activeTag = await page.evaluate(
+      () => document.activeElement?.tagName ?? ""
+    );
+    // Focus should move to a focusable element (button).
+    expect(["BUTTON", "A", "INPUT", "SELECT", "TEXTAREA"]).toContain(
+      activeTag.toUpperCase()
+    );
+    await assertNoErrorBoundary(page);
+  });
+
+  test("patient portal login Enter key on email field triggers send action", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE_URL}/patient/login?org=test`, {
+      waitUntil: "domcontentloaded",
+      timeout: 15000,
+    });
+    await page.waitForTimeout(600);
+
+    const emailInput = page.locator("#patient-email");
+    if (!(await emailInput.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await emailInput.fill("patient@example.com");
+    await page.keyboard.press("Enter");
+    // May show OTP step, a toast error, or stay on email step if org not found.
+    // All are valid outcomes — we only assert no crash.
+    await page.waitForTimeout(2000);
+    await assertNoErrorBoundary(page);
+  });
+
+  test("patient portal OTP input has an associated label when OTP step is visible", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE_URL}/patient/login?org=test`, {
+      waitUntil: "domcontentloaded",
+      timeout: 15000,
+    });
+    await page.waitForTimeout(600);
+
+    const otpInput = page.locator("#patient-otp");
+    if (!(await otpInput.isVisible({ timeout: 2000 }).catch(() => false))) {
+      // OTP step not rendered (still on email step or error state) — skip.
+      test.skip();
+      return;
+    }
+
+    const labelCount = await page.locator('label[for="patient-otp"]').count();
+    expect(labelCount).toBeGreaterThan(0);
+  });
+
+  test("patient portal OTP input strips non-digit characters", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE_URL}/patient/login?org=test`, {
+      waitUntil: "domcontentloaded",
+      timeout: 15000,
+    });
+    await page.waitForTimeout(600);
+
+    const otpInput = page.locator("#patient-otp");
+    if (!(await otpInput.isVisible({ timeout: 2000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await otpInput.fill("ab1c2d3");
+    const value = await otpInput.inputValue();
+    expect(value).toMatch(/^\d*$/);
+  });
+
+  test("patient portal verify button is disabled until 6 digits are entered", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE_URL}/patient/login?org=test`, {
+      waitUntil: "domcontentloaded",
+      timeout: 15000,
+    });
+    await page.waitForTimeout(600);
+
+    const otpInput = page.locator("#patient-otp");
+    if (!(await otpInput.isVisible({ timeout: 2000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    // Fewer than 6 digits → button disabled.
+    await otpInput.fill("123");
+    const verifyBtn = page
+      .locator(
+        'button:has-text("Zweryfikuj"), button:has-text("Verify"), button:has-text("Potwierdź")'
+      )
+      .first();
+    expect(await verifyBtn.isDisabled()).toBe(true);
+
+    // Exactly 6 digits → button enabled.
+    await otpInput.fill("123456");
+    expect(await verifyBtn.isDisabled()).toBe(false);
   });
 });

@@ -25,7 +25,6 @@ import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 
 const STEPS = [
   "businessInfo",
-  "employees",
   "treatments",
   "schedule",
   "invite",
@@ -45,9 +44,6 @@ function SetupWizard() {
   // Form state
   const [orgName, setOrgName] = useState("");
   const [currency, setCurrency] = useState("PLN");
-  const [employees, setEmployees] = useState<{ name: string; role: string }[]>([
-    { name: "", role: "stylist" },
-  ]);
   const [treatments, setTreatments] = useState<{ name: string; price: string; duration: string }[]>([
     { name: "", price: "", duration: "60" },
   ]);
@@ -81,8 +77,6 @@ function SetupWizard() {
     switch (currentStepKey) {
       case "businessInfo":
         return orgName.trim().length > 0;
-      case "employees":
-        return employees.every((e) => e.name.trim().length > 0);
       case "treatments":
         return treatments.every((t) => t.name.trim().length > 0);
       case "schedule":
@@ -148,20 +142,6 @@ function SetupWizard() {
     } else {
       setCurrentStep((prev) => prev + 1);
     }
-  };
-
-  const addEmployee = () => {
-    setEmployees([...employees, { name: "", role: "stylist" }]);
-  };
-
-  const updateEmployee = (index: number, field: "name" | "role", value: string) => {
-    const updated = [...employees];
-    updated[index] = { ...updated[index], [field]: value };
-    setEmployees(updated);
-  };
-
-  const removeEmployee = (index: number) => {
-    setEmployees(employees.filter((_, i) => i !== index));
   };
 
   const addTreatment = () => {
@@ -249,54 +229,7 @@ function SetupWizard() {
             </div>
           )}
 
-          {/* Step 2: Employees */}
-          {currentStepKey === "employees" && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">{t("onboarding.employeesDescription")}</p>
-              {employees.map((emp, index) => (
-                <div key={index} className="flex gap-2">
-                  <Label htmlFor={`emp-name-${index}`} className="sr-only">
-                    {t("onboarding.employeeName")} {index + 1}
-                  </Label>
-                  <Input
-                    id={`emp-name-${index}`}
-                    value={emp.name}
-                    onChange={(e) => updateEmployee(index, "name", e.target.value)}
-                    placeholder={t("onboarding.employeeName")}
-                    className="flex-1"
-                  />
-                  <Label htmlFor={`emp-role-${index}`} className="sr-only">
-                    {t("onboarding.employeeRole")} {index + 1}
-                  </Label>
-                  <Select value={emp.role} onValueChange={(v) => updateEmployee(index, "role", v)}>
-                    <SelectTrigger id={`emp-role-${index}`} className="w-[120px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="stylist">{t("onboarding.roleStylist")}</SelectItem>
-                      <SelectItem value="therapist">{t("onboarding.roleTherapist")}</SelectItem>
-                      <SelectItem value="admin">{t("onboarding.roleAdmin")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {employees.length > 1 && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeEmployee(index)}
-                      aria-label={t("onboarding.removeEmployee")}
-                    >
-                      ×
-                    </Button>
-                  )}
-                </div>
-              ))}
-              <Button variant="outline" size="sm" onClick={addEmployee}>
-                + {t("onboarding.addEmployee")}
-              </Button>
-            </div>
-          )}
-
-          {/* Step 3: Treatments */}
+          {/* Step 2: Treatments */}
           {currentStepKey === "treatments" && (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">{t("onboarding.treatmentsDescription")}</p>

@@ -53,4 +53,13 @@ crons.daily(
   internal.gabinet.patients._purgeExpiredPatients,
 );
 
+// Delete signingLinkStubs rows that have been past their expiresAt for more
+// than 24 h (grace period for diagnostics). Prevents unbounded table growth;
+// rows are already invalid at expiry so deletion has no functional impact.
+crons.daily(
+  "cleanup-expired-signing-stubs",
+  { hourUTC: 4, minuteUTC: 0 },
+  internal.signingStubs._cleanupExpiredStubs,
+);
+
 export default crons;

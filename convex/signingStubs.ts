@@ -2,6 +2,15 @@ import { action, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 
+// Stubs past their expiry are already rejected by _consumeStub, so they are
+// safe to delete. A 24 h grace period past expiresAt preserves rows for any
+// incident diagnostics before removal.
+const CLEANUP_GRACE_MS = 24 * 60 * 60 * 1000; // 24 hours
+// Batch cap: Convex mutations have an implicit write-unit budget; 500 deletes
+// per invocation stays well under it and the daily cadence keeps the table
+// from growing between runs.
+const CLEANUP_BATCH_SIZE = 500;
+
 const STUB_EXPIRY_MS = 48 * 60 * 60 * 1000; // 48 hours
 
 function generateStubId(): string {
@@ -62,5 +71,27 @@ export const _consumeStub = internalMutation({
 
     await ctx.db.patch(stub._id, { usedAt: Date.now() });
     return stub.token;
+  },
+});
+
+// Cron target: delete stubs whose expiresAt has passed the grace period.
+// Rows rejected by _consumeStub are already dead at expiry; the grace period
+// gives 24 h of diagnostic window before the row disappears.
+export const _cleanupExpiredStubs = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const cutoff = Date.now() - CLEANUP_GRACE_MS;
+    const expired = await ctx.db
+      .query("signingLinkStubs")
+      .withIndex("by_expiresAt", (q) => q.lt("expiresAt", cutoff))
+      .take(CLEANUP_BATCH_SIZE);
+
+    for (const stub of expired) {
+      await ctx.db.delete(stub._id);
+    }
+
+    if (expired.length > 0) {
+      console.info(`[cleanupExpiredStubs] Deleted ${expired.length} expired stub(s)`);
+    }
   },
 });

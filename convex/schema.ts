@@ -616,7 +616,9 @@ const signingStubTables = {
     organizationId: v.id("organizations"),
     expiresAt: v.number(),
     usedAt: v.optional(v.number()),
-  }).index("by_stubId", ["stubId"]),
+  })
+    .index("by_stubId", ["stubId"])
+    .index("by_expiresAt", ["expiresAt"]),
 };
 
 const schema = defineSchema({

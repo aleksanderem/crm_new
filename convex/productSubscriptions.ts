@@ -11,11 +11,6 @@ export const getActiveProducts = query({
       .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
       .collect();
 
-    // If no subscriptions exist at all, return all products (grace period)
-    if (subs.length === 0) {
-      return ["crm", "gabinet"];
-    }
-
     return subs
       .filter((s) => s.status === "active" || s.status === "trialing")
       .map((s) => s.productId);

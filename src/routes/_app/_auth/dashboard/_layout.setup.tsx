@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useConvexAction } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
+import { toast } from "sonner";
 import { useOrganization } from "@/components/org-context";
 import { Logo } from "@/ui/logo";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,11 @@ function SetupWizard() {
   const { mutateAsync: completeSetup } = useMutation({
     mutationFn: useConvexAction(api.gabinet.onboarding.completeSetup),
   });
+
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"admin" | "member" | "viewer">("member");
+
+  const createInvitation = useAction(api.invitations.create);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -124,6 +130,24 @@ function SetupWizard() {
         setIsSubmitting(false);
       }
     } else {
+      if (currentStepKey === "invite" && inviteEmail.trim()) {
+        setIsSubmitting(true);
+        try {
+          await createInvitation({
+            organizationId,
+            email: inviteEmail.trim(),
+            role: inviteRole,
+          });
+          toast.success(t("team.invitationSent"));
+        } catch (e) {
+          const message = e instanceof Error ? e.message : String(e);
+          toast.error(message);
+          setIsSubmitting(false);
+          return;
+        } finally {
+          setIsSubmitting(false);
+        }
+      }
       setCurrentStep((prev) => prev + 1);
     }
   };
@@ -325,9 +349,29 @@ function SetupWizard() {
                 <Input
                   id="inviteEmail"
                   type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
                   placeholder={t("onboarding.inviteEmailPlaceholder")}
                 />
               </div>
+              {inviteEmail.trim() && (
+                <div className="space-y-2">
+                  <Label htmlFor="inviteRole">{t("team.role")}</Label>
+                  <Select
+                    value={inviteRole}
+                    onValueChange={(v) => setInviteRole(v as "admin" | "member" | "viewer")}
+                  >
+                    <SelectTrigger id="inviteRole">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="member">{t("team.roles.member")}</SelectItem>
+                      <SelectItem value="admin">{t("team.roles.admin")}</SelectItem>
+                      <SelectItem value="viewer">{t("team.roles.viewer")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           )}
 

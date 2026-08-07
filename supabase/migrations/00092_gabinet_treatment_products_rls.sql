@@ -8,6 +8,13 @@
 -- in line with every other table in the project (closes #3801).
 
 DROP POLICY IF EXISTS org_isolation ON gabinet_treatment_products;
+-- Idempotent: 00026 already created these per-command policies (#2332); this
+-- migration (#3801) re-established the same set. Drop-then-create so re-running
+-- against a DB that already has them cannot fail with 42710 (already exists).
+DROP POLICY IF EXISTS gabinet_treatment_products_select ON gabinet_treatment_products;
+DROP POLICY IF EXISTS gabinet_treatment_products_insert ON gabinet_treatment_products;
+DROP POLICY IF EXISTS gabinet_treatment_products_update ON gabinet_treatment_products;
+DROP POLICY IF EXISTS gabinet_treatment_products_delete ON gabinet_treatment_products;
 
 CREATE POLICY gabinet_treatment_products_select ON gabinet_treatment_products
   FOR SELECT USING (current_org_id() = organization_id);

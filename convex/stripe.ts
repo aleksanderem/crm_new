@@ -402,13 +402,26 @@ export const getCurrentUserSubscription = internalQuery({
     if (!userId) {
       throw new Error(ERRORS.STRIPE_SOMETHING_WENT_WRONG);
     }
-    const [currentSubscription, newPlan] = await Promise.all([
-      ctx.db
+    const newPlan = await ctx.db.get(args.planId);
+
+    // Scope the lookup to the specific module's productKey so that a user with
+    // a paid CRM subscription and a free Gabinet subscription can still initiate
+    // a Gabinet checkout (multi-module billing correctness).
+    let currentSubscription = null;
+    if (newPlan?.productKey) {
+      currentSubscription = await ctx.db
+        .query("subscriptions")
+        .withIndex("by_userId_and_productKey", (q) =>
+          q.eq("userId", userId).eq("productKey", newPlan.productKey),
+        )
+        .first();
+    } else {
+      currentSubscription = await ctx.db
         .query("subscriptions")
         .withIndex("userId", (q) => q.eq("userId", userId))
-        .first(),
-      ctx.db.get(args.planId),
-    ]);
+        .first();
+    }
+
     if (!currentSubscription) {
       throw new Error(ERRORS.STRIPE_SOMETHING_WENT_WRONG);
     }

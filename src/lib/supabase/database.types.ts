@@ -106,6 +106,12 @@
  *   • 00099_users_subscriptions_rls.sql
  *   • 00100_users_is_platform_admin.sql
  *   • 00101_org_sms_config_column_security.sql
+ *   • 00102_my_orgs_user_policies.sql
+ *   • 00103_invitation_by_token_rpc.sql
+ *   • 00104_users_is_platform_admin_comment.sql
+ *   • 00105_form_documents_entity_timing_idx.sql
+ *   • 00106_gabinet_loyalty_tiers.sql
+ *   • 00107_backfill_gabinet_loyalty_points_tier.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -5339,50 +5345,6 @@ export interface Database {
           },
         ];
       };
-      gabinet_loyalty_tiers: {
-        Row: {
-          id: string;
-          organization_id: string;
-          tier: string;
-          name: string;
-          threshold: number;
-          color: string | null;
-          is_active: boolean;
-          created_at: number;
-          updated_at: number;
-        };
-        Insert: {
-          id: string;
-          organization_id: string;
-          tier: string;
-          name: string;
-          threshold?: number;
-          color?: string | null;
-          is_active?: boolean;
-          created_at: number;
-          updated_at: number;
-        };
-        Update: {
-          id?: string;
-          organization_id?: string;
-          tier?: string;
-          name?: string;
-          threshold?: number;
-          color?: string | null;
-          is_active?: boolean;
-          created_at?: number;
-          updated_at?: number;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "gabinet_loyalty_tiers_organization_id_fkey";
-            columns: ["organization_id"];
-            isOneToOne: false;
-            referencedRelation: "organizations";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       gabinet_document_templates: {
         Row: {
           id: string;
@@ -7427,6 +7389,9 @@ export interface Database {
           organization_name: string;
           organization_nip: string | null;
           organization_address: string | null;
+          total_net: number;
+          total_vat: number;
+          total_gross: number;
           payment_method: string;
           items_json: string;
           fiscal_receipt_id: string | null;
@@ -7450,6 +7415,9 @@ export interface Database {
           organization_name: string;
           organization_nip?: string | null;
           organization_address?: string | null;
+          total_net: number;
+          total_vat: number;
+          total_gross: number;
           payment_method: string;
           items_json: string;
           fiscal_receipt_id?: string | null;
@@ -7473,6 +7441,9 @@ export interface Database {
           organization_name?: string;
           organization_nip?: string | null;
           organization_address?: string | null;
+          total_net?: number;
+          total_vat?: number;
+          total_gross?: number;
           payment_method?: string;
           items_json?: string;
           fiscal_receipt_id?: string | null;
@@ -7572,6 +7543,50 @@ export interface Database {
           },
         ];
       };
+      gabinet_loyalty_tiers: {
+        Row: {
+          id: string;
+          organization_id: string;
+          tier: string;
+          name: string;
+          threshold: number;
+          color: string | null;
+          is_active: boolean;
+          created_at: number;
+          updated_at: number;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          tier: string;
+          name: string;
+          threshold?: number;
+          color?: string | null;
+          is_active?: boolean;
+          created_at: number;
+          updated_at: number;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          tier?: string;
+          name?: string;
+          threshold?: number;
+          color?: string | null;
+          is_active?: boolean;
+          created_at?: number;
+          updated_at?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_loyalty_tiers_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       org_sms_config_summary: {
@@ -7596,18 +7611,10 @@ export interface Database {
         Returns: string;
       };
       get_invitation_by_token: {
-        Args: { p_token: string };
-        Returns: {
-          id: string;
-          email: string;
-          role: string;
-          status: string;
-          expires_at: number;
-          created_at: number;
-          module: string | null;
-          org_name: string | null;
-          inviter_name: string | null;
-        }[];
+        Args: {
+          p_token: string;
+        };
+        Returns: string;
       };
     };
     Enums: Record<string, never>;
@@ -7764,3 +7771,6 @@ export type GabinetLoyaltyTransactionUpdate = Database["public"]["Tables"]["gabi
 export type GabinetLoyaltyTierRow = Database["public"]["Tables"]["gabinet_loyalty_tiers"]["Row"];
 export type GabinetLoyaltyTierInsert = Database["public"]["Tables"]["gabinet_loyalty_tiers"]["Insert"];
 export type GabinetLoyaltyTierUpdate = Database["public"]["Tables"]["gabinet_loyalty_tiers"]["Update"];
+export type GabinetReceiptRow = Database["public"]["Tables"]["gabinet_receipts"]["Row"];
+export type GabinetReceiptInsert = Database["public"]["Tables"]["gabinet_receipts"]["Insert"];
+export type GabinetReceiptUpdate = Database["public"]["Tables"]["gabinet_receipts"]["Update"];

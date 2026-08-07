@@ -32,6 +32,7 @@ import {
   useSupabaseGabinetTreatmentPackagesList,
 } from "@/hooks/use-supabase-gabinet-packages";
 import { useSupabasePaymentsByPatient } from "@/hooks/use-supabase-payments";
+import { useSupabaseGabinetReceiptsByPatient } from "@/hooks/use-supabase-gabinet-receipts";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
@@ -81,6 +82,7 @@ import {
   RefreshCw,
   Sparkles,
   ChevronDown,
+  FileText,
 } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 
@@ -201,6 +203,9 @@ function PatientDetail() {
   const requestRefundAuthAction = useAction(
     api.payments.requestRefundAuthorization,
   );
+  const generatePdfReceiptAction = useAction(
+    api.gabinet.receipts.generatePdfReceipt,
+  );
   const trackView = useAction(api.recentlyViewed.track);
   const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action
@@ -227,6 +232,8 @@ function PatientDetail() {
     organizationId,
     "gabinetPatient",
   );
+
+  const [generatingReceiptFor, setGeneratingReceiptFor] = useState<string | null>(null);
 
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [paymentEditAmount, setPaymentEditAmount] = useState("");
@@ -354,6 +361,11 @@ function PatientDetail() {
     patientId,
   );
 
+  const { data: patientReceipts } = useSupabaseGabinetReceiptsByPatient(
+    organizationId,
+    patientId,
+  );
+
   const { data: patientPackageUsage } = useSupabaseGabinetPackageUsageByPatient(
     organizationId,
     patientId,
@@ -422,6 +434,10 @@ function PatientDetail() {
   const { allowed: canViewPayments } = usePermission(
     "gabinet_payments",
     "view",
+  );
+  const { allowed: canGenerateReceipt } = usePermission(
+    "gabinet_receipts",
+    "create",
   );
   const { allowed: canViewPhotos } = usePermission("gabinet_photos", "view");
   const { role } = useRole();
@@ -1115,6 +1131,35 @@ function PatientDetail() {
       );
     } finally {
       setIsRefundSubmitting(false);
+    }
+  };
+
+  const handleDownloadReceipt = async (receiptId: string) => {
+    setGeneratingReceiptFor(receiptId);
+    try {
+      const receipt = patientReceipts?.find((r) => r._id === receiptId);
+      if (receipt?.pdfUrl) {
+        window.open(receipt.pdfUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
+      const result = await generatePdfReceiptAction({
+        organizationId,
+        paymentId: receipt?.paymentId ?? receiptId,
+      });
+      if (result?.pdfUrl) {
+        window.open(result.pdfUrl, "_blank", "noopener,noreferrer");
+      } else {
+        toast.error(t("gabinet.receipts.noUrl"));
+      }
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "common.error",
+          defaultValue: "Wystąpił błąd.",
+        }),
+      );
+    } finally {
+      setGeneratingReceiptFor(null);
     }
   };
 
@@ -1934,6 +1979,97 @@ function PatientDetail() {
                 </div>
               );
             })(),
+          },
+        ]
+      : []),
+    ...(canViewPayments
+      ? [
+          {
+            label: t("gabinet.patients.tabs.billing"),
+            count: patientReceipts?.length ?? 0,
+            content: (
+              <div className="space-y-4">
+                {!patientReceipts || patientReceipts.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <FileText className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      {t("gabinet.patients.billing.noReceipts")}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border rounded-lg">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          <th className="text-left p-3 text-sm font-medium">
+                            {t("gabinet.patients.billing.receiptNumber")}
+                          </th>
+                          <th className="text-left p-3 text-sm font-medium">
+                            {t("gabinet.patients.billing.type")}
+                          </th>
+                          <th className="text-left p-3 text-sm font-medium">
+                            {t("gabinet.patients.billing.issuedAt")}
+                          </th>
+                          <th className="text-right p-3 text-sm font-medium">
+                            {t("gabinet.patients.billing.totalGross")}
+                          </th>
+                          <th className="text-right p-3 text-sm font-medium">
+                            {t("common.actions")}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {patientReceipts.map((receipt) => (
+                          <tr
+                            key={receipt._id}
+                            className="border-b last:border-0 hover:bg-muted/30"
+                          >
+                            <td className="p-3 text-sm font-mono">
+                              {receipt.receiptNumber}
+                            </td>
+                            <td className="p-3">
+                              <Badge variant="outline" className="text-[10px]">
+                                {t(
+                                  `gabinet.patients.billing.receiptTypes.${receipt.receiptType ?? "original"}`,
+                                )}
+                              </Badge>
+                            </td>
+                            <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">
+                              {new Date(receipt.issuedAt).toLocaleDateString(
+                                "pl-PL",
+                              )}
+                            </td>
+                            <td className="p-3 text-right font-medium tabular-nums">
+                              {receipt.totalGross != null
+                                ? formatCurrencyPLN(receipt.totalGross)
+                                : "—"}
+                            </td>
+                            <td className="p-3 text-right">
+                              {canGenerateReceipt && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={
+                                    generatingReceiptFor === receipt._id
+                                  }
+                                  onClick={() =>
+                                    handleDownloadReceipt(receipt._id)
+                                  }
+                                >
+                                  {generatingReceiptFor === receipt._id
+                                    ? t("gabinet.patients.billing.generating")
+                                    : t("gabinet.patients.billing.download")}
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            ),
           },
         ]
       : []),

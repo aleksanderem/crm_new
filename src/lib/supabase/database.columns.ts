@@ -106,6 +106,12 @@
  *   • 00099_users_subscriptions_rls.sql
  *   • 00100_users_is_platform_admin.sql
  *   • 00101_org_sms_config_column_security.sql
+ *   • 00102_my_orgs_user_policies.sql
+ *   • 00103_invitation_by_token_rpc.sql
+ *   • 00104_users_is_platform_admin_comment.sql
+ *   • 00105_form_documents_entity_timing_idx.sql
+ *   • 00106_gabinet_loyalty_tiers.sql
+ *   • 00107_backfill_gabinet_loyalty_points_tier.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  */
@@ -214,7 +220,8 @@ export type TableName =
   | "document_analysis_jobs"
   | "gabinet_appointment_treatments"
   | "gabinet_receipts"
-  | "gabinet_receipt_sequences";
+  | "gabinet_receipt_sequences"
+  | "gabinet_loyalty_tiers";
 
 /**
  * Column names per table, as a runtime-checkable Set.
@@ -322,6 +329,7 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   delivery_name_mappings: new Set(["id", "organization_id", "invoice_name", "product_id", "created_at"]),
   document_analysis_jobs: new Set(["id", "organization_id", "kind", "pages", "context", "status", "result_json", "error_message", "created_by", "created_at", "updated_at", "completed_at"]),
   gabinet_appointment_treatments: new Set(["id", "organization_id", "appointment_id", "treatment_id", "variant_id", "price_at_booking", "sort_order", "created_at", "updated_at", "stock_deducted", "package_deducted"]),
-  gabinet_receipts: new Set(["id", "organization_id", "payment_id", "appointment_id", "patient_id", "receipt_number", "issued_at", "organization_name", "organization_nip", "organization_address", "payment_method", "items_json", "fiscal_receipt_id", "pdf_storage_id", "pdf_url", "created_by", "created_at", "updated_at", "location_id", "status", "receipt_type"]),
+  gabinet_receipts: new Set(["id", "organization_id", "payment_id", "appointment_id", "patient_id", "receipt_number", "issued_at", "organization_name", "organization_nip", "organization_address", "total_net", "total_vat", "total_gross", "payment_method", "items_json", "fiscal_receipt_id", "pdf_storage_id", "pdf_url", "created_by", "created_at", "updated_at", "location_id", "status", "receipt_type"]),
   gabinet_receipt_sequences: new Set(["id", "organization_id", "location_id", "year", "last_number", "updated_at"]),
+  gabinet_loyalty_tiers: new Set(["id", "organization_id", "tier", "name", "threshold", "color", "is_active", "created_at", "updated_at"]),
 };

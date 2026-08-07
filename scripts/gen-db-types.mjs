@@ -113,7 +113,7 @@ function parseColumnLine(rawLine) {
   if (/^(CONSTRAINT|CHECK|UNIQUE|PRIMARY\s+KEY|FOREIGN\s+KEY|EXCLUDE)\b/i.test(line)) return null;
 
   const colMatch = line.match(
-    /^"?(\w+)"?\s+([\w\s\[\]()]+?)(\s+(?:NOT\s+NULL|NULL|DEFAULT|PRIMARY\s+KEY|REFERENCES|CHECK|UNIQUE|GENERATED).*)?,?\s*$/i,
+    /^"?(\w+)"?\s+([\w\s\[\](,)]+?)(\s+(?:NOT\s+NULL|NULL|DEFAULT|PRIMARY\s+KEY|REFERENCES|CHECK|UNIQUE|GENERATED).*)?,?\s*$/i,
   );
   if (!colMatch) return null;
 
@@ -593,6 +593,8 @@ const entityAliases = [
   { table: "gabinet_package_usage", singular: "GabinetPackageUsage" },
   { table: "gabinet_loyalty_points", singular: "GabinetLoyaltyPoints" },
   { table: "gabinet_loyalty_transactions", singular: "GabinetLoyaltyTransaction" },
+  { table: "gabinet_loyalty_tiers", singular: "GabinetLoyaltyTier" },
+  { table: "gabinet_receipts", singular: "GabinetReceipt" },
 ];
 
 for (const { table, singular } of entityAliases) {

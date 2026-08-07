@@ -2576,7 +2576,23 @@
         "documents": "Dokumenty",
         "loyalty": "Lojalność",
         "credit": "Saldo",
-        "activity": "Aktywność"
+        "activity": "Aktywność",
+        "billing": "Rozliczenia"
+      },
+      "billing": {
+        "title": "Rozliczenia",
+        "description": "Historia paragonów wystawionych pacjentowi.",
+        "noReceipts": "Brak wystawionych paragonów.",
+        "receiptNumber": "Nr paragonu",
+        "issuedAt": "Data wystawienia",
+        "totalGross": "Kwota brutto",
+        "type": "Typ",
+        "receiptTypes": {
+          "original": "Paragon",
+          "correction": "Korekta"
+        },
+        "download": "Pobierz",
+        "generating": "Generowanie..."
       },
       "beautyPlan": {
         "title": "Historia beauty plan",

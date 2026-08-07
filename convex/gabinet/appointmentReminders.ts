@@ -3,6 +3,7 @@ import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { createNotificationDirect } from "../notifications";
+import { logAudit } from "../auditLog";
 import { Id } from "../_generated/dataModel";
 import type { SupabaseRow } from "../_helpers/supabaseRows";
 
@@ -294,6 +295,22 @@ export const sendReminder = internalMutation({
           appointmentTime: appointment.startTime,
           treatmentName,
           employeeName,
+        }),
+      });
+
+      await logAudit(ctx, {
+        organizationId: reminder.organizationId as Id<"organizations">,
+        userId: appointment.employeeId as Id<"users">,
+        action: "gabinet:email:sent",
+        entityType: "gabinetAppointment",
+        entityId: String(appointment._id),
+        details: JSON.stringify({
+          recipientEmail: patient.email,
+          recipientName: patientName,
+          eventType: reminderEventType,
+          appointmentDate: appointment.date,
+          appointmentTime: appointment.startTime,
+          treatmentName,
         }),
       });
     }

@@ -3,6 +3,7 @@ import { Doc, Id } from "../_generated/dataModel";
 import { action, internalMutation, MutationCtx } from "../_generated/server";
 import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { logAudit } from "../auditLog";
 import { v } from "convex/values";
 
 const CONFIRM_REPLY_KEYWORDS = new Set(["TAK", "T", "YES", "Y"]);
@@ -69,6 +70,7 @@ async function logSmsSharedActivities(
     description: string;
     performedBy: Id<"users">;
     metadata?: Record<string, unknown>;
+    messageBody?: string;
   },
 ) {
   const entityTargets: Array<{ entityType: string; entityId: string }> = [];
@@ -135,6 +137,27 @@ async function logSmsSharedActivities(
     eventKey,
     targets: entityTargets,
     metadata: args.metadata,
+  });
+
+  await logAudit(ctx, {
+    organizationId: args.organizationId,
+    userId: args.performedBy,
+    action: args.action === "sms_sent" ? "gabinet:sms:sent" : "gabinet:sms:received",
+    entityType: args.appointmentId
+      ? "gabinetAppointment"
+      : args.patientId
+        ? "gabinetPatient"
+        : undefined,
+    entityId: args.appointmentId
+      ? String(args.appointmentId)
+      : args.patientId
+        ? String(args.patientId)
+        : undefined,
+    details: JSON.stringify({
+      description: args.description,
+      body: args.messageBody,
+      ...args.metadata,
+    }),
   });
 }
 
@@ -232,6 +255,7 @@ export const queueAutomationSms = internalMutation({
       action: "sms_sent",
       description: `Sent automated SMS for ${args.eventType}`,
       performedBy: employeeId,
+      messageBody: args.message,
       metadata: {
         appointmentSmsEventId: eventId,
         direction: "outbound",
@@ -346,6 +370,7 @@ export const queueConfirmationRequest = internalMutation({
       action: "sms_sent",
       description: `Sent appointment confirmation SMS for ${appointment.date} at ${appointment.startTime}`,
       performedBy: employeeId,
+      messageBody: message,
       metadata: {
         appointmentSmsEventId: eventId,
         direction: "outbound",
@@ -512,6 +537,7 @@ export const processIncomingMessage = internalMutation({
         action: "sms_received",
         description: `Received appointment confirmation reply: ${normalizedBody}`,
         performedBy: matchingAppointmentEmployeeId,
+        messageBody: args.body,
         metadata: {
           appointmentSmsEventId: eventId,
           direction: "inbound",

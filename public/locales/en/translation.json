@@ -3268,6 +3268,7 @@
       "prepaymentRequired": "Prepayment required",
       "scheduling": "Scheduling",
       "sendReminder": "Send reminder",
+      "reminderSent": "Reminder sent",
       "reminderInfo": "Reminder: {{hours}}h before appointment",
       "statusUpdated": "Appointment status updated",
       "tabs": {

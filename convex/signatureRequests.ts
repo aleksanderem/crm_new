@@ -433,7 +433,7 @@ export const _notifyAuthor = internalMutation({
   },
 });
 
-export const createOtp = action({
+export const createOtp = internalAction({
   args: { token: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();

@@ -67,10 +67,6 @@ const WHITELIST = new Set([
   //   token + OTP verification state are the auth mechanism.
   "signatureRequests:signExternal",
 
-  // createOtp: generates an OTP for a signing token. Auth is the possession
-  //   of the signing link sent to the signer.
-  "signatureRequests:createOtp",
-
   // verifyOtp: verifies the OTP a signer received. Auth is signing token +
   //   the correct OTP code.
   "signatureRequests:verifyOtp",
@@ -89,7 +85,7 @@ const WHITELIST = new Set([
 
   // ── Signing email notifications ───────────────────────────────────────────
   // These three are invoked only from authenticated actions (sendForSigning,
-  // createOtp) that have already validated org membership. They are thin
+  // requestOtp) that have already validated org membership. They are thin
   // notification helpers that should ideally be internalAction but changing
   // their visibility would break existing callers in this release cycle.
   // They write only to outbound email queues, never to org data tables.

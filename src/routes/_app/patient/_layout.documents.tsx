@@ -112,6 +112,7 @@ function PatientDocuments() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setViewDocId(doc._id)}
+                    aria-label={t("patientPortal.documents.viewDocument", "Wyświetl dokument: {{title}}", { title: doc.title })}
                   >
                     <Eye className="h-4 w-4" variant="stroke" />
                   </Button>
@@ -120,6 +121,7 @@ function PatientDocuments() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setSignDocId(doc._id)}
+                      aria-label={t("patientPortal.documents.signDocument", "Podpisz dokument: {{title}}", { title: doc.title })}
                     >
                       <PenTool
                         className="h-4 w-4 text-primary"

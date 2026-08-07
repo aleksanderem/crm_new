@@ -6,10 +6,6 @@ import { GABINET_MODULES, GABINET_PRODUCT_ID, type GabinetModule } from "../gabi
 /**
  * Verify that the organization has an active subscription for a specific product.
  * Throws if no active subscription exists.
- *
- * During development/MVP, if no productSubscriptions exist at all,
- * access is granted (grace period). Once the first productSubscription is created
- * for any org, enforcement begins.
  */
 export async function verifyProductAccess(
   ctx: QueryCtx,
@@ -24,12 +20,6 @@ export async function verifyProductAccess(
     .first();
 
   if (!subscription) {
-    // Grace period: if no subscriptions exist at all, allow access
-    const anySubscription = await ctx.db
-      .query("productSubscriptions")
-      .first();
-    if (!anySubscription) return; // no enforcement yet
-
     throw new Error(`No active subscription for product: ${productId}`);
   }
 

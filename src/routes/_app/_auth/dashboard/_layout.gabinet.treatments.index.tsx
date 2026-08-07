@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@cvx/_generated/api";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { useSupabaseGabinetTreatmentPackagesList } from "@/hooks/use-supabase-gabinet-packages";
 import { useSupabaseGabinetEquipmentList } from "@/hooks/use-supabase-gabinet-equipment";
 import { useOrganization } from "@/components/org-context";
@@ -25,7 +26,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Plus, Pencil, Trash2, Power, X, LayoutDashboard, ChevronDown, ChevronUp } from "@/lib/ez-icons";
+import { Plus, Pencil, Trash2, Power, X, Upload, LayoutDashboard, ChevronDown, ChevronUp } from "@/lib/ez-icons";
+import { GabinetImportDialog } from "@/components/gabinet/gabinet-import-dialog";
 import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
 import { Id } from "@cvx/_generated/dataModel";
 import type { MappedGabinetTreatment } from "@/lib/supabase/mappers/gabinet/treatments";
@@ -101,6 +103,7 @@ function TreatmentsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { nudge: nudgeFilter } = useSearch({ from: Route.id });
   const createTreatment = useAction(api.gabinet.treatments.create);
   const updateTreatment = useAction(api.gabinet.treatments.update);
@@ -117,6 +120,7 @@ function TreatmentsIndex() {
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
   const [filterSlideoutOpen, setFilterSlideoutOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor | undefined>(undefined);
   const [showStatsMobile, setShowStatsMobile] = useState(false);
 
@@ -724,6 +728,10 @@ function TreatmentsIndex() {
               })}
             </Button>
             <PermissionGate feature="gabinet_treatments" action="create">
+              <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                <Upload className="mr-2 h-4 w-4" variant="stroke" />
+                {t("csv.import")}
+              </Button>
               <Button onClick={openCreatePanel}>
                 <Plus className="mr-2 h-4 w-4" variant="stroke" />
                 {t("gabinet.treatments.addTreatment")}
@@ -1045,6 +1053,18 @@ function TreatmentsIndex() {
         organizationId={organizationId}
         entityType="gabinetTreatment"
         categories={categories}
+      />
+
+      <GabinetImportDialog
+        organizationId={organizationId}
+        entityType="gabinetTreatments"
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onSuccess={() => {
+          void queryClient.invalidateQueries({
+            queryKey: supabaseKeys.gabinetTreatments.list(organizationId),
+          });
+        }}
       />
     </div>
   );

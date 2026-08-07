@@ -16,10 +16,11 @@ import { SidePanel } from "@/components/crm/side-panel";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PatientForm } from "@/components/forms/patient-form";
 import { MergePatientsDialog } from "@/components/gabinet/merge-patients-dialog";
+import { GabinetImportDialog } from "@/components/gabinet/gabinet-import-dialog";
 import { Button } from "@/components/ui/button";
 import { AvatarLabelGroup } from "@untitled/base/avatar/avatar-label-group";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Download, Users, AlertCircle } from "@/lib/ez-icons";
+import { Plus, Trash2, Download, Upload, Users, AlertCircle } from "@/lib/ez-icons";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { Id } from "@cvx/_generated/dataModel";
@@ -110,6 +111,7 @@ function PatientsIndex() {
   const removePatient = useAction(api.gabinet.patients.remove);
 
   const [panelOpen, setPanelOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [mergeSourcePatient, setMergeSourcePatient] = useState<Patient | null>(null);
   const [mergePreselectedTargetId, setMergePreselectedTargetId] = useState<string | null>(null);
@@ -134,10 +136,7 @@ function PatientsIndex() {
   // Sidebar dispatch handlers
   useSidebarDispatch("openAddPatient", () => setPanelOpen(true));
   useSidebarDispatch("exportCsv", () => handleExport());
-  useSidebarDispatch("importCsv", () => {
-    // Could open import dialog - for now show toast
-    // Import not implemented for patients yet
-  });
+  useSidebarDispatch("importCsv", () => setImportDialogOpen(true));
   useSidebarDispatch("openSearch", () => {
     // Focus on the search input if present
     const searchInput = document.querySelector<HTMLInputElement>(
@@ -658,6 +657,11 @@ function PatientsIndex() {
             icon: <Download className="h-4 w-4" variant="stroke" />,
             onClick: handleExport,
           },
+          {
+            label: t("csv.import"),
+            icon: <Upload className="h-4 w-4" variant="stroke" />,
+            onClick: () => setImportDialogOpen(true),
+          },
         ]}
         columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
         hiddenColumnIds={hiddenColumnIds}
@@ -788,6 +792,18 @@ function PatientsIndex() {
         allPatients={patients}
         preselectedTargetId={mergePreselectedTargetId}
         onMerged={() => {
+          void queryClient.invalidateQueries({
+            queryKey: supabaseKeys.gabinetPatients.list(organizationId),
+          });
+        }}
+      />
+
+      <GabinetImportDialog
+        organizationId={organizationId}
+        entityType="gabinetPatients"
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onSuccess={() => {
           void queryClient.invalidateQueries({
             queryKey: supabaseKeys.gabinetPatients.list(organizationId),
           });

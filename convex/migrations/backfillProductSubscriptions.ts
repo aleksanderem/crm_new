@@ -1,7 +1,9 @@
 import { v } from "convex/values";
+import type { FunctionReference } from "convex/server";
 import { internalAction, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createLogger } from "../_helpers/logger";
+import type { Id } from "../_generated/dataModel";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -70,12 +72,29 @@ export const backfillProductSubscriptions = internalAction({
     const { dryRun = false } = args;
     const log = createLogger("migrations.backfillProductSubscriptions", { dryRun });
 
+    // Self-module internal references. Convex's generated `internal` graph cannot
+    // type a function that references its own module — the index expression
+    // itself triggers a circular type instantiation (TS7053/TS2615). Access it
+    // through a loosely-typed view; the runtime FunctionReferences resolve fine.
+    const self = (internal as Record<string, Record<string, unknown>>)[
+      "migrations/backfillProductSubscriptions"
+    ] as {
+      getAllSubscriptions: FunctionReference<"query", "internal">;
+      getAllPlans: FunctionReference<"query", "internal">;
+      getOrgByOwner: FunctionReference<"query", "internal", { userId: Id<"users"> }>;
+      getExistingProductSub: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string; productId: string }
+      >;
+    };
+
     const [subscriptionsRaw, plansRaw] = await Promise.all([
       ctx.runQuery(
-        internal["migrations/backfillProductSubscriptions"].getAllSubscriptions,
+        self.getAllSubscriptions,
       ),
       ctx.runQuery(
-        internal["migrations/backfillProductSubscriptions"].getAllPlans,
+        self.getAllPlans,
       ),
     ]);
 
@@ -108,7 +127,7 @@ export const backfillProductSubscriptions = internalAction({
       }
 
       const org = await ctx.runQuery(
-        internal["migrations/backfillProductSubscriptions"].getOrgByOwner,
+        self.getOrgByOwner,
         { userId: sub.userId },
       );
 
@@ -122,7 +141,7 @@ export const backfillProductSubscriptions = internalAction({
       }
 
       const existing = await ctx.runQuery(
-        internal["migrations/backfillProductSubscriptions"].getExistingProductSub,
+        self.getExistingProductSub,
         { organizationId: org._id, productId: plan.productKey },
       );
 

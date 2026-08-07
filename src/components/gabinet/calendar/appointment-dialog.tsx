@@ -96,7 +96,7 @@ import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
 import { useSupabaseOrgSettings, useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
-import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
+import { useSupabaseGabinetLocationsList, useSupabaseGabinetLocation } from "@/hooks/use-supabase-gabinet-locations";
 import { formatPhoneNumber } from "@/lib/phone";
 
 // ---------------------------------------------------------------------------
@@ -608,16 +608,11 @@ export function AppointmentDialog({
   }, [slotsErrored, slotsError]);
 
   // Rooms query — enabled only when a location is selected
-  const getLocationAction = useAction(api.gabinet.locations.getLocation);
-  const { data: locationWithRooms } = useQuery({
-    queryKey: ["gabinet.locations.getLocation", organizationId, locationId],
-    queryFn: () =>
-      getLocationAction({
-        organizationId,
-        locationId: locationId as string,
-      }),
-    enabled: !!locationId,
-  });
+  const { data: locationWithRooms } = useSupabaseGabinetLocation(
+    String(organizationId),
+    locationId as string,
+    { enabled: !!locationId },
+  );
   const activeRooms = locationWithRooms?.rooms?.filter((r) => r.isActive) ?? [];
 
   const activeLocations = locations?.filter((l) => l.isActive) ?? [];

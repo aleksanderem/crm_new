@@ -5,12 +5,7 @@ import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { logError } from "../_helpers/logged";
 import { logActivity } from "../_helpers/activities";
-import type {
-  GabinetLocationRow,
-  GabinetRoomRow,
-} from "../_helpers/supabaseRows";
-
-type GabinetLocationWithRooms = GabinetLocationRow & { rooms: GabinetRoomRow[] };
+import type { GabinetLocationRow } from "../_helpers/supabaseRows";
 
 // Dual-write refs removed — Supabase is now primary for location/room writes
 
@@ -30,28 +25,6 @@ export const listLocations = action({
   },
 });
 
-export const getLocation = action({
-  args: {
-    organizationId: v.id("organizations"),
-    locationId: v.string(),
-  },
-  handler: async (ctx, args): Promise<GabinetLocationWithRooms | null> => {
-    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
-      organizationId: args.organizationId,
-    });
-    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const db = createSupabaseDb();
-    const location = (await db.get("gabinetLocations", args.locationId)) as
-      | GabinetLocationRow
-      | null;
-    if (!location || String(location.organizationId) !== String(args.organizationId)) return null;
-    const rooms = (await db
-      .query("gabinetRooms")
-      .eq("locationId", args.locationId)
-      .collect()) as GabinetRoomRow[];
-    return { ...location, rooms };
-  },
-});
 
 export const createLocation = action({
   args: {

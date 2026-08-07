@@ -4,7 +4,7 @@ import { useAction, useQuery as useConvexQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetEquipmentList } from "@/hooks/use-supabase-gabinet-equipment";
-import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
+import { useSupabaseGabinetLocationsList, useSupabaseGabinetLocation } from "@/hooks/use-supabase-gabinet-locations";
 import type { MappedGabinetEquipment } from "@/lib/supabase/mappers/gabinet/equipment";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
@@ -271,16 +271,11 @@ function EquipmentCard({
     { enabled: expanded && activityOpen },
   );
 
-  const getLocationAction = useAction(api.gabinet.locations.getLocation);
-  const { data: selectedLocationData } = useQuery({
-    queryKey: ["gabinet.locations.getLocation", organizationId, transferLocationId],
-    queryFn: () =>
-      getLocationAction({
-        organizationId,
-        locationId: transferLocationId as string,
-      }),
-    enabled: !!transferLocationId,
-  });
+  const { data: selectedLocationData } = useSupabaseGabinetLocation(
+    organizationId as string,
+    transferLocationId,
+    { enabled: !!transferLocationId },
+  );
 
   const currentLocation = locations.find(
     (l) => l._id === item.currentLocationId

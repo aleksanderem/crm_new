@@ -1,9 +1,10 @@
 import { v } from "convex/values";
-import { internalAction, internalQuery } from "../_generated/server";
+import { internalAction, internalMutation, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { Database } from "~/src/lib/supabase/database.types";
 import { createServiceRoleClient } from "./client";
+import { stripe } from "../stripe";
 
 const BATCH_SIZE = 50;
 
@@ -740,6 +741,140 @@ export const backfillStockMovementAvgCost = internalAction({
     }
 
     return { updated, skipped, errors };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Backfill trialEndDate for existing trialing subscriptions (#4199)
+//
+// The trialEndDate column was added in migration 00113. Rows created before
+// that migration have trialEndDate = undefined even when status = "trialing".
+// This action fetches trial_end from Stripe for every affected row and writes
+// it back to both Convex and Supabase. Idempotent: rows that already have
+// trialEndDate set are skipped.
+// ---------------------------------------------------------------------------
+
+export const _listTrialingSubscriptionsWithoutTrialEnd = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db
+      .query("subscriptions")
+      .filter((q) => q.eq(q.field("status"), "trialing"))
+      .collect();
+    return all.filter((s) => s.trialEndDate === undefined);
+  },
+});
+
+export const _listTrialingProductSubscriptionsWithoutTrialEnd = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db
+      .query("productSubscriptions")
+      .filter((q) => q.eq(q.field("status"), "trialing"))
+      .collect();
+    return all.filter((s) => s.trialEndDate === undefined);
+  },
+});
+
+export const _patchSubscriptionTrialEndDate = internalMutation({
+  args: { subscriptionId: v.id("subscriptions"), trialEndDate: v.number() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.subscriptionId, { trialEndDate: args.trialEndDate });
+  },
+});
+
+export const _patchProductSubscriptionTrialEndDate = internalMutation({
+  args: { productSubscriptionId: v.id("productSubscriptions"), trialEndDate: v.number() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.productSubscriptionId, { trialEndDate: args.trialEndDate });
+  },
+});
+
+export const backfillTrialEndDates = internalAction({
+  args: {},
+  handler: async (
+    ctx,
+  ): Promise<{
+    subscriptionsUpdated: number;
+    productSubscriptionsUpdated: number;
+    errors: string[];
+  }> => {
+    const client = createServiceRoleClient();
+    const errors: string[] = [];
+    let subscriptionsUpdated = 0;
+    let productSubscriptionsUpdated = 0;
+
+    // --- subscriptions ---
+    const trialingSubs = await ctx.runQuery(
+      internal.supabase.backfill._listTrialingSubscriptionsWithoutTrialEnd,
+      {},
+    );
+
+    for (const sub of trialingSubs) {
+      try {
+        const stripeSub = await stripe.subscriptions.retrieve(sub.stripeId);
+        if (!stripeSub.trial_end) continue;
+
+        await ctx.runMutation(
+          internal.supabase.backfill._patchSubscriptionTrialEndDate,
+          { subscriptionId: sub._id, trialEndDate: stripeSub.trial_end },
+        );
+        const { error } = await client
+          .from("subscriptions")
+          .update({ trial_end_date: stripeSub.trial_end })
+          .eq("id", sub._id);
+        if (error) {
+          errors.push(`subscriptions ${sub._id}: ${error.message}`);
+        } else {
+          subscriptionsUpdated++;
+        }
+      } catch (err) {
+        errors.push(
+          `subscriptions ${sub._id}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    // --- productSubscriptions ---
+    const trialingProdSubs = await ctx.runQuery(
+      internal.supabase.backfill._listTrialingProductSubscriptionsWithoutTrialEnd,
+      {},
+    );
+
+    for (const sub of trialingProdSubs) {
+      if (!sub.stripeSubscriptionId) continue;
+      try {
+        const stripeSub = await stripe.subscriptions.retrieve(
+          sub.stripeSubscriptionId,
+        );
+        if (!stripeSub.trial_end) continue;
+
+        await ctx.runMutation(
+          internal.supabase.backfill._patchProductSubscriptionTrialEndDate,
+          { productSubscriptionId: sub._id, trialEndDate: stripeSub.trial_end },
+        );
+        const { error } = await client
+          .from("product_subscriptions")
+          .update({ trial_end_date: stripeSub.trial_end })
+          .eq("id", sub._id);
+        if (error) {
+          errors.push(`productSubscriptions ${sub._id}: ${error.message}`);
+        } else {
+          productSubscriptionsUpdated++;
+        }
+      } catch (err) {
+        errors.push(
+          `productSubscriptions ${sub._id}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    console.info(
+      `backfillTrialEndDates: subscriptions=${subscriptionsUpdated}, productSubscriptions=${productSubscriptionsUpdated}, errors=${errors.length}`,
+    );
+    if (errors.length > 0) console.error("Errors:", errors);
+
+    return { subscriptionsUpdated, productSubscriptionsUpdated, errors };
   },
 });
 

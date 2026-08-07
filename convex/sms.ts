@@ -331,8 +331,16 @@ export const sendSigningLinkSms = internalAction({
       return { sent: false };
     }
 
+    // Create a single-use redirect stub so the raw signing token never appears
+    // in SMS provider logs. The stub burns on first visit (48 h max TTL).
+    const stubId = await ctx.runMutation(internal.signingStubs.createStub, {
+      token: args.token,
+      organizationId: args.organizationId,
+      signingTokenExpiresAt: args.expiresAt,
+    });
+
     const APP_URL = process.env.APP_URL ?? "https://app.example.com";
-    const signingUrl = `${APP_URL}/sign/${args.token}`;
+    const signingUrl = `${APP_URL}/sign-stub/${stubId}`;
     const expiryDate = new Date(args.expiresAt).toLocaleDateString("pl-PL");
     const message = `${args.organizationName} prosi o podpisanie dokumentu „${args.documentTitle}". Link: ${signingUrl} (ważny do: ${expiryDate})`;
 

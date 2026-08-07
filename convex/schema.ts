@@ -607,6 +607,18 @@ const devTables = {
   }).index("by_createdAt", ["createdAt"]),
 };
 
+// Single-use redirect stubs that shield signing tokens from SMS provider logs.
+// The SMS body contains the opaque stubId; the real token never leaves the server.
+const signingStubTables = {
+  signingLinkStubs: defineTable({
+    stubId: v.string(),
+    token: v.string(),
+    organizationId: v.id("organizations"),
+    expiresAt: v.number(),
+    usedAt: v.optional(v.number()),
+  }).index("by_stubId", ["stubId"]),
+};
+
 const schema = defineSchema({
   ...authTables,
   ...platformTables,
@@ -616,6 +628,7 @@ const schema = defineSchema({
   ...documentTables,
   ...tagAndCategoryTables,
   ...devTables,
+  ...signingStubTables,
 });
 
 export default schema;

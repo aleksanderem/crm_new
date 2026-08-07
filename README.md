@@ -1,57 +1,87 @@
-<h1 align="center">
-  Convex SaaS
-</h1>
+# Modular SaaS Platform
 
-<div align="center">
-  <p>
-  A production-ready Convex Stack for your next SaaS application with Stripe integration, TanStack, Resend, Tailwindcss, and shadcn.
-  </p>
-</div>
+A horizontal SaaS platform for Polish-market small businesses. Built around a shared platform core (organizations, auth, billing, RBAC, notifications, audit log) with independent vertical modules plugged in per subscription.
 
-<div align="center">
-    <a href="https://convex-saas.netlify.app">Live Demo</a> |  <a href="https://github.com/get-convex/convex-saas/tree/main/docs">Documentation</a>
-  <div align="center"><br>
-  <a href="https://labs.convex.dev/convex-saas"> <img src="https://github.com/get-convex/convex-saas/blob/v1markchanges/public/images/convexsaas.png" alt="convex saas" /></a>
-</div>
-   
-  </p>
-</div>
+## Modules
 
-# Features
+**CRM** — sales pipeline, contacts, companies, leads and deals, email inbox with Gmail sync, documents, products, activities, calls, CSV import/export, global search, custom fields, Kanban board, and advanced filtering.
 
-Features provided out of the box:
+**Gabinet** — medical office / clinic / salon management: patients, appointments with calendar scheduling, treatments, employee HR and scheduling, treatment packages, loyalty points, document templates with e-signature, and a patient self-service portal.
 
-- 🧩 **Convex**: A complete, reactive, typesafe backend with authentication and file storage.
-- ⚡ **Vite**: Next-Gen Frontend Tooling.
-- 🛍️ **Stripe**: Subscription Plans, Customer Portal, and more.
-- 🔑 **Authentication**: Email Code and Social Logins.
-- 🎨 **TailwindCSS**: Utility-First CSS Framework.
-- 📐 **ShadCN**: Composable React components.
-- 🌙 **Easy Theming**: Switch between Light and Dark modes with ease.
-- 🗺️ **TanStack Router**: Simple Route Definitions.
-- 📧 **Resend**: Email for Developers.
-- 💌 **React Email**: Customizable Emails with React.
-- 📋 **Conform**: Type-Safe Form Validation based on Web Fundamentals.
-- 📥 **File Uploads**: Profile Picture Uploads with Convex.
-- 🌐 **I18N**: Internationalization for your App.
-- 🧰 **TanStack Development Tools**: Enhanced Development Experience.
-- 💅 **Modern UI**: Carefully crafted UI with a Modern Design System.
-- 🏕 **Custom Pages**: Landing, Onboarding, Dashboard and Admin Pages.
-- 📱 **Responsive**: Works on all devices, from Mobile to Desktop.
--
+## Tech stack
 
-## [Live Demo](https://convex-saas.netlify.app)
+| Layer | Technologies |
+|-------|-------------|
+| Frontend | React 19, TanStack Router, TanStack Query, TanStack Table, TanStack Form + Zod, shadcn/ui, Recharts, @dnd-kit, Vite |
+| Styling | Tailwind CSS v4, shadcn/ui (Radix primitives), next-themes (dark mode), i18next (PL/EN) |
+| Backend | Convex (auth, mutations, scheduled jobs, file storage) + self-hosted Supabase Postgres (primary data store) |
+| Payments | Stripe |
+| Email | Resend + Gmail OAuth |
+| Tests | convex-test + Vitest |
 
-> [!NOTE]
-> Convex SaaS is an Open Source Template that is a direct port of the amazing
-> work of [Daniel Kanem](https://twitter.com/DanielKanem) in [Remix SaaS](https://github.com/dev-xo/remix-saas).
-> As that template does, this one shares common bits of code with: [Indie
-> Stack](https://github.com/remix-run/indie-stack), [Epic
-> Stack](https://github.com/epicweb-dev/epic-stack), [Supa Stripe
-> Stack](https://github.com/rphlmr/supa-stripe-stack), and some other amazing
-> Open Source resources. Check them out, please!
+Read path: browser holds a Supabase JWT minted by Convex and queries Supabase directly. Write path: React calls Convex mutations, which write to Supabase via a service-role client. See `CLAUDE.md` for the full architecture overview.
 
-## Getting Started
+## Development
 
-Check out the [Getting Started Documentation](https://github.com/get-convex/convex-saas/tree/main/docs) to get up
-and running.
+### Prerequisites
+
+- Node.js >= 20
+- npm >= 10
+- A Convex account and project
+- A self-hosted or Supabase Cloud Postgres instance
+
+### Setup
+
+```bash
+npm install
+
+# Configure a Convex dev deployment
+npx convex dev --configure=new --once
+npx @convex-dev/auth
+
+# Set required Convex environment variables
+npx convex env set SUPABASE_URL https://...
+npx convex env set SUPABASE_SERVICE_ROLE_KEY service_role_key_...
+npx convex env set SUPABASE_JWT_SECRET jwt_secret_...
+npx convex env set SUPABASE_ANON_KEY anon_key_...
+npx convex env set AUTH_RESEND_KEY re_...
+npx convex env set STRIPE_SECRET_KEY sk_test_...
+npx convex env set STRIPE_WEBHOOK_SECRET whsec_...
+
+# Apply database migrations
+npm run migrations:apply
+```
+
+### Start
+
+```bash
+npm start      # runs Convex dev + Vite in parallel
+```
+
+The app is available at `http://localhost:5173`.
+
+### Testing
+
+```bash
+npm run test:unit       # Convex unit tests + frontend unit tests
+npm run typecheck       # TypeScript for frontend + Convex
+```
+
+> **Note:** Convex unit tests must run via `npm run test:unit`, not bare `vitest`. See `TESTING.md` for details.
+
+## Deployment
+
+Deployment follows a three-stage pipeline: Supabase migrations → Convex deploy → Netlify build. A push to `main` triggers the pipeline automatically via GitHub Actions.
+
+See `docs/DEPLOYMENT.md` for the complete deployment guide, environment variable reference, and rollback procedures.
+
+## Documentation
+
+| Document | Contents |
+|----------|----------|
+| `CLAUDE.md` | Architecture overview, DB schema, component organization, coding rules |
+| `docs/DEPLOYMENT.md` | Deployment pipeline, env vars, rollback |
+| `docs/RUNBOOK.md` | Incident response, alerting |
+| `docs/backup-restore.md` | Backup pipeline and restore procedures |
+| `docs/modules/` | Module ownership, boundaries, and onboarding guide |
+| `docs/SECURITY.md` | Security posture and controls |

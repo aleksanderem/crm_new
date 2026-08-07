@@ -32,6 +32,7 @@ The test suite covers the following pages:
 - `/dashboard/gabinet/calendar` — Gabinet appointment calendar
 - `/dashboard/settings/team` — team management settings
 - Contact create dialog (modal state)
+- `/patient/login` — patient portal OTP login (invalid-link state and email-step loading state)
 
 ## Keyboard Navigation Coverage
 
@@ -43,6 +44,8 @@ The spec verifies:
 - Focus trap: focus moves into a dialog when it opens.
 
 These tests cover WCAG 2.1 SC 2.1.1 (Keyboard), 2.1.2 (No Keyboard Trap), and 3.2.2 (On Input).
+
+For the patient portal login page the spec additionally verifies: Tab moves focus from the email input to the send button; Enter on the email field triggers the send-OTP action; the OTP input strips non-digit characters; and the verify button remains disabled until exactly six digits are entered.
 
 ## Screen Reader Attributes Coverage
 
@@ -69,7 +72,7 @@ The following areas are not yet covered by automated tests and require manual re
 
 - Color contrast in dark mode (Tailwind CSS v4 CSS variable theming — verify contrast ratios for `--color-fg-*` on `--color-bg-*` in dark mode).
 - Recharts data tables: verify each chart has a text-based alternative (table or `aria-describedby` summary).
-- Patient portal login (OTP flow) — keyboard and screen-reader path not yet tested.
+- Patient portal appointment view — axe-core and keyboard tests require a valid portal session; currently only the login page (unauthenticated state) is covered by automated scans.
 - PDF document viewer (`src/components/gabinet/document-viewer.tsx`) — PDFs require a tagged-PDF or accessible fallback.
 - Mobile / zoom: verify no content is lost at 320 px viewport width (WCAG 1.4.10 Reflow).
 

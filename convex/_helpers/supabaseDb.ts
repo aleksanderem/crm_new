@@ -211,10 +211,16 @@ export interface SupabaseDb {
   ): SupabaseQueryBuilder<T>;
 
   raw(): ReturnType<typeof createServiceRoleClient>;
+
+  /** UUID generated at construction time; sent as `x-correlation-id` on every
+   *  Supabase request and available for structured log entries so Convex logs
+   *  and PostgREST access logs can be correlated. */
+  correlationId: string;
 }
 
-export function createSupabaseDb(): SupabaseDb {
-  const client = createServiceRoleClient();
+export function createSupabaseDb(correlationId?: string): SupabaseDb {
+  const id = correlationId ?? crypto.randomUUID();
+  const client = createServiceRoleClient(id);
 
   function get<TableName extends TableNames>(
     table: TableName,
@@ -314,6 +320,7 @@ export function createSupabaseDb(): SupabaseDb {
     delete: del,
     query,
     raw,
+    correlationId: id,
   };
 }
 

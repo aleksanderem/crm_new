@@ -6,6 +6,7 @@ import { logActivity } from "../_helpers/activities";
 import { logError } from "../_helpers/logged";
 import { gabinetEmployeeRoleValidator } from "../schema";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { createLogger } from "../_helpers/logger";
 import type { GabinetEmployeeRow, SupabasePaginationResult } from "../_helpers/supabaseRows";
 import { Id } from "../_generated/dataModel";
 import { createAccount, modifyAccountCredentials } from "@convex-dev/auth/server";
@@ -324,6 +325,7 @@ export const _createFromInvitation = internalAction({
   },
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
+    const log = createLogger("gabinet.employees", { correlationId: db.correlationId });
 
     // Idempotency: bail if an employee row already exists for this user/org.
     const existing = await db
@@ -333,9 +335,7 @@ export const _createFromInvitation = internalAction({
       .collect();
     if (existing.length > 0) {
       const existingEmployeeId = String(existing[0]._id);
-      console.log(
-        `[gabinet.employees._createFromInvitation] skip — employee already exists for user=${args.userId}`,
-      );
+      log.info("skip — employee already exists", { userId: args.userId });
 
       // Still honour any locationId on the re-invite so the new assignment is not silently dropped.
       const d2 = (args.data ?? {}) as Record<string, unknown>;

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { createLogger } from "../_helpers/logger";
 
 // One-off migration for issue #1287.
 //
@@ -56,8 +57,8 @@ export const backfillCreditEarned = internalAction({
   },
   handler: async (_ctx, args) => {
     const { organizationId, dryRun = false } = args;
-    const prefix = dryRun ? "[DRY RUN] " : "";
     const db = createSupabaseDb();
+    const log = createLogger("migrations.backfillCreditEarned", { correlationId: db.correlationId, organizationId: String(organizationId), dryRun });
 
     const completedPayments = (await db
       .query("payments")
@@ -81,10 +82,7 @@ export const backfillCreditEarned = internalAction({
         totalCreditBackfilled: 0,
         dryRun,
       };
-      console.log(
-        `${prefix}backfillCreditEarned: nothing to do`,
-        JSON.stringify(summary),
-      );
+      log.info("nothing to do", summary);
       return summary;
     }
 
@@ -155,9 +153,7 @@ export const backfillCreditEarned = internalAction({
       paymentsUpdated++;
       totalCreditBackfilled =
         Math.round((totalCreditBackfilled + excess) * 100) / 100;
-      console.log(
-        `${prefix}payment ${p._id}: amount=${p.amount}, price=${price}, creditEarned=${excess}`,
-      );
+      log.info("payment backfilled", { paymentId: p._id, amount: p.amount, price, creditEarned: excess });
     }
 
     const summary = {
@@ -172,10 +168,7 @@ export const backfillCreditEarned = internalAction({
       skippedNoOverpayment,
       dryRun,
     };
-    console.log(
-      `${prefix}backfillCreditEarned complete:`,
-      JSON.stringify(summary),
-    );
+    log.info("backfill complete", summary);
     return summary;
   },
 });

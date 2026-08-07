@@ -20,7 +20,7 @@ class NoopWebSocketTransport {
   }
 }
 
-export function createServiceRoleClient() {
+export function createServiceRoleClient(correlationId?: string) {
   if (!SUPABASE_URL) {
     throw new Error("SUPABASE_URL not configured");
   }
@@ -33,6 +33,7 @@ export function createServiceRoleClient() {
     realtime: {
       transport: NoopWebSocketTransport as unknown as typeof WebSocket,
     },
+    ...(correlationId ? { global: { headers: { "x-correlation-id": correlationId } } } : {}),
   });
 }
 

@@ -319,7 +319,12 @@ export default function BillingSettings() {
           <p className="text-sm font-normal text-primary/60">
             {t("billing.stripeRedirect", "You will be redirected to the Stripe Customer Portal.")}
           </p>
-          <Button type="submit" size="sm" onClick={handleCreateCustomerPortal}>
+          <Button
+            type="submit"
+            size="sm"
+            onClick={handleCreateCustomerPortal}
+            disabled={!user?.customerId}
+          >
             {t("billing.manage", "Manage")}
           </Button>
         </div>

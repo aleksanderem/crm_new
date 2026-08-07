@@ -1,8 +1,10 @@
-import { action } from "../_generated/server";
+import { action, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
+import { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { logError } from "../_helpers/logged";
+import { logActivity } from "../_helpers/activities";
 import { gabinetLeaveTypeValidator, gabinetLeaveStatusValidator } from "../schema";
 import { getAvailableSlotsSupabase } from "./_availability_supabase";
 import type {
@@ -61,6 +63,7 @@ export const setWorkingHours = action({
       .eq("dayOfWeek", args.dayOfWeek)
       .first();
 
+    let whId: string;
     if (existing) {
       await db.patch("gabinetWorkingHours", existing._id as string, {
         startTime: args.startTime,
@@ -71,22 +74,34 @@ export const setWorkingHours = action({
         locationId: args.locationId ?? null,
         updatedAt: now,
       });
-      return existing._id as string;
+      whId = existing._id as string;
+    } else {
+      whId = await db.insert("gabinetWorkingHours", {
+        organizationId: String(args.organizationId),
+        dayOfWeek: args.dayOfWeek,
+        startTime: args.startTime,
+        endTime: args.endTime,
+        isOpen: args.isOpen,
+        breakStart: args.breakStart ?? null,
+        breakEnd: args.breakEnd ?? null,
+        locationId: args.locationId ?? null,
+        createdBy: authResult.userId,
+        createdAt: now,
+        updatedAt: now,
+      });
     }
 
-    const whId = await db.insert("gabinetWorkingHours", {
-      organizationId: String(args.organizationId),
-      dayOfWeek: args.dayOfWeek,
-      startTime: args.startTime,
-      endTime: args.endTime,
-      isOpen: args.isOpen,
-      breakStart: args.breakStart ?? null,
-      breakEnd: args.breakEnd ?? null,
-      locationId: args.locationId ?? null,
-      createdBy: authResult.userId,
-      createdAt: now,
-      updatedAt: now,
-    });
+    try {
+      await ctx.runMutation(internal.gabinet.scheduling._workingHoursSideEffects, {
+        organizationId: args.organizationId,
+        workingHoursId: whId,
+        dayOfWeek: args.dayOfWeek,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[scheduling.setWorkingHours] Side effects FAILED:", e);
+    }
 
     return whId;
   },
@@ -150,6 +165,16 @@ export const bulkSetWorkingHours = action({
           updatedAt: now,
         });
       }
+    }
+
+    try {
+      await ctx.runMutation(internal.gabinet.scheduling._bulkWorkingHoursSideEffects, {
+        organizationId: args.organizationId,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[scheduling.bulkSetWorkingHours] Side effects FAILED:", e);
     }
   },
 });
@@ -224,23 +249,36 @@ export const setEmployeeSchedule = action({
       locationId: args.locationId ?? null,
     };
 
+    let scheduleId: string;
     if (existing) {
       await db.patch("gabinetEmployeeSchedules", existing._id as string, {
         ...data,
         updatedAt: now,
       });
-      return existing._id as string;
+      scheduleId = existing._id as string;
+    } else {
+      scheduleId = await db.insert("gabinetEmployeeSchedules", {
+        organizationId: String(args.organizationId),
+        userId: args.userId,
+        dayOfWeek: args.dayOfWeek,
+        ...data,
+        createdBy: authResult.userId,
+        createdAt: now,
+        updatedAt: now,
+      });
     }
 
-    const scheduleId = await db.insert("gabinetEmployeeSchedules", {
-      organizationId: String(args.organizationId),
-      userId: args.userId,
-      dayOfWeek: args.dayOfWeek,
-      ...data,
-      createdBy: authResult.userId,
-      createdAt: now,
-      updatedAt: now,
-    });
+    try {
+      await ctx.runMutation(internal.gabinet.scheduling._employeeScheduleSideEffects, {
+        organizationId: args.organizationId,
+        scheduleId,
+        userId: args.userId,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[scheduling.setEmployeeSchedule] Side effects FAILED:", e);
+    }
 
     return scheduleId;
   },
@@ -313,6 +351,17 @@ export const bulkSetEmployeeSchedule = action({
           updatedAt: now,
         });
       }
+    }
+
+    try {
+      await ctx.runMutation(internal.gabinet.scheduling._bulkEmployeeScheduleSideEffects, {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[scheduling.bulkSetEmployeeSchedule] Side effects FAILED:", e);
     }
   },
 });
@@ -392,6 +441,18 @@ export const saveSchedulePeriod = action({
         });
       }
     }
+
+    try {
+      await ctx.runMutation(internal.gabinet.scheduling._saveSchedulePeriodSideEffects, {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        effectiveFrom: args.effectiveFrom,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[scheduling.saveSchedulePeriod] Side effects FAILED:", e);
+    }
   },
 });
 
@@ -405,7 +466,7 @@ export const removeSchedulePeriod = action({
     effectiveFrom: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -428,6 +489,18 @@ export const removeSchedulePeriod = action({
 
     for (const s of toRemove) {
       await db.delete("gabinetEmployeeSchedules", s._id as string);
+    }
+
+    try {
+      await ctx.runMutation(internal.gabinet.scheduling._removeSchedulePeriodSideEffects, {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        effectiveFrom: args.effectiveFrom,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[scheduling.removeSchedulePeriod] Side effects FAILED:", e);
     }
   },
 });
@@ -516,6 +589,21 @@ export const createLeave = action({
       updatedAt: now,
     });
 
+    try {
+      await ctx.runMutation(internal.gabinet.scheduling._createLeaveSideEffects, {
+        organizationId: args.organizationId,
+        leaveId,
+        userId: args.userId,
+        type: args.type,
+        startDate: args.startDate,
+        endDate: args.endDate,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[scheduling.createLeave] Side effects FAILED:", e);
+    }
+
     return leaveId;
     } catch (err) {
       await logError(ctx, err, {
@@ -559,6 +647,19 @@ export const approveLeave = action({
       approvedAt: now,
       updatedAt: now,
     });
+
+    try {
+      await ctx.runMutation(internal.gabinet.scheduling._leaveSideEffects, {
+        organizationId: args.organizationId,
+        leaveId: args.leaveId,
+        action: "status_changed",
+        description: `Leave request approved`,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[scheduling.approveLeave] Side effects FAILED:", e);
+    }
 
     // Update leave balance if leaveTypeId is set
     if (leave.leaveTypeId) {
@@ -622,6 +723,19 @@ export const rejectLeave = action({
       approvedAt: now,
       updatedAt: now,
     });
+
+    try {
+      await ctx.runMutation(internal.gabinet.scheduling._leaveSideEffects, {
+        organizationId: args.organizationId,
+        leaveId: args.leaveId,
+        action: "status_changed",
+        description: `Leave request rejected`,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[scheduling.rejectLeave] Side effects FAILED:", e);
+    }
   },
 });
 
@@ -631,7 +745,7 @@ export const deleteLeave = action({
     leaveId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -678,6 +792,19 @@ export const deleteLeave = action({
     }
 
     await db.delete("gabinetLeaves", args.leaveId);
+
+    try {
+      await ctx.runMutation(internal.gabinet.scheduling._leaveSideEffects, {
+        organizationId: args.organizationId,
+        leaveId: args.leaveId,
+        action: "deleted",
+        description: `Leave request deleted`,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[scheduling.deleteLeave] Side effects FAILED:", e);
+    }
   },
 });
 
@@ -717,7 +844,7 @@ export const removeEmployeeSchedule = action({
     scheduleId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -735,6 +862,18 @@ export const removeEmployeeSchedule = action({
     }
 
     await db.delete("gabinetEmployeeSchedules", args.scheduleId);
+
+    try {
+      await ctx.runMutation(internal.gabinet.scheduling._employeeScheduleSideEffects, {
+        organizationId: args.organizationId,
+        scheduleId: args.scheduleId,
+        userId: String(schedule.userId),
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[scheduling.removeEmployeeSchedule] Side effects FAILED:", e);
+    }
   },
 });
 
@@ -798,5 +937,185 @@ export const findNextAvailableSlot = action({
     }
 
     return null;
+  },
+});
+
+export const _workingHoursSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    workingHoursId: v.string(),
+    dayOfWeek: v.number(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetWorkingHours",
+      entityId: args.workingHoursId,
+      action: "updated",
+      description: `Updated working hours for ${days[args.dayOfWeek] ?? `day ${args.dayOfWeek}`}`,
+      metadata: { dayOfWeek: args.dayOfWeek },
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _bulkWorkingHoursSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetWorkingHours",
+      entityId: String(args.organizationId),
+      action: "updated",
+      description: `Updated organization working hours`,
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _employeeScheduleSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    scheduleId: v.string(),
+    userId: v.string(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetEmployeeSchedule",
+      entityId: args.scheduleId,
+      action: "updated",
+      description: `Updated employee schedule`,
+      metadata: { userId: args.userId },
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _bulkEmployeeScheduleSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.string(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetEmployeeSchedule",
+      entityId: args.userId,
+      action: "updated",
+      description: `Updated employee weekly schedule`,
+      metadata: { userId: args.userId },
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _saveSchedulePeriodSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.string(),
+    effectiveFrom: v.optional(v.string()),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetEmployeeSchedule",
+      entityId: args.userId,
+      action: "updated",
+      description: args.effectiveFrom
+        ? `Saved schedule period from ${args.effectiveFrom}`
+        : `Saved default schedule period`,
+      metadata: { userId: args.userId, effectiveFrom: args.effectiveFrom },
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _removeSchedulePeriodSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.string(),
+    effectiveFrom: v.optional(v.string()),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetEmployeeSchedule",
+      entityId: args.userId,
+      action: "deleted",
+      description: args.effectiveFrom
+        ? `Removed schedule period from ${args.effectiveFrom}`
+        : `Removed default schedule period`,
+      metadata: { userId: args.userId, effectiveFrom: args.effectiveFrom },
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _createLeaveSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    leaveId: v.string(),
+    userId: v.string(),
+    type: v.string(),
+    startDate: v.string(),
+    endDate: v.string(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetLeave",
+      entityId: args.leaveId,
+      action: "created",
+      description: `Leave request created (${args.type}: ${args.startDate} – ${args.endDate})`,
+      metadata: { userId: args.userId, type: args.type, startDate: args.startDate, endDate: args.endDate },
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _leaveSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    leaveId: v.string(),
+    action: v.union(v.literal("status_changed"), v.literal("deleted")),
+    description: v.string(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetLeave",
+      entityId: args.leaveId,
+      action: args.action,
+      description: args.description,
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
   },
 });

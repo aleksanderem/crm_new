@@ -8,8 +8,8 @@ import { logActivity } from "./_helpers/activities";
 import { orgRoleValidator } from "@cvx/schema";
 import type { Id } from "./_generated/dataModel";
 
-// organizations and teamMemberships are AUTH tables — STAY in Convex DB.
-// Supabase gets a copy for analytics/reporting.
+// organizations and teamMemberships are in TABLE_MAP and written to Supabase.
+// subscriptions and plans stay Convex-only (not in TABLE_MAP).
 
 export const create = action({
   args: {
@@ -19,7 +19,7 @@ export const create = action({
     website: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<string> => {
-    // Create org and membership in Convex DB (auth tables)
+    // Create org in Convex (Convex-side mutation; also mirrored to Supabase below)
     const orgId: string = await ctx.runMutation(internal.organizations._createOrgInternal, {
       name: args.name,
       slug: args.slug,

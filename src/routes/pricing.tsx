@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
+import { Helmet } from "react-helmet-async";
 import { api } from "@cvx/_generated/api";
 import Logo from "@/assets/svg/logo";
 
@@ -20,6 +21,16 @@ function PricingPage() {
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
+      <Helmet>
+        <title>Cennik — Quera</title>
+        <meta name="description" content="Przejrzysty cennik Quera. Zacznij za darmo bez karty kredytowej — płać tylko za aktywne moduły CRM i Gabinet i skaluj w swoim tempie." />
+        <meta property="og:title" content="Cennik — Quera" />
+        <meta property="og:description" content="Przejrzysty cennik Quera. Zacznij za darmo bez karty kredytowej — płać tylko za aktywne moduły CRM i Gabinet i skaluj w swoim tempie." />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Cennik — Quera" />
+        <meta name="twitter:description" content="Przejrzysty cennik Quera. Zacznij za darmo bez karty kredytowej — płać tylko za aktywne moduły CRM i Gabinet i skaluj w swoim tempie." />
+      </Helmet>
       {/* Nav */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">

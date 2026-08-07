@@ -1,8 +1,10 @@
-import { action } from "../_generated/server";
+import { action, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
+import { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { logError } from "../_helpers/logged";
+import { logActivity } from "../_helpers/activities";
 import type { GabinetLeaveTypeRow } from "../_helpers/supabaseRows";
 
 // Dual-write refs removed — Supabase is now primary for leaveType writes
@@ -125,6 +127,18 @@ export const create = action({
       updatedAt: now,
     });
 
+    try {
+      await ctx.runMutation(internal.gabinet.leaveTypes._createSideEffects, {
+        organizationId: args.organizationId,
+        leaveTypeId,
+        name: args.name,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[leaveTypes.create] Side effects FAILED:", e);
+    }
+
     return leaveTypeId;
     } catch (err) {
       await logError(ctx, err, {
@@ -151,7 +165,7 @@ export const update = action({
   },
   handler: async (ctx, args) => {
     try {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -182,6 +196,17 @@ export const update = action({
 
     await db.patch("gabinetLeaveTypes", leaveTypeId, patch);
 
+    try {
+      await ctx.runMutation(internal.gabinet.leaveTypes._updateSideEffects, {
+        organizationId,
+        leaveTypeId,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[leaveTypes.update] Side effects FAILED:", e);
+    }
+
     return leaveTypeId;
     } catch (err) {
       await logError(ctx, err, {
@@ -201,7 +226,7 @@ export const remove = action({
     leaveTypeId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -223,6 +248,17 @@ export const remove = action({
       isActive: false,
       updatedAt: Date.now(),
     });
+
+    try {
+      await ctx.runMutation(internal.gabinet.leaveTypes._removeSideEffects, {
+        organizationId: args.organizationId,
+        leaveTypeId: args.leaveTypeId,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[leaveTypes.remove] Side effects FAILED:", e);
+    }
   },
 });
 
@@ -348,7 +384,7 @@ export const adjustBalance = action({
     usedDays: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -371,6 +407,98 @@ export const adjustBalance = action({
     if (args.usedDays !== undefined) updates.usedDays = args.usedDays;
 
     await db.patch("gabinetLeaveBalances", args.balanceId, updates);
+
+    try {
+      await ctx.runMutation(internal.gabinet.leaveTypes._adjustBalanceSideEffects, {
+        organizationId: args.organizationId,
+        balanceId: args.balanceId,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[leaveTypes.adjustBalance] Side effects FAILED:", e);
+    }
+  },
+});
+
+export const _createSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    leaveTypeId: v.string(),
+    name: v.string(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetLeaveType",
+      entityId: args.leaveTypeId,
+      action: "created",
+      description: `Created leave type "${args.name}"`,
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _updateSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    leaveTypeId: v.string(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetLeaveType",
+      entityId: args.leaveTypeId,
+      action: "updated",
+      description: `Updated leave type`,
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _removeSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    leaveTypeId: v.string(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetLeaveType",
+      entityId: args.leaveTypeId,
+      action: "deleted",
+      description: `Deactivated leave type`,
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _adjustBalanceSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    balanceId: v.string(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetLeaveBalance",
+      entityId: args.balanceId,
+      action: "updated",
+      description: `Adjusted leave balance`,
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
   },
 });
 

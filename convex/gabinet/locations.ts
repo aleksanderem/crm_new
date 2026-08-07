@@ -1,8 +1,10 @@
-import { action } from "../_generated/server";
+import { action, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
+import { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { logError } from "../_helpers/logged";
+import { logActivity } from "../_helpers/activities";
 import type {
   GabinetLocationRow,
   GabinetRoomRow,
@@ -130,6 +132,18 @@ export const createLocation = action({
       updatedAt: now,
     });
 
+    try {
+      await ctx.runMutation(internal.gabinet.locations._createLocationSideEffects, {
+        organizationId: args.organizationId,
+        locationId,
+        name: args.name,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[locations.createLocation] Side effects FAILED:", e);
+    }
+
     return locationId;
     } catch (err) {
       await logError(ctx, err, {
@@ -171,7 +185,7 @@ export const updateLocation = action({
   },
   handler: async (ctx, args) => {
     try {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -192,6 +206,17 @@ export const updateLocation = action({
     const { organizationId, locationId, ...updates } = args;
     const now = Date.now();
     await db.patch("gabinetLocations", locationId, { ...updates, updatedAt: now });
+
+    try {
+      await ctx.runMutation(internal.gabinet.locations._updateLocationSideEffects, {
+        organizationId,
+        locationId,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[locations.updateLocation] Side effects FAILED:", e);
+    }
 
     return locationId;
     } catch (err) {
@@ -218,7 +243,7 @@ export const deleteLocation = action({
     locationId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -255,6 +280,17 @@ export const deleteLocation = action({
       updatedAt: Date.now(),
     });
 
+    try {
+      await ctx.runMutation(internal.gabinet.locations._deleteLocationSideEffects, {
+        organizationId: args.organizationId,
+        locationId: args.locationId,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[locations.deleteLocation] Side effects FAILED:", e);
+    }
+
     return args.locationId;
   },
 });
@@ -289,7 +325,7 @@ export const createRoom = action({
   },
   handler: async (ctx, args) => {
     try {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -350,6 +386,19 @@ export const createRoom = action({
       createdAt: now,
     });
 
+    try {
+      await ctx.runMutation(internal.gabinet.locations._createRoomSideEffects, {
+        organizationId: args.organizationId,
+        roomId,
+        name: args.name,
+        locationId: args.locationId,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[locations.createRoom] Side effects FAILED:", e);
+    }
+
     return roomId;
     } catch (err) {
       await logError(ctx, err, {
@@ -379,7 +428,7 @@ export const updateRoom = action({
   },
   handler: async (ctx, args) => {
     try {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -399,6 +448,17 @@ export const updateRoom = action({
 
     const { organizationId, roomId, ...updates } = args;
     await db.patch("gabinetRooms", roomId, updates);
+
+    try {
+      await ctx.runMutation(internal.gabinet.locations._updateRoomSideEffects, {
+        organizationId,
+        roomId,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[locations.updateRoom] Side effects FAILED:", e);
+    }
 
     return roomId;
     } catch (err) {
@@ -425,7 +485,7 @@ export const deleteRoom = action({
     roomId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -459,6 +519,141 @@ export const deleteRoom = action({
     // Soft-delete
     await db.patch("gabinetRooms", args.roomId, { isActive: false });
 
+    try {
+      await ctx.runMutation(internal.gabinet.locations._deleteRoomSideEffects, {
+        organizationId: args.organizationId,
+        roomId: args.roomId,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[locations.deleteRoom] Side effects FAILED:", e);
+    }
+
     return args.roomId;
+  },
+});
+
+export const _createLocationSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    locationId: v.string(),
+    name: v.string(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetLocation",
+      entityId: args.locationId,
+      action: "created",
+      description: `Created location "${args.name}"`,
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _updateLocationSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    locationId: v.string(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetLocation",
+      entityId: args.locationId,
+      action: "updated",
+      description: `Updated location`,
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _deleteLocationSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    locationId: v.string(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetLocation",
+      entityId: args.locationId,
+      action: "deleted",
+      description: `Deactivated location`,
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _createRoomSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    roomId: v.string(),
+    name: v.string(),
+    locationId: v.string(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetRoom",
+      entityId: args.roomId,
+      action: "created",
+      description: `Created room "${args.name}"`,
+      metadata: { locationId: args.locationId },
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _updateRoomSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    roomId: v.string(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetRoom",
+      entityId: args.roomId,
+      action: "updated",
+      description: `Updated room`,
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _deleteRoomSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    roomId: v.string(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetRoom",
+      entityId: args.roomId,
+      action: "deleted",
+      description: `Deactivated room`,
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
   },
 });

@@ -1,8 +1,10 @@
-import { action } from "../_generated/server";
+import { action, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
+import { Id } from "../_generated/dataModel";
 import { calculateLoyaltyTier } from "./_helpers/loyaltyTier";
+import { logActivity } from "../_helpers/activities";
 import type { GabinetLoyaltyTier } from "../schema";
 
 // Dual-write refs removed — Supabase is now primary for loyalty writes
@@ -160,6 +162,20 @@ export const earnPoints = action({
       createdAt: now,
     });
 
+    try {
+      await ctx.runMutation(internal.gabinet.loyalty._earnSideEffects, {
+        organizationId: args.organizationId,
+        loyaltyId: String(loyalty!._id),
+        patientId: args.patientId,
+        points: args.points,
+        newBalance,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[loyalty.earnPoints] Side effects FAILED:", e);
+    }
+
     return newBalance;
   },
 });
@@ -249,6 +265,20 @@ export const spendPoints = action({
       createdBy: String(authResult.userId),
       createdAt: now,
     });
+
+    try {
+      await ctx.runMutation(internal.gabinet.loyalty._spendSideEffects, {
+        organizationId: args.organizationId,
+        loyaltyId: String(loyalty!._id),
+        patientId: args.patientId,
+        points: args.points,
+        newBalance,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[loyalty.spendPoints] Side effects FAILED:", e);
+    }
 
     return newBalance;
   },
@@ -344,6 +374,92 @@ export const adjustPoints = action({
       createdAt: now,
     });
 
+    try {
+      await ctx.runMutation(internal.gabinet.loyalty._adjustSideEffects, {
+        organizationId: args.organizationId,
+        loyaltyId: String(loyalty!._id),
+        patientId: args.patientId,
+        points: args.points,
+        newBalance,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[loyalty.adjustPoints] Side effects FAILED:", e);
+    }
+
     return newBalance;
+  },
+});
+
+export const _earnSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    loyaltyId: v.string(),
+    patientId: v.string(),
+    points: v.number(),
+    newBalance: v.number(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetLoyalty",
+      entityId: args.loyaltyId,
+      action: "updated",
+      description: `Earned ${args.points} loyalty points (balance: ${args.newBalance})`,
+      metadata: { type: "earn", points: args.points, newBalance: args.newBalance, patientId: args.patientId },
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _spendSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    loyaltyId: v.string(),
+    patientId: v.string(),
+    points: v.number(),
+    newBalance: v.number(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetLoyalty",
+      entityId: args.loyaltyId,
+      action: "updated",
+      description: `Spent ${args.points} loyalty points (balance: ${args.newBalance})`,
+      metadata: { type: "spend", points: args.points, newBalance: args.newBalance, patientId: args.patientId },
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _adjustSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    loyaltyId: v.string(),
+    patientId: v.string(),
+    points: v.number(),
+    newBalance: v.number(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetLoyalty",
+      entityId: args.loyaltyId,
+      action: "updated",
+      description: `Adjusted loyalty points by ${args.points > 0 ? "+" : ""}${args.points} (balance: ${args.newBalance})`,
+      metadata: { type: "adjust", points: args.points, newBalance: args.newBalance, patientId: args.patientId },
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
   },
 });

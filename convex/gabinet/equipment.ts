@@ -6,6 +6,7 @@ import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { verifyOrgAccess } from "../_helpers/auth";
 import { checkModuleAccess } from "../_helpers/products";
 import { logError } from "../_helpers/logged";
+import { logActivity } from "../_helpers/activities";
 import type {
   GabinetEquipmentRow,
   GabinetLocationRow,
@@ -165,6 +166,18 @@ export const createEquipment = action({
       updatedAt: now,
     });
 
+    try {
+      await ctx.runMutation(internal.gabinet.equipment._createEquipmentSideEffects, {
+        organizationId: args.organizationId,
+        equipmentId,
+        name: args.name,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[equipment.createEquipment] Side effects FAILED:", e);
+    }
+
     return equipmentId;
     } catch (err) {
       await logError(ctx, err, {
@@ -198,7 +211,7 @@ export const updateEquipment = action({
   },
   handler: async (ctx, args) => {
     try {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
@@ -223,6 +236,17 @@ export const updateEquipment = action({
       patch.parameterUnits = parameterUnits === null ? null : normalizeUnits(parameterUnits);
     }
     await db.patch("gabinetEquipment", equipmentId, patch);
+
+    try {
+      await ctx.runMutation(internal.gabinet.equipment._updateEquipmentSideEffects, {
+        organizationId,
+        equipmentId,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[equipment.updateEquipment] Side effects FAILED:", e);
+    }
 
     return equipmentId;
     } catch (err) {
@@ -296,7 +320,82 @@ export const transferEquipment = action({
       updatedAt: now,
     });
 
+    try {
+      await ctx.runMutation(internal.gabinet.equipment._transferEquipmentSideEffects, {
+        organizationId: args.organizationId,
+        equipmentId: args.equipmentId,
+        toLocationId: args.toLocationId,
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[equipment.transferEquipment] Side effects FAILED:", e);
+    }
+
     return args.equipmentId;
+  },
+});
+
+export const _createEquipmentSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    equipmentId: v.string(),
+    name: v.string(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetEquipment",
+      entityId: args.equipmentId,
+      action: "created",
+      description: `Created equipment "${args.name}"`,
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _updateEquipmentSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    equipmentId: v.string(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetEquipment",
+      entityId: args.equipmentId,
+      action: "updated",
+      description: `Updated equipment`,
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _transferEquipmentSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    equipmentId: v.string(),
+    toLocationId: v.string(),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetEquipment",
+      entityId: args.equipmentId,
+      action: "updated",
+      description: `Transferred equipment to location`,
+      metadata: { toLocationId: args.toLocationId },
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
   },
 });
 

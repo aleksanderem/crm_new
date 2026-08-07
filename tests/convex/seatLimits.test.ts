@@ -190,6 +190,84 @@ describe("checkSeatLimit via getSeatUsage", () => {
     expect(usage.canAddMore).toBe(false);
   });
 
+  test("uses max seatLimit when owner has multiple active subscriptions", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+
+    await t.run(async (ctx) => {
+      const planA = await ctx.db.insert("plans", {
+        key: "free",
+        stripeId: "price_free_multi",
+        name: "Free",
+        description: "Free plan (lower limit)",
+        seatLimit: 10,
+        prices: {
+          month: {
+            usd: { stripeId: "price_a_m_usd", amount: 0 },
+            eur: { stripeId: "price_a_m_eur", amount: 0 },
+            pln: { stripeId: "price_a_m_pln", amount: 0 },
+          },
+          year: {
+            usd: { stripeId: "price_a_y_usd", amount: 0 },
+            eur: { stripeId: "price_a_y_eur", amount: 0 },
+            pln: { stripeId: "price_a_y_pln", amount: 0 },
+          },
+        },
+      });
+      const planB = await ctx.db.insert("plans", {
+        key: "pro",
+        stripeId: "price_pro_multi",
+        name: "Pro",
+        description: "Pro plan (higher limit)",
+        seatLimit: 50,
+        prices: {
+          month: {
+            usd: { stripeId: "price_b_m_usd", amount: 2900 },
+            eur: { stripeId: "price_b_m_eur", amount: 2900 },
+            pln: { stripeId: "price_b_m_pln", amount: 12900 },
+          },
+          year: {
+            usd: { stripeId: "price_b_y_usd", amount: 29000 },
+            eur: { stripeId: "price_b_y_eur", amount: 29000 },
+            pln: { stripeId: "price_b_y_pln", amount: 129000 },
+          },
+        },
+      });
+
+      await ctx.db.insert("subscriptions", {
+        userId,
+        planId: planA,
+        priceStripeId: "price_a_m_usd",
+        stripeId: "sub_a",
+        currency: "usd",
+        interval: "month",
+        status: "active",
+        currentPeriodStart: Date.now(),
+        currentPeriodEnd: Date.now() + 30 * 24 * 60 * 60 * 1000,
+        cancelAtPeriodEnd: false,
+      });
+      await ctx.db.insert("subscriptions", {
+        userId,
+        planId: planB,
+        priceStripeId: "price_b_m_usd",
+        stripeId: "sub_b",
+        currency: "usd",
+        interval: "month",
+        status: "active",
+        currentPeriodStart: Date.now(),
+        currentPeriodEnd: Date.now() + 30 * 24 * 60 * 60 * 1000,
+        cancelAtPeriodEnd: false,
+      });
+    });
+
+    const usage = await t
+      .withIdentity(identity)
+      .query(api.organizations.getSeatUsage, { organizationId });
+
+    // Should use the higher of the two plan limits
+    expect(usage.seatLimit).toBe(50);
+  });
+
   test("seat limits are per-organization", async () => {
     const t = createTestCtx();
     const { organizationId: org1Id, identity } = await seedTestUser(t);

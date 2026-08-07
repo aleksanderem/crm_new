@@ -158,6 +158,46 @@ Add a calendar reminder for each tier on the day you first set the secrets. A co
 
 ---
 
+## Secret set dates
+
+GitHub Actions secrets are automatically age-checked by `secret-rotation-age.yml`, which reads `updated_at` from the GitHub API. **Convex and Netlify secrets have no equivalent API** — their rotation anchor must be recorded here. Update this table whenever you first set a secret or rotate it.
+
+### Convex environment variables (90-day rotation)
+
+| Secret | Last set date | Next due |
+|--------|--------------|----------|
+| `SUPABASE_DB_URL` (Convex copy) | _YYYY-MM-DD_ | _YYYY-MM-DD_ |
+| `SUPABASE_ANON_KEY` | _YYYY-MM-DD_ | _YYYY-MM-DD_ |
+| `SUPABASE_SERVICE_ROLE_KEY` | _YYYY-MM-DD_ | _YYYY-MM-DD_ |
+| `SUPABASE_JWT_SECRET` | _YYYY-MM-DD_ | _YYYY-MM-DD_ |
+| `CONVEX_DEPLOY_KEY` | _YYYY-MM-DD_ | _YYYY-MM-DD_ |
+
+### Convex environment variables (180-day rotation)
+
+| Secret | Last set date | Next due |
+|--------|--------------|----------|
+| `AUTH_RESEND_KEY` | _YYYY-MM-DD_ | _YYYY-MM-DD_ |
+| `RESEND_API_KEY` | _YYYY-MM-DD_ | _YYYY-MM-DD_ |
+| `STRIPE_SECRET_KEY` | _YYYY-MM-DD_ | _YYYY-MM-DD_ |
+| `STRIPE_WEBHOOK_SECRET` | _YYYY-MM-DD_ | _YYYY-MM-DD_ |
+| `GOOGLE_CLIENT_SECRET` | _YYYY-MM-DD_ | _YYYY-MM-DD_ |
+
+### Netlify environment variables (90-day rotation)
+
+| Secret | Last set date | Next due |
+|--------|--------------|----------|
+| `NETLIFY_AUTH_TOKEN` (Netlify copy) | _YYYY-MM-DD_ | _YYYY-MM-DD_ |
+
+### Netlify environment variables (180-day rotation)
+
+| Secret | Last set date | Next due |
+|--------|--------------|----------|
+| `SENTRY_AUTH_TOKEN` | _YYYY-MM-DD_ | _YYYY-MM-DD_ |
+
+> GitHub Actions secrets (`BACKUP_AWS_ACCESS_KEY_ID`, `BACKUP_AWS_SECRET_ACCESS_KEY`, `SUPABASE_DB_URL` (GH copy), `SUPABASE_SERVICE_ROLE_KEY` (GH copy), `NETLIFY_AUTH_TOKEN` (GH copy)) are tracked automatically by `secret-rotation-age.yml` and do not need a manual entry here.
+
+---
+
 ## Automated checks
 
 Three automated layers guard against leaked secrets:

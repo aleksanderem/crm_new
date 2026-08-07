@@ -13,8 +13,8 @@ export const Route = createFileRoute("/pricing")({
 
 function PricingPage() {
   const pricingPlans = useQuery(api.app.getPublicPricingPlans);
-  const crmProPrice = pricingPlans != null ? formatPln(pricingPlans.crm.monthPln) : "99 zł";
-  const gabinetProPrice = pricingPlans != null ? formatPln(pricingPlans.gabinet.monthPln) : "149 zł";
+  const crmProPrice = pricingPlans != null ? formatPln(pricingPlans.crm.monthPln) : "119 zł";
+  const gabinetProPrice = pricingPlans != null ? formatPln(pricingPlans.gabinet.monthPln) : "199 zł";
 
   return (
     <div className="min-h-dvh bg-background text-foreground">

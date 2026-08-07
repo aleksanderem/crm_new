@@ -243,7 +243,9 @@ export default function BillingSettings() {
                   {t("billing.trialBanner", "You are on a free trial.")}{" "}
                   {t("billing.trialEnds", "Trial ends")}:{" "}
                   <span className="font-medium">
-                    {new Date(user.subscription.currentPeriodEnd * 1000).toLocaleDateString()}
+                    {new Date(
+                      (user.subscription.trialEndDate ?? user.subscription.currentPeriodEnd) * 1000,
+                    ).toLocaleDateString()}
                   </span>
                   .
                 </p>

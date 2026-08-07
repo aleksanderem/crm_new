@@ -320,4 +320,208 @@ describe("appointment state machine", () => {
     });
     expect((await getAppointment(apptId))?.cancellationReason).toBeUndefined();
   });
+
+  // --- invalid transitions (same-status) ---
+
+  test("scheduled -> scheduled throws invalid transition error", async () => {
+    const t = createManagedTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
+
+    const apptId = await createAppointment(t, identity, {
+      organizationId, patientId, treatmentId, employeeId: userId,
+    });
+
+    await expect(
+      t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
+        organizationId,
+        appointmentId: apptId,
+        status: "scheduled",
+      }),
+    ).rejects.toThrow("Cannot transition from scheduled to scheduled");
+  });
+
+  test("completed -> completed throws invalid transition error", async () => {
+    const t = createManagedTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
+
+    const apptId = await createAppointment(t, identity, {
+      organizationId, patientId, treatmentId, employeeId: userId,
+    });
+
+    const db = createSupabaseDb();
+    await db.patch("gabinetAppointments", apptId, {
+      status: "completed",
+      updatedAt: Date.now(),
+    });
+
+    await expect(
+      t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
+        organizationId,
+        appointmentId: apptId,
+        status: "completed",
+      }),
+    ).rejects.toThrow("Cannot transition from completed to completed");
+  });
+
+  test("cancelled -> cancelled throws invalid transition error", async () => {
+    const t = createManagedTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
+
+    const apptId = await createAppointment(t, identity, {
+      organizationId, patientId, treatmentId, employeeId: userId,
+    });
+
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
+      organizationId, appointmentId: apptId, status: "cancelled",
+    });
+
+    await expect(
+      t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
+        organizationId,
+        appointmentId: apptId,
+        status: "cancelled",
+      }),
+    ).rejects.toThrow("Cannot transition from cancelled to cancelled");
+  });
+
+  // --- cross-status reverts (manual corrections allowed by MANUAL_TRANSITIONS) ---
+
+  test("completed -> scheduled reverts status (manual correction)", async () => {
+    const t = createManagedTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
+
+    const apptId = await createAppointment(t, identity, {
+      organizationId, patientId, treatmentId, employeeId: userId,
+    });
+
+    const db = createSupabaseDb();
+    await db.patch("gabinetAppointments", apptId, {
+      status: "completed",
+      updatedAt: Date.now(),
+    });
+
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
+      organizationId, appointmentId: apptId, status: "scheduled",
+    });
+
+    const appt = await getAppointment(apptId);
+    expect(appt?.status).toBe("scheduled");
+  });
+
+  test("cancelled -> scheduled reverts status (manual correction)", async () => {
+    const t = createManagedTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
+
+    const apptId = await createAppointment(t, identity, {
+      organizationId, patientId, treatmentId, employeeId: userId,
+    });
+
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
+      organizationId, appointmentId: apptId, status: "cancelled",
+    });
+
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
+      organizationId, appointmentId: apptId, status: "scheduled",
+    });
+
+    const appt = await getAppointment(apptId);
+    expect(appt?.status).toBe("scheduled");
+  });
+
+  test("no_show -> scheduled reverts status (manual correction)", async () => {
+    const t = createManagedTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
+
+    const apptId = await createAppointment(t, identity, {
+      organizationId, patientId, treatmentId, employeeId: userId,
+    });
+
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
+      organizationId, appointmentId: apptId, status: "no_show",
+    });
+
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
+      organizationId, appointmentId: apptId, status: "scheduled",
+    });
+
+    const appt = await getAppointment(apptId);
+    expect(appt?.status).toBe("scheduled");
+  });
+
+  test("completed -> scheduled restores one package session", async () => {
+    const t = createManagedTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
+
+    const packageId = await t.withIdentity(identity).action(
+      api.gabinet.packages.create,
+      {
+        organizationId,
+        name: "Revert-to-scheduled test package",
+        treatments: [{ treatmentId: String(treatmentId), quantity: 2 }],
+        totalPrice: 200,
+      },
+    );
+    const usageId = await t.withIdentity(identity).action(
+      api.gabinet.packages.purchasePackage,
+      {
+        organizationId,
+        patientId: String(patientId),
+        packageId,
+        paidAmount: 200,
+        paymentMethod: "cash",
+      },
+    );
+
+    const apptId = await t.withIdentity(identity).action(
+      api.gabinet.appointments.create,
+      {
+        organizationId,
+        patientId: String(patientId),
+        treatmentId: String(treatmentId),
+        employeeId: String(userId),
+        date: "2026-03-16",
+        startTime: "10:00",
+        endTime: "10:30",
+        packageUsageId: usageId,
+        allowPast: true,
+      },
+    );
+
+    const db = createSupabaseDb();
+
+    // Drive the appointment to completed — deducts 1 session.
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
+      organizationId, appointmentId: apptId, status: "confirmed",
+    });
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
+      organizationId, appointmentId: apptId, status: "in_progress",
+    });
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
+      organizationId, appointmentId: apptId, status: "completed",
+    });
+
+    const usageAfterComplete = await db.get<{
+      treatmentsUsed: Array<{ usedCount: number }>;
+    }>("gabinetPackageUsage", usageId);
+    expect(usageAfterComplete?.treatmentsUsed[0].usedCount).toBe(1);
+
+    // Revert all the way back to scheduled — session should be restored.
+    await t.withIdentity(identity).action(api.gabinet.appointments.updateStatus, {
+      organizationId, appointmentId: apptId, status: "scheduled",
+    });
+
+    expect((await getAppointment(apptId))?.status).toBe("scheduled");
+
+    const usageAfterRevert = await db.get<{
+      treatmentsUsed: Array<{ usedCount: number }>;
+    }>("gabinetPackageUsage", usageId);
+    expect(usageAfterRevert?.treatmentsUsed[0].usedCount).toBe(0);
+  });
 });

@@ -30,7 +30,7 @@ export function createTestCtx() {
  */
 export async function seedTestUser(
   t: ReturnType<typeof convexTest>,
-  opts?: { role?: "owner" | "admin" | "member" },
+  opts?: { role?: "owner" | "admin" | "member" | "viewer" },
 ) {
   const role = opts?.role ?? "owner";
 
@@ -95,7 +95,7 @@ export async function seedTestUser(
 export async function seedSecondUser(
   t: ReturnType<typeof convexTest>,
   organizationId: Id<"organizations">,
-  opts?: { role?: "owner" | "admin" | "member" },
+  opts?: { role?: "owner" | "admin" | "member" | "viewer" },
 ) {
   const role = opts?.role ?? "member";
 
@@ -146,6 +146,16 @@ export async function seedGabinetPrereqs(
 ) {
   const ids = await t.run(async (ctx) => {
     const now = Date.now();
+
+    // Activate the gabinet product subscription so verifyProductAccess passes.
+    await ctx.db.insert("productSubscriptions", {
+      organizationId,
+      productId: "gabinet",
+      status: "active",
+      cancelAtPeriodEnd: false,
+      createdAt: now,
+      updatedAt: now,
+    });
 
     const patientId = await ctx.db.insert("gabinetPatients", {
       organizationId,

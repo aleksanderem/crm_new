@@ -255,6 +255,8 @@ export function AppSidebar() {
                     )}
                     <Link
                       to={item.to}
+                      // @ts-ignore — generic nav items may carry typed search for specific routes (e.g. billing?productKey=gabinet)
+                      search={item.search}
                       className={cn(
                         "flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors",
                         isActive

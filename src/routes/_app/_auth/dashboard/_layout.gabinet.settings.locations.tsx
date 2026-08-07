@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
-import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
+import { useSupabaseGabinetLocationsList, useSupabaseGabinetLocation } from "@/hooks/use-supabase-gabinet-locations";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
@@ -208,13 +208,11 @@ function LocationCard({
   const [saving, setSaving] = useState(false);
   const [addingRoom, setAddingRoom] = useState(false);
 
-  const getLocationAction = useAction(api.gabinet.locations.getLocation);
-  const { data: location } = useQuery({
-    queryKey: ["gabinet.locations.getLocation", organizationId, locationId],
-    queryFn: () =>
-      getLocationAction({ organizationId, locationId: locationId as string }),
-    enabled: expanded && !!organizationId && !!locationId,
-  }) as { data: LocationWithRooms | null | undefined };
+  const { data: location } = useSupabaseGabinetLocation(
+    organizationId as string,
+    locationId as string,
+    { enabled: expanded && !!organizationId && !!locationId },
+  ) as { data: LocationWithRooms | null | undefined };
 
   const updateLocation = useAction(api.gabinet.locations.updateLocation);
   const deleteLocation = useAction(api.gabinet.locations.deleteLocation);

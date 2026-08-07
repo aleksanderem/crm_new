@@ -9,6 +9,14 @@ import {
   mapGabinetLocationFromSupabase,
   type MappedGabinetLocation,
 } from "@/lib/supabase/mappers/gabinet/locations";
+import {
+  mapGabinetRoomFromSupabase,
+  type MappedGabinetRoom,
+} from "@/lib/supabase/mappers/gabinet/rooms";
+
+export type MappedGabinetLocationWithRooms = MappedGabinetLocation & {
+  rooms: MappedGabinetRoom[];
+};
 
 // ---------------------------------------------------------------------------
 // Locations List
@@ -59,4 +67,56 @@ export function useSupabaseGabinetLocationsList(
     },
     enabled: enabled && isReady && !!organizationId,
   } satisfies UseQueryOptions<MappedGabinetLocation[], Error>);
+}
+
+// ---------------------------------------------------------------------------
+// Single Location with Rooms
+// ---------------------------------------------------------------------------
+
+interface UseSupabaseGabinetLocationOptions {
+  enabled?: boolean;
+}
+
+export function useSupabaseGabinetLocation(
+  organizationId: string,
+  locationId: string | null | undefined,
+  options: UseSupabaseGabinetLocationOptions = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  return useQuery<MappedGabinetLocationWithRooms | null, Error>({
+    queryKey: [
+      ...supabaseKeys.gabinetLocations.detail(organizationId, locationId ?? ""),
+      "with-rooms",
+    ],
+    queryFn: async (): Promise<MappedGabinetLocationWithRooms | null> => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      const { data: locationData, error: locationError } = await client
+        .from("gabinet_locations")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .eq("id", locationId!)
+        .maybeSingle();
+
+      if (locationError) throw locationError;
+      if (!locationData) return null;
+
+      const { data: roomsData, error: roomsError } = await client
+        .from("gabinet_rooms")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .eq("location_id", locationId!)
+        .order("name", { ascending: true });
+
+      if (roomsError) throw roomsError;
+
+      return {
+        ...mapGabinetLocationFromSupabase(locationData),
+        rooms: (roomsData ?? []).map(mapGabinetRoomFromSupabase),
+      };
+    },
+    enabled: enabled && isReady && !!organizationId && !!locationId,
+  } satisfies UseQueryOptions<MappedGabinetLocationWithRooms | null, Error>);
 }

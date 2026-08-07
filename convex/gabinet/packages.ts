@@ -6,6 +6,7 @@ import { paginationOptsValidator } from "convex/server";
 import { logActivity } from "../_helpers/activities";
 import { logError } from "../_helpers/logged";
 import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
+import { calculateLoyaltyTier } from "./_helpers/loyaltyTier";
 import { Id } from "../_generated/dataModel";
 import type {
   GabinetPackageUsageRow,
@@ -791,6 +792,7 @@ export const purchasePackage = action({
         await db.patch("gabinetLoyaltyPoints", String(loyalty._id), {
           balance: newBalance,
           lifetimeEarned: newLifetimeEarned,
+          tier: calculateLoyaltyTier(newLifetimeEarned),
           updatedAt: now,
         });
       } else {
@@ -800,6 +802,7 @@ export const purchasePackage = action({
           balance: newBalance,
           lifetimeEarned: newLifetimeEarned,
           lifetimeSpent: 0,
+          tier: calculateLoyaltyTier(newLifetimeEarned),
           createdAt: now,
           updatedAt: now,
         });
@@ -1290,6 +1293,7 @@ export const assignGiftPackage = action({
         await db.patch("gabinetLoyaltyPoints", String(loyalty._id), {
           balance: newBalance,
           lifetimeEarned: newLifetimeEarned,
+          tier: calculateLoyaltyTier(newLifetimeEarned),
           updatedAt: now,
         });
       } else {
@@ -1299,6 +1303,7 @@ export const assignGiftPackage = action({
           balance: newBalance,
           lifetimeEarned: newLifetimeEarned,
           lifetimeSpent: 0,
+          tier: calculateLoyaltyTier(newLifetimeEarned),
           createdAt: now,
           updatedAt: now,
         });

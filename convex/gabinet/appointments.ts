@@ -34,6 +34,7 @@ import { checkDocumentGate } from "./_helpers/documentGate";
 import { getJunctionTreatmentIds } from "./_helpers/junctionTreatments";
 import { logError } from "../_helpers/logged";
 import { applyMovementInternal, selectFefoLotsForProduct } from "../inventory";
+import { calculateLoyaltyTier } from "./_helpers/loyaltyTier";
 
 // Dual-write refs removed — Supabase is now primary for appointment writes
 
@@ -3079,6 +3080,7 @@ async function handleAppointmentCompletion(
           {
             balance: newBalance,
             lifetimeEarned: newLifetimeEarned,
+            tier: calculateLoyaltyTier(newLifetimeEarned),
             updatedAt: now,
           },
         );
@@ -3089,6 +3091,7 @@ async function handleAppointmentCompletion(
           balance: newBalance,
           lifetimeEarned: newLifetimeEarned,
           lifetimeSpent: 0,
+          tier: calculateLoyaltyTier(newLifetimeEarned),
           createdAt: now,
           updatedAt: now,
         });

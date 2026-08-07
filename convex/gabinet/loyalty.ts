@@ -2,6 +2,7 @@ import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
+import { calculateLoyaltyTier } from "./_helpers/loyaltyTier";
 
 // Dual-write refs removed — Supabase is now primary for loyalty writes
 
@@ -125,6 +126,7 @@ export const earnPoints = action({
     await db.patch("gabinetLoyaltyPoints", String(loyalty!._id), {
       balance: newBalance,
       lifetimeEarned: newLifetimeEarned,
+      tier: calculateLoyaltyTier(newLifetimeEarned),
       updatedAt: now,
     });
 
@@ -200,6 +202,7 @@ export const spendPoints = action({
     await db.patch("gabinetLoyaltyPoints", String(loyalty!._id), {
       balance: newBalance,
       lifetimeSpent: newLifetimeSpent,
+      tier: calculateLoyaltyTier(loyalty!.lifetimeEarned as number),
       updatedAt: now,
     });
 
@@ -277,6 +280,7 @@ export const adjustPoints = action({
       balance: newBalance,
       lifetimeEarned: newLifetimeEarned,
       lifetimeSpent: newLifetimeSpent,
+      tier: calculateLoyaltyTier(newLifetimeEarned),
       updatedAt: now,
     });
 

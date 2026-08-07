@@ -37,7 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Id } from "@cvx/_generated/dataModel";
+
 import { Plus, Check, X, Trash2 } from "@/lib/ez-icons";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";

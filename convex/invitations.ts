@@ -46,7 +46,7 @@ export const listPending = action({
 
 export const getByToken = action({
   args: { token: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     const db = createSupabaseDb();
 
     const invitation = await db

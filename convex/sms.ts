@@ -1,6 +1,6 @@
 import { action, internalAction } from "./_generated/server";
 import { v } from "convex/values";
-import { api, internal } from "./_generated/api";
+import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 type OrgSmsConfigRow = {

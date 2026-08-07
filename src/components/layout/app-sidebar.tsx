@@ -101,8 +101,6 @@ export function AppSidebar() {
 
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (same pattern as dashboard layout)
   const { data: activeProducts } = useQuery(convexQuery(api.productSubscriptions.getActiveProducts, { organizationId }));
-  const { data: currentUser } = useQuery(convexQuery(api.app.getCurrentUser, {}));
-
   const getIsPlatformAdmin = useAction(api.app.getIsPlatformAdmin);
   const { data: adminStatus } = useQuery({
     queryKey: ["isPlatformAdmin"],

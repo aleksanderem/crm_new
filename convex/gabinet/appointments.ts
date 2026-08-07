@@ -781,7 +781,7 @@ export const _checkDocumentGateQuery = internalQuery({
       v.literal("after_completion"),
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     return await checkDocumentGate(args.appointmentId as Id<"gabinetAppointments">, args.timing);
   },
 });

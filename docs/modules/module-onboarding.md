@@ -116,9 +116,8 @@ That means adding a new module requires aligning all of the following:
 - the module manifest `productKey`
 - product catalog seed/configuration for the new product
 - subscription lifecycle logic if billing needs to activate/deactivate it
-- any grace-period fallback logic that currently assumes a fixed set of products
 
-One important current limitation is that `getActiveProducts` still hardcodes a grace-period fallback of `["crm", "gabinet"]` when no subscriptions exist. When new modules are introduced, this fallback should be moved to a registry- or catalog-driven source rather than staying hardcoded.
+As of issue #4291, `getActiveProducts` no longer applies a grace-period fallback. If an organization has no active subscriptions, the function returns an empty list and no modules are shown. The previous hardcoded fallback of `["crm", "gabinet"]` has been removed, so there is no longer a risk that a newly added module is silently excluded from the fallback set.
 
 ### 8. Add settings and configuration surfaces as module-owned metadata
 
@@ -302,7 +301,7 @@ The current manual touchpoints are:
 
 - `src/modules/types.ts` because `ModuleId` is still a fixed union
 - `src/modules/registry.ts` because manifests are still manually imported into `moduleRegistry`
-- `convex/productSubscriptions.ts` because the no-subscription grace fallback is still hardcoded to CRM and Gabinet
+- `convex/productSubscriptions.ts` if activation defaults or product filtering need alignment (the no-subscription grace fallback was removed in #4291 and is no longer a manual touchpoint)
 - `convex/_helpers/permissionTypes.ts` because feature ids are centrally enumerated
 - `convex/_helpers/permissions.ts` because default role grants are centrally defined
 - product catalog/bootstrap data for sellable products and subscriptions

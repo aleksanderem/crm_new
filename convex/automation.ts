@@ -1348,7 +1348,6 @@ export const listActionTypes = action({
   },
 });
 
-
 export const emitEvent = internalMutation({
   args: automationEventArgsValidator,
   handler: async (ctx, args) => {

@@ -15,6 +15,8 @@ import { api, internal } from "~/convex/_generated/api";
 import { SITE_URL, STRIPE_SECRET_KEY } from "@cvx/env";
 import { asyncMap } from "convex-helpers";
 
+const TRIAL_PERIOD_DAYS = 14;
+
 // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
 const writeSubscriptionRef = internal.supabase.subscriptions.writeSubscriptionToSupabase;
 
@@ -481,6 +483,7 @@ export const createSubscriptionCheckout = action({
         organizationId: args.organizationId,
       },
       subscription_data: {
+        trial_period_days: TRIAL_PERIOD_DAYS,
         metadata: {
           productKey,
           organizationId: args.organizationId,

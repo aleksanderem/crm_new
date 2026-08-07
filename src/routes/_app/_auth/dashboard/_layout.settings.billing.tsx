@@ -237,6 +237,18 @@ export default function BillingSettings() {
 
         {user.subscription && user.subscription.planId !== plans.free._id && (
           <div className="flex w-full flex-col items-center justify-evenly gap-2 border-border p-6 pt-0">
+            {user.subscription.status === "trialing" && (
+              <div className="flex w-full items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900/50 dark:bg-blue-950/30">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  {t("billing.trialBanner", "You are on a free trial.")}{" "}
+                  {t("billing.trialEnds", "Trial ends")}:{" "}
+                  <span className="font-medium">
+                    {new Date(user.subscription.currentPeriodEnd * 1000).toLocaleDateString()}
+                  </span>
+                  .
+                </p>
+              </div>
+            )}
             <div className="flex w-full items-center overflow-hidden rounded-md border border-primary/60">
               <div className="flex w-full flex-col items-start p-4">
                 <div className="flex items-end gap-2">
@@ -244,22 +256,28 @@ export default function BillingSettings() {
                     {user.subscription.planKey.charAt(0).toUpperCase() +
                       user.subscription.planKey.slice(1)}
                   </span>
-                  <p className="flex items-start gap-1 text-sm font-normal text-primary/60">
-                    {user.subscription.cancelAtPeriodEnd === true ? (
-                      <span className="flex h-[18px] items-center text-sm font-medium text-red-500">
-                        {t("billing.expires", "Expires")}
-                      </span>
-                    ) : (
-                      <span className="flex h-[18px] items-center text-sm font-medium text-green-500">
-                        {t("billing.renews", "Renews")}
-                      </span>
-                    )}
-                    on:{" "}
-                    {new Date(
-                      user.subscription.currentPeriodEnd * 1000,
-                    ).toLocaleDateString("en-US")}
-                    .
-                  </p>
+                  {user.subscription.status === "trialing" ? (
+                    <span className="flex h-[18px] items-center rounded-md bg-blue-100 px-1.5 text-sm font-medium text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                      {t("billing.trial", "Trial")}
+                    </span>
+                  ) : (
+                    <p className="flex items-start gap-1 text-sm font-normal text-primary/60">
+                      {user.subscription.cancelAtPeriodEnd === true ? (
+                        <span className="flex h-[18px] items-center text-sm font-medium text-red-500">
+                          {t("billing.expires", "Expires")}
+                        </span>
+                      ) : (
+                        <span className="flex h-[18px] items-center text-sm font-medium text-green-500">
+                          {t("billing.renews", "Renews")}
+                        </span>
+                      )}
+                      on:{" "}
+                      {new Date(
+                        user.subscription.currentPeriodEnd * 1000,
+                      ).toLocaleDateString("en-US")}
+                      .
+                    </p>
+                  )}
                 </div>
                 <p className="text-start text-sm font-normal text-primary/60">
                   {plans.pro.description}

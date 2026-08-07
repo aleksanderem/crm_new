@@ -1,5 +1,6 @@
 import { createFileRoute, Navigate, Link } from "@tanstack/react-router";
 import { useConvexAuth } from "@convex-dev/react-query";
+import { Helmet } from "react-helmet-async";
 import { Route as DashboardRoute } from "@/routes/_app/_auth/dashboard/_layout.index";
 import Logo from "@/assets/svg/logo";
 
@@ -24,6 +25,16 @@ function Index() {
 function LandingPage() {
   return (
     <div className="min-h-dvh bg-background text-foreground">
+      <Helmet>
+        <title>Quera — Jeden system. Cały Twój biznes.</title>
+        <meta name="description" content="Quera to modułowa platforma SaaS dla polskich małych i średnich firm — CRM, zarządzanie gabinetem i więcej w jednym miejscu. Zacznij za darmo, bez karty kredytowej." />
+        <meta property="og:title" content="Quera — Jeden system. Cały Twój biznes." />
+        <meta property="og:description" content="Quera to modułowa platforma SaaS dla polskich małych i średnich firm — CRM, zarządzanie gabinetem i więcej w jednym miejscu. Zacznij za darmo, bez karty kredytowej." />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Quera — Jeden system. Cały Twój biznes." />
+        <meta name="twitter:description" content="Quera to modułowa platforma SaaS dla polskich małych i średnich firm — CRM, zarządzanie gabinetem i więcej w jednym miejscu. Zacznij za darmo, bez karty kredytowej." />
+      </Helmet>
       <Header />
       <main>
         <Hero />

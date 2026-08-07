@@ -642,6 +642,21 @@ export const _sendAutomationEmail = internalAction({
   },
 });
 
+export const _patchAutomationRun = internalAction({
+  args: {
+    runId: v.string(),
+    status: v.string(),
+    updatedAt: v.number(),
+  },
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    await db.patch("automationRuns", args.runId, {
+      status: args.status,
+      updatedAt: args.updatedAt,
+    });
+  },
+});
+
 export const _patchAutomationRunStep = internalAction({
   args: {
     stepId: v.string(),
@@ -783,6 +798,7 @@ export const _recordAutomationEmailResult = internalMutation({
 export const _applyUpdateFieldAction = internalAction({
   args: {
     organizationId: v.id("organizations"),
+    runId: v.string(),
     stepId: v.string(),
     actorUserId: v.optional(v.id("users")),
     targetEntityType: v.union(
@@ -850,6 +866,7 @@ export const _applyUpdateFieldAction = internalAction({
 
     await ctx.runMutation(internal.automation._recordUpdateFieldResult, {
       organizationId: args.organizationId,
+      runId: args.runId,
       stepId: args.stepId,
       actorUserId: args.actorUserId,
       success: resultUpdates !== undefined,
@@ -867,6 +884,7 @@ export const _applyUpdateFieldAction = internalAction({
 export const _recordUpdateFieldResult = internalMutation({
   args: {
     organizationId: v.id("organizations"),
+    runId: v.optional(v.string()),
     stepId: v.string(),
     actorUserId: v.optional(v.id("users")),
     success: v.boolean(),
@@ -894,6 +912,13 @@ export const _recordUpdateFieldResult = internalMutation({
         processedAt: now,
         updatedAt: now,
       });
+      if (args.runId) {
+        await ctx.scheduler.runAfter(0, internal.automation._patchAutomationRun, {
+          runId: args.runId,
+          status: "failed",
+          updatedAt: now,
+        });
+      }
       return;
     }
 
@@ -1767,6 +1792,7 @@ export const processRun = internalAction({
             );
 
             if (!permission.allowed) {
+              sawFailure = true;
               await processRunDb.patch("automationRunSteps", stepId, {
                 status: "failed",
                 errorMessage: permission.reason ?? "Permission denied",
@@ -1780,6 +1806,7 @@ export const processRun = internalAction({
             // mutations cannot use fetch(). The action updates the step status.
             await ctx.scheduler.runAfter(0, internal.automation._applyUpdateFieldAction, {
               organizationId: run.organizationId,
+              runId: run._id,
               stepId,
               actorUserId: run.actorUserId,
               targetEntityType: action.targetEntityType,

@@ -561,6 +561,65 @@ test.describe("Accessibility — WCAG 2.1 AA", () => {
   });
 });
 
+// ─── WCAG 1.1.1 Chart Text Alternatives ──────────────────────────────────────
+// Non-text content (charts) must have a text alternative (WCAG 1.1.1).
+// Recharts SVGs render inside a div[data-chart] container and do NOT trigger
+// axe-core's `image-alt` rule (which targets <img> elements), so a dedicated
+// aria-label presence check per chart container is required.
+
+test.describe("Chart text alternatives — WCAG 1.1.1", () => {
+  test.setTimeout(60_000);
+
+  test.beforeEach(async ({ page }) => {
+    await loginAndGoToDashboard(page);
+  });
+
+  test("all chart containers on /dashboard have aria-label (WCAG 1.1.1)", async ({
+    page,
+  }) => {
+    await navigateTo(page, "/dashboard");
+    await assertNoErrorBoundary(page);
+
+    // Wait up to 15 s for at least one chart to appear; skip if the org has no
+    // data yet (charts may be hidden behind empty-state UI).
+    const firstChart = page.locator("[data-chart]").first();
+    const rendered = await firstChart
+      .waitFor({ state: "visible", timeout: 15_000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (!rendered) {
+      test.skip();
+      return;
+    }
+
+    const chartContainers = page.locator("[data-chart]");
+    const count = await chartContainers.count();
+
+    expect(
+      count,
+      "Expected at least one [data-chart] container on /dashboard"
+    ).toBeGreaterThan(0);
+
+    const missing: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const container = chartContainers.nth(i);
+      const ariaLabel = await container.getAttribute("aria-label");
+      if (!ariaLabel) {
+        const chartId =
+          (await container.getAttribute("data-chart")) ?? `chart[${i}]`;
+        missing.push(chartId);
+      }
+    }
+
+    expect(
+      missing,
+      "Chart containers missing aria-label (WCAG 1.1.1 Non-text Content):\n" +
+        missing.map((id) => `  • ${id}`).join("\n")
+    ).toHaveLength(0);
+  });
+});
+
 // ─── WCAG 1.4.10 Reflow ──────────────────────────────────────────────────────
 // Content must be presentable without loss of information and without requiring
 // horizontal scrolling at a viewport width of 320 CSS pixels.

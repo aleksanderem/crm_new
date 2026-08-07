@@ -100,6 +100,8 @@ export function CrmPipelineChart({ data = defaultPipelineData, className, blurre
           config={pipelineChartConfig}
           className="w-full"
           style={{ height: Math.max(200, chartData.length * 48) }}
+          role="img"
+          aria-label={t("dashboard.dealsByStage")}
         >
           <BarChart
             accessibilityLayer

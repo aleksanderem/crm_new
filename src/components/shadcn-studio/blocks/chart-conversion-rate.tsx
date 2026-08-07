@@ -100,7 +100,7 @@ const ConversionRateCard = ({
             </div>
           </div>
           <div className='relative'>
-            <ChartContainer config={conversionRateChartConfig} className='h-20 w-full'>
+            <ChartContainer config={conversionRateChartConfig} className='h-20 w-full' role='img' aria-label={title}>
               <AreaChart
                 data={chartData}
                 margin={{

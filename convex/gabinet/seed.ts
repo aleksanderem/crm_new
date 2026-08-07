@@ -340,7 +340,93 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
     }
 
     // ============================================================
-    // 8. APPOINTMENTS (current week + next 2 weeks + past)
+    // 8. OVERTIME
+    // ============================================================
+    let overtimeCount = 0;
+    if (employeeUserIds.length >= 1) {
+      // Approved overtime for employee 0 (last week)
+      await ctx.db.insert("gabinetOvertime", {
+        organizationId: orgId,
+        userId: employeeUserIds[0],
+        date: ts(-6),
+        hours: 2,
+        reason: "Pilna konsultacja poza godzinami pracy",
+        status: "approved",
+        approvedBy: userId,
+        approvedAt: now - 5 * 24 * 60 * 60 * 1000,
+        createdBy: employeeUserIds[0],
+        createdAt: now - 6 * 24 * 60 * 60 * 1000,
+        updatedAt: now - 5 * 24 * 60 * 60 * 1000,
+      });
+      overtimeCount++;
+
+      // Approved overtime for employee 0 (this week)
+      await ctx.db.insert("gabinetOvertime", {
+        organizationId: orgId,
+        userId: employeeUserIds[0],
+        date: ts(-1),
+        hours: 1.5,
+        reason: "Zabieg ratunkowy po zamknięciu",
+        status: "approved",
+        approvedBy: userId,
+        approvedAt: now - 12 * 60 * 60 * 1000,
+        createdBy: employeeUserIds[0],
+        createdAt: now - 24 * 60 * 60 * 1000,
+        updatedAt: now - 12 * 60 * 60 * 1000,
+      });
+      overtimeCount++;
+    }
+    if (employeeUserIds.length >= 2) {
+      // Pending overtime request from employee 1
+      await ctx.db.insert("gabinetOvertime", {
+        organizationId: orgId,
+        userId: employeeUserIds[1],
+        date: ts(-2),
+        hours: 3,
+        reason: "Przyjęcie pacjentów z innego lekarza (choroba)",
+        status: "pending",
+        createdBy: employeeUserIds[1],
+        createdAt: now - 2 * 24 * 60 * 60 * 1000,
+        updatedAt: now - 2 * 24 * 60 * 60 * 1000,
+      });
+      overtimeCount++;
+
+      // Rejected overtime from employee 1 (older)
+      await ctx.db.insert("gabinetOvertime", {
+        organizationId: orgId,
+        userId: employeeUserIds[1],
+        date: ts(-14),
+        hours: 4,
+        reason: "Spotkanie z dostawcą sprzętu",
+        status: "rejected",
+        approvedBy: userId,
+        approvedAt: now - 12 * 24 * 60 * 60 * 1000,
+        createdBy: employeeUserIds[1],
+        createdAt: now - 14 * 24 * 60 * 60 * 1000,
+        updatedAt: now - 12 * 24 * 60 * 60 * 1000,
+      });
+      overtimeCount++;
+    }
+    if (employeeUserIds.length >= 3) {
+      // Approved overtime from employee 2 (physiotherapist)
+      await ctx.db.insert("gabinetOvertime", {
+        organizationId: orgId,
+        userId: employeeUserIds[2],
+        date: ts(-3),
+        hours: 2.5,
+        reason: "Sesja rehabilitacyjna po wypadku drogowym — pilny przypadek",
+        status: "approved",
+        approvedBy: userId,
+        approvedAt: now - 2 * 24 * 60 * 60 * 1000,
+        createdBy: employeeUserIds[2],
+        createdAt: now - 3 * 24 * 60 * 60 * 1000,
+        updatedAt: now - 2 * 24 * 60 * 60 * 1000,
+      });
+      overtimeCount++;
+    }
+
+    // ============================================================
+    // 9. APPOINTMENTS (current week + next 2 weeks + past)
     // ============================================================
     const appointmentSlots = [
       // --- Today (day 0) ---
@@ -438,7 +524,7 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
     }
 
     // ============================================================
-    // 9. TREATMENT PACKAGES
+    // 10. TREATMENT PACKAGES
     // ============================================================
     const pkg1 = await ctx.db.insert("gabinetTreatmentPackages", {
       organizationId: orgId,
@@ -538,7 +624,7 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
     });
 
     // ============================================================
-    // 10. LOYALTY POINTS
+    // 11. LOYALTY POINTS
     // ============================================================
     const loyaltyPatients = [
       { idx: 0, balance: 320, earned: 470, spent: 150, tier: "silver" as const },
@@ -592,6 +678,7 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
       leaveTypes: leaveTypeIds.length,
       appointments: appointmentIds.length,
       packages: 3,
+      overtime: overtimeCount,
     };
 }
 

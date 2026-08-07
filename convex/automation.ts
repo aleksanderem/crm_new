@@ -511,6 +511,7 @@ export const _logActivityForRun = internalMutation({
 export const _sendAutomationEmail = internalAction({
   args: {
     organizationId: v.id("organizations"),
+    runId: v.optional(v.string()),
     stepId: v.string(),
     recipient: v.string(),
     recipientName: v.optional(v.string()),
@@ -547,6 +548,7 @@ export const _sendAutomationEmail = internalAction({
       });
       await ctx.runMutation(internal.automation._recordAutomationEmailResult, {
         organizationId: args.organizationId,
+        runId: args.runId,
         stepId: args.stepId,
         success: false,
         errorMessage: "No default email account configured",
@@ -602,6 +604,7 @@ export const _sendAutomationEmail = internalAction({
       });
       await ctx.runMutation(internal.automation._recordAutomationEmailResult, {
         organizationId: args.organizationId,
+        runId: args.runId,
         stepId: args.stepId,
         success: true,
         fromEmail: defaultAccount.fromEmail,
@@ -624,6 +627,7 @@ export const _sendAutomationEmail = internalAction({
       });
       await ctx.runMutation(internal.automation._recordAutomationEmailResult, {
         organizationId: args.organizationId,
+        runId: args.runId,
         stepId: args.stepId,
         success: false,
         errorMessage,
@@ -690,6 +694,7 @@ export const _patchAutomationRunStep = internalAction({
 export const _recordAutomationEmailResult = internalMutation({
   args: {
     organizationId: v.id("organizations"),
+    runId: v.optional(v.string()),
     stepId: v.string(),
     success: v.boolean(),
     errorMessage: v.optional(v.string()),
@@ -716,6 +721,13 @@ export const _recordAutomationEmailResult = internalMutation({
         processedAt: now,
         updatedAt: now,
       });
+      if (args.runId) {
+        await ctx.scheduler.runAfter(0, internal.automation._patchAutomationRun, {
+          runId: args.runId,
+          status: "failed",
+          updatedAt: now,
+        });
+      }
       await ctx.scheduler.runAfter(0, patchLegacyRef, {
         organizationId: args.organizationId,
         appointmentId: args.appointmentId,
@@ -1638,6 +1650,7 @@ export const processRun = internalAction({
               internal.automation._sendAutomationEmail,
               {
                 organizationId: run.organizationId,
+                runId: run._id,
                 stepId,
                 recipient: recipientEmail,
                 recipientName,

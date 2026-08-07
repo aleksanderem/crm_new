@@ -910,6 +910,22 @@ describe("automation lifecycle", () => {
         updatedAt: now,
       });
     });
+    // processRun reads emailTemplates from Supabase (the Supabase-primary source);
+    // seed the in-memory stub so the template lookup succeeds.
+    {
+      const now = Date.now();
+      await createSupabaseDb().insert("emailTemplates", {
+        _id: String(templateId),
+        organizationId: String(organizationId),
+        name: "Appointment follow-up",
+        subject: "Szablon {{patient.fullName}}",
+        body: "<p>{{patient.email}}</p>",
+        createdBy: String(userId),
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
 
     await t.withIdentity(identity).action(api.automation.createRule, {
       organizationId,

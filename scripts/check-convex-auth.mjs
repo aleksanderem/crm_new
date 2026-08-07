@@ -94,10 +94,6 @@ const WHITELIST = new Set([
   "signingEmails:sendSlotSignedNotification",
 
   // ── SMS OTP orchestration ─────────────────────────────────────────────────
-  // sendOtpSms: sends an SMS OTP for a signing request. Called only from
-  //   authenticated OTP flows; thin delivery wrapper with no org-data writes.
-  "sms:sendOtpSms",
-
   // requestOtp (sms module): orchestrates createOtp + SMS/email delivery for
   //   the document signing flow. The underlying createOtp validates the
   //   signing token.

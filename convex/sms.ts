@@ -124,10 +124,10 @@ export const toggleActive = action({
 });
 
 // ---------------------------------------------------------------------------
-// Send OTP via SMS (action — makes HTTP calls)
+// Send OTP via SMS (internalAction — makes HTTP calls, called only from requestOtp)
 // ---------------------------------------------------------------------------
 
-export const sendOtpSms = action({
+export const sendOtpSms = internalAction({
   args: {
     organizationId: v.id("organizations"),
     phone: v.string(),
@@ -430,7 +430,7 @@ export const requestOtp = action({
 
     if (verificationMethod === "sms") {
       if (!signerPhone) throw new Error("No phone number for SMS delivery");
-      await ctx.runAction(api.sms.sendOtpSms, {
+      await ctx.runAction(internal.sms.sendOtpSms, {
         organizationId: organizationId as never,
         phone: signerPhone,
         code: result.code,

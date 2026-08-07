@@ -417,7 +417,7 @@ export const requestOtp = action({
   args: { token: v.string() },
   handler: async (ctx, args): Promise<{ sent: boolean; method: string }> => {
     // Create OTP (this validates the token and returns code + delivery info)
-    const result = await ctx.runAction(api.signatureRequests.createOtp, {
+    const result = await ctx.runAction(internal.signatureRequests.createOtp, {
       token: args.token,
     });
 

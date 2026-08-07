@@ -306,6 +306,8 @@ function AppointmentDetail() {
   const updateStatus = useAction(api.gabinet.appointments.updateStatus);
   const updateAppointment = useAction(api.gabinet.appointments.update);
   const trackView = useAction(api.recentlyViewed.track);
+  const sendReminderNow = useAction(api.gabinet.appointmentReminders.sendReminderNow);
+  const [isSendingReminder, setIsSendingReminder] = useState(false);
   const queryClient = useQueryClient();
 
   // Refresh the Supabase-backed appointment lists (calendar, dashboards, etc.)
@@ -988,6 +990,22 @@ function AppointmentDetail() {
       toast.error(msg);
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleSendReminder = async () => {
+    setIsSendingReminder(true);
+    try {
+      await sendReminderNow({
+        organizationId,
+        appointmentId: appointmentId as string,
+      });
+      toast.success(t("gabinet.appointments.reminderSent"));
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
+    } finally {
+      setIsSendingReminder(false);
     }
   };
 
@@ -2459,6 +2477,23 @@ function AppointmentDetail() {
             : "?"
         }
         actionsMenu={statusAction}
+        quickActionItems={
+          canEdit &&
+          appointment.status !== "cancelled" &&
+          appointment.status !== "completed" &&
+          appointment.status !== "no_show"
+            ? [
+                {
+                  key: "sendReminder",
+                  label: isSendingReminder
+                    ? t("common.processing")
+                    : t("gabinet.appointments.sendReminder"),
+                  icon: <Send size={14} variant="stroke" />,
+                  onClick: handleSendReminder,
+                },
+              ]
+            : undefined
+        }
         fields={detailFields}
         expandedFieldCount={5}
         sidebarExtra={sidebarExtra}

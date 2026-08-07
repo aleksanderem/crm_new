@@ -466,6 +466,63 @@ export const scheduleReminderInternal = internalMutation({
 });
 
 /**
+ * Manually send a reminder for an appointment immediately, bypassing the
+ * scheduled-time check. Used from the appointment detail UI when staff want
+ * to trigger a reminder on demand (e.g. patient did not receive the automatic one).
+ */
+export const sendReminderNow = action({
+  args: {
+    organizationId: v.id("organizations"),
+    appointmentId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+
+    const db = createSupabaseDb();
+
+    const appointment = await db.get("gabinetAppointments", args.appointmentId);
+    if (!appointment || String(appointment.organizationId) !== String(args.organizationId)) {
+      throw new Error("Appointment not found");
+    }
+
+    if (
+      appointment.status === "cancelled" ||
+      appointment.status === "completed" ||
+      appointment.status === "no_show"
+    ) {
+      throw new Error("Cannot send reminder for a cancelled, completed, or no-show appointment");
+    }
+
+    const now = Date.now();
+
+    const reminderId = await db.insert("appointmentReminders", {
+      organizationId: String(args.organizationId),
+      appointmentId: args.appointmentId,
+      type: "notification",
+      scheduledFor: now,
+      status: "pending",
+      createdAt: now,
+    });
+
+    await ctx.runMutation(
+      internal.gabinet.appointmentReminders._scheduleReminderSideEffects,
+      {
+        reminderId,
+        organizationId: args.organizationId,
+        appointmentId: args.appointmentId,
+        delayMs: 0,
+      },
+    );
+
+    return reminderId;
+  },
+});
+
+/**
  * Internal: cancel pending reminders without auth checks.
  * Used by appointment cancel mutations.
  */

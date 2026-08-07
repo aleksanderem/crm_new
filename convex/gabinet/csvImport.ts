@@ -409,3 +409,199 @@ export const batchImportEmployees = action({
     return { created, errors };
   },
 });
+
+/**
+ * Batch-import patient package balances from CSV.
+ *
+ * Each row creates one `gabinetPackageUsage` record. Patients are matched by
+ * email (primary) or firstName+lastName (fallback). Treatments are matched by
+ * name (case-insensitive). An auto-generated package per treatment is found or
+ * created, matching the behaviour of `packages.purchaseTreatment`.
+ *
+ * Prerequisite: patients and treatments must already be imported.
+ */
+export const batchImportPackageBalances = action({
+  args: {
+    organizationId: v.id("organizations"),
+    records: v.array(
+      v.object({
+        treatmentName: v.string(),
+        totalSessions: v.string(),
+        patientEmail: v.optional(v.string()),
+        patientFirstName: v.optional(v.string()),
+        patientLastName: v.optional(v.string()),
+        usedSessions: v.optional(v.string()),
+        purchasedAt: v.optional(v.string()),
+        paidAmount: v.optional(v.string()),
+        paymentMethod: v.optional(v.string()),
+        expiresAt: v.optional(v.string()),
+        status: v.optional(v.string()),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (!["owner", "admin"].includes((authResult as any).role)) {
+      throw new Error("Admin access required");
+    }
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+    const userIdStr = String((authResult as any).userId);
+    const now = Date.now();
+
+    // Pre-load all patients and treatments for O(1) lookup per row.
+    const [allPatients, allTreatments] = await Promise.all([
+      db.query("gabinetPatients").eq("organizationId", orgIdStr).collect() as Promise<Array<{ _id: unknown; firstName: unknown; lastName: unknown; email: unknown }>>,
+      db.query("gabinetTreatments").eq("organizationId", orgIdStr).collect() as Promise<Array<{ _id: unknown; name: unknown; price: unknown; currency: unknown; treatmentCount: unknown }>>,
+    ]);
+
+    const patientByEmail = new Map<string, string>();
+    const patientByName = new Map<string, string>();
+    for (const p of allPatients) {
+      if (p.email && typeof p.email === "string") {
+        patientByEmail.set(p.email.toLowerCase().trim(), String(p._id));
+      }
+      const fullName = `${String(p.firstName ?? "").toLowerCase().trim()} ${String(p.lastName ?? "").toLowerCase().trim()}`.trim();
+      if (fullName) patientByName.set(fullName, String(p._id));
+    }
+
+    const treatmentByNameLower = new Map<string, typeof allTreatments[number]>();
+    for (const t of allTreatments) {
+      if (t.name && typeof t.name === "string") {
+        treatmentByNameLower.set(t.name.toLowerCase().trim(), t);
+      }
+    }
+
+    // Cache: treatmentId → auto-package id (to avoid re-querying per row)
+    const autoPackageByTreatment = new Map<string, string>();
+
+    let created = 0;
+    const errors: { row: number; error: string }[] = [];
+
+    for (let i = 0; i < args.records.length; i++) {
+      const rec = args.records[i];
+      try {
+        if (!rec.treatmentName?.trim()) {
+          errors.push({ row: i, error: "treatmentName is required" });
+          continue;
+        }
+        const totalSessions = parseInt(rec.totalSessions ?? "", 10);
+        if (isNaN(totalSessions) || totalSessions < 1) {
+          errors.push({ row: i, error: `Invalid totalSessions: "${rec.totalSessions ?? ""}"` });
+          continue;
+        }
+
+        // Resolve patient by email first, then full name
+        let patientId: string | null = null;
+        if (rec.patientEmail?.trim()) {
+          patientId = patientByEmail.get(rec.patientEmail.trim().toLowerCase()) ?? null;
+        }
+        if (!patientId && (rec.patientFirstName?.trim() || rec.patientLastName?.trim())) {
+          const nameLookup = `${(rec.patientFirstName ?? "").toLowerCase().trim()} ${(rec.patientLastName ?? "").toLowerCase().trim()}`.trim();
+          patientId = patientByName.get(nameLookup) ?? null;
+        }
+
+        // Resolve treatment by name
+        const treatment = treatmentByNameLower.get(rec.treatmentName.trim().toLowerCase());
+        if (!treatment) {
+          errors.push({ row: i, error: `Treatment not found: "${rec.treatmentName}"` });
+          continue;
+        }
+        const treatmentId = String(treatment._id);
+
+        // Find or create auto-generated package for this treatment
+        let packageId = autoPackageByTreatment.get(treatmentId);
+        if (!packageId) {
+          const existing = await db
+            .query("gabinetTreatmentPackages")
+            .eq("organizationId", orgIdStr)
+            .eq("autoGeneratedForTreatmentId", treatmentId)
+            .first() as { _id: unknown } | null;
+
+          if (existing) {
+            packageId = String(existing._id);
+          } else {
+            const treatmentName = String(treatment.name ?? "Treatment");
+            const treatmentPrice = (treatment.price as number) ?? 0;
+            const treatmentCurrency = (treatment.currency as string | null) ?? null;
+            const defaultQuantity = (treatment.treatmentCount as number | undefined) ?? 1;
+
+            packageId = await db.insert("gabinetTreatmentPackages", {
+              organizationId: orgIdStr,
+              name: `${treatmentName} (${defaultQuantity}x)`,
+              treatments: [{ treatmentId, quantity: defaultQuantity }],
+              totalPrice: treatmentPrice * defaultQuantity,
+              currency: treatmentCurrency,
+              isActive: true,
+              autoGeneratedForTreatmentId: treatmentId,
+              createdBy: userIdStr,
+              createdAt: now,
+              updatedAt: now,
+            });
+          }
+          autoPackageByTreatment.set(treatmentId, packageId);
+        }
+
+        const usedSessions = rec.usedSessions ? parseInt(rec.usedSessions, 10) : 0;
+        const safeUsed = isNaN(usedSessions) || usedSessions < 0 ? 0 : Math.min(usedSessions, totalSessions);
+
+        const paidAmount = rec.paidAmount ? parseFloat(rec.paidAmount) : 0;
+        const safePaid = isNaN(paidAmount) || paidAmount < 0 ? 0 : paidAmount;
+
+        const purchasedAt = rec.purchasedAt ? new Date(rec.purchasedAt).getTime() : now;
+        const safePurchasedAt = isNaN(purchasedAt) ? now : purchasedAt;
+
+        const expiresAt = rec.expiresAt ? new Date(rec.expiresAt).getTime() : null;
+        const safeExpiresAt = expiresAt && !isNaN(expiresAt) ? expiresAt : null;
+
+        const ALLOWED_STATUSES = ["active", "completed", "cancelled"] as const;
+        type AllowedStatus = typeof ALLOWED_STATUSES[number];
+        const derivedStatus: AllowedStatus = safeUsed >= totalSessions ? "completed" : "active";
+        const rawStatus = rec.status?.trim().toLowerCase() ?? "";
+        const status: AllowedStatus = (ALLOWED_STATUSES as readonly string[]).includes(rawStatus)
+          ? (rawStatus as AllowedStatus)
+          : derivedStatus;
+
+        await db.insert("gabinetPackageUsage", {
+          organizationId: orgIdStr,
+          patientId: patientId ?? null,
+          packageId,
+          purchasedAt: safePurchasedAt,
+          expiresAt: safeExpiresAt,
+          status,
+          treatmentsUsed: [
+            {
+              treatmentId,
+              usedCount: safeUsed,
+              totalCount: totalSessions,
+            },
+          ],
+          paidAmount: safePaid,
+          paymentMethod: rec.paymentMethod?.trim() ?? null,
+          isGift: false,
+          voucherCode: null,
+          giftRecipientName: null,
+          giftRecipientPhone: null,
+          giftRecipientEmail: null,
+          soldByEmployeeId: null,
+          createdBy: userIdStr,
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        created++;
+      } catch (e: any) {
+        errors.push({ row: i, error: e?.message ?? "Unknown error" });
+      }
+    }
+
+    return { created, errors };
+  },
+});

@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Upload } from "@/lib/ez-icons";
 import Papa from "papaparse";
 
-export type GabinetImportEntityType = "gabinetPatients" | "gabinetTreatments" | "gabinetEmployees";
+export type GabinetImportEntityType = "gabinetPatients" | "gabinetTreatments" | "gabinetEmployees" | "gabinetPackageBalances";
 
 interface GabinetImportDialogProps {
   organizationId: Id<"organizations">;
@@ -37,6 +37,7 @@ const REQUIRED_FIELDS: Record<GabinetImportEntityType, string[]> = {
   gabinetPatients: ["firstName"],
   gabinetTreatments: ["name", "duration", "price"],
   gabinetEmployees: ["firstName"],
+  gabinetPackageBalances: ["treatmentName", "totalSessions"],
 };
 
 const ALL_FIELDS: Record<GabinetImportEntityType, string[]> = {
@@ -82,12 +83,26 @@ const ALL_FIELDS: Record<GabinetImportEntityType, string[]> = {
     "color",
     "notes",
   ],
+  gabinetPackageBalances: [
+    "treatmentName",
+    "totalSessions",
+    "patientEmail",
+    "patientFirstName",
+    "patientLastName",
+    "usedSessions",
+    "purchasedAt",
+    "paidAmount",
+    "paymentMethod",
+    "expiresAt",
+    "status",
+  ],
 };
 
 const ENTITY_LABELS: Record<GabinetImportEntityType, string> = {
   gabinetPatients: "Pacjenci",
   gabinetTreatments: "Zabiegi",
   gabinetEmployees: "Pracownicy",
+  gabinetPackageBalances: "Salda pakietów",
 };
 
 const BATCH_SIZE = 100;
@@ -104,6 +119,7 @@ export function GabinetImportDialog({
   const batchImportPatients = useAction(api.gabinet.csvImport.batchImportPatients);
   const batchImportTreatments = useAction(api.gabinet.csvImport.batchImportTreatments);
   const batchImportEmployees = useAction(api.gabinet.csvImport.batchImportEmployees);
+  const batchImportPackageBalances = useAction(api.gabinet.csvImport.batchImportPackageBalances);
 
   const [step, setStep] = useState<Step>("upload");
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
@@ -201,6 +217,11 @@ export function GabinetImportDialog({
             organizationId,
             records: batch as Parameters<typeof batchImportEmployees>[0]["records"],
           });
+        } else if (entityType === "gabinetPackageBalances") {
+          result = await batchImportPackageBalances({
+            organizationId,
+            records: batch as Parameters<typeof batchImportPackageBalances>[0]["records"],
+          });
         } else {
           result = await batchImportTreatments({
             organizationId,
@@ -249,6 +270,11 @@ export function GabinetImportDialog({
             {entityType === "gabinetEmployees" && (
               <p className="text-xs text-muted-foreground rounded-md border border-border bg-muted/40 px-3 py-2">
                 Pracownicy z kolumną <strong>email</strong> zostaną automatycznie dopasowani do istniejących kont w organizacji. Pozostałe wiersze zostaną zaimportowane jako rekordy bez konta (można je powiązać później).
+              </p>
+            )}
+            {entityType === "gabinetPackageBalances" && (
+              <p className="text-xs text-muted-foreground rounded-md border border-border bg-muted/40 px-3 py-2">
+                Wymagane kolumny: <strong>treatmentName</strong>, <strong>totalSessions</strong>. Pacjent jest dopasowywany po kolumnie <strong>patientEmail</strong> (priorytet) lub po <strong>patientFirstName</strong> + <strong>patientLastName</strong>. Zabiegi i pacjenci muszą być wcześniej zaimportowani.
               </p>
             )}
             <div className="flex flex-col items-center gap-4 rounded-lg border-2 border-dashed p-8">

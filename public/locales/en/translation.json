@@ -2888,7 +2888,12 @@
       },
       "applyToWeekdays": "Apply to weekdays",
       "applyToAllDays": "Apply to all days",
-      "copyHours": "Copy hours"
+      "copyHours": "Copy hours",
+      "preview": "Availability Preview",
+      "previewDescription": "Bookable hours after saving these settings",
+      "closed": "Closed",
+      "bookableHours": "{{hours}}h {{minutes}}min bookable",
+      "withBreak": "Break {{start}}–{{end}}"
     },
     "reminders": {
       "title": "Appointment Reminders",

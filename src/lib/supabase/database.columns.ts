@@ -112,6 +112,15 @@
  *   • 00105_form_documents_entity_timing_idx.sql
  *   • 00106_gabinet_loyalty_tiers.sql
  *   • 00107_backfill_gabinet_loyalty_points_tier.sql
+ *   • 00108_subscriptions_product_key.sql
+ *   • 00109_plans_product_key.sql
+ *   • 00110_gabinet_cash_transactions.sql
+ *   • 00111_gabinet_day_closes.sql
+ *   • 00112_gabinet_waitlist.sql
+ *   • 00113_subscriptions_trial_end_date.sql
+ *   • 00114_audit_log_nullable_user_id.sql
+ *   • 00115_leads_created_at_idx.sql
+ *   • 00116_lead_stage_history.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  */
@@ -221,7 +230,11 @@ export type TableName =
   | "gabinet_appointment_treatments"
   | "gabinet_receipts"
   | "gabinet_receipt_sequences"
-  | "gabinet_loyalty_tiers";
+  | "gabinet_loyalty_tiers"
+  | "gabinet_cash_transactions"
+  | "gabinet_day_closes"
+  | "gabinet_waitlist"
+  | "lead_stage_history";
 
 /**
  * Column names per table, as a runtime-checkable Set.
@@ -233,11 +246,11 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   auth_verification_codes: new Set(["id", "account_id", "email", "phone", "code", "method", "expires_at", "used_at", "created_at"]),
   auth_rate_limits: new Set(["id", "identifier", "action", "attempts", "window_start", "created_at"]),
   users: new Set(["id", "name", "username", "image_storage_id", "image", "email", "email_verification_time", "phone", "phone_verification_time", "is_anonymous", "customer_id", "language", "theme", "timezone", "created_at", "updated_at", "is_platform_admin"]),
-  plans: new Set(["id", "key", "stripe_id", "name", "description", "seat_limit", "prices"]),
-  subscriptions: new Set(["id", "user_id", "plan_id", "price_stripe_id", "stripe_id", "currency", "interval", "status", "current_period_start", "current_period_end", "cancel_at_period_end", "trial_end_date"]),
+  plans: new Set(["id", "key", "stripe_id", "name", "description", "seat_limit", "prices", "product_key"]),
+  subscriptions: new Set(["id", "user_id", "plan_id", "price_stripe_id", "stripe_id", "currency", "interval", "status", "current_period_start", "current_period_end", "cancel_at_period_end", "product_key", "trial_end_date"]),
   platform_products: new Set(["id", "product_id", "name", "description", "is_active", "prices", "stripe_product_id", "created_at", "updated_at"]),
   organizations: new Set(["id", "name", "slug", "owner_id", "logo", "website", "created_at", "updated_at", "onboarding_completed"]),
-  product_subscriptions: new Set(["id", "organization_id", "product_id", "stripe_subscription_id", "status", "current_period_start", "current_period_end", "cancel_at_period_end", "trial_end_date", "created_at", "updated_at"]),
+  product_subscriptions: new Set(["id", "organization_id", "product_id", "stripe_subscription_id", "status", "current_period_start", "current_period_end", "cancel_at_period_end", "created_at", "updated_at", "trial_end_date"]),
   team_memberships: new Set(["id", "user_id", "organization_id", "role", "invited_by", "joined_at"]),
   org_settings: new Set(["id", "organization_id", "allow_custom_lost_reason", "lost_reason_required", "default_currency", "timezone", "resource_sharing_enabled", "reminder_enabled", "reminder_hours_before", "appointment_workflow_config", "created_at", "updated_at", "reminder_sms_48h", "reminder_sms_24h", "reminder_email_48h", "reminder_email_24h", "patient_retention_months"]),
   org_permissions: new Set(["id", "organization_id", "role", "permissions", "updated_by", "updated_at"]),
@@ -332,4 +345,8 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   gabinet_receipts: new Set(["id", "organization_id", "payment_id", "appointment_id", "patient_id", "receipt_number", "issued_at", "organization_name", "organization_nip", "organization_address", "total_net", "total_vat", "total_gross", "payment_method", "items_json", "fiscal_receipt_id", "pdf_storage_id", "pdf_url", "created_by", "created_at", "updated_at", "location_id", "status", "receipt_type"]),
   gabinet_receipt_sequences: new Set(["id", "organization_id", "location_id", "year", "last_number", "updated_at"]),
   gabinet_loyalty_tiers: new Set(["id", "organization_id", "tier", "name", "threshold", "color", "is_active", "created_at", "updated_at"]),
+  gabinet_cash_transactions: new Set(["id", "organization_id", "location_id", "date", "type", "amount", "reason", "created_by", "created_at", "updated_at"]),
+  gabinet_day_closes: new Set(["id", "organization_id", "location_id", "date", "payment_summary", "total_collected", "cash_from_payments", "cash_opening_balance", "cash_deposits", "cash_withdrawals", "cash_expected", "cash_counted", "cash_discrepancy", "notes", "closed_by", "closed_at", "created_at", "updated_at"]),
+  gabinet_waitlist: new Set(["id", "organization_id", "patient_id", "treatment_id", "employee_id", "preferred_dates", "preferred_times", "notes", "status", "notified_at", "priority", "created_by", "created_at", "updated_at"]),
+  lead_stage_history: new Set(["id", "organization_id", "lead_id", "stage_id", "entered_at", "exited_at"]),
 };

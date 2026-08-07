@@ -595,6 +595,12 @@ const entityAliases = [
   { table: "gabinet_loyalty_transactions", singular: "GabinetLoyaltyTransaction" },
   { table: "gabinet_loyalty_tiers", singular: "GabinetLoyaltyTier" },
   { table: "gabinet_receipts", singular: "GabinetReceipt" },
+  { table: "gabinet_cash_transactions", singular: "GabinetCashTransaction" },
+  { table: "gabinet_day_closes", singular: "GabinetDayClose" },
+  { table: "gabinet_waitlist", singular: "GabinetWaitlist" },
+
+  // CRM extras
+  { table: "lead_stage_history", singular: "LeadStageHistory" },
 ];
 
 for (const { table, singular } of entityAliases) {

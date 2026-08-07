@@ -347,6 +347,7 @@ export interface Database {
           description: string;
           seat_limit: number;
           prices: unknown;
+          product_key: string | null;
         };
         Insert: {
           id?: string;
@@ -356,6 +357,7 @@ export interface Database {
           description: string;
           seat_limit: number;
           prices: unknown;
+          product_key?: string | null;
         };
         Update: {
           id?: string;
@@ -365,6 +367,7 @@ export interface Database {
           description?: string;
           seat_limit?: number;
           prices?: unknown;
+          product_key?: string | null;
         };
         Relationships: [];
       };
@@ -381,6 +384,7 @@ export interface Database {
           current_period_start: number;
           current_period_end: number;
           cancel_at_period_end: boolean;
+          product_key: string | null;
           trial_end_date: number | null;
         };
         Insert: {
@@ -395,6 +399,7 @@ export interface Database {
           current_period_start: number;
           current_period_end: number;
           cancel_at_period_end: boolean;
+          product_key?: string | null;
           trial_end_date?: number | null;
         };
         Update: {
@@ -409,6 +414,7 @@ export interface Database {
           current_period_start?: number;
           current_period_end?: number;
           cancel_at_period_end?: boolean;
+          product_key?: string | null;
           trial_end_date?: number | null;
         };
         Relationships: [
@@ -518,9 +524,9 @@ export interface Database {
           current_period_start: number | null;
           current_period_end: number | null;
           cancel_at_period_end: boolean;
-          trial_end_date: number | null;
           created_at: number;
           updated_at: number;
+          trial_end_date: number | null;
         };
         Insert: {
           id?: string;
@@ -531,9 +537,9 @@ export interface Database {
           current_period_start?: number | null;
           current_period_end?: number | null;
           cancel_at_period_end: boolean;
-          trial_end_date?: number | null;
           created_at: number;
           updated_at: number;
+          trial_end_date?: number | null;
         };
         Update: {
           id?: string;
@@ -544,9 +550,9 @@ export interface Database {
           current_period_start?: number | null;
           current_period_end?: number | null;
           cancel_at_period_end?: boolean;
-          trial_end_date?: number | null;
           created_at?: number;
           updated_at?: number;
+          trial_end_date?: number | null;
         };
         Relationships: [
           {
@@ -905,7 +911,7 @@ export interface Database {
         Row: {
           id: string;
           organization_id: string;
-          user_id: string;
+          user_id: string | null;
           action: string;
           entity_type: string | null;
           entity_id: string | null;
@@ -916,7 +922,7 @@ export interface Database {
         Insert: {
           id?: string;
           organization_id: string;
-          user_id: string;
+          user_id?: string | null;
           action: string;
           entity_type?: string | null;
           entity_id?: string | null;
@@ -927,7 +933,7 @@ export interface Database {
         Update: {
           id?: string;
           organization_id?: string;
-          user_id?: string;
+          user_id?: string | null;
           action?: string;
           entity_type?: string | null;
           entity_id?: string | null;
@@ -1520,55 +1526,6 @@ export interface Database {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      lead_stage_history: {
-        Row: {
-          id: string;
-          organization_id: string;
-          lead_id: string;
-          stage_id: string;
-          entered_at: number;
-          exited_at: number | null;
-        };
-        Insert: {
-          id?: string;
-          organization_id: string;
-          lead_id: string;
-          stage_id: string;
-          entered_at: number;
-          exited_at?: number | null;
-        };
-        Update: {
-          id?: string;
-          organization_id?: string;
-          lead_id?: string;
-          stage_id?: string;
-          entered_at?: number;
-          exited_at?: number | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "lead_stage_history_organization_id_fkey";
-            columns: ["organization_id"];
-            isOneToOne: false;
-            referencedRelation: "organizations";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "lead_stage_history_lead_id_fkey";
-            columns: ["lead_id"];
-            isOneToOne: false;
-            referencedRelation: "leads";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "lead_stage_history_stage_id_fkey";
-            columns: ["stage_id"];
-            isOneToOne: false;
-            referencedRelation: "pipeline_stages";
             referencedColumns: ["id"];
           },
         ];
@@ -7651,86 +7608,6 @@ export interface Database {
           },
         ];
       };
-      gabinet_waitlist: {
-        Row: {
-          id: string;
-          organization_id: string;
-          patient_id: string;
-          treatment_id: string | null;
-          employee_id: string | null;
-          preferred_dates: string[] | null;
-          preferred_times: string[] | null;
-          notes: string | null;
-          status: string;
-          notified_at: number | null;
-          priority: number;
-          created_by: string;
-          created_at: number;
-          updated_at: number;
-        };
-        Insert: {
-          id?: string;
-          organization_id: string;
-          patient_id: string;
-          treatment_id?: string | null;
-          employee_id?: string | null;
-          preferred_dates?: string[] | null;
-          preferred_times?: string[] | null;
-          notes?: string | null;
-          status?: string;
-          notified_at?: number | null;
-          priority?: number;
-          created_by: string;
-          created_at: number;
-          updated_at: number;
-        };
-        Update: {
-          id?: string;
-          organization_id?: string;
-          patient_id?: string;
-          treatment_id?: string | null;
-          employee_id?: string | null;
-          preferred_dates?: string[] | null;
-          preferred_times?: string[] | null;
-          notes?: string | null;
-          status?: string;
-          notified_at?: number | null;
-          priority?: number;
-          created_by?: string;
-          created_at?: number;
-          updated_at?: number;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "gabinet_waitlist_organization_id_fkey";
-            columns: ["organization_id"];
-            isOneToOne: false;
-            referencedRelation: "organizations";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_waitlist_patient_id_fkey";
-            columns: ["patient_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_patients";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_waitlist_treatment_id_fkey";
-            columns: ["treatment_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_treatments";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_waitlist_employee_id_fkey";
-            columns: ["employee_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_employees";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       gabinet_cash_transactions: {
         Row: {
           id: string;
@@ -7873,6 +7750,142 @@ export interface Database {
             columns: ["closed_by"];
             isOneToOne: false;
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      gabinet_waitlist: {
+        Row: {
+          id: string;
+          organization_id: string;
+          patient_id: string;
+          treatment_id: string | null;
+          employee_id: string | null;
+          preferred_dates: unknown | null;
+          preferred_times: unknown | null;
+          notes: string | null;
+          status: string;
+          notified_at: number | null;
+          priority: number;
+          created_by: string;
+          created_at: number;
+          updated_at: number;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          patient_id: string;
+          treatment_id?: string | null;
+          employee_id?: string | null;
+          preferred_dates?: unknown | null;
+          preferred_times?: unknown | null;
+          notes?: string | null;
+          status?: string;
+          notified_at?: number | null;
+          priority?: number;
+          created_by: string;
+          created_at: number;
+          updated_at: number;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          patient_id?: string;
+          treatment_id?: string | null;
+          employee_id?: string | null;
+          preferred_dates?: unknown | null;
+          preferred_times?: unknown | null;
+          notes?: string | null;
+          status?: string;
+          notified_at?: number | null;
+          priority?: number;
+          created_by?: string;
+          created_at?: number;
+          updated_at?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_waitlist_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_waitlist_patient_id_fkey";
+            columns: ["patient_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_patients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_waitlist_treatment_id_fkey";
+            columns: ["treatment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_waitlist_employee_id_fkey";
+            columns: ["employee_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_employees";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_waitlist_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      lead_stage_history: {
+        Row: {
+          id: string;
+          organization_id: string;
+          lead_id: string;
+          stage_id: string;
+          entered_at: number;
+          exited_at: number | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          lead_id: string;
+          stage_id: string;
+          entered_at: number;
+          exited_at?: number | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          lead_id?: string;
+          stage_id?: string;
+          entered_at?: number;
+          exited_at?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "lead_stage_history_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "lead_stage_history_lead_id_fkey";
+            columns: ["lead_id"];
+            isOneToOne: false;
+            referencedRelation: "leads";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "lead_stage_history_stage_id_fkey";
+            columns: ["stage_id"];
+            isOneToOne: false;
+            referencedRelation: "pipeline_stages";
             referencedColumns: ["id"];
           },
         ];
@@ -8064,12 +8077,15 @@ export type GabinetLoyaltyTierUpdate = Database["public"]["Tables"]["gabinet_loy
 export type GabinetReceiptRow = Database["public"]["Tables"]["gabinet_receipts"]["Row"];
 export type GabinetReceiptInsert = Database["public"]["Tables"]["gabinet_receipts"]["Insert"];
 export type GabinetReceiptUpdate = Database["public"]["Tables"]["gabinet_receipts"]["Update"];
-export type GabinetWaitlistRow = Database["public"]["Tables"]["gabinet_waitlist"]["Row"];
-export type GabinetWaitlistInsert = Database["public"]["Tables"]["gabinet_waitlist"]["Insert"];
-export type GabinetWaitlistUpdate = Database["public"]["Tables"]["gabinet_waitlist"]["Update"];
 export type GabinetCashTransactionRow = Database["public"]["Tables"]["gabinet_cash_transactions"]["Row"];
 export type GabinetCashTransactionInsert = Database["public"]["Tables"]["gabinet_cash_transactions"]["Insert"];
 export type GabinetCashTransactionUpdate = Database["public"]["Tables"]["gabinet_cash_transactions"]["Update"];
 export type GabinetDayCloseRow = Database["public"]["Tables"]["gabinet_day_closes"]["Row"];
 export type GabinetDayCloseInsert = Database["public"]["Tables"]["gabinet_day_closes"]["Insert"];
 export type GabinetDayCloseUpdate = Database["public"]["Tables"]["gabinet_day_closes"]["Update"];
+export type GabinetWaitlistRow = Database["public"]["Tables"]["gabinet_waitlist"]["Row"];
+export type GabinetWaitlistInsert = Database["public"]["Tables"]["gabinet_waitlist"]["Insert"];
+export type GabinetWaitlistUpdate = Database["public"]["Tables"]["gabinet_waitlist"]["Update"];
+export type LeadStageHistoryRow = Database["public"]["Tables"]["lead_stage_history"]["Row"];
+export type LeadStageHistoryInsert = Database["public"]["Tables"]["lead_stage_history"]["Insert"];
+export type LeadStageHistoryUpdate = Database["public"]["Tables"]["lead_stage_history"]["Update"];

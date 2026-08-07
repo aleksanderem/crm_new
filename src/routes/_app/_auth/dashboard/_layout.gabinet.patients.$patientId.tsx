@@ -321,6 +321,13 @@ function PatientDetail() {
     patientId,
   );
 
+  const { data: loyaltyActivities } = useSupabaseActivitiesByEntity(
+    organizationId,
+    "gabinetLoyalty",
+    loyaltyBalance?._id,
+    { enabled: !!loyaltyBalance?._id },
+  );
+
   const { data: loyaltyTransactions } = useSupabaseGabinetLoyaltyTransactions(
     organizationId,
     patientId,
@@ -1238,6 +1245,11 @@ function PatientDetail() {
       </div>
     );
   };
+
+  const mergedPatientActivities = [
+    ...(activities ?? []),
+    ...(loyaltyActivities ?? []),
+  ].sort((a, b) => b.createdAt - a.createdAt);
 
   const tabs = [
     {
@@ -2229,7 +2241,7 @@ function PatientDetail() {
       label: t("gabinet.patients.tabs.activity"),
       content: (
         <ActivityFeed
-          entries={activitiesToFeedEntries((activities ?? []) as any[], t)}
+          entries={activitiesToFeedEntries(mergedPatientActivities as any[], t)}
           maxHeight="600px"
         />
       ),

@@ -10,6 +10,37 @@ import {
   type MappedGabinetReceipt,
 } from "@/lib/supabase/mappers/gabinet/receipts";
 
+export function useSupabaseGabinetReceiptsByAppointment(
+  organizationId: string,
+  appointmentId: string | undefined,
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  return useQuery<MappedGabinetReceipt[], Error>({
+    queryKey: [
+      ...supabaseKeys.gabinetReceipts.list(organizationId),
+      "byAppointment",
+      appointmentId ?? "",
+    ],
+    queryFn: async (): Promise<MappedGabinetReceipt[]> => {
+      if (!client || !appointmentId) return [];
+
+      const { data, error } = await client
+        .from("gabinet_receipts")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .eq("appointment_id", appointmentId)
+        .order("issued_at", { ascending: false });
+
+      if (error) throw error;
+      return (data ?? []).map(mapGabinetReceiptFromSupabase);
+    },
+    enabled: enabled && isReady && !!organizationId && !!appointmentId,
+  } satisfies UseQueryOptions<MappedGabinetReceipt[], Error>);
+}
+
 export function useSupabaseGabinetReceiptsByPatient(
   organizationId: string,
   patientId: string | undefined,

@@ -2964,6 +2964,41 @@
         "deleteFailed": "Could not delete the leave request."
       }
     },
+    "overtime": {
+      "title": "Overtime",
+      "description": "Manage employee overtime records",
+      "logOvertime": "Log Overtime",
+      "date": "Date",
+      "hours": "Hours",
+      "hoursPlaceholder": "e.g. 2.5",
+      "reason": "Reason",
+      "status": "Status",
+      "submit": "Submit Request",
+      "created": "Overtime request created",
+      "approved": "Overtime approved",
+      "rejected": "Overtime rejected",
+      "pending": "Pending",
+      "approvedStatus": "Approved",
+      "rejectedStatus": "Rejected",
+      "allStatuses": "All Statuses",
+      "filterByStatus": "Filter by status",
+      "empty": "No overtime requests",
+      "approve": "Approve",
+      "reject": "Reject",
+      "delete": "Delete",
+      "deleted": "Overtime request deleted",
+      "confirmApproveTitle": "Approve Overtime",
+      "confirmApproveDesc": "Are you sure you want to approve this overtime request?",
+      "confirmRejectTitle": "Reject Overtime",
+      "confirmRejectDesc": "Are you sure you want to reject this overtime request?",
+      "confirmDeleteTitle": "Delete Overtime Request",
+      "confirmDeleteDesc": "Are you sure you want to delete this overtime request? This action cannot be undone.",
+      "errors": {
+        "createFailed": "Could not create the overtime request.",
+        "statusChangeFailed": "Could not update the overtime request status.",
+        "deleteFailed": "Could not delete the overtime request."
+      }
+    },
     "employees": {
       "title": "Employees",
       "description": "Manage clinic staff, roles, and treatment qualifications",

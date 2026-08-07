@@ -2984,6 +2984,41 @@
         "deleteFailed": "Nie udało się usunąć wniosku urlopowego."
       }
     },
+    "overtime": {
+      "title": "Nadgodziny",
+      "description": "Zarządzaj zgłoszeniami nadgodzin pracowników",
+      "logOvertime": "Dodaj nadgodziny",
+      "date": "Data",
+      "hours": "Liczba godzin",
+      "hoursPlaceholder": "np. 2.5",
+      "reason": "Powód",
+      "status": "Status",
+      "submit": "Wyślij zgłoszenie",
+      "created": "Nadgodziny zgłoszone",
+      "approved": "Nadgodziny zatwierdzone",
+      "rejected": "Nadgodziny odrzucone",
+      "pending": "Oczekujące",
+      "approvedStatus": "Zatwierdzone",
+      "rejectedStatus": "Odrzucone",
+      "allStatuses": "Wszystkie statusy",
+      "filterByStatus": "Filtruj wg statusu",
+      "empty": "Brak zgłoszeń nadgodzin",
+      "approve": "Zatwierdź",
+      "reject": "Odrzuć",
+      "delete": "Usuń",
+      "deleted": "Zgłoszenie usunięte",
+      "confirmApproveTitle": "Zatwierdź nadgodziny",
+      "confirmApproveDesc": "Czy na pewno chcesz zatwierdzić to zgłoszenie nadgodzin?",
+      "confirmRejectTitle": "Odrzuć nadgodziny",
+      "confirmRejectDesc": "Czy na pewno chcesz odrzucić to zgłoszenie nadgodzin?",
+      "confirmDeleteTitle": "Usuń zgłoszenie",
+      "confirmDeleteDesc": "Czy na pewno chcesz usunąć to zgłoszenie? Tej operacji nie można cofnąć.",
+      "errors": {
+        "createFailed": "Nie udało się zgłosić nadgodzin.",
+        "statusChangeFailed": "Nie udało się zaktualizować statusu zgłoszenia.",
+        "deleteFailed": "Nie udało się usunąć zgłoszenia."
+      }
+    },
     "employees": {
       "title": "Pracownicy",
       "description": "Zarządzaj personelem kliniki, rolami i kwalifikacjami zabiegowymi",

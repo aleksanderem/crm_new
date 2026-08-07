@@ -249,6 +249,95 @@ describe("gabinet/patients.merge", () => {
       );
       expect(targetLoyalty?.balance).toBe(75);
     });
+
+    test("recalculates tier from combined lifetimeEarned after merge", async () => {
+      // Scenario: target has bronze tier (150 lifetime), source has bronze tier
+      // (200 lifetime). After merge lifetimeEarned = 350 → should be silver
+      // (default threshold 200). Without the fix the tier stays bronze.
+      const t = createTestCtx();
+      const { organizationId, userId, identity } = await seedTestUser(t);
+      const { patientId: targetId } = await seedGabinetPrereqs(
+        t,
+        organizationId,
+        userId,
+      );
+      const sourceId = "patient_tier_source";
+      await seedSecondPatient(String(organizationId), String(userId), sourceId);
+
+      const db = createSupabaseDb();
+      await db.insert("gabinetLoyaltyPoints", {
+        _id: "loyalty_tier_target",
+        organizationId: String(organizationId),
+        patientId: String(targetId),
+        balance: 150,
+        lifetimeEarned: 150,
+        lifetimeSpent: 0,
+        tier: "bronze",
+        updatedAt: Date.now(),
+      });
+      await db.insert("gabinetLoyaltyPoints", {
+        _id: "loyalty_tier_source",
+        organizationId: String(organizationId),
+        patientId: sourceId,
+        balance: 200,
+        lifetimeEarned: 200,
+        lifetimeSpent: 0,
+        tier: "silver",
+        updatedAt: Date.now(),
+      });
+
+      await t.withIdentity(identity).action(api.gabinet.patients.merge, {
+        organizationId,
+        targetPatientId: String(targetId),
+        sourcePatientId: sourceId,
+      });
+
+      const merged = await db.get<{
+        lifetimeEarned: number;
+        tier: string;
+      }>("gabinetLoyaltyPoints", "loyalty_tier_target");
+      expect(merged?.lifetimeEarned).toBe(350);
+      expect(merged?.tier).toBe("silver");
+    });
+
+    test("recalculates tier when source row is reassigned to target patient", async () => {
+      // Source has outdated 'bronze' tier but lifetimeEarned of 600 → gold.
+      // The merge reassigns the source row; tier should be recalculated.
+      const t = createTestCtx();
+      const { organizationId, userId, identity } = await seedTestUser(t);
+      const { patientId: targetId } = await seedGabinetPrereqs(
+        t,
+        organizationId,
+        userId,
+      );
+      const sourceId = "patient_stale_tier_source";
+      await seedSecondPatient(String(organizationId), String(userId), sourceId);
+
+      const db = createSupabaseDb();
+      await db.insert("gabinetLoyaltyPoints", {
+        _id: "loyalty_stale_tier",
+        organizationId: String(organizationId),
+        patientId: sourceId,
+        balance: 600,
+        lifetimeEarned: 600,
+        lifetimeSpent: 0,
+        tier: "bronze",
+        updatedAt: Date.now(),
+      });
+
+      await t.withIdentity(identity).action(api.gabinet.patients.merge, {
+        organizationId,
+        targetPatientId: String(targetId),
+        sourcePatientId: sourceId,
+      });
+
+      const reassigned = await db.get<{
+        patientId: string;
+        tier: string;
+      }>("gabinetLoyaltyPoints", "loyalty_stale_tier");
+      expect(reassigned?.patientId).toBe(String(targetId));
+      expect(reassigned?.tier).toBe("gold");
+    });
   });
 
   describe("polymorphic activities/notes reassignment", () => {

@@ -8,6 +8,8 @@ import { logAudit } from "../auditLog";
 import { logError } from "../_helpers/logged";
 import type { GabinetPatientRow, SupabasePaginationResult } from "../_helpers/supabaseRows";
 import { Id } from "../_generated/dataModel";
+import { calculateLoyaltyTier } from "./_helpers/loyaltyTier";
+import type { GabinetLoyaltyTier } from "../schema";
 
 // Dual-write refs removed — Supabase is now primary for patient writes
 
@@ -929,6 +931,22 @@ export const merge = action({
         .first(),
     ]);
 
+    let tierDefs: { tier: GabinetLoyaltyTier; threshold: number }[] | undefined;
+    try {
+      const orgTiers = await db
+        .query("gabinetLoyaltyTiers")
+        .eq("organizationId", orgIdStr)
+        .collect();
+      if (orgTiers.length > 0) {
+        tierDefs = orgTiers.map((t) => ({
+          tier: t.tier as GabinetLoyaltyTier,
+          threshold: t.threshold as number,
+        }));
+      }
+    } catch {
+      // fall back to hardcoded defaults
+    }
+
     let consolidatedLoyaltyBalance = 0;
     if (sourceLoyalty) {
       const sBalance = Number(sourceLoyalty.balance ?? 0);
@@ -936,17 +954,23 @@ export const merge = action({
       const sSpent = Number(sourceLoyalty.lifetimeSpent ?? 0);
       if (targetLoyalty) {
         const newBalance = Number(targetLoyalty.balance ?? 0) + sBalance;
+        const newLifetimeEarned = Number(targetLoyalty.lifetimeEarned ?? 0) + sEarned;
         await db.patch("gabinetLoyaltyPoints", String(targetLoyalty._id), {
           balance: newBalance,
-          lifetimeEarned: Number(targetLoyalty.lifetimeEarned ?? 0) + sEarned,
+          lifetimeEarned: newLifetimeEarned,
           lifetimeSpent: Number(targetLoyalty.lifetimeSpent ?? 0) + sSpent,
+          tier: calculateLoyaltyTier(newLifetimeEarned, tierDefs),
           updatedAt: Date.now(),
         });
         await db.delete("gabinetLoyaltyPoints", String(sourceLoyalty._id));
         consolidatedLoyaltyBalance = newBalance;
       } else {
+        // No target loyalty row — reassign source row to target patient.
+        // The source's existing tier was calculated from sEarned alone, so
+        // recalculate in case org tier definitions changed since last earn.
         await db.patch("gabinetLoyaltyPoints", String(sourceLoyalty._id), {
           patientId: args.targetPatientId,
+          tier: calculateLoyaltyTier(sEarned, tierDefs),
           updatedAt: Date.now(),
         });
         consolidatedLoyaltyBalance = sBalance;

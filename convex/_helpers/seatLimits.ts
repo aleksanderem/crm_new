@@ -108,7 +108,7 @@ export const _getSubscriptionAndPlanData = internalQuery({
       return { seatLimit: 20 };
     }
 
-    let maxSeatLimit = 20;
+    let maxSeatLimit: number | null = null;
     for (const sub of subscriptions) {
       const plan = await ctx.db.get(sub.planId);
       if (!plan) {
@@ -117,12 +117,13 @@ export const _getSubscriptionAndPlanData = internalQuery({
         );
         continue;
       }
-      if (plan.seatLimit > maxSeatLimit) {
+      if (maxSeatLimit === null || plan.seatLimit > maxSeatLimit) {
         maxSeatLimit = plan.seatLimit;
       }
     }
 
-    return { seatLimit: maxSeatLimit };
+    // Fall back to free tier only when every plan lookup failed (FK issue, etc.)
+    return { seatLimit: maxSeatLimit ?? 20 };
   },
 });
 

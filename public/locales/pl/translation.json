@@ -230,7 +230,8 @@
     },
     "settings": "Ustawienia",
     "notifications": "Powiadomienia",
-    "home": "Strona główna"
+    "home": "Strona główna",
+    "reports": "Raporty"
   },
   "notifications": {
     "title": "Powiadomienia",
@@ -4985,5 +4986,37 @@
     "description": "Ten moduł jest wspólny dla całego systemu CRM i nie znajduje się bezpośrednio w części Gabinet.\n\nZa chwilę otworzymy odpowiedni moduł CRM.",
     "confirm": "Przejdź do modułu",
     "dontShowAgain": "Nie pokazuj ponownie"
+  },
+  "crm": {
+    "reports": {
+      "title": "Raporty CRM",
+      "description": "Analizuj wydajność lejka sprzedaży",
+      "totalDeals": "Wszystkie transakcje",
+      "wonDeals": "Wygrane transakcje",
+      "pipelineValue": "Wartość lejka",
+      "avgCycleTime": "Śr. czas zamknięcia",
+      "winRate": "Wskaźnik wygranych",
+      "winRateTitle": "Wskaźnik wygranych",
+      "revenueBySource": "Przychód wg źródła",
+      "dealsByStage": "Transakcje wg etapu",
+      "monthlyTrend": "Trend miesięczny",
+      "won": "Wygrane",
+      "lost": "Przegrane",
+      "open": "Otwarte",
+      "closed": "zamknięte",
+      "noData": "Brak danych dla tego okresu",
+      "noSource": "Brak źródła",
+      "wonDealsOnly": "Tylko wygrane",
+      "daysToDeal": "dni do zamknięcia",
+      "last30days": "Ostatnie 30 dni",
+      "customRange": "Własny zakres",
+      "startDate": "Data początkowa",
+      "endDate": "Data końcowa",
+      "comparePeriod": "Porównaj okres",
+      "exportCsv": "Eksportuj CSV",
+      "exportPdf": "Drukuj / PDF",
+      "exportSuccess": "Raport wyeksportowany",
+      "funnelSpeed": "Prędkość lejka"
+    }
   }
 }

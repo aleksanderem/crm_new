@@ -230,7 +230,8 @@
     },
     "settings": "Settings",
     "notifications": "Notifications",
-    "home": "Home"
+    "home": "Home",
+    "reports": "Reports"
   },
   "notifications": {
     "title": "Notifications",
@@ -4960,5 +4961,37 @@
     "description": "This module is shared across the entire CRM system and is not directly part of the Gabinet section.\n\nYou will be taken to the relevant CRM module.",
     "confirm": "Go to module",
     "dontShowAgain": "Don't show again"
+  },
+  "crm": {
+    "reports": {
+      "title": "CRM Reports",
+      "description": "Analyze your sales pipeline performance",
+      "totalDeals": "Total Deals",
+      "wonDeals": "Won Deals",
+      "pipelineValue": "Pipeline Value",
+      "avgCycleTime": "Avg. Deal Cycle",
+      "winRate": "Win Rate",
+      "winRateTitle": "Win Rate",
+      "revenueBySource": "Revenue by Source",
+      "dealsByStage": "Deals by Stage",
+      "monthlyTrend": "Monthly Trend",
+      "won": "Won",
+      "lost": "Lost",
+      "open": "Open",
+      "closed": "closed",
+      "noData": "No data for this period",
+      "noSource": "No source",
+      "wonDealsOnly": "Won deals only",
+      "daysToDeal": "days to close",
+      "last30days": "Last 30 days",
+      "customRange": "Custom range",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "comparePeriod": "Compare period",
+      "exportCsv": "Export CSV",
+      "exportPdf": "Print / PDF",
+      "exportSuccess": "Report exported successfully",
+      "funnelSpeed": "Funnel Speed"
+    }
   }
 }

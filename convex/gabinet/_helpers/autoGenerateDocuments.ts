@@ -172,7 +172,9 @@ export async function autoGenerateAppointmentDocuments(
       let signingToken: string | undefined;
       let signingTokenExpiresAt: number | undefined;
       if (template.requiresSignature) {
-        signingToken = crypto.randomUUID();
+        const tokenBytes = new Uint8Array(32);
+        crypto.getRandomValues(tokenBytes);
+        signingToken = Array.from(tokenBytes).map(b => b.toString(16).padStart(2, "0")).join("");
         signingTokenExpiresAt = now + 48 * 60 * 60 * 1000; // 48 hours
       }
 

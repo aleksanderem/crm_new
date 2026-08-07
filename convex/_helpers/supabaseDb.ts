@@ -204,6 +204,19 @@ export interface SupabaseDb {
     updates: Partial<SupabaseRow<TableName>>,
   ): Promise<void>;
 
+  /**
+   * Conditional update: applies `updates` only if all `conditions` match.
+   * Returns true if the row was updated, false if it was not (e.g. a
+   * concurrent request already changed the status). Use this for atomic
+   * compare-and-swap patterns like single-use token enforcement.
+   */
+  patchConditional(
+    table: string,
+    id: string,
+    updates: Record<string, unknown>,
+    conditions: Record<string, unknown>,
+  ): Promise<boolean>;
+
   delete(table: string, id: string): Promise<void>;
 
   query<TableName extends TableNames>(
@@ -290,6 +303,22 @@ export function createSupabaseDb(correlationId?: string): SupabaseDb {
     if (error) throw new Error(`supabaseDb.patch(${table}, ${id}): ${error.message}`);
   }
 
+  async function patchConditional(
+    table: string,
+    id: string,
+    updates: Record<string, unknown>,
+    conditions: Record<string, unknown>,
+  ): Promise<boolean> {
+    const snakeUpdates = mapRowToSnake(updates);
+    let q = client.from(resolveTable(table)).update(snakeUpdates).eq("id", id);
+    for (const [k, v] of Object.entries(conditions)) {
+      q = q.eq(toSnakeCase(k), v);
+    }
+    const { data, error } = await q.select("id");
+    if (error) throw new Error(`supabaseDb.patchConditional(${table}, ${id}): ${error.message}`);
+    return Array.isArray(data) && data.length > 0;
+  }
+
   async function del(table: string, id: string): Promise<void> {
     const { error } = await client
       .from(resolveTable(table))
@@ -320,6 +349,7 @@ export function createSupabaseDb(correlationId?: string): SupabaseDb {
     insertRow: insert,
     patch,
     patchRow: patch,
+    patchConditional,
     delete: del,
     query,
     raw,

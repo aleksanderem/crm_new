@@ -280,6 +280,7 @@ export const _sendSigningEmails = internalMutation({
           organizationName: orgName,
           token: ct.token,
           expiresAt: args.expiresAt,
+          organizationId: args.organizationId as Id<"organizations">,
         });
       }
       if (sig?.signerPhone && sig?.verificationMethod === "sms") {

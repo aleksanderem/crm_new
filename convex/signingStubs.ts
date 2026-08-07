@@ -22,12 +22,15 @@ function generateStubId(): string {
 }
 
 // Creates a single-use stub that maps an opaque ID to the real signing token.
-// Called from sendSigningLinkSms so the raw token never appears in SMS logs.
+// Called from sendSigningLinkSms and signing email senders so the raw token
+// never appears in provider logs.
+// destination: "sign" (default) → /sign/$token; "sign_form" → /sign/form/$token
 export const createStub = internalMutation({
   args: {
     token: v.string(),
     organizationId: v.id("organizations"),
     signingTokenExpiresAt: v.number(),
+    destination: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const stubId = generateStubId();
@@ -40,6 +43,7 @@ export const createStub = internalMutation({
       token: args.token,
       organizationId: args.organizationId,
       expiresAt,
+      destination: args.destination,
     });
     return stubId;
   },
@@ -57,6 +61,7 @@ export const resolveStub = action({
 });
 
 // Internal: atomically validates and consumes the stub in one transaction.
+// Returns { token, destination } so the caller knows where to redirect.
 export const _consumeStub = internalMutation({
   args: { stubId: v.string() },
   handler: async (ctx, args) => {
@@ -70,7 +75,7 @@ export const _consumeStub = internalMutation({
     if (Date.now() > stub.expiresAt) throw new Error("Link expired");
 
     await ctx.db.patch(stub._id, { usedAt: Date.now() });
-    return stub.token;
+    return { token: stub.token, destination: stub.destination ?? "sign" };
   },
 });
 

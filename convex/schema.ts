@@ -607,8 +607,9 @@ const devTables = {
   }).index("by_createdAt", ["createdAt"]),
 };
 
-// Single-use redirect stubs that shield signing tokens from SMS provider logs.
-// The SMS body contains the opaque stubId; the real token never leaves the server.
+// Single-use redirect stubs that shield signing tokens from provider logs.
+// The SMS/email body contains the opaque stubId; the real token never leaves the server.
+// destination: "sign" (default) → /sign/$token; "sign_form" → /sign/form/$token
 const signingStubTables = {
   signingLinkStubs: defineTable({
     stubId: v.string(),
@@ -616,6 +617,7 @@ const signingStubTables = {
     organizationId: v.id("organizations"),
     expiresAt: v.number(),
     usedAt: v.optional(v.number()),
+    destination: v.optional(v.string()),
   })
     .index("by_stubId", ["stubId"])
     .index("by_expiresAt", ["expiresAt"]),

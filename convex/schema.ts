@@ -482,6 +482,15 @@ export const gabinetLoyaltyTxTypeValidator = v.union(
 );
 export type GabinetLoyaltyTxType = Infer<typeof gabinetLoyaltyTxTypeValidator>;
 
+export const gabinetWaitlistStatusValidator = v.union(
+  v.literal("waiting"),
+  v.literal("notified"),
+  v.literal("booked"),
+  v.literal("cancelled"),
+  v.literal("expired"),
+);
+export type GabinetWaitlistStatus = Infer<typeof gabinetWaitlistStatusValidator>;
+
 export const callOutcomeValidator = v.union(
   v.literal("busy"),
   v.literal("leftVoiceMessage"),
@@ -534,6 +543,7 @@ const gabinetTables = createGabinetTables({
   gabinetPackageUsageStatusValidator,
   gabinetLoyaltyTierValidator,
   gabinetLoyaltyTxTypeValidator,
+  gabinetWaitlistStatusValidator,
   appointmentSmsDirectionValidator,
   appointmentSmsIntentValidator,
   appointmentSmsProcessingStatusValidator,

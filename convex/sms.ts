@@ -143,7 +143,7 @@ export const sendOtpSms = internalAction({
     const message = `Twój kod weryfikacyjny: ${args.code}. Ważny 10 minut.`;
 
     if (config.provider === "smsapi") {
-      await sendViaSmsapi(config.apiToken, args.phone, message, config.senderId);
+      await sendViaSmsapi(config.apiToken, args.phone, message, config.senderId ?? undefined);
     } else if (config.provider === "twilio") {
       if (!config.apiSecret || !config.fromNumber) {
         throw new Error("Twilio requires API secret and phone number");
@@ -383,7 +383,7 @@ export const sendAppointmentSms = internalAction({
           config.apiToken,
           args.phone,
           args.message,
-          config.senderId,
+          config.senderId ?? undefined,
         );
       } else if (config.provider === "twilio") {
         if (!config.apiSecret || !config.fromNumber) return null;

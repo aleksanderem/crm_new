@@ -1128,3 +1128,25 @@ S0103. Deferred until later PRs (explicitly out of scope for PR-A):
 - Appointment ↔ products + settle-visit stock deduction (PR-D).
 - CRM dealProducts stock deduction on deal close.
 
+
+=== SESSION S0126 START === 2026-08-07T14:30:00Z
+Focus: Prod incident part 2 — restore mintUserToken on prod Convex.
+Continuing from: incident (migrations already fixed via #4343; prod HTTP 200 but app can't mint Supabase JWT).
+
+---
+
+S0126. Root cause (verified):
+- Prod Convex deployment = pleasant-elephant-723 (dev = helpful-mule-867). functionSpec confirms prod has supabase/jwt.js:mintSupabaseToken but NOT mintUserToken. Dev also lacks it.
+- mintUserToken (action) + its client call were added together in be79f90a (#3978). Source on main is consistent.
+- Netlify build command (netlify.toml [context.production]): `npm run migrations:apply && npx convex deploy --cmd 'npm run build'`. `convex deploy` typechecks convex/ (tsgo, convex.json typescriptCompiler) and FAILS on convex/ TS errors → functions never pushed → prod Convex frozen at ~#3889 era while the frontend (built by tsc -b, which only checks tsconfig.app/node.json, NOT convex/) keeps advancing. => frontend calls mintUserToken; backend doesn't have it. Exactly the #1250 failure class noted in netlify.toml.
+- User chose FIX-FIRST (clean deploy) over `convex deploy --typecheck=disable`.
+
+S0126. Fix in progress:
+- Branch fix/convex-typecheck-prod-deploy off origin/main (HEAD == origin/main).
+- 49 convex/ TS errors, 12 files. Mostly TS7022/7023/7024 (Convex circular-inference: handlers calling ctx.runAction(internal.X) need explicit Promise<...> return type). Genuine bugs: backfillProductSubscriptions circular internal-map ref + productKey on {}, appointmentSms string vs Id<>, emailTemplateMigrations cast, untyped params in init/http/csvExport.
+- Fixed root: authAction.ts verifyOrgAccess got explicit return-type annotation (49→44).
+- Delegated remainder to convex:convex-expert subagent (type-only, no logic change, no `returns:` validators, don't touch _generated). Target: `npx tsc -p convex/tsconfig.json` == 0.
+- NOTE: pdf-lib TS2307 in receipts.ts is LOCAL-ONLY (pdf-lib in package.json but missing from local node_modules; installs under CI `npm ci`). Agent told to skip it. Will run `npm ci --legacy-peer-deps` after agent finishes to verify against CI-equivalent env.
+- Autonomous worker loop (claude-worker + plan-bridge.timer + groomer.timer) STAYS STOPPED per prior decision until auto-merge hardened + typecheck debt cleared.
+
+---

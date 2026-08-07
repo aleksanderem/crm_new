@@ -17,7 +17,7 @@ export const list = action({
     paginationOpts: paginationOptsValidator,
     status: v.optional(leadStatusValidator),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ page: Array<Record<string, unknown>>; isDone: boolean; continueCursor: string }> => {
     const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -39,7 +39,7 @@ export const list = action({
       .take(args.paginationOpts.numItems)
       .collect();
 
-    const page =
+    const page: Array<Record<string, unknown>> =
       perm.scope === "own"
         ? rows.filter(
             (r) =>
@@ -559,7 +559,7 @@ export const getByPipeline = action({
     organizationId: v.id("organizations"),
     pipelineId: v.id("pipelines"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<Array<Record<string, unknown> & { leads: Array<Record<string, unknown>> }>> => {
     const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
@@ -584,12 +584,12 @@ export const getByPipeline = action({
     const stageIds = stages.map((s) => String(s._id));
 
     const allLeads = await db
-      .query("leads")
+      .query<{ createdBy: string; assignedTo: string | null; pipelineStageId: string | null; stageOrder: number | null }>("leads")
       .eq("organizationId", String(args.organizationId))
       .in("pipelineStageId", stageIds)
       .collect();
 
-    const filtered =
+    const filtered: typeof allLeads =
       perm.scope === "own"
         ? allLeads.filter(
             (l) =>
@@ -605,7 +605,7 @@ export const getByPipeline = action({
       leadsByStage.get(sid)!.push(lead);
     }
     for (const leads of leadsByStage.values()) {
-      leads.sort((a, b) => ((a.stageOrder as number) ?? 0) - ((b.stageOrder as number) ?? 0));
+      leads.sort((a, b) => (a.stageOrder ?? 0) - (b.stageOrder ?? 0));
     }
 
     return stages.map((stage) => ({

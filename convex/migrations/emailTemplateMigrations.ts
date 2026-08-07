@@ -116,7 +116,7 @@ export const migrateEventBindingsToSlug = internalAction({
   args: {},
   handler: async (_ctx) => {
     const db = createSupabaseDb();
-    const bindings = (await db.query("emailEventBindings").collect()) as EmailEventBindingRow[];
+    const bindings = (await db.query("emailEventBindings").collect()) as unknown as EmailEventBindingRow[];
     let migrated = 0;
     for (const binding of bindings) {
       if (binding.templateSlug) continue;

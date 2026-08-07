@@ -96,18 +96,18 @@ export const list = action({
     source: v.optional(v.union(v.literal("convex"), v.literal("frontend"))),
     sinceTs: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<Array<Record<string, unknown> & { _user: { name: string | null; email: string | null } | null }>> => {
     await ctx.runAction(internal._helpers.authAction.verifyPlatformAdmin, {});
     const rows = await ctx.runQuery(internal.errorLogs._listInternal, args);
 
     const userIds = Array.from(
-      new Set(rows.map((r) => r.userId).filter((id): id is NonNullable<typeof id> => Boolean(id))),
+      new Set(rows.map((r: typeof rows[number]) => r.userId).filter((id: typeof rows[number]["userId"]): id is NonNullable<typeof id> => Boolean(id))),
     );
     const db = createSupabaseDb();
     const users = userIds.length > 0 ? await db.getMany("users", userIds.map(String)) : [];
-    const userMap = new Map(users.map((u) => [String(u._id), { name: (u.name as string | null) ?? null, email: (u.email as string | null) ?? null }]));
+    const userMap = new Map(users.map((u: typeof users[number]) => [String(u._id), { name: (u.name as string | null) ?? null, email: (u.email as string | null) ?? null }]));
 
-    return rows.map((r) => ({
+    return rows.map((r: typeof rows[number]) => ({
       ...r,
       _user: r.userId ? userMap.get(String(r.userId)) ?? null : null,
     }));
@@ -147,7 +147,7 @@ export const _listInternal = internalQuery({
 
 export const get = action({
   args: { id: v.id("errorLogs") },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<(Record<string, unknown> & { _user: { name: string | null; email: string | null } | null }) | null> => {
     await ctx.runAction(internal._helpers.authAction.verifyPlatformAdmin, {});
     const row = await ctx.runQuery(internal.errorLogs._getInternal, args);
     if (!row) return null;

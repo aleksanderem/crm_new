@@ -2,6 +2,7 @@ import { action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
+import type { Id } from "./_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for template field writes
 
@@ -46,7 +47,7 @@ export const listByTemplate = action({
 
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: orgId },
+      { organizationId: orgId as Id<"organizations"> },
     );
 
     const db = createSupabaseDb();
@@ -85,7 +86,7 @@ export const create = action({
 
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: orgId },
+      { organizationId: orgId as Id<"organizations"> },
     );
 
     const db = createSupabaseDb();
@@ -155,7 +156,7 @@ export const update = action({
 
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: orgId },
+      { organizationId: orgId as Id<"organizations"> },
     );
 
     // Check fieldKey uniqueness if changing
@@ -197,7 +198,7 @@ export const remove = action({
 
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: orgId },
+      { organizationId: orgId as Id<"organizations"> },
     );
 
     await db.delete("documentTemplateFields", args.id);
@@ -217,7 +218,7 @@ export const reorder = action({
 
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: orgId },
+      { organizationId: orgId as Id<"organizations"> },
     );
 
     const db = createSupabaseDb();

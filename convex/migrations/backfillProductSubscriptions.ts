@@ -1,7 +1,9 @@
 import { v } from "convex/values";
+import type { FunctionReference } from "convex/server";
 import { internalAction, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createLogger } from "../_helpers/logger";
+import type { Id } from "../_generated/dataModel";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -60,22 +62,46 @@ function normalizeStatus(
  * Safe to run multiple times — skips entries that already exist.
  * Pass dryRun: true to preview what would be inserted without writing.
  */
+type PlanRow = { _id: string; key: string; productKey?: string | null };
+type SubscriptionRow = { _id: string; planId: string; userId: import("../_generated/dataModel").Id<"users">; stripeId: string; status: string; currentPeriodStart: number; currentPeriodEnd: number; cancelAtPeriodEnd: boolean };
+type BackfillResult = { subscriptionsScanned: number; inserted: number; skippedAlreadyExists: number; skippedNoPlan: number; skippedNoProductKey: number; skippedNoOrg: number; dryRun: boolean };
+
 export const backfillProductSubscriptions = internalAction({
   args: { dryRun: v.optional(v.boolean()) },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<BackfillResult> => {
     const { dryRun = false } = args;
     const log = createLogger("migrations.backfillProductSubscriptions", { dryRun });
 
-    const [subscriptions, plans] = await Promise.all([
+    // Self-module internal references. Convex's generated `internal` graph cannot
+    // type a function that references its own module — the index expression
+    // itself triggers a circular type instantiation (TS7053/TS2615). Access it
+    // through a loosely-typed view; the runtime FunctionReferences resolve fine.
+    const self = (internal as Record<string, Record<string, unknown>>)[
+      "migrations/backfillProductSubscriptions"
+    ] as {
+      getAllSubscriptions: FunctionReference<"query", "internal">;
+      getAllPlans: FunctionReference<"query", "internal">;
+      getOrgByOwner: FunctionReference<"query", "internal", { userId: Id<"users"> }>;
+      getExistingProductSub: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string; productId: string }
+      >;
+    };
+
+    const [subscriptionsRaw, plansRaw] = await Promise.all([
       ctx.runQuery(
-        internal["migrations/backfillProductSubscriptions"].getAllSubscriptions,
+        self.getAllSubscriptions,
       ),
       ctx.runQuery(
-        internal["migrations/backfillProductSubscriptions"].getAllPlans,
+        self.getAllPlans,
       ),
     ]);
 
-    const planById = new Map(plans.map((p) => [p._id as string, p]));
+    const subscriptions = subscriptionsRaw as unknown as SubscriptionRow[];
+    const plans = plansRaw as unknown as PlanRow[];
+
+    const planById = new Map(plans.map((p: PlanRow) => [p._id as string, p]));
 
     let inserted = 0;
     let skippedAlreadyExists = 0;
@@ -101,7 +127,7 @@ export const backfillProductSubscriptions = internalAction({
       }
 
       const org = await ctx.runQuery(
-        internal["migrations/backfillProductSubscriptions"].getOrgByOwner,
+        self.getOrgByOwner,
         { userId: sub.userId },
       );
 
@@ -115,7 +141,7 @@ export const backfillProductSubscriptions = internalAction({
       }
 
       const existing = await ctx.runQuery(
-        internal["migrations/backfillProductSubscriptions"].getExistingProductSub,
+        self.getExistingProductSub,
         { organizationId: org._id, productId: plan.productKey },
       );
 

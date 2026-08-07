@@ -77,7 +77,16 @@ export const _getGabinetPermissionData = internalQuery({
 // ---------------------------------------------------------------------------
 export const verifyOrgAccess = internalAction({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    userId: Id<"users">;
+    userName: string | undefined;
+    userEmail: string | undefined;
+    membershipId: Id<"teamMemberships">;
+    role: string;
+  }> => {
     const userId = await auth.getUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 

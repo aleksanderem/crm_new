@@ -260,7 +260,8 @@ export const migratePerModulePlans = internalAction({
     const refreshedPlans = await ctx.runQuery(internal.init.getAllPlans);
     for (const seedProduct of seedProducts) {
       const exists = refreshedPlans.some(
-        (p) => p.key === seedProduct.key && p.productKey === seedProduct.productKey,
+        (p: { key: string; productKey?: string }) =>
+          p.key === seedProduct.key && p.productKey === seedProduct.productKey,
       );
       if (exists) {
         console.info(

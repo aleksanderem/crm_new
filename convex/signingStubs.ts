@@ -53,7 +53,10 @@ export const createStub = internalMutation({
 // Returns the real signing token and burns the stub (single-use).
 export const resolveStub = action({
   args: { stubId: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ token: string; destination: string }> => {
     return await ctx.runMutation(internal.signingStubs._consumeStub, {
       stubId: args.stubId,
     });

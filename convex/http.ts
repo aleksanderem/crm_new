@@ -189,7 +189,8 @@ const handleCheckoutSessionCompleted = async (
   }
 
   const freeSubscriptionStripeId = user.subscriptions.find(
-    (sub) => sub.planKey === PLANS.FREE && sub.productKey === productKey,
+    (sub: { planKey: string; productKey?: string }) =>
+      sub.planKey === PLANS.FREE && sub.productKey === productKey,
   )?.stripeId;
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);

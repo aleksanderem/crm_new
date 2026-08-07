@@ -1,7 +1,7 @@
 {
-  "session_id": "S0103",
+  "session_id": "S0126",
   "session_uuid": "d8e3f5g2-9c4e-5b0f-c6d7-3e2f1g4b5c6d",
-  "date": "2026-06-12",
+  "date": "2026-08-07",
   "tasks": [
     {
       "id": "SMS-01",
@@ -526,10 +526,32 @@
         "public/locales/pl/translation.json"
       ],
       "depends_on": []
+    },
+    {
+      "id": "CVXFIX-01",
+      "name": "fix_convex_typecheck_to_unblock_prod_deploy",
+      "status": "in_progress",
+      "created_session": "S0126",
+      "last_updated_session": "S0126",
+      "description": "Prod incident part 2: prod Convex (pleasant-elephant-723) is stale, missing mintUserToken (#3978), because Netlify's `npx convex deploy` typechecks convex/ and fails on 49 TS errors. Fix all convex/ TS errors (type-only, no logic change) so `npx tsc -p convex/tsconfig.json` is green and convex deploy can succeed. Root fix applied to authAction verifyOrgAccess; remainder delegated to convex-expert agent. pdf-lib TS2307 is a local-only missing-dep artifact (installed on CI).",
+      "files": [
+        "convex/_helpers/authAction.ts",
+        "convex/leads.ts",
+        "convex/errorLogs.ts",
+        "convex/platformAdmins.ts",
+        "convex/platformSettings.ts",
+        "convex/migrations/backfillProductSubscriptions.ts",
+        "convex/migrations/emailTemplateMigrations.ts",
+        "convex/gabinet/appointmentSms.ts",
+        "convex/init.ts",
+        "convex/http.ts",
+        "convex/csvExport.ts"
+      ],
+      "depends_on": []
     }
   ],
-  "reason": "Added INV-A task for #1700 PR-A inventory foundation",
-  "thinking_process": "PR-A ships product trackStock + per-location stock levels + append-only movement audit. See verbose log S0103 entries for typecheck evidence.",
+  "reason": "S0126: Added CVXFIX-01 — fix convex/ typecheck so convex deploy restores mintUserToken on prod (prod incident part 2, user chose fix-first).",
+  "thinking_process": "Prod loads (200, migrations recovered) but Convex backend is stale: deployed prod Convex lacks mintUserToken because convex deploy fails on convex/ TS errors. Fixing 49 type errors (type-only) to unblock a clean convex deploy. See verbose log S0126.",
   "connected_tasks": [
     "SIDEBAR-01",
     "SIDEBAR-02",

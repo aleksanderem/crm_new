@@ -166,6 +166,8 @@ Three automated layers guard against leaked secrets:
 
 **`secrets-health.yml`** — runs daily at 07:00 UTC. Verifies that at least one migration transport (`SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`, or `SUPABASE_DB_URL`) is set in GitHub secrets. Fails loudly if both transports are absent.
 
+**`secret-rotation-age.yml`** — runs daily at 08:00 UTC. Uses the GitHub REST API (`GET /repos/{owner}/{repo}/actions/secrets/{name}`) to read the `updated_at` timestamp for every 90-day secret without exposing its value. Emits a warning when a secret is older than 75 days and fails the workflow when a secret reaches 90 days without rotation. Requires `permissions: secrets: read` on `GITHUB_TOKEN`, which grants access to secret metadata only. See the full secret list in `.github/workflows/secret-rotation-age.yml`.
+
 **`secret-scan.yml`** — runs on every push to `main`, every PR, and weekly on Sunday. Scans the full git history with [gitleaks](https://github.com/gitleaks/gitleaks) to detect accidentally committed secrets. Results appear in the Actions tab under "Secret scan (gitleaks)". A failure means a secret pattern was found in history — see "Git history leak response" below.
 
 ### Pre-commit hook

@@ -45,6 +45,7 @@ export const supabaseKeys = {
   pipelineStages: entityKeys("pipelineStages"),
   pipelineStageActions: entityKeys("pipelineStageActions"),
   dealProducts: entityKeys("dealProducts"),
+  leadStageHistory: entityKeys("leadStageHistory"),
   productStockLevels: entityKeys("productStockLevels"),
   productStockMovements: entityKeys("productStockMovements"),
   scheduledActivities: entityKeys("scheduledActivities"),

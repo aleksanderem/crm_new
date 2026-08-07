@@ -1515,6 +1515,55 @@ export interface Database {
           },
         ];
       };
+      lead_stage_history: {
+        Row: {
+          id: string;
+          organization_id: string;
+          lead_id: string;
+          stage_id: string;
+          entered_at: number;
+          exited_at: number | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          lead_id: string;
+          stage_id: string;
+          entered_at: number;
+          exited_at?: number | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          lead_id?: string;
+          stage_id?: string;
+          entered_at?: number;
+          exited_at?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "lead_stage_history_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "lead_stage_history_lead_id_fkey";
+            columns: ["lead_id"];
+            isOneToOne: false;
+            referencedRelation: "leads";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "lead_stage_history_stage_id_fkey";
+            columns: ["stage_id"];
+            isOneToOne: false;
+            referencedRelation: "pipeline_stages";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       documents: {
         Row: {
           id: string;

@@ -5015,7 +5015,9 @@
       "exportCsv": "Export CSV",
       "exportPdf": "Print / PDF",
       "exportSuccess": "Report exported successfully",
-      "funnelSpeed": "Funnel Speed"
+      "funnelSpeed": "Funnel Speed",
+      "funnelVelocity": "Funnel Velocity",
+      "avgDaysPerStage": "Avg. days per stage"
     }
   }
 }

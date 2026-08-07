@@ -5016,7 +5016,9 @@
       "exportCsv": "Eksportuj CSV",
       "exportPdf": "Drukuj / PDF",
       "exportSuccess": "Raport wyeksportowany",
-      "funnelSpeed": "Prędkość lejka"
+      "funnelSpeed": "Prędkość lejka",
+      "funnelVelocity": "Prędkość lejka",
+      "avgDaysPerStage": "Śr. dni na etap"
     }
   }
 }

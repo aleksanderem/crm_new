@@ -156,14 +156,14 @@ export const PREAUTH_createSubscription = internalMutation({
     const incomingPlan = await ctx.db.get(args.planId);
     const incomingProductKey = incomingPlan?.productKey;
 
-    const userSubs = await ctx.db
-      .query("subscriptions")
-      .withIndex("userId", (q) => q.eq("userId", args.userId))
-      .collect();
-
-    for (const sub of userSubs) {
-      const subPlan = await ctx.db.get(sub.planId);
-      if (subPlan?.productKey === incomingProductKey) {
+    if (incomingProductKey) {
+      const existing = await ctx.db
+        .query("subscriptions")
+        .withIndex("by_userId_and_productKey", (q) =>
+          q.eq("userId", args.userId).eq("productKey", incomingProductKey),
+        )
+        .first();
+      if (existing) {
         throw new Error("Subscription already exists");
       }
     }
@@ -171,6 +171,7 @@ export const PREAUTH_createSubscription = internalMutation({
     const subId = await ctx.db.insert("subscriptions", {
       userId: args.userId,
       planId: args.planId,
+      productKey: incomingProductKey,
       priceStripeId: args.priceStripeId,
       stripeId: args.stripeSubscriptionId,
       currency: args.currency,
@@ -186,6 +187,7 @@ export const PREAUTH_createSubscription = internalMutation({
       subscriptionId: subId as string,
       userId: args.userId as string,
       planId: args.planId as string,
+      productKey: incomingProductKey,
       priceStripeId: args.priceStripeId,
       stripeId: args.stripeSubscriptionId,
       currency: args.currency,
@@ -223,21 +225,16 @@ export const PREAUTH_replaceSubscription = internalMutation({
       throw new Error(ERRORS.STRIPE_SOMETHING_WENT_WRONG);
     }
 
-    // Find the subscription to replace: when productKey is known, only replace
-    // the subscription for that module so other modules are not disturbed.
+    // Find the subscription to replace: when productKey is known, use the
+    // composite index for O(1) lookup so other modules are not disturbed.
     let existingSubscription = null;
     if (plan.productKey) {
-      const userSubs = await ctx.db
+      existingSubscription = await ctx.db
         .query("subscriptions")
-        .withIndex("userId", (q) => q.eq("userId", args.userId))
-        .collect();
-      for (const sub of userSubs) {
-        const subPlan = await ctx.db.get(sub.planId);
-        if (subPlan?.productKey === plan.productKey) {
-          existingSubscription = sub;
-          break;
-        }
-      }
+        .withIndex("by_userId_and_productKey", (q) =>
+          q.eq("userId", args.userId).eq("productKey", plan.productKey),
+        )
+        .first();
     } else {
       existingSubscription = await ctx.db
         .query("subscriptions")
@@ -252,6 +249,7 @@ export const PREAUTH_replaceSubscription = internalMutation({
     const newSubId = await ctx.db.insert("subscriptions", {
       userId: args.userId,
       planId: plan._id,
+      productKey: plan.productKey,
       stripeId: args.subscriptionStripeId,
       priceStripeId: args.input.priceStripeId,
       interval: args.input.interval,
@@ -267,6 +265,7 @@ export const PREAUTH_replaceSubscription = internalMutation({
       subscriptionId: newSubId as string,
       userId: args.userId as string,
       planId: plan._id as string,
+      productKey: plan.productKey,
       priceStripeId: args.input.priceStripeId,
       stripeId: args.subscriptionStripeId,
       currency: args.input.currency,

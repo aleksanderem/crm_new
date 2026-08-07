@@ -54,6 +54,7 @@ describe("PREAUTH_replaceSubscription", () => {
         const crmSubId = await ctx.db.insert("subscriptions", {
           userId,
           planId: crmPlanId,
+          productKey: "crm",
           stripeId: "sub_crm_old",
           priceStripeId: "price_m_usd",
           currency: "usd",
@@ -67,6 +68,7 @@ describe("PREAUTH_replaceSubscription", () => {
         const gabinetSubId = await ctx.db.insert("subscriptions", {
           userId,
           planId: gabinetPlanId,
+          productKey: "gabinet",
           stripeId: "sub_gabinet_active",
           priceStripeId: "price_m_usd",
           currency: "usd",
@@ -145,6 +147,7 @@ describe("PREAUTH_replaceSubscription", () => {
       await ctx.db.insert("subscriptions", {
         userId,
         planId: gabinetPlanId,
+        productKey: "gabinet",
         stripeId: "sub_gabinet_active",
         priceStripeId: "price_m_usd",
         currency: "usd",
@@ -232,6 +235,7 @@ describe("PREAUTH_replaceSubscription", () => {
       await ctx.db.insert("subscriptions", {
         userId,
         planId: legacyPlanId,
+        // no productKey — legacy plan, fallback to first-sub replacement
         stripeId: "sub_free_old",
         priceStripeId: "price_m_usd",
         currency: "usd",

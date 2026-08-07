@@ -15,6 +15,8 @@ function PricingPage() {
   const pricingPlans = useQuery(api.app.getPublicPricingPlans);
   const crmProPrice = pricingPlans != null ? formatPln(pricingPlans.crm.monthPln) : "119 zł";
   const gabinetProPrice = pricingPlans != null ? formatPln(pricingPlans.gabinet.monthPln) : "199 zł";
+  const crmProAnnualMonthly = pricingPlans != null ? formatPln(Math.round(pricingPlans.crm.yearPln / 12)) : null;
+  const gabinetProAnnualMonthly = pricingPlans != null ? formatPln(Math.round(pricingPlans.gabinet.yearPln / 12)) : null;
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -156,6 +158,26 @@ function PricingPage() {
           <p className="text-lg font-semibold">Zaoszczędź do 20% przy płatności rocznej</p>
           <p className="mt-2 text-sm text-muted-foreground">
             Przy wyborze planu rocznego naliczamy tylko 10 miesięcznych rat — 2 miesiące gratis.
+          </p>
+          {(crmProAnnualMonthly || gabinetProAnnualMonthly) && (
+            <div className="mt-4 flex flex-col items-center gap-2 sm:flex-row sm:justify-center sm:gap-8">
+              {crmProAnnualMonthly && (
+                <div className="text-sm">
+                  <span className="font-medium">CRM Pro:</span>{" "}
+                  <span className="font-semibold text-primary">{crmProAnnualMonthly} / miesiąc</span>{" "}
+                  <span className="text-muted-foreground">(zamiast {crmProPrice})</span>
+                </div>
+              )}
+              {gabinetProAnnualMonthly && (
+                <div className="text-sm">
+                  <span className="font-medium">Gabinet Pro:</span>{" "}
+                  <span className="font-semibold text-primary">{gabinetProAnnualMonthly} / miesiąc</span>{" "}
+                  <span className="text-muted-foreground">(zamiast {gabinetProPrice})</span>
+                </div>
+              )}
+            </div>
+          )}
+          <p className="mt-3 text-xs text-muted-foreground">
             Opcja dostępna w ustawieniach konta po rejestracji.
           </p>
         </div>

@@ -10,7 +10,7 @@ Pending invitations do not count toward the seat limit. Only active team members
 
 ## Free Tier
 
-Organizations on the free tier have a default limit of 5 seats. This includes the owner, so up to 4 additional members can be invited.
+Organizations on the free tier have a default limit of 20 seats. This includes the owner, so up to 19 additional members can be invited.
 
 ## Paid Plans
 

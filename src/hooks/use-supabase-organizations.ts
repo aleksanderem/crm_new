@@ -2,7 +2,7 @@
  * React Query hooks for fetching organizations, members, settings, and usage from Supabase.
  */
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useAction } from "convex/react";
@@ -16,6 +16,9 @@ import {
   type MappedOrganization,
   type MappedOrgSettings,
 } from "@/lib/supabase/mappers";
+
+/** Refresh the user-scoped token when it's within this many seconds of expiring. */
+const USER_TOKEN_REFRESH_BUFFER_SECS = 5 * 60;
 
 // ── My Organizations (bootstrap — no org context in JWT) ─────────────────────
 
@@ -39,10 +42,30 @@ export function useSupabaseMyOrganizations(userId: string | undefined) {
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known)
   const mintUserToken = useAction(api.supabase.jwt.mintUserToken);
 
+  // Cache the user-scoped JWT to avoid minting on every React Query refetch.
+  // Includes userId so a user switch within the same component instance doesn't
+  // serve a stale token from the previous user.
+  const tokenCacheRef = useRef<{ userId: string; token: string; expiresAt: number } | null>(null);
+
   return useQuery<MyOrganization[], Error>({
     queryKey: ["supabase", "organizations", "my", userId ?? ""],
     queryFn: async () => {
-      const { token } = await mintUserToken({});
+      const now = Date.now() / 1000;
+      const cached = tokenCacheRef.current;
+      const isCacheValid =
+        cached !== null &&
+        cached.userId === userId &&
+        now < cached.expiresAt - USER_TOKEN_REFRESH_BUFFER_SECS;
+
+      let token: string;
+      if (isCacheValid) {
+        token = cached.token;
+      } else {
+        const minted = await mintUserToken({});
+        tokenCacheRef.current = { userId: userId!, token: minted.token, expiresAt: minted.expiresAt };
+        token = minted.token;
+      }
+
       const client = createSupabaseClient(SUPABASE_URL, token);
 
       const { data, error } = await (client

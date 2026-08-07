@@ -894,6 +894,15 @@ export const _createSideEffects = internalMutation({
       actorLabel: args.actorLabel,
     });
 
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: createdByUserId,
+      action: "appointment_created",
+      entityType: "gabinetAppointment",
+      entityId: args.appointmentId,
+      details: `Created appointment for patient ${args.patientId} on ${args.date} at ${args.startTime}`,
+    });
+
     // --- 6. Schedule reminders (inline — avoid DB read since appointment is in Supabase) ---
     if (args.sendReminder) {
       try {
@@ -1960,6 +1969,15 @@ export const _updateSideEffects = internalMutation({
       },
       performedBy: actorUserId,
       actorLabel: args.actorLabel,
+    });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: actorUserId,
+      action: "appointment_updated",
+      entityType: "gabinetAppointment",
+      entityId: args.appointmentId,
+      details: description,
     });
 
     // A "significant" reschedule is one where the patient's calendar changes:

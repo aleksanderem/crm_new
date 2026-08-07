@@ -112,6 +112,15 @@
  *   • 00105_form_documents_entity_timing_idx.sql
  *   • 00106_gabinet_loyalty_tiers.sql
  *   • 00107_backfill_gabinet_loyalty_points_tier.sql
+ *   • 00108_subscriptions_product_key.sql
+ *   • 00109_plans_product_key.sql
+ *   • 00110_gabinet_cash_transactions.sql
+ *   • 00111_gabinet_day_closes.sql
+ *   • 00112_gabinet_waitlist.sql
+ *   • 00113_subscriptions_trial_end_date.sql
+ *   • 00114_audit_log_nullable_user_id.sql
+ *   • 00115_leads_created_at_idx.sql
+ *   • 00116_lead_stage_history.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -7722,6 +7731,152 @@ export interface Database {
           },
         ];
       };
+      gabinet_cash_transactions: {
+        Row: {
+          id: string;
+          organization_id: string;
+          location_id: string | null;
+          date: string;
+          type: string;
+          amount: number;
+          reason: string | null;
+          created_by: string;
+          created_at: number;
+          updated_at: number;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          location_id?: string | null;
+          date: string;
+          type: string;
+          amount: number;
+          reason?: string | null;
+          created_by: string;
+          created_at: number;
+          updated_at: number;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          location_id?: string | null;
+          date?: string;
+          type?: string;
+          amount?: number;
+          reason?: string | null;
+          created_by?: string;
+          created_at?: number;
+          updated_at?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_cash_transactions_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_cash_transactions_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_locations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_cash_transactions_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      gabinet_day_closes: {
+        Row: {
+          id: string;
+          organization_id: string;
+          location_id: string | null;
+          date: string;
+          payment_summary: unknown;
+          total_collected: number;
+          cash_from_payments: number;
+          cash_opening_balance: number;
+          cash_deposits: number;
+          cash_withdrawals: number;
+          cash_expected: number;
+          cash_counted: number;
+          cash_discrepancy: number;
+          notes: string | null;
+          closed_by: string;
+          closed_at: number;
+          created_at: number;
+          updated_at: number;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          location_id?: string | null;
+          date: string;
+          payment_summary?: unknown;
+          total_collected?: number;
+          cash_from_payments?: number;
+          cash_opening_balance?: number;
+          cash_deposits?: number;
+          cash_withdrawals?: number;
+          cash_expected?: number;
+          cash_counted?: number;
+          cash_discrepancy?: number;
+          notes?: string | null;
+          closed_by: string;
+          closed_at: number;
+          created_at: number;
+          updated_at: number;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          location_id?: string | null;
+          date?: string;
+          payment_summary?: unknown;
+          total_collected?: number;
+          cash_from_payments?: number;
+          cash_opening_balance?: number;
+          cash_deposits?: number;
+          cash_withdrawals?: number;
+          cash_expected?: number;
+          cash_counted?: number;
+          cash_discrepancy?: number;
+          notes?: string | null;
+          closed_by?: string;
+          closed_at?: number;
+          created_at?: number;
+          updated_at?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_day_closes_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_day_closes_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_locations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_day_closes_closed_by_fkey";
+            columns: ["closed_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       org_sms_config_summary: {
@@ -7912,3 +8067,9 @@ export type GabinetReceiptUpdate = Database["public"]["Tables"]["gabinet_receipt
 export type GabinetWaitlistRow = Database["public"]["Tables"]["gabinet_waitlist"]["Row"];
 export type GabinetWaitlistInsert = Database["public"]["Tables"]["gabinet_waitlist"]["Insert"];
 export type GabinetWaitlistUpdate = Database["public"]["Tables"]["gabinet_waitlist"]["Update"];
+export type GabinetCashTransactionRow = Database["public"]["Tables"]["gabinet_cash_transactions"]["Row"];
+export type GabinetCashTransactionInsert = Database["public"]["Tables"]["gabinet_cash_transactions"]["Insert"];
+export type GabinetCashTransactionUpdate = Database["public"]["Tables"]["gabinet_cash_transactions"]["Update"];
+export type GabinetDayCloseRow = Database["public"]["Tables"]["gabinet_day_closes"]["Row"];
+export type GabinetDayCloseInsert = Database["public"]["Tables"]["gabinet_day_closes"]["Insert"];
+export type GabinetDayCloseUpdate = Database["public"]["Tables"]["gabinet_day_closes"]["Update"];

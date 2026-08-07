@@ -2908,7 +2908,12 @@
       },
       "applyToWeekdays": "Zastosuj do dni roboczych",
       "applyToAllDays": "Zastosuj do wszystkich dni",
-      "copyHours": "Kopiuj godziny"
+      "copyHours": "Kopiuj godziny",
+      "preview": "Podgląd dostępności",
+      "previewDescription": "Godziny rezerwacji po zapisaniu tych ustawień",
+      "closed": "Zamknięte",
+      "bookableHours": "{{hours}}h {{minutes}}min dostępne",
+      "withBreak": "Przerwa {{start}}–{{end}}"
     },
     "reminders": {
       "title": "Przypomnienia o wizytach",

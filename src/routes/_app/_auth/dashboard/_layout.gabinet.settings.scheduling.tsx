@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
 import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 
 function SchedulingSettingsSkeleton() {
   return (
@@ -63,6 +64,68 @@ const DEFAULT_HOURS: DayHours[] = Array.from({ length: 7 }, (_, i) => ({
   breakStart: "12:00",
   breakEnd: "13:00",
 }));
+
+function timeToMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function getBookableMinutes(h: DayHours): number {
+  if (!h.isOpen) return 0;
+  const total = timeToMinutes(h.endTime) - timeToMinutes(h.startTime);
+  if (h.breakStart && h.breakEnd && h.breakEnd > h.breakStart) {
+    return total - (timeToMinutes(h.breakEnd) - timeToMinutes(h.breakStart));
+  }
+  return total;
+}
+
+function AvailabilityPreview({ hours, dayNames }: { hours: DayHours[]; dayNames: string[] }) {
+  const { t } = useTranslation();
+  return (
+    <div className="rounded-lg border bg-muted/30 p-4">
+      <div className="mb-3">
+        <p className="text-sm font-medium">{t("gabinet.scheduling.preview")}</p>
+        <p className="text-xs text-muted-foreground">{t("gabinet.scheduling.previewDescription")}</p>
+      </div>
+      <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {DISPLAY_ORDER.map((dayOfWeek) => {
+          const h = hours.find((x) => x.dayOfWeek === dayOfWeek);
+          if (!h) return null;
+          const bookable = getBookableMinutes(h);
+          const bookableH = Math.floor(bookable / 60);
+          const bookableM = bookable % 60;
+          const hasBreak = h.isOpen && h.breakStart && h.breakEnd && h.breakEnd > h.breakStart;
+          return (
+            <div key={dayOfWeek} className="flex flex-col gap-0.5 rounded-md border bg-background px-3 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium">{dayNames[dayOfWeek]}</span>
+                {h.isOpen ? (
+                  <Badge variant="outline" className="h-5 px-1.5 text-[10px] text-green-700 border-green-300 bg-green-50 dark:text-green-400 dark:border-green-800 dark:bg-green-950/30">
+                    {h.startTime}–{h.endTime}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="h-5 px-1.5 text-[10px] text-muted-foreground">
+                    {t("gabinet.scheduling.closed")}
+                  </Badge>
+                )}
+              </div>
+              {h.isOpen && (
+                <div className="text-[10px] text-muted-foreground">
+                  {t("gabinet.scheduling.bookableHours", { hours: bookableH, minutes: bookableM })}
+                  {hasBreak && (
+                    <span className="ml-1">
+                      · {t("gabinet.scheduling.withBreak", { start: h.breakStart, end: h.breakEnd })}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function SchedulingSettings() {
   const { t, i18n } = useTranslation();
@@ -297,6 +360,8 @@ function SchedulingSettings() {
         );
         })}
       </div>
+
+      <AvailabilityPreview hours={hours} dayNames={dayNames} />
 
       {canEdit && (
         <div className="flex justify-end">

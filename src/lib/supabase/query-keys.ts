@@ -90,6 +90,7 @@ export const supabaseKeys = {
   gabinetLoyaltyPoints: entityKeys("gabinetLoyaltyPoints"),
   gabinetLoyaltyTransactions: entityKeys("gabinetLoyaltyTransactions"),
   gabinetLoyaltyTiers: entityKeys("gabinetLoyaltyTiers"),
+  gabinetWaitlist: entityKeys("gabinetWaitlist"),
   gabinetReceipts: entityKeys("gabinetReceipts"),
   gabinetCashTransactions: entityKeys("gabinetCashTransactions"),
   gabinetDayCloses: entityKeys("gabinetDayCloses"),

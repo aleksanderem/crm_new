@@ -7587,6 +7587,86 @@ export interface Database {
           },
         ];
       };
+      gabinet_waitlist: {
+        Row: {
+          id: string;
+          organization_id: string;
+          patient_id: string;
+          treatment_id: string | null;
+          employee_id: string | null;
+          preferred_dates: string[] | null;
+          preferred_times: string[] | null;
+          notes: string | null;
+          status: string;
+          notified_at: number | null;
+          priority: number;
+          created_by: string;
+          created_at: number;
+          updated_at: number;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          patient_id: string;
+          treatment_id?: string | null;
+          employee_id?: string | null;
+          preferred_dates?: string[] | null;
+          preferred_times?: string[] | null;
+          notes?: string | null;
+          status?: string;
+          notified_at?: number | null;
+          priority?: number;
+          created_by: string;
+          created_at: number;
+          updated_at: number;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          patient_id?: string;
+          treatment_id?: string | null;
+          employee_id?: string | null;
+          preferred_dates?: string[] | null;
+          preferred_times?: string[] | null;
+          notes?: string | null;
+          status?: string;
+          notified_at?: number | null;
+          priority?: number;
+          created_by?: string;
+          created_at?: number;
+          updated_at?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_waitlist_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_waitlist_patient_id_fkey";
+            columns: ["patient_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_patients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_waitlist_treatment_id_fkey";
+            columns: ["treatment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_waitlist_employee_id_fkey";
+            columns: ["employee_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_employees";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       org_sms_config_summary: {
@@ -7774,3 +7854,6 @@ export type GabinetLoyaltyTierUpdate = Database["public"]["Tables"]["gabinet_loy
 export type GabinetReceiptRow = Database["public"]["Tables"]["gabinet_receipts"]["Row"];
 export type GabinetReceiptInsert = Database["public"]["Tables"]["gabinet_receipts"]["Insert"];
 export type GabinetReceiptUpdate = Database["public"]["Tables"]["gabinet_receipts"]["Update"];
+export type GabinetWaitlistRow = Database["public"]["Tables"]["gabinet_waitlist"]["Row"];
+export type GabinetWaitlistInsert = Database["public"]["Tables"]["gabinet_waitlist"]["Insert"];
+export type GabinetWaitlistUpdate = Database["public"]["Tables"]["gabinet_waitlist"]["Update"];

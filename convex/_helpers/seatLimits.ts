@@ -13,7 +13,7 @@ import { createSupabaseDb } from "./supabaseDb";
  * Pass skipPendingInvitations=true at acceptance time (pending→member is a no-op
  * on the total count, so only members are checked then).
  *
- * If subscription lookup fails, defaults to free tier limit (5 seats).
+ * If subscription lookup fails, defaults to free tier limit (20 seats).
  */
 export async function checkSeatLimit(
   ctx: QueryCtx,

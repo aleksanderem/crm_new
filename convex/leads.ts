@@ -674,6 +674,23 @@ export const moveToStage = action({
 
     await db.patch("leads", args.leadId, updateData);
 
+    // --- Record stage entry in lead_stage_history ---
+    try {
+      await db.raw()
+        .from("lead_stage_history")
+        .update({ exited_at: now })
+        .eq("lead_id", args.leadId)
+        .is("exited_at", null);
+      await db.insert("leadStageHistory", {
+        organizationId: args.organizationId,
+        leadId: args.leadId,
+        stageId: args.pipelineStageId,
+        enteredAt: now,
+      });
+    } catch (e) {
+      console.warn("[moveToStage] stage history write failed:", e);
+    }
+
     // --- Execute pipeline stage auto-actions (create_activity → scheduledActivities) in Supabase ---
     const createdActivities: Array<{ ownerId: string; title: string }> = [];
     try {

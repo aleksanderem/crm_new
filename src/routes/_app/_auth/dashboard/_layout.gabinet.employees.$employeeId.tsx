@@ -232,6 +232,13 @@ function EmployeeDetail() {
     { enabled: !!employee?.userId },
   );
 
+  const { data: leaveActivities } = useSupabaseActivitiesByEntity(
+    organizationId,
+    "gabinetLeave",
+    employee?.userId ?? undefined,
+    { enabled: !!employee?.userId },
+  );
+
   const { data: scheduledActivitiesData } = useSupabaseScheduledActivitiesByEntity(
     organizationId,
     "gabinetEmployee",
@@ -542,6 +549,7 @@ function EmployeeDetail() {
   const mergedEmployeeActivities = [
     ...(activities ?? []),
     ...(scheduleActivities ?? []),
+    ...(leaveActivities ?? []),
   ].sort((a, b) => b.createdAt - a.createdAt);
 
   // Tabs definition

@@ -79,6 +79,7 @@ import { Route as AppAuthDashboardLayoutSettingsAuditLogRouteImport } from './ro
 import { Route as AppAuthDashboardLayoutSettingsActivityTypesRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.activity-types'
 import { Route as AppAuthDashboardLayoutLeadsLeadIdRouteImport } from './routes/_app/_auth/dashboard/_layout.leads.$leadId'
 import { Route as AppAuthDashboardLayoutGabinetReportsRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.reports'
+import { Route as AppAuthDashboardLayoutGabinetCashRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.cash'
 import { Route as AppAuthDashboardLayoutGabinetDocumentsRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.documents'
 import { Route as AppAuthDashboardLayoutGabinetDocumentTemplatesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.document-templates'
 import { Route as AppAuthDashboardLayoutGabinetDeliveriesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.deliveries'
@@ -525,6 +526,16 @@ const AppAuthDashboardLayoutGabinetReportsRoute =
       (d) => d.Route,
     ),
   )
+const AppAuthDashboardLayoutGabinetCashRoute =
+  AppAuthDashboardLayoutGabinetCashRouteImport.update({
+    id: '/gabinet/cash',
+    path: '/gabinet/cash',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any).lazy(() =>
+    import('./routes/_app/_auth/dashboard/_layout.gabinet.cash.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 const AppAuthDashboardLayoutGabinetDocumentsRoute =
   AppAuthDashboardLayoutGabinetDocumentsRouteImport.update({
     id: '/gabinet/documents',
@@ -817,6 +828,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/document-editor/new': typeof AppAuthDashboardLayoutDocumentEditorNewRoute
   '/dashboard/email-templates/$templateId': typeof AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute
   '/dashboard/email-templates/new': typeof AppAuthDashboardLayoutEmailTemplatesNewRoute
+  '/dashboard/gabinet/cash': typeof AppAuthDashboardLayoutGabinetCashRoute
   '/dashboard/gabinet/deliveries': typeof AppAuthDashboardLayoutGabinetDeliveriesRoute
   '/dashboard/gabinet/document-templates': typeof AppAuthDashboardLayoutGabinetDocumentTemplatesRoute
   '/dashboard/gabinet/documents': typeof AppAuthDashboardLayoutGabinetDocumentsRouteWithChildren
@@ -922,6 +934,7 @@ export interface FileRoutesByTo {
   '/dashboard/document-editor/new': typeof AppAuthDashboardLayoutDocumentEditorNewRoute
   '/dashboard/email-templates/$templateId': typeof AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute
   '/dashboard/email-templates/new': typeof AppAuthDashboardLayoutEmailTemplatesNewRoute
+  '/dashboard/gabinet/cash': typeof AppAuthDashboardLayoutGabinetCashRoute
   '/dashboard/gabinet/deliveries': typeof AppAuthDashboardLayoutGabinetDeliveriesRoute
   '/dashboard/gabinet/document-templates': typeof AppAuthDashboardLayoutGabinetDocumentTemplatesRoute
   '/dashboard/gabinet/reports': typeof AppAuthDashboardLayoutGabinetReportsRoute
@@ -1031,6 +1044,7 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/document-editor/new': typeof AppAuthDashboardLayoutDocumentEditorNewRoute
   '/_app/_auth/dashboard/_layout/email-templates/$templateId': typeof AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute
   '/_app/_auth/dashboard/_layout/email-templates/new': typeof AppAuthDashboardLayoutEmailTemplatesNewRoute
+  '/_app/_auth/dashboard/_layout/gabinet/cash': typeof AppAuthDashboardLayoutGabinetCashRoute
   '/_app/_auth/dashboard/_layout/gabinet/deliveries': typeof AppAuthDashboardLayoutGabinetDeliveriesRoute
   '/_app/_auth/dashboard/_layout/gabinet/document-templates': typeof AppAuthDashboardLayoutGabinetDocumentTemplatesRoute
   '/_app/_auth/dashboard/_layout/gabinet/documents': typeof AppAuthDashboardLayoutGabinetDocumentsRouteWithChildren
@@ -1143,6 +1157,7 @@ export interface FileRouteTypes {
     | '/dashboard/document-editor/new'
     | '/dashboard/email-templates/$templateId'
     | '/dashboard/email-templates/new'
+    | '/dashboard/gabinet/cash'
     | '/dashboard/gabinet/deliveries'
     | '/dashboard/gabinet/document-templates'
     | '/dashboard/gabinet/documents'
@@ -1248,6 +1263,7 @@ export interface FileRouteTypes {
     | '/dashboard/document-editor/new'
     | '/dashboard/email-templates/$templateId'
     | '/dashboard/email-templates/new'
+    | '/dashboard/gabinet/cash'
     | '/dashboard/gabinet/deliveries'
     | '/dashboard/gabinet/document-templates'
     | '/dashboard/gabinet/reports'
@@ -1356,6 +1372,7 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/document-editor/new'
     | '/_app/_auth/dashboard/_layout/email-templates/$templateId'
     | '/_app/_auth/dashboard/_layout/email-templates/new'
+    | '/_app/_auth/dashboard/_layout/gabinet/cash'
     | '/_app/_auth/dashboard/_layout/gabinet/deliveries'
     | '/_app/_auth/dashboard/_layout/gabinet/document-templates'
     | '/_app/_auth/dashboard/_layout/gabinet/documents'
@@ -1949,6 +1966,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutGabinetDeliveriesRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
+    '/_app/_auth/dashboard/_layout/gabinet/cash': {
+      id: '/_app/_auth/dashboard/_layout/gabinet/cash'
+      path: '/gabinet/cash'
+      fullPath: '/dashboard/gabinet/cash'
+      preLoaderRoute: typeof AppAuthDashboardLayoutGabinetCashRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
     '/_app/_auth/dashboard/_layout/email-templates/new': {
       id: '/_app/_auth/dashboard/_layout/email-templates/new'
       path: '/email-templates/new'
@@ -2417,6 +2441,7 @@ interface AppAuthDashboardLayoutRouteChildren {
   AppAuthDashboardLayoutContactsContactIdRoute: typeof AppAuthDashboardLayoutContactsContactIdRoute
   AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute: typeof AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute
   AppAuthDashboardLayoutEmailTemplatesNewRoute: typeof AppAuthDashboardLayoutEmailTemplatesNewRoute
+  AppAuthDashboardLayoutGabinetCashRoute: typeof AppAuthDashboardLayoutGabinetCashRoute
   AppAuthDashboardLayoutGabinetDeliveriesRoute: typeof AppAuthDashboardLayoutGabinetDeliveriesRoute
   AppAuthDashboardLayoutGabinetDocumentTemplatesRoute: typeof AppAuthDashboardLayoutGabinetDocumentTemplatesRoute
   AppAuthDashboardLayoutGabinetDocumentsRoute: typeof AppAuthDashboardLayoutGabinetDocumentsRouteWithChildren
@@ -2479,6 +2504,8 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
       AppAuthDashboardLayoutEmailTemplatesTemplateIdRoute,
     AppAuthDashboardLayoutEmailTemplatesNewRoute:
       AppAuthDashboardLayoutEmailTemplatesNewRoute,
+    AppAuthDashboardLayoutGabinetCashRoute:
+      AppAuthDashboardLayoutGabinetCashRoute,
     AppAuthDashboardLayoutGabinetDeliveriesRoute:
       AppAuthDashboardLayoutGabinetDeliveriesRoute,
     AppAuthDashboardLayoutGabinetDocumentTemplatesRoute:

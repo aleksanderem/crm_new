@@ -603,7 +603,7 @@ function GabinetDocumentsPage() {
 
   // --- Column visibility ---
   const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
-  const { hiddenColumnIds, toggleColumn, setHiddenColumns: _setHiddenColumns } = useColumnVisibility(defaultHidden, "gabinetDocuments");
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns: _setHiddenColumns } = useColumnVisibility(defaultHidden, "gabinet-documents");
 
   // --- Handlers ---
   const handleResendSigningEmail = (docId: string) => {
@@ -778,7 +778,7 @@ function GabinetDocumentsPage() {
       {/* Statistics — below the list so the document list stays primary */}
       {!docsLoading && documents && documents.length > 0 && (
         <MiniChartsRow
-          storageKey="gabinetDocuments"
+          storageKey="gabinet-documents"
           leftChart={{
             title: t("gabinet.formDocuments.byDay", "Dokumenty w czasie"),
             data: documentsByDay,

@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import { calculateLoyaltyTier } from "./_helpers/loyaltyTier";
 import { logActivity } from "../_helpers/activities";
+import { logAudit } from "../auditLog";
 import type { GabinetLoyaltyTier } from "../schema";
 
 // Dual-write refs removed — Supabase is now primary for loyalty writes
@@ -413,6 +414,15 @@ export const _earnSideEffects = internalMutation({
       performedBy: args.performedBy as Id<"users">,
       actorLabel: args.actorLabel,
     });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.performedBy as Id<"users">,
+      action: "loyalty_points_earned",
+      entityType: "gabinetPatient",
+      entityId: args.patientId,
+      details: `Earned ${args.points} loyalty points (new balance: ${args.newBalance})`,
+    });
   },
 });
 
@@ -437,6 +447,15 @@ export const _spendSideEffects = internalMutation({
       performedBy: args.performedBy as Id<"users">,
       actorLabel: args.actorLabel,
     });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.performedBy as Id<"users">,
+      action: "loyalty_points_spent",
+      entityType: "gabinetPatient",
+      entityId: args.patientId,
+      details: `Spent ${args.points} loyalty points (new balance: ${args.newBalance})`,
+    });
   },
 });
 
@@ -460,6 +479,15 @@ export const _adjustSideEffects = internalMutation({
       metadata: { type: "adjust", points: args.points, newBalance: args.newBalance, patientId: args.patientId },
       performedBy: args.performedBy as Id<"users">,
       actorLabel: args.actorLabel,
+    });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.performedBy as Id<"users">,
+      action: "loyalty_points_adjusted",
+      entityType: "gabinetPatient",
+      entityId: args.patientId,
+      details: `Adjusted loyalty points by ${args.points > 0 ? "+" : ""}${args.points} (new balance: ${args.newBalance})`,
     });
   },
 });

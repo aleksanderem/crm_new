@@ -4,6 +4,7 @@ import { paginationOptsValidator } from "convex/server";
 import { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { logActivity } from "../_helpers/activities";
+import { logAudit } from "../auditLog";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { logError } from "../_helpers/logged";
 import type {
@@ -321,6 +322,15 @@ export const _createSideEffects = internalMutation({
       performedBy: createdByUserId,
       actorLabel: args.actorLabel,
     });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: createdByUserId,
+      action: "treatment_created",
+      entityType: "gabinetTreatment",
+      entityId: args.treatmentId,
+      details: `Created treatment "${args.name}"`,
+    });
   },
 });
 
@@ -475,6 +485,15 @@ export const _updateSideEffects = internalMutation({
       performedBy: updatedByUserId,
       actorLabel: args.actorLabel,
     });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: updatedByUserId,
+      action: "treatment_updated",
+      entityType: "gabinetTreatment",
+      entityId: args.treatmentId,
+      details: `Updated treatment "${args.treatmentName}"`,
+    });
   },
 });
 
@@ -554,6 +573,15 @@ export const _removeSideEffects = internalMutation({
       description: `Deleted treatment "${args.treatmentName}"`,
       performedBy: deletedByUserId,
       actorLabel: args.actorLabel,
+    });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: deletedByUserId,
+      action: "treatment_deleted",
+      entityType: "gabinetTreatment",
+      entityId: args.treatmentId,
+      details: `Deleted treatment "${args.treatmentName}"`,
     });
   },
 });

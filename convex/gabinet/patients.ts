@@ -479,6 +479,15 @@ export const _createSideEffects = internalMutation({
       actorLabel: args.actorLabel,
     });
 
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: createdByUserId,
+      action: "patient_created",
+      entityType: "gabinetPatient",
+      entityId: args.patientId,
+      details: `Created patient ${args.firstName} ${args.lastName}`,
+    });
+
     await ctx.runMutation(internal.automation.emitEvent, {
       organizationId: args.organizationId,
       module: "gabinet",
@@ -633,6 +642,15 @@ export const _updateSideEffects = internalMutation({
       performedBy: updatedByUserId,
       actorLabel: args.actorLabel,
     });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: updatedByUserId,
+      action: "patient_updated",
+      entityType: "gabinetPatient",
+      entityId: args.patientId,
+      details: `Updated patient ${args.firstName} ${args.lastName}`,
+    });
   },
 });
 
@@ -719,6 +737,15 @@ export const _removeSideEffects = internalMutation({
       description: `Deleted patient ${args.firstName} ${args.lastName}`,
       performedBy: deletedByUserId,
       actorLabel: args.actorLabel,
+    });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: deletedByUserId,
+      action: "patient_deleted",
+      entityType: "gabinetPatient",
+      entityId: args.patientId,
+      details: `Deleted patient ${args.firstName} ${args.lastName}`,
     });
   },
 });

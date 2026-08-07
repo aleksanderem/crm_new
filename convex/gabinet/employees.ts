@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { internal } from "../_generated/api";
 import { logActivity } from "../_helpers/activities";
+import { logAudit } from "../auditLog";
 import { logError } from "../_helpers/logged";
 import { gabinetEmployeeRoleValidator } from "../schema";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
@@ -582,6 +583,15 @@ export const _createSideEffects = internalMutation({
       performedBy: createdByUserId,
       actorLabel: args.actorLabel,
     });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: createdByUserId,
+      action: "employee_created",
+      entityType: "gabinetEmployee",
+      entityId: args.employeeId,
+      details: `Created employee profile`,
+    });
   },
 });
 
@@ -781,6 +791,15 @@ export const _updateSideEffects = internalMutation({
       performedBy: updatedByUserId,
       actorLabel: args.actorLabel,
     });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: updatedByUserId,
+      action: "employee_updated",
+      entityType: "gabinetEmployee",
+      entityId: args.employeeId,
+      details: `Updated employee profile`,
+    });
   },
 });
 
@@ -865,6 +884,15 @@ export const _removeSideEffects = internalMutation({
       description: `Deactivated employee profile`,
       performedBy: deletedByUserId,
       actorLabel: args.actorLabel,
+    });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: deletedByUserId,
+      action: "employee_deleted",
+      entityType: "gabinetEmployee",
+      entityId: args.employeeId,
+      details: `Deactivated employee profile`,
     });
   },
 });

@@ -91,6 +91,8 @@ export const supabaseKeys = {
   gabinetLoyaltyTransactions: entityKeys("gabinetLoyaltyTransactions"),
   gabinetLoyaltyTiers: entityKeys("gabinetLoyaltyTiers"),
   gabinetReceipts: entityKeys("gabinetReceipts"),
+  gabinetCashTransactions: entityKeys("gabinetCashTransactions"),
+  gabinetDayCloses: entityKeys("gabinetDayCloses"),
   warehouseDeliveries: entityKeys("warehouseDeliveries"),
 
   // ── Google Calendar ───────────────────────────────────────────────────────

@@ -1072,5 +1072,48 @@ export function createGabinetTables({
   })
     .index("by_org", ["organizationId"])
     .index("by_orgLocationYear", ["organizationId", "locationId", "year"]),
+
+  // --- Gabinet: Cash Register Transactions (issue #4156) ---
+  // Manual deposits and withdrawals from the cash drawer during a working day
+  // (not tied to patient payments). Feeds the cash_expected calculation in the
+  // end-of-day close.
+  gabinetCashTransactions: defineTable({
+    organizationId: v.id("organizations"),
+    locationId: v.optional(v.id("gabinetLocations")),
+    date: v.string(), // YYYY-MM-DD
+    type: v.union(v.literal("deposit"), v.literal("withdrawal")),
+    amount: v.float64(),
+    reason: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndDate", ["organizationId", "date"]),
+
+  // --- Gabinet: Day Closes (issue #4156) ---
+  // End-of-day cash register closure snapshots. One per (org, optional-location,
+  // date). Immutable once created — corrections must open the next day.
+  gabinetDayCloses: defineTable({
+    organizationId: v.id("organizations"),
+    locationId: v.optional(v.id("gabinetLocations")),
+    date: v.string(), // YYYY-MM-DD
+    paymentSummary: v.string(), // JSON: { method: totalAmount }
+    totalCollected: v.float64(),
+    cashFromPayments: v.float64(),
+    cashOpeningBalance: v.float64(),
+    cashDeposits: v.float64(),
+    cashWithdrawals: v.float64(),
+    cashExpected: v.float64(),
+    cashCounted: v.float64(),
+    cashDiscrepancy: v.float64(),
+    notes: v.optional(v.string()),
+    closedBy: v.id("users"),
+    closedAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndDate", ["organizationId", "date"]),
   };
 }

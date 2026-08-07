@@ -134,7 +134,8 @@
       "reports": "Raporty",
       "scheduling": "Godziny pracy",
       "leaves": "Urlopy",
-      "documentTemplates": "Szablony dokumentów"
+      "documentTemplates": "Szablony dokumentów",
+      "cash": "Kasa"
     },
     "sections": {
       "main": "Główne",
@@ -4195,6 +4196,39 @@
         "issued": "Wystawiony",
         "void": "Anulowany"
       }
+    },
+    "cash": {
+      "title": "Kasa / Zamknięcie dnia",
+      "description": "Raport dobowy i zamknięcie kasy",
+      "paymentSummary": "Płatności dnia",
+      "noPayments": "Brak płatności dla wybranego dnia",
+      "cashTransactions": "Operacje kasowe",
+      "addTransaction": "Dodaj operację",
+      "noTransactions": "Brak operacji kasowych",
+      "transactionAdded": "Operacja dodana",
+      "transactionDeleted": "Operacja usunięta",
+      "type": "Typ operacji",
+      "deposit": "Wpłata do kasy",
+      "withdrawal": "Wypłata z kasy",
+      "amount": "Kwota",
+      "reason": "Opis",
+      "reasonPlaceholder": "np. reszta, zaliczka",
+      "invalidAmount": "Kwota musi być większa niż 0",
+      "closeDay": "Zamknij dzień",
+      "openingBalance": "Stan kasy na otwarcie",
+      "cashFromPayments": "Wpłaty gotówkowe",
+      "deposits": "Wpłaty do kasy",
+      "withdrawals": "Wypłaty z kasy",
+      "expectedCash": "Oczekiwany stan kasy",
+      "countedCash": "Gotówka policzona",
+      "discrepancy": "Różnica",
+      "notes": "Uwagi",
+      "notesPlaceholder": "Dodatkowe informacje o zamknięciu dnia",
+      "countedCashRequired": "Wprowadź policzoną gotówkę",
+      "dayClosed": "Dzień zamknięty pomyślnie",
+      "dayAlreadyClosed": "Dzień zamknięty",
+      "totalCollected": "Łączne wpłaty",
+      "history": "Historia zamknięć"
     }
   },
   "customFields": {

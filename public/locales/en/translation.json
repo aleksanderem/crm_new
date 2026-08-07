@@ -134,7 +134,8 @@
       "reports": "Reports",
       "scheduling": "Working Hours",
       "leaves": "Leaves",
-      "documentTemplates": "Document Templates"
+      "documentTemplates": "Document Templates",
+      "cash": "Cash Register"
     },
     "sections": {
       "main": "Main",
@@ -4174,6 +4175,39 @@
         "issued": "Issued",
         "void": "Void"
       }
+    },
+    "cash": {
+      "title": "Cash Register / End of Day",
+      "description": "Daily report and cash register closure",
+      "paymentSummary": "Daily payments",
+      "noPayments": "No payments for the selected day",
+      "cashTransactions": "Cash transactions",
+      "addTransaction": "Add transaction",
+      "noTransactions": "No cash transactions",
+      "transactionAdded": "Transaction added",
+      "transactionDeleted": "Transaction deleted",
+      "type": "Transaction type",
+      "deposit": "Cash in",
+      "withdrawal": "Cash out",
+      "amount": "Amount",
+      "reason": "Description",
+      "reasonPlaceholder": "e.g. change, deposit",
+      "invalidAmount": "Amount must be greater than 0",
+      "closeDay": "Close day",
+      "openingBalance": "Opening cash balance",
+      "cashFromPayments": "Cash payments",
+      "deposits": "Cash in",
+      "withdrawals": "Cash out",
+      "expectedCash": "Expected cash balance",
+      "countedCash": "Counted cash",
+      "discrepancy": "Discrepancy",
+      "notes": "Notes",
+      "notesPlaceholder": "Additional notes about the day closure",
+      "countedCashRequired": "Please enter the counted cash amount",
+      "dayClosed": "Day closed successfully",
+      "dayAlreadyClosed": "Day already closed",
+      "totalCollected": "Total collected",
+      "history": "Closure history"
     }
   },
   "customFields": {

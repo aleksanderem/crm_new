@@ -2316,6 +2316,7 @@ export const updateStatus = action({
             }>;
             for (const mv of movements) {
               try {
+                // TODO(magazyn): route through internal.magazyn.movements.consumeForAppointment
                 await applyMovementInternal({
                   organizationId: String(args.organizationId),
                   productId: mv.product_id,
@@ -2435,6 +2436,7 @@ export const updateStatus = action({
               // Falls back to a single untracked movement when no lots exist.
               const lots = await selectFefoLotsForProduct(productId, orgId, (appt.locationId ?? null) as string | null);
               if (lots.length === 0) {
+                // TODO(magazyn): route through internal.magazyn.movements.consumeForAppointment
                 const result = await applyMovementInternal({ ...baseMovement, delta: -totalNeeded });
                 if (result.warning === "negative_stock") stockWarnings.push(productId);
               } else {
@@ -2442,6 +2444,7 @@ export const updateStatus = action({
                 for (const lot of lots) {
                   if (remaining <= 0) break;
                   const consume = Math.min(lot.quantity, remaining);
+                  // TODO(magazyn): route through internal.magazyn.movements.consumeForAppointment
                   const result = await applyMovementInternal({
                     ...baseMovement,
                     delta: -consume,
@@ -2453,6 +2456,7 @@ export const updateStatus = action({
                 }
                 if (remaining > 0) {
                   // Lot stock exhausted before covering quantity; deduct remainder without lot.
+                  // TODO(magazyn): route through internal.magazyn.movements.consumeForAppointment
                   const result = await applyMovementInternal({ ...baseMovement, delta: -remaining });
                   if (result.warning === "negative_stock") stockWarnings.push(productId);
                 }

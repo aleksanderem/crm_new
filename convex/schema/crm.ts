@@ -201,6 +201,16 @@ export function createCrmTables({
     .index("by_stage", ["stageId"])
     .index("by_org", ["organizationId"]),
 
+  leadStageHistory: defineTable({
+    organizationId: v.id("organizations"),
+    leadId: v.id("leads"),
+    stageId: v.id("pipelineStages"),
+    enteredAt: v.number(),
+    exitedAt: v.optional(v.number()),
+  })
+    .index("by_lead", ["leadId", "enteredAt"])
+    .index("by_org_stage", ["organizationId", "stageId"]),
+
   customFieldDefinitions: defineTable({
     organizationId: v.id("organizations"),
     entityType: entityTypeValidator,

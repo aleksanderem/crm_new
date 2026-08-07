@@ -95,16 +95,6 @@ export const getProductsKpis = query({
   },
 });
 
-// --- Documents (CRM) ---
-// Stub for legacy consumers; the CRM documents page uses a direct Supabase hook.
-export const getDocumentsKpis = query({
-  args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    return { total: 0, newThisMonth: 0, pendingSent: 0 };
-  },
-});
-
 // --- Calendar (CRM) ---
 // Stub to keep old frontend bundles working while a rolling deploy finishes.
 // The real widget logic now lives in useSupabaseCalendarKpis. Safe to delete

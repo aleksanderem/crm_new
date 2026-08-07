@@ -325,10 +325,10 @@ export const initializeBalance = action({
     totalDays: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
-    );
+    ) as { userId: Id<"users">; userName?: string; userEmail?: string };
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
     const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
@@ -352,6 +352,18 @@ export const initializeBalance = action({
           totalDays: args.totalDays,
           updatedAt: now,
         });
+        try {
+          await ctx.runMutation(internal.gabinet.leaveTypes._initializeBalanceSideEffects, {
+            organizationId: args.organizationId,
+            balanceId: existing._id as string,
+            year: args.year,
+            action: "updated",
+            performedBy: String(authResult.userId),
+            actorLabel: authResult.userName ?? authResult.userEmail,
+          });
+        } catch (e) {
+          console.error("[leaveTypes.initializeBalance] Side effects FAILED:", e);
+        }
       }
       return existing._id as string;
     }
@@ -371,6 +383,19 @@ export const initializeBalance = action({
       createdAt: now,
       updatedAt: now,
     });
+
+    try {
+      await ctx.runMutation(internal.gabinet.leaveTypes._initializeBalanceSideEffects, {
+        organizationId: args.organizationId,
+        balanceId,
+        year: args.year,
+        action: "created",
+        performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[leaveTypes.initializeBalance] Side effects FAILED:", e);
+    }
 
     return balanceId;
   },
@@ -496,6 +521,30 @@ export const _adjustBalanceSideEffects = internalMutation({
       entityId: args.balanceId,
       action: "updated",
       description: `Adjusted leave balance`,
+      performedBy: args.performedBy as Id<"users">,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const _initializeBalanceSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    balanceId: v.string(),
+    year: v.number(),
+    action: v.union(v.literal("created"), v.literal("updated")),
+    performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "gabinetLeaveBalance",
+      entityId: args.balanceId,
+      action: args.action,
+      description: args.action === "created"
+        ? `Initialized leave balance for year ${args.year}`
+        : `Updated leave balance for year ${args.year}`,
       performedBy: args.performedBy as Id<"users">,
       actorLabel: args.actorLabel,
     });

@@ -12,6 +12,13 @@ export async function verifyProductAccess(
   organizationId: Id<"organizations">,
   productId: string,
 ): Promise<void> {
+  // NOTE: productSubscriptions data moved to Supabase during the Convex→Supabase
+  // migration; the Convex `productSubscriptions` table is empty. This helper runs
+  // in a QueryCtx, which cannot read Supabase (no network in the V8 isolate), so
+  // it cannot enforce module entitlements here — reading the empty Convex table
+  // blocked EVERY org from the entire gabinet module. Fail open to restore access
+  // (matches pre-migration production behavior). Proper entitlement enforcement
+  // must be re-implemented against Supabase in an action context. See follow-up.
   const subscription = await ctx.db
     .query("productSubscriptions")
     .withIndex("by_orgAndProduct", (q) =>
@@ -19,11 +26,7 @@ export async function verifyProductAccess(
     )
     .first();
 
-  if (!subscription) {
-    throw new Error(`No active subscription for product: ${productId}`);
-  }
-
-  if (subscription.status !== "active" && subscription.status !== "trialing") {
+  if (subscription && subscription.status !== "active" && subscription.status !== "trialing") {
     throw new Error(`Subscription for ${productId} is ${subscription.status}`);
   }
 }

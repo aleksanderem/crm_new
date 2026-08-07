@@ -1308,5 +1308,37 @@ export const changeEmployeePassword = action({
       provider: "password",
       account: { id: email, secret: args.newPassword },
     });
+
+    try {
+      await ctx.runMutation(internal.gabinet.employees._changePasswordSideEffects, {
+        employeeId: args.employeeId,
+        organizationId: args.organizationId,
+        changedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[employees.changeEmployeePassword] side effects failed:", e);
+    }
+  },
+});
+
+export const _changePasswordSideEffects = internalMutation({
+  args: {
+    employeeId: v.string(),
+    organizationId: v.id("organizations"),
+    changedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const changedByUserId = args.changedBy as Id<"users">;
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: changedByUserId,
+      action: "employee_password_changed",
+      entityType: "gabinetEmployee",
+      entityId: args.employeeId,
+      details: `Changed employee account password`,
+    });
   },
 });

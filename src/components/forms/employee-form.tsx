@@ -6,6 +6,7 @@ import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
+import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -98,12 +99,7 @@ export function EmployeeForm({
     enabled: !!organizationId,
   });
 
-  const listLocationsAction = useAction(api.gabinet.locations.listLocations);
-  const { data: locations } = useQuery({
-    queryKey: ["gabinet.locations.listLocations", organizationId],
-    queryFn: () => listLocationsAction({ organizationId }),
-    enabled: !!organizationId,
-  }) as { data: Array<{ _id: string; name: string; isActive: boolean }> | undefined };
+  const { data: locations } = useSupabaseGabinetLocationsList(String(organizationId));
 
   const { data: customFieldDefs } = useSupabaseCustomFieldDefinitions(
     organizationId,

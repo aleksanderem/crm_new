@@ -96,6 +96,7 @@ import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
 import { useSupabaseOrgSettings, useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
+import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import { formatPhoneNumber } from "@/lib/phone";
 
 // ---------------------------------------------------------------------------
@@ -239,12 +240,7 @@ export function AppointmentDialog({
 
   const { data: members } = useSupabaseOrganizationMembers(String(organizationId));
 
-  const listLocationsAction = useAction(api.gabinet.locations.listLocations);
-  const { data: locations } = useQuery({
-    queryKey: ["gabinet.locations.listLocations", organizationId],
-    queryFn: () => listLocationsAction({ organizationId }),
-    enabled: !!organizationId,
-  });
+  const { data: locations } = useSupabaseGabinetLocationsList(String(organizationId));
 
   const { data: orgSettings } = useSupabaseOrgSettings(String(organizationId));
 

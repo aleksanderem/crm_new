@@ -1,4 +1,4 @@
-import { action } from "../_generated/server";
+import { action, internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
@@ -238,5 +238,92 @@ export const getWaitlistForPatient = action({
       .order("createdAt", false)
       .collect();
     return rows as GabinetWaitlistRow[];
+  },
+});
+
+/**
+ * Fired internally when a slot opens (appointment cancelled or new slot created).
+ * Notifies all "waiting" entries whose treatment preference matches (or is unset),
+ * and whose preferred dates include the freed date (or are unset).
+ * Marks each notified entry as "notified" and sends the appointment_waitlist email.
+ */
+export const notifyWaitlistOnSlotOpen = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    treatmentId: v.optional(v.string()),
+    employeeUserId: v.optional(v.string()),
+    date: v.string(),
+    startTime: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+
+    const allWaiting = await db
+      .query("gabinetWaitlist")
+      .eq("organizationId", orgIdStr)
+      .eq("status", "waiting")
+      .order("priority", true)
+      .order("createdAt", true)
+      .collect();
+
+    const matching = (allWaiting as GabinetWaitlistRow[]).filter((entry) => {
+      if (entry.treatmentId && entry.treatmentId !== args.treatmentId) return false;
+      const preferred = entry.preferredDates as string[] | null;
+      if (preferred && preferred.length > 0 && !preferred.includes(args.date)) return false;
+      return true;
+    });
+
+    if (matching.length === 0) return;
+
+    const treatment = args.treatmentId
+      ? await db.get("gabinetTreatments", args.treatmentId)
+      : null;
+    const treatmentName = (treatment as { name?: string } | null)?.name ?? "Treatment";
+
+    const employee = args.employeeUserId
+      ? await db.get<{ name?: string }>("users", args.employeeUserId)
+      : null;
+    const employeeName = employee?.name ?? "Specjalista";
+
+    const now = Date.now();
+    for (const entry of matching) {
+      try {
+        const patient = await db.get("gabinetPatients", String(entry.patientId));
+        if (!patient?.email) continue;
+
+        const patientName = `${patient.firstName}${patient.lastName ? " " + patient.lastName : ""}`;
+
+        await ctx.runAction(internal.emailEventTrigger.triggerEmailEvent, {
+          organizationId: args.organizationId,
+          eventType: "appointment_waitlist",
+          recipientEmail: String(patient.email),
+          recipientName: patientName,
+          payload: JSON.stringify({
+            patientName,
+            appointmentDate: args.date,
+            appointmentTime: args.startTime,
+            treatmentName,
+            employeeName,
+          }),
+          relatedEntityType: "gabinetWaitlist",
+          relatedEntityId: String(entry._id),
+          idempotencyKey: `waitlist-notify:${String(entry._id)}:${args.date}:${args.startTime}`,
+        });
+
+        await db.patch("gabinetWaitlist", String(entry._id), {
+          status: "notified",
+          notifiedAt: now,
+          updatedAt: now,
+        });
+      } catch (err) {
+        await logError(ctx, err, {
+          scope: "gabinet.waitlist",
+          fnName: "notifyWaitlistOnSlotOpen",
+          argsJson: JSON.stringify({ waitlistId: entry._id }),
+          organizationId: args.organizationId,
+        });
+      }
+    }
   },
 });

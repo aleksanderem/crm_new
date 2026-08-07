@@ -2885,6 +2885,19 @@ export const _cancelSideEffects = internalMutation({
         createdBy: args.createdBy,
       },
     });
+
+    // Notify waitlist patients that a slot has opened
+    await ctx.scheduler.runAfter(
+      0,
+      internal.gabinet.waitlist.notifyWaitlistOnSlotOpen,
+      {
+        organizationId: args.organizationId,
+        treatmentId: args.treatmentId,
+        employeeUserId: args.employeeId,
+        date: args.date,
+        startTime: args.startTime,
+      },
+    );
   },
 });
 

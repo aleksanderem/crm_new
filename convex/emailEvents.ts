@@ -181,7 +181,15 @@ export const processEvent = internalAction({
   args: { logId: v.string() },
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
-    const entry = await db.get("emailEventLog", args.logId);
+    const entry = await db.get<{
+      status: string;
+      organizationId: string;
+      eventType: string;
+      recipientEmail: string;
+      recipientName?: string | null;
+      payload?: string | null;
+      idempotencyKey?: string | null;
+    }>("emailEventLog", args.logId);
 
     if (!entry || entry.status !== "pending") {
       return; // Already processed or missing
@@ -211,12 +219,12 @@ export const processEvent = internalAction({
     // Delegate actual rendering + sending to emailSending action
     await ctx.runAction(internal.emailSending.sendTemplateEmail, {
       logId: args.logId,
-      templateId: binding.templateId,
-      organizationId: entry.organizationId,
+      templateId: binding.templateId as string,
+      organizationId: entry.organizationId as import("./_generated/dataModel").Id<"organizations">,
       recipientEmail: entry.recipientEmail,
-      recipientName: entry.recipientName,
+      recipientName: entry.recipientName ?? undefined,
       variables: entry.payload ?? "{}",
-      bindingId: binding._id,
+      bindingId: binding._id as string,
     });
   },
 });

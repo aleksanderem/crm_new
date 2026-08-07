@@ -60,13 +60,17 @@ function normalizeStatus(
  * Safe to run multiple times — skips entries that already exist.
  * Pass dryRun: true to preview what would be inserted without writing.
  */
+type PlanRow = { _id: string; key: string; productKey?: string | null };
+type SubscriptionRow = { _id: string; planId: string; userId: import("../_generated/dataModel").Id<"users">; stripeId: string; status: string; currentPeriodStart: number; currentPeriodEnd: number; cancelAtPeriodEnd: boolean };
+type BackfillResult = { subscriptionsScanned: number; inserted: number; skippedAlreadyExists: number; skippedNoPlan: number; skippedNoProductKey: number; skippedNoOrg: number; dryRun: boolean };
+
 export const backfillProductSubscriptions = internalAction({
   args: { dryRun: v.optional(v.boolean()) },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<BackfillResult> => {
     const { dryRun = false } = args;
     const log = createLogger("migrations.backfillProductSubscriptions", { dryRun });
 
-    const [subscriptions, plans] = await Promise.all([
+    const [subscriptionsRaw, plansRaw] = await Promise.all([
       ctx.runQuery(
         internal["migrations/backfillProductSubscriptions"].getAllSubscriptions,
       ),
@@ -75,7 +79,10 @@ export const backfillProductSubscriptions = internalAction({
       ),
     ]);
 
-    const planById = new Map(plans.map((p) => [p._id as string, p]));
+    const subscriptions = subscriptionsRaw as unknown as SubscriptionRow[];
+    const plans = plansRaw as unknown as PlanRow[];
+
+    const planById = new Map(plans.map((p: PlanRow) => [p._id as string, p]));
 
     let inserted = 0;
     let skippedAlreadyExists = 0;

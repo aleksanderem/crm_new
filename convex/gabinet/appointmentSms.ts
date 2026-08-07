@@ -531,7 +531,7 @@ export const processIncomingMessage = internalMutation({
       (matchingAppointmentId || matchingPatientId)
     ) {
       await logSmsSharedActivities(ctx, {
-        organizationId: args.organizationId,
+        organizationId: args.organizationId as Id<"organizations">,
         appointmentId: matchingAppointmentId,
         patientId: matchingPatientId,
         action: "sms_received",
@@ -552,7 +552,7 @@ export const processIncomingMessage = internalMutation({
     }
 
     await ctx.runMutation(internal.automation.emitEvent, {
-      organizationId: args.organizationId,
+      organizationId: args.organizationId as Id<"organizations">,
       module: "gabinet",
       eventType: "gabinet.appointment.sms_reply_received",
       entityType: matchingOutbound?.appointmentId ? "gabinetAppointment" : undefined,
@@ -605,7 +605,7 @@ export const processIncomingMessage = internalMutation({
       processingStatus: "processed" | "ignored";
       reason?: string;
     } = await ctx.runMutation(internal.gabinet.appointments.applySmsReplyTransition, {
-      organizationId: args.organizationId,
+      organizationId: args.organizationId as Id<"organizations">,
       appointmentId: String(matchingOutbound.appointmentId),
       intent: parsedIntent,
       smsEventId: eventId,

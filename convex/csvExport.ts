@@ -4,7 +4,7 @@ import { v } from "convex/values";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 async function requireOrgAdminAction(
-  ctx: { runQuery: Function },
+  ctx: { runAction: Function },
   organizationId: string,
 ) {
   const { role } = await ctx.runAction(

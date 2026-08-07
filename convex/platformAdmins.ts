@@ -36,7 +36,7 @@ export const setRole = action({
     userId: v.id("users"),
     isPlatformAdmin: v.boolean(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ userId: typeof args.userId; isPlatformAdmin: boolean; actorId: import("./_generated/dataModel").Id<"users"> }> => {
     const { userId: actorId } = await ctx.runAction(
       internal._helpers.authAction.verifyPlatformAdmin,
       {},

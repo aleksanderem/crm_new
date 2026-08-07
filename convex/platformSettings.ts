@@ -56,7 +56,7 @@ export const set = action({
       v.union(v.literal("us"), v.literal("eu")),
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<import("./_generated/dataModel").Id<"platformSettings">> => {
     const { userId } = await ctx.runAction(
       internal._helpers.authAction.verifyPlatformAdmin,
       {},

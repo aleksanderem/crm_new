@@ -15,6 +15,7 @@ import {
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { PatientForm } from "@/components/forms/patient-form";
+import { GabinetImportDialog } from "@/components/gabinet/gabinet-import-dialog";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { PageHeader } from "@/components/layout/page-header";
 import {
@@ -64,6 +65,7 @@ import {
   Search,
   ChevronDown,
   ChevronUp,
+  Upload,
 } from "@/lib/ez-icons";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -312,6 +314,9 @@ function PackagesIndex() {
     for (const cat of categories) map.set(cat._id, cat.name);
     return map;
   }, [categories]);
+
+  // ---- Import state ----
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   // ---- Form state ----
   const [panelOpen, setPanelOpen] = useState(false);
@@ -1017,10 +1022,16 @@ function PackagesIndex() {
         )}
         actions={
           <PermissionGate feature="gabinet_packages" action="create">
-            <Button onClick={openCreate}>
-              <Plus className="mr-2 h-4 w-4" variant="stroke" />
-              {t("gabinet.packages.addPackage", "Dodaj pakiet")}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                <Upload className="mr-2 h-4 w-4" variant="stroke" />
+                {t("csv.import", "Importuj")}
+              </Button>
+              <Button onClick={openCreate}>
+                <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                {t("gabinet.packages.addPackage", "Dodaj pakiet")}
+              </Button>
+            </div>
           </PermissionGate>
         }
       />
@@ -1588,6 +1599,18 @@ function PackagesIndex() {
         organizationId={organizationId}
         entityType="gabinetPackage"
         categories={categories}
+      />
+
+      <GabinetImportDialog
+        organizationId={organizationId}
+        entityType="gabinetPackageBalances"
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onSuccess={() => {
+          void queryClient.invalidateQueries({
+            queryKey: supabaseKeys.gabinetPackageUsage.list(organizationId),
+          });
+        }}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

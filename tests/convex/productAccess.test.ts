@@ -2,19 +2,17 @@ import { expect, test, describe } from "vitest";
 import { api } from "../../convex/_generated/api";
 import { createTestCtx, seedTestUser } from "../../convex/_test_helpers";
 
-describe("verifyProductAccess", () => {
-  test("grace period: allows access when no subscriptions exist globally", async () => {
+describe("getActiveProducts", () => {
+  test("returns empty array when org has no subscriptions", async () => {
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    // getActiveProducts should return all products during grace period
     const products = await t.withIdentity(identity).query(
       api.productSubscriptions.getActiveProducts,
       { organizationId },
     );
 
-    expect(products).toContain("crm");
-    expect(products).toContain("gabinet");
+    expect(products).toEqual([]);
   });
 
   test("active subscription grants access", async () => {

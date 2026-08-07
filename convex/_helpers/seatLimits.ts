@@ -85,10 +85,12 @@ export async function checkSeatLimit(
 
 // Internal query for Convex-only tables (subscriptions + plans are NOT in
 // TABLE_MAP and must be read from ctx.db). Called by checkSeatLimitAction.
+// Returns the highest seatLimit across all active/trialing subscriptions so
+// that orgs with multiple per-module plans get the most generous limit.
 export const _getSubscriptionAndPlanData = internalQuery({
   args: { ownerId: v.id("users") },
   handler: async (ctx, args): Promise<{ seatLimit: number }> => {
-    const subscription = await ctx.db
+    const subscriptions = await ctx.db
       .query("subscriptions")
       .withIndex("userId", (q) => q.eq("userId", args.ownerId))
       .filter((q) =>
@@ -97,24 +99,30 @@ export const _getSubscriptionAndPlanData = internalQuery({
           q.eq(q.field("status"), "trialing"),
         ),
       )
-      .first();
+      .collect();
 
-    if (!subscription) {
+    if (subscriptions.length === 0) {
       console.warn(
         `[seatLimits] No active subscription found for org owner ${args.ownerId}. Using default free tier limit.`,
       );
       return { seatLimit: 20 };
     }
 
-    const plan = await ctx.db.get(subscription.planId);
-    if (!plan) {
-      console.warn(
-        `[seatLimits] Plan ${subscription.planId} not found for subscription ${subscription._id}. Using default seat limit.`,
-      );
-      return { seatLimit: 20 };
+    let maxSeatLimit = 20;
+    for (const sub of subscriptions) {
+      const plan = await ctx.db.get(sub.planId);
+      if (!plan) {
+        console.warn(
+          `[seatLimits] Plan ${sub.planId} not found for subscription ${sub._id}. Skipping.`,
+        );
+        continue;
+      }
+      if (plan.seatLimit > maxSeatLimit) {
+        maxSeatLimit = plan.seatLimit;
+      }
     }
 
-    return { seatLimit: plan.seatLimit };
+    return { seatLimit: maxSeatLimit };
   },
 });
 

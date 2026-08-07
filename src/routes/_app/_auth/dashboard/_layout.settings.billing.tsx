@@ -85,6 +85,7 @@ export default function BillingSettings() {
     }
     const checkoutUrl = await createSubscriptionCheckout({
       userId: user._id,
+      organizationId,
       planId: selectedPlanId,
       planInterval: selectedPlanInterval,
       currency,

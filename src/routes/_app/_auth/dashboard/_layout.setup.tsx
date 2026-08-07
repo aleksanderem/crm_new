@@ -152,20 +152,8 @@ function SetupWizard() {
     }
   };
 
-  const handleSkip = async () => {
-    if (currentStep === STEPS.length - 1) {
-      setIsSubmitting(true);
-      try {
-        await completeSetup({ organizationId });
-      } catch {
-        // ignore
-      } finally {
-        setIsSubmitting(false);
-      }
-      navigate({ to: DashboardRoute.fullPath });
-    } else {
-      setCurrentStep((prev) => prev + 1);
-    }
+  const handleSkip = () => {
+    setCurrentStep((prev) => prev + 1);
   };
 
   const addTreatment = () => {

@@ -1,8 +1,8 @@
 /**
  * Supabase-based global search — replaces convex/search.ts globalSearch.
  *
- * Uses ILIKE '%query%' for pragmatic text search matching current Convex
- * searchIndex behavior. Queries 5 entity types in parallel (Promise.all).
+ * Uses `search_vector @@ websearch_to_tsquery('simple', query)` to hit the
+ * GIN indexes on every table. Queries 7 entity types in parallel (Promise.all).
  *
  * Returns the same SearchGroup[] shape as the Convex implementation so
  * the GlobalSearch component works without changes.
@@ -45,37 +45,7 @@ export async function supabaseGlobalSearch(
   const trimmed = query.trim();
   if (!trimmed) return [];
 
-  const pattern = `%${trimmed}%`;
-  const tokens = trimmed.split(/\s+/);
-
-  // Each whitespace-separated token must match first_name or last_name.
-  // Chained .or() filters are AND-combined by PostgREST, so "John Smith"
-  // becomes
-  //   (first_name ILIKE %John% OR last_name ILIKE %John%)
-  //   AND
-  //   (first_name ILIKE %Smith% OR last_name ILIKE %Smith%)
-  // which matches a row whose names are stored in separate columns.
-  let contactsQuery = supabase
-    .from("contacts")
-    .select("*")
-    .eq("organization_id", orgId);
-  for (const token of tokens) {
-    const tokenPattern = `%${token}%`;
-    contactsQuery = contactsQuery.or(
-      `first_name.ilike.${tokenPattern},last_name.ilike.${tokenPattern}`,
-    );
-  }
-
-  let patientsQuery = supabase
-    .from("gabinet_patients")
-    .select("*")
-    .eq("organization_id", orgId);
-  for (const token of tokens) {
-    const tokenPattern = `%${token}%`;
-    patientsQuery = patientsQuery.or(
-      `first_name.ilike.${tokenPattern},last_name.ilike.${tokenPattern}`,
-    );
-  }
+  const tsOptions = { type: "websearch" as const, config: "simple" };
 
   const [
     contactsRes,
@@ -86,45 +56,55 @@ export async function supabaseGlobalSearch(
     patientsRes,
     treatmentsRes,
   ] = await Promise.all([
-      contactsQuery.limit(5),
+    supabase
+      .from("contacts")
+      .select("*")
+      .eq("organization_id", orgId)
+      .textSearch("search_vector", trimmed, tsOptions)
+      .limit(5),
 
-      supabase
-        .from("companies")
-        .select("*")
-        .eq("organization_id", orgId)
-        .ilike("name", pattern)
-        .limit(5),
+    supabase
+      .from("companies")
+      .select("*")
+      .eq("organization_id", orgId)
+      .textSearch("search_vector", trimmed, tsOptions)
+      .limit(5),
 
-      supabase
-        .from("leads")
-        .select("*")
-        .eq("organization_id", orgId)
-        .ilike("title", pattern)
-        .limit(5),
+    supabase
+      .from("leads")
+      .select("*")
+      .eq("organization_id", orgId)
+      .textSearch("search_vector", trimmed, tsOptions)
+      .limit(5),
 
-      supabase
-        .from("documents")
-        .select("*")
-        .eq("organization_id", orgId)
-        .ilike("name", pattern)
-        .limit(5),
+    supabase
+      .from("documents")
+      .select("*")
+      .eq("organization_id", orgId)
+      .textSearch("search_vector", trimmed, tsOptions)
+      .limit(5),
 
-      supabase
-        .from("products")
-        .select("*")
-        .eq("organization_id", orgId)
-        .ilike("name", pattern)
-        .limit(5),
+    supabase
+      .from("products")
+      .select("*")
+      .eq("organization_id", orgId)
+      .textSearch("search_vector", trimmed, tsOptions)
+      .limit(5),
 
-      patientsQuery.limit(5),
+    supabase
+      .from("gabinet_patients")
+      .select("*")
+      .eq("organization_id", orgId)
+      .textSearch("search_vector", trimmed, tsOptions)
+      .limit(5),
 
-      supabase
-        .from("gabinet_treatments")
-        .select("*")
-        .eq("organization_id", orgId)
-        .ilike("name", pattern)
-        .limit(5),
-    ]);
+    supabase
+      .from("gabinet_treatments")
+      .select("*")
+      .eq("organization_id", orgId)
+      .textSearch("search_vector", trimmed, tsOptions)
+      .limit(5),
+  ]);
 
   const groups: SearchGroup[] = [];
 

@@ -132,6 +132,87 @@ describe("gabinet_appointments RBAC", () => {
   });
 });
 
+describe("gabinet_patients RBAC", () => {
+  test("viewer cannot create a patient", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId } = await seedTestUser(t);
+    const { identity: viewerIdentity } = await seedSecondUser(
+      t,
+      organizationId,
+      { role: "viewer" },
+    );
+    await seedGabinetPrereqs(t, organizationId, userId);
+
+    await expect(
+      t.withIdentity(viewerIdentity).action(api.gabinet.patients.create, {
+        organizationId,
+        firstName: "Nowy",
+        lastName: "Pacjent",
+        email: "nowy@example.com",
+      }),
+    ).rejects.toThrow("Permission denied");
+  });
+
+  test("viewer cannot update a patient", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId } = await seedTestUser(t);
+    const { identity: viewerIdentity } = await seedSecondUser(
+      t,
+      organizationId,
+      { role: "viewer" },
+    );
+    const { patientId } = await seedGabinetPrereqs(t, organizationId, userId);
+
+    await expect(
+      t.withIdentity(viewerIdentity).action(api.gabinet.patients.update, {
+        organizationId,
+        patientId: String(patientId),
+        firstName: "Zmieniony",
+      }),
+    ).rejects.toThrow("Permission denied");
+  });
+
+  test("viewer cannot remove a patient", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId } = await seedTestUser(t);
+    const { identity: viewerIdentity } = await seedSecondUser(
+      t,
+      organizationId,
+      { role: "viewer" },
+    );
+    const { patientId } = await seedGabinetPrereqs(t, organizationId, userId);
+
+    await expect(
+      t.withIdentity(viewerIdentity).action(api.gabinet.patients.remove, {
+        organizationId,
+        patientId: String(patientId),
+      }),
+    ).rejects.toThrow("Permission denied");
+  });
+
+  test("member can create a patient (create:all by default)", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId } = await seedTestUser(t);
+    const { identity: memberIdentity } = await seedSecondUser(
+      t,
+      organizationId,
+      { role: "member" },
+    );
+    await seedGabinetPrereqs(t, organizationId, userId);
+
+    const newPatientId = await t
+      .withIdentity(memberIdentity)
+      .action(api.gabinet.patients.create, {
+        organizationId,
+        firstName: "Nowy",
+        lastName: "Pacjent",
+        email: "nowy@example.com",
+      });
+
+    expect(newPatientId).toBeTruthy();
+  });
+});
+
 describe("gabinet_packages RBAC", () => {
   test("viewer cannot create a package", async () => {
     const t = createTestCtx();

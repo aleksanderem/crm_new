@@ -97,7 +97,7 @@ export default function OnboardingUsername() {
 
         <div className="flex flex-col">
           {form.state.fieldMeta.username?.errors.length > 0 && (
-            <span className="mb-2 text-sm text-destructive dark:text-destructive-foreground">
+            <span className="mb-2 text-sm text-destructive dark:text-red-400">
               {form.state.fieldMeta.username?.errors.join(" ")}
             </span>
           )}

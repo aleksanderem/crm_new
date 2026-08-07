@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Upload } from "@/lib/ez-icons";
+import { Download, Upload } from "@/lib/ez-icons";
 import Papa from "papaparse";
 
 export type GabinetImportEntityType = "gabinetPatients" | "gabinetTreatments" | "gabinetEmployees" | "gabinetPackageBalances";
@@ -104,6 +104,18 @@ const ENTITY_LABELS: Record<GabinetImportEntityType, string> = {
   gabinetEmployees: "Pracownicy",
   gabinetPackageBalances: "Salda pakietów",
 };
+
+function downloadTemplate(entityType: GabinetImportEntityType) {
+  const headers = ALL_FIELDS[entityType];
+  const csv = headers.join(",") + "\n";
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `template_${entityType}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 const BATCH_SIZE = 100;
 
@@ -287,6 +299,15 @@ export function GabinetImportDialog({
                 className="text-sm"
               />
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-auto p-0 text-xs text-muted-foreground"
+              onClick={() => downloadTemplate(entityType)}
+            >
+              <Download className="mr-1 h-3 w-3" />
+              {t("csv.downloadTemplate")}
+            </Button>
           </div>
         )}
 

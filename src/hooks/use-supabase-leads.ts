@@ -17,6 +17,45 @@ type LeadRow = Database["public"]["Tables"]["leads"]["Row"];
 type PipelineStageRow = Database["public"]["Tables"]["pipeline_stages"]["Row"];
 
 // ---------------------------------------------------------------------------
+// Leads for Reports (date range, no pagination)
+// ---------------------------------------------------------------------------
+
+export interface UseSupabaseLeadsForReportsOptions {
+  startDate: string; // ISO date "YYYY-MM-DD"
+  endDate: string;   // ISO date "YYYY-MM-DD"
+  enabled?: boolean;
+}
+
+export function useSupabaseLeadsForReports(
+  organizationId: string,
+  options: UseSupabaseLeadsForReportsOptions,
+) {
+  const { client, isReady } = useSupabase();
+  const { startDate, endDate, enabled = true } = options;
+
+  return useQuery<MappedLead[], Error>({
+    queryKey: [...supabaseKeys.leads.list(organizationId), "reports", startDate, endDate],
+    queryFn: async (): Promise<MappedLead[]> => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      const startMs = new Date(startDate).getTime();
+      const endMs = new Date(endDate + "T23:59:59.999Z").getTime();
+
+      const { data, error } = await client
+        .from("leads")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .gte("created_at", startMs)
+        .lte("created_at", endMs);
+
+      if (error) throw error;
+      return (data ?? []).map(mapLeadFromSupabase);
+    },
+    enabled: enabled && isReady && !!organizationId && !!startDate && !!endDate,
+  } satisfies UseQueryOptions<MappedLead[], Error>);
+}
+
+// ---------------------------------------------------------------------------
 // Leads List (paginated)
 // ---------------------------------------------------------------------------
 

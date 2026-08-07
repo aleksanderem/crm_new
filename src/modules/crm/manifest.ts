@@ -15,6 +15,7 @@ import {
   Mail,
   Package,
   Phone,
+  PieChart,
   PlusCircle,
   RefreshCw,
   SearchIcon,
@@ -40,6 +41,7 @@ import { DocumentsWidgets } from "@/components/sidebar-widgets/crm/documents-wid
 import { EmailTemplatesWidgets } from "@/components/sidebar-widgets/crm/email-templates-widgets";
 import { InboxWidgets } from "@/components/sidebar-widgets/crm/inbox-widgets";
 import { InsightsWidgets } from "@/components/sidebar-widgets/crm/insights-widgets";
+import { ReportsWidgets } from "@/components/sidebar-widgets/crm/reports-widgets";
 import { ProductsWidgets } from "@/components/sidebar-widgets/crm/products-widgets";
 import type { ModuleManifest } from "@/modules/types";
 
@@ -66,6 +68,7 @@ export const crmManifest: ModuleManifest = {
     { labelKey: "nav.products", href: "/dashboard/products", icon: Package },
     { labelKey: "nav.documents", href: "/dashboard/documents", icon: FileText },
     { labelKey: "nav.calls", href: "/dashboard/calls", icon: Phone },
+    { labelKey: "nav.reports", href: "/dashboard/reports", icon: PieChart },
     { labelKey: "nav.notifications", href: "/dashboard/notifications", icon: Bell },
     { labelKey: "nav.settings", href: "/dashboard/settings", icon: Settings },
   ],
@@ -280,6 +283,16 @@ export const crmManifest: ModuleManifest = {
         { labelKey: "nav.actions.addTemplate", icon: PlusCircle, quickCreate: "emailTemplate" },
         { labelKey: "nav.actions.searchTemplates", icon: SearchIcon, dispatch: "openSearch" },
         { labelKey: "nav.actions.composeEmail", icon: Send, dispatch: "composeEmail" },
+      ],
+    },
+    {
+      key: "reports",
+      titleKey: "nav.reports",
+      widgets: ReportsWidgets,
+      matches: [{ to: "/dashboard/reports", fuzzy: true }],
+      actions: [
+        { labelKey: "nav.actions.exportReport", icon: Download, dispatch: "exportReport" },
+        { labelKey: "nav.actions.filterByDate", icon: Calendar, dispatch: "filterByDate" },
       ],
     },
   ],

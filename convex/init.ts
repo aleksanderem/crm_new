@@ -12,6 +12,7 @@ import schema, {
   PLANS,
   PRODUCT_KEYS,
   ProductKey,
+  productKeyValidator,
 } from "@cvx/schema";
 import { internal } from "@cvx/_generated/api";
 import { stripe } from "@cvx/stripe";
@@ -169,9 +170,15 @@ export const migratePlnPrices = internalAction({
         continue;
       }
 
-      const seedProduct = seedProducts.find((p) => p.key === plan.key);
+      const seedProduct = seedProducts.find(
+        (p) =>
+          p.key === plan.key &&
+          p.productKey === (plan.productKey ?? PRODUCT_KEYS.CRM),
+      );
       if (!seedProduct) {
-        console.warn(`⚠️  No seed config found for plan key: ${plan.key}`);
+        console.warn(
+          `⚠️  No seed config found for plan key: ${plan.key} / productKey: ${plan.productKey ?? PRODUCT_KEYS.CRM}`,
+        );
         continue;
       }
 
@@ -207,6 +214,122 @@ export const migratePlnPrices = internalAction({
     }
 
     console.info("🎉 PLN price migration complete.");
+  },
+});
+
+export const patchPlanProductKey = internalMutation({
+  args: {
+    planId: v.id("plans"),
+    productKey: productKeyValidator,
+  },
+  handler: async (ctx, args) => {
+    const plan = await ctx.db.get(args.planId);
+    if (!plan) throw new Error("Plan not found");
+    await ctx.db.patch(args.planId, { productKey: args.productKey });
+  },
+});
+
+/**
+ * One-off migration for existing deployments that were set up before per-module
+ * plan support was added (issue #4090). Two steps:
+ *
+ * 1. Backfill productKey="crm" on legacy global plans that have no productKey,
+ *    so the by_productAndKey index query in getActivePlans continues to work.
+ * 2. Create any missing per-module plans (e.g. Gabinet Free/Pro) in Stripe and
+ *    insert the corresponding plan docs with all currency prices.
+ *
+ * Safe to run multiple times — skips plans that already exist.
+ */
+export const migratePerModulePlans = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const allPlans = await ctx.runQuery(internal.init.getAllPlans);
+
+    // Step 1: backfill productKey on old global (CRM) plans.
+    for (const plan of allPlans) {
+      if (!plan.productKey) {
+        await ctx.runMutation(internal.init.patchPlanProductKey, {
+          planId: plan._id,
+          productKey: PRODUCT_KEYS.CRM,
+        });
+        console.info(`✅ Plan ${plan.key}: backfilled productKey=crm`);
+      }
+    }
+
+    // Step 2: create any plans missing from the DB.
+    const refreshedPlans = await ctx.runQuery(internal.init.getAllPlans);
+    for (const seedProduct of seedProducts) {
+      const exists = refreshedPlans.some(
+        (p) => p.key === seedProduct.key && p.productKey === seedProduct.productKey,
+      );
+      if (exists) {
+        console.info(
+          `⏭️  Plan ${seedProduct.productKey}/${seedProduct.key}: already exists, skipping.`,
+        );
+        continue;
+      }
+
+      const stripeProduct = await stripe.products.create({
+        name: seedProduct.name,
+        description: seedProduct.description,
+      });
+
+      const pricesByInterval = Object.entries(seedProduct.prices).flatMap(
+        ([interval, prices]) =>
+          Object.entries(prices).map(([currency, amount]) => ({
+            interval,
+            currency,
+            amount,
+          })),
+      );
+
+      const stripePrices = await Promise.all(
+        pricesByInterval.map((price) =>
+          stripe.prices.create({
+            product: stripeProduct.id,
+            currency: price.currency,
+            unit_amount: price.amount,
+            tax_behavior: "inclusive",
+            recurring: { interval: price.interval as Interval },
+          }),
+        ),
+      );
+
+      const getPrice = (currency: Currency, interval: Interval) => {
+        const price = stripePrices.find(
+          (p) => p.currency === currency && p.recurring?.interval === interval,
+        );
+        if (!price) throw new Error(ERRORS.STRIPE_SOMETHING_WENT_WRONG);
+        return { stripeId: price.id, amount: price.unit_amount ?? 0 };
+      };
+
+      await ctx.runMutation(internal.init.insertSeedPlan, {
+        stripeId: stripeProduct.id,
+        key: seedProduct.key as PlanKey,
+        productKey: seedProduct.productKey as ProductKey,
+        name: seedProduct.name,
+        description: seedProduct.description,
+        seatLimit: seedProduct.seatLimit,
+        prices: {
+          [INTERVALS.MONTH]: {
+            [CURRENCIES.USD]: getPrice(CURRENCIES.USD, INTERVALS.MONTH),
+            [CURRENCIES.EUR]: getPrice(CURRENCIES.EUR, INTERVALS.MONTH),
+            [CURRENCIES.PLN]: getPrice(CURRENCIES.PLN, INTERVALS.MONTH),
+          },
+          [INTERVALS.YEAR]: {
+            [CURRENCIES.USD]: getPrice(CURRENCIES.USD, INTERVALS.YEAR),
+            [CURRENCIES.EUR]: getPrice(CURRENCIES.EUR, INTERVALS.YEAR),
+            [CURRENCIES.PLN]: getPrice(CURRENCIES.PLN, INTERVALS.YEAR),
+          },
+        },
+      });
+
+      console.info(
+        `✅ Created plan ${seedProduct.productKey}/${seedProduct.key}: ${stripeProduct.id}`,
+      );
+    }
+
+    console.info("🎉 Per-module plan migration complete.");
   },
 });
 

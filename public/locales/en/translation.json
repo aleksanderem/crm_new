@@ -4121,7 +4121,19 @@
       "title": "Receipt",
       "receiptNumber": "Receipt number",
       "issuedAt": "Issued at",
-      "totalGross": "Total (gross)"
+      "totalGross": "Total (gross)",
+      "receiptHistory": "Receipts",
+      "receiptHistoryDesc": "All receipts linked to this appointment",
+      "noReceipts": "No receipts",
+      "noReceiptsDesc": "Receipts will appear here once a payment is made.",
+      "types": {
+        "original": "Original",
+        "correction": "Correction"
+      },
+      "statuses": {
+        "issued": "Issued",
+        "void": "Void"
+      }
     }
   },
   "customFields": {

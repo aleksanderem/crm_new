@@ -4142,7 +4142,19 @@
       "title": "Paragon",
       "receiptNumber": "Nr paragonu",
       "issuedAt": "Data wystawienia",
-      "totalGross": "Kwota brutto"
+      "totalGross": "Kwota brutto",
+      "receiptHistory": "Paragony",
+      "receiptHistoryDesc": "Wszystkie paragony powiązane z tą wizytą",
+      "noReceipts": "Brak paragonów",
+      "noReceiptsDesc": "Paragony pojawią się tutaj po dokonaniu płatności.",
+      "types": {
+        "original": "Oryginalny",
+        "correction": "Korekta"
+      },
+      "statuses": {
+        "issued": "Wystawiony",
+        "void": "Anulowany"
+      }
     }
   },
   "customFields": {

@@ -121,24 +121,19 @@ export const PREAUTH_getUserByCustomerId = internalQuery({
     if (!user) {
       throw new Error(ERRORS.STRIPE_SOMETHING_WENT_WRONG);
     }
-    const subscription = await ctx.db
+    const subs = await ctx.db
       .query("subscriptions")
       .withIndex("userId", (q) => q.eq("userId", user._id))
-      .first();
-    if (!subscription) {
+      .collect();
+    if (subs.length === 0) {
       throw new Error(ERRORS.STRIPE_SOMETHING_WENT_WRONG);
     }
-    const plan = await ctx.db.get(subscription.planId);
-    if (!plan) {
-      throw new Error(ERRORS.STRIPE_SOMETHING_WENT_WRONG);
-    }
-    return {
-      ...user,
-      subscription: {
-        ...subscription,
-        planKey: plan.key,
-      },
-    };
+    const subscriptions = await asyncMap(subs, async (sub) => {
+      const plan = await ctx.db.get(sub.planId);
+      if (!plan) throw new Error(ERRORS.STRIPE_SOMETHING_WENT_WRONG);
+      return { ...sub, planKey: plan.key, productKey: plan.productKey };
+    });
+    return { ...user, subscriptions };
   },
 });
 

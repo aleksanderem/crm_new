@@ -44,7 +44,10 @@
     "verify:s04": "npx tsx scripts/verify-s04-contacts.ts",
     "migrate:contacts": "npx tsx scripts/migrate/run-contacts.ts",
     "migrate:validate": "npx tsx scripts/migrate/validate.ts",
-    "verify:s05": "npx tsx scripts/verify-s05-migration.ts"
+    "verify:s05": "npx tsx scripts/verify-s05-migration.ts",
+    "test:load:calendar": "k6 run tests/load/gabinet-calendar.js",
+    "test:load:search": "k6 run tests/load/global-search.js",
+    "test:load:webhooks": "k6 run tests/load/webhooks.js"
   },
   "dependencies": {
     "@auth/core": "^0.34.1",

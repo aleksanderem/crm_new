@@ -23,8 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment
+# Environment — only .env.example is allowed; all other .env variants and
+# backup files are excluded to prevent accidental secret commits.
 .env
+*.bak
 
 # Generated reports and local tooling
 playwright-report/

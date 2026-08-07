@@ -10,8 +10,8 @@ export type { GabinetModule };
  * a given gabinet sub-module (or any product key string).
  *
  * Mirrors the server-side `checkModuleAccess` / `verifyProductAccess` logic:
- * - During grace period (no subscriptions at all) access is granted.
- * - Once subscriptions exist, the product must be present and active/trialing.
+ * access is granted only when an active or trialing productSubscription row
+ * exists for the requested product.
  */
 export function useModuleAccess(module: GabinetModule | (string & {})): {
   hasAccess: boolean;

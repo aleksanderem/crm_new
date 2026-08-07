@@ -44,12 +44,10 @@ export const PRODUCT_KEYS = {
   GABINET: "gabinet",
   MAGAZYN: "magazyn",
 } as const;
-export const productKeyValidator = v.union(
-  v.literal(PRODUCT_KEYS.CRM),
-  v.literal(PRODUCT_KEYS.GABINET),
-  v.literal(PRODUCT_KEYS.MAGAZYN),
-);
-export type ProductKey = Infer<typeof productKeyValidator>;
+// Open string so new modules can be introduced without a schema migration.
+// PRODUCT_KEYS above serves as the developer reference for known modules.
+export const productKeyValidator = v.string();
+export type ProductKey = string;
 
 const priceValidator = v.object({
   stripeId: v.string(),

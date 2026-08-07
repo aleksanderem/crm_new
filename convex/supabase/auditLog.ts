@@ -10,7 +10,7 @@ export const writeAuditLogToSupabase = internalAction({
   args: {
     auditLogId: v.string(),
     organizationId: v.string(),
-    userId: v.string(),
+    userId: v.optional(v.string()),
     action: v.string(),
     entityType: v.optional(v.string()),
     entityId: v.optional(v.string()),
@@ -24,7 +24,7 @@ export const writeAuditLogToSupabase = internalAction({
     const row = {
       id: args.auditLogId,
       organization_id: args.organizationId,
-      user_id: args.userId,
+      user_id: args.userId ?? null,
       action: args.action,
       entity_type: args.entityType ?? null,
       entity_id: args.entityId ?? null,

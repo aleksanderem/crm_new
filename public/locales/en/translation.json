@@ -1201,6 +1201,7 @@
     "integrations": "Integrations",
     "sms": "SMS",
     "gabinetSection": "Gabinet",
+    "loyaltySection": "Loyalty",
     "employeesSection": "Employees",
     "crmSection": "CRM",
     "communicationSection": "Communication",
@@ -3696,7 +3697,17 @@
       "loyaltyProgram": "Loyalty program",
       "points": "points",
       "pointsBalance": "Points balance",
-      "recentTransactions": "Recent transactions"
+      "recentTransactions": "Recent transactions",
+      "tierSettings": {
+        "title": "Loyalty Tiers",
+        "description": "Configure point thresholds for loyalty tiers.",
+        "threshold": "Points threshold",
+        "thresholdHint": "Minimum lifetime points required to reach this tier",
+        "edit": "Edit tier",
+        "seedDefaults": "Reset to defaults",
+        "seeded": "Defaults restored",
+        "saved": "Tier saved"
+      }
     },
     "dashboard": {
       "title": "Gabinet Dashboard",

@@ -1202,6 +1202,7 @@
     "sms": "SMS",
     "emailSequences": "Sekwencje email",
     "gabinetSection": "Gabinet",
+    "loyaltySection": "Lojalność",
     "employeesSection": "Pracownicy",
     "crmSection": "CRM",
     "communicationSection": "Komunikacja",
@@ -3717,7 +3718,17 @@
       "loyaltyProgram": "Program lojalnościowy",
       "points": "punktów",
       "pointsBalance": "Saldo punktów",
-      "recentTransactions": "Ostatnie transakcje"
+      "recentTransactions": "Ostatnie transakcje",
+      "tierSettings": {
+        "title": "Poziomy lojalnościowe",
+        "description": "Skonfiguruj progi punktowe dla poszczególnych poziomów lojalnościowych.",
+        "threshold": "Próg punktów",
+        "thresholdHint": "Minimalna liczba zdobytych punktów wymagana do osiągnięcia tego poziomu",
+        "edit": "Edytuj poziom",
+        "seedDefaults": "Przywróć domyślne",
+        "seeded": "Wartości domyślne zostały przywrócone",
+        "saved": "Poziom zapisany"
+      }
     },
     "dashboard": {
       "title": "Panel Gabinetu",

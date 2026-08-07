@@ -69,6 +69,7 @@ export const gabinetManifest: ModuleManifest = {
     { labelKey: "gabinet.leaveTypes.title", to: "/dashboard/gabinet/settings/leave-types", permissionFeature: "gabinet_settings" },
     { labelKey: "gabinet.leaveBalances.title", to: "/dashboard/gabinet/settings/leave-balances", permissionFeature: "gabinet_settings" },
     { labelKey: "gabinet.leaves.title", to: "/dashboard/gabinet/settings/leaves", permissionFeature: "gabinet_settings" },
+    { sectionKey: "settings.loyaltySection", labelKey: "gabinet.loyalty.tierSettings.title", to: "/dashboard/gabinet/settings/loyalty", permissionFeature: "gabinet_settings" },
   ],
   pageContexts: [
     {

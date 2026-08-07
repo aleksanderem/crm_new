@@ -611,6 +611,19 @@ export function createGabinetTables({
     .index("by_org", ["organizationId"])
     .index("by_orgAndPatient", ["organizationId", "patientId"]),
 
+  gabinetLoyaltyTiers: defineTable({
+    organizationId: v.id("organizations"),
+    tier: gabinetLoyaltyTierValidator,
+    name: v.string(),
+    threshold: v.number(),
+    color: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndTier", ["organizationId", "tier"]),
+
   // --- Platform: Document Templates ---
 
   documentTemplates: defineTable({

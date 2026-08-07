@@ -70,7 +70,6 @@ The Playwright HTML report includes a pass/fail summary per page and lists any a
 
 The following areas are not yet covered by automated tests and require manual review or additional specs before a formal public-sector accessibility declaration:
 
-- Color contrast in dark mode (Tailwind CSS v4 CSS variable theming — verify contrast ratios for `--color-fg-*` on `--color-bg-*` in dark mode).
 - Recharts data tables: verify each chart has a text-based alternative (table or `aria-describedby` summary).
 - Patient portal appointment view — axe-core and keyboard tests require a valid portal session; currently only the login page (unauthenticated state) is covered by automated scans.
 - PDF document viewer (`src/components/gabinet/document-viewer.tsx`) — PDFs require a tagged-PDF or accessible fallback.

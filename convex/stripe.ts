@@ -156,13 +156,23 @@ export const PREAUTH_createSubscription = internalMutation({
     cancelAtPeriodEnd: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const subscription = await ctx.db
+    // Resolve the incoming plan's productKey so we can scope the uniqueness
+    // check to one subscription per user per productKey (multi-module billing).
+    const incomingPlan = await ctx.db.get(args.planId);
+    const incomingProductKey = incomingPlan?.productKey;
+
+    const userSubs = await ctx.db
       .query("subscriptions")
       .withIndex("userId", (q) => q.eq("userId", args.userId))
-      .unique();
-    if (subscription) {
-      throw new Error("Subscription already exists");
+      .collect();
+
+    for (const sub of userSubs) {
+      const subPlan = await ctx.db.get(sub.planId);
+      if (subPlan?.productKey === incomingProductKey) {
+        throw new Error("Subscription already exists");
+      }
     }
+
     const subId = await ctx.db.insert("subscriptions", {
       userId: args.userId,
       planId: args.planId,

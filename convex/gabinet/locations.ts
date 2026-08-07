@@ -295,26 +295,6 @@ export const deleteLocation = action({
   },
 });
 
-export const listRooms = action({
-  args: {
-    organizationId: v.id("organizations"),
-    locationId: v.string(),
-  },
-  handler: async (ctx, args): Promise<GabinetRoomRow[]> => {
-    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
-      organizationId: args.organizationId,
-    });
-    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const db = createSupabaseDb();
-    const location = await db.get("gabinetLocations", args.locationId);
-    if (!location || String(location.organizationId) !== String(args.organizationId)) return [];
-    return (await db
-      .query("gabinetRooms")
-      .eq("locationId", args.locationId)
-      .collect()) as GabinetRoomRow[];
-  },
-});
-
 export const createRoom = action({
   args: {
     organizationId: v.id("organizations"),

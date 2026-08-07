@@ -225,6 +225,13 @@ function EmployeeDetail() {
     employeeId,
   );
 
+  const { data: scheduleActivities } = useSupabaseActivitiesByEntity(
+    organizationId,
+    "gabinetEmployeeSchedule",
+    employee?.userId ?? undefined,
+    { enabled: !!employee?.userId },
+  );
+
   const { data: scheduledActivitiesData } = useSupabaseScheduledActivitiesByEntity(
     organizationId,
     "gabinetEmployee",
@@ -532,6 +539,11 @@ function EmployeeDetail() {
     </div>
   );
 
+  const mergedEmployeeActivities = [
+    ...(activities ?? []),
+    ...(scheduleActivities ?? []),
+  ].sort((a, b) => b.createdAt - a.createdAt);
+
   // Tabs definition
   const tabs = !employee ? [] : [
     {
@@ -780,7 +792,7 @@ function EmployeeDetail() {
       label: t("gabinet.employees.activity"),
       content: (
         <ActivityFeed
-          entries={activitiesToFeedEntries(activities ?? [], t)}
+          entries={activitiesToFeedEntries(mergedEmployeeActivities, t)}
           maxHeight="600px"
         />
       ),

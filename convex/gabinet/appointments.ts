@@ -149,26 +149,6 @@ async function applyAppointmentStatusChange(
   },
 ) {
   const now = Date.now();
-  const patch: Record<string, unknown> = {
-    status: args.nextStatus,
-    updatedAt: now,
-  };
-
-  if (args.nextStatus === "cancelled") {
-    patch.cancelledAt = now;
-    patch.cancelledBy = args.actorUserId;
-    patch.cancellationReason = args.cancellationReason;
-  }
-
-  // Patch Convex record if it exists (Supabase is primary, Convex may lag)
-  try {
-    const convexRecord = await ctx.db.get(args.appointment._id);
-    if (convexRecord) {
-      await ctx.db.patch(args.appointment._id, patch);
-    }
-  } catch {
-    // Convex record may not exist during Supabase-primary migration
-  }
 
   if (args.nextStatus === "cancelled" && args.sendCancellationNotifications !== false) {
     // Patient/treatment live in Supabase (UUIDs) — ctx.db.get fails with
@@ -2556,9 +2536,7 @@ export const _updateStatusSideEffects = internalMutation({
     } as unknown as Doc<"gabinetAppointments">;
 
     // The status patch was already written to Supabase by the action.
-    // applyAppointmentStatusChange will try to ctx.db.patch the Convex record —
-    // since we're doing Supabase-primary, that patch may be a no-op on
-    // a missing Convex row. We still call it for the side effects (activity log,
+    // Call applyAppointmentStatusChange for side effects only (activity log,
     // audit, notification, automation event, calendar sync, completion handlers).
     await applyAppointmentStatusChange(ctx, {
       appointment: appointmentProxy,

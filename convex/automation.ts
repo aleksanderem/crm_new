@@ -1210,41 +1210,6 @@ export const createRule = action({
   },
 });
 
-// Best-effort mirror: Supabase is authoritative for updateRule writes.
-// Skip silently if the Convex replica is absent so a missing mirror
-// never blocks a Supabase-first update.
-export const _mirrorRulePatchToConvex = internalMutation({
-  args: {
-    organizationId: v.id("organizations"),
-    ruleId: v.string(),
-    name: v.optional(v.string()),
-    description: v.optional(v.string()),
-    module: v.optional(automationModuleValidator),
-    eventType: v.optional(v.string()),
-    entityType: v.optional(v.string()),
-    trigger: v.optional(automationTriggerDefinitionValidator),
-    graph: v.optional(automationGraphValidator),
-    definitionVersion: v.optional(v.number()),
-    conditions: v.optional(v.array(automationConditionValidator)),
-    actions: v.optional(v.array(automationRuleActionValidator)),
-    enabled: v.optional(v.boolean()),
-    updatedAt: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const ruleId = ctx.db.normalizeId("automationRules", args.ruleId);
-    if (!ruleId) return;
-    const rule = await ctx.db.get(ruleId);
-    if (!rule) return;
-
-    const { organizationId: _orgId, ruleId: _rid, ...rest } = args;
-    const updates: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(rest)) {
-      if (value !== undefined) updates[key] = value;
-    }
-    await ctx.db.patch(ruleId, updates);
-  },
-});
-
 export const updateRule = action({
   args: {
     organizationId: v.id("organizations"),
@@ -1269,9 +1234,6 @@ export const updateRule = action({
     const updatedAt = Date.now();
     const db = createSupabaseDb();
 
-    // Supabase is the authoritative store — validate org ownership and write
-    // there first. The Convex mirror is updated afterwards so the engine
-    // (processRun) sees the latest definition; missing mirrors are skipped.
     const supabaseRule = await db.get("automationRules", args.ruleId);
     if (!supabaseRule || supabaseRule.organizationId !== String(args.organizationId)) {
       throw new Error("Automation rule not found");
@@ -1291,40 +1253,7 @@ export const updateRule = action({
     if (args.enabled !== undefined) updates.enabled = args.enabled;
     await db.patch("automationRules", args.ruleId, updates);
 
-    await ctx.runMutation(internal.automation._mirrorRulePatchToConvex, {
-      organizationId: args.organizationId,
-      ruleId: args.ruleId,
-      name: args.name,
-      description: args.description,
-      module: args.module,
-      eventType: args.eventType,
-      entityType: args.entityType,
-      trigger: args.trigger,
-      graph: args.graph,
-      definitionVersion: args.definitionVersion,
-      conditions: args.conditions,
-      actions: args.actions,
-      enabled: args.enabled,
-      updatedAt,
-    });
-
     return args.ruleId;
-  },
-});
-
-// Best-effort mirror: Supabase is authoritative for deleteRule. Org ownership
-// is validated in the action before this mutation runs, so we skip silently
-// if the Convex replica is absent.
-export const _mirrorRuleDeleteFromConvex = internalMutation({
-  args: {
-    ruleId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const ruleId = ctx.db.normalizeId("automationRules", args.ruleId);
-    if (!ruleId) return;
-    const rule = await ctx.db.get(ruleId);
-    if (!rule) return;
-    await ctx.db.delete(ruleId);
   },
 });
 
@@ -1340,17 +1269,11 @@ export const deleteRule = action({
 
     const db = createSupabaseDb();
 
-    // Supabase is the authoritative store — validate org ownership and delete
-    // there first. The Convex mirror deletion follows as best-effort.
     const supabaseRule = await db.get("automationRules", args.ruleId);
     if (!supabaseRule || supabaseRule.organizationId !== String(args.organizationId)) {
       throw new Error("Automation rule not found");
     }
     await db.delete("automationRules", args.ruleId);
-
-    await ctx.runMutation(internal.automation._mirrorRuleDeleteFromConvex, {
-      ruleId: args.ruleId,
-    });
 
     return args.ruleId;
   },

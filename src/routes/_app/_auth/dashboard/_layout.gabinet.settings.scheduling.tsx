@@ -22,6 +22,9 @@ import { formatActionError } from "@/lib/format-action-error";
 import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
+import { ActivityTimeline } from "@/components/activity-timeline/activity-timeline";
+import type { ActivityWithMetadata } from "@/components/activity-timeline/presenter/activity-presenter";
 
 function SchedulingSettingsSkeleton() {
   return (
@@ -133,6 +136,12 @@ function SchedulingSettings() {
   const { allowed: canEdit } = usePermission("gabinet_settings", "edit");
   const bulkSet = useAction(api.gabinet.scheduling.bulkSetWorkingHours);
   const [saving, setSaving] = useState(false);
+
+  const { data: workingHoursActivities } = useSupabaseActivitiesByEntity(
+    organizationId,
+    "gabinetWorkingHours",
+    organizationId,
+  );
 
   const { data: existing } = useSupabaseGabinetWorkingHoursList(organizationId);
 
@@ -368,6 +377,16 @@ function SchedulingSettings() {
           <Button onClick={handleSave} disabled={saving || validationErrors.length > 0 || breakErrors.length > 0}>
             {saving ? t("common.saving") : t("common.save")}
           </Button>
+        </div>
+      )}
+
+      {workingHoursActivities && workingHoursActivities.length > 0 && (
+        <div className="space-y-1.5 border-t pt-4">
+          <p className="text-xs font-medium text-muted-foreground">{t("dashboard.recentActivity")}</p>
+          <ActivityTimeline
+            activities={workingHoursActivities as ActivityWithMetadata[]}
+            maxHeight="240px"
+          />
         </div>
       )}
     </div>

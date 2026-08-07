@@ -160,11 +160,35 @@ Add a calendar reminder for each tier on the day you first set the secrets. A co
 
 ## Automated checks
 
-Two GitHub Actions workflows monitor secret health automatically:
+Three automated layers guard against leaked secrets:
+
+**Pre-commit hook (first line of defence)** — installed via [lefthook](https://github.com/evilmartians/lefthook) when you run `npm install`. Runs `gitleaks protect --staged` before every commit, blocking secrets from ever reaching git history. Requires gitleaks to be installed locally (`brew install gitleaks`); warns and passes if gitleaks is not found rather than blocking unrelated work.
 
 **`secrets-health.yml`** — runs daily at 07:00 UTC. Verifies that at least one migration transport (`SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`, or `SUPABASE_DB_URL`) is set in GitHub secrets. Fails loudly if both transports are absent.
 
 **`secret-scan.yml`** — runs on every push to `main`, every PR, and weekly on Sunday. Scans the full git history with [gitleaks](https://github.com/gitleaks/gitleaks) to detect accidentally committed secrets. Results appear in the Actions tab under "Secret scan (gitleaks)". A failure means a secret pattern was found in history — see "Git history leak response" below.
+
+### Pre-commit hook
+
+The hook is managed by `lefthook` (declared in `devDependencies`) and wired into the `prepare` npm lifecycle script so it installs automatically:
+
+```bash
+npm install          # installs dependencies and runs lefthook install
+# — or, to install/reinstall the hook manually —
+npx lefthook install
+```
+
+If gitleaks flags a false positive in your staged files, add an entry to `.gitleaksignore` at the repo root (created if it does not exist):
+
+```bash
+# Show the fingerprint gitleaks printed:
+gitleaks protect --staged --verbose
+# Copy the "Fingerprint" value and append it:
+echo "<fingerprint>" >> .gitleaksignore
+git add .gitleaksignore
+```
+
+Never bypass the hook with `git commit --no-verify` unless you have confirmed the detection is a false positive and have filed a `.gitleaksignore` entry.
 
 ---
 
@@ -196,3 +220,9 @@ gitleaks protect --staged
 ## Local development
 
 Copy `.env.example` to `.env.local` and fill in the values for your local Convex dev deployment. Never commit `.env.local` or any `.env.*` file other than `.env.example`. The `.gitignore` excludes `.env.*` (with `!.env.example`) and `*.bak` to prevent accidental commits.
+
+Install gitleaks so the pre-commit hook (see above) can actively guard your commits:
+
+```bash
+brew install gitleaks   # macOS / Linux via Homebrew
+```

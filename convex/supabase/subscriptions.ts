@@ -20,6 +20,7 @@ export const writeSubscriptionToSupabase = internalAction({
     currentPeriodStart: v.number(),
     currentPeriodEnd: v.number(),
     cancelAtPeriodEnd: v.boolean(),
+    trialEndDate: v.optional(v.number()),
   },
   returns: v.object({ success: v.boolean(), id: v.string() }),
   handler: async (_ctx, args) => {
@@ -38,6 +39,7 @@ export const writeSubscriptionToSupabase = internalAction({
       current_period_start: args.currentPeriodStart,
       current_period_end: args.currentPeriodEnd,
       cancel_at_period_end: args.cancelAtPeriodEnd,
+      trial_end_date: args.trialEndDate ?? null,
     };
 
     const data = await upsertWithFkRetry(client, "subscriptions", row)

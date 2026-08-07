@@ -162,6 +162,7 @@ const handleUpdateSubscription = async (
       currentPeriodStart: subscription.current_period_start,
       currentPeriodEnd: subscription.current_period_end,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      trialEndDate: subscription.trial_end ?? undefined,
     },
   });
 };
@@ -206,6 +207,7 @@ const handleCheckoutSessionCompleted = async (
       currentPeriodStart: subscription.current_period_start,
       currentPeriodEnd: subscription.current_period_end,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      trialEndDate: subscription.trial_end ?? undefined,
     });
   }
 
@@ -284,6 +286,7 @@ const handleCustomerSubscriptionUpdated = async (
       currentPeriodStart: subscription.current_period_start,
       currentPeriodEnd: subscription.current_period_end,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      trialEndDate: subscription.trial_end ?? undefined,
     });
   }
 
@@ -340,6 +343,7 @@ const handleCustomerSubscriptionCreated = async (
       currentPeriodStart: subscription.current_period_start,
       currentPeriodEnd: subscription.current_period_end,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      trialEndDate: subscription.trial_end ?? undefined,
     });
   }
 

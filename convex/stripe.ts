@@ -151,6 +151,7 @@ export const PREAUTH_createSubscription = internalMutation({
     currentPeriodStart: v.number(),
     currentPeriodEnd: v.number(),
     cancelAtPeriodEnd: v.boolean(),
+    trialEndDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     // Resolve the incoming plan's productKey so we can scope the uniqueness
@@ -182,6 +183,7 @@ export const PREAUTH_createSubscription = internalMutation({
       currentPeriodStart: args.currentPeriodStart,
       currentPeriodEnd: args.currentPeriodEnd,
       cancelAtPeriodEnd: args.cancelAtPeriodEnd,
+      trialEndDate: args.trialEndDate,
     });
 
     // Dual-write: replicate to Supabase
@@ -198,6 +200,7 @@ export const PREAUTH_createSubscription = internalMutation({
       currentPeriodStart: args.currentPeriodStart,
       currentPeriodEnd: args.currentPeriodEnd,
       cancelAtPeriodEnd: args.cancelAtPeriodEnd,
+      trialEndDate: args.trialEndDate,
     });
   },
 });
@@ -215,6 +218,7 @@ export const PREAUTH_replaceSubscription = internalMutation({
       currentPeriodStart: v.number(),
       currentPeriodEnd: v.number(),
       cancelAtPeriodEnd: v.boolean(),
+      trialEndDate: v.optional(v.number()),
     }),
   },
   handler: async (ctx, args) => {
@@ -260,6 +264,7 @@ export const PREAUTH_replaceSubscription = internalMutation({
       currentPeriodStart: args.input.currentPeriodStart,
       currentPeriodEnd: args.input.currentPeriodEnd,
       cancelAtPeriodEnd: args.input.cancelAtPeriodEnd,
+      trialEndDate: args.input.trialEndDate,
     });
 
     // Dual-write: replicate to Supabase
@@ -276,6 +281,7 @@ export const PREAUTH_replaceSubscription = internalMutation({
       currentPeriodStart: args.input.currentPeriodStart,
       currentPeriodEnd: args.input.currentPeriodEnd,
       cancelAtPeriodEnd: args.input.cancelAtPeriodEnd,
+      trialEndDate: args.input.trialEndDate,
     });
   },
 });
@@ -316,6 +322,7 @@ export const PREAUTH_upsertProductSubscription = internalMutation({
     currentPeriodStart: v.optional(v.number()),
     currentPeriodEnd: v.optional(v.number()),
     cancelAtPeriodEnd: v.boolean(),
+    trialEndDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -333,6 +340,7 @@ export const PREAUTH_upsertProductSubscription = internalMutation({
         currentPeriodStart: args.currentPeriodStart,
         currentPeriodEnd: args.currentPeriodEnd,
         cancelAtPeriodEnd: args.cancelAtPeriodEnd,
+        trialEndDate: args.trialEndDate,
         updatedAt: now,
       });
     } else {
@@ -344,6 +352,7 @@ export const PREAUTH_upsertProductSubscription = internalMutation({
         currentPeriodStart: args.currentPeriodStart,
         currentPeriodEnd: args.currentPeriodEnd,
         cancelAtPeriodEnd: args.cancelAtPeriodEnd,
+        trialEndDate: args.trialEndDate,
         createdAt: now,
         updatedAt: now,
       });

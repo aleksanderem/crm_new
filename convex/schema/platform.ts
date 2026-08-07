@@ -66,6 +66,7 @@ export function createPlatformTables({
     currentPeriodStart: v.number(),
     currentPeriodEnd: v.number(),
     cancelAtPeriodEnd: v.boolean(),
+    trialEndDate: v.optional(v.number()),
   })
     .index("userId", ["userId"])
     .index("stripeId", ["stripeId"])
@@ -103,6 +104,7 @@ export function createPlatformTables({
     currentPeriodStart: v.optional(v.number()),
     currentPeriodEnd: v.optional(v.number()),
     cancelAtPeriodEnd: v.boolean(),
+    trialEndDate: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

@@ -1,15 +1,128 @@
-import { test, expect } from "@playwright/test";
-import { loginAndGoToDashboard, waitForApp } from "./helpers/auth";
+import { test, expect, type Page } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+import { loginAndGoToDashboard } from "./helpers/auth";
 import {
   navigateTo,
   assertNoErrorBoundary,
 } from "./helpers/common";
 
-test.describe("Accessibility", () => {
+// Target: WCAG 2.1 AA — required for Polish public sector clients
+// (EU Web Accessibility Directive / Ustawa o dostępności cyfrowej)
+const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
+
+async function runAxeScan(page: Page, label: string) {
+  const results = await new AxeBuilder({ page })
+    .withTags(WCAG_TAGS)
+    .exclude(".recharts-wrapper") // chart SVGs are decorative
+    .analyze();
+
+  if (results.violations.length > 0) {
+    const summary = results.violations
+      .map(
+        (v) =>
+          `[${v.impact}] ${v.id}: ${v.description} (${v.nodes.length} node(s))`
+      )
+      .join("\n");
+    console.warn(`Axe violations on ${label}:\n${summary}`);
+  }
+
+  // Critical and serious violations are hard failures.
+  // Moderate and minor violations are logged but tolerated until remediation.
+  const blockers = results.violations.filter(
+    (v) => v.impact === "critical" || v.impact === "serious"
+  );
+
+  expect(
+    blockers,
+    `WCAG 2.1 AA critical/serious violations on ${label}:\n` +
+      blockers
+        .map((v) => `  • ${v.id}: ${v.description}`)
+        .join("\n")
+  ).toHaveLength(0);
+}
+
+test.describe("Accessibility — WCAG 2.1 AA", () => {
   test.setTimeout(120_000);
 
   test.beforeEach(async ({ page }) => {
     await loginAndGoToDashboard(page);
+  });
+
+  // ─── 23.0 Automated Axe Scans ────────────────────────────────
+
+  test("dashboard page has no critical/serious WCAG violations", async ({
+    page,
+  }) => {
+    await navigateTo(page, "/dashboard");
+    await assertNoErrorBoundary(page);
+    await runAxeScan(page, "/dashboard");
+  });
+
+  test("contacts page has no critical/serious WCAG violations", async ({
+    page,
+  }) => {
+    await navigateTo(page, "/dashboard/contacts");
+    await assertNoErrorBoundary(page);
+    await runAxeScan(page, "/dashboard/contacts");
+  });
+
+  test("leads page has no critical/serious WCAG violations", async ({
+    page,
+  }) => {
+    await navigateTo(page, "/dashboard/leads");
+    await assertNoErrorBoundary(page);
+    await runAxeScan(page, "/dashboard/leads");
+  });
+
+  test("companies page has no critical/serious WCAG violations", async ({
+    page,
+  }) => {
+    await navigateTo(page, "/dashboard/companies");
+    await assertNoErrorBoundary(page);
+    await runAxeScan(page, "/dashboard/companies");
+  });
+
+  test("gabinet calendar has no critical/serious WCAG violations", async ({
+    page,
+  }) => {
+    await navigateTo(page, "/dashboard/gabinet/calendar");
+    await assertNoErrorBoundary(page);
+    await runAxeScan(page, "/dashboard/gabinet/calendar");
+  });
+
+  test("settings/team page has no critical/serious WCAG violations", async ({
+    page,
+  }) => {
+    await navigateTo(page, "/dashboard/settings/team");
+    await assertNoErrorBoundary(page);
+    await runAxeScan(page, "/dashboard/settings/team");
+  });
+
+  test("contact create dialog has no critical/serious WCAG violations", async ({
+    page,
+  }) => {
+    await navigateTo(page, "/dashboard/contacts");
+
+    const addBtn = page
+      .locator(
+        'button:has-text("Dodaj kontakt"), button:has-text("Add contact")'
+      )
+      .first();
+
+    if (!(await addBtn.isVisible({ timeout: 5000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
+
+    await addBtn.click();
+    await page.waitForTimeout(1000);
+
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+
+    await runAxeScan(page, "contact create dialog");
+
+    await page.keyboard.press("Escape");
   });
 
   // ─── 23.1 Keyboard Navigation ────────────────────────────────
@@ -29,12 +142,6 @@ test.describe("Accessibility", () => {
     const activeTag = await page.evaluate(
       () => document.activeElement?.tagName ?? ""
     );
-    const isInteractive =
-      activeTag === "BUTTON" ||
-      activeTag === "INPUT" ||
-      activeTag === "A" ||
-      activeTag === "SELECT" ||
-      activeTag === "TEXTAREA";
     // Tab should focus on interactive elements
     expect(activeTag.length).toBeGreaterThan(0);
     await assertNoErrorBoundary(page);

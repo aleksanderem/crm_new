@@ -26,6 +26,7 @@ export type GabinetEquipmentRow = SupabaseRow<"gabinetEquipment">;
 export type GabinetTreatmentPackageRow = SupabaseRow<"gabinetTreatmentPackages">;
 export type GabinetPackageUsageRow = SupabaseRow<"gabinetPackageUsage">;
 export type GabinetLoyaltyTransactionRow = SupabaseRow<"gabinetLoyaltyTransactions">;
+export type GabinetLoyaltyTierRow = SupabaseRow<"gabinetLoyaltyTiers">;
 export type AppointmentWorkflowHistoryRow = SupabaseRow<"appointmentWorkflowHistory">;
 export type PaymentRow = SupabaseRow<"payments">;
 export type NoteRow = SupabaseRow<"notes">;

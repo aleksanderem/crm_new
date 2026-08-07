@@ -5339,6 +5339,50 @@ export interface Database {
           },
         ];
       };
+      gabinet_loyalty_tiers: {
+        Row: {
+          id: string;
+          organization_id: string;
+          tier: string;
+          name: string;
+          threshold: number;
+          color: string | null;
+          is_active: boolean;
+          created_at: number;
+          updated_at: number;
+        };
+        Insert: {
+          id: string;
+          organization_id: string;
+          tier: string;
+          name: string;
+          threshold?: number;
+          color?: string | null;
+          is_active?: boolean;
+          created_at: number;
+          updated_at: number;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          tier?: string;
+          name?: string;
+          threshold?: number;
+          color?: string | null;
+          is_active?: boolean;
+          created_at?: number;
+          updated_at?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_loyalty_tiers_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       gabinet_document_templates: {
         Row: {
           id: string;
@@ -7717,3 +7761,6 @@ export type GabinetLoyaltyPointsUpdate = Database["public"]["Tables"]["gabinet_l
 export type GabinetLoyaltyTransactionRow = Database["public"]["Tables"]["gabinet_loyalty_transactions"]["Row"];
 export type GabinetLoyaltyTransactionInsert = Database["public"]["Tables"]["gabinet_loyalty_transactions"]["Insert"];
 export type GabinetLoyaltyTransactionUpdate = Database["public"]["Tables"]["gabinet_loyalty_transactions"]["Update"];
+export type GabinetLoyaltyTierRow = Database["public"]["Tables"]["gabinet_loyalty_tiers"]["Row"];
+export type GabinetLoyaltyTierInsert = Database["public"]["Tables"]["gabinet_loyalty_tiers"]["Insert"];
+export type GabinetLoyaltyTierUpdate = Database["public"]["Tables"]["gabinet_loyalty_tiers"]["Update"];

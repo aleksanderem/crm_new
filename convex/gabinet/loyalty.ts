@@ -3,6 +3,7 @@ import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { calculateLoyaltyTier } from "./_helpers/loyaltyTier";
+import type { GabinetLoyaltyTier } from "../schema";
 
 // Dual-write refs removed — Supabase is now primary for loyalty writes
 
@@ -123,10 +124,26 @@ export const earnPoints = action({
     const newBalance = (loyalty!.balance as number) + args.points;
     const newLifetimeEarned = (loyalty!.lifetimeEarned as number) + args.points;
 
+    let tierDefs: { tier: GabinetLoyaltyTier; threshold: number }[] | undefined;
+    try {
+      const orgTiers = await db
+        .query("gabinetLoyaltyTiers")
+        .eq("organizationId", orgIdStr)
+        .collect();
+      if (orgTiers.length > 0) {
+        tierDefs = orgTiers.map((t) => ({
+          tier: t.tier as GabinetLoyaltyTier,
+          threshold: t.threshold as number,
+        }));
+      }
+    } catch {
+      // fall back to hardcoded defaults
+    }
+
     await db.patch("gabinetLoyaltyPoints", String(loyalty!._id), {
       balance: newBalance,
       lifetimeEarned: newLifetimeEarned,
-      tier: calculateLoyaltyTier(newLifetimeEarned),
+      tier: calculateLoyaltyTier(newLifetimeEarned, tierDefs),
       updatedAt: now,
     });
 
@@ -199,10 +216,26 @@ export const spendPoints = action({
     const newBalance = (loyalty!.balance as number) - args.points;
     const newLifetimeSpent = (loyalty!.lifetimeSpent as number) + args.points;
 
+    let spendTierDefs: { tier: GabinetLoyaltyTier; threshold: number }[] | undefined;
+    try {
+      const orgTiersSpend = await db
+        .query("gabinetLoyaltyTiers")
+        .eq("organizationId", orgIdStr)
+        .collect();
+      if (orgTiersSpend.length > 0) {
+        spendTierDefs = orgTiersSpend.map((t) => ({
+          tier: t.tier as GabinetLoyaltyTier,
+          threshold: t.threshold as number,
+        }));
+      }
+    } catch {
+      // fall back to hardcoded defaults
+    }
+
     await db.patch("gabinetLoyaltyPoints", String(loyalty!._id), {
       balance: newBalance,
       lifetimeSpent: newLifetimeSpent,
-      tier: calculateLoyaltyTier(loyalty!.lifetimeEarned as number),
+      tier: calculateLoyaltyTier(loyalty!.lifetimeEarned as number, spendTierDefs),
       updatedAt: now,
     });
 
@@ -276,11 +309,27 @@ export const adjustPoints = action({
       ? (loyalty!.lifetimeSpent as number) + Math.abs(args.points)
       : (loyalty!.lifetimeSpent as number);
 
+    let adjustTierDefs: { tier: GabinetLoyaltyTier; threshold: number }[] | undefined;
+    try {
+      const orgTiersAdjust = await db
+        .query("gabinetLoyaltyTiers")
+        .eq("organizationId", orgIdStr)
+        .collect();
+      if (orgTiersAdjust.length > 0) {
+        adjustTierDefs = orgTiersAdjust.map((t) => ({
+          tier: t.tier as GabinetLoyaltyTier,
+          threshold: t.threshold as number,
+        }));
+      }
+    } catch {
+      // fall back to hardcoded defaults
+    }
+
     await db.patch("gabinetLoyaltyPoints", String(loyalty!._id), {
       balance: newBalance,
       lifetimeEarned: newLifetimeEarned,
       lifetimeSpent: newLifetimeSpent,
-      tier: calculateLoyaltyTier(newLifetimeEarned),
+      tier: calculateLoyaltyTier(newLifetimeEarned, adjustTierDefs),
       updatedAt: now,
     });
 

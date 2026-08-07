@@ -112,6 +112,7 @@ import { Route as AppAuthDashboardLayoutGabinetSettingsRemindersRouteImport } fr
 import { Route as AppAuthDashboardLayoutGabinetSettingsLocationsRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.locations'
 import { Route as AppAuthDashboardLayoutGabinetSettingsLeavesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.leaves'
 import { Route as AppAuthDashboardLayoutGabinetSettingsLeaveTypesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.leave-types'
+import { Route as AppAuthDashboardLayoutGabinetSettingsLoyaltyRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.loyalty'
 import { Route as AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.leave-balances'
 import { Route as AppAuthDashboardLayoutGabinetSettingsEquipmentRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.settings.equipment'
 import { Route as AppAuthDashboardLayoutGabinetPatientsPatientIdRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.patients.$patientId'
@@ -730,6 +731,12 @@ const AppAuthDashboardLayoutGabinetSettingsLeaveTypesRoute =
     path: '/gabinet/settings/leave-types',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
+const AppAuthDashboardLayoutGabinetSettingsLoyaltyRoute =
+  AppAuthDashboardLayoutGabinetSettingsLoyaltyRouteImport.update({
+    id: '/gabinet/settings/loyalty',
+    path: '/gabinet/settings/loyalty',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
 const AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRoute =
   AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRouteImport.update({
     id: '/gabinet/settings/leave-balances',
@@ -856,6 +863,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/gabinet/settings/equipment': typeof AppAuthDashboardLayoutGabinetSettingsEquipmentRoute
   '/dashboard/gabinet/settings/leave-balances': typeof AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRoute
   '/dashboard/gabinet/settings/leave-types': typeof AppAuthDashboardLayoutGabinetSettingsLeaveTypesRoute
+  '/dashboard/gabinet/settings/loyalty': typeof AppAuthDashboardLayoutGabinetSettingsLoyaltyRoute
   '/dashboard/gabinet/settings/leaves': typeof AppAuthDashboardLayoutGabinetSettingsLeavesRoute
   '/dashboard/gabinet/settings/locations': typeof AppAuthDashboardLayoutGabinetSettingsLocationsRoute
   '/dashboard/gabinet/settings/reminders': typeof AppAuthDashboardLayoutGabinetSettingsRemindersRoute
@@ -956,6 +964,7 @@ export interface FileRoutesByTo {
   '/dashboard/gabinet/settings/equipment': typeof AppAuthDashboardLayoutGabinetSettingsEquipmentRoute
   '/dashboard/gabinet/settings/leave-balances': typeof AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRoute
   '/dashboard/gabinet/settings/leave-types': typeof AppAuthDashboardLayoutGabinetSettingsLeaveTypesRoute
+  '/dashboard/gabinet/settings/loyalty': typeof AppAuthDashboardLayoutGabinetSettingsLoyaltyRoute
   '/dashboard/gabinet/settings/leaves': typeof AppAuthDashboardLayoutGabinetSettingsLeavesRoute
   '/dashboard/gabinet/settings/locations': typeof AppAuthDashboardLayoutGabinetSettingsLocationsRoute
   '/dashboard/gabinet/settings/reminders': typeof AppAuthDashboardLayoutGabinetSettingsRemindersRoute
@@ -1068,6 +1077,7 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/gabinet/settings/equipment': typeof AppAuthDashboardLayoutGabinetSettingsEquipmentRoute
   '/_app/_auth/dashboard/_layout/gabinet/settings/leave-balances': typeof AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRoute
   '/_app/_auth/dashboard/_layout/gabinet/settings/leave-types': typeof AppAuthDashboardLayoutGabinetSettingsLeaveTypesRoute
+  '/_app/_auth/dashboard/_layout/gabinet/settings/loyalty': typeof AppAuthDashboardLayoutGabinetSettingsLoyaltyRoute
   '/_app/_auth/dashboard/_layout/gabinet/settings/leaves': typeof AppAuthDashboardLayoutGabinetSettingsLeavesRoute
   '/_app/_auth/dashboard/_layout/gabinet/settings/locations': typeof AppAuthDashboardLayoutGabinetSettingsLocationsRoute
   '/_app/_auth/dashboard/_layout/gabinet/settings/reminders': typeof AppAuthDashboardLayoutGabinetSettingsRemindersRoute
@@ -1179,6 +1189,7 @@ export interface FileRouteTypes {
     | '/dashboard/gabinet/settings/equipment'
     | '/dashboard/gabinet/settings/leave-balances'
     | '/dashboard/gabinet/settings/leave-types'
+    | '/dashboard/gabinet/settings/loyalty'
     | '/dashboard/gabinet/settings/leaves'
     | '/dashboard/gabinet/settings/locations'
     | '/dashboard/gabinet/settings/reminders'
@@ -1279,6 +1290,7 @@ export interface FileRouteTypes {
     | '/dashboard/gabinet/settings/equipment'
     | '/dashboard/gabinet/settings/leave-balances'
     | '/dashboard/gabinet/settings/leave-types'
+    | '/dashboard/gabinet/settings/loyalty'
     | '/dashboard/gabinet/settings/leaves'
     | '/dashboard/gabinet/settings/locations'
     | '/dashboard/gabinet/settings/reminders'
@@ -1390,6 +1402,7 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/gabinet/settings/equipment'
     | '/_app/_auth/dashboard/_layout/gabinet/settings/leave-balances'
     | '/_app/_auth/dashboard/_layout/gabinet/settings/leave-types'
+    | '/_app/_auth/dashboard/_layout/gabinet/settings/loyalty'
     | '/_app/_auth/dashboard/_layout/gabinet/settings/leaves'
     | '/_app/_auth/dashboard/_layout/gabinet/settings/locations'
     | '/_app/_auth/dashboard/_layout/gabinet/settings/reminders'
@@ -2146,6 +2159,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutGabinetSettingsLeaveTypesRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
+    '/_app/_auth/dashboard/_layout/gabinet/settings/loyalty': {
+      id: '/_app/_auth/dashboard/_layout/gabinet/settings/loyalty'
+      path: '/gabinet/settings/loyalty'
+      fullPath: '/dashboard/gabinet/settings/loyalty'
+      preLoaderRoute: typeof AppAuthDashboardLayoutGabinetSettingsLoyaltyRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
     '/_app/_auth/dashboard/_layout/gabinet/settings/leave-balances': {
       id: '/_app/_auth/dashboard/_layout/gabinet/settings/leave-balances'
       path: '/gabinet/settings/leave-balances'
@@ -2419,6 +2439,7 @@ interface AppAuthDashboardLayoutRouteChildren {
   AppAuthDashboardLayoutGabinetSettingsEquipmentRoute: typeof AppAuthDashboardLayoutGabinetSettingsEquipmentRoute
   AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRoute: typeof AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRoute
   AppAuthDashboardLayoutGabinetSettingsLeaveTypesRoute: typeof AppAuthDashboardLayoutGabinetSettingsLeaveTypesRoute
+  AppAuthDashboardLayoutGabinetSettingsLoyaltyRoute: typeof AppAuthDashboardLayoutGabinetSettingsLoyaltyRoute
   AppAuthDashboardLayoutGabinetSettingsLeavesRoute: typeof AppAuthDashboardLayoutGabinetSettingsLeavesRoute
   AppAuthDashboardLayoutGabinetSettingsLocationsRoute: typeof AppAuthDashboardLayoutGabinetSettingsLocationsRoute
   AppAuthDashboardLayoutGabinetSettingsRemindersRoute: typeof AppAuthDashboardLayoutGabinetSettingsRemindersRoute
@@ -2502,6 +2523,8 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
       AppAuthDashboardLayoutGabinetSettingsLeaveBalancesRoute,
     AppAuthDashboardLayoutGabinetSettingsLeaveTypesRoute:
       AppAuthDashboardLayoutGabinetSettingsLeaveTypesRoute,
+    AppAuthDashboardLayoutGabinetSettingsLoyaltyRoute:
+      AppAuthDashboardLayoutGabinetSettingsLoyaltyRoute,
     AppAuthDashboardLayoutGabinetSettingsLeavesRoute:
       AppAuthDashboardLayoutGabinetSettingsLeavesRoute,
     AppAuthDashboardLayoutGabinetSettingsLocationsRoute:

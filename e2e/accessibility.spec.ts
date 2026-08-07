@@ -560,3 +560,48 @@ test.describe("Accessibility — WCAG 2.1 AA", () => {
     expect(await verifyBtn.isDisabled()).toBe(false);
   });
 });
+
+// ─── WCAG 1.4.10 Reflow ──────────────────────────────────────────────────────
+// Content must be presentable without loss of information and without requiring
+// horizontal scrolling at a viewport width of 320 CSS pixels.
+
+const REFLOW_PAGES = [
+  { path: "/dashboard", label: "main dashboard" },
+  { path: "/dashboard/contacts", label: "contacts" },
+  { path: "/dashboard/leads", label: "leads" },
+  { path: "/dashboard/companies", label: "companies" },
+  { path: "/dashboard/gabinet/calendar", label: "gabinet calendar" },
+  { path: "/dashboard/settings/team", label: "settings/team" },
+] as const;
+
+test.describe("Reflow — WCAG 1.4.10", () => {
+  test.setTimeout(120_000);
+
+  test.beforeEach(async ({ page }) => {
+    await loginAndGoToDashboard(page);
+    // Resize to the WCAG 1.4.10 reference viewport (320 × 768).
+    // Height is intentionally taller than 256 px so vertical scrolling is still
+    // permitted — only horizontal scrolling is the WCAG violation here.
+    await page.setViewportSize({ width: 320, height: 768 });
+  });
+
+  for (const { path, label } of REFLOW_PAGES) {
+    test(`${label} has no horizontal overflow at 320 px viewport (WCAG 1.4.10)`, async ({
+      page,
+    }) => {
+      await navigateTo(page, path);
+      await assertNoErrorBoundary(page);
+
+      const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+      }));
+
+      expect(
+        scrollWidth,
+        `Horizontal scroll required on "${label}" at 320 px — WCAG 1.4.10 Reflow violation` +
+          ` (scrollWidth=${scrollWidth}, clientWidth=${clientWidth})`
+      ).toBeLessThanOrEqual(clientWidth);
+    });
+  }
+});

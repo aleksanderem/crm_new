@@ -6,6 +6,7 @@ import { api } from "@cvx/_generated/api";
 import { useSupabasePendingInvitations } from "@/hooks/use-supabase-invitations";
 import { useSupabaseSeatUsage } from "@/hooks/use-supabase-organizations";
 import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
+import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { Button } from "@/components/ui/button";
@@ -117,12 +118,9 @@ export function UserInvitationForm({
     enabled: !!organizationId && module === "gabinet",
   }) as { data: Array<{ _id: string; name: string; duration?: number }> | undefined };
 
-  const listLocationsAction = useAction(api.gabinet.locations.listLocations);
-  const { data: locations } = useQuery({
-    queryKey: ["gabinet.locations.listLocations", organizationId],
-    queryFn: () => listLocationsAction({ organizationId }),
-    enabled: !!organizationId && module === "gabinet",
-  }) as { data: Array<{ _id: string; name: string; isActive: boolean }> | undefined };
+  const { data: locations } = useSupabaseGabinetLocationsList(String(organizationId), {
+    enabled: module === "gabinet",
+  });
 
   const { tags: tagDefinitions } = useTagDefinitions(organizationId) as {
     tags: Array<{ _id: Id<"tagDefinitions">; name: string; color: string }>;

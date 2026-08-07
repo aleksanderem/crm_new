@@ -120,6 +120,15 @@ export function AppSidebar() {
   });
   const pendingLeaveCount = pendingLeaves?.length ?? 0;
 
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (same pattern as dashboard layout)
+  const listOvertime = useAction(api.gabinet.overtime.listOvertime);
+  const { data: pendingOvertime } = useQuery({
+    queryKey: ["gabinet.overtime.listOvertime", organizationId, "pending"],
+    queryFn: () => listOvertime({ organizationId, status: "pending" as const }),
+    enabled: hasGabinet && !!organizationId,
+  });
+  const pendingOvertimeCount = pendingOvertime?.length ?? 0;
+
   const matchedModule = routeAwareModules.find((module) =>
     matchRoute({ to: module.workspaceRoot, fuzzy: true }),
   );
@@ -268,6 +277,11 @@ export function AppSidebar() {
                       {item.to === "/dashboard/gabinet/settings/leaves" && pendingLeaveCount > 0 && (
                         <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[11px] leading-none text-white">
                           {pendingLeaveCount > 99 ? "99+" : pendingLeaveCount}
+                        </span>
+                      )}
+                      {item.to === "/dashboard/gabinet/settings/overtime" && pendingOvertimeCount > 0 && (
+                        <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[11px] leading-none text-white">
+                          {pendingOvertimeCount > 99 ? "99+" : pendingOvertimeCount}
                         </span>
                       )}
                     </Link>

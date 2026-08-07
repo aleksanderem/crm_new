@@ -48,6 +48,9 @@ export const sendPortalOtp = action({
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
+      organizationId: args.organizationId,
+    });
     const db = createSupabaseDb();
 
     // Look up patient by org + email in Supabase
@@ -195,7 +198,10 @@ export const verifyPortalOtp = action({
     organizationId: v.id("organizations"),
     otp: v.string(),
   },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
+      organizationId: args.organizationId,
+    });
     const db = createSupabaseDb();
 
     const patient = await db.query("gabinetPatients")

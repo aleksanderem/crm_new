@@ -46,6 +46,9 @@ export const getPlannedUsage = action({
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
+      organizationId: args.organizationId,
+    });
     const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       { organizationId: args.organizationId, feature: "gabinet_inventory", action: "view" },

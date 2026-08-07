@@ -574,7 +574,7 @@ export const recordSignature = action({
     signedByIp: v.optional(v.string()),
     resolvedHtml: v.optional(v.string()),
   },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
     const db = createSupabaseDb();
 
     const doc = await db.query("formDocuments")
@@ -614,7 +614,7 @@ export const recordSignature = action({
     }
 
     const now = Date.now();
-    const patch: Record<string, unknown> = {
+    const patchData: Record<string, unknown> = {
       status: "signed",
       signatureData: args.signatureData,
       signedAt: now,
@@ -629,21 +629,29 @@ export const recordSignature = action({
       try {
         const existing = JSON.parse(doc.responseData as string);
         if (!existing.html) {
-          patch.responseData = JSON.stringify({
+          patchData.responseData = JSON.stringify({
             ...existing,
             html: args.resolvedHtml,
             formFieldValues: existing.formFieldValues ?? {},
           });
         }
       } catch {
-        patch.responseData = JSON.stringify({
+        patchData.responseData = JSON.stringify({
           html: args.resolvedHtml,
           formFieldValues: {},
         });
       }
     }
 
-    await db.patch("formDocuments", doc._id as string, patch);
+    // Atomic compare-and-swap: only update if status is still pending_signature.
+    // Prevents a concurrent second request from signing the same document.
+    const updated = await db.patchConditional(
+      "formDocuments",
+      doc._id as string,
+      patchData,
+      { status: "pending_signature" },
+    );
+    if (!updated) throw new Error("Document is not awaiting signature");
 
     // Write client-filled values back into the patient record per the
     // template's field→patient mapping. Best-effort: a mapping failure must
@@ -651,10 +659,34 @@ export const recordSignature = action({
     try {
       await applyPatientBindings(db, String(doc.organizationId), {
         ...(doc as Record<string, unknown>),
-        ...patch,
+        ...patchData,
       });
     } catch (err) {
       console.error("applyPatientBindings failed after signature", err);
+    }
+
+    // Audit log: record the signing event. Best-effort — a log failure must
+    // never roll back a successfully completed signature.
+    const createdBy = doc.createdBy ? String(doc.createdBy) : null;
+    if (createdBy) {
+      try {
+        await ctx.scheduler.runAfter(0, internal.supabase.auditLog.writeAuditLogToSupabase, {
+          auditLogId: crypto.randomUUID(),
+          organizationId: String(doc.organizationId),
+          userId: createdBy,
+          action: "document.signed",
+          entityType: "formDocument",
+          entityId: String(doc._id),
+          details: JSON.stringify({
+            signedByName: resolvedSignedByName || undefined,
+            signedByEmail: args.signedByEmail || undefined,
+            signedByIp: args.signedByIp || undefined,
+          }),
+          createdAt: now,
+        });
+      } catch (err) {
+        console.error("[recordSignature] audit log write failed", err);
+      }
     }
 
     return doc._id as string;
@@ -869,7 +901,7 @@ export const listByPatientToken = action({
         responseData: doc.responseData as string,
         signatureData: (doc.signatureData as string | null) ?? undefined,
         signedAt: (doc.signedAt as number | null) ?? undefined,
-        signingToken: (doc.signingToken as string | null) ?? undefined,
+        signingToken: doc.status === "signed" ? undefined : ((doc.signingToken as string | null) ?? undefined),
         createdAt: doc.createdAt as number,
         updatedAt: doc.updatedAt as number,
         templateName: (template?.name as string | undefined) ?? "",

@@ -320,11 +320,15 @@ export const signExternal = action({
 
     const now = Date.now();
 
-    // Mark request as signed
-    await db.patch("signatureRequests", request._id as string, {
-      status: "signed",
-      signedAt: now,
-    });
+    // Atomic compare-and-swap: only update if status is still pending.
+    // Prevents a concurrent second request from signing the same slot.
+    const updated = await db.patchConditional(
+      "signatureRequests",
+      request._id as string,
+      { status: "signed", signedAt: now },
+      { status: "pending" },
+    );
+    if (!updated) throw new Error("This signing request has already been used");
 
     // Update document instance signature
     const instance = await db.get("documentInstances", request.instanceId as string);
@@ -374,6 +378,33 @@ export const signExternal = action({
       });
     } catch (e) {
       console.error("[signatureRequests.signExternal] Author notification FAILED:", e);
+    }
+
+    // Audit log: record the signing event. Best-effort — a log failure must
+    // never roll back a successfully completed signature.
+    const createdBy = instance.createdBy ? String(instance.createdBy) : null;
+    if (createdBy) {
+      try {
+        await ctx.scheduler.runAfter(0, internal.supabase.auditLog.writeAuditLogToSupabase, {
+          auditLogId: crypto.randomUUID(),
+          organizationId: String(request.organizationId),
+          userId: createdBy,
+          action: "document.signed",
+          entityType: "documentInstance",
+          entityId: String(request.instanceId),
+          details: JSON.stringify({
+            requestId: String(request._id),
+            slotId: String(request.slotId),
+            signerName: (request.signerName as string) || undefined,
+            signerEmail: (request.signerEmail as string) || undefined,
+            verificationMethod: String(request.verificationMethod),
+            allSigned,
+          }),
+          createdAt: now,
+        });
+      } catch (err) {
+        console.error("[signatureRequests.signExternal] audit log write failed", err);
+      }
     }
 
     return { success: true, allSigned };

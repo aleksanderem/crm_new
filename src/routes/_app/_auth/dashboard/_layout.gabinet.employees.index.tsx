@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/sheet";
 import { Avatar } from "@untitled/base/avatar/avatar";
 import { employeeRoleOptions } from "@/lib/options";
-import { Calendar, Plus, Trash2 } from "@/lib/ez-icons";
+import { Calendar, Plus, Trash2, Upload } from "@/lib/ez-icons";
+import { GabinetImportDialog } from "@/components/gabinet/gabinet-import-dialog";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
@@ -105,6 +106,8 @@ function EmployeesIndex() {
   useSidebarDispatch("manageTags", () => setTagsSlideoutOpen(true));
   useSidebarDispatch("manageCategories", () => setCategoriesSlideoutOpen(true));
   useSidebarDispatch("openFilter", () => setFilterSlideoutOpen(true));
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  useSidebarDispatch("importCsv", () => setImportDialogOpen(true));
 
   const [showCreate, setShowCreate] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -469,6 +472,11 @@ function EmployeesIndex() {
                   icon: <Plus className="mr-1.5 h-4 w-4" variant="stroke" />,
                   onClick: () => setShowCreate(true),
                 },
+                {
+                  label: t("csv.import"),
+                  icon: <Upload className="mr-1.5 h-4 w-4" variant="stroke" />,
+                  onClick: () => setImportDialogOpen(true),
+                },
               ]
             : []),
           {
@@ -554,6 +562,18 @@ function EmployeesIndex() {
         open={eventDialogOpen}
         onOpenChange={setEventDialogOpen}
         defaultUserIds={eventDefaultUserIds}
+      />
+
+      <GabinetImportDialog
+        organizationId={organizationId}
+        entityType="gabinetEmployees"
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onSuccess={() => {
+          void queryClient.invalidateQueries({
+            queryKey: supabaseKeys.gabinetEmployees.list(organizationId),
+          });
+        }}
       />
 
       {editingScheduleEmployee && (

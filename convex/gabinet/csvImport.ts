@@ -3,6 +3,17 @@ import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 
+const ALLOWED_EMPLOYEE_ROLES = [
+  "doctor",
+  "cosmetologist",
+  "nurse",
+  "therapist",
+  "receptionist",
+  "manager",
+  "admin",
+  "other",
+] as const;
+
 /**
  * Batch-import patients from CSV. Unlike the single-record `patients.create`,
  * this skips the duplicate guard so that real migration data is not blocked by
@@ -225,6 +236,170 @@ export const batchImportTreatments = action({
           updatedAt: now,
         });
 
+        created++;
+      } catch (e: any) {
+        errors.push({ row: i, error: e?.message ?? "Unknown error" });
+      }
+    }
+
+    return { created, errors };
+  },
+});
+
+/**
+ * Batch-import employees from CSV.
+ *
+ * Email matching: if a row has an `email` field, we look up the org's team
+ * members and link the employee to the matching user account (`userId`). If
+ * the email doesn't match any org member, a stub record is created without a
+ * linked user account (`userId = null`). This is intentional for data
+ * migration — the stub can be linked to an account later via the employee
+ * detail page.
+ *
+ * Duplicate guard: if a user-matched employee already has a `gabinetEmployees`
+ * row in this org, that row is skipped with an error (not created again).
+ */
+export const batchImportEmployees = action({
+  args: {
+    organizationId: v.id("organizations"),
+    records: v.array(
+      v.object({
+        firstName: v.string(),
+        lastName: v.optional(v.string()),
+        email: v.optional(v.string()),
+        role: v.optional(v.string()),
+        specialization: v.optional(v.string()),
+        licenseNumber: v.optional(v.string()),
+        phone: v.optional(v.string()),
+        hireDate: v.optional(v.string()),
+        color: v.optional(v.string()),
+        notes: v.optional(v.string()),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (!["owner", "admin"].includes((authResult as any).role)) {
+      throw new Error("Admin access required");
+    }
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
+      organizationId: args.organizationId,
+    });
+
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+    const userIdStr = String((authResult as any).userId);
+    const now = Date.now();
+
+    // Build email → userId map from org team members.
+    const memberships = (await db
+      .query("teamMemberships")
+      .eq("organizationId", orgIdStr)
+      .collect()) as Array<{ userId: unknown }>;
+
+    const memberUserIds = memberships.map((m) => String(m.userId)).filter(Boolean);
+    const memberUsers =
+      memberUserIds.length > 0
+        ? ((await db.getMany("users", memberUserIds)) as Array<{
+            _id: unknown;
+            email: unknown;
+          } | null>)
+        : [];
+
+    const emailToUserId = new Map<string, string>();
+    for (const u of memberUsers) {
+      if (u && u.email && typeof u.email === "string" && u._id) {
+        emailToUserId.set(u.email.toLowerCase().trim(), String(u._id));
+      }
+    }
+
+    // Pre-fetch existing employee rows to detect duplicates in O(1).
+    const existingEmployees = (await db
+      .query("gabinetEmployees")
+      .eq("organizationId", orgIdStr)
+      .collect()) as Array<{ userId: unknown }>;
+
+    const existingUserIds = new Set(
+      existingEmployees
+        .map((e) => (e.userId ? String(e.userId) : null))
+        .filter((id): id is string => id !== null),
+    );
+
+    let created = 0;
+    const errors: { row: number; error: string }[] = [];
+
+    for (let i = 0; i < args.records.length; i++) {
+      const rec = args.records[i];
+      try {
+        if (!rec.firstName?.trim()) {
+          errors.push({ row: i, error: "firstName is required" });
+          continue;
+        }
+
+        // Resolve userId from email if provided.
+        let matchedUserId: string | null = null;
+        if (rec.email?.trim()) {
+          matchedUserId = emailToUserId.get(rec.email.trim().toLowerCase()) ?? null;
+        }
+
+        // Skip if this org user already has an employee profile.
+        if (matchedUserId && existingUserIds.has(matchedUserId)) {
+          errors.push({
+            row: i,
+            error: `Employee profile already exists for ${rec.email}`,
+          });
+          continue;
+        }
+
+        const safeRole =
+          rec.role &&
+          ALLOWED_EMPLOYEE_ROLES.includes(
+            rec.role as (typeof ALLOWED_EMPLOYEE_ROLES)[number],
+          )
+            ? rec.role
+            : "other";
+
+        const newEmployeeId = await db.insert("gabinetEmployees", {
+          organizationId: orgIdStr,
+          userId: matchedUserId,
+          firstName: rec.firstName.trim(),
+          lastName: rec.lastName?.trim() ?? null,
+          role: safeRole,
+          specialization: rec.specialization?.trim() ?? null,
+          licenseNumber: rec.licenseNumber?.trim() ?? null,
+          phone: rec.phone?.replace(/\D/g, "") || null,
+          hireDate: rec.hireDate?.trim() ?? null,
+          color: rec.color?.trim() ?? null,
+          notes: rec.notes?.trim() ?? null,
+          isActive: true,
+          qualifiedTreatmentIds: [],
+          showInCalendar: true,
+          tagIds: null,
+          categoryId: null,
+          createdBy: userIdStr,
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        // Mirror gabinet role into Convex so permission checks work.
+        if (matchedUserId) {
+          existingUserIds.add(matchedUserId);
+          try {
+            await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
+              organizationId: args.organizationId,
+              userId: matchedUserId,
+              gabinetRole: safeRole,
+              isActive: true,
+            });
+          } catch {
+            // Non-fatal: membership mirror failure doesn't block the import
+          }
+        }
+
+        void newEmployeeId;
         created++;
       } catch (e: any) {
         errors.push({ row: i, error: e?.message ?? "Unknown error" });

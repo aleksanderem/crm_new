@@ -553,6 +553,9 @@ export const generatePdfReceipt = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     ) as {userId: Id<"users">};
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
+      organizationId: args.organizationId,
+    });
     const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {

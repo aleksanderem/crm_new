@@ -6,6 +6,7 @@ import { paginationOptsValidator } from "convex/server";
 import { logActivity } from "../_helpers/activities";
 import { logError } from "../_helpers/logged";
 import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
+import { logAudit } from "../auditLog";
 import { calculateLoyaltyTier } from "./_helpers/loyaltyTier";
 import { Id } from "../_generated/dataModel";
 import type {
@@ -638,6 +639,21 @@ export const _purchaseTreatmentSideEffects = internalMutation({
         },
       ],
     });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.createdBy as Id<"users">,
+      action: "package_treatment_sold",
+      entityType: "gabinetPatient",
+      entityId: args.patientId,
+      details: JSON.stringify({
+        usageId: args.usageId,
+        treatmentId: args.treatmentId,
+        treatmentName: args.treatmentName,
+        paidAmount: args.paidAmount,
+        paymentMethod: args.paymentMethod ?? null,
+      }),
+    });
   },
 });
 
@@ -870,6 +886,24 @@ export const _purchaseSideEffects = internalMutation({
       eventKey: `gabinet:package:${args.usageId}:package_assigned`,
       targets,
     });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.createdBy as Id<"users">,
+      action: "package_purchased",
+      entityType: args.patientId ? "gabinetPatient" : "gabinetPackage",
+      entityId: args.patientId ?? args.packageId,
+      details: JSON.stringify({
+        usageId: args.usageId,
+        packageId: args.packageId,
+        packageName: args.packageName,
+        patientId: args.patientId ?? null,
+        paidAmount: args.paidAmount,
+        paymentMethod: args.paymentMethod ?? null,
+        loyaltyPointsAwarded: args.loyaltyPointsAwarded,
+        isGift: !args.patientId,
+      }),
+    });
   },
 });
 
@@ -881,9 +915,10 @@ export const usePackageTreatment = action({
     variantId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
-      organizationId: args.organizationId,
-    });
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
       organizationId: args.organizationId,
     });
@@ -930,11 +965,61 @@ export const usePackageTreatment = action({
     );
 
     const allUsed = updatedTreatments.every((t) => t.usedCount >= t.totalCount);
+    const now = Date.now();
 
     await db.patch("gabinetPackageUsage", args.usageId, {
       treatmentsUsed: updatedTreatments,
       status: allUsed ? "completed" : "active",
-      updatedAt: Date.now(),
+      updatedAt: now,
+    });
+
+    try {
+      await ctx.runMutation(
+        internal.gabinet.packages._usePackageTreatmentSideEffects,
+        {
+          organizationId: args.organizationId,
+          usageId: args.usageId,
+          treatmentId: args.treatmentId,
+          variantId: args.variantId,
+          patientId: String(usage.patientId ?? ""),
+          packageId: String(usage.packageId),
+          performedBy: String(authResult.userId),
+        },
+      );
+    } catch (e) {
+      console.error(
+        "[packages.usePackageTreatment] Side effects FAILED for usage",
+        args.usageId,
+        ":",
+        e,
+      );
+    }
+  },
+});
+
+export const _usePackageTreatmentSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    usageId: v.string(),
+    treatmentId: v.string(),
+    variantId: v.optional(v.string()),
+    patientId: v.string(),
+    packageId: v.string(),
+    performedBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.performedBy as Id<"users">,
+      action: "package_treatment_used",
+      entityType: "gabinetPatient",
+      entityId: args.patientId,
+      details: JSON.stringify({
+        usageId: args.usageId,
+        packageId: args.packageId,
+        treatmentId: args.treatmentId,
+        variantId: args.variantId ?? null,
+      }),
     });
   },
 });

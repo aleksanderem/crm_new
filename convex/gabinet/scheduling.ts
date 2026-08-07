@@ -652,6 +652,7 @@ export const approveLeave = action({
       await ctx.runMutation(internal.gabinet.scheduling._leaveSideEffects, {
         organizationId: args.organizationId,
         leaveId: args.leaveId,
+        userId: leave.userId as string,
         action: "status_changed",
         description: `Leave request approved`,
         performedBy: String(authResult.userId),
@@ -728,6 +729,7 @@ export const rejectLeave = action({
       await ctx.runMutation(internal.gabinet.scheduling._leaveSideEffects, {
         organizationId: args.organizationId,
         leaveId: args.leaveId,
+        userId: leave.userId as string,
         action: "status_changed",
         description: `Leave request rejected`,
         performedBy: String(authResult.userId),
@@ -797,6 +799,7 @@ export const deleteLeave = action({
       await ctx.runMutation(internal.gabinet.scheduling._leaveSideEffects, {
         organizationId: args.organizationId,
         leaveId: args.leaveId,
+        userId: leave.userId as string,
         action: "deleted",
         description: `Leave request deleted`,
         performedBy: String(authResult.userId),
@@ -1088,10 +1091,10 @@ export const _createLeaveSideEffects = internalMutation({
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "gabinetLeave",
-      entityId: args.leaveId,
+      entityId: args.userId,
       action: "created",
       description: `Leave request created (${args.type}: ${args.startDate} – ${args.endDate})`,
-      metadata: { userId: args.userId, type: args.type, startDate: args.startDate, endDate: args.endDate },
+      metadata: { leaveId: args.leaveId, type: args.type, startDate: args.startDate, endDate: args.endDate },
       performedBy: args.performedBy as Id<"users">,
       actorLabel: args.actorLabel,
     });
@@ -1102,6 +1105,7 @@ export const _leaveSideEffects = internalMutation({
   args: {
     organizationId: v.id("organizations"),
     leaveId: v.string(),
+    userId: v.string(),
     action: v.union(v.literal("status_changed"), v.literal("deleted")),
     description: v.string(),
     performedBy: v.string(),
@@ -1111,9 +1115,10 @@ export const _leaveSideEffects = internalMutation({
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "gabinetLeave",
-      entityId: args.leaveId,
+      entityId: args.userId,
       action: args.action,
       description: args.description,
+      metadata: { leaveId: args.leaveId },
       performedBy: args.performedBy as Id<"users">,
       actorLabel: args.actorLabel,
     });

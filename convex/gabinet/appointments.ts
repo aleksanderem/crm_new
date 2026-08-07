@@ -3082,7 +3082,7 @@ async function returnPackageEntry(
  * treatment price and deduct from linked package if applicable.
  */
 async function handleAppointmentCompletion(
-  _ctx: any,
+  ctx: MutationCtx,
   args: {
     organizationId: Id<"organizations">;
     appointmentId: Id<"gabinetAppointments">;
@@ -3165,6 +3165,21 @@ async function handleAppointmentCompletion(
         balanceAfter: newBalance,
         createdBy: userIdStr,
         createdAt: now,
+      });
+
+      await logAudit(ctx, {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        action: "loyalty_points_earned",
+        entityType: "gabinetPatient",
+        entityId: patientIdStr,
+        details: JSON.stringify({
+          points,
+          balanceAfter: newBalance,
+          reason: `Appointment completed: ${treatment?.name ?? "Treatment"}`,
+          referenceType: "appointment",
+          referenceId: String(args.appointmentId),
+        }),
       });
     }
   }

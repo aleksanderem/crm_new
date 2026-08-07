@@ -904,6 +904,22 @@ export const _purchaseSideEffects = internalMutation({
         isGift: !args.patientId,
       }),
     });
+
+    if (args.loyaltyPointsAwarded > 0 && args.patientId) {
+      await logAudit(ctx, {
+        organizationId: args.organizationId,
+        userId: args.createdBy as Id<"users">,
+        action: "loyalty_points_earned",
+        entityType: "gabinetPatient",
+        entityId: args.patientId,
+        details: JSON.stringify({
+          points: args.loyaltyPointsAwarded,
+          reason: `Package purchase: ${args.packageName}`,
+          referenceType: "packageUsage",
+          referenceId: args.usageId,
+        }),
+      });
+    }
   },
 });
 
@@ -1407,6 +1423,52 @@ export const assignGiftPackage = action({
         createdAt: now,
       });
     }
+
+    if (loyaltyPointsAwarded > 0) {
+      try {
+        await ctx.runMutation(internal.gabinet.packages._assignGiftSideEffects, {
+          usageId: args.usageId,
+          organizationId: args.organizationId,
+          patientId: args.patientId,
+          packageName: (pkg?.name as string) ?? "",
+          loyaltyPointsAwarded,
+          performedBy: String(authResult.userId),
+        });
+      } catch (e) {
+        console.error(
+          "[packages.assignGiftPackage] Side effects FAILED for usage",
+          args.usageId,
+          ":",
+          e,
+        );
+      }
+    }
+  },
+});
+
+export const _assignGiftSideEffects = internalMutation({
+  args: {
+    usageId: v.string(),
+    organizationId: v.id("organizations"),
+    patientId: v.string(),
+    packageName: v.string(),
+    loyaltyPointsAwarded: v.number(),
+    performedBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.performedBy as Id<"users">,
+      action: "loyalty_points_earned",
+      entityType: "gabinetPatient",
+      entityId: args.patientId,
+      details: JSON.stringify({
+        points: args.loyaltyPointsAwarded,
+        reason: `Gift package assigned: ${args.packageName}`,
+        referenceType: "packageUsage",
+        referenceId: args.usageId,
+      }),
+    });
   },
 });
 

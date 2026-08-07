@@ -151,6 +151,7 @@ export const create = action({
         targetType: args.targetType,
         targetId: args.targetId,
         createdBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[relationships.create] Side effects FAILED for relationship", relId, ":", e);
@@ -168,6 +169,7 @@ export const _createSideEffects = internalMutation({
     targetType: v.string(),
     targetId: v.string(),
     createdBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -178,6 +180,7 @@ export const _createSideEffects = internalMutation({
       description: `Added relationship to ${args.targetType} entity`,
       metadata: { targetType: args.targetType, targetId: args.targetId },
       performedBy: args.createdBy as Id<"users">,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -211,6 +214,7 @@ export const remove = action({
         targetType: String(rel.targetType),
         targetId: String(rel.targetId),
         deletedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[relationships.remove] Side effects FAILED for relationship", args.relationshipId, ":", e);
@@ -228,6 +232,7 @@ export const _removeSideEffects = internalMutation({
     targetType: v.string(),
     targetId: v.string(),
     deletedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -238,6 +243,7 @@ export const _removeSideEffects = internalMutation({
       description: `Removed relationship to ${args.targetType} entity`,
       metadata: { targetType: args.targetType, targetId: args.targetId },
       performedBy: args.deletedBy as Id<"users">,
+      actorLabel: args.actorLabel,
     });
   },
 });

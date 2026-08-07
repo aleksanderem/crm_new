@@ -144,6 +144,7 @@ export const create = action({
         assignedTo: args.assignedTo ?? undefined,
         createdBy: String(authResult.userId),
         createdAt: now,
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[leads.create] Side effects FAILED for lead", leadId, ":", e);
@@ -161,6 +162,7 @@ export const _createSideEffects = internalMutation({
     assignedTo: v.optional(v.string()),
     createdBy: v.string(),
     createdAt: v.number(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const createdByUserId = args.createdBy as Id<"users">;
@@ -172,6 +174,7 @@ export const _createSideEffects = internalMutation({
       action: "created",
       description: `Created lead "${args.title}"`,
       performedBy: createdByUserId,
+      actorLabel: args.actorLabel,
     });
 
     // Notify assigned user if different from creator
@@ -310,6 +313,7 @@ export const update = action({
         leadOwnerId: String(lead.assignedTo ?? lead.createdBy),
         updatedBy: String(authResult.userId),
         updatedAt: now,
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[leads.update] Side effects FAILED for lead", leadId, ":", e);
@@ -331,6 +335,7 @@ export const _updateSideEffects = internalMutation({
     leadOwnerId: v.string(),
     updatedBy: v.string(),
     updatedAt: v.number(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const updatedByUserId = args.updatedBy as Id<"users">;
@@ -345,6 +350,7 @@ export const _updateSideEffects = internalMutation({
         description: `Changed lead status from "${args.oldStatus}" to "${args.newStatus}"`,
         metadata: { oldStatus: args.oldStatus, newStatus: args.newStatus },
         performedBy: updatedByUserId,
+        actorLabel: args.actorLabel,
       });
 
       // Audit log for status changes to won/lost
@@ -414,6 +420,7 @@ export const _updateSideEffects = internalMutation({
         action: "updated",
         description: `Updated lead "${args.title}"`,
         performedBy: updatedByUserId,
+        actorLabel: args.actorLabel,
       });
     }
 
@@ -505,6 +512,7 @@ export const remove = action({
         organizationId: args.organizationId,
         title: (lead.title as string) ?? "",
         deletedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[leads.remove] Side effects FAILED for lead", args.leadId, ":", e);
@@ -520,6 +528,7 @@ export const _removeSideEffects = internalMutation({
     organizationId: v.id("organizations"),
     title: v.string(),
     deletedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const deletedByUserId = args.deletedBy as Id<"users">;
@@ -531,6 +540,7 @@ export const _removeSideEffects = internalMutation({
       action: "deleted",
       description: `Deleted lead "${args.title}"`,
       performedBy: deletedByUserId,
+      actorLabel: args.actorLabel,
     });
 
     await logAudit(ctx, {
@@ -720,6 +730,7 @@ export const moveToStage = action({
         leadAssignedTo: lead.assignedTo ? String(lead.assignedTo) : null,
         createdActivities,
         now,
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch {
       // side effects are best-effort
@@ -747,6 +758,7 @@ export const _moveToStageSideEffects = internalMutation({
       title: v.string(),
     }))),
     now: v.number(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -760,6 +772,7 @@ export const _moveToStageSideEffects = internalMutation({
         toStageId: String(args.pipelineStageId),
       },
       performedBy: args.userId,
+      actorLabel: args.actorLabel,
     });
 
     // scheduledActivities for stage actions are inserted by the parent action in Supabase.

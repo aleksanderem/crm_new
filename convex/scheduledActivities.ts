@@ -26,6 +26,7 @@ export const _createSideEffects = internalMutation({
     userId: v.string(),
     ownerId: v.string(),
     description: v.optional(v.string()),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -35,6 +36,7 @@ export const _createSideEffects = internalMutation({
       action: "created",
       description: `Created ${args.activityType} "${args.title}"`,
       performedBy: args.userId as any,
+      actorLabel: args.actorLabel,
     });
 
     // Notify owner if different from creator
@@ -67,6 +69,7 @@ export const _updateSideEffects = internalMutation({
     oldOwnerId: v.optional(v.string()),
     googleEventId: v.optional(v.string()),
     description: v.optional(v.string()),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -76,6 +79,7 @@ export const _updateSideEffects = internalMutation({
       action: "updated",
       description: args.description ?? `Updated ${args.activityType} "${args.title}"`,
       performedBy: args.userId as any,
+      actorLabel: args.actorLabel,
     });
 
     // Notify new owner if changed and not the current user
@@ -107,6 +111,7 @@ export const _deleteSideEffects = internalMutation({
     title: v.string(),
     userId: v.string(),
     googleEventId: v.optional(v.string()),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Delete Google Calendar event before removing the activity
@@ -124,6 +129,7 @@ export const _deleteSideEffects = internalMutation({
       action: "deleted",
       description: `Deleted ${args.activityType} "${args.title}"`,
       performedBy: args.userId as any,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -198,6 +204,7 @@ export const create = action({
         title: args.title,
         userId: String(authResult.userId),
         ownerId: args.ownerId,
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[scheduledActivities.create] side effects error:", e);
@@ -270,6 +277,7 @@ export const update = action({
         newOwnerId: updates.ownerId,
         oldOwnerId: activity.ownerId as string | undefined,
         googleEventId: activity.googleEventId as string | undefined,
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[scheduledActivities.update] side effects error:", e);
@@ -314,6 +322,7 @@ export const remove = action({
         title: activity.title as string,
         userId: String(authResult.userId),
         googleEventId: activity.googleEventId as string | undefined,
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[scheduledActivities.remove] side effects error:", e);
@@ -364,6 +373,7 @@ export const markComplete = action({
         userId: String(authResult.userId),
         googleEventId: activity.googleEventId as string | undefined,
         description: `Completed ${activity.activityType} "${activity.title}"`,
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[scheduledActivities.markComplete] side effects error:", e);
@@ -412,6 +422,7 @@ export const markIncomplete = action({
         title: activity.title as string,
         userId: String(authResult.userId),
         description: `Reopened ${activity.activityType} "${activity.title}"`,
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[scheduledActivities.markIncomplete] side effects error:", e);

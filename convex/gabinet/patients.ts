@@ -417,6 +417,7 @@ export const create = action({
         referralSource: args.referralSource ?? undefined,
         createdBy: String(authResult.userId),
         createdAt: now,
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[patients.create] Side effects FAILED for patient", patientId, ":", e);
@@ -461,6 +462,7 @@ export const _createSideEffects = internalMutation({
     referralSource: v.optional(v.string()),
     createdBy: v.string(),
     createdAt: v.number(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const createdByUserId = args.createdBy as Id<"users">;
@@ -472,6 +474,7 @@ export const _createSideEffects = internalMutation({
       action: "created",
       description: `Created patient ${args.firstName} ${args.lastName}`,
       performedBy: createdByUserId,
+      actorLabel: args.actorLabel,
     });
 
     await ctx.runMutation(internal.automation.emitEvent, {
@@ -580,6 +583,7 @@ export const update = action({
         firstName: (patient.firstName as string) ?? "",
         lastName: (patient.lastName as string) ?? "",
         updatedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[patients.update] Side effects FAILED for patient", patientId, ":", e);
@@ -613,6 +617,7 @@ export const _updateSideEffects = internalMutation({
     firstName: v.string(),
     lastName: v.string(),
     updatedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const updatedByUserId = args.updatedBy as Id<"users">;
@@ -624,6 +629,7 @@ export const _updateSideEffects = internalMutation({
       action: "updated",
       description: `Updated patient ${args.firstName} ${args.lastName}`,
       performedBy: updatedByUserId,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -681,6 +687,7 @@ export const remove = action({
         firstName: (patient.firstName as string) ?? "",
         lastName: (patient.lastName as string) ?? "",
         deletedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[patients.remove] Side effects FAILED for patient", args.patientId, ":", e);
@@ -697,6 +704,7 @@ export const _removeSideEffects = internalMutation({
     firstName: v.string(),
     lastName: v.string(),
     deletedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const deletedByUserId = args.deletedBy as Id<"users">;
@@ -708,6 +716,7 @@ export const _removeSideEffects = internalMutation({
       action: "deleted",
       description: `Deleted patient ${args.firstName} ${args.lastName}`,
       performedBy: deletedByUserId,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -973,6 +982,7 @@ export const merge = action({
         targetName: `${target.firstName ?? ""} ${target.lastName ?? ""}`.trim(),
         sourceName: `${source.firstName ?? ""} ${source.lastName ?? ""}`.trim(),
         performedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error(
@@ -1010,6 +1020,7 @@ export const _mergeSideEffects = internalMutation({
     targetName: v.string(),
     sourceName: v.string(),
     performedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const performedByUserId = args.performedBy as Id<"users">;
@@ -1024,6 +1035,7 @@ export const _mergeSideEffects = internalMutation({
         merge: { sourcePatientId: args.sourcePatientId },
       },
       performedBy: performedByUserId,
+      actorLabel: args.actorLabel,
     });
 
     await logActivity(ctx, {
@@ -1036,6 +1048,7 @@ export const _mergeSideEffects = internalMutation({
         merge: { targetPatientId: args.targetPatientId },
       },
       performedBy: performedByUserId,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -1134,6 +1147,7 @@ export const gdprErase = action({
         organizationId: args.organizationId,
         originalName,
         erasedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[patients.gdprErase] Side effects FAILED for patient", args.patientId, ":", e);
@@ -1149,6 +1163,7 @@ export const _gdprEraseSideEffects = internalMutation({
     organizationId: v.id("organizations"),
     originalName: v.string(),
     erasedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const erasedByUserId = args.erasedBy as Id<"users">;
@@ -1212,6 +1227,7 @@ export const _gdprEraseSideEffects = internalMutation({
       action: "deleted",
       description: "RODO: dane klienta zostały usunięte",
       performedBy: erasedByUserId,
+      actorLabel: args.actorLabel,
     });
   },
 });

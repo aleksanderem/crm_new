@@ -86,6 +86,7 @@ export const create = action({
         firstName: args.firstName,
         lastName: args.lastName ?? undefined,
         createdBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[contacts.create] Side effects FAILED for contact", contactId, ":", e);
@@ -102,6 +103,7 @@ export const _createSideEffects = internalMutation({
     firstName: v.string(),
     lastName: v.optional(v.string()),
     createdBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const createdByUserId = args.createdBy as Id<"users">;
@@ -113,6 +115,7 @@ export const _createSideEffects = internalMutation({
       action: "created",
       description: `Created contact "${args.firstName}${args.lastName ? ` ${args.lastName}` : ""}"`,
       performedBy: createdByUserId,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -201,6 +204,7 @@ export const update = action({
         organizationId,
         firstName: (contact.firstName as string) ?? "",
         updatedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[contacts.update] Side effects FAILED for contact", contactId, ":", e);
@@ -216,6 +220,7 @@ export const _updateSideEffects = internalMutation({
     organizationId: v.id("organizations"),
     firstName: v.string(),
     updatedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const updatedByUserId = args.updatedBy as Id<"users">;
@@ -227,6 +232,7 @@ export const _updateSideEffects = internalMutation({
       action: "updated",
       description: `Updated contact "${args.firstName}"`,
       performedBy: updatedByUserId,
+      actorLabel: args.actorLabel,
     });
   },
 });
@@ -295,6 +301,7 @@ export const remove = action({
         organizationId: args.organizationId,
         firstName: (contact.firstName as string) ?? "",
         deletedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
       console.error("[contacts.remove] Side effects FAILED for contact", args.contactId, ":", e);
@@ -310,6 +317,7 @@ export const _removeSideEffects = internalMutation({
     organizationId: v.id("organizations"),
     firstName: v.string(),
     deletedBy: v.string(),
+    actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const deletedByUserId = args.deletedBy as Id<"users">;
@@ -321,6 +329,7 @@ export const _removeSideEffects = internalMutation({
       action: "deleted",
       description: `Deleted contact "${args.firstName}"`,
       performedBy: deletedByUserId,
+      actorLabel: args.actorLabel,
     });
   },
 });

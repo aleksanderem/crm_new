@@ -667,7 +667,8 @@
       "filterByType": "Filter by type",
       "showCompleted": "Show completed",
       "hideCompleted": "Hide completed"
-    }
+    },
+    "pageTitle": "Activities"
   },
   "documents": {
     "title": "Documents",
@@ -1255,6 +1256,8 @@
     "automationLastRunLabel": "Last run: {{status}}",
     "automationRunsSubtitle": "Module: {{module}}",
     "automationActionCount_one": "{{count}} action",
+    "automationActionCount_few": "{{count}} actions",
+    "automationActionCount_many": "{{count}} actions",
     "automationActionCount_other": "{{count}} actions",
     "automationRuleStates": {
       "enabled": "Enabled",
@@ -2067,10 +2070,16 @@
     "relative": {
       "justNow": "just now",
       "minutesAgo_one": "{{count}}m ago",
+      "minutesAgo_few": "{{count}}m ago",
+      "minutesAgo_many": "{{count}}m ago",
       "minutesAgo_other": "{{count}}m ago",
       "hoursAgo_one": "{{count}}h ago",
+      "hoursAgo_few": "{{count}}h ago",
+      "hoursAgo_many": "{{count}}h ago",
       "hoursAgo_other": "{{count}}h ago",
       "daysAgo_one": "{{count}}d ago",
+      "daysAgo_few": "{{count}}d ago",
+      "daysAgo_many": "{{count}}d ago",
       "daysAgo_other": "{{count}}d ago"
     },
     "entityLabels": {
@@ -2159,12 +2168,16 @@
       "updatedEmployeeProfile": "Updated employee profile",
       "deactivatedEmployeeProfile": "Deactivated employee profile",
       "updatedTreatmentQualifications_one": "Updated treatment qualifications ({{count}} treatment)",
+      "updatedTreatmentQualifications_few": "Updated treatment qualifications ({{count}} treatments)",
+      "updatedTreatmentQualifications_many": "Updated treatment qualifications ({{count}} treatments)",
       "updatedTreatmentQualifications_other": "Updated treatment qualifications ({{count}} treatments)",
       "createdPatient": "Created patient {{name}}",
       "updatedPatient": "Updated patient {{name}}",
       "deletedPatient": "Deleted patient {{name}}",
       "createdPackage": "Created package {{name}}",
       "usedPackageTreatments_one": "Used {{count}} treatment from package {{name}}",
+      "usedPackageTreatments_few": "Used {{count}} treatments from package {{name}}",
+      "usedPackageTreatments_many": "Used {{count}} treatments from package {{name}}",
       "usedPackageTreatments_other": "Used {{count}} treatments from package {{name}}",
       "sentAutomatedSms": "Sent automated SMS for {{eventType}}",
       "sentAppointmentConfirmationSms": "Sent appointment confirmation SMS for {{date}} at {{time}}",
@@ -2498,6 +2511,8 @@
       },
       "duplicatesBanner": {
         "count_one": "{{count}} client has a duplicate email or phone.",
+        "count_few": "{{count}} clients have a duplicate email or phone.",
+        "count_many": "{{count}} clients have a duplicate email or phone.",
         "count_other": "{{count}} clients have a duplicate email or phone.",
         "action": "Review duplicates"
       },
@@ -2705,6 +2720,8 @@
       },
       "groupByEquipment": "Group by equipment",
       "groupCount_one": "{{count}} treatment",
+      "groupCount_few": "{{count}} treatments",
+      "groupCount_many": "{{count}} treatments",
       "groupCount_other": "{{count}} treatments",
       "groups": {
         "noEquipment": "No equipment",
@@ -2854,6 +2871,8 @@
       "allEmployees": "All employees",
       "filterByEmployee": "Select employees",
       "employeesSelectedCount_one": "{{count}} employee",
+      "employeesSelectedCount_few": "{{count}} employees",
+      "employeesSelectedCount_many": "{{count}} employees",
       "employeesSelectedCount_other": "{{count}} employees",
       "clearEmployeeSelection": "Clear selection",
       "noEmployeesFound": "No employees found",
@@ -2861,6 +2880,8 @@
       "usingDefaults": "Default hours",
       "editTitle": "Edit employee schedule",
       "datedPeriodsCount_one": "{{count}} dated period",
+      "datedPeriodsCount_few": "{{count}} dated periods",
+      "datedPeriodsCount_many": "{{count}} dated periods",
       "datedPeriodsCount_other": "{{count}} dated periods",
       "datedPeriodsHint": "Manage dated schedule periods for this employee from the edit panel.",
       "activePeriodHint": "Currently active dated schedule period (shown columns reflect it).",
@@ -3242,6 +3263,7 @@
       "dragToMove": "Drag to move",
       "patient": "Client",
       "treatment": "Treatment",
+      "package": "Package",
       "employee": "Employee",
       "date": "Date",
       "startTime": "Start Time",
@@ -4391,6 +4413,8 @@
     },
     "warnings": {
       "existingAppointments_one": "Employee has {{count}} scheduled appointment during this period. Remember to cancel or reschedule it.",
+      "existingAppointments_few": "Employee has {{count}} scheduled appointments during this period. Remember to cancel or reschedule them.",
+      "existingAppointments_many": "Employee has {{count}} scheduled appointments during this period. Remember to cancel or reschedule them.",
       "existingAppointments_other": "Employee has {{count}} scheduled appointments during this period. Remember to cancel or reschedule them."
     }
   },

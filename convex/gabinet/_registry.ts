@@ -1,20 +1,10 @@
 /**
  * Gabinet Module Registry
  *
- * Declares the entity types, activity types, navigation entries,
- * and calendar renderers that this module contributes to the platform.
+ * Backend-only constants for subscription gating and seeding.
+ * Navigation and entity metadata live in src/modules/gabinet/manifest.ts
+ * (the single source of truth for module structure).
  */
-
-export const GABINET_MODULE_ID = "gabinet";
-
-/** Entity types this module owns */
-export const GABINET_ENTITY_TYPES = [
-  "gabinetPatient",
-  "gabinetTreatment",
-  "gabinetAppointment",
-  "gabinetPackage",
-  "gabinetEmployee",
-] as const;
 
 /** Activity types this module contributes to the shared calendar */
 export const GABINET_ACTIVITY_TYPES = [
@@ -25,18 +15,6 @@ export const GABINET_ACTIVITY_TYPES = [
     color: "#7C6AE8",
     isSystem: true,
   },
-] as const;
-
-/** Navigation entries for the sidebar */
-export const GABINET_NAVIGATION = [
-  { label: "sidebar.gabinet.dashboard", href: "/dashboard/gabinet", icon: "stethoscope-02" },
-  { label: "sidebar.gabinet.patients", href: "/dashboard/gabinet/patients", icon: "user-group" },
-  { label: "sidebar.gabinet.calendar", href: "/dashboard/gabinet/calendar", icon: "calendar-03" },
-  { label: "sidebar.gabinet.treatments", href: "/dashboard/gabinet/treatments", icon: "medicine-02" },
-  { label: "sidebar.gabinet.employees", href: "/dashboard/gabinet/employees", icon: "user-multiple-02" },
-  { label: "sidebar.gabinet.packages", href: "/dashboard/gabinet/packages", icon: "package" },
-  { label: "sidebar.gabinet.documents", href: "/dashboard/gabinet/documents", icon: "file-02" },
-  { label: "sidebar.gabinet.reports", href: "/dashboard/gabinet/reports", icon: "chart-line-data-01" },
 ] as const;
 
 /** Product ID for subscription gating */

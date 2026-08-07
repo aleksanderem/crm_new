@@ -186,10 +186,9 @@ const handleCheckoutSessionCompleted = async (
     throw new Error(ERRORS.SOMETHING_WENT_WRONG);
   }
 
-  const freeSubscriptionStripeId =
-    user.subscription.planKey === PLANS.FREE
-      ? user.subscription.stripeId
-      : undefined;
+  const freeSubscriptionStripeId = user.subscriptions.find(
+    (sub) => sub.planKey === PLANS.FREE && sub.productKey === productKey,
+  )?.stripeId;
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 

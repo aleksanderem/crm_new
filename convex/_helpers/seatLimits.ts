@@ -47,8 +47,10 @@ export async function checkSeatLimit(
   const org = await ctx.db.get(args.organizationId);
   if (!org) throw new Error("Organization not found");
 
-  // Find active or trialing subscription for org owner
-  const subscription = await ctx.db
+  // Find all active or trialing subscriptions for org owner and take the
+  // highest seatLimit ("max wins") so that orgs with multiple per-module
+  // plans get the most generous limit. Matches _getSubscriptionAndPlanData.
+  const subscriptions = await ctx.db
     .query("subscriptions")
     .withIndex("userId", (q) => q.eq("userId", org.ownerId))
     .filter((q) =>
@@ -57,23 +59,32 @@ export async function checkSeatLimit(
         q.eq(q.field("status"), "trialing")
       )
     )
-    .first();
+    .collect();
 
   // Fail open: default to free tier limit if subscription data is unavailable.
   let seatLimit = 20; // Default free tier
-  if (subscription) {
-    const plan = await ctx.db.get(subscription.planId);
-    if (plan) {
-      seatLimit = plan.seatLimit;
-    } else {
-      console.warn(
-        `[seatLimits] Plan ${subscription.planId} not found for subscription ${subscription._id}. Using default seat limit.`
-      );
-    }
-  } else {
+  if (subscriptions.length === 0) {
     console.warn(
       `[seatLimits] No active subscription found for org owner ${org.ownerId} (org: ${args.organizationId}). Using default free tier limit.`
     );
+  } else {
+    let maxSeatLimit: number | null = null;
+    for (const sub of subscriptions) {
+      const plan = await ctx.db.get(sub.planId);
+      if (!plan) {
+        console.warn(
+          `[seatLimits] Plan ${sub.planId} not found for subscription ${sub._id}. Skipping.`
+        );
+        continue;
+      }
+      if (maxSeatLimit === null || plan.seatLimit > maxSeatLimit) {
+        maxSeatLimit = plan.seatLimit;
+      }
+    }
+    // Fall back to free tier only when every plan lookup failed (FK issue, etc.)
+    if (maxSeatLimit !== null) {
+      seatLimit = maxSeatLimit;
+    }
   }
 
   return {

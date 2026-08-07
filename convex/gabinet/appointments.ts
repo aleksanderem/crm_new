@@ -215,6 +215,20 @@ async function applyAppointmentStatusChange(
     );
   }
 
+  if (args.nextStatus === "cancelled") {
+    await ctx.scheduler.runAfter(
+      0,
+      internal.gabinet.waitlist.notifyWaitlistOnSlotOpen,
+      {
+        organizationId: args.organizationId,
+        treatmentId: args.treatmentId ?? undefined,
+        employeeUserId: String(args.appointment.employeeId),
+        date: args.appointment.date,
+        startTime: args.appointment.startTime,
+      },
+    );
+  }
+
   if (args.nextStatus === "completed") {
     if (args.treatmentId) {
       await handleAppointmentCompletion(ctx, {
@@ -2011,6 +2025,18 @@ export const _updateSideEffects = internalMutation({
           previousStatus: args.previousStatus,
           createdBy: args.createdBy,
           updatedFields: args.updatedFields,
+        },
+      );
+      // The previous date/time/employee slot is now free — notify waitlist patients.
+      await ctx.scheduler.runAfter(
+        0,
+        internal.gabinet.waitlist.notifyWaitlistOnSlotOpen,
+        {
+          organizationId: args.organizationId,
+          treatmentId: args.treatmentId,
+          employeeUserId: args.previousEmployeeId,
+          date: args.previousDate,
+          startTime: args.previousStartTime,
         },
       );
     } else {

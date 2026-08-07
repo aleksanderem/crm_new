@@ -5,6 +5,7 @@ import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { logError } from "../_helpers/logged";
 import { logActivity } from "../_helpers/activities";
+import { logAudit } from "../auditLog";
 import { gabinetLeaveTypeValidator, gabinetLeaveStatusValidator } from "../schema";
 import { getAvailableSlotsSupabase } from "./_availability_supabase";
 import type {
@@ -657,6 +658,7 @@ export const approveLeave = action({
         description: `Leave request approved`,
         performedBy: String(authResult.userId),
         actorLabel: authResult.userName ?? authResult.userEmail,
+        auditAction: "leave_approved",
       });
     } catch (e) {
       console.error("[scheduling.approveLeave] Side effects FAILED:", e);
@@ -734,6 +736,7 @@ export const rejectLeave = action({
         description: `Leave request rejected`,
         performedBy: String(authResult.userId),
         actorLabel: authResult.userName ?? authResult.userEmail,
+        auditAction: "leave_rejected",
       });
     } catch (e) {
       console.error("[scheduling.rejectLeave] Side effects FAILED:", e);
@@ -1110,6 +1113,7 @@ export const _leaveSideEffects = internalMutation({
     description: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
+    auditAction: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -1122,5 +1126,16 @@ export const _leaveSideEffects = internalMutation({
       performedBy: args.performedBy as Id<"users">,
       actorLabel: args.actorLabel,
     });
+
+    if (args.auditAction) {
+      await logAudit(ctx, {
+        organizationId: args.organizationId,
+        userId: args.performedBy as Id<"users">,
+        action: args.auditAction,
+        entityType: "gabinetLeave",
+        entityId: args.leaveId,
+        details: args.description,
+      });
+    }
   },
 });

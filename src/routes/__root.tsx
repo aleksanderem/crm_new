@@ -35,7 +35,7 @@ export const Route = createRootRouteWithContext<{
       .find((d) => (d.context as { title?: string } | undefined)?.title);
     const title =
       (matchWithTitle?.context as { title?: string } | undefined)?.title ||
-      "Convex SaaS";
+      "Quera";
 
     return (
       <>

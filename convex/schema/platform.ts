@@ -5,6 +5,7 @@ interface PlatformSchemaDeps {
   INTERVALS: typeof import("../schema").INTERVALS;
   pricesValidator: typeof import("../schema").pricesValidator;
   planKeyValidator: typeof import("../schema").planKeyValidator;
+  productKeyValidator: typeof import("../schema").productKeyValidator;
   currencyValidator: typeof import("../schema").currencyValidator;
   intervalValidator: typeof import("../schema").intervalValidator;
 }
@@ -13,6 +14,7 @@ export function createPlatformTables({
   INTERVALS,
   pricesValidator,
   planKeyValidator,
+  productKeyValidator,
   currencyValidator,
   intervalValidator,
 }: PlatformSchemaDeps) {
@@ -39,6 +41,7 @@ export function createPlatformTables({
     .index("customerId", ["customerId"]),
   plans: defineTable({
     key: planKeyValidator,
+    productKey: v.optional(productKeyValidator),
     stripeId: v.string(),
     name: v.string(),
     description: v.string(),
@@ -49,7 +52,8 @@ export function createPlatformTables({
     }),
   })
     .index("key", ["key"])
-    .index("stripeId", ["stripeId"]),
+    .index("stripeId", ["stripeId"])
+    .index("by_productAndKey", ["productKey", "key"]),
   subscriptions: defineTable({
     userId: v.id("users"),
     planId: v.id("plans"),

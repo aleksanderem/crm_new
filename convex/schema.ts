@@ -39,6 +39,18 @@ export const planKeyValidator = v.union(
 );
 export type PlanKey = Infer<typeof planKeyValidator>;
 
+export const PRODUCT_KEYS = {
+  CRM: "crm",
+  GABINET: "gabinet",
+  MAGAZYN: "magazyn",
+} as const;
+export const productKeyValidator = v.union(
+  v.literal(PRODUCT_KEYS.CRM),
+  v.literal(PRODUCT_KEYS.GABINET),
+  v.literal(PRODUCT_KEYS.MAGAZYN),
+);
+export type ProductKey = Infer<typeof productKeyValidator>;
+
 const priceValidator = v.object({
   stripeId: v.string(),
   amount: v.number(),
@@ -494,6 +506,7 @@ const platformTables = createPlatformTables({
   INTERVALS,
   pricesValidator,
   planKeyValidator,
+  productKeyValidator,
   currencyValidator,
   intervalValidator,
 });

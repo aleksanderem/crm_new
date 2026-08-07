@@ -10,15 +10,29 @@ import schema, {
   INTERVALS,
   PlanKey,
   PLANS,
+  PRODUCT_KEYS,
+  ProductKey,
 } from "@cvx/schema";
 import { internal } from "@cvx/_generated/api";
 import { stripe } from "@cvx/stripe";
 
-const seedProducts = [
+const seedProducts: Array<{
+  key: PlanKey;
+  productKey: ProductKey;
+  name: string;
+  description: string;
+  seatLimit: number;
+  prices: {
+    [K in typeof INTERVALS[keyof typeof INTERVALS]]: {
+      [C in typeof CURRENCIES[keyof typeof CURRENCIES]]: number;
+    };
+  };
+}> = [
   {
     key: PLANS.FREE,
-    name: "Free",
-    description: "Start with the basics, upgrade anytime.",
+    productKey: PRODUCT_KEYS.CRM,
+    name: "CRM Free",
+    description: "Start with CRM basics: contacts, companies, and pipeline.",
     seatLimit: 5,
     prices: {
       [INTERVALS.MONTH]: {
@@ -35,19 +49,58 @@ const seedProducts = [
   },
   {
     key: PLANS.PRO,
-    name: "Pro",
-    description: "Access to all features and unlimited projects.",
+    productKey: PRODUCT_KEYS.CRM,
+    name: "CRM Pro",
+    description: "Full CRM: contacts, deals, pipelines, email, documents, and automations.",
     seatLimit: 25,
     prices: {
       [INTERVALS.MONTH]: {
-        [CURRENCIES.USD]: 1990,
-        [CURRENCIES.EUR]: 1990,
-        [CURRENCIES.PLN]: 7900,
+        [CURRENCIES.USD]: 2900,
+        [CURRENCIES.EUR]: 2700,
+        [CURRENCIES.PLN]: 11900,
       },
       [INTERVALS.YEAR]: {
-        [CURRENCIES.USD]: 19990,
-        [CURRENCIES.EUR]: 19990,
-        [CURRENCIES.PLN]: 79900,
+        [CURRENCIES.USD]: 29000,
+        [CURRENCIES.EUR]: 27000,
+        [CURRENCIES.PLN]: 119000,
+      },
+    },
+  },
+  {
+    key: PLANS.FREE,
+    productKey: PRODUCT_KEYS.GABINET,
+    name: "Gabinet Free",
+    description: "Start with clinic basics: patients and appointments.",
+    seatLimit: 3,
+    prices: {
+      [INTERVALS.MONTH]: {
+        [CURRENCIES.USD]: 0,
+        [CURRENCIES.EUR]: 0,
+        [CURRENCIES.PLN]: 0,
+      },
+      [INTERVALS.YEAR]: {
+        [CURRENCIES.USD]: 0,
+        [CURRENCIES.EUR]: 0,
+        [CURRENCIES.PLN]: 0,
+      },
+    },
+  },
+  {
+    key: PLANS.PRO,
+    productKey: PRODUCT_KEYS.GABINET,
+    name: "Gabinet Pro",
+    description: "Full clinic management: patients, appointments, billing, loyalty, and scheduling.",
+    seatLimit: 15,
+    prices: {
+      [INTERVALS.MONTH]: {
+        [CURRENCIES.USD]: 4900,
+        [CURRENCIES.EUR]: 4500,
+        [CURRENCIES.PLN]: 19900,
+      },
+      [INTERVALS.YEAR]: {
+        [CURRENCIES.USD]: 49000,
+        [CURRENCIES.EUR]: 45000,
+        [CURRENCIES.PLN]: 199000,
       },
     },
   },
@@ -59,6 +112,7 @@ export const insertSeedPlan = internalMutation({
     await ctx.db.insert("plans", {
       stripeId: args.stripeId,
       key: args.key,
+      productKey: args.productKey,
       name: args.name,
       description: args.description,
       seatLimit: args.seatLimit,
@@ -219,6 +273,7 @@ const init: RegisteredAction<
     await ctx.runMutation(internal.init.insertSeedPlan, {
       stripeId: stripeProduct.id,
       key: product.key as PlanKey,
+      productKey: product.productKey as ProductKey,
       name: product.name,
       description: product.description,
       seatLimit: product.seatLimit,

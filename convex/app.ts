@@ -1,7 +1,7 @@
 import { internal } from "@cvx/_generated/api";
 import { mutation, query, action, internalMutation } from "@cvx/_generated/server";
 import { auth } from "@cvx/auth";
-import { currencyValidator, PLANS } from "@cvx/schema";
+import { currencyValidator, PLANS, PRODUCT_KEYS, productKeyValidator, ProductKey } from "@cvx/schema";
 import { asyncMap } from "convex-helpers";
 import { v } from "convex/values";
 import { User } from "~/types";
@@ -245,18 +245,19 @@ export const removeUserImage = mutation({
 });
 
 export const getActivePlans = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { productKey: v.optional(productKeyValidator) },
+  handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
     if (!userId) {
       return;
     }
+    const pk: ProductKey = args.productKey ?? PRODUCT_KEYS.CRM;
     const [free, pro] = await asyncMap(
       [PLANS.FREE, PLANS.PRO] as const,
       (key) =>
         ctx.db
           .query("plans")
-          .withIndex("key", (q) => q.eq("key", key))
+          .withIndex("by_productAndKey", (q) => q.eq("productKey", pk).eq("key", key))
           .unique(),
     );
     if (!free || !pro) {

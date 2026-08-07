@@ -57,6 +57,8 @@ export function DocumentViewer({
 
       {/* Document content */}
       <div
+        role="region"
+        aria-label={title}
         className={cn(
           "mx-auto w-full max-w-[210mm] rounded-lg border bg-white p-8 shadow-sm",
           "prose prose-sm max-w-none text-gray-900",

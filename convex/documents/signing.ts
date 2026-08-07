@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { createSupabaseDb, type SupabaseDb } from "../_helpers/supabaseDb";
+import { createLogger } from "../_helpers/logger";
 import { getJunctionTreatmentIds } from "../gabinet/_helpers/junctionTreatments";
 import { getValidAccessToken } from "../google/_helpers";
 import { Resend } from "resend";
@@ -81,6 +82,7 @@ export const sendSigningEmailInternal = internalAction({
   },
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
+    const log = createLogger("signing", { correlationId: db.correlationId });
 
     const doc = await db.get("formDocuments", args.documentId);
     if (!doc || !doc.signingToken) {
@@ -251,7 +253,7 @@ export const sendSigningEmailInternal = internalAction({
         status: "sent",
         fromEmail: fromAddress,
       });
-      console.log("[signing] DEV_INTERCEPT: Email stored to devEmails instead of sending →", args.recipientEmail);
+      log.info("DEV_INTERCEPT: email stored to devEmails instead of sending", { recipientEmail: args.recipientEmail });
       await markSent(db, args.documentId);
       return;
     }
@@ -310,10 +312,7 @@ export const sendSigningEmailInternal = internalAction({
             { apiKey, domain, region },
           );
         }
-        console.log(
-          `[signing] Signing email sent via ${defaultProvider.providerType} provider "${defaultProvider.fromEmail}" to`,
-          args.recipientEmail,
-        );
+        log.info("signing email sent", { provider: defaultProvider.providerType, fromEmail: defaultProvider.fromEmail, recipientEmail: args.recipientEmail });
         await ctx.runMutation(internal.emailSendLog.record, {
           ...logBase,
           provider: defaultProvider.providerType as "resend" | "mailgun",
@@ -395,7 +394,7 @@ export const sendSigningEmailInternal = internalAction({
       }
 
       if (response?.ok) {
-        console.log("[signing] Signing email sent via Gmail to", args.recipientEmail);
+        log.info("signing email sent", { provider: "gmail", recipientEmail: args.recipientEmail });
         await ctx.runMutation(internal.emailSendLog.record, {
           ...logBase,
           provider: "gmail",
@@ -456,7 +455,7 @@ export const sendSigningEmailInternal = internalAction({
         html,
       });
 
-      console.log("[signing] Signing email sent via Resend to", args.recipientEmail);
+      log.info("signing email sent", { provider: "resend", recipientEmail: args.recipientEmail });
       await ctx.runMutation(internal.emailSendLog.record, {
         ...logBase,
         provider: "resend",

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { createLogger } from "../_helpers/logger";
 
 // One-off migration for issue #492:
 //
@@ -51,8 +52,8 @@ export const backfillTreatmentCategories = internalAction({
   },
   handler: async (_ctx, args) => {
     const { organizationId, dryRun = false } = args;
-    const prefix = dryRun ? "[DRY RUN] " : "";
     const db = createSupabaseDb();
+    const log = createLogger("migrations.backfillTreatmentCategories", { correlationId: db.correlationId, organizationId: String(organizationId), dryRun });
 
     const treatments = (await db
       .query("gabinetTreatments")
@@ -87,9 +88,7 @@ export const backfillTreatmentCategories = internalAction({
       return raw.length > 0;
     });
 
-    console.log(
-      `${prefix}Org ${organizationId}: ${candidates.length} of ${treatments.length} treatments need category backfill (${activeRootCategories.length} existing root categories)`,
-    );
+    log.info("starting backfill", { treatmentsTotal: treatments.length, candidates: candidates.length, existingRootCategories: activeRootCategories.length });
 
     let treatmentsLinked = 0;
     let categoriesCreated = 0;
@@ -119,9 +118,7 @@ export const backfillTreatmentCategories = internalAction({
         byName.set(key, catId);
         nextSortOrder++;
         categoriesCreated++;
-        console.log(
-          `${prefix}Created categoryDefinition "${rawCategory}" (id=${catId})`,
-        );
+        log.info("created categoryDefinition", { name: rawCategory, id: catId });
       }
 
       if (!dryRun) {
@@ -140,10 +137,7 @@ export const backfillTreatmentCategories = internalAction({
       categoriesCreated,
       dryRun,
     };
-    console.log(
-      `${prefix}backfillTreatmentCategories complete:`,
-      JSON.stringify(summary),
-    );
+    log.info("backfill complete", summary);
     return summary;
   },
 });

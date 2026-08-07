@@ -1,6 +1,7 @@
 import { query, action, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { createLogger } from "../_helpers/logger";
 import { validatePortalSessionSupabase } from "../_helpers/portalSession";
 import { v } from "convex/values";
 import { sendEmail } from "@cvx/email";
@@ -177,8 +178,9 @@ export const _sendOtpEmail = internalAction({
         },
       });
     } else {
-      console.warn("[Patient Portal OTP] Resend not configured, logging OTP to console");
-      console.log(`[Patient Portal OTP] ${args.email}: ${args.otp}`);
+      const log = createLogger("gabinet.patientAuth");
+      log.warn("Resend not configured, logging OTP to console");
+      log.info("OTP", { email: args.email, otp: args.otp });
     }
   },
 });

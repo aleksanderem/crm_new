@@ -13,6 +13,7 @@ import {
 } from "@cvx/email/templates/subscriptionEmail";
 import Stripe from "stripe";
 import { Doc } from "@cvx/_generated/dataModel";
+import { createLogger } from "@cvx/_helpers/logger";
 
 function normalizeWebhookValue(value: FormDataEntryValue | unknown): string | undefined {
   if (typeof value === "string") return value;
@@ -303,7 +304,7 @@ const handleInvoiceFinalized = async (
 ) => {
   const invoice = event.data.object;
   // Log finalized invoice data for tax compliance visibility (Stripe Tax)
-  console.log("invoice.finalized", {
+  createLogger("stripe.webhooks").info("invoice.finalized", {
     id: invoice.id,
     customerId: invoice.customer,
     amountDue: invoice.amount_due,
@@ -462,7 +463,7 @@ http.route({
       );
 
       if (!emailAccount) {
-        console.log("No matching email account for inbound:", toAddresses);
+        createLogger("email.inbound").info("no matching email account", { toAddresses });
         return new Response("No matching account", { status: 200 });
       }
 

@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import Papa from "papaparse";
 import { toast } from "sonner";
-import { useSupabaseLeadsForReports } from "@/hooks/use-supabase-leads";
+import { useSupabaseLeadsForReports, useSupabaseStageVelocity } from "@/hooks/use-supabase-leads";
 import { useSupabaseSourcesList } from "@/hooks/use-supabase-sources";
 import { useSupabaseAllPipelineStages } from "@/hooks/use-supabase-pipelines";
 import { useOrganization } from "@/components/org-context";
@@ -354,6 +354,55 @@ function MonthlyTrendChart({
   );
 }
 
+// ── Funnel Velocity Chart ──────────────────────────────────────────────────────
+
+const funnelVelocityConfig = {
+  avgDays: { label: "Avg days", color: "var(--chart-3)" },
+} satisfies ChartConfig;
+
+function FunnelVelocityChart({
+  data,
+}: {
+  data: { stage: string; avgDays: number; sampleCount: number }[];
+}) {
+  const { t } = useTranslation();
+
+  if (data.length === 0) {
+    return (
+      <div className="flex h-40 items-center justify-center text-muted-foreground text-sm">
+        {t("crm.reports.noData")}
+      </div>
+    );
+  }
+
+  return (
+    <ChartContainer config={funnelVelocityConfig} className="h-52 w-full">
+      <BarChart data={data} layout="vertical" margin={{ left: 8, right: 8 }}>
+        <CartesianGrid horizontal={false} />
+        <XAxis
+          type="number"
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(v: number) => formatDays(v)}
+        />
+        <YAxis
+          type="category"
+          dataKey="stage"
+          tickLine={false}
+          axisLine={false}
+          width={110}
+          tick={{ fontSize: 12 }}
+        />
+        <ChartTooltip
+          cursor={false}
+          content={<ChartTooltipContent formatter={(v) => [`${formatDays(Number(v))}`, ""]} />}
+        />
+        <Bar dataKey="avgDays" fill="var(--chart-3)" radius={4} />
+      </BarChart>
+    </ChartContainer>
+  );
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 function CrmReports() {
@@ -407,6 +456,11 @@ function CrmReports() {
 
   const { data: sources } = useSupabaseSourcesList(organizationId);
   const { data: stages } = useSupabaseAllPipelineStages(organizationId);
+
+  const { data: stageVelocityRaw, isLoading: loadingVelocity } = useSupabaseStageVelocity(
+    organizationId,
+    { startDate, endDate, enabled: !!organizationId },
+  );
 
   const sourceNameMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -521,6 +575,16 @@ function CrmReports() {
         return { month: `${parseInt(month)}/${year.slice(2)}`, won, created };
       });
   }, [leads]);
+
+  const funnelVelocity = useMemo(() => {
+    return (stageVelocityRaw ?? [])
+      .map(({ stageId, avgDays, sampleCount }) => ({
+        stage: stageNameMap.get(stageId) ?? stageId,
+        avgDays,
+        sampleCount,
+      }))
+      .sort((a, b) => b.avgDays - a.avgDays);
+  }, [stageVelocityRaw, stageNameMap]);
 
   // ── KPI Sparklines ──────────────────────────────────────────────────────────
 
@@ -765,6 +829,24 @@ function CrmReports() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Funnel Velocity */}
+      <Card>
+        <CardHeader className="flex justify-between border-b">
+          <div>
+            <span className="text-lg font-semibold">{t("crm.reports.funnelVelocity")}</span>
+            <p className="text-sm text-muted-foreground">{t("crm.reports.avgDaysPerStage")}</p>
+          </div>
+          <CardMenu />
+        </CardHeader>
+        <CardContent className="pt-4">
+          {loadingVelocity ? (
+            <Skeleton className="h-52 w-full" />
+          ) : (
+            <FunnelVelocityChart data={funnelVelocity} />
+          )}
+        </CardContent>
+      </Card>
 
       {/* Custom Date Range Panel */}
       <SidePanel

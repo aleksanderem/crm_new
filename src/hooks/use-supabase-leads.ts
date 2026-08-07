@@ -17,6 +17,60 @@ type LeadRow = Database["public"]["Tables"]["leads"]["Row"];
 type PipelineStageRow = Database["public"]["Tables"]["pipeline_stages"]["Row"];
 
 // ---------------------------------------------------------------------------
+// Stage Velocity (avg days per stage, for Funnel Velocity report card)
+// ---------------------------------------------------------------------------
+
+export interface StageVelocityItem {
+  stageId: string;
+  avgDays: number;
+  sampleCount: number;
+}
+
+export function useSupabaseStageVelocity(
+  organizationId: string,
+  options: { startDate: string; endDate: string; enabled?: boolean },
+) {
+  const { client, isReady } = useSupabase();
+  const { startDate, endDate, enabled = true } = options;
+
+  return useQuery<StageVelocityItem[], Error>({
+    queryKey: [...supabaseKeys.leadStageHistory.list(organizationId), "velocity", startDate, endDate],
+    queryFn: async (): Promise<StageVelocityItem[]> => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      const startMs = new Date(startDate).getTime();
+      const endMs = new Date(endDate + "T23:59:59.999Z").getTime();
+
+      const { data, error } = await client
+        .from("lead_stage_history")
+        .select("stage_id,entered_at,exited_at")
+        .eq("organization_id", organizationId)
+        .gte("entered_at", startMs)
+        .lte("entered_at", endMs)
+        .not("exited_at", "is", null);
+
+      if (error) throw error;
+
+      const stageMap = new Map<string, { total: number; count: number }>();
+      for (const row of data ?? []) {
+        if (row.exited_at == null) continue;
+        const days = (row.exited_at - row.entered_at) / (1000 * 60 * 60 * 24);
+        if (days < 0) continue;
+        const existing = stageMap.get(row.stage_id) ?? { total: 0, count: 0 };
+        stageMap.set(row.stage_id, { total: existing.total + days, count: existing.count + 1 });
+      }
+
+      return [...stageMap.entries()].map(([stageId, { total, count }]) => ({
+        stageId,
+        avgDays: total / count,
+        sampleCount: count,
+      }));
+    },
+    enabled: enabled && isReady && !!organizationId && !!startDate && !!endDate,
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Leads for Reports (date range, no pagination)
 // ---------------------------------------------------------------------------
 

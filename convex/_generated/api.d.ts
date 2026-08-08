@@ -146,6 +146,7 @@ import type * as mail_emailShell from "../mail/emailShell.js";
 import type * as mail_testConnectionNode from "../mail/testConnectionNode.js";
 import type * as mailProviders from "../mailProviders.js";
 import type * as microsoft_oauth from "../microsoft/oauth.js";
+import type * as migrations_backfillEntitlements from "../migrations/backfillEntitlements.js";
 import type * as migrations_backfillCreditEarned from "../migrations/backfillCreditEarned.js";
 import type * as migrations_backfillMailProviders from "../migrations/backfillMailProviders.js";
 import type * as migrations_backfillProductSubscriptions from "../migrations/backfillProductSubscriptions.js";
@@ -346,6 +347,7 @@ declare const fullApi: ApiFromModules<{
   "mail/testConnectionNode": typeof mail_testConnectionNode;
   mailProviders: typeof mailProviders;
   "microsoft/oauth": typeof microsoft_oauth;
+  "migrations/backfillEntitlements": typeof migrations_backfillEntitlements;
   "migrations/backfillCreditEarned": typeof migrations_backfillCreditEarned;
   "migrations/backfillMailProviders": typeof migrations_backfillMailProviders;
   "migrations/backfillProductSubscriptions": typeof migrations_backfillProductSubscriptions;

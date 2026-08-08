@@ -34,6 +34,7 @@ import type * as _test from "../_test.js";
 import type * as _test_helpers from "../_test_helpers.js";
 import type * as activities from "../activities.js";
 import type * as activityTypes from "../activityTypes.js";
+import type * as admin_entitlements from "../admin/entitlements.js";
 import type * as app from "../app.js";
 import type * as auditLog from "../auditLog.js";
 import type * as auth from "../auth.js";
@@ -233,6 +234,7 @@ declare const fullApi: ApiFromModules<{
   _test_helpers: typeof _test_helpers;
   activities: typeof activities;
   activityTypes: typeof activityTypes;
+  "admin/entitlements": typeof admin_entitlements;
   app: typeof app;
   auditLog: typeof auditLog;
   auth: typeof auth;

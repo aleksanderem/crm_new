@@ -107,6 +107,9 @@ export function createPlatformTables({
     currentPeriodEnd: v.optional(v.number()),
     cancelAtPeriodEnd: v.boolean(),
     trialEndDate: v.optional(v.number()),
+    source: v.optional(v.union(v.literal("manual"), v.literal("stripe"))),
+    grantedByUserId: v.optional(v.id("users")),
+    note: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

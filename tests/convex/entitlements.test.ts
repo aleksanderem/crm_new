@@ -128,3 +128,29 @@ describe("admin/entitlements.listOrgEntitlements", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("organizations.create — CRM baseline grant", () => {
+  test("new org receives an active CRM entitlement", async () => {
+    const t = createTestCtx();
+    const { userId, identity } = await seedTestUser(t);
+    // seedTestUser already made an org named "test-org"; create a second.
+    const orgId = await t
+      .withIdentity(identity)
+      .action(api.organizations.create, {
+        name: "Second Org",
+        slug: "second-org",
+      });
+
+    const row = await t.run(async (ctx) =>
+      ctx.db
+        .query("productSubscriptions")
+        .withIndex("by_orgAndProduct", (q) =>
+          q.eq("organizationId", orgId as any).eq("productId", "crm"),
+        )
+        .unique(),
+    );
+    expect(row?.status).toBe("active");
+    expect(row?.source).toBe("manual");
+    expect(String(row?.grantedByUserId)).toBe(String(userId));
+  });
+});

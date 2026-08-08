@@ -1,7 +1,8 @@
 import { v } from "convex/values";
-import { action, internalMutation } from "../_generated/server";
+import { action, internalMutation, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { logAudit } from "../auditLog";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 const productIdValidator = v.union(v.literal("crm"), v.literal("gabinet"));
 
@@ -55,6 +56,91 @@ export const _upsertEntitlement = internalMutation({
     });
 
     return { status };
+  },
+});
+
+type EntStatus = "active" | "canceled" | "none";
+
+const entStatusValidator = v.union(
+  v.literal("active"),
+  v.literal("canceled"),
+  v.literal("none"),
+);
+
+const entitlementRowValidator = v.object({
+  organizationId: v.string(),
+  productId: v.string(),
+  status: v.string(),
+});
+
+const orgEntitlementRowValidator = v.object({
+  organizationId: v.string(),
+  name: v.string(),
+  memberCount: v.number(),
+  crm: entStatusValidator,
+  gabinet: entStatusValidator,
+});
+
+export const _listEntitlementsInternal = internalQuery({
+  args: {},
+  returns: v.array(entitlementRowValidator),
+  handler: async (
+    ctx,
+  ): Promise<Array<{ organizationId: string; productId: string; status: string }>> => {
+    const rows = await ctx.db.query("productSubscriptions").collect();
+    return rows.map((r) => ({
+      organizationId: String(r.organizationId),
+      productId: r.productId,
+      status: r.status,
+    }));
+  },
+});
+
+export const listOrgEntitlements = action({
+  args: {},
+  returns: v.array(orgEntitlementRowValidator),
+  handler: async (
+    ctx,
+  ): Promise<
+    Array<{
+      organizationId: string;
+      name: string;
+      memberCount: number;
+      crm: EntStatus;
+      gabinet: EntStatus;
+    }>
+  > => {
+    await ctx.runAction(internal._helpers.authAction.verifyPlatformAdmin, {});
+    const db = createSupabaseDb();
+    const orgs = await db.query("organizations").collect();
+    const memberships = await db.query("teamMemberships").collect();
+    const ents = await ctx.runQuery(
+      internal.admin.entitlements._listEntitlementsInternal,
+      {},
+    );
+
+    const statusFor = (orgId: string, productId: string): EntStatus => {
+      const e = ents.find(
+        (x) => x.organizationId === orgId && x.productId === productId,
+      );
+      if (!e) return "none";
+      return e.status === "active" || e.status === "trialing" ? "active" : "canceled";
+    };
+
+    return orgs
+      .map((o) => {
+        const orgId = String(o._id);
+        return {
+          organizationId: orgId,
+          name: (o.name as string) ?? "(no name)",
+          memberCount: memberships.filter(
+            (m) => String(m.organizationId) === orgId,
+          ).length,
+          crm: statusFor(orgId, "crm"),
+          gabinet: statusFor(orgId, "gabinet"),
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
   },
 });
 

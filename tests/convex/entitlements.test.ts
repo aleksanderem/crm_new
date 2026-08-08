@@ -93,3 +93,38 @@ describe("admin/entitlements.setEntitlement", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("admin/entitlements.listOrgEntitlements", () => {
+  test("merges orgs with their entitlement status", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await createSupabaseDb().insert("users", {
+      _id: String(userId), name: "Admin", email: "a@example.com",
+      isPlatformAdmin: true,
+    });
+    await t.withIdentity(identity).action(api.admin.entitlements.setEntitlement, {
+      organizationId, productId: "gabinet", grant: true,
+    });
+
+    const rows = await t
+      .withIdentity(identity)
+      .action(api.admin.entitlements.listOrgEntitlements, {});
+    const org = rows.find((r) => r.organizationId === String(organizationId));
+    expect(org).toBeTruthy();
+    expect(org?.name).toBe("Test Org");
+    expect(org?.gabinet).toBe("active");
+    expect(org?.crm).toBe("none");
+    expect(org?.memberCount).toBe(1);
+  });
+
+  test("rejects non-platform-admin callers", async () => {
+    const t = createTestCtx();
+    const { userId, identity } = await seedTestUser(t);
+    await createSupabaseDb().insert("users", {
+      _id: String(userId), name: "N", email: "n@example.com", isPlatformAdmin: false,
+    });
+    await expect(
+      t.withIdentity(identity).action(api.admin.entitlements.listOrgEntitlements, {}),
+    ).rejects.toThrow();
+  });
+});

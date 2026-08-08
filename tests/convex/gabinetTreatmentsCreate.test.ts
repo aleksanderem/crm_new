@@ -14,6 +14,12 @@ describe("gabinet/treatments.create — happy path", () => {
   test("inserts a treatment with required fields and writes it to Supabase", async () => {
     const t = createTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("productSubscriptions", {
+        organizationId, productId: "gabinet", status: "active",
+        cancelAtPeriodEnd: false, createdAt: Date.now(), updatedAt: Date.now(),
+      });
+    });
 
     const treatmentId = await t
       .withIdentity(identity)
@@ -44,6 +50,12 @@ describe("gabinet/treatments.create — happy path", () => {
   test("persists all optional columns when supplied", async () => {
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("productSubscriptions", {
+        organizationId, productId: "gabinet", status: "active",
+        cancelAtPeriodEnd: false, createdAt: Date.now(), updatedAt: Date.now(),
+      });
+    });
 
     const treatmentId = await t
       .withIdentity(identity)
@@ -92,6 +104,12 @@ describe("gabinet/treatments.create — happy path", () => {
   test("clears taxRate when taxExempt is true", async () => {
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("productSubscriptions", {
+        organizationId, productId: "gabinet", status: "active",
+        cancelAtPeriodEnd: false, createdAt: Date.now(), updatedAt: Date.now(),
+      });
+    });
 
     const treatmentId = await t
       .withIdentity(identity)

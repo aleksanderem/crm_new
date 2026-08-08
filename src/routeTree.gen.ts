@@ -33,6 +33,7 @@ import { Route as AppAuthDashboardLayoutRouteImport } from './routes/_app/_auth/
 import { Route as AppAuthAdminUsersRouteImport } from './routes/_app/_auth/admin.users'
 import { Route as AppAuthAdminErrorsRouteImport } from './routes/_app/_auth/admin.errors'
 import { Route as AppAuthAdminEmailConfigRouteImport } from './routes/_app/_auth/admin.email-config'
+import { Route as AppAuthAdminEntitlementsRouteImport } from './routes/_app/_auth/admin.entitlements'
 import { Route as AppAuthDashboardLayoutIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.index'
 import { Route as AppAuthOnboardingLayoutUsernameRouteImport } from './routes/_app/_auth/onboarding/_layout.username'
 import { Route as AppAuthDashboardLayoutSetupRouteImport } from './routes/_app/_auth/dashboard/_layout.setup'
@@ -240,6 +241,11 @@ const AppAuthAdminErrorsRoute = AppAuthAdminErrorsRouteImport.update({
 const AppAuthAdminEmailConfigRoute = AppAuthAdminEmailConfigRouteImport.update({
   id: '/admin/email-config',
   path: '/admin/email-config',
+  getParentRoute: () => AppAuthRoute,
+} as any)
+const AppAuthAdminEntitlementsRoute = AppAuthAdminEntitlementsRouteImport.update({
+  id: '/admin/entitlements',
+  path: '/admin/entitlements',
   getParentRoute: () => AppAuthRoute,
 } as any)
 const AppAuthDashboardLayoutIndexRoute =
@@ -801,6 +807,7 @@ export interface FileRoutesByFullPath {
   '/admin/email-config': typeof AppAuthAdminEmailConfigRoute
   '/admin/errors': typeof AppAuthAdminErrorsRoute
   '/admin/users': typeof AppAuthAdminUsersRoute
+  '/admin/entitlements': typeof AppAuthAdminEntitlementsRoute
   '/dashboard': typeof AppAuthDashboardLayoutRouteWithChildren
   '/onboarding': typeof AppAuthOnboardingLayoutRouteWithChildren
   '/patient/appointments': typeof AppPatientLayoutAppointmentsRoute
@@ -910,6 +917,7 @@ export interface FileRoutesByTo {
   '/admin/email-config': typeof AppAuthAdminEmailConfigRoute
   '/admin/errors': typeof AppAuthAdminErrorsRoute
   '/admin/users': typeof AppAuthAdminUsersRoute
+  '/admin/entitlements': typeof AppAuthAdminEntitlementsRoute
   '/onboarding': typeof AppAuthOnboardingLayoutRouteWithChildren
   '/patient/appointments': typeof AppPatientLayoutAppointmentsRoute
   '/patient/book': typeof AppPatientLayoutBookRoute
@@ -1017,6 +1025,7 @@ export interface FileRoutesById {
   '/_app/_auth/admin/email-config': typeof AppAuthAdminEmailConfigRoute
   '/_app/_auth/admin/errors': typeof AppAuthAdminErrorsRoute
   '/_app/_auth/admin/users': typeof AppAuthAdminUsersRoute
+  '/_app/_auth/admin/entitlements': typeof AppAuthAdminEntitlementsRoute
   '/_app/_auth/dashboard/_layout': typeof AppAuthDashboardLayoutRouteWithChildren
   '/_app/_auth/onboarding/_layout': typeof AppAuthOnboardingLayoutRouteWithChildren
   '/_app/patient/_layout/appointments': typeof AppPatientLayoutAppointmentsRoute
@@ -1130,6 +1139,7 @@ export interface FileRouteTypes {
     | '/admin/email-config'
     | '/admin/errors'
     | '/admin/users'
+    | '/admin/entitlements'
     | '/dashboard'
     | '/onboarding'
     | '/patient/appointments'
@@ -1239,6 +1249,7 @@ export interface FileRouteTypes {
     | '/admin/email-config'
     | '/admin/errors'
     | '/admin/users'
+    | '/admin/entitlements'
     | '/onboarding'
     | '/patient/appointments'
     | '/patient/book'
@@ -1345,6 +1356,7 @@ export interface FileRouteTypes {
     | '/_app/_auth/admin/email-config'
     | '/_app/_auth/admin/errors'
     | '/_app/_auth/admin/users'
+    | '/_app/_auth/admin/entitlements'
     | '/_app/_auth/dashboard/_layout'
     | '/_app/_auth/onboarding/_layout'
     | '/_app/patient/_layout/appointments'
@@ -1621,6 +1633,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/email-config'
       fullPath: '/admin/email-config'
       preLoaderRoute: typeof AppAuthAdminEmailConfigRouteImport
+      parentRoute: typeof AppAuthRoute
+    }
+    '/_app/_auth/admin/entitlements': {
+      id: '/_app/_auth/admin/entitlements'
+      path: '/admin/entitlements'
+      fullPath: '/admin/entitlements'
+      preLoaderRoute: typeof AppAuthAdminEntitlementsRouteImport
       parentRoute: typeof AppAuthRoute
     }
     '/_app/_auth/dashboard/_layout/': {
@@ -2603,6 +2622,7 @@ interface AppAuthRouteChildren {
   AppAuthAdminEmailConfigRoute: typeof AppAuthAdminEmailConfigRoute
   AppAuthAdminErrorsRoute: typeof AppAuthAdminErrorsRoute
   AppAuthAdminUsersRoute: typeof AppAuthAdminUsersRoute
+  AppAuthAdminEntitlementsRoute: typeof AppAuthAdminEntitlementsRoute
   AppAuthDashboardLayoutRoute: typeof AppAuthDashboardLayoutRouteWithChildren
   AppAuthOnboardingLayoutRoute: typeof AppAuthOnboardingLayoutRouteWithChildren
   AppAuthAdminIndexRoute: typeof AppAuthAdminIndexRoute
@@ -2612,6 +2632,7 @@ const AppAuthRouteChildren: AppAuthRouteChildren = {
   AppAuthAdminEmailConfigRoute: AppAuthAdminEmailConfigRoute,
   AppAuthAdminErrorsRoute: AppAuthAdminErrorsRoute,
   AppAuthAdminUsersRoute: AppAuthAdminUsersRoute,
+  AppAuthAdminEntitlementsRoute: AppAuthAdminEntitlementsRoute,
   AppAuthDashboardLayoutRoute: AppAuthDashboardLayoutRouteWithChildren,
   AppAuthOnboardingLayoutRoute: AppAuthOnboardingLayoutRouteWithChildren,
   AppAuthAdminIndexRoute: AppAuthAdminIndexRoute,

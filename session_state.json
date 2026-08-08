@@ -1,9 +1,9 @@
 {
-  "session_id": "S0126",
-  "started_at": "2026-08-07T14:30:00Z",
-  "last_updated": "2026-08-07T15:10:00Z",
-  "status": "active",
-  "focus": "Prod incident part 2: convex/ typecheck FIXED (0 errors, verified against regenerated _generated = what convex deploy sees). PR #4344 open. Awaiting user decision on the prod convex deploy (manual step).",
+  "session_id": "S0127",
+  "started_at": "2026-08-08T00:00:00Z",
+  "last_updated": "2026-08-08T00:00:00Z",
+  "status": "completed",
+  "focus": "SP1 Task 2: listOrgEntitlements — internalQuery + action for org×module status grid",
   "tasks_snapshot": {
     "total": 1,
     "not_started": 0,
@@ -12,7 +12,7 @@
     "failing": 0,
     "blocked": 0
   },
-  "active_task_ids": ["CVXFIX-01"],
-  "blockers": ["Prod convex deploy is a manual step needing user go-ahead + prod deploy access; not yet executed."],
-  "notes": "DONE: all convex/ TS errors fixed type-only (49 by convex-expert agent + 4 more surfaced by _generated regen: http/init callback params, signingStubs return type, backfillProductSubscriptions self-module ref cycle). `npx tsc -p convex/tsconfig.json` = 0 with regenerated _generated; check:convex-codegen in sync (191 modules). Commits bf8082c6 + 77eeaf38 on fix/convex-typecheck-prod-deploy; PR #4344. NEXT: after go-ahead run `npx convex deploy` to prod (pleasant-elephant-723) → verify mintUserToken in function-spec. convex deploy to prod is MANUAL (not auto on merge). No CONVEX_DEPLOY_KEY locally; device auth likely works. Autonomous worker loop STAYS stopped."
+  "active_task_ids": [1],
+  "blockers": [],
+  "notes": "TDD: append failing test first (listOrgEntitlements not yet defined), then implement in convex/admin/entitlements.ts. Do not touch Task 1 tests."
 }

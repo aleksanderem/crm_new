@@ -84,6 +84,17 @@ function AdminIndex() {
             </CardHeader>
           </Card>
         </Link>
+
+        <Link to="/admin/entitlements" className="block">
+          <Card className="h-full transition hover:border-foreground/20">
+            <CardHeader>
+              <CardTitle>Module access</CardTitle>
+              <CardDescription>
+                Grant or revoke module access (CRM, Gabinet) per organization.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
       </div>
     </div>
   );

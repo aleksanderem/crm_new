@@ -396,6 +396,12 @@ describe("automation lifecycle", () => {
   test("patient created event processes notification preset and records a processed run", async () => {
     const t = createManagedTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("productSubscriptions", {
+        organizationId, productId: "gabinet", status: "active",
+        cancelAtPeriodEnd: false, createdAt: Date.now(), updatedAt: Date.now(),
+      });
+    });
 
     await t.withIdentity(identity).action(api.automation.createRule, {
       organizationId,

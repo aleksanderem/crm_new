@@ -191,11 +191,17 @@ export async function checkPermission(
     .unique();
 
   let orgScope: Scope;
+  // Use optional chaining + "none" fallback so features not in the FEATURES
+  // registry (e.g. from a new zero-touch module) default to deny rather than
+  // throwing TypeError. Mirrors authAction.checkPermission (#4397).
   if (override) {
     const perms = override.permissions as FeaturePermissions;
-    orgScope = perms?.[feature]?.[action] ?? DEFAULT_PERMISSIONS[role][feature][action];
+    orgScope = (perms?.[feature]?.[action]
+      ?? (DEFAULT_PERMISSIONS[role] as Record<string, Record<Action, Scope> | undefined>)[feature]?.[action]
+      ?? "none") as Scope;
   } else {
-    orgScope = DEFAULT_PERMISSIONS[role][feature][action];
+    orgScope = ((DEFAULT_PERMISSIONS[role] as Record<string, Record<Action, Scope> | undefined>)[feature]?.[action]
+      ?? "none") as Scope;
   }
 
   // MAX-merge gabinet-role permissions for gabinet_* features, mirroring

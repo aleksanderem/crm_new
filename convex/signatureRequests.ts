@@ -386,8 +386,7 @@ export const signExternal = action({
     const createdBy = instance.createdBy ? String(instance.createdBy) : null;
     if (createdBy) {
       try {
-        await ctx.scheduler.runAfter(0, internal.supabase.auditLog.writeAuditLogToSupabase, {
-          auditLogId: crypto.randomUUID(),
+        await db.insert("auditLog", {
           organizationId: String(request.organizationId),
           userId: createdBy,
           action: "document.signed",

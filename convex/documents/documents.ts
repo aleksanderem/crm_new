@@ -670,8 +670,7 @@ export const recordSignature = action({
     // When createdBy is null (auto-generated / system documents) we still
     // write the entry with userId omitted so all signing events are auditable.
     try {
-      await ctx.scheduler.runAfter(0, internal.supabase.auditLog.writeAuditLogToSupabase, {
-        auditLogId: crypto.randomUUID(),
+      await db.insert("auditLog", {
         organizationId: String(doc.organizationId),
         userId: doc.createdBy ? String(doc.createdBy) : undefined,
         action: "document.signed",

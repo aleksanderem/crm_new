@@ -574,7 +574,7 @@ export const recordSignature = action({
     signedByIp: v.optional(v.string()),
     resolvedHtml: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     const db = createSupabaseDb();
 
     const doc = await db.query("formDocuments")

@@ -318,6 +318,8 @@ function WaitlistEntryRow({
 
   const isActionable = entry.status === "waiting";
   const isCancelled = entry.status === "cancelled" || entry.status === "expired";
+  const preferredDates = entry.preferred_dates as string[] | null;
+  const preferredTimes = entry.preferred_times as string[] | null;
 
   async function handleNotify() {
     setNotifying(true);
@@ -360,16 +362,16 @@ function WaitlistEntryRow({
             <span>{t("gabinet.waitlist.employee", "Specjalista")}: {employeeName}</span>
           )}
         </div>
-        {(entry.preferred_dates?.length || entry.preferred_times?.length) ? (
+        {(preferredDates?.length || preferredTimes?.length) ? (
           <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
-            {entry.preferred_dates?.length ? (
+            {preferredDates?.length ? (
               <span>
-                {t("gabinet.waitlist.preferredDates", "Daty")}: {formatPreferredDates(entry.preferred_dates)}
+                {t("gabinet.waitlist.preferredDates", "Daty")}: {formatPreferredDates(preferredDates)}
               </span>
             ) : null}
-            {entry.preferred_times?.length ? (
+            {preferredTimes?.length ? (
               <span>
-                {t("gabinet.waitlist.preferredTimes", "Godziny")}: {formatPreferredTimes(entry.preferred_times)}
+                {t("gabinet.waitlist.preferredTimes", "Godziny")}: {formatPreferredTimes(preferredTimes)}
               </span>
             ) : null}
           </div>

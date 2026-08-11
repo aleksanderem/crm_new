@@ -532,7 +532,8 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
 // Clear implementation
 // ---------------------------------------------------------------------------
 
-async function doClear(ctx: any, orgId: Id<"organizations">) {
+async function doClear(_ctx: any, orgId: Id<"organizations">) {
+  const supabaseDb = createSupabaseDb();
   const tables = [
     "scheduledActivities",
     "emails",
@@ -543,16 +544,16 @@ async function doClear(ctx: any, orgId: Id<"organizations">) {
     "leads",
     "contacts",
     "companies",
-  ] as const;
+  ];
 
   let total = 0;
   for (const table of tables) {
-    const rows = await ctx.db
+    const rows = await supabaseDb
       .query(table)
-      .withIndex("by_org", (q: any) => q.eq("organizationId", orgId))
+      .eq("organizationId", orgId)
       .collect();
     for (const row of rows) {
-      await ctx.db.delete(row._id);
+      await supabaseDb.delete(table, (row as Record<string, unknown>)._id as string);
     }
     total += rows.length;
   }

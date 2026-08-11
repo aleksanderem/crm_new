@@ -1909,3 +1909,45 @@ export const processRun = internalAction({
   },
 });
 
+// ---------------------------------------------------------------------------
+// Scheduled cleanup — marks automationRuns rows that have been stuck in
+// "pending" status for more than 30 minutes as "failed".
+//
+// A row can get permanently stuck when emitEvent crashes between inserting
+// the Supabase row and calling ctx.scheduler.runAfter (the processRun call
+// is never enqueued, so the row never transitions out of "pending"). Any
+// legitimate processRun completes in seconds; 30 minutes is a safe cutoff.
+// Runs hourly (see convex/crons.ts). Processes up to 100 rows per run to
+// bound execution time.
+// ---------------------------------------------------------------------------
+const STUCK_PENDING_CUTOFF_MS = 30 * 60 * 1000; // 30 minutes
+const STUCK_PENDING_BATCH_SIZE = 100;
+
+export const _cleanupStuckPendingRuns = internalAction({
+  args: {},
+  handler: async (_ctx, _args): Promise<void> => {
+    const db = createSupabaseDb();
+    const cutoff = Date.now() - STUCK_PENDING_CUTOFF_MS;
+
+    const stuck = await db
+      .query("automationRuns")
+      .eq("status", "pending")
+      .lt("createdAt", cutoff)
+      .take(STUCK_PENDING_BATCH_SIZE)
+      .collect();
+
+    if (stuck.length === 0) return;
+
+    const now = Date.now();
+    for (const run of stuck) {
+      await db.patch("automationRuns", String(run._id), {
+        status: "failed",
+        errorMessage: "Stuck pending run: processRun was never scheduled",
+        updatedAt: now,
+      });
+    }
+
+    console.info(`[_cleanupStuckPendingRuns] Marked ${stuck.length} stuck run(s) as failed`);
+  },
+});
+

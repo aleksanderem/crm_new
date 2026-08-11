@@ -8089,3 +8089,6 @@ export type GabinetWaitlistUpdate = Database["public"]["Tables"]["gabinet_waitli
 export type LeadStageHistoryRow = Database["public"]["Tables"]["lead_stage_history"]["Row"];
 export type LeadStageHistoryInsert = Database["public"]["Tables"]["lead_stage_history"]["Insert"];
 export type LeadStageHistoryUpdate = Database["public"]["Tables"]["lead_stage_history"]["Update"];
+export type GoogleCalendarSyncConfigRow = Database["public"]["Tables"]["google_calendar_sync_configs"]["Row"];
+export type GoogleCalendarSyncConfigInsert = Database["public"]["Tables"]["google_calendar_sync_configs"]["Insert"];
+export type GoogleCalendarSyncConfigUpdate = Database["public"]["Tables"]["google_calendar_sync_configs"]["Update"];

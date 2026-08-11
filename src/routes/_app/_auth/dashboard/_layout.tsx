@@ -1095,7 +1095,7 @@ function DashboardLayout() {
 
   return (
     <DateRangeProvider>
-      <OrgProvider initialOrgId={firstOrg._id} userId={user._id}>
+      <OrgProvider initialOrgId={firstOrg._id as Id<"organizations">} userId={user._id}>
         <SupabaseProvider>
           <NudgesProvider>
             <MiniCalendarProvider>

@@ -373,7 +373,7 @@ function ContactDetail() {
       URL.revokeObjectURL(url);
       toast.success(t("gdpr.exportSuccess", { defaultValue: "Dane zostały wyeksportowane." }));
     } catch (e) {
-      toast.error(formatActionError(e, t("gdpr.exportFailed", { defaultValue: "Eksport danych nie powiódł się." })));
+      toast.error(formatActionError(e, t, { key: "gdpr.exportFailed", defaultValue: "Eksport danych nie powiódł się." }));
     }
   };
 
@@ -385,7 +385,7 @@ function ContactDetail() {
       toast.success(t("gdpr.eraseSuccess", { defaultValue: "Dane kontaktu zostały trwale usunięte." }));
       navigate({ to: "/dashboard/contacts" });
     } catch (e) {
-      toast.error(formatActionError(e, t("gdpr.eraseFailed", { defaultValue: "Usunięcie danych nie powiodło się." })));
+      toast.error(formatActionError(e, t, { key: "gdpr.eraseFailed", defaultValue: "Usunięcie danych nie powiodło się." }));
     }
   };
 

@@ -111,7 +111,7 @@ export const create = action({
     }
 
     try {
-      await ctx.runMutation(internal.products._createSideEffects, {
+      await ctx.runMutation(internal.crm.products._createSideEffects, {
         productId,
         organizationId: args.organizationId,
         name: args.name,
@@ -221,7 +221,7 @@ export const update = action({
     await db.patch("products", productId, patchPayload);
 
     try {
-      await ctx.runMutation(internal.products._updateSideEffects, {
+      await ctx.runMutation(internal.crm.products._updateSideEffects, {
         productId,
         organizationId,
         name: (product.name as string) ?? "",
@@ -294,7 +294,7 @@ export const remove = action({
     await db.delete("products", args.productId);
 
     try {
-      await ctx.runMutation(internal.products._removeSideEffects, {
+      await ctx.runMutation(internal.crm.products._removeSideEffects, {
         productId: args.productId,
         organizationId: args.organizationId,
         name: (product.name as string) ?? "",
@@ -363,7 +363,7 @@ export const toggleActive = action({
     });
 
     try {
-      await ctx.runMutation(internal.products._toggleActiveSideEffects, {
+      await ctx.runMutation(internal.crm.products._toggleActiveSideEffects, {
         productId: args.productId,
         organizationId: args.organizationId,
         name: (product.name as string) ?? "",
@@ -481,7 +481,7 @@ export const addToDeal = action({
     });
 
     try {
-      await ctx.runMutation(internal.products._addToDealSideEffects, {
+      await ctx.runMutation(internal.crm.products._addToDealSideEffects, {
         organizationId: args.organizationId,
         dealId: args.dealId,
         productName: (product.name as string) ?? "",
@@ -546,7 +546,7 @@ export const removeFromDeal = action({
     await db.delete("dealProducts", args.dealProductId);
 
     try {
-      await ctx.runMutation(internal.products._removeFromDealSideEffects, {
+      await ctx.runMutation(internal.crm.products._removeFromDealSideEffects, {
         organizationId: args.organizationId,
         dealId: String(dealProduct.dealId),
         productName: (product?.name as string) ?? "unknown",

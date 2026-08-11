@@ -36,7 +36,7 @@ export const create = action({
     });
 
     try {
-      await ctx.runMutation(internal.notes._createSideEffects, {
+      await ctx.runMutation(internal.crm.notes._createSideEffects, {
         noteId,
         organizationId: args.organizationId,
         entityType: args.entityType,
@@ -116,7 +116,7 @@ export const update = action({
     });
 
     try {
-      await ctx.runMutation(internal.notes._updateSideEffects, {
+      await ctx.runMutation(internal.crm.notes._updateSideEffects, {
         noteId: args.noteId,
         organizationId: args.organizationId,
         entityType: String(note.entityType),
@@ -189,7 +189,7 @@ export const remove = action({
     }
 
     // Delete child notes (replies) via internalMutation
-    await ctx.runMutation(internal.notes._removeChildNotes, {
+    await ctx.runMutation(internal.crm.notes._removeChildNotes, {
       organizationId: args.organizationId,
       parentNoteId: args.noteId,
     });
@@ -198,7 +198,7 @@ export const remove = action({
     await db.delete("notes", args.noteId);
 
     try {
-      await ctx.runMutation(internal.notes._removeSideEffects, {
+      await ctx.runMutation(internal.crm.notes._removeSideEffects, {
         noteId: args.noteId,
         organizationId: args.organizationId,
         entityType: String(note.entityType),

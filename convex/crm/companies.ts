@@ -86,7 +86,7 @@ export const create = action({
 
     // --- Delegate post-write side effects ---
     try {
-      await ctx.runMutation(internal.companies._createSideEffects, {
+      await ctx.runMutation(internal.crm.companies._createSideEffects, {
         companyId,
         organizationId: args.organizationId,
         name: args.name,
@@ -209,7 +209,7 @@ export const update = action({
 
     // --- Delegate post-write side effects ---
     try {
-      await ctx.runMutation(internal.companies._updateSideEffects, {
+      await ctx.runMutation(internal.crm.companies._updateSideEffects, {
         companyId,
         organizationId,
         name: (company.name as string) ?? "",
@@ -306,7 +306,7 @@ export const remove = action({
         await db.delete("objectRelationships", rel._id as string);
       }
 
-      await ctx.runMutation(internal.companies._removeSideEffects, {
+      await ctx.runMutation(internal.crm.companies._removeSideEffects, {
         companyId: args.companyId,
         organizationId: args.organizationId,
         name: (company.name as string) ?? "",

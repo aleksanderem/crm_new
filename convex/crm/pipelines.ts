@@ -361,7 +361,7 @@ export const create = action({
 
     // Side effects (activity log)
     try {
-      await ctx.runMutation(internal.pipelines._sideEffects, {
+      await ctx.runMutation(internal.crm.pipelines._sideEffects, {
         type: "pipeline_created",
         organizationId: args.organizationId,
         userId: String(authResult.userId),
@@ -416,7 +416,7 @@ export const update = action({
     await db.patch("pipelines", args.pipelineId, updates);
 
     try {
-      await ctx.runMutation(internal.pipelines._sideEffects, {
+      await ctx.runMutation(internal.crm.pipelines._sideEffects, {
         type: "pipeline_updated",
         organizationId: args.organizationId,
         userId: String(authResult.userId),
@@ -481,7 +481,7 @@ export const remove = action({
     await db.delete("pipelines", args.pipelineId);
 
     try {
-      await ctx.runMutation(internal.pipelines._sideEffects, {
+      await ctx.runMutation(internal.crm.pipelines._sideEffects, {
         type: "pipeline_deleted",
         organizationId: args.organizationId,
         userId: String(authResult.userId),
@@ -542,7 +542,7 @@ export const addStage = action({
     });
 
     try {
-      await ctx.runMutation(internal.pipelines._sideEffects, {
+      await ctx.runMutation(internal.crm.pipelines._sideEffects, {
         type: "stage_added",
         organizationId: args.organizationId,
         userId: String(authResult.userId),
@@ -596,7 +596,7 @@ export const updateStage = action({
     await db.patch("pipelineStages", args.stageId, updates);
 
     try {
-      await ctx.runMutation(internal.pipelines._sideEffects, {
+      await ctx.runMutation(internal.crm.pipelines._sideEffects, {
         type: "stage_updated",
         organizationId: args.organizationId,
         userId: String(authResult.userId),
@@ -659,7 +659,7 @@ export const removeStage = action({
     await db.delete("pipelineStages", args.stageId);
 
     try {
-      await ctx.runMutation(internal.pipelines._sideEffects, {
+      await ctx.runMutation(internal.crm.pipelines._sideEffects, {
         type: "stage_removed",
         organizationId: args.organizationId,
         userId: String(authResult.userId),
@@ -710,7 +710,7 @@ export const reorderStages = action({
     }
 
     try {
-      await ctx.runMutation(internal.pipelines._sideEffects, {
+      await ctx.runMutation(internal.crm.pipelines._sideEffects, {
         type: "stages_reordered",
         organizationId: args.organizationId,
         userId: String(authResult.userId),

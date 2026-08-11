@@ -60,7 +60,7 @@ export const create = action({
     });
 
     try {
-      await ctx.runMutation(internal.documents._createSideEffects, {
+      await ctx.runMutation(internal.crm.documents._createSideEffects, {
         organizationId: args.organizationId,
         documentId: docId,
         name: args.name,
@@ -141,7 +141,7 @@ export const update = action({
     await db.patch("documents", documentId, cleanUpdates);
 
     try {
-      await ctx.runMutation(internal.documents._updateSideEffects, {
+      await ctx.runMutation(internal.crm.documents._updateSideEffects, {
         organizationId,
         documentId,
         name: doc.name as string,
@@ -215,7 +215,7 @@ export const remove = action({
     await db.delete("documents", args.documentId);
 
     try {
-      await ctx.runMutation(internal.documents._removeSideEffects, {
+      await ctx.runMutation(internal.crm.documents._removeSideEffects, {
         organizationId: args.organizationId,
         documentId: args.documentId,
         name: doc.name as string,
@@ -292,7 +292,7 @@ export const updateStatus = action({
     await db.patch("documents", args.documentId, updateData);
 
     try {
-      await ctx.runMutation(internal.documents._updateStatusSideEffects, {
+      await ctx.runMutation(internal.crm.documents._updateStatusSideEffects, {
         organizationId: args.organizationId,
         documentId: args.documentId,
         name: doc.name as string,

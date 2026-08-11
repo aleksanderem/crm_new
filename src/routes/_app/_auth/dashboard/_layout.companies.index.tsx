@@ -61,8 +61,8 @@ function CompaniesIndex() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const { nudge: nudgeFilter } = useSearch({ from: Route.id });
-  const createCompany = useAction(api.companies.create);
-  const removeCompany = useAction(api.companies.remove);
+  const createCompany = useAction(api.crm.companies.create);
+  const removeCompany = useAction(api.crm.companies.remove);
   const setCustomFieldValues = useAction(api.customFields.setValues);
 
   const [panelOpen, setPanelOpen] = useState(false);

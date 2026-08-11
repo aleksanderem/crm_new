@@ -238,23 +238,23 @@ function LeadDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   // @ts-ignore — TS2589 excessive depth in useMutation type instantiation (pre-existing)
-  const updateLead = useAction(api.leads.update);
-  const removeLead = useAction(api.leads.remove);
-  const moveToStage = useAction(api.leads.moveToStage);
+  const updateLead = useAction(api.crm.leads.update);
+  const removeLead = useAction(api.crm.leads.remove);
+  const moveToStage = useAction(api.crm.leads.moveToStage);
   const createRelationship = useAction(api.relationships.create);
   const removeRelationship = useAction(api.relationships.remove);
-  const createContactMutation = useAction(api.contacts.create);
-  const createCompanyMutation = useAction(api.companies.create);
+  const createContactMutation = useAction(api.crm.contacts.create);
+  const createCompanyMutation = useAction(api.crm.companies.create);
   const setCustomFields = useAction(api.customFields.setValues);
   const trackView = useAction(api.recentlyViewed.track);
-  const createNote = useAction(api.notes.create);
+  const createNote = useAction(api.crm.notes.create);
   const createScheduledActivity = useAction(api.scheduledActivities.create);
   const markActivityComplete = useAction(api.scheduledActivities.markComplete);
   const markActivityIncomplete = useAction(api.scheduledActivities.markIncomplete);
   const updateScheduledActivity = useAction(api.scheduledActivities.update);
   const removeScheduledActivity = useAction(api.scheduledActivities.remove);
-  const addProductToDeal = useAction(api.products.addToDeal);
-  const removeProductFromDeal = useAction(api.products.removeFromDeal);
+  const addProductToDeal = useAction(api.crm.products.addToDeal);
+  const removeProductFromDeal = useAction(api.crm.products.removeFromDeal);
   const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
 
   const { data: leadDocuments } = useQuery({
@@ -412,7 +412,7 @@ function LeadDetail() {
   );
   const relationships = relationshipsQuery.data;
 
-  const listProductsByDeal = useAction(api.products.listByDeal);
+  const listProductsByDeal = useAction(api.crm.products.listByDeal);
   const dealProductsQueryKey = useMemo(
     () => ["products.listByDeal", organizationId, leadId] as const,
     [organizationId, leadId],

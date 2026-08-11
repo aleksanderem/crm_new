@@ -681,10 +681,10 @@ function ProductsPage() {
     return data;
   }, [activeViewId, allProducts, applyFilters, activeFilters, simpleFilters, simpleFilterConditions, searchValue, nudgeFilter, usedProductIds, productStockStatus, totalsByProductId]);
 
-  const createProduct = useAction(api.products.create);
-  const updateProduct = useAction(api.products.update);
-  const removeProduct = useAction(api.products.remove);
-  const toggleActive = useAction(api.products.toggleActive);
+  const createProduct = useAction(api.crm.products.create);
+  const updateProduct = useAction(api.crm.products.update);
+  const removeProduct = useAction(api.crm.products.remove);
+  const toggleActive = useAction(api.crm.products.toggleActive);
 
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen
   const getPlannedUsage = useAction(api.gabinet.inventory.getPlannedUsage);

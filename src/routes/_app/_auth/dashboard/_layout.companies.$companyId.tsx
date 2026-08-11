@@ -76,13 +76,13 @@ function CompanyDetail() {
   const queryClient = useQueryClient();
   const { setShellSidebarMode } = useSidebarSlot();
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-  const updateCompany = useAction(api.companies.update);
-  const removeCompany = useAction(api.companies.remove);
+  const updateCompany = useAction(api.crm.companies.update);
+  const removeCompany = useAction(api.crm.companies.remove);
   const createRelationship = useAction(api.relationships.create);
   const removeRelationship = useAction(api.relationships.remove);
-  const createContact = useAction(api.contacts.create);
-  const createNote = useAction(api.notes.create);
-  const createLead = useAction(api.leads.create);
+  const createContact = useAction(api.crm.contacts.create);
+  const createNote = useAction(api.crm.notes.create);
+  const createLead = useAction(api.crm.leads.create);
   const createScheduledActivity = useAction(api.scheduledActivities.create);
   const markActivityComplete = useAction(api.scheduledActivities.markComplete);
   const markActivityIncomplete = useAction(api.scheduledActivities.markIncomplete);

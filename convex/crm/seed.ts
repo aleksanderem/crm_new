@@ -97,12 +97,12 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
   }
 
   // Get pipeline stages for leads
-  const stages = await ctx.db
+  const stages = await supabaseDb
     .query("pipelineStages")
-    .withIndex("by_org", (q: any) => q.eq("organizationId", orgId))
+    .eq("organizationId", orgId)
     .collect();
   const stageMap: Record<string, Id<"pipelineStages">> = {};
-  for (const s of stages) stageMap[s.name] = s._id;
+  for (const s of stages) stageMap[s.name] = s._id as Id<"pipelineStages">;
 
   // ============================================================
   // 1. COMPANIES

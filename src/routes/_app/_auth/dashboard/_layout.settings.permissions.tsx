@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
-import { FEATURES } from "@cvx/_helpers/permissionTypes";
+import { FEATURES, ACTIONS, type Action } from "@cvx/_helpers/permissionTypes";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseOrgSettings } from "@/hooks/use-supabase-organizations";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
@@ -63,8 +63,6 @@ const FEATURE_LABELS: Record<string, { labelKey: string; label: string }> = {
   categoryDefinitions: { labelKey: "permissions.features.categoryDefinitions", label: "Categories" },
 };
 
-const ACTIONS = ["view", "create", "edit", "delete"] as const;
-type Action = (typeof ACTIONS)[number];
 type PermissionLevel = "none" | "own" | "all";
 
 type PermissionsMap = Record<string, Record<Action, PermissionLevel>>;
@@ -74,18 +72,20 @@ const DEFAULT_PERMISSION: Record<Action, PermissionLevel> = {
   create: "all",
   edit: "all",
   delete: "all",
+  approve: "none",
+  sign: "none",
+  refund: "none",
 };
 
 function buildPermissionsMap(overrides: Record<string, Record<string, string>> | null): PermissionsMap {
   const map: PermissionsMap = {};
   for (const featureKey of FEATURES) {
     const featureOverrides = overrides?.[featureKey];
-    map[featureKey] = {
-      view: (featureOverrides?.view as PermissionLevel) ?? DEFAULT_PERMISSION.view,
-      create: (featureOverrides?.create as PermissionLevel) ?? DEFAULT_PERMISSION.create,
-      edit: (featureOverrides?.edit as PermissionLevel) ?? DEFAULT_PERMISSION.edit,
-      delete: (featureOverrides?.delete as PermissionLevel) ?? DEFAULT_PERMISSION.delete,
-    };
+    const featurePerms = {} as Record<Action, PermissionLevel>;
+    for (const action of ACTIONS) {
+      featurePerms[action] = (featureOverrides?.[action] as PermissionLevel) ?? DEFAULT_PERMISSION[action];
+    }
+    map[featureKey] = featurePerms;
   }
   return map;
 }

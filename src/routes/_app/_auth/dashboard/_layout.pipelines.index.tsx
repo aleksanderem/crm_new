@@ -27,9 +27,9 @@ function PipelinesIndex() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   // @ts-ignore — Convex type instantiation too deep (pre-existing)
-  const moveToStage = useAction(api.leads.moveToStage);
-  const updateLead = useAction(api.leads.update);
-  const removeLead = useAction(api.leads.remove);
+  const moveToStage = useAction(api.crm.leads.moveToStage);
+  const updateLead = useAction(api.crm.leads.update);
+  const removeLead = useAction(api.crm.leads.remove);
   const queryClient = useQueryClient();
 
   const { data: pipelines } = useSupabasePipelinesList(organizationId);

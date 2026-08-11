@@ -101,9 +101,9 @@ function LeadsIndex() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const { nudge: nudgeFilter } = useSearch({ from: Route.id });
-  const updateLead = useAction(api.leads.update);
-  const removeLead = useAction(api.leads.remove);
-  const createLead = useAction(api.leads.create);
+  const updateLead = useAction(api.crm.leads.update);
+  const removeLead = useAction(api.crm.leads.remove);
+  const createLead = useAction(api.crm.leads.create);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);

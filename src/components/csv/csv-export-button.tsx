@@ -19,11 +19,11 @@ export function useCsvExport(
   const { t } = useTranslation();
   const [isExporting, setIsExporting] = useState(false);
 
-  const runContactsExport = useAction(api.csvExport.exportContacts);
-  const runCompaniesExport = useAction(api.csvExport.exportCompanies);
-  const runLeadsExport = useAction(api.csvExport.exportLeads);
-  const runPatientsExport = useAction(api.csvExport.exportPatients);
-  const runProductsExport = useAction(api.csvExport.exportProducts);
+  const runContactsExport = useAction(api.crm.csvExport.exportContacts);
+  const runCompaniesExport = useAction(api.crm.csvExport.exportCompanies);
+  const runLeadsExport = useAction(api.crm.csvExport.exportLeads);
+  const runPatientsExport = useAction(api.crm.csvExport.exportPatients);
+  const runProductsExport = useAction(api.crm.csvExport.exportProducts);
 
   const handleExport = useCallback(async () => {
     setIsExporting(true);

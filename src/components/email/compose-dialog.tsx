@@ -57,7 +57,7 @@ export function ComposeDialog({
   defaultTo,
 }: ComposeDialogProps) {
   const { t } = useTranslation();
-  const sendEmail = useAction(api.emails.send);
+  const sendEmail = useAction(api.crm.emails.send);
   const sendViaGmail = useAction(api.google.gmail.sendViaGmail);
 
   const { data: googleConnection } = useQuery(

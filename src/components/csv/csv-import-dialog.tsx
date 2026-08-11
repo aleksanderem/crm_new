@@ -68,10 +68,10 @@ export function CsvImportDialog({
 }: CsvImportDialogProps) {
   const { t } = useTranslation();
 
-  const batchCreateContacts = useAction(api.csvImport.batchCreateContacts);
-  const batchCreateCompanies = useAction(api.csvImport.batchCreateCompanies);
-  const batchCreateLeads = useAction(api.csvImport.batchCreateLeads);
-  const batchCreateProducts = useAction(api.csvImport.batchCreateProducts);
+  const batchCreateContacts = useAction(api.crm.csvImport.batchCreateContacts);
+  const batchCreateCompanies = useAction(api.crm.csvImport.batchCreateCompanies);
+  const batchCreateLeads = useAction(api.crm.csvImport.batchCreateLeads);
+  const batchCreateProducts = useAction(api.crm.csvImport.batchCreateProducts);
 
   const [step, setStep] = useState<Step>("upload");
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);

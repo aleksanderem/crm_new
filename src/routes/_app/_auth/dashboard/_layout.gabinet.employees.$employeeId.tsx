@@ -130,7 +130,7 @@ function EmployeeDetail() {
   const updateEmployee = useAction(api.gabinet.employees.update);
   const removeEmployee = useAction(api.gabinet.employees.remove);
   const setQualifiedTreatments = useAction(api.gabinet.employees.setQualifiedTreatments);
-  const createNote = useAction(api.notes.create);
+  const createNote = useAction(api.crm.notes.create);
   const markActivityComplete = useAction(api.scheduledActivities.markComplete);
   const markActivityIncomplete = useAction(api.scheduledActivities.markIncomplete);
   const updateScheduledActivity = useAction(api.scheduledActivities.update);

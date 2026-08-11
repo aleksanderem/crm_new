@@ -229,9 +229,9 @@ function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
-  const createContact = useAction(api.contacts.create);
-  const createCompany = useAction(api.companies.create);
-  const createLead = useAction(api.leads.create);
+  const createContact = useAction(api.crm.contacts.create);
+  const createCompany = useAction(api.crm.companies.create);
+  const createLead = useAction(api.crm.leads.create);
   const createPatient = useAction(api.gabinet.patients.create);
   const createTreatment = useAction(api.gabinet.treatments.create);
   const setTreatmentProducts = useAction(api.gabinet.treatments.setTreatmentProducts);
@@ -239,8 +239,8 @@ function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
   const createEmployee = useAction(api.gabinet.employees.create);
   const createActivity = useAction(api.scheduledActivities.create);
   const createLeave = useAction(api.gabinet.scheduling.createLeave);
-  const createProduct = useAction(api.products.create);
-  const createCall = useAction(api.calls.create);
+  const createProduct = useAction(api.crm.products.create);
+  const createCall = useAction(api.crm.calls.create);
   const createInvitation = useAction(api.invitations.create);
   const updateActivity = useAction(api.scheduledActivities.update);
   const removeActivity = useAction(api.scheduledActivities.remove);

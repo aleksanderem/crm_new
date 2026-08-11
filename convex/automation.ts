@@ -1473,13 +1473,13 @@ export const processRun = internalAction({
     const processRunDb = createSupabaseDb();
 
     // Idempotency guard: emitEvent writes the row to Supabase (status "pending") before
-    // scheduling this action. If processRun somehow runs twice, the row will already have
-    // a terminal status — skip silently to avoid double-processing.
+    // scheduling this action. If the row is missing the event was never properly initiated;
+    // if it already has a terminal status, processRun ran a second time — either way, bail.
     const existingRun = await processRunDb
       .query("automationRuns")
       .eq("eventIdempotencyKey", args.eventIdempotencyKey)
       .first();
-    if (existingRun && existingRun.status !== "pending") return;
+    if (!existingRun || existingRun.status !== "pending") return;
 
     const rules = await processRunDb
       .query("automationRules")

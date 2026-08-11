@@ -6,6 +6,10 @@ import type { Doc, TableNames } from "../_generated/dataModel";
 // `undefined`; consumers that read those fields should coalesce with `??`.
 export type SupabaseRow<T extends TableNames> = Omit<Doc<T>, "_creationTime">;
 
+// Supabase users row extended with is_platform_admin (not in Convex schema;
+// Supabase is the sole authority for this flag after migration #4362).
+export type UserRow = SupabaseRow<"users"> & { isPlatformAdmin?: boolean | null };
+
 export type DocumentAnalysisJobRow = SupabaseRow<"documentAnalysisJobs">;
 export type FormDocumentRow = SupabaseRow<"formDocuments">;
 export type FormTemplateRow = SupabaseRow<"formTemplates">;

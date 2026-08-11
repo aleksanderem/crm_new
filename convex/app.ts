@@ -6,6 +6,7 @@ import { asyncMap } from "convex-helpers";
 import { v } from "convex/values";
 import { User } from "~/types";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
+import type { UserRow } from "./_helpers/supabaseRows";
 
 export const getCurrentUser = query({
   args: {},
@@ -53,7 +54,7 @@ export const getIsPlatformAdmin = action({
     const userId = await auth.getUserId(ctx);
     if (!userId) return { isPlatformAdmin: false };
     const db = createSupabaseDb();
-    const user = await db.get("users", String(userId));
+    const user = (await db.get("users", String(userId))) as UserRow | null;
     return { isPlatformAdmin: Boolean(user?.isPlatformAdmin) };
   },
 });

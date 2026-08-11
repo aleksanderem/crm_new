@@ -3,6 +3,7 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { auth } from "@cvx/auth";
 import { createSupabaseDb } from "./supabaseDb";
+import type { UserRow } from "./supabaseRows";
 import type { Feature, Action, PermissionResult, Scope } from "./permissionTypes";
 import { DEFAULT_PERMISSIONS } from "./permissions";
 import { defaultGabinetScope, maxScope } from "./gabinetRolePermissions";
@@ -238,7 +239,7 @@ export const verifyPlatformAdmin = internalAction({
     const userId = await auth.getUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
     const db = createSupabaseDb();
-    const user = await db.get("users", String(userId));
+    const user = (await db.get("users", String(userId))) as UserRow | null;
     if (!user) throw new Error("User not found");
     if (!user.isPlatformAdmin) throw new Error("Platform admin access required");
     return { userId: userId as Id<"users"> };

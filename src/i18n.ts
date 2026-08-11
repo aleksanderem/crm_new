@@ -23,7 +23,7 @@ i18n
     fallbackLng: "pl",
     lng: "pl",
     supportedLngs: [...languages],
-    debug: true,
+    debug: import.meta.env.DEV,
     backend: {
       queryStringParams: { v: Date.now().toString() },
     },

@@ -6,6 +6,11 @@ name: Typecheck
 # app-typecheck: checks the React frontend (tsconfig.app.json) and Vite config
 #   (tsconfig.node.json). Previously only run inside E2E, so UI type regressions
 #   passed CI whenever E2E was skipped (see #3745).
+#
+# Together these two jobs catch stale api.* namespace references after
+# convex/ file moves (see #4420): check:convex-codegen detects api.d.ts
+# drift (orphaned or missing imports), and app-typecheck then fails if the
+# frontend still references a namespace path that no longer exists in api.d.ts.
 
 on:
   pull_request:
@@ -33,7 +38,7 @@ jobs:
       - name: Typecheck convex/
         run: npx tsc -p convex/tsconfig.json
 
-      - name: Check convex/_generated/api.d.ts is in sync
+      - name: Check api.d.ts in sync — catches stale api.* namespace after convex/ moves (#4420)
         run: npm run check:convex-codegen
 
   app-typecheck:

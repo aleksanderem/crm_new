@@ -1,7 +1,7 @@
-import { action } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { action } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import { createSupabaseDb } from "./_helpers/supabaseDb";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 async function requireOrgAdminAction(
   ctx: { runAction: Function },

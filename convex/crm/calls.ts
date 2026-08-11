@@ -1,11 +1,11 @@
-import { action, internalMutation, internalQuery } from "./_generated/server";
-import { internal } from "./_generated/api";
-import { createSupabaseDb } from "./_helpers/supabaseDb";
+import { action, internalMutation, internalQuery } from "../_generated/server";
+import { internal } from "../_generated/api";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { logActivity } from "./_helpers/activities";
+import { logActivity } from "../_helpers/activities";
 import { callOutcomeValidator } from "@cvx/schema";
-import { Id } from "./_generated/dataModel";
+import { Id } from "../_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for call writes
 

@@ -1,11 +1,11 @@
-import { action, internalMutation } from "./_generated/server";
-import { internal } from "./_generated/api";
-import { createSupabaseDb } from "./_helpers/supabaseDb";
+import { action, internalMutation } from "../_generated/server";
+import { internal } from "../_generated/api";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
-import { logActivity } from "./_helpers/activities";
-import { Id } from "./_generated/dataModel";
-import type { SupabaseRow } from "./_helpers/supabaseRows";
-import { applyMovementInternal } from "./inventory";
+import { logActivity } from "../_helpers/activities";
+import { Id } from "../_generated/dataModel";
+import type { SupabaseRow } from "../_helpers/supabaseRows";
+import { applyMovementInternal } from "../inventory";
 
 type DealProductRow = SupabaseRow<"dealProducts">;
 type ProductRow = SupabaseRow<"products">;

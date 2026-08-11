@@ -1,14 +1,14 @@
-import { query, action, internalMutation } from "./_generated/server";
-import { internal } from "./_generated/api";
-import { createSupabaseDb } from "./_helpers/supabaseDb";
+import { query, action, internalMutation } from "../_generated/server";
+import { internal } from "../_generated/api";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { verifyOrgAccess } from "./_helpers/auth";
-import { publishActivityEnvelope } from "./_helpers/activityEnvelope";
+import { verifyOrgAccess } from "../_helpers/auth";
+import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
 import { emailDirectionValidator } from "@cvx/schema";
 import { sendEmail } from "@cvx/email";
-import { Id } from "./_generated/dataModel";
-import type { EmailRow } from "./_helpers/supabaseRows";
+import { Id } from "../_generated/dataModel";
+import type { EmailRow } from "../_helpers/supabaseRows";
 
 // Dual-write refs removed — Supabase is now primary for email writes
 

@@ -1,9 +1,9 @@
-import { internalQuery, internalMutation, internalAction } from "./_generated/server";
+import { internalQuery, internalMutation, internalAction } from "../_generated/server";
 import { v } from "convex/values";
-import { publishActivityEnvelope } from "./_helpers/activityEnvelope";
-import { internal } from "./_generated/api";
-import { createSupabaseDb } from "./_helpers/supabaseDb";
-import type { SupabaseRow } from "./_helpers/supabaseRows";
+import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
+import { internal } from "../_generated/api";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
+import type { SupabaseRow } from "../_helpers/supabaseRows";
 
 // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
 const writeEmailRef = internal.supabase.emails.writeEmailToSupabase;

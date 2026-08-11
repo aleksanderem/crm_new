@@ -1,8 +1,8 @@
-import { action, internalMutation } from "./_generated/server";
-import { internal } from "./_generated/api";
-import { createSupabaseDb } from "./_helpers/supabaseDb";
+import { action, internalMutation } from "../_generated/server";
+import { internal } from "../_generated/api";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
-import { logActivity } from "./_helpers/activities";
+import { logActivity } from "../_helpers/activities";
 
 // Reads and writes are Supabase-primary via createSupabaseDb(). The frontend
 // reads pipelines directly via supabase-js (see use-supabase-pipelines); the

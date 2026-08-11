@@ -36,7 +36,6 @@ const GUARD_PATTERNS = [
   "verifyOrgAccess(",
   "checkPermission(",
   "requireOrgAdmin(",
-  "requirePlatformAdmin(",
   // Patient-portal session token guard
   "validatePortalSessionSupabase(",
   // Basic user identity checks
@@ -46,6 +45,7 @@ const GUARD_PATTERNS = [
   // Action-context org-membership variants (internalQuery helpers)
   "authAction.verifyOrgAccess",
   "authAction.checkPermission",
+  "authAction.verifyPlatformAdmin",
   // Known project-level auth wrappers that themselves call a guard above.
   // getEffectivePermissions: calls verifyOrgAccess internally (_helpers/permissions.ts)
   "getEffectivePermissions(",

@@ -64,7 +64,7 @@ describe("nowDate/nowTime filtering in getAvailableSlotsQuery (timezone contract
     const { slots } = result;
     expect(slots.length).toBeGreaterThan(0);
     expect(slots[0].start).toBe("08:00");
-    expect(slots[slots.length - 1].start).toBe("17:30");
+    expect(slots[slots.length - 1]!.start).toBe("17:30");
   });
 
   test("nowDate=date nowTime=14:00 excludes all slots at or before 14:00", async () => {

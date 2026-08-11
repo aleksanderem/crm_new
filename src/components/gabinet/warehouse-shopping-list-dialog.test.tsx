@@ -86,7 +86,7 @@ describe("groupShoppingItems", () => {
       makeItem("Dostawca B"),
     ];
     const groups = groupShoppingItems(items);
-    expect(groups[groups.length - 1].supplier).toBeNull();
+    expect(groups[groups.length - 1]!.supplier).toBeNull();
   });
 
   it("handles items with no supplier (all null)", () => {

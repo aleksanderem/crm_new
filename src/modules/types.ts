@@ -2,7 +2,7 @@ import type { ComponentType, ElementType } from "react";
 import type { Id } from "@cvx/_generated/dataModel";
 import type { Feature } from "@/hooks/use-permission";
 
-export type ModuleId = "crm" | "gabinet";
+export type ModuleId = string;
 export type ProductKey = string;
 
 export interface ModuleRouteMatch {

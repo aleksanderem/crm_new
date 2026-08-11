@@ -136,7 +136,7 @@ function ProfileSettings() {
       }
       await updateProfile({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        imageId: (uploaded[0].response as any).storageId,
+        imageId: (uploaded[0]!.response as any).storageId,
       });
       toast.success(t("profilePage.avatarUpdated", "Avatar updated"));
     },

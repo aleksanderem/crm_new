@@ -274,7 +274,7 @@ export function DataListFilterBar({
       {
         id: nextFilterId(),
         field: firstField.id,
-        operator: ops[0].value,
+        operator: ops[0]!.value,
         value: "",
       },
     ]);
@@ -294,7 +294,7 @@ export function DataListFilterBar({
           if (patch.field && patch.field !== f.field) {
             const fieldDef = filterableFields.find((fd) => fd.id === patch.field);
             const ops = fieldDef ? OPERATORS_BY_TYPE[fieldDef.type] : OPERATORS_BY_TYPE.text;
-            updated.operator = ops[0].value;
+            updated.operator = ops[0]!.value;
             updated.value = "";
           }
           return updated;

@@ -93,8 +93,8 @@ describe("groupShoppingItems", () => {
     const items = [makeItem(null), makeItem(null)];
     const groups = groupShoppingItems(items);
     expect(groups).toHaveLength(1);
-    expect(groups[0].supplier).toBeNull();
-    expect(groups[0].items).toHaveLength(2);
+    expect(groups[0]!.supplier).toBeNull();
+    expect(groups[0]!.items).toHaveLength(2);
   });
 
   it("sorts named suppliers alphabetically (pl locale)", () => {

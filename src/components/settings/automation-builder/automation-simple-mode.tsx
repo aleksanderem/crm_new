@@ -597,7 +597,7 @@ export function AutomationSimpleMode({
     const defaultForm = createDefaultForm(eventCatalog, actionCapabilities, t);
     setForm(defaultForm);
     if (defaultForm?.actions[0]) {
-      setNextActionType(defaultForm.actions[0].type);
+      setNextActionType(defaultForm.actions[0]!.type);
     }
   }, [actionCapabilities, eventCatalog, initialValue, t]);
 

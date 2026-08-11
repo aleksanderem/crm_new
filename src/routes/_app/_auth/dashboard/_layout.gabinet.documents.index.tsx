@@ -745,7 +745,7 @@ function GabinetDocumentsPage() {
           onBulkAction={(action, items) => {
             if (action === "view") {
               if (items.length === 1) {
-                setSelectedId(items[0]._id);
+                setSelectedId(items[0]!._id);
               }
             } else if (action === "resend") {
               items.forEach((item) => handleResendSigningEmail(item._id));

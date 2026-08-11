@@ -1947,7 +1947,7 @@ function DetailedDataTab({
     onUploadBegin: () => setPhotoUploading(true),
     onUploadComplete: async (uploaded) => {
       try {
-        const storageId = (uploaded[0].response as { storageId: string }).storageId;
+        const storageId = (uploaded[0]!.response as { storageId: string }).storageId;
         const url = await getStorageUrl({ storageId: storageId as Id<"_storage"> });
         if (url) {
           await onUpdate({ organizationId, employeeId: employee._id, avatarUrl: url });

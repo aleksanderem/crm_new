@@ -201,7 +201,7 @@ export function useSupabaseWeeklyCrmTrend(organizationId: string) {
       if (!client) throw new Error("Supabase client not ready");
 
       const days = buildWeekDays();
-      const weekStart = days[0]._start;
+      const weekStart = days[0]!._start;
 
       const [contactsRes, leadsRes] = await Promise.all([
         client
@@ -706,7 +706,7 @@ export function useSupabaseWeeklyContactsTrend(organizationId: string) {
       if (!client) throw new Error("Supabase client not ready");
 
       const days = buildWeekDays();
-      const weekStart = days[0]._start;
+      const weekStart = days[0]!._start;
 
       const { data, error } = await client
         .from("contacts")
@@ -738,7 +738,7 @@ export function useSupabaseWeeklyCompaniesTrend(organizationId: string) {
       if (!client) throw new Error("Supabase client not ready");
 
       const days = buildWeekDays();
-      const weekStart = days[0]._start;
+      const weekStart = days[0]!._start;
 
       const { data, error } = await client
         .from("companies")
@@ -770,7 +770,7 @@ export function useSupabaseWeeklyDealsTrend(organizationId: string) {
       if (!client) throw new Error("Supabase client not ready");
 
       const days = buildWeekDays();
-      const weekStart = days[0]._start;
+      const weekStart = days[0]!._start;
 
       const { data, error } = await client
         .from("leads")
@@ -814,7 +814,7 @@ export function useSupabaseWeeklyCallsTrend(organizationId: string) {
       if (!client) throw new Error("Supabase client not ready");
 
       const days = buildWeekDays();
-      const weekStart = days[0]._start;
+      const weekStart = days[0]!._start;
 
       const { data, error } = await client
         .from("calls")
@@ -944,7 +944,7 @@ export function useSupabaseWeeklyFormDocumentsTrend(organizationId: string) {
       if (!client) throw new Error("Supabase client not ready");
 
       const days = buildWeekDays();
-      const weekStart = days[0]._start;
+      const weekStart = days[0]!._start;
 
       const { data, error } = await (client as any)
         .from("form_documents")

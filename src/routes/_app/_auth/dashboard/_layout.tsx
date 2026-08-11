@@ -932,7 +932,7 @@ function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
                             />
                           )}
                           <AvatarFallback className="rounded-md bg-gradient-to-br from-primary/80 to-primary text-xs font-medium text-primary-foreground">
-                            {(user.name ?? user.username ?? user.email ?? "U")[0].toUpperCase()}
+                            {(user.name ?? user.username ?? user.email ?? "U")[0]!.toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div className="hidden flex-col items-start gap-0.5 sm:flex">

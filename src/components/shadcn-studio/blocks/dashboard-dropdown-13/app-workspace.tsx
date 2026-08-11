@@ -25,7 +25,7 @@ type Props = {
 }
 
 const AppWorkspaceDropdown = ({ defaultOpen, align = 'end', data }: Props) => {
-  const [activeApp, setActiveApp] = useState(data[0].id)
+  const [activeApp, setActiveApp] = useState(data[0]!.id)
 
   return (
     <DropdownMenu defaultOpen={defaultOpen}>

@@ -318,8 +318,8 @@ function WaitlistEntryRow({
 
   const isActionable = entry.status === "waiting";
   const isCancelled = entry.status === "cancelled" || entry.status === "expired";
-  const preferredDates = entry.preferred_dates as string[] | null;
-  const preferredTimes = entry.preferred_times as string[] | null;
+  const preferredDates = entry.preferred_dates;
+  const preferredTimes = entry.preferred_times;
 
   async function handleNotify() {
     setNotifying(true);

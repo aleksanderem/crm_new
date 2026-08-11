@@ -78,13 +78,10 @@ const WHITELIST_PATHS = new Set([
   // Auth/permissions helpers called from QueryCtx — Convex queries cannot
   // make HTTP calls, so createSupabaseDb() is unavailable. Many mutation
   // callers have been migrated to action-based variants (authAction.ts for
-  // auth/perms, seatLimits.checkSeatLimitAction for seat checks). Some
-  // mutation-context callers also legitimately read these tables via ctx.db
-  // for the same reason (mutations cannot use fetch in the Convex runtime);
-  // e.g. automation.ts:getAutomationEditPermission uses a fake actorCtx to
-  // read teamMemberships/orgPermissions — it is exempt via MULTILINE_PENDING
-  // rather than this whitelist. Primary query-context callers here:
-  // getSeatUsage, verifyOrgAccess in queries.
+  // auth/perms, seatLimits.checkSeatLimitAction for seat checks). Primary
+  // query-context callers here: getSeatUsage, verifyOrgAccess in queries.
+  // automation.ts:_getAutomationPermission was migrated to internalAction
+  // in issue #4353 and now reads teamMemberships/orgPermissions via Supabase.
   "_helpers/auth",
   "_helpers/permissions",
   "_helpers/seatLimits",
@@ -221,7 +218,6 @@ const GET_PENDING = new Set([
 const MULTILINE_PENDING = new Set([
   "activities",
   "app",
-  "automation",
   "calls",
   "customFields",
   "documentInstances",

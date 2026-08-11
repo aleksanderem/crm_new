@@ -3,7 +3,7 @@ import {
   internalMutation,
   action,
   query,
-  MutationCtx,
+  ActionCtx,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
@@ -334,7 +334,7 @@ function resolveAutomationTargetId(
 }
 
 async function getAutomationEditPermission(
-  ctx: MutationCtx,
+  ctx: ActionCtx,
   organizationId: Id<"organizations">,
   actorUserId: Id<"users"> | undefined,
   feature: Feature,
@@ -348,17 +348,12 @@ async function getAutomationEditPermission(
     };
   }
 
-  // teamMemberships and orgPermissions are dual-written to Convex
-  // (_writeOrgPermissionsToConvex, ctx.db.insert in teams/invitations).
-  // ctx.db reads are the permanent pattern for mutation callers — identical
-  // to checkPermission in _helpers/permissions.ts. Do NOT replace with
-  // createSupabaseDb(): mutations cannot use fetch in the Convex runtime.
-  const membership = await ctx.db
+  const permDb = createSupabaseDb();
+  const membership = await permDb
     .query("teamMemberships")
-    .withIndex("by_orgAndUser", (q) =>
-      q.eq("organizationId", organizationId).eq("userId", actorUserId),
-    )
-    .unique();
+    .eq("organizationId", String(organizationId))
+    .eq("userId", String(actorUserId))
+    .first();
 
   if (!membership) {
     return {
@@ -382,13 +377,11 @@ async function getAutomationEditPermission(
     };
   }
 
-  // orgPermissions is kept in sync via dual-write; ctx.db is permanent here.
-  const override = await ctx.db
+  const override = await permDb
     .query("orgPermissions")
-    .withIndex("by_orgAndRole", (q) =>
-      q.eq("organizationId", organizationId).eq("role", role),
-    )
-    .unique();
+    .eq("organizationId", String(organizationId))
+    .eq("role", role)
+    .first();
 
   let orgScope: Scope;
   if (override) {
@@ -437,10 +430,10 @@ async function getAutomationEditPermission(
   };
 }
 
-// Thin internalMutation wrappers called via ctx.runMutation from processRun
-// (now an internalAction). These keep the mutation context for Convex writes.
+// Thin wrappers called from processRun (internalAction). These either need
+// Convex write access (internalMutation) or Supabase read access (internalAction).
 
-export const _getAutomationPermission = internalMutation({
+export const _getAutomationPermission = internalAction({
   args: {
     organizationId: v.id("organizations"),
     actorUserId: v.optional(v.id("users")),
@@ -1802,7 +1795,7 @@ export const processRun = internalAction({
               continue;
             }
 
-            const permission = await ctx.runMutation(
+            const permission = await ctx.runAction(
               internal.automation._getAutomationPermission,
               {
                 organizationId: run.organizationId,

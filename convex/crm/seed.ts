@@ -15,6 +15,7 @@ import { mutation, internalMutation, query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOrgAdmin } from "../_helpers/auth";
 import { Id } from "../_generated/dataModel";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 // ---------------------------------------------------------------------------
 // Queries
@@ -267,12 +268,13 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
   // 5. ACTIVITIES (timeline entries)
   // ============================================================
   const actionTypes = ["created", "updated", "note_added", "email_sent", "email_received", "call", "stage_changed", "status_changed", "relationship_added", "assigned", "document_uploaded"] as const;
+  const supabaseDb = createSupabaseDb();
 
   // Activities for contacts
   for (let i = 0; i < Math.min(12, contactIds.length); i++) {
     const count = randomBetween(2, 5);
     for (let j = 0; j < count; j++) {
-      await ctx.db.insert("activities", {
+      await supabaseDb.insert("activities", {
         organizationId: orgId,
         entityType: "contact",
         entityId: contactIds[i],
@@ -298,7 +300,7 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
   for (let i = 0; i < Math.min(8, companyIds.length); i++) {
     const count = randomBetween(1, 4);
     for (let j = 0; j < count; j++) {
-      await ctx.db.insert("activities", {
+      await supabaseDb.insert("activities", {
         organizationId: orgId,
         entityType: "company",
         entityId: companyIds[i],
@@ -320,7 +322,7 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
   for (let i = 0; i < leadIds.length; i++) {
     const count = randomBetween(2, 6);
     for (let j = 0; j < count; j++) {
-      await ctx.db.insert("activities", {
+      await supabaseDb.insert("activities", {
         organizationId: orgId,
         entityType: "lead",
         entityId: leadIds[i],

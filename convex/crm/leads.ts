@@ -622,6 +622,7 @@ export const moveToStage = action({
     leadId: v.string(),
     pipelineStageId: v.string(),
     stageOrder: v.number(),
+    lostReason: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runAction(
@@ -666,8 +667,17 @@ export const moveToStage = action({
       updateData.status = "won";
       updateData.wonAt = now;
     } else if (stage.isLostStage) {
+      const settings = await ctx.runAction(internal.orgSettings._getSettings, {
+        organizationId: args.organizationId,
+      });
+      if (settings?.lostReasonRequired && !args.lostReason) {
+        throw new Error("A lost reason is required");
+      }
       updateData.status = "lost";
       updateData.lostAt = now;
+      if (args.lostReason) {
+        updateData.lostReason = args.lostReason;
+      }
     } else if (lead.status === "won" || lead.status === "lost") {
       updateData.status = "open";
     }

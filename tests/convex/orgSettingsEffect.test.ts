@@ -452,10 +452,10 @@ describe("allowCustomLostReason: controls whether lostReasons.create is permitte
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    await seedConvexOrgSettings(t, organizationId, { allowCustomLostReason: true });
+    await seedSupabaseOrgSettings(String(organizationId), { allowCustomLostReason: true });
 
     await expect(
-      t.withIdentity(identity).action(api.lostReasons.create, {
+      t.withIdentity(identity).action(api.crm.lostReasons.create, {
         organizationId,
         label: "Custom reason",
       }),
@@ -466,10 +466,10 @@ describe("allowCustomLostReason: controls whether lostReasons.create is permitte
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    await seedConvexOrgSettings(t, organizationId, { allowCustomLostReason: false });
+    await seedSupabaseOrgSettings(String(organizationId), { allowCustomLostReason: false });
 
     await expect(
-      t.withIdentity(identity).action(api.lostReasons.create, {
+      t.withIdentity(identity).action(api.crm.lostReasons.create, {
         organizationId,
         label: "Blocked reason",
       }),
@@ -483,7 +483,7 @@ describe("allowCustomLostReason: controls whether lostReasons.create is permitte
     // No orgSettings row — lostReasons.create should succeed (settings?.allowCustomLostReason === false is false when settings is null)
 
     await expect(
-      t.withIdentity(identity).action(api.lostReasons.create, {
+      t.withIdentity(identity).action(api.crm.lostReasons.create, {
         organizationId,
         label: "Default allow reason",
       }),
@@ -513,11 +513,11 @@ describe("lostReasonRequired: blocks leads.update to 'lost' status when no lostR
     const t = createTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
 
-    await seedConvexOrgSettings(t, organizationId, { lostReasonRequired: true });
+    await seedSupabaseOrgSettings(String(organizationId), { lostReasonRequired: true });
     const leadId = await seedLead(String(organizationId), String(userId));
 
     await expect(
-      t.withIdentity(identity).action(api.leads.update, {
+      t.withIdentity(identity).action(api.crm.leads.update, {
         organizationId,
         leadId,
         status: "lost",
@@ -529,11 +529,11 @@ describe("lostReasonRequired: blocks leads.update to 'lost' status when no lostR
     const t = createTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
 
-    await seedConvexOrgSettings(t, organizationId, { lostReasonRequired: true });
+    await seedSupabaseOrgSettings(String(organizationId), { lostReasonRequired: true });
     const leadId = await seedLead(String(organizationId), String(userId));
 
     await expect(
-      t.withIdentity(identity).action(api.leads.update, {
+      t.withIdentity(identity).action(api.crm.leads.update, {
         organizationId,
         leadId,
         status: "lost",
@@ -546,11 +546,11 @@ describe("lostReasonRequired: blocks leads.update to 'lost' status when no lostR
     const t = createTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
 
-    await seedConvexOrgSettings(t, organizationId, { lostReasonRequired: false });
+    await seedSupabaseOrgSettings(String(organizationId), { lostReasonRequired: false });
     const leadId = await seedLead(String(organizationId), String(userId));
 
     await expect(
-      t.withIdentity(identity).action(api.leads.update, {
+      t.withIdentity(identity).action(api.crm.leads.update, {
         organizationId,
         leadId,
         status: "lost",
@@ -566,7 +566,7 @@ describe("lostReasonRequired: blocks leads.update to 'lost' status when no lostR
     const leadId = await seedLead(String(organizationId), String(userId));
 
     await expect(
-      t.withIdentity(identity).action(api.leads.update, {
+      t.withIdentity(identity).action(api.crm.leads.update, {
         organizationId,
         leadId,
         status: "lost",

@@ -15,6 +15,8 @@ import { Kanban, TableIcon, KanbanIcon } from "@/lib/ez-icons";
 import { useState } from "react";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/pipelines/"
@@ -96,12 +98,21 @@ function PipelinesIndex() {
   };
 
   const handleMarkLost = async (leadId: Id<"leads">) => {
-    await updateLead({
-      organizationId,
-      leadId,
-      status: "lost",
-    });
-    queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
+    try {
+      await updateLead({
+        organizationId,
+        leadId,
+        status: "lost",
+      });
+      queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "leads.errors.updateFailed",
+          defaultValue: "Nie udało się oznaczyć szansy jako przegranej.",
+        }),
+      );
+    }
   };
 
   const handleDelete = async (leadId: Id<"leads">) => {

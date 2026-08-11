@@ -416,24 +416,24 @@ export const _gdprEraseSideEffects = internalMutation({
     const erasedByUserId = args.erasedBy as Id<"users">;
     const GDPR_REDACTED = "[RODO: dane usunięte]";
 
-    const existingActivities = await ctx.db
+    const db = createSupabaseDb();
+
+    const existingActivities = await db
       .query("activities")
-      .withIndex("by_entity", (q) =>
-        q.eq("entityType", "contact").eq("entityId", args.contactId)
-      )
+      .eq("entityType", "contact")
+      .eq("entityId", args.contactId)
       .collect();
     for (const activity of existingActivities) {
-      await ctx.db.patch(activity._id, { description: GDPR_REDACTED });
+      await db.patch("activities", String(activity._id), { description: GDPR_REDACTED });
     }
 
-    const existingNotes = await ctx.db
+    const existingNotes = await db
       .query("notes")
-      .withIndex("by_entity", (q) =>
-        q.eq("entityType", "contact").eq("entityId", args.contactId)
-      )
+      .eq("entityType", "contact")
+      .eq("entityId", args.contactId)
       .collect();
     for (const note of existingNotes) {
-      await ctx.db.patch(note._id, { content: GDPR_REDACTED, updatedAt: Date.now() });
+      await db.patch("notes", String(note._id), { content: GDPR_REDACTED, updatedAt: Date.now() });
     }
 
     await logAudit(ctx, {

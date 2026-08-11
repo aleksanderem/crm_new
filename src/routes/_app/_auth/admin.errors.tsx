@@ -20,6 +20,21 @@ export const Route = createFileRoute("/_app/_auth/admin/errors")({
 
 type SourceFilter = "all" | "convex" | "frontend";
 
+type ErrorLogItem = {
+  _id: string;
+  ts: number;
+  source: "convex" | "frontend";
+  level?: string;
+  message: string;
+  scope?: string;
+  fnName?: string;
+  url?: string;
+  stack?: string;
+  argsJson?: string;
+  userAgent?: string;
+  _user: { name: string | null; email: string | null } | null;
+};
+
 function AdminErrors() {
   const getIsPlatformAdmin = useAction(api.app.getIsPlatformAdmin);
   const { data: adminStatus, isLoading: viewerLoading } = useQuery({
@@ -62,7 +77,7 @@ function AdminErrors() {
     );
   }
 
-  const errors = errorsQuery.data ?? [];
+  const errors = (errorsQuery.data ?? []) as ErrorLogItem[];
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-8">

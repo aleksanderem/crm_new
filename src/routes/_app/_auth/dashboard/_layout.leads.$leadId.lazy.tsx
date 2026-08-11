@@ -49,13 +49,6 @@ import { activitiesToFeedEntries } from "@/components/crm/activity-feed-adapter"
 import { ScheduledActivitiesList } from "@/components/shared/scheduled-activities-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { RichTextEditor, plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import {
   DropdownMenu,

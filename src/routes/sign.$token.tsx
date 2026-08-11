@@ -42,7 +42,7 @@ function SigningPage() {
         <Loading />
       </PageShell>
     );
-  if (data === null)
+  if (data == null)
     return (
       <PageShell>
         <ErrorState message="Nie znaleziono dokumentu." />

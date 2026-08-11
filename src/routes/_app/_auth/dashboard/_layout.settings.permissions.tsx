@@ -120,8 +120,8 @@ function PermissionsSettings() {
 
   useEffect(() => {
     if (overrides) {
-      setMemberPerms(buildPermissionsMap(overrides.member));
-      setViewerPerms(buildPermissionsMap(overrides.viewer));
+      setMemberPerms(buildPermissionsMap(overrides.member as Record<string, Record<string, string>> | null));
+      setViewerPerms(buildPermissionsMap(overrides.viewer as Record<string, Record<string, string>> | null));
       setDirty(false);
     }
   }, [overrides]);

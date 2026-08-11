@@ -329,7 +329,7 @@ export const sendReminder = internalMutation({
       treatmentName,
     };
 
-    await ctx.runMutation(internal.automation.emitEvent, {
+    await ctx.scheduler.runAfter(0, internal.automation.emitEvent, {
       organizationId: reminder.organizationId as Id<"organizations">,
       module: "gabinet",
       eventType: "gabinet.appointment.reminder_due",

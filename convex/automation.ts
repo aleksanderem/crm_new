@@ -1385,12 +1385,43 @@ export const listActionTypes = action({
   },
 });
 
-export const emitEvent = internalMutation({
+export const emitEvent = internalAction({
   args: automationEventArgsValidator,
   handler: async (ctx, args) => {
     const now = Date.now();
     const runId = crypto.randomUUID();
     const occurredAt = args.occurredAt ?? now;
+
+    const db = createSupabaseDb();
+
+    // Idempotency guard: if another emitEvent with the same key already ran
+    // (e.g. a retry or duplicate call), return the existing run ID without
+    // scheduling a second processRun.
+    const existing = await db
+      .query("automationRuns")
+      .eq("eventIdempotencyKey", args.eventIdempotencyKey)
+      .first();
+    if (existing) return existing._id as string;
+
+    await db.insert("automationRuns", {
+      _id: runId,
+      organizationId: args.organizationId as string,
+      ruleId: null,
+      module: args.module,
+      eventType: args.eventType,
+      entityType: args.entityType ?? null,
+      entityId: args.entityId ?? null,
+      eventIdempotencyKey: args.eventIdempotencyKey,
+      correlationKey: args.correlationKey ?? null,
+      payloadSnapshot: args.payload,
+      actorUserId: (args.actorUserId as string | undefined) ?? null,
+      status: "pending",
+      errorMessage: null,
+      occurredAt,
+      processedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
 
     // @ts-ignore -- TS2589: type instantiation depth in generated Convex API types
     const processRunRef = internal.automation.processRun;
@@ -1448,37 +1479,14 @@ export const processRun = internalAction({
     const payload = JSON.parse(run.payloadSnapshot) as Record<string, unknown>;
     const processRunDb = createSupabaseDb();
 
-    // Idempotency guard: if another processRun already claimed this eventIdempotencyKey
-    // (e.g. emitEvent was called twice due to a Convex mutation retry), skip silently.
-    // The Supabase UNIQUE constraint on event_idempotency_key is the last-line defence,
-    // but relying on it alone means the second action throws a 23505 error rather than
-    // returning cleanly. This explicit check restores the graceful early-exit behaviour
-    // that the old ctx.db dedup provided.
+    // Idempotency guard: emitEvent writes the row to Supabase (status "pending") before
+    // scheduling this action. If processRun somehow runs twice, the row will already have
+    // a terminal status — skip silently to avoid double-processing.
     const existingRun = await processRunDb
       .query("automationRuns")
       .eq("eventIdempotencyKey", args.eventIdempotencyKey)
       .first();
-    if (existingRun) return;
-
-    await processRunDb.insert("automationRuns", {
-      _id: args.runId,
-      organizationId: args.organizationId as string,
-      ruleId: null,
-      module: args.module,
-      eventType: args.eventType,
-      entityType: args.entityType ?? null,
-      entityId: args.entityId ?? null,
-      eventIdempotencyKey: args.eventIdempotencyKey,
-      correlationKey: args.correlationKey ?? null,
-      payloadSnapshot: args.payloadSnapshot,
-      actorUserId: (args.actorUserId as string | undefined) ?? null,
-      status: "pending",
-      errorMessage: null,
-      occurredAt: args.occurredAt,
-      processedAt: null,
-      createdAt: args.createdAt,
-      updatedAt: args.createdAt,
-    });
+    if (existingRun && existingRun.status !== "pending") return;
 
     const rules = await processRunDb
       .query("automationRules")

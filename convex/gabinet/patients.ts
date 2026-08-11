@@ -488,7 +488,7 @@ export const _createSideEffects = internalMutation({
       details: `Created patient ${args.firstName} ${args.lastName}`,
     });
 
-    await ctx.runMutation(internal.automation.emitEvent, {
+    await ctx.scheduler.runAfter(0, internal.automation.emitEvent, {
       organizationId: args.organizationId,
       module: "gabinet",
       eventType: "gabinet.patient.created",

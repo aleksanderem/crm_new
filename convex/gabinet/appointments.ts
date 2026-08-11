@@ -115,7 +115,7 @@ async function emitAutomationEvent(
   },
 ) {
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-  await ctx.runMutation(internal.automation.emitEvent, {
+  await ctx.scheduler.runAfter(0, internal.automation.emitEvent, {
     organizationId: args.organizationId,
     module: args.module,
     eventType: args.eventType,

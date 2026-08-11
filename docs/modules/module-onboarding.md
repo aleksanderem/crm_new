@@ -56,7 +56,7 @@ A good first deliverable is a short ownership statement similar to the existing 
 
 Every module needs a stable module id and a product key.
 
-Today, module ids are typed in `src/modules/types.ts` as `ModuleId = "crm" | "gabinet"`. Adding a new module currently requires extending that union. The module manifest then uses that id, and `productKey` is used for activation filtering.
+Module ids are typed in `src/modules/types.ts` as `ModuleId = string` — any string value is valid, no platform-core change required when adding a new module. The module manifest uses that id, and `productKey` is used for activation filtering.
 
 Recommendation: keep module id and product key the same unless there is a real billing/catalog reason to separate them. That makes activation, routing, settings, and automation ownership much easier to follow.
 
@@ -299,7 +299,6 @@ The repo is much better than the old hardcoded shell model, but it is not yet co
 
 The current manual touchpoints are:
 
-- `src/modules/types.ts` because `ModuleId` is still a fixed union
 - `src/modules/registry.ts` because manifests are still manually imported into `moduleRegistry`
 - `convex/productSubscriptions.ts` if activation defaults or product filtering need alignment (the no-subscription grace fallback was removed in #4291 and is no longer a manual touchpoint)
 - `convex/_helpers/permissionTypes.ts` because feature ids are centrally enumerated

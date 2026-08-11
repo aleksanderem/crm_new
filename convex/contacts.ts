@@ -503,6 +503,47 @@ export const gdprExport = action({
       .eq("entity_type", "contact")
       .eq("entity_id", args.contactId);
 
+    const { data: emailRows } = await client
+      .from("emails")
+      .select("direction, \"from\", \"to\", cc, subject, body_text, snippet, sent_at")
+      .eq("organization_id", orgStr)
+      .eq("contact_id", args.contactId)
+      .order("sent_at", { ascending: true });
+
+    // Calls are linked to contacts via the polymorphic object_relationships table.
+    // Check both directions: call→contact and contact→call.
+    const [{ data: callRelsForward }, { data: callRelsReverse }] = await Promise.all([
+      client
+        .from("object_relationships")
+        .select("source_id")
+        .eq("organization_id", orgStr)
+        .eq("source_type", "call")
+        .eq("target_type", "contact")
+        .eq("target_id", args.contactId),
+      client
+        .from("object_relationships")
+        .select("target_id")
+        .eq("organization_id", orgStr)
+        .eq("source_type", "contact")
+        .eq("source_id", args.contactId)
+        .eq("target_type", "call"),
+    ]);
+
+    const callIds = [
+      ...((callRelsForward ?? []).map((r: { source_id: string }) => r.source_id)),
+      ...((callRelsReverse ?? []).map((r: { target_id: string }) => r.target_id)),
+    ];
+
+    let calls: unknown[] = [];
+    if (callIds.length > 0) {
+      const { data: callRows } = await client
+        .from("calls")
+        .select("outcome, call_date, note, duration, created_at")
+        .in("id", callIds)
+        .order("call_date", { ascending: true });
+      calls = callRows ?? [];
+    }
+
     return {
       exportedAt: new Date().toISOString(),
       contact: {
@@ -520,6 +561,8 @@ export const gdprExport = action({
       activities: activities ?? [],
       notes: notes ?? [],
       customFieldValues: customFieldValues ?? [],
+      emails: emailRows ?? [],
+      calls,
     };
   },
 });

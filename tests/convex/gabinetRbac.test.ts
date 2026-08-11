@@ -101,7 +101,7 @@ describe("gabinet_appointments RBAC", () => {
     ).rejects.toThrow("Permission denied");
   });
 
-  test("member can create an appointment (create:all by default)", async () => {
+  test("member without gabinet role cannot create an appointment (gabinet_appointments default=none)", async () => {
     const t = createTestCtx();
     const { organizationId, userId } = await seedTestUser(t);
     const { identity: memberIdentity } = await seedSecondUser(
@@ -115,9 +115,10 @@ describe("gabinet_appointments RBAC", () => {
       userId,
     );
 
-    const apptId = await t
-      .withIdentity(memberIdentity)
-      .action(api.gabinet.appointments.create, {
+    // DEFAULT_PERMISSIONS.member.gabinet_appointments is now all-"none".
+    // A plain member with no gabinetMemberships row must be denied.
+    await expect(
+      t.withIdentity(memberIdentity).action(api.gabinet.appointments.create, {
         organizationId,
         patientId: String(patientId),
         treatmentId: String(treatmentId),
@@ -126,9 +127,8 @@ describe("gabinet_appointments RBAC", () => {
         startTime: "09:00",
         endTime: "09:30",
         allowPast: true,
-      });
-
-    expect(apptId).toBeTruthy();
+      }),
+    ).rejects.toThrow("Permission denied");
   });
 });
 
@@ -190,7 +190,7 @@ describe("gabinet_patients RBAC", () => {
     ).rejects.toThrow("Permission denied");
   });
 
-  test("member can create a patient (create:all by default)", async () => {
+  test("member without gabinet role cannot create a patient (gabinet_patients default=none)", async () => {
     const t = createTestCtx();
     const { organizationId, userId } = await seedTestUser(t);
     const { identity: memberIdentity } = await seedSecondUser(
@@ -200,16 +200,16 @@ describe("gabinet_patients RBAC", () => {
     );
     await seedGabinetPrereqs(t, organizationId, userId);
 
-    const newPatientId = await t
-      .withIdentity(memberIdentity)
-      .action(api.gabinet.patients.create, {
+    // DEFAULT_PERMISSIONS.member.gabinet_patients is now all-"none".
+    // A plain member with no gabinetMemberships row must be denied.
+    await expect(
+      t.withIdentity(memberIdentity).action(api.gabinet.patients.create, {
         organizationId,
         firstName: "Nowy",
         lastName: "Pacjent",
         email: "nowy@example.com",
-      });
-
-    expect(newPatientId).toBeTruthy();
+      }),
+    ).rejects.toThrow("Permission denied");
   });
 });
 
@@ -316,7 +316,7 @@ describe("gabinet_packages RBAC", () => {
     ).rejects.toThrow("Permission denied");
   });
 
-  test("member can create a package (create:all by default)", async () => {
+  test("member without gabinet role cannot create a package (gabinet_packages default=none)", async () => {
     const t = createTestCtx();
     const { organizationId, userId } = await seedTestUser(t);
     const { identity: memberIdentity } = await seedSecondUser(
@@ -326,15 +326,15 @@ describe("gabinet_packages RBAC", () => {
     );
     const { treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
 
-    const packageId = await t
-      .withIdentity(memberIdentity)
-      .action(api.gabinet.packages.create, {
+    // DEFAULT_PERMISSIONS.member.gabinet_packages is now all-"none".
+    // A plain member with no gabinetMemberships row must be denied.
+    await expect(
+      t.withIdentity(memberIdentity).action(api.gabinet.packages.create, {
         organizationId,
         name: "Member Package",
         treatments: [{ treatmentId: String(treatmentId), quantity: 2 }],
         totalPrice: 200,
-      });
-
-    expect(packageId).toBeTruthy();
+      }),
+    ).rejects.toThrow("Permission denied");
   });
 });

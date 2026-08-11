@@ -26,8 +26,6 @@ import {
   seedSecondUser,
   seedGabinetPrereqs,
 } from "../../convex/_test_helpers";
-import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
-import type { Id } from "../../convex/_generated/dataModel";
 
 // Drain orphan scheduler callbacks to avoid unhandledRejection noise from
 // side-effect mutations that fire after the test has already returned.
@@ -59,73 +57,6 @@ async function seedGabinetRole(
 }
 
 // ---------------------------------------------------------------------------
-// Helper: insert an orgPermissions override for the "member" role that sets
-// every gabinet_* feature to "none" for every action.
-//
-// Background: DEFAULT_PERMISSIONS.member gives create:"all" to ALL features
-// (including gabinet_*) so that a plain CRM member can create contacts, leads,
-// etc. without extra configuration. This is correct for CRM, but for Gabinet
-// the intended design is that gabinet-role is the SOLE granting path — a plain
-// member with no gabinetMemberships row must be denied.
-//
-// In production, organisations are expected to ship with an orgPermissions row
-// that restricts gabinet_* for the member/viewer role. The test must mirror that
-// state so checkPermission evaluates the same way it does in production:
-//   orgScope = "none" (from override)
-//   gabinetScope = defaultGabinetScope(role, feature, action)
-//   effectiveScope = max(orgScope, gabinetScope)
-//
-// checkPermission (action variant, internal._helpers.authAction.checkPermission)
-// reads orgPermissions from the in-memory Supabase store, so we insert there.
-// ---------------------------------------------------------------------------
-const GABINET_FEATURES = [
-  "gabinet_dashboard",
-  "gabinet_patients",
-  "gabinet_appointments",
-  "gabinet_treatments",
-  "gabinet_packages",
-  "gabinet_employees",
-  "gabinet_payments",
-  "gabinet_receipts",
-  "gabinet_reports",
-  "gabinet_financial_reports",
-  "gabinet_purchase_prices",
-  "gabinet_photos",
-  "gabinet_online_booking",
-  "gabinet_inventory",
-  "gabinet_settings",
-] as const;
-
-const NONE_ALL_ACTIONS = {
-  view: "none",
-  create: "none",
-  edit: "none",
-  delete: "none",
-  approve: "none",
-  sign: "none",
-  refund: "none",
-} as const;
-
-async function seedGabinetOrgPermissions(
-  organizationId: Id<"organizations">,
-): Promise<void> {
-  const db = createSupabaseDb();
-  // Build a permissions map: keep all non-gabinet features at their defaults
-  // (we don't override them), and set every gabinet_* feature to all-none.
-  const gabinetNonePerms: Record<string, typeof NONE_ALL_ACTIONS> = {};
-  for (const feat of GABINET_FEATURES) {
-    gabinetNonePerms[feat] = NONE_ALL_ACTIONS;
-  }
-  await db.insert("orgPermissions", {
-    organizationId: String(organizationId),
-    role: "member",
-    permissions: gabinetNonePerms,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  });
-}
-
-// ---------------------------------------------------------------------------
 // Shared setup factory: org owner + prereqs + a clinical user with the
 // given gabinet role.
 // ---------------------------------------------------------------------------
@@ -139,14 +70,9 @@ async function setupClinicalUser(gabinetRole: string) {
   // Seed patients, treatments, employees, working hours into Convex + Supabase stub
   await seedGabinetPrereqs(t, organizationId, ownerUserId);
 
-  // Restrict gabinet_* features for the "member" org role to "none" in the
-  // Supabase orgPermissions override so that the gabinet-role MAX-merge is the
-  // sole granting mechanism. Without this, DEFAULT_PERMISSIONS.member gives
-  // create:"all" to every feature, which would let any member create treatments.
-  await seedGabinetOrgPermissions(organizationId);
-
-  // clinical user — org role "member" so org-level scope is "none" for all
-  // gabinet_* features; only the gabinet role grants access
+  // clinical user — org role "member"; DEFAULT_PERMISSIONS.member now sets all
+  // eight operational gabinet features to "none", so only the gabinet-role
+  // MAX-merge grants access. No orgPermissions seed needed.
   const { userId: clinicalUserId, identity: clinicalIdentity } =
     await seedSecondUser(t, organizationId, { role: "member" });
 
@@ -165,14 +91,11 @@ describe("member without gabinet role — permission gate is enforced", () => {
     const { organizationId, userId } = await seedTestUser(t);
     await seedGabinetPrereqs(t, organizationId, userId);
 
-    // Restrict gabinet_* features for "member" in Supabase orgPermissions so that
-    // checkPermission returns scope="none" when no gabinetMemberships row exists.
-    await seedGabinetOrgPermissions(organizationId);
-
     const { identity: memberIdentity } = await seedSecondUser(t, organizationId, {
       role: "member",
     });
-    // No gabinetMemberships entry — effective scope for gabinet_patients:view is "none"
+    // No gabinetMemberships entry — DEFAULT_PERMISSIONS.member sets gabinet_patients to
+    // "none" for all actions, so effective scope for gabinet_patients:view is "none".
 
     await expect(
       t.withIdentity(memberIdentity).action(api.gabinet.patients.list, {

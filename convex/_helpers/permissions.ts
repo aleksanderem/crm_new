@@ -118,6 +118,51 @@ DEFAULT_PERMISSIONS.viewer.gabinet_settings = {
   view: "none", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
 };
 
+// --- Operational gabinet feature lockdown for member + viewer org roles ---
+//
+// WHY: The buildDefaults() call above gives every role a broad baseline
+// (member gets create:"all"/view:"all"/edit:"own"/delete:"own"). That baseline
+// is correct for CRM features (contacts, leads, …) but is a security hole for
+// Gabinet operational data. The intended design is that gabinet-role assignment
+// is the SOLE granting path for the eight features below — a plain org member
+// with no gabinetMemberships row must be denied. The checkPermission flow in
+// authAction.ts computes:
+//   orgScope  = override ?? DEFAULT_PERMISSIONS[role][feature][action]  (now "none")
+//   gabScope  = defaultGabinetScope(gabinetRole, feature, action)       (role-specific)
+//   effective = MAX(orgScope, gabScope)                                  (line 180)
+// With orgScope "none" a user with no gabinet role gets effective="none";
+// a user WITH a gabinet role gets effective=gabScope from the role defaults.
+// This means the gabinet-role remains the sole granting path, as intended.
+//
+// Features already handled above (gabinet_payments, gabinet_receipts,
+// gabinet_reports, gabinet_financial_reports, gabinet_purchase_prices,
+// gabinet_online_booking, gabinet_settings) are NOT touched here.
+//
+// Issues: #4126, security review 2026-08.
+const GABINET_OPERATIONAL_NONE = {
+  view: "none" as const,
+  create: "none" as const,
+  edit: "none" as const,
+  delete: "none" as const,
+  approve: "none" as const,
+  sign: "none" as const,
+  refund: "none" as const,
+};
+const GABINET_OPERATIONAL_FEATURES = [
+  "gabinet_patients",
+  "gabinet_treatments",
+  "gabinet_appointments",
+  "gabinet_packages",
+  "gabinet_employees",
+  "gabinet_inventory",
+  "gabinet_dashboard",
+  "gabinet_photos",
+] as const;
+for (const feat of GABINET_OPERATIONAL_FEATURES) {
+  DEFAULT_PERMISSIONS.member[feat] = { ...GABINET_OPERATIONAL_NONE };
+  DEFAULT_PERMISSIONS.viewer[feat] = { ...GABINET_OPERATIONAL_NONE };
+}
+
 // --- Per-feature overrides for document_templates ---
 // owner/admin: all actions allowed (approve/sign not applicable to templates)
 // member: view only (no create/edit/delete)

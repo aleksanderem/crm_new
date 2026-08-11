@@ -313,6 +313,7 @@ function Footer() {
           <Link to="/pricing" className="hover:text-foreground transition-colors">Cennik</Link>
           <Link to="/terms" className="hover:text-foreground transition-colors">Regulamin</Link>
           <Link to="/privacy" className="hover:text-foreground transition-colors">Prywatność</Link>
+          <Link to="/status" className="hover:text-foreground transition-colors">Status</Link>
         </div>
         <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Quera. Wszelkie prawa zastrzeżone.</p>
       </div>

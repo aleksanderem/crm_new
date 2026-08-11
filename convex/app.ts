@@ -245,6 +245,15 @@ export const removeUserImage = mutation({
   },
 });
 
+// Public query — no auth required. Returns a server timestamp proving Convex
+// is alive. Used by the /status page to verify backend health.
+export const getPublicStatus = query({
+  args: {},
+  handler: async (_ctx) => {
+    return { ts: Date.now() };
+  },
+});
+
 // Public query — no auth required. Returns PLN monthly/yearly prices for the
 // CRM Pro and Gabinet Pro plans so the public pricing page can display live
 // prices instead of hardcoded placeholders. Returns null when plans have not

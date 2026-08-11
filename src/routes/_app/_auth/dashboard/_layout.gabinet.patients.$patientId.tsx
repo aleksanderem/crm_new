@@ -46,119 +46,27 @@ import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
 import { ActivityFeed } from "@/components/crm/activity-feed";
 import { activitiesToFeedEntries } from "@/components/crm/activity-feed-adapter";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Calendar,
-  Heart,
-  Star,
-  Trophy,
-  Plus,
-  Minus,
-  ArrowUpRight,
-  ArrowDownRight,
-  AlertCircle,
-  CreditCard,
-  Pencil,
-  WalletIcon,
-  RefreshCw,
-  Sparkles,
-  ChevronDown,
-  FileText,
-} from "@/lib/ez-icons";
-import { cn } from "@/lib/utils";
-
-import { useTranslation } from "react-i18next";
-import { usePermission, useRole, PermissionGate } from "@/hooks/use-permission";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PatientPackagesCard } from "@/components/gabinet/patient-packages-card";
-import { PatientTreatmentsCard } from "@/components/gabinet/patient-treatments-card";
 import { PatientPhotosTab } from "@/components/gabinet/patient-photos-tab";
 import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
-import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
 import { displayReferralSource } from "@/lib/options";
 import { formatPhoneNumber } from "@/lib/phone";
-import { formatCurrencyPLN } from "@/lib/format-currency";
 import { formatBirthDate } from "@/lib/format-date";
-
-const INTAKE_GROUP_ORDER = [
-  "diseases",
-  "allergies",
-  "medications",
-  "devices",
-  "other",
-] as const;
-type IntakeGroupKey = (typeof INTAKE_GROUP_ORDER)[number];
-
-const ALLERGY_KEYWORDS = ["alerg", "uczulen", "nadwrażliw", "nietolerancj"];
-const MED_KEYWORDS = [
-  "lek",
-  "preparat",
-  "suplement",
-  "farmak",
-  "dawkow",
-  "przyjmow",
-];
-const DEVICE_KEYWORDS = [
-  "implan",
-  "rozrusznik",
-  "protez",
-  "urządzeni",
-  "wszczep",
-  "defibrylat",
-  "endoprotez",
-  "metalow",
-  "stymulat",
-];
-
-function classifyIntakeItem(item: string): IntakeGroupKey {
-  const separatorIdx = item.indexOf(": ");
-  const isTextField = separatorIdx !== -1;
-  const label = isTextField ? item.slice(0, separatorIdx) : item;
-  const lower = label.toLowerCase();
-
-  if (ALLERGY_KEYWORDS.some((k) => lower.includes(k))) return "allergies";
-  if (MED_KEYWORDS.some((k) => lower.includes(k))) return "medications";
-  if (DEVICE_KEYWORDS.some((k) => lower.includes(k))) return "devices";
-  return isTextField ? "other" : "diseases";
-}
-
-function groupIntakeSummary(
-  items: string[],
-): { key: IntakeGroupKey; items: string[] }[] {
-  const map: Record<IntakeGroupKey, string[]> = {
-    diseases: [],
-    allergies: [],
-    medications: [],
-    devices: [],
-    other: [],
-  };
-  for (const item of items) {
-    map[classifyIntakeItem(item)].push(item);
-  }
-  return INTAKE_GROUP_ORDER.filter((k) => map[k].length > 0).map((k) => ({
-    key: k,
-    items: map[k],
-  }));
-}
+import { useTranslation } from "react-i18next";
+import { usePermission, useRole, PermissionGate } from "@/hooks/use-permission";
+import { PatientOverviewTab } from "@/components/gabinet/patients/patient-overview-tab";
+import { PatientAppointmentsTab } from "@/components/gabinet/patients/patient-appointments-tab";
+import { PatientBeautyPlanTab } from "@/components/gabinet/patients/patient-beauty-plan-tab";
+import { PatientPaymentsTab } from "@/components/gabinet/patients/patient-payments-tab";
+import { PatientBillingTab } from "@/components/gabinet/patients/patient-billing-tab";
+import { PatientLoyaltyTab } from "@/components/gabinet/patients/patient-loyalty-tab";
+import { PatientSidebarExtra } from "@/components/gabinet/patients/patient-sidebar-extra";
+import { EditPaymentDialog } from "@/components/gabinet/patients/edit-payment-dialog";
+import { RefundCreditDialog } from "@/components/gabinet/patients/refund-credit-dialog";
+import { AddPaymentDialog } from "@/components/gabinet/patients/add-payment-dialog";
+import { GdprEraseDialog } from "@/components/gabinet/patients/gdpr-erase-dialog";
+import { CancelPaymentDialog } from "@/components/gabinet/patients/cancel-payment-dialog";
 
 function PatientDetailSkeleton() {
   return (
@@ -221,12 +129,10 @@ function PatientDetail() {
   const [isGdprSubmitting, setIsGdprSubmitting] = useState(false);
   // Issue #1928: collapse the "Last appointments" overview card by default on
   // mobile so other sections (medical info, status tiles) aren't pushed below
-  // the fold. On desktop (md+) the section stays expanded — see JSX below.
+  // the fold. On desktop (md+) the section stays expanded.
   const [lastAppointmentsExpanded, setLastAppointmentsExpanded] =
     useState(false);
 
-  // Tag and category definitions for the edit drawer PatientForm
-  // (kept in sync with the patients list create-form props).
   const { tags: orgTags } = useTagDefinitions(organizationId);
   const { categories: patientCategories } = useCategoryDefinitions(
     organizationId,
@@ -258,8 +164,7 @@ function PatientDetail() {
   const [refundNotes, setRefundNotes] = useState("");
   const [isRefundSubmitting, setIsRefundSubmitting] = useState(false);
 
-  // Issue #1690: Add Payment from patient page (no appointment required —
-  // funds go straight into the credit balance via creditEarned).
+  // Issue #1690: Add Payment from patient page (no appointment required).
   const [addPaymentOpen, setAddPaymentOpen] = useState(false);
   const [addPaymentAmount, setAddPaymentAmount] = useState("");
   const [addPaymentMethod, setAddPaymentMethod] = useState<
@@ -274,7 +179,6 @@ function PatientDetail() {
   >("amount");
   const [addPaymentDiscountValue, setAddPaymentDiscountValue] = useState("");
 
-  // Cancel-payment confirm state.
   const [cancellingPaymentId, setCancellingPaymentId] = useState<string | null>(
     null,
   );
@@ -298,7 +202,6 @@ function PatientDetail() {
     }
   }, [patient?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Collapse app sidebar to icon-only so EntityDetailLayout sidebar has room
   const { setShellSidebarMode } = useSidebarSlot();
   useEffect(() => {
     setShellSidebarMode("icon-only");
@@ -450,33 +353,7 @@ function PatientDetail() {
   const { role } = useRole();
   const canGdprErase = role === "owner" || role === "admin";
 
-  const getPaymentForLabel = (payment: {
-    appointmentId?: string;
-    packageUsageId?: string;
-    notes?: string;
-  }): string => {
-    if (payment.appointmentId) {
-      const apt = patientAppointments?.find(
-        (a) => a._id === payment.appointmentId,
-      );
-      const treatmentName = getApptTreatmentDisplay(apt);
-      if (treatmentName) return treatmentName;
-    }
-    if (payment.packageUsageId) {
-      const usage = patientPackageUsage?.find(
-        (u) => u._id === payment.packageUsageId,
-      );
-      const pkgName = usage
-        ? treatmentPackages?.find((p) => p._id === usage.packageId)?.name
-        : undefined;
-      if (pkgName) return pkgName;
-    }
-    if (payment.notes) return payment.notes;
-    return "—";
-  };
-
   // Treatment-number indicator IDs ("X/Y" like in the calendar — issue #1086).
-  // Package usage takes precedence; recurring series is the fallback.
   const packageUsageIds = Array.from(
     new Set(
       (patientAppointments ?? [])
@@ -511,10 +388,7 @@ function PatientDetail() {
     if (pkgPos) {
       return {
         label: `${pkgPos.position}/${pkgPos.total}`,
-        title: t(
-          "gabinet.calendar.indicators.packageVisit",
-          "Wizyta pakietowa",
-        ),
+        title: t("gabinet.calendar.indicators.packageVisit", "Wizyta pakietowa"),
       };
     }
     if (apt.isRecurring && apt.recurringRule) {
@@ -536,22 +410,13 @@ function PatientDetail() {
     return null;
   };
 
-  // Build fields for EntityDetailLayout sidebar
   const detailFields: DetailField[] = (() => {
     if (!patient) return [];
     const fields: DetailField[] = [];
     if (patient.email)
-      fields.push({
-        label: t("common.email"),
-        value: patient.email,
-        fieldKey: "email",
-      });
+      fields.push({ label: t("common.email"), value: patient.email, fieldKey: "email" });
     if (patient.phone)
-      fields.push({
-        label: t("common.phone"),
-        value: formatPhoneNumber(patient.phone),
-        fieldKey: "phone",
-      });
+      fields.push({ label: t("common.phone"), value: formatPhoneNumber(patient.phone), fieldKey: "phone" });
     if (patient.gender)
       fields.push({
         label: t("gabinet.patients.gender"),
@@ -559,30 +424,18 @@ function PatientDetail() {
         fieldKey: "gender",
       });
     if (patient.pesel)
-      fields.push({
-        label: t("gabinet.patients.pesel"),
-        value: patient.pesel,
-        fieldKey: "pesel",
-      });
+      fields.push({ label: t("gabinet.patients.pesel"), value: patient.pesel, fieldKey: "pesel" });
     if (patient.address) {
       const patientAddr = patient.address as {
         street?: string;
         postalCode?: string;
         city?: string;
       };
-      const addr = [
-        patientAddr.street,
-        patientAddr.postalCode,
-        patientAddr.city,
-      ]
+      const addr = [patientAddr.street, patientAddr.postalCode, patientAddr.city]
         .filter(Boolean)
         .join(", ");
       if (addr)
-        fields.push({
-          label: t("gabinet.patients.address"),
-          value: addr,
-          fieldKey: "address",
-        });
+        fields.push({ label: t("gabinet.patients.address"), value: addr, fieldKey: "address" });
     }
     if (patient.referralSource)
       fields.push({
@@ -607,134 +460,9 @@ function PatientDetail() {
         fieldKey: "bloodType",
       });
     if (patient.allergies)
-      fields.push({
-        label: t("gabinet.patients.allergies"),
-        value: patient.allergies,
-        fieldKey: "allergies",
-      });
+      fields.push({ label: t("gabinet.patients.allergies"), value: patient.allergies, fieldKey: "allergies" });
     return fields;
   })();
-
-  // Sidebar extra: statistics + medical notes + packages
-  const sidebarExtra = patient ? (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-          {t("gabinet.treatmentDetail.statistics")}
-        </p>
-        <div className="rounded-md border p-2.5 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Calendar size={12} variant="stroke" />
-              {t("gabinet.patients.totalAppointments")}
-            </span>
-            <span className="text-xs font-semibold tabular-nums">
-              {patientAppointments?.length ?? 0}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Trophy size={12} variant="stroke" />
-              {t("gabinet.loyalty.balance")}
-            </span>
-            <span className="text-xs font-semibold tabular-nums">
-              {loyaltyBalance?.balance ?? 0}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <CreditCard size={12} variant="stroke" />
-              {t("gabinet.payments.totalSpent")}
-            </span>
-            <span className="text-xs font-semibold tabular-nums">
-              {formatCurrencyPLN(
-                (patientPayments ?? [])
-                  .filter((p) => p.status === "completed")
-                  .reduce((sum, p) => sum + (p.amount ?? 0), 0),
-              )}
-            </span>
-          </div>
-          {(() => {
-            const unpaidCount = (patientPayments ?? []).filter(
-              (p) => p.status === "pending" && p.kind !== "credit_refund",
-            ).length;
-            if (!unpaidCount) return null;
-            return (
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <AlertCircle size={12} variant="stroke" />
-                  {t("gabinet.payments.unpaidAppointments")}
-                </span>
-                <span className="text-xs font-semibold tabular-nums text-destructive">
-                  {unpaidCount}
-                </span>
-              </div>
-            );
-          })()}
-        </div>
-      </div>
-      <div className="space-y-3">
-        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-          {t("gabinet.patients.medicalNotes")}
-        </p>
-        <div className="space-y-1.5">
-          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-            {t("gabinet.patients.intakeSummarySection")}
-          </p>
-          {latestIntake && latestIntake.intakeSummary.length > 0 ? (
-            <div className="rounded-md border p-2.5 space-y-2.5">
-              {groupIntakeSummary(latestIntake.intakeSummary).map((group) => (
-                <div key={group.key}>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                    {t(`gabinet.patients.intakeGroups.${group.key}`)}
-                  </p>
-                  <ul className="space-y-0.5">
-                    {group.items.map((item, i) => (
-                      <li key={i} className="text-xs text-muted-foreground">
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-md border p-2.5">
-              <p className="text-xs text-muted-foreground italic">
-                {t("gabinet.patients.noIntakeSummary")}
-              </p>
-            </div>
-          )}
-        </div>
-        {(() => {
-          const medicalNotesText = plateJsonToText(
-            patient.medicalNotes ?? undefined,
-          ).trim();
-          if (!medicalNotesText) return null;
-          return (
-            <div className="space-y-1.5">
-              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                {t("gabinet.patients.staffNotesSection")}
-              </p>
-              <div className="rounded-md border p-2.5">
-                <p className="text-xs text-muted-foreground whitespace-pre-wrap">
-                  {medicalNotesText}
-                </p>
-              </div>
-            </div>
-          );
-        })()}
-      </div>
-      <PatientPackagesCard
-        patientId={patientId}
-        organizationId={organizationId}
-      />
-      <PatientTreatmentsCard
-        patientId={patientId}
-        organizationId={organizationId}
-      />
-    </div>
-  ) : null;
 
   const fullName = patient
     ? `${patient.firstName} ${patient.lastName}`.trim()
@@ -760,16 +488,9 @@ function PatientDetail() {
   }) => {
     setIsSubmitting(true);
     try {
-      await updatePatient({
-        organizationId,
-        patientId,
-        ...formData,
-      });
+      await updatePatient({ organizationId, patientId, ...formData });
       void queryClient.invalidateQueries({
-        queryKey: supabaseKeys.gabinetPatients.detail(
-          organizationId,
-          patientId,
-        ),
+        queryKey: supabaseKeys.gabinetPatients.detail(organizationId, patientId),
       });
       void queryClient.invalidateQueries({
         queryKey: supabaseKeys.gabinetPatients.list(organizationId),
@@ -793,8 +514,8 @@ function PatientDetail() {
     paymentMethod: string;
     notes?: string;
     appointmentId?: string;
-    discountAmount?: number;
-    discountPercent?: number;
+    discountAmount?: number | null;
+    discountPercent?: number | null;
   }) => {
     setEditingPaymentId(payment._id);
     setPaymentEditAmount(String(payment.amount));
@@ -869,16 +590,11 @@ function PatientDetail() {
         discountPercent,
       });
       toast.success(t("gabinet.payments.updated"));
-      void queryClient.invalidateQueries({
-        queryKey: supabaseKeys.payments.all,
-      });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.payments.all });
       closeEditPaymentDialog();
     } catch (e) {
       toast.error(
-        formatActionError(e, t, {
-          key: "common.error",
-          defaultValue: "Wystąpił błąd.",
-        }),
+        formatActionError(e, t, { key: "common.error", defaultValue: "Wystąpił błąd." }),
       );
     } finally {
       setIsPaymentEditSubmitting(false);
@@ -916,16 +632,11 @@ function PatientDetail() {
       });
       toast.success(t("gabinet.payments.credit.refundSuccess"));
       await refetchPatientCredit();
-      void queryClient.invalidateQueries({
-        queryKey: supabaseKeys.payments.all,
-      });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.payments.all });
       setRefundDialogOpen(false);
     } catch (e) {
       toast.error(
-        formatActionError(e, t, {
-          key: "common.error",
-          defaultValue: "Wystąpił błąd.",
-        }),
+        formatActionError(e, t, { key: "common.error", defaultValue: "Wystąpił błąd." }),
       );
     } finally {
       setIsRefundSubmitting(false);
@@ -934,10 +645,7 @@ function PatientDetail() {
 
   const handleDelete = async () => {
     if (window.confirm(t("gabinet.patients.confirmDelete"))) {
-      await removePatient({
-        organizationId,
-        patientId,
-      });
+      await removePatient({ organizationId, patientId });
       void queryClient.invalidateQueries({
         queryKey: supabaseKeys.gabinetPatients.list(organizationId),
       });
@@ -954,17 +662,11 @@ function PatientDetail() {
         queryKey: supabaseKeys.gabinetPatients.list(organizationId),
       });
       void queryClient.invalidateQueries({
-        queryKey: supabaseKeys.gabinetPatients.detail(
-          organizationId,
-          patientId,
-        ),
+        queryKey: supabaseKeys.gabinetPatients.detail(organizationId, patientId),
       });
       setGdprDialogOpen(false);
       toast.success(
-        t(
-          "gabinet.patients.gdprEraseSuccess",
-          "Dane klienta zostały trwale usunięte (RODO).",
-        ),
+        t("gabinet.patients.gdprEraseSuccess", "Dane klienta zostały trwale usunięte (RODO)."),
       );
       navigate({ to: "/dashboard/gabinet/patients" });
     } catch (e) {
@@ -979,7 +681,6 @@ function PatientDetail() {
     }
   };
 
-  // Issue #1690 — open the "Dodaj wpłatę" dialog from the patient page.
   const openAddPaymentDialog = () => {
     setAddPaymentAmount("");
     setAddPaymentMethod("cash");
@@ -1006,17 +707,12 @@ function PatientDetail() {
       if (!addPaymentAppointmentId) {
         creditEarned = amount;
       } else {
-        // Compute outstanding for the chosen appointment from completed
-        // payments visible in patientPayments. Falls back to crediting the
-        // whole amount when we can't price the visit.
         const apt = (patientAppointments ?? []).find(
           (a) => a._id === addPaymentAppointmentId,
         );
         const treatmentPrice = getApptPrice(apt);
-        // Credit applied to prior payments on this visit (issue #1059) counts
-        // toward the paid total — without it, a visit already fully settled
-        // from credit would look unpaid and any new cash payment would skip
-        // the creditEarned overpayment routing (#1856).
+        // Credit applied to prior payments on this visit counts toward the paid
+        // total (issue #1856).
         const paidForVisit = (patientPayments ?? [])
           .filter(
             (p) =>
@@ -1062,15 +758,10 @@ function PatientDetail() {
       setAddPaymentDiscountType("amount");
       setAddPaymentDiscountValue("");
       await refetchPatientCredit();
-      void queryClient.invalidateQueries({
-        queryKey: supabaseKeys.payments.all,
-      });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.payments.all });
     } catch (e) {
       toast.error(
-        formatActionError(e, t, {
-          key: "common.error",
-          defaultValue: "Wystąpił błąd.",
-        }),
+        formatActionError(e, t, { key: "common.error", defaultValue: "Wystąpił błąd." }),
       );
     } finally {
       setIsAddPaymentSubmitting(false);
@@ -1095,23 +786,16 @@ function PatientDetail() {
       setCancellingPaymentId(null);
       setCancelReason("");
       await refetchPatientCredit();
-      void queryClient.invalidateQueries({
-        queryKey: supabaseKeys.payments.all,
-      });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.payments.all });
     } catch (e) {
       toast.error(
-        formatActionError(e, t, {
-          key: "common.error",
-          defaultValue: "Wystąpił błąd.",
-        }),
+        formatActionError(e, t, { key: "common.error", defaultValue: "Wystąpił błąd." }),
       );
     } finally {
       setIsCancelSubmitting(false);
     }
   };
 
-  // For users without refund permission — sends a request to admins instead
-  // of executing the refund. Same dialog state as the regular refund.
   const handleRequestRefundAuthorization = async () => {
     const normalized = refundAmount.replace(",", ".").trim();
     const amount = parseFloat(normalized);
@@ -1131,10 +815,7 @@ function PatientDetail() {
       setRefundDialogOpen(false);
     } catch (e) {
       toast.error(
-        formatActionError(e, t, {
-          key: "common.error",
-          defaultValue: "Wystąpił błąd.",
-        }),
+        formatActionError(e, t, { key: "common.error", defaultValue: "Wystąpił błąd." }),
       );
     } finally {
       setIsRefundSubmitting(false);
@@ -1160,10 +841,7 @@ function PatientDetail() {
       }
     } catch (e) {
       toast.error(
-        formatActionError(e, t, {
-          key: "common.error",
-          defaultValue: "Wystąpił błąd.",
-        }),
+        formatActionError(e, t, { key: "common.error", defaultValue: "Wystąpił błąd." }),
       );
     } finally {
       setGeneratingReceiptFor(null);
@@ -1185,441 +863,72 @@ function PatientDetail() {
     .filter((apt) => apt.date < today)
     .sort((a, b) => (b.date + b.startTime).localeCompare(a.date + a.startTime))
     .slice(0, 3);
-  // Allergies and bloodType are already shown in the Details sidebar (which is
-  // stacked above the tabs on mobile) — see #1927. Keep the "medical info" card
-  // dedicated to emergency contact so the same data isn't presented twice.
+
+  // Allergies and bloodType are already shown in the Details sidebar — see #1927.
   const hasMedicalInfo = Boolean(
     patient?.emergencyContactName ||
       patient?.emergencyContactPhone ||
       (latestIntake && latestIntake.intakeSummary.length > 0),
   );
 
-  // Issue #1894: Beauty plan history — chronological list of `interviewNotes`
-  // entered on past appointments. Each entry shows what was proposed and when.
+  // Issue #1894: Beauty plan history — chronological list of interviewNotes.
   const beautyPlanEntries = (patientAppointments ?? [])
     .filter((apt) => plateJsonToText(apt.interviewNotes).trim().length > 0)
     .sort((a, b) => (b.date + b.startTime).localeCompare(a.date + a.startTime));
-
-  const renderAppointmentRow = (apt: MappedGabinetAppointment) => {
-    const treatmentDisplayName = getApptTreatmentDisplay(apt);
-    const visitCount = getVisitCountLabel(apt);
-    return (
-      <div
-        key={apt._id}
-        className="flex items-center gap-4 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-        onClick={() =>
-          navigate({
-            to: "/dashboard/gabinet/appointments/$appointmentId",
-            params: { appointmentId: apt._id },
-          })
-        }
-      >
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-          <Calendar className="h-4 w-4 text-primary" variant="stroke" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <p className="text-sm font-medium truncate">
-              {treatmentDisplayName ?? t("common.unknown")}
-            </p>
-            {visitCount && (
-              <Badge
-                variant="outline"
-                title={visitCount.title}
-                className="shrink-0 border-sky-500/40 bg-sky-500/10 px-1.5 py-0 text-[10px] font-semibold tabular-nums text-sky-700 dark:text-sky-300"
-              >
-                {visitCount.label}
-              </Badge>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {apt.date} &middot; {apt.startTime}–{apt.endTime}
-          </p>
-        </div>
-        <Badge
-          variant="outline"
-          className={appointmentStatusBadgeClass(apt.status)}
-        >
-          {t(`gabinet.appointments.statuses.${apt.status}`)}
-        </Badge>
-      </div>
-    );
-  };
 
   const mergedPatientActivities = [
     ...(activities ?? []),
     ...(loyaltyActivities ?? []),
   ].sort((a, b) => b.createdAt - a.createdAt);
 
+  const navigateWithParams = (opts: {
+    to: string;
+    params?: Record<string, string>;
+    search?: Record<string, string>;
+  }) => navigate(opts as Parameters<typeof navigate>[0]);
+
   const tabs = [
     {
       label: t("gabinet.patients.tabs.overview"),
       content: (
-        // Issue #1931: on mobile, push the Status/Dodano/Pochodzenie tiles to
-        // the very bottom so the primary patient sections (upcoming, history,
-        // medical info) come first. Desktop layout is unchanged via md:order-none.
-        <div className="flex flex-col space-y-6">
-          <Card>
-            <CardContent className="pt-6 space-y-4">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                <Calendar
-                  className="h-4 w-4 text-muted-foreground"
-                  variant="stroke"
-                />
-                {t("gabinet.patients.upcomingAppointments")}
-              </h3>
-              {upcomingAppointments.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  {t("gabinet.patients.noUpcomingAppointments")}
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {upcomingAppointments.map(renderAppointmentRow)}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <div className="order-last grid gap-4 sm:grid-cols-3 md:order-none">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <Heart
-                    className="h-4 w-4 text-muted-foreground"
-                    variant="stroke"
-                  />
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      {t("common.status")}
-                    </p>
-                    <p className="font-medium">
-                      {patient?.isActive
-                        ? t("common.active")
-                        : t("common.inactive")}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <Calendar
-                    className="h-4 w-4 text-muted-foreground"
-                    variant="stroke"
-                  />
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      {t("gabinet.patients.added")}
-                    </p>
-                    <p className="font-medium">
-                      {patient
-                        ? new Date(patient.createdAt).toLocaleDateString()
-                        : "—"}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <Star
-                    className="h-4 w-4 text-muted-foreground"
-                    variant="stroke"
-                  />
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      {t("gabinet.patients.referralSource")}
-                    </p>
-                    <p className="font-medium">
-                      {patient?.referralSource
-                        ? displayReferralSource(patient.referralSource, t)
-                        : "—"}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardContent className="pt-6 space-y-4">
-              <button
-                type="button"
-                onClick={() => setLastAppointmentsExpanded((v) => !v)}
-                aria-expanded={lastAppointmentsExpanded}
-                className="flex w-full items-center justify-between gap-2 text-left md:hidden"
-              >
-                <span className="text-sm font-semibold flex items-center gap-2">
-                  <Calendar
-                    className="h-4 w-4 text-muted-foreground"
-                    variant="stroke"
-                  />
-                  {t("gabinet.patients.lastAppointments")}
-                </span>
-                <ChevronDown
-                  className={cn(
-                    "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-                    lastAppointmentsExpanded && "rotate-180",
-                  )}
-                  variant="stroke"
-                />
-              </button>
-              <h3 className="hidden text-sm font-semibold md:flex items-center gap-2">
-                <Calendar
-                  className="h-4 w-4 text-muted-foreground"
-                  variant="stroke"
-                />
-                {t("gabinet.patients.lastAppointments")}
-              </h3>
-              <div
-                className={cn(
-                  "space-y-4",
-                  !lastAppointmentsExpanded && "hidden md:block",
-                )}
-              >
-                {pastAppointments.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    {t("gabinet.patients.noHistoryDesc")}
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {pastAppointments.map(renderAppointmentRow)}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6 space-y-4">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                <Heart
-                  className="h-4 w-4 text-muted-foreground"
-                  variant="stroke"
-                />
-                {t("gabinet.patients.medicalInfo")}
-              </h3>
-              {!hasMedicalInfo ? (
-                <p className="text-sm text-muted-foreground">
-                  {t("gabinet.patients.noMedicalInfo")}
-                </p>
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {latestIntake && latestIntake.intakeSummary.length > 0 && (
-                    <div className="sm:col-span-2 space-y-1.5">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        {t("gabinet.patients.intakeSummarySection")}
-                      </p>
-                      <div className="space-y-2">
-                        {groupIntakeSummary(latestIntake.intakeSummary).map(
-                          (group) => (
-                            <div key={group.key}>
-                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                {t(
-                                  `gabinet.patients.intakeGroups.${group.key}`,
-                                )}
-                              </p>
-                              <ul className="space-y-0.5">
-                                {group.items.map((item, i) => (
-                                  <li
-                                    key={i}
-                                    className="text-sm text-muted-foreground"
-                                  >
-                                    {item}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          ),
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {(patient?.emergencyContactName ||
-                    patient?.emergencyContactPhone) && (
-                    <div className="sm:col-span-2">
-                      <p className="text-xs text-muted-foreground">
-                        {t("gabinet.patients.emergencyContact")}
-                      </p>
-                      <p className="text-sm font-medium">
-                        {[
-                          patient.emergencyContactName,
-                          patient.emergencyContactPhone
-                            ? formatPhoneNumber(patient.emergencyContactPhone)
-                            : null,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        <PatientOverviewTab
+          patient={patient ?? { createdAt: 0 }}
+          upcomingAppointments={upcomingAppointments}
+          pastAppointments={pastAppointments}
+          hasMedicalInfo={hasMedicalInfo}
+          latestIntake={latestIntake}
+          lastAppointmentsExpanded={lastAppointmentsExpanded}
+          setLastAppointmentsExpanded={setLastAppointmentsExpanded}
+          getApptTreatmentDisplay={getApptTreatmentDisplay}
+          getVisitCountLabel={getVisitCountLabel}
+          navigate={navigateWithParams}
+          t={t}
+        />
       ),
     },
     {
       label: t("gabinet.patients.tabs.appointments"),
       count: patientAppointments?.length,
       content: (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">
-              {t("gabinet.patients.tabs.appointments")}
-            </h3>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}
-            >
-              <Plus className="mr-1 h-4 w-4" variant="stroke" />
-              {t("gabinet.appointments.createAppointment")}
-            </Button>
-          </div>
-          {!patientAppointments || patientAppointments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Calendar className="h-10 w-10 text-muted-foreground/40 mb-3" />
-              <p className="text-sm text-muted-foreground">
-                {t("gabinet.appointments.noAppointments")}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {[...patientAppointments]
-                .sort((a, b) =>
-                  (b.date + b.startTime).localeCompare(a.date + a.startTime),
-                )
-                .map((apt) => {
-                  const treatmentDisplayName = getApptTreatmentDisplay(apt);
-                  const isPast =
-                    apt.date < new Date().toISOString().split("T")[0];
-                  const visitCount = getVisitCountLabel(apt);
-                  return (
-                    <div
-                      key={apt._id}
-                      className={`flex items-center gap-4 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors ${isPast ? "opacity-60" : ""}`}
-                      onClick={() =>
-                        navigate({
-                          to: "/dashboard/gabinet/appointments/$appointmentId",
-                          params: { appointmentId: apt._id },
-                        })
-                      }
-                    >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                        <Calendar
-                          className="h-4 w-4 text-primary"
-                          variant="stroke"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {treatmentDisplayName ?? t("common.unknown")}
-                          </p>
-                          {visitCount && (
-                            <Badge
-                              variant="outline"
-                              title={visitCount.title}
-                              className="shrink-0 border-sky-500/40 bg-sky-500/10 px-1.5 py-0 text-[10px] font-semibold tabular-nums text-sky-700 dark:text-sky-300"
-                            >
-                              {visitCount.label}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {apt.date} &middot; {apt.startTime}–{apt.endTime}
-                        </p>
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className={appointmentStatusBadgeClass(apt.status)}
-                      >
-                        {t(`gabinet.appointments.statuses.${apt.status}`)}
-                      </Badge>
-                    </div>
-                  );
-                })}
-            </div>
-          )}
-        </div>
+        <PatientAppointmentsTab
+          patientAppointments={patientAppointments}
+          getApptTreatmentDisplay={getApptTreatmentDisplay}
+          getVisitCountLabel={getVisitCountLabel}
+          navigate={navigateWithParams}
+          t={t}
+        />
       ),
     },
     {
       label: t("gabinet.patients.tabs.beautyPlan", "Beauty plan"),
       count: beautyPlanEntries.length,
       content: (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Sparkles
-                className="h-4 w-4 text-muted-foreground"
-                variant="stroke"
-              />
-              {t("gabinet.patients.beautyPlan.title", "Historia beauty plan")}
-            </h3>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {t(
-              "gabinet.patients.beautyPlan.description",
-              "Plany zabiegowe zaproponowane podczas wizyt — najnowsze na górze.",
-            )}
-          </p>
-          {beautyPlanEntries.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Sparkles className="h-10 w-10 text-muted-foreground/40 mb-3" />
-              <p className="text-sm text-muted-foreground">
-                {t(
-                  "gabinet.patients.beautyPlan.empty",
-                  "Brak beauty plan. Plany dodane w zakładce „Notatki z wizyty” pojawią się tutaj.",
-                )}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {beautyPlanEntries.map((apt) => {
-                const treatmentDisplayName = getApptTreatmentDisplay(apt);
-                const planText = plateJsonToText(apt.interviewNotes).trim();
-                return (
-                  <Card
-                    key={apt._id}
-                    className="cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() =>
-                      navigate({
-                        to: "/dashboard/gabinet/appointments/$appointmentId",
-                        params: { appointmentId: apt._id },
-                        search: { tab: "documentation" },
-                      })
-                    }
-                  >
-                    <CardContent className="pt-4 pb-4 space-y-2">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Calendar
-                            className="h-4 w-4 text-muted-foreground shrink-0"
-                            variant="stroke"
-                          />
-                          <p className="text-sm font-medium truncate">
-                            {treatmentDisplayName ?? t("common.unknown")}
-                          </p>
-                        </div>
-                        <p className="text-xs text-muted-foreground tabular-nums shrink-0">
-                          {apt.date} · {apt.startTime}
-                        </p>
-                      </div>
-                      <p className="text-sm whitespace-pre-wrap text-foreground">
-                        {planText}
-                      </p>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <PatientBeautyPlanTab
+          beautyPlanEntries={beautyPlanEntries}
+          getApptTreatmentDisplay={getApptTreatmentDisplay}
+          navigate={navigateWithParams}
+          t={t}
+        />
       ),
     },
     ...(canViewPhotos
@@ -1644,443 +953,39 @@ function PatientDetail() {
     ...(canViewPayments
       ? [
           {
-            // Issue #1690: one merged tab — wpłaty, saldo, naliczenia, zwroty in
-            // a single chronological table with a "Typ" column.
             label: t("gabinet.payments.payments"),
             count: patientPayments?.length ?? 0,
-            content: (() => {
-              const completedPayments = (patientPayments ?? []).filter(
-                (p) => p.status === "completed" && p.kind !== "credit_refund",
-              );
-              const totalSpent = completedPayments.reduce(
-                (sum, p) => sum + (p.amount ?? 0),
-                0,
-              );
-              const pendingPayments = (patientPayments ?? []).filter(
-                (p) => p.status === "pending",
-              );
-              const outstanding = pendingPayments.reduce(
-                (sum, p) => sum + (p.amount ?? 0),
-                0,
-              );
-              const balance = patientCredit?.balance ?? 0;
-
-              type PaymentRowType =
-                | "payment"
-                | "overpayment"
-                | "credit_applied"
-                | "credit_refund"
-                | "cancelled"
-                | "refunded";
-
-              const classifyPayment = (
-                p: NonNullable<typeof patientPayments>[number],
-              ) => {
-                const earned = p.creditEarned ?? 0;
-                const applied = p.creditApplied ?? 0;
-                if (p.kind === "credit_refund") return "credit_refund" as const;
-                if (p.status === "cancelled") return "cancelled" as const;
-                if (p.status === "refunded") return "refunded" as const;
-                if (earned > 0) return "overpayment" as const;
-                if (applied > 0) return "credit_applied" as const;
-                return "payment" as const;
-              };
-
-              const typeLabelKey: Record<PaymentRowType, string> = {
-                payment: "gabinet.payments.types.payment",
-                overpayment: "gabinet.payments.types.overpayment",
-                credit_applied: "gabinet.payments.types.creditApplied",
-                credit_refund: "gabinet.payments.types.creditRefund",
-                cancelled: "gabinet.payments.types.cancelled",
-                refunded: "gabinet.payments.types.refunded",
-              };
-
-              const typeBadgeClass: Record<PaymentRowType, string> = {
-                payment: "",
-                overpayment:
-                  "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300",
-                credit_applied:
-                  "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300",
-                credit_refund:
-                  "border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300",
-                cancelled:
-                  "border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800/60 dark:bg-gray-950/40 dark:text-gray-300",
-                refunded:
-                  "border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300",
-              };
-
-              return (
-                <div className="space-y-6">
-                  <div className="grid gap-4 sm:grid-cols-4">
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                          <WalletIcon
-                            className="h-4 w-4 text-emerald-600"
-                            variant="stroke"
-                          />
-                          <div>
-                            <p className="text-sm text-muted-foreground">
-                              {t("gabinet.payments.credit.available")}
-                            </p>
-                            <p className="text-2xl font-bold tabular-nums">
-                              {formatCurrencyPLN(balance)}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                          <CreditCard
-                            className="h-4 w-4 text-green-600"
-                            variant="stroke"
-                          />
-                          <div>
-                            <p className="text-sm text-muted-foreground">
-                              {t("gabinet.payments.totalSpent")}
-                            </p>
-                            <p className="text-2xl font-bold">
-                              {formatCurrencyPLN(totalSpent)}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                          <CreditCard
-                            className="h-4 w-4 text-amber-600"
-                            variant="stroke"
-                          />
-                          <div>
-                            <p className="text-sm text-muted-foreground">
-                              {t("gabinet.payments.outstanding")}
-                            </p>
-                            <p className="text-2xl font-bold">
-                              {formatCurrencyPLN(outstanding)}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="flex flex-col gap-2">
-                          {canCreatePayment && (
-                            <Button
-                              size="sm"
-                              onClick={openAddPaymentDialog}
-                              className="w-full"
-                            >
-                              <Plus className="mr-1 h-4 w-4" variant="stroke" />
-                              {t("gabinet.payments.addPayment")}
-                            </Button>
-                          )}
-                          {balance > 0 && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={openRefundDialog}
-                              className="w-full"
-                            >
-                              <RefreshCw
-                                className="mr-1 h-4 w-4"
-                                variant="stroke"
-                              />
-                              {t("gabinet.payments.credit.refundCredit")}
-                            </Button>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  <Card>
-                    <CardContent className="pt-6 space-y-4">
-                      <h3 className="text-sm font-semibold flex items-center gap-2">
-                        <CreditCard
-                          className="h-4 w-4 text-muted-foreground"
-                          variant="stroke"
-                        />
-                        {t("gabinet.payments.paymentHistory")}
-                      </h3>
-                      {!patientPayments || patientPayments.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 text-center">
-                          <CreditCard className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                          <p className="text-sm text-muted-foreground">
-                            {t("gabinet.payments.noPayments")}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="overflow-x-auto border rounded-lg">
-                          <table className="w-full">
-                            <thead>
-                              <tr className="border-b bg-muted/50">
-                                <th className="text-left p-3 text-sm font-medium">
-                                  {t("common.date")}
-                                </th>
-                                <th className="text-left p-3 text-sm font-medium">
-                                  {t("gabinet.payments.type")}
-                                </th>
-                                <th className="text-left p-3 text-sm font-medium">
-                                  {t("gabinet.payments.for")}
-                                </th>
-                                <th className="text-left p-3 text-sm font-medium">
-                                  {t("gabinet.payments.method")}
-                                </th>
-                                <th className="text-right p-3 text-sm font-medium">
-                                  {t("gabinet.payments.amount")}
-                                </th>
-                                <th className="text-right p-3 text-sm font-medium">
-                                  {t("gabinet.payments.balanceDelta")}
-                                </th>
-                                <th className="text-right p-3 text-sm font-medium">
-                                  {t("common.actions")}
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {[...patientPayments]
-                                .sort((a, b) => b.createdAt - a.createdAt)
-                                .map((payment) => {
-                                  const type = classifyPayment(payment);
-                                  const earned = payment.creditEarned ?? 0;
-                                  const applied = payment.creditApplied ?? 0;
-                                  const balanceDelta = earned - applied;
-                                  const isCancellable =
-                                    canCancelPayment &&
-                                    (payment.status === "completed" ||
-                                      payment.status === "pending");
-                                  const isEditable =
-                                    payment.status === "completed" ||
-                                    payment.status === "pending";
-                                  return (
-                                    <tr
-                                      key={payment._id}
-                                      className={`border-b last:border-0 hover:bg-muted/30 ${
-                                        payment.appointmentId
-                                          ? "cursor-pointer"
-                                          : ""
-                                      }`}
-                                      onClick={() => {
-                                        if (payment.appointmentId) {
-                                          navigate({
-                                            to: "/dashboard/gabinet/appointments/$appointmentId",
-                                            params: {
-                                              appointmentId:
-                                                payment.appointmentId,
-                                            },
-                                          });
-                                        }
-                                      }}
-                                    >
-                                      <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">
-                                        {new Date(
-                                          payment.createdAt,
-                                        ).toLocaleDateString("pl-PL")}
-                                      </td>
-                                      <td className="p-3">
-                                        <Badge
-                                          variant="outline"
-                                          className={`text-[10px] ${typeBadgeClass[type]}`}
-                                        >
-                                          {t(typeLabelKey[type])}
-                                        </Badge>
-                                      </td>
-                                      <td className="p-3 text-sm">
-                                        <div
-                                          className="max-w-[220px] truncate"
-                                          title={getPaymentForLabel(payment)}
-                                        >
-                                          {getPaymentForLabel(payment)}
-                                        </div>
-                                      </td>
-                                      <td className="p-3">
-                                        <Badge variant="outline">
-                                          {t(
-                                            `gabinet.payments.methods.${payment.paymentMethod}`,
-                                          )}
-                                        </Badge>
-                                      </td>
-                                      <td className="p-3 text-right font-medium tabular-nums">
-                                        {formatCurrencyPLN(
-                                          payment.amount,
-                                          payment.currency ?? "PLN",
-                                        )}
-                                      </td>
-                                      <td
-                                        className={`p-3 text-right font-semibold tabular-nums ${
-                                          balanceDelta > 0
-                                            ? "text-emerald-600"
-                                            : balanceDelta < 0
-                                              ? "text-red-600"
-                                              : "text-muted-foreground"
-                                        }`}
-                                      >
-                                        {balanceDelta === 0
-                                          ? "—"
-                                          : `${balanceDelta > 0 ? "+" : "−"}${formatCurrencyPLN(Math.abs(balanceDelta))}`}
-                                      </td>
-                                      <td className="p-3 text-right">
-                                        <div className="flex justify-end gap-1">
-                                          {isEditable && (
-                                            <Button
-                                              size="sm"
-                                              variant="ghost"
-                                              aria-label={t("common.edit")}
-                                              title={t(
-                                                "gabinet.payments.editPayment",
-                                              )}
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                openEditPaymentDialog({
-                                                  _id: payment._id,
-                                                  amount: payment.amount,
-                                                  paymentMethod:
-                                                    payment.paymentMethod,
-                                                  notes: payment.notes,
-                                                  appointmentId:
-                                                    payment.appointmentId,
-                                                  discountAmount:
-                                                    payment.discountAmount,
-                                                  discountPercent:
-                                                    payment.discountPercent,
-                                                });
-                                              }}
-                                            >
-                                              <Pencil
-                                                className="h-4 w-4"
-                                                variant="stroke"
-                                              />
-                                            </Button>
-                                          )}
-                                          {isCancellable && (
-                                            <Button
-                                              size="sm"
-                                              variant="ghost"
-                                              className="text-destructive"
-                                              aria-label={t("common.cancel")}
-                                              title={t(
-                                                "gabinet.payments.cancelPayment",
-                                              )}
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                openCancelDialog(payment._id);
-                                              }}
-                                            >
-                                              <Minus
-                                                className="h-4 w-4"
-                                                variant="stroke"
-                                              />
-                                            </Button>
-                                          )}
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              );
-            })(),
+            content: (
+              <PatientPaymentsTab
+                patientPayments={patientPayments}
+                patientCredit={patientCredit}
+                patientAppointments={patientAppointments}
+                patientPackageUsage={patientPackageUsage}
+                treatmentPackages={treatmentPackages}
+                getApptTreatmentDisplay={getApptTreatmentDisplay}
+                canCreatePayment={canCreatePayment}
+                canRefundCredit={canRefundCredit}
+                canCancelPayment={canCancelPayment}
+                openAddPaymentDialog={openAddPaymentDialog}
+                openRefundDialog={openRefundDialog}
+                openEditPaymentDialog={openEditPaymentDialog}
+                openCancelDialog={openCancelDialog}
+                navigate={navigateWithParams}
+                t={t}
+              />
+            ),
           },
-        ]
-      : []),
-    ...(canViewPayments
-      ? [
           {
             label: t("gabinet.patients.tabs.billing"),
             count: patientReceipts?.length ?? 0,
             content: (
-              <div className="space-y-4">
-                {!patientReceipts || patientReceipts.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <FileText className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                    <p className="text-sm text-muted-foreground">
-                      {t("gabinet.patients.billing.noReceipts")}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto border rounded-lg">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b bg-muted/50">
-                          <th className="text-left p-3 text-sm font-medium">
-                            {t("gabinet.patients.billing.receiptNumber")}
-                          </th>
-                          <th className="text-left p-3 text-sm font-medium">
-                            {t("gabinet.patients.billing.type")}
-                          </th>
-                          <th className="text-left p-3 text-sm font-medium">
-                            {t("gabinet.patients.billing.issuedAt")}
-                          </th>
-                          <th className="text-right p-3 text-sm font-medium">
-                            {t("gabinet.patients.billing.totalGross")}
-                          </th>
-                          <th className="text-right p-3 text-sm font-medium">
-                            {t("common.actions")}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {patientReceipts.map((receipt) => (
-                          <tr
-                            key={receipt._id}
-                            className="border-b last:border-0 hover:bg-muted/30"
-                          >
-                            <td className="p-3 text-sm font-mono">
-                              {receipt.receiptNumber}
-                            </td>
-                            <td className="p-3">
-                              <Badge variant="outline" className="text-[10px]">
-                                {t(
-                                  `gabinet.patients.billing.receiptTypes.${receipt.receiptType ?? "original"}`,
-                                )}
-                              </Badge>
-                            </td>
-                            <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">
-                              {new Date(receipt.issuedAt).toLocaleDateString(
-                                "pl-PL",
-                              )}
-                            </td>
-                            <td className="p-3 text-right font-medium tabular-nums">
-                              {receipt.totalGross != null
-                                ? formatCurrencyPLN(receipt.totalGross)
-                                : "—"}
-                            </td>
-                            <td className="p-3 text-right">
-                              {canGenerateReceipt && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={
-                                    generatingReceiptFor === receipt._id
-                                  }
-                                  onClick={() =>
-                                    handleDownloadReceipt(receipt._id)
-                                  }
-                                >
-                                  {generatingReceiptFor === receipt._id
-                                    ? t("gabinet.patients.billing.generating")
-                                    : t("gabinet.patients.billing.download")}
-                                </Button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+              <PatientBillingTab
+                patientReceipts={patientReceipts}
+                canGenerateReceipt={canGenerateReceipt}
+                generatingReceiptFor={generatingReceiptFor}
+                handleDownloadReceipt={handleDownloadReceipt}
+                t={t}
+              />
             ),
           },
         ]
@@ -2099,142 +1004,11 @@ function PatientDetail() {
     {
       label: t("gabinet.patients.tabs.loyalty"),
       content: (
-        <div className="space-y-6">
-          {/* Balance cards */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <Trophy
-                    className="h-4 w-4 text-yellow-500"
-                    variant="stroke"
-                  />
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      {t("gabinet.loyalty.balance")}
-                    </p>
-                    <p className="text-2xl font-bold">
-                      {loyaltyBalance?.balance ?? 0}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <ArrowUpRight
-                    className="h-4 w-4 text-green-500"
-                    variant="stroke"
-                  />
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      {t("gabinet.loyalty.totalEarned")}
-                    </p>
-                    <p className="text-2xl font-bold">
-                      {loyaltyBalance?.lifetimeEarned ?? 0}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <ArrowDownRight
-                    className="h-4 w-4 text-red-500"
-                    variant="stroke"
-                  />
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      {t("gabinet.loyalty.totalSpent")}
-                    </p>
-                    <p className="text-2xl font-bold">
-                      {loyaltyBalance?.lifetimeSpent ?? 0}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {loyaltyBalance?.tier && (
-            <div className="flex items-center gap-2">
-              <Star className="h-4 w-4 text-yellow-500" variant="stroke" />
-              <span className="text-sm font-medium">
-                {t("gabinet.loyalty.tier")}:{" "}
-                {t(`gabinet.loyalty.tiers.${loyaltyBalance.tier}`)}
-              </span>
-            </div>
-          )}
-
-          {/* Transaction history */}
-          <div>
-            <h4 className="text-sm font-semibold mb-3">
-              {t("gabinet.loyalty.transactionHistory")}
-            </h4>
-            {!loyaltyTransactions || loyaltyTransactions.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <Star className="h-8 w-8 text-muted-foreground/40 mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  {t("gabinet.loyalty.noTransactions")}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {[...loyaltyTransactions]
-                  .sort((a, b) => b.createdAt - a.createdAt)
-                  .slice(0, 20)
-                  .map((tx) => (
-                    <div
-                      key={tx._id}
-                      className="flex items-center gap-3 rounded-lg border p-3"
-                    >
-                      <div
-                        className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                          tx.type === "earn"
-                            ? "bg-green-100 text-green-600"
-                            : tx.type === "spend"
-                              ? "bg-red-100 text-red-600"
-                              : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {tx.type === "earn" ? (
-                          <Plus className="h-4 w-4" variant="stroke" />
-                        ) : tx.type === "spend" ? (
-                          <Minus className="h-4 w-4" variant="stroke" />
-                        ) : (
-                          <Star className="h-4 w-4" variant="stroke" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">{tx.reason}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(tx.createdAt).toLocaleDateString("pl-PL")}
-                        </p>
-                      </div>
-                      <span
-                        className={`text-sm font-semibold ${
-                          tx.type === "earn"
-                            ? "text-green-600"
-                            : tx.type === "spend"
-                              ? "text-red-600"
-                              : "text-muted-foreground"
-                        }`}
-                      >
-                        {tx.type === "earn"
-                          ? "+"
-                          : tx.type === "spend"
-                            ? "−"
-                            : ""}
-                        {tx.points}
-                      </span>
-                    </div>
-                  ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <PatientLoyaltyTab
+          loyaltyBalance={loyaltyBalance}
+          loyaltyTransactions={loyaltyTransactions}
+          t={t}
+        />
       ),
     },
     {
@@ -2292,11 +1066,23 @@ function PatientDetail() {
         ]}
         fields={detailFields}
         expandedFieldCount={4}
-        sidebarExtra={sidebarExtra}
+        sidebarExtra={
+          patient ? (
+            <PatientSidebarExtra
+              patient={patient}
+              patientId={patientId}
+              organizationId={organizationId}
+              patientAppointments={patientAppointments}
+              patientPayments={patientPayments}
+              loyaltyBalance={loyaltyBalance}
+              latestIntake={latestIntake}
+              t={t}
+            />
+          ) : null
+        }
         tabs={tabs}
       />
 
-      {/* Edit patient drawer */}
       {patient && (
         <SidePanel
           open={editDrawerOpen}
@@ -2340,613 +1126,90 @@ function PatientDetail() {
         </SidePanel>
       )}
 
-      <Dialog
-        open={editingPaymentId !== null}
-        onOpenChange={(open) => {
-          if (!open) closeEditPaymentDialog();
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("gabinet.payments.editPayment")}</DialogTitle>
-            <DialogDescription>
-              {t("gabinet.payments.editPaymentDesc")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <Label>{t("gabinet.payments.amount")}</Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                value={paymentEditAmount}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                    setPaymentEditAmount(v);
-                  }
-                }}
-                placeholder="0.00"
-              />
-            </div>
-            <div>
-              <Label>{t("gabinet.payments.method")}</Label>
-              <Select
-                value={paymentEditMethod}
-                onValueChange={(v) =>
-                  setPaymentEditMethod(
-                    v as "cash" | "card" | "transfer" | "package" | "other",
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">
-                    {t("gabinet.payments.methods.cash")}
-                  </SelectItem>
-                  <SelectItem value="card">
-                    {t("gabinet.payments.methods.card")}
-                  </SelectItem>
-                  <SelectItem value="transfer">
-                    {t("gabinet.payments.methods.transfer")}
-                  </SelectItem>
-                  <SelectItem value="package">
-                    {t("gabinet.payments.methods.package")}
-                  </SelectItem>
-                  <SelectItem value="other">
-                    {t("gabinet.payments.methods.other")}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {paymentEditAppointmentId &&
-              (() => {
-                const apt = (patientAppointments ?? []).find(
-                  (a) => a._id === paymentEditAppointmentId,
-                );
-                const treatmentPrice = getApptPrice(apt);
-                if (treatmentPrice <= 0) return null;
-                return (
-                  <div>
-                    <Label>{t("gabinet.payments.discount")}</Label>
-                    <div className="flex gap-2 mt-1">
-                      <Select
-                        value={paymentEditDiscountType}
-                        onValueChange={(v) => {
-                          setPaymentEditDiscountType(v as "amount" | "percent");
-                          setPaymentEditDiscountValue("");
-                          setPaymentEditAmount(treatmentPrice.toFixed(2));
-                        }}
-                      >
-                        <SelectTrigger className="w-40">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="amount">
-                            {t("gabinet.payments.discountTypeAmount")}
-                          </SelectItem>
-                          <SelectItem value="percent">
-                            {t("gabinet.payments.discountTypePercent")}
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <div className="relative flex-1">
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          value={paymentEditDiscountValue}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                              setPaymentEditDiscountValue(v);
-                              const parsed =
-                                parseFloat(v.replace(",", ".")) || 0;
-                              const disc =
-                                paymentEditDiscountType === "amount"
-                                  ? Math.min(parsed, treatmentPrice)
-                                  : Math.round(
-                                      ((treatmentPrice *
-                                        Math.min(parsed, 100)) /
-                                        100) *
-                                        100,
-                                    ) / 100;
-                              setPaymentEditAmount(
-                                Math.max(0, treatmentPrice - disc).toFixed(2),
-                              );
-                            }
-                          }}
-                          placeholder={
-                            paymentEditDiscountType === "percent" ? "0" : "0.00"
-                          }
-                          className={
-                            paymentEditDiscountType === "percent" ? "pr-8" : ""
-                          }
-                        />
-                        {paymentEditDiscountType === "percent" && (
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                            %
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            <div>
-              <Label>{t("common.notes")}</Label>
-              <Input
-                type="text"
-                value={paymentEditNotes}
-                onChange={(e) => setPaymentEditNotes(e.target.value)}
-                placeholder={t("gabinet.payments.notePlaceholder")}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeEditPaymentDialog}>
-              {t("common.cancel")}
-            </Button>
-            <Button
-              onClick={handleUpdatePayment}
-              disabled={isPaymentEditSubmitting}
-            >
-              {isPaymentEditSubmitting
-                ? t("common.processing")
-                : t("common.save")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EditPaymentDialog
+        editingPaymentId={editingPaymentId}
+        paymentEditAmount={paymentEditAmount}
+        setPaymentEditAmount={setPaymentEditAmount}
+        paymentEditMethod={paymentEditMethod}
+        setPaymentEditMethod={setPaymentEditMethod}
+        paymentEditNotes={paymentEditNotes}
+        setPaymentEditNotes={setPaymentEditNotes}
+        paymentEditAppointmentId={paymentEditAppointmentId}
+        paymentEditDiscountType={paymentEditDiscountType}
+        setPaymentEditDiscountType={setPaymentEditDiscountType}
+        paymentEditDiscountValue={paymentEditDiscountValue}
+        setPaymentEditDiscountValue={setPaymentEditDiscountValue}
+        isPaymentEditSubmitting={isPaymentEditSubmitting}
+        onClose={closeEditPaymentDialog}
+        onSubmit={handleUpdatePayment}
+        patientAppointments={patientAppointments}
+        getApptPrice={getApptPrice}
+        t={t}
+      />
 
-      <Dialog
+      <RefundCreditDialog
         open={refundDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) setRefundDialogOpen(false);
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {canRefundCredit
-                ? t("gabinet.payments.credit.refundDialogTitle")
-                : t("gabinet.payments.credit.requestRefundDialogTitle")}
-            </DialogTitle>
-            <DialogDescription>
-              {canRefundCredit
-                ? t("gabinet.payments.credit.refundDialogDesc")
-                : t("gabinet.payments.credit.requestRefundDialogDesc")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="rounded-md border bg-muted/30 p-2.5">
-              <p className="text-xs text-muted-foreground">
-                {t("gabinet.payments.credit.available")}
-              </p>
-              <p className="text-base font-semibold tabular-nums">
-                {formatCurrencyPLN(patientCredit?.balance ?? 0)}
-              </p>
-            </div>
-            <div>
-              <Label>{t("gabinet.payments.credit.refundAmount")}</Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                value={refundAmount}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                    setRefundAmount(v);
-                  }
-                }}
-                placeholder="0.00"
-              />
-            </div>
-            {canRefundCredit && (
-              <div>
-                <Label>{t("gabinet.payments.credit.refundMethod")}</Label>
-                <Select
-                  value={refundMethod}
-                  onValueChange={(v) =>
-                    setRefundMethod(v as "cash" | "card" | "transfer" | "other")
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">
-                      {t("gabinet.payments.methods.cash")}
-                    </SelectItem>
-                    <SelectItem value="card">
-                      {t("gabinet.payments.methods.card")}
-                    </SelectItem>
-                    <SelectItem value="transfer">
-                      {t("gabinet.payments.methods.transfer")}
-                    </SelectItem>
-                    <SelectItem value="other">
-                      {t("gabinet.payments.methods.other")}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            <div>
-              <Label>{t("gabinet.payments.credit.refundNotes")}</Label>
-              <Input
-                type="text"
-                value={refundNotes}
-                onChange={(e) => setRefundNotes(e.target.value)}
-                placeholder={t("gabinet.payments.notePlaceholder")}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setRefundDialogOpen(false)}
-            >
-              {t("common.cancel")}
-            </Button>
-            <Button
-              onClick={
-                canRefundCredit
-                  ? handleRefundCredit
-                  : handleRequestRefundAuthorization
-              }
-              disabled={isRefundSubmitting}
-            >
-              {isRefundSubmitting
-                ? t("common.processing")
-                : canRefundCredit
-                  ? t("gabinet.payments.credit.refundConfirm")
-                  : t("gabinet.payments.credit.requestRefundConfirm")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        canRefundCredit={canRefundCredit}
+        creditBalance={patientCredit?.balance ?? 0}
+        refundAmount={refundAmount}
+        setRefundAmount={setRefundAmount}
+        refundMethod={refundMethod}
+        setRefundMethod={setRefundMethod}
+        refundNotes={refundNotes}
+        setRefundNotes={setRefundNotes}
+        isRefundSubmitting={isRefundSubmitting}
+        onClose={() => setRefundDialogOpen(false)}
+        onRefund={handleRefundCredit}
+        onRequestAuthorization={handleRequestRefundAuthorization}
+        t={t}
+      />
 
-      {/* Issue #1690: Add a free-standing payment from the patient page. */}
-      <Dialog
+      <AddPaymentDialog
         open={addPaymentOpen}
-        onOpenChange={(open) => {
-          if (!open) setAddPaymentOpen(false);
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("gabinet.payments.addPayment")}</DialogTitle>
-            <DialogDescription>
-              {t("gabinet.payments.addPaymentPatientDesc")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <Label>{t("gabinet.payments.amount")}</Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                value={addPaymentAmount}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                    setAddPaymentAmount(v);
-                  }
-                }}
-                placeholder="0.00"
-              />
-            </div>
-            <div>
-              <Label>{t("gabinet.payments.method")}</Label>
-              <Select
-                value={addPaymentMethod}
-                onValueChange={(v) =>
-                  setAddPaymentMethod(
-                    v as "cash" | "card" | "transfer" | "other",
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">
-                    {t("gabinet.payments.methods.cash")}
-                  </SelectItem>
-                  <SelectItem value="card">
-                    {t("gabinet.payments.methods.card")}
-                  </SelectItem>
-                  <SelectItem value="transfer">
-                    {t("gabinet.payments.methods.transfer")}
-                  </SelectItem>
-                  <SelectItem value="other">
-                    {t("gabinet.payments.methods.other")}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>
-                {t("gabinet.payments.linkedAppointment")}{" "}
-                <span className="text-xs text-muted-foreground">
-                  ({t("common.optional")})
-                </span>
-              </Label>
-              <Select
-                value={addPaymentAppointmentId || "none"}
-                onValueChange={(v) => {
-                  setAddPaymentAppointmentId(v === "none" ? "" : v);
-                  setAddPaymentDiscountType("amount");
-                  setAddPaymentDiscountValue("");
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">
-                    {t("gabinet.payments.noAppointmentToCredit")}
-                  </SelectItem>
-                  {(() => {
-                    const today = new Date().toISOString().split("T")[0];
-                    const upcoming = (patientAppointments ?? [])
-                      .filter(
-                        (a) =>
-                          a.date >= today &&
-                          a.status !== "cancelled" &&
-                          a.status !== "no_show",
-                      )
-                      .slice(0, 20);
-                    return upcoming.map((apt) => {
-                      const treatmentDisplayName =
-                        getApptTreatmentDisplay(apt) ?? t("common.unknown");
-                      return (
-                        <SelectItem key={apt._id} value={apt._id}>
-                          {apt.date} · {apt.startTime} · {treatmentDisplayName}
-                        </SelectItem>
-                      );
-                    });
-                  })()}
-                </SelectContent>
-              </Select>
-              {!addPaymentAppointmentId && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("gabinet.payments.fullAmountToCreditHint")}
-                </p>
-              )}
-            </div>
-            {addPaymentAppointmentId &&
-              (() => {
-                const apt = (patientAppointments ?? []).find(
-                  (a) => a._id === addPaymentAppointmentId,
-                );
-                const aptTreatmentPrice = getApptPrice(apt);
-                const paidForVisit = (patientPayments ?? [])
-                  .filter(
-                    (p) =>
-                      p.appointmentId === addPaymentAppointmentId &&
-                      p.status === "completed",
-                  )
-                  .reduce(
-                    (sum, p) =>
-                      sum +
-                      (p.amount ?? 0) +
-                      ((p as { creditApplied?: number | null }).creditApplied ??
-                        0),
-                    0,
-                  );
-                const outstandingForVisit = Math.max(
-                  0,
-                  aptTreatmentPrice - paidForVisit,
-                );
-                if (outstandingForVisit <= 0) return null;
-                return (
-                  <div>
-                    <Label>{t("gabinet.payments.discount")}</Label>
-                    <div className="flex gap-2 mt-1">
-                      <Select
-                        value={addPaymentDiscountType}
-                        onValueChange={(v) => {
-                          setAddPaymentDiscountType(v as "amount" | "percent");
-                          setAddPaymentDiscountValue("");
-                        }}
-                      >
-                        <SelectTrigger className="w-40">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="amount">
-                            {t("gabinet.payments.discountTypeAmount")}
-                          </SelectItem>
-                          <SelectItem value="percent">
-                            {t("gabinet.payments.discountTypePercent")}
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <div className="relative flex-1">
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          value={addPaymentDiscountValue}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
-                              setAddPaymentDiscountValue(v);
-                              const parsed =
-                                parseFloat(v.replace(",", ".")) || 0;
-                              const disc =
-                                addPaymentDiscountType === "amount"
-                                  ? Math.min(parsed, outstandingForVisit)
-                                  : Math.round(
-                                      ((outstandingForVisit *
-                                        Math.min(parsed, 100)) /
-                                        100) *
-                                        100,
-                                    ) / 100;
-                              setAddPaymentAmount(
-                                Math.max(0, outstandingForVisit - disc).toFixed(
-                                  2,
-                                ),
-                              );
-                            }
-                          }}
-                          placeholder={
-                            addPaymentDiscountType === "percent" ? "0" : "0.00"
-                          }
-                          className={
-                            addPaymentDiscountType === "percent" ? "pr-8" : ""
-                          }
-                        />
-                        {addPaymentDiscountType === "percent" && (
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                            %
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            <div>
-              <Label>{t("common.notes")}</Label>
-              <Input
-                type="text"
-                value={addPaymentNotes}
-                onChange={(e) => setAddPaymentNotes(e.target.value)}
-                placeholder={t("gabinet.payments.notePlaceholder")}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddPaymentOpen(false)}>
-              {t("common.cancel")}
-            </Button>
-            <Button
-              onClick={handleAddPayment}
-              disabled={isAddPaymentSubmitting}
-            >
-              {isAddPaymentSubmitting
-                ? t("common.processing")
-                : t("gabinet.payments.create")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        addPaymentAmount={addPaymentAmount}
+        setAddPaymentAmount={setAddPaymentAmount}
+        addPaymentMethod={addPaymentMethod}
+        setAddPaymentMethod={setAddPaymentMethod}
+        addPaymentNotes={addPaymentNotes}
+        setAddPaymentNotes={setAddPaymentNotes}
+        addPaymentAppointmentId={addPaymentAppointmentId}
+        setAddPaymentAppointmentId={setAddPaymentAppointmentId}
+        addPaymentDiscountType={addPaymentDiscountType}
+        setAddPaymentDiscountType={setAddPaymentDiscountType}
+        addPaymentDiscountValue={addPaymentDiscountValue}
+        setAddPaymentDiscountValue={setAddPaymentDiscountValue}
+        isAddPaymentSubmitting={isAddPaymentSubmitting}
+        onClose={() => setAddPaymentOpen(false)}
+        onSubmit={handleAddPayment}
+        patientAppointments={patientAppointments}
+        patientPayments={patientPayments}
+        getApptTreatmentDisplay={getApptTreatmentDisplay}
+        getApptPrice={getApptPrice}
+        t={t}
+      />
 
-      <Dialog
+      <GdprEraseDialog
         open={gdprDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) setGdprDialogOpen(false);
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {t(
-                "gabinet.patients.gdprEraseTitle",
-                "Trwałe usunięcie danych (RODO)",
-              )}
-            </DialogTitle>
-            <DialogDescription>
-              {t(
-                "gabinet.patients.gdprEraseDesc",
-                "Ta operacja trwale anonimizuje dane osobowe klienta: imię, nazwisko, e-mail, telefon, PESEL, adres, dane medyczne i kontakt alarmowy. Historię wizyt i płatności zostawiamy ze względów prawno-księgowych. Operacji nie można cofnąć.",
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <Label>
-                {t(
-                  "gabinet.patients.gdprEraseConfirmLabel",
-                  'Wpisz "USUŃ" aby potwierdzić',
-                )}
-              </Label>
-              <Input
-                type="text"
-                value={gdprConfirmText}
-                onChange={(e) => setGdprConfirmText(e.target.value)}
-                placeholder="USUŃ"
-                className="mt-1"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setGdprDialogOpen(false)}>
-              {t("common.cancel")}
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleGdprErase}
-              disabled={
-                isGdprSubmitting ||
-                gdprConfirmText.trim().toUpperCase() !== "USUŃ"
-              }
-            >
-              {isGdprSubmitting
-                ? t("common.processing")
-                : t("gabinet.patients.gdprEraseConfirm", "Usuń dane trwale")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        gdprConfirmText={gdprConfirmText}
+        setGdprConfirmText={setGdprConfirmText}
+        isGdprSubmitting={isGdprSubmitting}
+        onClose={() => setGdprDialogOpen(false)}
+        onSubmit={handleGdprErase}
+        t={t}
+      />
 
-      {/* Issue #1690: per-row soft-cancel (no hard delete — status flip). */}
-      <Dialog
-        open={cancellingPaymentId !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setCancellingPaymentId(null);
-            setCancelReason("");
-          }
+      <CancelPaymentDialog
+        cancellingPaymentId={cancellingPaymentId}
+        cancelReason={cancelReason}
+        setCancelReason={setCancelReason}
+        isCancelSubmitting={isCancelSubmitting}
+        onClose={() => {
+          setCancellingPaymentId(null);
+          setCancelReason("");
         }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("gabinet.payments.cancelPayment")}</DialogTitle>
-            <DialogDescription>
-              {t("gabinet.payments.cancelPaymentDesc")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <Label>
-                {t("gabinet.payments.cancelReason")}{" "}
-                <span className="text-xs text-muted-foreground">
-                  ({t("common.optional")})
-                </span>
-              </Label>
-              <Input
-                type="text"
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                placeholder={t("gabinet.payments.cancelReasonPlaceholder")}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setCancellingPaymentId(null);
-                setCancelReason("");
-              }}
-            >
-              {t("common.close")}
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleCancelPayment}
-              disabled={isCancelSubmitting}
-            >
-              {isCancelSubmitting
-                ? t("common.processing")
-                : t("gabinet.payments.cancelConfirm")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onSubmit={handleCancelPayment}
+        t={t}
+      />
     </>
   );
 }

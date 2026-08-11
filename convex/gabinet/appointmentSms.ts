@@ -551,7 +551,7 @@ export const processIncomingMessage = internalMutation({
       });
     }
 
-    await ctx.runMutation(internal.automation.emitEvent, {
+    await ctx.scheduler.runAfter(0, internal.automation.emitEvent, {
       organizationId: args.organizationId as Id<"organizations">,
       module: "gabinet",
       eventType: "gabinet.appointment.sms_reply_received",

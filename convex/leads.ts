@@ -391,7 +391,7 @@ export const _updateSideEffects = internalMutation({
         });
       }
 
-      await ctx.runMutation(internal.automation.emitEvent, {
+      await ctx.scheduler.runAfter(0, internal.automation.emitEvent, {
         organizationId: args.organizationId,
         module: "crm",
         eventType: "crm.lead.status_changed",
@@ -846,7 +846,7 @@ export const _moveToStageSideEffects = internalMutation({
         }
       }
 
-      await ctx.runMutation(internal.automation.emitEvent, {
+      await ctx.scheduler.runAfter(0, internal.automation.emitEvent, {
         organizationId: args.organizationId,
         module: "crm",
         eventType: "crm.lead.stage_changed",

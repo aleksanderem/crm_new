@@ -35,8 +35,8 @@ export function getAvatarGradient(name?: string | null): string {
   const fromColors = ["from-red-400", "from-orange-400", "from-amber-400", "from-lime-400", "from-emerald-400", "from-cyan-400", "from-blue-400", "from-violet-400", "from-purple-400", "from-pink-400"];
   const toColors = ["to-orange-500", "to-amber-500", "to-yellow-500", "to-green-500", "to-teal-500", "to-sky-500", "to-indigo-500", "to-purple-500", "to-fuchsia-500", "to-rose-500"];
 
-  const from = fromColors[hash % fromColors.length];
-  const to = toColors[(hash >> 4) % toColors.length];
+  const from = fromColors[hash % fromColors.length]!;
+  const to = toColors[(hash >> 4) % toColors.length]!;
 
   return `${from} ${to}`;
 }

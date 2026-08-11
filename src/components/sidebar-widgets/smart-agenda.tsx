@@ -94,7 +94,7 @@ export function SmartAgenda({ organizationId, userId }: SmartAgendaProps) {
         groups.push({ label, events: [] });
         currentLabel = label;
       }
-      groups[groups.length - 1].events.push(event);
+      groups[groups.length - 1]!.events.push(event);
     }
     return groups;
   }, [dayLabels, events, i18n.language]);

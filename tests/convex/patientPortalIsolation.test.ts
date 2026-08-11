@@ -29,7 +29,22 @@ afterEach(async () => {
 // helpers
 // ---------------------------------------------------------------------------
 
-/** Seed an active portal session for a patient in the Supabase mock. */
+/**
+ * Hash a raw token with SHA-256 so the stored tokenHash matches what
+ * validatePortalSessionSupabase computes before querying the table.
+ * (`_setup.ts` polyfills globalThis.crypto for Node 18.)
+ */
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const buf = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/** Seed an active portal session for a patient in the Supabase mock.
+ *  Stores the SHA-256 hash of `token`, matching what validatePortalSessionSupabase
+ *  computes before it queries the table. */
 async function seedActiveSession(
   patientId: string,
   organizationId: string,
@@ -37,10 +52,13 @@ async function seedActiveSession(
 ): Promise<void> {
   const db = createSupabaseDb();
   const now = Date.now();
+  // validatePortalSessionSupabase hashes the raw token before lookup, so we
+  // must store the hash, not the raw token.
+  const tokenHash = await sha256Hex(token);
   await db.insert("gabinetPortalSessions", {
     patientId,
     organizationId,
-    tokenHash: token,
+    tokenHash,
     isActive: true,
     lastAccessedAt: now,
     createdAt: now,

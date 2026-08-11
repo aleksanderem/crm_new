@@ -1,9 +1,9 @@
-import { action, internalMutation } from "./_generated/server";
-import { internal } from "./_generated/api";
-import { createSupabaseDb } from "./_helpers/supabaseDb";
+import { action, internalMutation } from "../_generated/server";
+import { internal } from "../_generated/api";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
-import { logActivity } from "./_helpers/activities";
-import { Id } from "./_generated/dataModel";
+import { logActivity } from "../_helpers/activities";
+import { Id } from "../_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for company writes
 // list query removed — browser reads companies directly from Supabase via use-supabase-companies.ts

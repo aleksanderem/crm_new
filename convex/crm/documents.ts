@@ -1,12 +1,12 @@
-import { query, mutation, action, internalMutation } from "./_generated/server";
+import { query, mutation, action, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
-import { createSupabaseDb } from "./_helpers/supabaseDb";
-import { verifyOrgAccess } from "./_helpers/auth";
-import { logActivity } from "./_helpers/activities";
+import { internal } from "../_generated/api";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { verifyOrgAccess } from "../_helpers/auth";
+import { logActivity } from "../_helpers/activities";
 
 import { documentCategoryValidator, documentStatusValidator } from "@cvx/schema";
-import type { Id } from "./_generated/dataModel";
+import type { Id } from "../_generated/dataModel";
 
 // Dual-write refs removed — Supabase is primary for document writes
 

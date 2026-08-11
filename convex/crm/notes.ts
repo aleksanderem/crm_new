@@ -1,9 +1,9 @@
-import { action, internalMutation } from "./_generated/server";
-import { internal } from "./_generated/api";
-import { createSupabaseDb } from "./_helpers/supabaseDb";
+import { action, internalMutation } from "../_generated/server";
+import { internal } from "../_generated/api";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
-import { publishActivityEnvelope } from "./_helpers/activityEnvelope";
-import { Id } from "./_generated/dataModel";
+import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
+import { Id } from "../_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for note writes
 

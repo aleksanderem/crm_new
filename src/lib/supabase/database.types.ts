@@ -7761,8 +7761,8 @@ export interface Database {
           patient_id: string;
           treatment_id: string | null;
           employee_id: string | null;
-          preferred_dates: unknown | null;
-          preferred_times: unknown | null;
+          preferred_dates: string[] | null;
+          preferred_times: string[] | null;
           notes: string | null;
           status: string;
           notified_at: number | null;
@@ -7777,8 +7777,8 @@ export interface Database {
           patient_id: string;
           treatment_id?: string | null;
           employee_id?: string | null;
-          preferred_dates?: unknown | null;
-          preferred_times?: unknown | null;
+          preferred_dates?: string[] | null;
+          preferred_times?: string[] | null;
           notes?: string | null;
           status?: string;
           notified_at?: number | null;
@@ -7793,8 +7793,8 @@ export interface Database {
           patient_id?: string;
           treatment_id?: string | null;
           employee_id?: string | null;
-          preferred_dates?: unknown | null;
-          preferred_times?: unknown | null;
+          preferred_dates?: string[] | null;
+          preferred_times?: string[] | null;
           notes?: string | null;
           status?: string;
           notified_at?: number | null;
@@ -8089,6 +8089,3 @@ export type GabinetWaitlistUpdate = Database["public"]["Tables"]["gabinet_waitli
 export type LeadStageHistoryRow = Database["public"]["Tables"]["lead_stage_history"]["Row"];
 export type LeadStageHistoryInsert = Database["public"]["Tables"]["lead_stage_history"]["Insert"];
 export type LeadStageHistoryUpdate = Database["public"]["Tables"]["lead_stage_history"]["Update"];
-export type GoogleCalendarSyncConfigRow = Database["public"]["Tables"]["google_calendar_sync_configs"]["Row"];
-export type GoogleCalendarSyncConfigInsert = Database["public"]["Tables"]["google_calendar_sync_configs"]["Insert"];
-export type GoogleCalendarSyncConfigUpdate = Database["public"]["Tables"]["google_calendar_sync_configs"]["Update"];

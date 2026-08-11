@@ -25,6 +25,8 @@
  *   NUMERIC             → number
  *   BOOLEAN             → boolean
  *   JSONB               → unknown  (caller casts as needed)
+ *                          Override with inline annotation: -- type:<ts-type>
+ *                          e.g.  JSONB  -- type:string[]  emits string[] instead
  *   TSVECTOR            → (skipped — generated column)
  *   <enum_name>         → string   (union of literal values would be ideal but
  *                                    the enum definitions are complex; string is
@@ -107,6 +109,12 @@ function mapSqlType(rawType) {
  * @returns {Col | null}
  */
 function parseColumnLine(rawLine) {
+  // Extract per-column type override before stripping the comment.
+  // Syntax:  -- type:<ts-type>   e.g.  JSONB  -- type:string[]
+  let typeHint = null;
+  const hintMatch = rawLine.match(/--\s*type:(\S+)/);
+  if (hintMatch) typeHint = hintMatch[1];
+
   const line = rawLine.replace(/--.*$/, "").trim();
   if (!line) return null;
   // Skip table-level constraints
@@ -124,7 +132,7 @@ function parseColumnLine(rawLine) {
 
   if (rest.includes("GENERATED ALWAYS")) return null;
 
-  const tsType = mapSqlType(rawType);
+  const tsType = typeHint ?? mapSqlType(rawType);
   if (tsType === null) return null;
 
   const isPk = rest.includes("PRIMARY KEY");

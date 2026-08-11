@@ -40,7 +40,10 @@ export const ACTIONS = ["view", "create", "edit", "delete", "approve", "sign", "
 
 export const SCOPES = ["none", "own", "all"] as const;
 
-export type Feature = (typeof FEATURES)[number];
+// Widened to string so new modules can introduce feature IDs without editing
+// this file (same pattern as ModuleId in platformProducts, see #4392 / #4397).
+// FEATURES above remains the runtime registry for buildDefaults() iteration.
+export type Feature = string;
 export type Action = (typeof ACTIONS)[number];
 export type Scope = (typeof SCOPES)[number];
 

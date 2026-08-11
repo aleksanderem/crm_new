@@ -574,3 +574,115 @@ describe("lostReasonRequired: blocks leads.update to 'lost' status when no lostR
     ).resolves.toBeDefined();
   });
 });
+
+// =============================================================================
+// lostReasonRequired (via moveToStage)
+// =============================================================================
+
+describe("lostReasonRequired: blocks moveToStage to a lost pipeline stage when no lostReason provided", () => {
+  async function seedLeadAndLostStage(
+    organizationId: string,
+    userId: string,
+  ): Promise<{ leadId: string; lostStageId: string }> {
+    const db = createSupabaseDb();
+    const now = Date.now();
+    const leadId = await db.insert("leads", {
+      organizationId,
+      title: "Test Lead",
+      status: "open",
+      createdBy: userId,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const lostStageId = await db.insert("pipelineStages", {
+      organizationId,
+      name: "Lost",
+      isLostStage: true,
+      order: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return { leadId, lostStageId };
+  }
+
+  test("lostReasonRequired=true blocks moveToStage to a lost stage without a reason", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+
+    await seedSupabaseOrgSettings(String(organizationId), { lostReasonRequired: true });
+    const { leadId, lostStageId } = await seedLeadAndLostStage(
+      String(organizationId),
+      String(userId),
+    );
+
+    await expect(
+      t.withIdentity(identity).action(api.crm.leads.moveToStage, {
+        organizationId,
+        leadId,
+        pipelineStageId: lostStageId,
+        stageOrder: 0,
+      }),
+    ).rejects.toThrow("A lost reason is required");
+  });
+
+  test("lostReasonRequired=true allows moveToStage to a lost stage when lostReason is provided", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+
+    await seedSupabaseOrgSettings(String(organizationId), { lostReasonRequired: true });
+    const { leadId, lostStageId } = await seedLeadAndLostStage(
+      String(organizationId),
+      String(userId),
+    );
+
+    await expect(
+      t.withIdentity(identity).action(api.crm.leads.moveToStage, {
+        organizationId,
+        leadId,
+        pipelineStageId: lostStageId,
+        stageOrder: 0,
+        lostReason: "Price too high",
+      }),
+    ).resolves.toBeDefined();
+  });
+
+  test("lostReasonRequired=false allows moveToStage to a lost stage without a reason", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+
+    await seedSupabaseOrgSettings(String(organizationId), { lostReasonRequired: false });
+    const { leadId, lostStageId } = await seedLeadAndLostStage(
+      String(organizationId),
+      String(userId),
+    );
+
+    await expect(
+      t.withIdentity(identity).action(api.crm.leads.moveToStage, {
+        organizationId,
+        leadId,
+        pipelineStageId: lostStageId,
+        stageOrder: 0,
+      }),
+    ).resolves.toBeDefined();
+  });
+
+  test("lostReasonRequired defaults to not required (fail-open) when orgSettings not configured", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+
+    // No orgSettings row — moveToStage to a lost stage should succeed without a reason
+    const { leadId, lostStageId } = await seedLeadAndLostStage(
+      String(organizationId),
+      String(userId),
+    );
+
+    await expect(
+      t.withIdentity(identity).action(api.crm.leads.moveToStage, {
+        organizationId,
+        leadId,
+        pipelineStageId: lostStageId,
+        stageOrder: 0,
+      }),
+    ).resolves.toBeDefined();
+  });
+});

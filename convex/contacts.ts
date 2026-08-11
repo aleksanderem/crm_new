@@ -375,6 +375,14 @@ export const gdprErase = action({
     });
 
     const client = db.raw();
+
+    await client
+      .from("custom_field_values")
+      .delete()
+      .eq("organization_id", orgStr)
+      .eq("entity_type", "contact")
+      .eq("entity_id", args.contactId);
+
     await client
       .from("activities")
       .update({ description: GDPR_REDACTED })

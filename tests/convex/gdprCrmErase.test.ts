@@ -159,6 +159,38 @@ describe("contacts.gdprErase — CRM GDPR erasure", () => {
     expect(erasureEntry?.entityId).toBe(contactId);
   });
 
+  test("deletes custom field values linked to the contact", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const db = createSupabaseDb();
+    const orgStr = String(organizationId);
+    const contactId = await seedContact(t, orgStr, String(userId));
+    const now = Date.now();
+
+    await db.insert("customFieldValues", {
+      _id: `cfv-${now}`,
+      organizationId: orgStr,
+      fieldDefinitionId: `field-def-${now}`,
+      entityType: "contact",
+      entityId: contactId,
+      value: "Jan Kowalski",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await t.withIdentity(identity).action(api.contacts.gdprErase, {
+      organizationId,
+      contactId,
+    });
+
+    const remaining = await db
+      .query("customFieldValues")
+      .eq("entityType", "contact")
+      .eq("entityId", contactId)
+      .collect();
+    expect(remaining).toHaveLength(0);
+  });
+
   test("denies erasure for non-owner/admin users", async () => {
     const t = createTestCtx();
     const { organizationId, userId } = await seedTestUser(t, { role: "member" });

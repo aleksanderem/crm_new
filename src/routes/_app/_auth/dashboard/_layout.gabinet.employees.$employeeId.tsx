@@ -48,7 +48,6 @@ import { DetailedDataTab } from "@/components/gabinet/employees/detailed-data-ta
 import { AssignedItemsTab } from "@/components/gabinet/employees/assigned-items-tab";
 import { EmployeePermissionsTab } from "@/components/gabinet/employees/employee-permissions-tab";
 import { AccountTabContent } from "@/components/gabinet/employees/account-tab-content";
-import { ChangePasswordDialog } from "@/components/gabinet/employees/change-password-dialog";
 
 function EmployeeDetailSkeleton() {
   return (
@@ -108,11 +107,6 @@ function EmployeeDetail() {
   const [activityDrawerOpen, setActivityDrawerOpen] = useState(false);
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [changePasswordSubmitting, setChangePasswordSubmitting] = useState(false);
-  const [changePasswordError, setChangePasswordError] = useState<string | null>(null);
   const [newNote, setNewNote] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
 
@@ -364,42 +358,6 @@ function EmployeeDetail() {
     }
   };
 
-  const validatePasswordForm = (): string | null => {
-    if (newPassword.length < 8) return t("gabinet.employees.passwordTooShort");
-    if (!/[A-Z]/.test(newPassword)) return t("gabinet.employees.passwordNeedsUppercase");
-    if (!/[0-9]/.test(newPassword)) return t("gabinet.employees.passwordNeedsDigit");
-    if (newPassword !== confirmPassword) return t("gabinet.employees.passwordMismatch");
-    return null;
-  };
-
-  const handleChangePassword = async () => {
-    const validationError = validatePasswordForm();
-    if (validationError) {
-      setChangePasswordError(validationError);
-      return;
-    }
-    setChangePasswordSubmitting(true);
-    setChangePasswordError(null);
-    try {
-      await changeEmployeePassword({
-        organizationId,
-        employeeId,
-        newPassword,
-      });
-      toast.success(t("gabinet.employees.changePasswordSuccess"));
-      setChangePasswordOpen(false);
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch (e) {
-      setChangePasswordError(formatActionError(e, t, {
-        key: "gabinet.employees.errors.changePasswordFailed",
-        defaultValue: "Nie udało się zmienić hasła.",
-      }));
-    } finally {
-      setChangePasswordSubmitting(false);
-    }
-  };
-
   const handleUpdateActivity = async (data: {
     activityId: string;
     title?: string;
@@ -564,12 +522,6 @@ function EmployeeDetail() {
           treatmentMap={treatmentMap}
           organizationId={organizationId}
           role={role}
-          onChangePassword={() => {
-            setNewPassword("");
-            setConfirmPassword("");
-            setChangePasswordError(null);
-            setChangePasswordOpen(true);
-          }}
           onUpdate={async (a) => { await updateEmployee(a); invalidateEmployeeCache(); }}
           onSetTreatments={async (a) => { await setQualifiedTreatments(a); invalidateEmployeeCache(); }}
           t={t}
@@ -606,12 +558,6 @@ function EmployeeDetail() {
           treatmentMap={treatmentMap}
           organizationId={organizationId}
           role={role}
-          onChangePassword={() => {
-            setNewPassword("");
-            setConfirmPassword("");
-            setChangePasswordError(null);
-            setChangePasswordOpen(true);
-          }}
           onUpdate={async (a) => { await updateEmployee(a); invalidateEmployeeCache(); }}
           onSetTreatments={async (a) => { await setQualifiedTreatments(a); invalidateEmployeeCache(); }}
           t={t}
@@ -678,11 +624,8 @@ function EmployeeDetail() {
           employee={employee}
           userEmail={user?.email}
           role={role}
-          onChangePassword={() => {
-            setNewPassword("");
-            setConfirmPassword("");
-            setChangePasswordError(null);
-            setChangePasswordOpen(true);
+          onChangePassword={async (newPassword) => {
+            await changeEmployeePassword({ organizationId, employeeId, newPassword });
           }}
           onEditEmployee={() => setEditDrawerOpen(true)}
           onDeactivate={handleDeactivate}
@@ -805,20 +748,6 @@ function EmployeeDetail() {
         isSubmitting={isSubmitting}
       />
 
-      {/* Change password dialog */}
-      <ChangePasswordDialog
-        open={changePasswordOpen}
-        onOpenChange={setChangePasswordOpen}
-        newPassword={newPassword}
-        setNewPassword={setNewPassword}
-        confirmPassword={confirmPassword}
-        setConfirmPassword={setConfirmPassword}
-        changePasswordError={changePasswordError}
-        setChangePasswordError={setChangePasswordError}
-        changePasswordSubmitting={changePasswordSubmitting}
-        onSubmit={handleChangePassword}
-        t={t}
-      />
     </>
   );
 }

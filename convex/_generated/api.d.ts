@@ -187,7 +187,6 @@ import type * as signingStubs from "../signingStubs.js";
 import type * as sms from "../sms.js";
 import type * as sources from "../sources.js";
 import type * as stripe from "../stripe.js";
-import type * as supabase_activities from "../supabase/activities.js";
 import type * as supabase_auditLog from "../supabase/auditLog.js";
 import type * as supabase_backfill from "../supabase/backfill.js";
 import type * as supabase_client from "../supabase/client.js";
@@ -388,7 +387,6 @@ declare const fullApi: ApiFromModules<{
   sms: typeof sms;
   sources: typeof sources;
   stripe: typeof stripe;
-  "supabase/activities": typeof supabase_activities;
   "supabase/auditLog": typeof supabase_auditLog;
   "supabase/backfill": typeof supabase_backfill;
   "supabase/client": typeof supabase_client;

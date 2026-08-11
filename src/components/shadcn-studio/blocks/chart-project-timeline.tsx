@@ -167,7 +167,7 @@ const ProjectTimelineCard = ({ className }: { className?: string }) => {
                 cursor={false}
                 content={({ active, payload }) => {
                   if (active && payload && payload.length) {
-                    const data = payload[0].payload
+                    const data = payload[0]!.payload
 
                     return (
                       <div className='bg-background rounded-md border p-3 shadow-lg'>

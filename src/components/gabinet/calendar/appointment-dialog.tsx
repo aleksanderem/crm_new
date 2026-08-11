@@ -641,7 +641,7 @@ export function AppointmentDialog({
 
   useEffect(() => {
     if (qualifiedEmployees.length === 1 && !employeeId) {
-      setEmployeeId(qualifiedEmployees[0].userId);
+      setEmployeeId(qualifiedEmployees[0]!.userId);
     }
   }, [qualifiedEmployees, employeeId]);
 

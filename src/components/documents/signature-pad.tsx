@@ -31,8 +31,8 @@ export function SignaturePad({ onSign, onCancel }: SignaturePadProps) {
   const getPos = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
-    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    const clientX = "touches" in e ? e.touches[0]!.clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0]!.clientY : e.clientY;
     return { x: clientX - rect.left, y: clientY - rect.top };
   }, []);
 

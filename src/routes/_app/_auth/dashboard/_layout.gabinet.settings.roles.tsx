@@ -355,7 +355,7 @@ function GabinetRolesSettingsPage() {
 
   useEffect(() => {
     if (definitions && definitions.length > 0 && !selectedKey) {
-      setSelectedKey(definitions[0].key);
+      setSelectedKey(definitions[0]!.key);
     }
   }, [definitions, selectedKey]);
 

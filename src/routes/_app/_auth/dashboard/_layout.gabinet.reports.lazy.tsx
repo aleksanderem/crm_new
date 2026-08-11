@@ -136,7 +136,7 @@ function bucketizePairs(
 ): { index: number; count: number }[] {
   if (!pairs.length)
     return Array.from({ length: 7 }, (_, i) => ({ index: i, count: 0 }));
-  const sorted = [...pairs].sort((a, b) => a[0].localeCompare(b[0]));
+  const sorted = [...pairs].sort((a, b) => a[0]!.localeCompare(b[0]!));
   const bucketSize = Math.max(1, Math.ceil(sorted.length / 7));
   const buckets: { index: number; count: number }[] = [];
   for (let i = 0; i < sorted.length; i += bucketSize) {
@@ -1021,7 +1021,7 @@ function PackageSalesSection({
       buckets.set(key, { revenue: prev.revenue + u.paidAmount, count: prev.count + 1 });
     }
     return Array.from(buckets.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
+      .sort((a, b) => a[0]!.localeCompare(b[0]!))
       .map(([period, s]) => ({ period, revenue: s.revenue, count: s.count }));
   }, [filteredUsages, groupBy]);
 

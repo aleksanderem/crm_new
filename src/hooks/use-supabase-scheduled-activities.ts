@@ -577,7 +577,7 @@ export function useSupabaseWeeklyActivitiesTrend(
         .select("created_at,is_completed,completed_at,owner_id")
         .eq("organization_id", organizationId)
         .eq("owner_id", userId)
-        .gte("created_at", days[0]._start);
+        .gte("created_at", days[0]!._start);
       if (error) throw error;
       const rows = (data ?? []) as Array<{
         created_at: number;

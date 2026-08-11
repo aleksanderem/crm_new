@@ -312,7 +312,7 @@ function TeamSettings() {
           {members?.map((member) => {
             const isOwner = member.role === "owner";
             const name = member.user?.name ?? member.user?.email ?? "Unknown";
-            const initials = name[0].toUpperCase();
+            const initials = name[0]!.toUpperCase();
 
             return (
               <div
@@ -418,7 +418,7 @@ function TeamSettings() {
                 <div className="flex items-center gap-3">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback>
-                      {invitation.email[0].toUpperCase()}
+                      {invitation.email[0]!.toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div>

@@ -223,7 +223,7 @@ export function WarehouseShoppingListDialog({
   useEffect(() => {
     if (open && !hasAutoSelectedRef.current && locations.length === 1) {
       hasAutoSelectedRef.current = true;
-      setLocationId(locations[0]._id);
+      setLocationId(locations[0]!._id);
     }
   }, [open, locations]);
 
@@ -287,7 +287,7 @@ export function WarehouseShoppingListDialog({
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
       hasAutoSelectedRef.current = false;
-      const initial = locations.length === 1 ? locations[0]._id : NO_LOCATION_VALUE;
+      const initial = locations.length === 1 ? locations[0]!._id : NO_LOCATION_VALUE;
       if (locations.length === 1) hasAutoSelectedRef.current = true;
       setLocationId(initial);
       setQuantities(new Map());

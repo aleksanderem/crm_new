@@ -74,9 +74,9 @@ export function EmailBrandEditor({ organizationId }: EmailBrandEditorProps) {
     onUploadComplete: async (uploaded) => {
       if (fileInputRef.current) fileInputRef.current.value = "";
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const storageId = (uploaded[0].response as any).storageId as Id<"_storage">;
+      const storageId = (uploaded[0]!.response as any).storageId as Id<"_storage">;
       setLogoStorageId(storageId);
-      setLogoPreviewUrl(URL.createObjectURL(uploaded[0].file));
+      setLogoPreviewUrl(URL.createObjectURL(uploaded[0]!.file));
     },
   });
 

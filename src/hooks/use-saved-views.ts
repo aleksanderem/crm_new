@@ -169,7 +169,7 @@ export function useSavedViews({
         filters: filters ?? null,
         columns: visibleCols,
         sortField: sorting[0]?.id,
-        sortDirection: sorting[0] ? (sorting[0].desc ? "desc" : "asc") : undefined,
+        sortDirection: sorting[0] ? (sorting[0]!.desc ? "desc" : "asc") : undefined,
         selectedId: selectedId,
         isSystem: false,
       });

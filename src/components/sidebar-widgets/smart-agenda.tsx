@@ -146,7 +146,7 @@ export function SmartAgenda({ organizationId, userId }: SmartAgendaProps) {
                     tabItem.value === tab
                       ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground/70",
-                    tabItem.value !== tabs[0].value && "ml-4",
+                    tabItem.value !== tabs[0]!.value && "ml-4",
                   )}
                 >
                   {tabItem.label}

@@ -60,7 +60,7 @@ export function PatientTreatmentsCard({ patientId, organizationId }: PatientTrea
   // (e.g. "Endermologia 10x") live in PatientPackagesCard with the other packages.
   const items = (usages ?? []).filter((usage) => {
     if (usage.treatmentsUsed.length !== 1) return false;
-    return usage.treatmentsUsed[0].totalCount <= 1;
+    return usage.treatmentsUsed[0]!.totalCount <= 1;
   });
 
   const getExpiryColor = (expiresAt?: number) => {

@@ -185,9 +185,9 @@ function PatientBooking() {
     // If "any employee" was chosen, pick the first qualified employee for slot lookup
     if (anyEmployee && employees && employees.length > 0) {
       setSelectedEmployee({
-        userId: employees[0].userId as Id<"users">,
-        firstName: employees[0].firstName,
-        lastName: employees[0].lastName,
+        userId: employees[0]!.userId as Id<"users">,
+        firstName: employees[0]!.firstName,
+        lastName: employees[0]!.lastName,
       });
     }
 

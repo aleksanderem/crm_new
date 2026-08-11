@@ -497,7 +497,16 @@ function LeadsIndex() {
   };
 
   const handleMarkLost = async (lead: LeadRow) => {
-    await updateLead({ organizationId, leadId: lead._id, status: "lost" });
+    try {
+      await updateLead({ organizationId, leadId: lead._id, status: "lost" });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "leads.errors.updateFailed",
+          defaultValue: "Nie udało się oznaczyć szansy jako przegranej.",
+        }),
+      );
+    }
   };
 
   const handleDelete = async (lead: LeadRow) => {
@@ -518,11 +527,20 @@ function LeadsIndex() {
           break;
         case "markLost":
           for (const row of selectedRows) {
-            await updateLead({
-              organizationId,
-              leadId: row._id,
-              status: "lost",
-            });
+            try {
+              await updateLead({
+                organizationId,
+                leadId: row._id,
+                status: "lost",
+              });
+            } catch (e) {
+              toast.error(
+                formatActionError(e, t, {
+                  key: "leads.errors.updateFailed",
+                  defaultValue: "Nie udało się oznaczyć szansy jako przegranej.",
+                }),
+              );
+            }
           }
           break;
         case "delete":

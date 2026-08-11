@@ -25,6 +25,7 @@ import {
   type MappedRelationship,
 } from "@/hooks/use-supabase-relationships";
 import { useSupabaseLostReasonsList } from "@/hooks/use-supabase-lost-reasons";
+import { useSupabaseOrgSettings } from "@/hooks/use-supabase-organizations";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
@@ -165,9 +166,14 @@ function LostReasonDialog({
   organizationId: string;
 }) {
   const { data: lostReasons } = useSupabaseLostReasonsList(organizationId);
+  const { data: orgSettings } = useSupabaseOrgSettings(organizationId);
   const { t } = useTranslation();
   const [selectedReason, setSelectedReason] = useState("");
   const [customReason, setCustomReason] = useState("");
+
+  // Hide freeform custom entry when org has disabled custom lost reasons.
+  // Defaults to allowed (fail-open) when settings are not yet loaded or not configured.
+  const allowCustom = orgSettings?.allowCustomLostReason !== false;
 
   const handleSubmit = () => {
     const reason = selectedReason === "__custom__" ? customReason : selectedReason;
@@ -195,10 +201,12 @@ function LostReasonDialog({
                   {r.label}
                 </SelectItem>
               ))}
-              <SelectItem value="__custom__">{t('detail.lostDialog.customReason')}</SelectItem>
+              {allowCustom && (
+                <SelectItem value="__custom__">{t('detail.lostDialog.customReason')}</SelectItem>
+              )}
             </SelectContent>
           </Select>
-          {selectedReason === "__custom__" && (
+          {selectedReason === "__custom__" && allowCustom && (
             <Input
               value={customReason}
               onChange={(e) => setCustomReason(e.target.value)}
@@ -345,6 +353,7 @@ function LeadDetail() {
   const [createContactDrawerOpen, setCreateContactDrawerOpen] = useState(false);
   const [createCompanyDrawerOpen, setCreateCompanyDrawerOpen] = useState(false);
   const [lostDialogOpen, setLostDialogOpen] = useState(false);
+  const [pendingLostStageId, setPendingLostStageId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activityDrawerOpen, setActivityDrawerOpen] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
@@ -563,12 +572,23 @@ function LeadDetail() {
   };
 
   const handleMarkLost = async (reason: string) => {
-    await updateLead({
-      organizationId,
-      leadId: leadId as Id<"leads">,
-      status: "lost",
-      lostReason: reason,
-    });
+    if (pendingLostStageId) {
+      await moveToStage({
+        organizationId,
+        leadId: leadId as Id<"leads">,
+        pipelineStageId: pendingLostStageId as Id<"pipelineStages">,
+        stageOrder: 0,
+        lostReason: reason,
+      });
+      setPendingLostStageId(null);
+    } else {
+      await updateLead({
+        organizationId,
+        leadId: leadId as Id<"leads">,
+        status: "lost",
+        lostReason: reason,
+      });
+    }
     queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
     setLostDialogOpen(false);
   };
@@ -585,6 +605,12 @@ function LeadDetail() {
   };
 
   const handleStageClick = async (stageId: string) => {
+    const stage = allStages?.find((s) => s._id === stageId);
+    if (stage?.isLostStage) {
+      setPendingLostStageId(stageId);
+      setLostDialogOpen(true);
+      return;
+    }
     await moveToStage({
       organizationId,
       leadId: leadId as Id<"leads">,

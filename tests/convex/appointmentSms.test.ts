@@ -133,17 +133,15 @@ async function linkPatientToContact(
 }
 
 async function listActivitiesForEntity(
-  t: ReturnType<typeof import("convex-test").convexTest>,
+  _t: ReturnType<typeof import("convex-test").convexTest>,
   entityType: string,
   entityId: string,
 ) {
-  return await t.run(async (ctx) => {
-    const activities = await ctx.db.query("activities").collect();
-    return activities.filter(
-      (activity) =>
-        activity.entityType === entityType && activity.entityId === entityId,
-    );
-  });
+  return createSupabaseDb()
+    .query("activities")
+    .eq("entityType", entityType)
+    .eq("entityId", entityId)
+    .collect();
 }
 
 async function createLead(

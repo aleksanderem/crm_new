@@ -14,7 +14,7 @@
  */
 
 import { FEATURES } from "./permissionTypes";
-import type { Action, Scope, FeaturePermissions } from "./permissionTypes";
+import type { Action, Feature, Scope, FeaturePermissions } from "./permissionTypes";
 
 export type SystemGabinetRole =
   | "doctor"

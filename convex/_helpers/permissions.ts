@@ -275,7 +275,7 @@ export async function getEffectivePermissions(
   const merged = {} as FeaturePermissions;
 
   for (const feature of ALL_FEATURES) {
-    const defaultActions = defaults[feature];
+    const defaultActions = defaults[feature]!;
     const overrideActions = overridePerms?.[feature];
     if (overrideActions) {
       const mergedActions = {} as Record<Action, Scope>;
@@ -309,7 +309,7 @@ export async function getEffectivePermissions(
 
     for (const feature of ALL_FEATURES) {
       if (!feature.startsWith("gabinet_")) continue;
-      const mergedActions = { ...merged[feature] };
+      const mergedActions = { ...merged[feature]! };
       for (const action of ACTIONS) {
         const gabinetScope: Scope = gPerms?.[feature as Feature]?.[action]
           ?? defaultGabinetScope(gRole, feature as Feature, action);
@@ -330,7 +330,7 @@ export async function getEffectivePermissions(
       const mPerms = membershipOverride.permissions as Partial<FeaturePermissions>;
       for (const feature of ALL_FEATURES) {
         if (!feature.startsWith("gabinet_")) continue;
-        const mergedActions = { ...merged[feature] };
+        const mergedActions = { ...merged[feature]! };
         for (const action of ACTIONS) {
           const membershipScope = mPerms?.[feature as Feature]?.[action];
           if (membershipScope !== undefined) {

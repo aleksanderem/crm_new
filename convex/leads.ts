@@ -757,6 +757,195 @@ export const moveToStage = action({
   },
 });
 
+export const gdprErase = action({
+  args: {
+    organizationId: v.id("organizations"),
+    leadId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
+      throw new Error("Permission denied: GDPR erasure requires owner or admin role");
+    }
+
+    const db = createSupabaseDb();
+    const lead = await db.get("leads", args.leadId);
+    if (!lead || String(lead.organizationId) !== String(args.organizationId)) {
+      throw new Error("Lead not found");
+    }
+
+    const originalTitle = (lead.title as string) ?? "";
+    const orgStr = String(args.organizationId);
+    const GDPR_REDACTED = "[RODO: dane usunięte]";
+
+    await db.patch("leads", args.leadId, {
+      notes: null,
+      updatedAt: Date.now(),
+    });
+
+    const client = db.raw();
+
+    await client
+      .from("custom_field_values")
+      .delete()
+      .eq("organization_id", orgStr)
+      .eq("entity_type", "lead")
+      .eq("entity_id", args.leadId);
+
+    await client
+      .from("activities")
+      .update({ description: GDPR_REDACTED })
+      .eq("organization_id", orgStr)
+      .eq("entity_type", "lead")
+      .eq("entity_id", args.leadId);
+
+    await client
+      .from("notes")
+      .update({ content: GDPR_REDACTED, updated_at: Date.now() })
+      .eq("organization_id", orgStr)
+      .eq("entity_type", "lead")
+      .eq("entity_id", args.leadId);
+
+    try {
+      await ctx.runMutation(internal.leads._gdprEraseSideEffects, {
+        leadId: args.leadId,
+        organizationId: args.organizationId,
+        originalTitle,
+        erasedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[leads.gdprErase] Side effects FAILED for lead", args.leadId, ":", e);
+    }
+
+    return args.leadId;
+  },
+});
+
+export const _gdprEraseSideEffects = internalMutation({
+  args: {
+    leadId: v.string(),
+    organizationId: v.id("organizations"),
+    originalTitle: v.string(),
+    erasedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const erasedByUserId = args.erasedBy as Id<"users">;
+    const GDPR_REDACTED = "[RODO: dane usunięte]";
+
+    const db = createSupabaseDb();
+
+    const existingActivities = await db
+      .query("activities")
+      .eq("entityType", "lead")
+      .eq("entityId", args.leadId)
+      .collect();
+    for (const activity of existingActivities) {
+      await db.patch("activities", String(activity._id), { description: GDPR_REDACTED });
+    }
+
+    const existingNotes = await db
+      .query("notes")
+      .eq("entityType", "lead")
+      .eq("entityId", args.leadId)
+      .collect();
+    for (const note of existingNotes) {
+      await db.patch("notes", String(note._id), { content: GDPR_REDACTED, updatedAt: Date.now() });
+    }
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: erasedByUserId,
+      action: "gdpr_lead_erased",
+      entityType: "lead",
+      entityId: args.leadId,
+      details: `GDPR erasure performed on lead "${args.originalTitle}" (ID: ${args.leadId})`,
+    });
+
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "lead",
+      entityId: args.leadId as Id<"leads">,
+      action: "deleted",
+      description: "RODO: dane leadu zostały usunięte",
+      performedBy: erasedByUserId,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const gdprExport = action({
+  args: {
+    organizationId: v.id("organizations"),
+    leadId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
+      throw new Error("Permission denied: GDPR export requires owner or admin role");
+    }
+
+    const db = createSupabaseDb();
+    const lead = await db.get("leads", args.leadId);
+    if (!lead || String(lead.organizationId) !== String(args.organizationId)) {
+      throw new Error("Lead not found");
+    }
+
+    const orgStr = String(args.organizationId);
+    const client = db.raw();
+
+    const { data: activities } = await client
+      .from("activities")
+      .select("action, description, created_at")
+      .eq("organization_id", orgStr)
+      .eq("entity_type", "lead")
+      .eq("entity_id", args.leadId)
+      .order("created_at", { ascending: true });
+
+    const { data: notes } = await client
+      .from("notes")
+      .select("content, created_at, updated_at")
+      .eq("organization_id", orgStr)
+      .eq("entity_type", "lead")
+      .eq("entity_id", args.leadId)
+      .order("created_at", { ascending: true });
+
+    const { data: customFieldValues } = await client
+      .from("custom_field_values")
+      .select("value, created_at, updated_at")
+      .eq("organization_id", orgStr)
+      .eq("entity_type", "lead")
+      .eq("entity_id", args.leadId);
+
+    return {
+      exportedAt: new Date().toISOString(),
+      lead: {
+        id: args.leadId,
+        title: lead.title,
+        notes: lead.notes,
+        value: lead.value,
+        currency: lead.currency,
+        status: lead.status,
+        priority: lead.priority,
+        source: lead.source,
+        expectedCloseDate: lead.expectedCloseDate,
+        createdAt: lead.createdAt,
+        updatedAt: lead.updatedAt,
+      },
+      activities: activities ?? [],
+      notes: notes ?? [],
+      customFieldValues: customFieldValues ?? [],
+    };
+  },
+});
+
 export const _moveToStageSideEffects = internalMutation({
   args: {
     organizationId: v.id("organizations"),

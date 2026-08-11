@@ -2,6 +2,10 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import { createTestCtx, seedTestUser } from "../../convex/_test_helpers";
 import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
+
+async function listActivitiesForOrg(organizationId: string) {
+  return createSupabaseDb().query("activities").eq("organizationId", organizationId).collect();
+}
 import { sendEmail } from "@cvx/email";
 
 vi.mock("@cvx/email", () => ({
@@ -54,10 +58,7 @@ describe("email activities", () => {
       }),
     );
 
-    const rows = await t.run(async (ctx) => {
-      const all = await ctx.db.query("activities").collect();
-      return all.filter((row) => row.organizationId === organizationId);
-    });
+    const rows = await listActivitiesForOrg(organizationId);
 
     expect(rows).toHaveLength(1);
 
@@ -113,17 +114,15 @@ describe("email activities", () => {
       snippet: "Could you clarify my invoice?",
     });
 
-    const { email, rows } = await t.run(async (ctx) => {
-      const email = await ctx.db
-        .query("emails")
-        .withIndex("by_messageId", (q) => q.eq("messageId", messageId))
-        .unique();
-      const rows = await ctx.db.query("activities").collect();
-      return {
-        email,
-        rows: rows.filter((row) => row.organizationId === organizationId),
-      };
-    });
+    const [email, rows] = await Promise.all([
+      t.run(async (ctx) =>
+        ctx.db
+          .query("emails")
+          .withIndex("by_messageId", (q) => q.eq("messageId", messageId))
+          .unique(),
+      ),
+      listActivitiesForOrg(organizationId),
+    ]);
 
     expect(email).toBeTruthy();
     expect(rows).toHaveLength(1);
@@ -184,14 +183,15 @@ describe("email activities", () => {
       snippet: "Inbound row should still persist",
     });
 
-    const { email, rows } = await t.run(async (ctx) => {
-      const email = await ctx.db
-        .query("emails")
-        .withIndex("by_messageId", (q) => q.eq("messageId", messageId))
-        .unique();
-      const rows = await ctx.db.query("activities").collect();
-      return { email, rows };
-    });
+    const [email, rows] = await Promise.all([
+      t.run(async (ctx) =>
+        ctx.db
+          .query("emails")
+          .withIndex("by_messageId", (q) => q.eq("messageId", messageId))
+          .unique(),
+      ),
+      listActivitiesForOrg(organizationId),
+    ]);
 
     expect(email).toBeTruthy();
     expect(email?.organizationId).toBe(organizationId);

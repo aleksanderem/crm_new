@@ -81,7 +81,7 @@ export const create = action({
 
     // --- Delegate post-write side effects ---
     try {
-      await ctx.runMutation(internal.contacts._createSideEffects, {
+      await ctx.runMutation(internal.crm.contacts._createSideEffects, {
         contactId,
         organizationId: args.organizationId,
         firstName: args.firstName,
@@ -200,7 +200,7 @@ export const update = action({
 
     // --- Delegate post-write side effects ---
     try {
-      await ctx.runMutation(internal.contacts._updateSideEffects, {
+      await ctx.runMutation(internal.crm.contacts._updateSideEffects, {
         contactId,
         organizationId,
         firstName: (contact.firstName as string) ?? "",
@@ -297,7 +297,7 @@ export const remove = action({
         await db.delete("objectRelationships", rel._id as string);
       }
 
-      await ctx.runMutation(internal.contacts._removeSideEffects, {
+      await ctx.runMutation(internal.crm.contacts._removeSideEffects, {
         contactId: args.contactId,
         organizationId: args.organizationId,
         firstName: (contact.firstName as string) ?? "",
@@ -397,7 +397,7 @@ export const gdprErase = action({
       .eq("entity_id", args.contactId);
 
     try {
-      await ctx.runMutation(internal.contacts._gdprEraseSideEffects, {
+      await ctx.runMutation(internal.crm.contacts._gdprEraseSideEffects, {
         contactId: args.contactId,
         organizationId: args.organizationId,
         originalName,

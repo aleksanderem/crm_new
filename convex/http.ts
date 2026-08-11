@@ -566,7 +566,7 @@ http.route({
       // Match to address to an email account to find the org.
       // emailAccounts is Supabase-primary, so this runs as an action.
       const emailAccount = await ctx.runAction(
-        internal.emails_internal.findEmailAccountByAddress,
+        internal.crm.emails_internal.findEmailAccountByAddress,
         { addresses: toAddresses }
       );
 
@@ -582,7 +582,7 @@ http.route({
       let threadId: string | undefined;
       if (inReplyTo) {
         const existingEmail = await ctx.runQuery(
-          internal.emails_internal.findByMessageId,
+          internal.crm.emails_internal.findByMessageId,
           { messageId: inReplyTo }
         );
         if (existingEmail) {
@@ -592,7 +592,7 @@ http.route({
 
       // Auto-link to contact by from email
       const contact = await ctx.runQuery(
-        internal.emails_internal.findContactByEmail,
+        internal.crm.emails_internal.findContactByEmail,
         { organizationId, email: fromEmail }
       );
 
@@ -604,7 +604,7 @@ http.route({
 
       const snippet = text ? text.slice(0, 200) : html ? html.replace(/<[^>]*>/g, "").slice(0, 200) : undefined;
 
-      await ctx.runMutation(internal.emails_internal.insertInbound, {
+      await ctx.runMutation(internal.crm.emails_internal.insertInbound, {
         organizationId,
         threadId: finalThreadId,
         messageId,

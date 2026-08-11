@@ -137,7 +137,7 @@ export const create = action({
 
     // --- Delegate post-write side effects ---
     try {
-      await ctx.runMutation(internal.leads._createSideEffects, {
+      await ctx.runMutation(internal.crm.leads._createSideEffects, {
         leadId,
         organizationId: args.organizationId,
         title: args.title,
@@ -302,7 +302,7 @@ export const update = action({
 
     // --- Delegate post-write side effects ---
     try {
-      await ctx.runMutation(internal.leads._updateSideEffects, {
+      await ctx.runMutation(internal.crm.leads._updateSideEffects, {
         leadId,
         organizationId,
         title: (lead.title as string) ?? "",
@@ -507,7 +507,7 @@ export const remove = action({
         await db.delete("objectRelationships", rel._id as string);
       }
 
-      await ctx.runMutation(internal.leads._removeSideEffects, {
+      await ctx.runMutation(internal.crm.leads._removeSideEffects, {
         leadId: args.leadId,
         organizationId: args.organizationId,
         title: (lead.title as string) ?? "",
@@ -733,7 +733,7 @@ export const moveToStage = action({
 
     // Side effects via internalMutation (activity log, notifications for stage actions, audit)
     try {
-      await ctx.runMutation(internal.leads._moveToStageSideEffects, {
+      await ctx.runMutation(internal.crm.leads._moveToStageSideEffects, {
         organizationId: args.organizationId,
         leadId: args.leadId as any,
         pipelineStageId: args.pipelineStageId as any,
@@ -810,7 +810,7 @@ export const gdprErase = action({
       .eq("entity_id", args.leadId);
 
     try {
-      await ctx.runMutation(internal.leads._gdprEraseSideEffects, {
+      await ctx.runMutation(internal.crm.leads._gdprEraseSideEffects, {
         leadId: args.leadId,
         organizationId: args.organizationId,
         originalTitle,

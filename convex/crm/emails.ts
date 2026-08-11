@@ -243,7 +243,7 @@ export const send = action({
 
     // --- Delegate post-write side effects ---
     try {
-      await ctx.runMutation(internal.emails._sendSideEffects, {
+      await ctx.runMutation(internal.crm.emails._sendSideEffects, {
         emailId,
         organizationId: args.organizationId,
         to: args.to,

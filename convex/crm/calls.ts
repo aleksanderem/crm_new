@@ -87,7 +87,7 @@ export const getById = action({
     }
 
     const relationships = await ctx.runQuery(
-      internal.calls._getRelationshipsBySource,
+      internal.crm.calls._getRelationshipsBySource,
       { callId: args.callId },
     );
 
@@ -131,7 +131,7 @@ export const create = action({
     });
 
     try {
-      await ctx.runMutation(internal.calls._createSideEffects, {
+      await ctx.runMutation(internal.crm.calls._createSideEffects, {
         callId,
         organizationId: args.organizationId,
         outcome: args.outcome,
@@ -202,7 +202,7 @@ export const update = action({
     await db.patch("calls", callId, { ...updates, updatedAt: Date.now() });
 
     try {
-      await ctx.runMutation(internal.calls._updateSideEffects, {
+      await ctx.runMutation(internal.crm.calls._updateSideEffects, {
         callId,
         organizationId,
         updatedBy: String(authResult.userId),
@@ -263,7 +263,7 @@ export const remove = action({
     }
 
     // Clean up relationships via internalMutation (needs ctx.db)
-    await ctx.runMutation(internal.calls._removeRelationships, {
+    await ctx.runMutation(internal.crm.calls._removeRelationships, {
       callId: args.callId,
     });
 
@@ -271,7 +271,7 @@ export const remove = action({
     await db.delete("calls", args.callId);
 
     try {
-      await ctx.runMutation(internal.calls._removeSideEffects, {
+      await ctx.runMutation(internal.crm.calls._removeSideEffects, {
         callId: args.callId,
         organizationId: args.organizationId,
         deletedBy: String(authResult.userId),

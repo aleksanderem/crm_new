@@ -68,7 +68,7 @@ export const sendViaGmail = action({
     const result = await response.json();
 
     // Store email record
-    await ctx.runMutation(internal.emails_internal.insertOutboundGmail, {
+    await ctx.runMutation(internal.crm.emails_internal.insertOutboundGmail, {
       organizationId: args.organizationId,
       to: args.to,
       cc: args.cc,
@@ -154,7 +154,7 @@ export const syncInbox = action({
         })
         .filter(Boolean);
 
-      await ctx.runMutation(internal.emails_internal.insertInboundGmail, {
+      await ctx.runMutation(internal.crm.emails_internal.insertInboundGmail, {
         organizationId: args.organizationId,
         gmailMessageId: msg.id,
         gmailThreadId: msg.threadId,

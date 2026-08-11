@@ -3,6 +3,7 @@ import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { logActivity } from "./_helpers/activities";
+import { logAudit } from "./auditLog";
 import { Id } from "./_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for contact writes
@@ -331,5 +332,194 @@ export const _removeSideEffects = internalMutation({
       performedBy: deletedByUserId,
       actorLabel: args.actorLabel,
     });
+  },
+});
+
+export const gdprErase = action({
+  args: {
+    organizationId: v.id("organizations"),
+    contactId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
+      throw new Error("Permission denied: GDPR erasure requires owner or admin role");
+    }
+
+    const db = createSupabaseDb();
+    const contact = await db.get("contacts", args.contactId);
+    if (!contact || String(contact.organizationId) !== String(args.organizationId)) {
+      throw new Error("Contact not found");
+    }
+
+    const originalName = `${contact.firstName ?? ""} ${contact.lastName ?? ""}`.trim();
+    const anonSuffix = args.contactId.slice(-6).toUpperCase();
+    const orgStr = String(args.organizationId);
+    const GDPR_REDACTED = "[RODO: dane usunięte]";
+
+    await db.patch("contacts", args.contactId, {
+      firstName: "ANONIMOWY",
+      lastName: `#${anonSuffix}`,
+      email: `deleted-${anonSuffix}@gdpr.invalid`,
+      phone: null,
+      title: null,
+      avatarUrl: null,
+      notes: null,
+      tags: null,
+      tagIds: null,
+      categoryId: null,
+      updatedAt: Date.now(),
+    });
+
+    const client = db.raw();
+    await client
+      .from("activities")
+      .update({ description: GDPR_REDACTED })
+      .eq("organization_id", orgStr)
+      .eq("entity_type", "contact")
+      .eq("entity_id", args.contactId);
+    await client
+      .from("notes")
+      .update({ content: GDPR_REDACTED, updated_at: Date.now() })
+      .eq("organization_id", orgStr)
+      .eq("entity_type", "contact")
+      .eq("entity_id", args.contactId);
+
+    try {
+      await ctx.runMutation(internal.contacts._gdprEraseSideEffects, {
+        contactId: args.contactId,
+        organizationId: args.organizationId,
+        originalName,
+        erasedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[contacts.gdprErase] Side effects FAILED for contact", args.contactId, ":", e);
+    }
+
+    return args.contactId;
+  },
+});
+
+export const _gdprEraseSideEffects = internalMutation({
+  args: {
+    contactId: v.string(),
+    organizationId: v.id("organizations"),
+    originalName: v.string(),
+    erasedBy: v.string(),
+    actorLabel: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const erasedByUserId = args.erasedBy as Id<"users">;
+    const GDPR_REDACTED = "[RODO: dane usunięte]";
+
+    const existingActivities = await ctx.db
+      .query("activities")
+      .withIndex("by_entity", (q) =>
+        q.eq("entityType", "contact").eq("entityId", args.contactId)
+      )
+      .collect();
+    for (const activity of existingActivities) {
+      await ctx.db.patch(activity._id, { description: GDPR_REDACTED });
+    }
+
+    const existingNotes = await ctx.db
+      .query("notes")
+      .withIndex("by_entity", (q) =>
+        q.eq("entityType", "contact").eq("entityId", args.contactId)
+      )
+      .collect();
+    for (const note of existingNotes) {
+      await ctx.db.patch(note._id, { content: GDPR_REDACTED, updatedAt: Date.now() });
+    }
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: erasedByUserId,
+      action: "gdpr_contact_erased",
+      entityType: "contact",
+      entityId: args.contactId,
+      details: `GDPR erasure performed on contact "${args.originalName}" (ID: ${args.contactId})`,
+    });
+
+    await logActivity(ctx, {
+      organizationId: args.organizationId,
+      entityType: "contact",
+      entityId: args.contactId as Id<"contacts">,
+      action: "deleted",
+      description: "RODO: dane kontaktu zostały usunięte",
+      performedBy: erasedByUserId,
+      actorLabel: args.actorLabel,
+    });
+  },
+});
+
+export const gdprExport = action({
+  args: {
+    organizationId: v.id("organizations"),
+    contactId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    if (authResult.role !== "owner" && authResult.role !== "admin") {
+      throw new Error("Permission denied: GDPR export requires owner or admin role");
+    }
+
+    const db = createSupabaseDb();
+    const contact = await db.get("contacts", args.contactId);
+    if (!contact || String(contact.organizationId) !== String(args.organizationId)) {
+      throw new Error("Contact not found");
+    }
+
+    const orgStr = String(args.organizationId);
+    const client = db.raw();
+
+    const { data: activities } = await client
+      .from("activities")
+      .select("action, description, created_at")
+      .eq("organization_id", orgStr)
+      .eq("entity_type", "contact")
+      .eq("entity_id", args.contactId)
+      .order("created_at", { ascending: true });
+
+    const { data: notes } = await client
+      .from("notes")
+      .select("content, created_at, updated_at")
+      .eq("organization_id", orgStr)
+      .eq("entity_type", "contact")
+      .eq("entity_id", args.contactId)
+      .order("created_at", { ascending: true });
+
+    const { data: customFieldValues } = await client
+      .from("custom_field_values")
+      .select("value, created_at, updated_at")
+      .eq("organization_id", orgStr)
+      .eq("entity_type", "contact")
+      .eq("entity_id", args.contactId);
+
+    return {
+      exportedAt: new Date().toISOString(),
+      contact: {
+        id: args.contactId,
+        firstName: contact.firstName,
+        lastName: contact.lastName,
+        email: contact.email,
+        phone: contact.phone,
+        title: contact.title,
+        notes: contact.notes,
+        source: contact.source,
+        createdAt: contact.createdAt,
+        updatedAt: contact.updatedAt,
+      },
+      activities: activities ?? [],
+      notes: notes ?? [],
+      customFieldValues: customFieldValues ?? [],
+    };
   },
 });

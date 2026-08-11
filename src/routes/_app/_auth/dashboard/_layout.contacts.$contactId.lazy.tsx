@@ -33,6 +33,15 @@ import { activitiesToFeedEntries } from "@/components/crm/activity-feed-adapter"
 import { LeadForm } from "@/components/forms/lead-form";
 import { ScheduledActivitiesList } from "@/components/shared/scheduled-activities-list";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { RichTextEditor, plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import {
   DropdownMenu,
@@ -77,6 +86,8 @@ function ContactDetail() {
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const updateContact = useAction(api.contacts.update);
   const removeContact = useAction(api.contacts.remove);
+  const gdprEraseContact = useAction(api.contacts.gdprErase);
+  const gdprExportContact = useAction(api.contacts.gdprExport);
   const createRelationship = useAction(api.relationships.create);
   const removeRelationship = useAction(api.relationships.remove);
   const createCompany = useAction(api.companies.create);
@@ -177,6 +188,8 @@ function ContactDetail() {
   const [guestContactSearch, setGuestContactSearch] = useState("");
   const [sidebarDealSearch, setSidebarDealSearch] = useState("");
   const [sidebarCompanySearch, setSidebarCompanySearch] = useState("");
+  const [gdprEraseDialogOpen, setGdprEraseDialogOpen] = useState(false);
+  const [gdprConfirmText, setGdprConfirmText] = useState("");
 
   // Contact entity read from Supabase (PostgreSQL)
   const { data: contact, isLoading } = useSupabaseContact(
@@ -345,6 +358,34 @@ function ContactDetail() {
       // Invalidate Supabase list cache before navigating away
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.contacts.list(organizationId) });
       navigate({ to: "/dashboard/contacts" });
+    }
+  };
+
+  const handleGdprExport = async () => {
+    try {
+      const data = await gdprExportContact({ organizationId, contactId });
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `gdpr-export-contact-${contactId}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(t("gdpr.exportSuccess", { defaultValue: "Dane zostały wyeksportowane." }));
+    } catch (e) {
+      toast.error(formatActionError(e, t("gdpr.exportFailed", { defaultValue: "Eksport danych nie powiódł się." })));
+    }
+  };
+
+  const handleGdprErase = async () => {
+    try {
+      await gdprEraseContact({ organizationId, contactId });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.contacts.list(organizationId) });
+      setGdprEraseDialogOpen(false);
+      toast.success(t("gdpr.eraseSuccess", { defaultValue: "Dane kontaktu zostały trwale usunięte." }));
+      navigate({ to: "/dashboard/contacts" });
+    } catch (e) {
+      toast.error(formatActionError(e, t("gdpr.eraseFailed", { defaultValue: "Usunięcie danych nie powiodło się." })));
     }
   };
 
@@ -804,6 +845,16 @@ function ContactDetail() {
         >
           {t('detail.deleteContact')}
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleGdprExport}>
+          {t("gdpr.exportData", { defaultValue: "RODO: Eksportuj dane" })}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => { setGdprConfirmText(""); setGdprEraseDialogOpen(true); }}
+          className="text-destructive focus:text-destructive"
+        >
+          {t("gdpr.eraseData", { defaultValue: "RODO: Usuń dane" })}
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -1221,6 +1272,36 @@ function ContactDetail() {
         onSaveCustomFields={handleSaveActivityCustomFields}
         isSubmitting={isSubmitting}
       />
+
+      {/* === GDPR erase confirmation dialog === */}
+      <Dialog open={gdprEraseDialogOpen} onOpenChange={setGdprEraseDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("gdpr.eraseTitle", { defaultValue: "RODO: Trwałe usunięcie danych" })}</DialogTitle>
+            <DialogDescription>
+              {t("gdpr.eraseDesc", { defaultValue: "Ta operacja jest nieodwracalna. Dane osobowe kontaktu zostaną trwale zanonimizowane zgodnie z art. 17 RODO. Wpisz USUŃ aby potwierdzić." })}
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={gdprConfirmText}
+            onChange={(e) => setGdprConfirmText(e.target.value)}
+            placeholder={t("gdpr.eraseConfirmPlaceholder", { defaultValue: "Wpisz USUŃ" })}
+            className="mt-2"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGdprEraseDialogOpen(false)}>
+              {t("common.cancel", { defaultValue: "Anuluj" })}
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={gdprConfirmText !== "USUŃ"}
+              onClick={handleGdprErase}
+            >
+              {t("gdpr.eraseConfirm", { defaultValue: "Usuń dane trwale" })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

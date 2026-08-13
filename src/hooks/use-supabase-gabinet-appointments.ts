@@ -48,9 +48,13 @@ export function useSupabaseGabinetAppointmentsByDateRange(
     queryFn: async (): Promise<MappedGabinetAppointment[]> => {
       if (!client) throw new Error("Supabase client not ready");
 
+      // Join gabinet_appointment_treatments so the primary treatment is
+      // available for calendar display. treatment_id was dropped from
+      // gabinet_appointments in migration 00076 — new appointments only
+      // have treatment data in the junction table (issue #4484).
       let query = client
         .from("gabinet_appointments")
-        .select("*")
+        .select("*, gabinet_appointment_treatments(treatment_id, variant_id, sort_order)")
         .eq("organization_id", organizationId)
         .gte("date", startDate)
         .lte("date", endDate);
@@ -65,7 +69,23 @@ export function useSupabaseGabinetAppointmentsByDateRange(
       const { data, error } = await query.order("date").order("start_time");
 
       if (error) throw error;
-      return (data ?? []).map(mapGabinetAppointmentFromSupabase);
+      return (data ?? []).map((row) => {
+        const appt = mapGabinetAppointmentFromSupabase(row as Parameters<typeof mapGabinetAppointmentFromSupabase>[0]);
+        // Populate treatmentId/variantId from junction when the scalar
+        // column is absent (dropped) or null (pre-junction appointment).
+        if (!appt.treatmentId) {
+          const junctions = (row as Record<string, unknown>)
+            .gabinet_appointment_treatments as
+            | Array<{ treatment_id: string | null; variant_id: string | null; sort_order: number }>
+            | null;
+          if (junctions && junctions.length > 0) {
+            const primary = [...junctions].sort((a, b) => a.sort_order - b.sort_order)[0];
+            if (primary?.treatment_id) appt.treatmentId = primary.treatment_id;
+            if (primary?.variant_id) appt.variantId = primary.variant_id;
+          }
+        }
+        return appt;
+      });
     },
     enabled: enabled && isReady && !!organizationId && !!startDate && !!endDate,
   } satisfies UseQueryOptions<MappedGabinetAppointment[], Error>);

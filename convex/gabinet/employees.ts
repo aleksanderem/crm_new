@@ -6,6 +6,7 @@ import { logActivity } from "../_helpers/activities";
 import { logAudit } from "../auditLog";
 import { logError } from "../_helpers/logged";
 import { gabinetEmployeeRoleValidator } from "../schema";
+import { isSystemGabinetRole } from "../_helpers/gabinetRolePermissions";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { createLogger } from "../_helpers/logger";
 import type { GabinetEmployeeRow, SupabasePaginationResult } from "../_helpers/supabaseRows";
@@ -239,8 +240,7 @@ export const create = action({
     });
 
     if (args.locationId) {
-      const allowedRoles = ["doctor", "cosmetologist", "nurse", "therapist", "receptionist", "manager", "admin", "other"];
-      const locationRole = args.locationRole && allowedRoles.includes(args.locationRole) ? args.locationRole : undefined;
+      const locationRole = args.locationRole && isSystemGabinetRole(args.locationRole) ? args.locationRole : undefined;
       try {
         await db.insert("gabinetEmployeeLocations", {
           organizationId: String(args.organizationId),
@@ -360,9 +360,8 @@ export const _createFromInvitation = internalAction({
       // Still honour any locationId on the re-invite so the new assignment is not silently dropped.
       const d2 = (args.data ?? {}) as Record<string, unknown>;
       const locationId2 = typeof d2.locationId === "string" && d2.locationId.length > 0 ? d2.locationId : null;
-      const allowedRoles2 = ["doctor", "cosmetologist", "nurse", "therapist", "receptionist", "manager", "admin", "other"];
       const locationRole2Raw = typeof d2.locationRole === "string" ? d2.locationRole : null;
-      const locationRole2 = locationRole2Raw && allowedRoles2.includes(locationRole2Raw) ? locationRole2Raw : undefined;
+      const locationRole2 = locationRole2Raw && isSystemGabinetRole(locationRole2Raw) ? locationRole2Raw : undefined;
       if (locationId2) {
         try {
           const existingLocation = await db
@@ -399,8 +398,7 @@ export const _createFromInvitation = internalAction({
       Array.isArray(v) ? (v.filter((x) => typeof x === "string") as string[]) : null;
 
     const role = asString(d.role) ?? "doctor";
-    const allowedRoles = ["doctor", "cosmetologist", "nurse", "therapist", "receptionist", "manager", "admin", "other"];
-    const safeRole = allowedRoles.includes(role) ? role : "doctor";
+    const safeRole = isSystemGabinetRole(role) ? role : "doctor";
 
     const now = Date.now();
     const employeeId = await db.insert("gabinetEmployees", {
@@ -427,7 +425,7 @@ export const _createFromInvitation = internalAction({
     // Location assignment — moduleData.locationId seeds the primary location.
     const locationId = asString(d.locationId);
     const locationRoleRaw = asString(d.locationRole);
-    const locationRole = locationRoleRaw && allowedRoles.includes(locationRoleRaw) ? locationRoleRaw : undefined;
+    const locationRole = locationRoleRaw && isSystemGabinetRole(locationRoleRaw) ? locationRoleRaw : undefined;
     if (locationId) {
       try {
         await db.insert("gabinetEmployeeLocations", {
@@ -1259,12 +1257,8 @@ export const createWithPassword = action({
     });
 
     if (args.locationId) {
-      const allowedRoles = [
-        "doctor", "cosmetologist", "nurse", "therapist",
-        "receptionist", "manager", "admin", "other",
-      ];
       const locationRole =
-        args.locationRole && allowedRoles.includes(args.locationRole)
+        args.locationRole && isSystemGabinetRole(args.locationRole)
           ? args.locationRole
           : undefined;
       try {

@@ -13,7 +13,7 @@ import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { plateJsonToText } from "@/components/plate-text";
 import { Briefcase } from "@/lib/ez-icons";
 import type { TFunction } from "i18next";
-import { ROLES } from "../edit-employee-drawer";
+import { EMPLOYEE_ROLES } from "@/lib/options";
 import { EMPLOYMENT_TYPES } from "./types";
 import { SectionHeader, ReadOnlyField } from "./section-header";
 import type { EmployeeFormData } from "./types";
@@ -119,7 +119,7 @@ export function EmploymentSection({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {ROLES.map((r) => (
+                    {EMPLOYEE_ROLES.map((r) => (
                       <SelectItem key={r} value={r}>
                         {t(`gabinet.employees.roles.${r}`)}
                       </SelectItem>

@@ -25,6 +25,7 @@ export function QualificationsSection({
   setNewCertDate,
   newCertExpiry,
   setNewCertExpiry,
+  canEdit,
   onStartEdit,
   onCancelEdit,
   onSaveSection,
@@ -43,6 +44,7 @@ export function QualificationsSection({
   setNewCertDate: (v: string) => void;
   newCertExpiry: string;
   setNewCertExpiry: (v: string) => void;
+  canEdit?: boolean;
   onStartEdit: (s: string) => void;
   onCancelEdit: () => void;
   onSaveSection: (s: string) => Promise<void>;
@@ -76,6 +78,7 @@ export function QualificationsSection({
           icon={<Star className="h-4 w-4" />}
           editing={editing}
           saving={saving}
+          canEdit={canEdit}
           onStartEdit={onStartEdit}
           onCancelEdit={onCancelEdit}
           onSaveSection={onSaveSection}

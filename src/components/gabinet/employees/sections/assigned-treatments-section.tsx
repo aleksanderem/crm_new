@@ -23,6 +23,7 @@ export function AssignedTreatmentsSection({
   filteredTreatments,
   pendingTreatmentIds,
   setPendingTreatmentIds,
+  canEdit,
   onStartEdit,
   onCancelEdit,
   onSaveSection,
@@ -37,6 +38,7 @@ export function AssignedTreatmentsSection({
   filteredTreatments: Array<{ _id: string; name: string }>;
   pendingTreatmentIds: string[];
   setPendingTreatmentIds: (ids: string[]) => void;
+  canEdit?: boolean;
   onStartEdit: (s: string) => void;
   onCancelEdit: () => void;
   onSaveSection: (s: string) => Promise<void>;
@@ -51,10 +53,12 @@ export function AssignedTreatmentsSection({
               <span className="text-primary"><ClipboardList className="h-4 w-4" /></span>
               <h4 className="text-base font-semibold">{t("gabinet.employees.detailedData.assignedTreatments")}</h4>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => onStartEdit("treatments")}>
-              <Pencil className="h-3.5 w-3.5 mr-1" variant="stroke" />
-              {t("common.edit")}
-            </Button>
+            {canEdit !== false && (
+              <Button variant="ghost" size="sm" onClick={() => onStartEdit("treatments")}>
+                <Pencil className="h-3.5 w-3.5 mr-1" variant="stroke" />
+                {t("common.edit")}
+              </Button>
+            )}
           </div>
           {employee.qualifiedTreatmentIds.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">

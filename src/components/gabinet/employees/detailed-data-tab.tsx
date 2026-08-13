@@ -8,6 +8,7 @@ import { parseBirthDateToIso } from "@/lib/format-date";
 import type { TFunction } from "i18next";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
+import { usePermission } from "@/hooks/use-permission";
 import { PersonalInfoSection } from "./sections/personal-info-section";
 import { EmploymentSection } from "./sections/employment-section";
 import { QualificationsSection } from "./sections/qualifications-section";
@@ -48,6 +49,8 @@ export function DetailedDataTab({
   limitedView?: boolean;
   qualificationsOnlyView?: boolean;
 }) {
+  const { allowed: canEdit } = usePermission("gabinet_employees", "edit");
+
   const [editing, setEditing] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -195,6 +198,7 @@ export function DetailedDataTab({
   const sharedSectionProps = {
     editing,
     saving,
+    canEdit,
     formData,
     setFormData,
     onStartEdit: startEdit,
@@ -244,6 +248,7 @@ export function DetailedDataTab({
                 treatmentMap={treatmentMap}
                 editing={editing}
                 saving={saving}
+                canEdit={canEdit}
                 treatmentSearchLocal={treatmentSearchLocal}
                 setTreatmentSearchLocal={setTreatmentSearchLocal}
                 filteredTreatments={filteredTreatments}

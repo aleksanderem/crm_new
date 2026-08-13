@@ -394,6 +394,7 @@ function OtpEmailForm({
   initialEmail?: string;
   lockEmail?: boolean;
 }) {
+  const { t } = useTranslation();
   const { signIn } = useAuthActions();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -474,6 +475,7 @@ function OtpEmailForm({
 
 /* ─── OTP: verify code (verify-email-03 style) ─── */
 function OtpVerifyForm({ email, onBack }: { email: string; onBack: () => void }) {
+  const { t } = useTranslation();
   const { signIn } = useAuthActions();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -586,6 +588,7 @@ function ForgotPasswordForm({
   onSubmit: (email: string) => void;
   onBack: () => void;
 }) {
+  const { t } = useTranslation();
   const { signIn } = useAuthActions();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -670,6 +673,7 @@ function ResetPasswordForm({
   onBack: () => void;
   onSuccess: () => void;
 }) {
+  const { t } = useTranslation();
   const { signIn } = useAuthActions();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -1305,7 +1305,7 @@ function AppointmentDetail() {
         <ChangeEmployeeModal
           open={changeEmployeeOpen}
           onOpenChange={setChangeEmployeeOpen}
-          onSuccess={() => refetch()}
+          onSuccess={async () => { await refetch(); }}
           organizationId={organizationId}
           appointmentId={appointmentId as Id<"gabinetAppointments">}
           treatmentIds={

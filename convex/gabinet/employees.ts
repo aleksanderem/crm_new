@@ -174,6 +174,7 @@ export const create = action({
     qualifiedTreatmentIds: v.optional(v.array(v.string())),
     licenseNumber: v.optional(v.union(v.string(), v.null())),
     hireDate: v.optional(v.union(v.string(), v.null())),
+    isActive: v.optional(v.boolean()),
     color: v.optional(v.union(v.string(), v.null())),
     notes: v.optional(v.union(v.string(), v.null())),
     showInCalendar: v.optional(v.boolean()),
@@ -185,9 +186,6 @@ export const create = action({
   },
   handler: async (ctx, args) => {
     try {
-    if (!args.userId) {
-      throw new Error("Tworzenie pracownika bez konta użytkownika jest niedozwolone. Wyślij zaproszenie e-mail.");
-    }
 
     // --- Auth + permissions (via internal queries) ---
     const authResult = await ctx.runAction(
@@ -228,7 +226,7 @@ export const create = action({
       qualifiedTreatmentIds: args.qualifiedTreatmentIds ?? [],
       licenseNumber: args.licenseNumber ?? null,
       hireDate: args.hireDate ?? null,
-      isActive: true,
+      isActive: args.isActive ?? true,
       color: args.color ?? null,
       notes: args.notes ?? null,
       showInCalendar: args.showInCalendar ?? true,

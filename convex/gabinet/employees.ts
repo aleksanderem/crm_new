@@ -5,7 +5,7 @@ import { internal } from "../_generated/api";
 import { logActivity } from "../_helpers/activities";
 import { logAudit } from "../auditLog";
 import { logError } from "../_helpers/logged";
-import { gabinetEmployeeRoleValidator } from "../schema";
+import { gabinetEmployeeRoleValidator, GabinetEmployeeRole } from "../schema";
 import { isSystemGabinetRole } from "../_helpers/gabinetRolePermissions";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { createLogger } from "../_helpers/logger";
@@ -529,7 +529,7 @@ export const _backfillMemberships = internalAction({
         await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
           organizationId: e.organizationId as Id<"organizations">,
           userId: e.userId,
-          gabinetRole: e.role,
+          gabinetRole: e.role as GabinetEmployeeRole,
           isActive: Boolean(e.isActive),
         });
         upserted += 1;
@@ -551,7 +551,7 @@ export const _upsertMembership = internalMutation({
   args: {
     organizationId: v.id("organizations"),
     userId: v.string(),
-    gabinetRole: v.string(),
+    gabinetRole: gabinetEmployeeRoleValidator,
     isActive: v.boolean(),
   },
   handler: async (ctx, args) => {
@@ -804,7 +804,7 @@ export const update = action({
     // Mirror role change (or isActive change) into Convex `gabinetMemberships`
     // so permission checks reflect the new role on the next call.
     if ((args.role !== undefined || args.isActive !== undefined) && emp.userId) {
-      const effectiveRole = args.role ?? (emp.role as string);
+      const effectiveRole = args.role ?? (emp.role as GabinetEmployeeRole);
       const effectiveActive = args.isActive ?? Boolean(emp.isActive);
       await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
         organizationId: args.organizationId,
@@ -926,7 +926,7 @@ export const remove = action({
       await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
         organizationId: args.organizationId,
         userId: String(emp.userId),
-        gabinetRole: emp.role as string,
+        gabinetRole: emp.role as GabinetEmployeeRole,
         isActive: false,
       });
     }

@@ -14,6 +14,7 @@ interface CrmSchemaDeps {
   emailDirectionValidator: typeof import("../schema").emailDirectionValidator;
   orgRoleValidator: typeof import("../schema").orgRoleValidator;
   invitationStatusValidator: typeof import("../schema").invitationStatusValidator;
+  gabinetEmployeeRoleValidator: typeof import("../schema").gabinetEmployeeRoleValidator;
 }
 
 export function createCrmTables({
@@ -29,6 +30,7 @@ export function createCrmTables({
   emailDirectionValidator,
   orgRoleValidator,
   invitationStatusValidator,
+  gabinetEmployeeRoleValidator,
 }: CrmSchemaDeps) {
   return {
   // --- CRM Tables ---
@@ -771,7 +773,7 @@ export function createCrmTables({
   gabinetMemberships: defineTable({
     organizationId: v.id("organizations"),
     userId: v.id("users"),
-    gabinetRole: v.string(),
+    gabinetRole: gabinetEmployeeRoleValidator,
     isActive: v.boolean(),
     updatedAt: v.number(),
   })

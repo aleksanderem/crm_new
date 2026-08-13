@@ -337,6 +337,7 @@ function generateRecurringDates(
 ): string[] {
   const dates: string[] = [];
   const d = new Date(startDate + "T00:00:00");
+  const origDay = d.getDate();
   const max = rule.count ?? 52;
   const untilDate = rule.until ? new Date(rule.until + "T23:59:59") : null;
 
@@ -351,9 +352,13 @@ function generateRecurringDates(
       case "biweekly":
         d.setDate(d.getDate() + 14);
         break;
-      case "monthly":
+      case "monthly": {
+        d.setDate(1);
         d.setMonth(d.getMonth() + 1);
+        const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+        d.setDate(Math.min(origDay, lastDay));
         break;
+      }
       default:
         return dates;
     }

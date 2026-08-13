@@ -163,6 +163,7 @@ function generateRecurringDates(
   }
   const dates: string[] = [];
   const d = new Date(startDate + "T00:00:00");
+  const origDay = d.getDate();
   for (let i = 1; i < count; i++) {
     switch (frequency) {
       case "daily":
@@ -174,9 +175,13 @@ function generateRecurringDates(
       case "biweekly":
         d.setDate(d.getDate() + 14);
         break;
-      case "monthly":
+      case "monthly": {
+        d.setDate(1);
         d.setMonth(d.getMonth() + 1);
+        const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+        d.setDate(Math.min(origDay, lastDay));
         break;
+      }
       default:
         return dates;
     }

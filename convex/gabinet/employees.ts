@@ -1215,28 +1215,49 @@ export const createWithPassword = action({
     const name =
       [args.firstName, args.lastName].filter(Boolean).join(" ") || undefined;
 
-    const { user } = await createAccount(ctx, {
-      provider: "password",
-      account: { id: args.email, secret: args.password },
-      profile: { email: args.email, name },
-      shouldLinkViaEmail: false,
-      shouldLinkViaPhone: false,
-    });
-
-    const { userId } = await ctx.runAction(
-      internal.gabinet.employees._finalisePasswordUser,
-      {
-        userId: String(user._id),
-        email: args.email,
-        name: user.name ?? name,
-        organizationId: args.organizationId,
-        teamRole: args.teamRole,
-        invitedBy: String(authResult.userId),
-      },
-    );
-
     const db = createSupabaseDb();
     const now = Date.now();
+
+    // Check if a user with this email already exists before creating a new account.
+    // If found, link to the existing user instead of creating a duplicate.
+    const existingUserByEmail = await db.query("users").eq("email", args.email).first();
+
+    let userId: string;
+    if (existingUserByEmail) {
+      const { userId: resolvedId } = await ctx.runAction(
+        internal.gabinet.employees._finalisePasswordUser,
+        {
+          userId: String(existingUserByEmail._id),
+          email: args.email,
+          name: (existingUserByEmail.name as string | undefined) ?? name,
+          organizationId: args.organizationId,
+          teamRole: args.teamRole,
+          invitedBy: String(authResult.userId),
+        },
+      );
+      userId = resolvedId;
+    } else {
+      const { user } = await createAccount(ctx, {
+        provider: "password",
+        account: { id: args.email, secret: args.password },
+        profile: { email: args.email, name },
+        shouldLinkViaEmail: false,
+        shouldLinkViaPhone: false,
+      });
+
+      const { userId: resolvedId } = await ctx.runAction(
+        internal.gabinet.employees._finalisePasswordUser,
+        {
+          userId: String(user._id),
+          email: args.email,
+          name: user.name ?? name,
+          organizationId: args.organizationId,
+          teamRole: args.teamRole,
+          invitedBy: String(authResult.userId),
+        },
+      );
+      userId = resolvedId;
+    }
 
     const employeeId = await db.insert("gabinetEmployees", {
       organizationId: String(args.organizationId),

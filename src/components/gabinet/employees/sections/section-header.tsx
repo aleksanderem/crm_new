@@ -9,6 +9,7 @@ export function SectionHeader({
   icon,
   editing,
   saving,
+  canEdit = true,
   onStartEdit,
   onCancelEdit,
   onSaveSection,
@@ -19,6 +20,7 @@ export function SectionHeader({
   icon: ReactNode;
   editing: string | null;
   saving: boolean;
+  canEdit?: boolean;
   onStartEdit: (s: string) => void;
   onCancelEdit: () => void;
   onSaveSection: (s: string) => Promise<void>;
@@ -31,10 +33,12 @@ export function SectionHeader({
         <h4 className="text-base font-semibold">{title}</h4>
       </div>
       {editing !== sectionKey ? (
-        <Button variant="ghost" size="sm" onClick={() => onStartEdit(sectionKey)}>
-          <Pencil className="h-3.5 w-3.5 mr-1" variant="stroke" />
-          {t("common.edit")}
-        </Button>
+        canEdit && (
+          <Button variant="ghost" size="sm" onClick={() => onStartEdit(sectionKey)}>
+            <Pencil className="h-3.5 w-3.5 mr-1" variant="stroke" />
+            {t("common.edit")}
+          </Button>
+        )
       ) : (
         <div className="flex gap-1">
           <Button variant="ghost" size="sm" onClick={onCancelEdit}>

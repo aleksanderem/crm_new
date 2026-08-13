@@ -14,6 +14,7 @@ export function CompensationSection({
   editing,
   saving,
   i18nLanguage,
+  canEdit,
   onStartEdit,
   onCancelEdit,
   onSaveSection,
@@ -25,6 +26,7 @@ export function CompensationSection({
   editing: string | null;
   saving: boolean;
   i18nLanguage: string;
+  canEdit?: boolean;
   onStartEdit: (s: string) => void;
   onCancelEdit: () => void;
   onSaveSection: (s: string) => Promise<void>;
@@ -39,6 +41,7 @@ export function CompensationSection({
           icon={<DollarSign className="h-4 w-4" />}
           editing={editing}
           saving={saving}
+          canEdit={canEdit}
           onStartEdit={onStartEdit}
           onCancelEdit={onCancelEdit}
           onSaveSection={onSaveSection}

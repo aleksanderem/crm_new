@@ -24,6 +24,7 @@ export function EmploymentSection({
   setFormData,
   editing,
   saving,
+  canEdit,
   onStartEdit,
   onCancelEdit,
   onSaveSection,
@@ -34,6 +35,7 @@ export function EmploymentSection({
   setFormData: (data: EmployeeFormData) => void;
   editing: string | null;
   saving: boolean;
+  canEdit?: boolean;
   onStartEdit: (s: string) => void;
   onCancelEdit: () => void;
   onSaveSection: (s: string) => Promise<void>;
@@ -48,6 +50,7 @@ export function EmploymentSection({
           icon={<Briefcase className="h-4 w-4" variant="stroke" />}
           editing={editing}
           saving={saving}
+          canEdit={canEdit}
           onStartEdit={onStartEdit}
           onCancelEdit={onCancelEdit}
           onSaveSection={onSaveSection}

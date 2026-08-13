@@ -27,6 +27,7 @@ export function PersonalInfoSection({
   setFormData,
   editing,
   saving,
+  canEdit,
   role,
   userEmail,
   onChangePassword,
@@ -44,6 +45,7 @@ export function PersonalInfoSection({
   saving: boolean;
   role?: string | null;
   userEmail?: string | null;
+  canEdit?: boolean;
   onChangePassword?: () => void;
   onUpdate: (args: FunctionArgs<typeof api.gabinet.employees.update>) => Promise<void>;
   onStartEdit: (s: string) => void;
@@ -91,6 +93,7 @@ export function PersonalInfoSection({
           icon={<User className="h-4 w-4" variant="stroke" />}
           editing={editing}
           saving={saving}
+          canEdit={canEdit}
           onStartEdit={onStartEdit}
           onCancelEdit={onCancelEdit}
           onSaveSection={onSaveSection}

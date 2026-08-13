@@ -49,6 +49,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
@@ -65,6 +66,7 @@ import { Calendar } from "@/components/ui/calendar";
 import {
   Clock,
   ChevronsUpDown,
+  DollarSign,
   Stethoscope,
   StickyNote,
   User,
@@ -314,6 +316,10 @@ export function AppointmentDialog({
   // are filtered out of the slot list — the user must opt in deliberately
   // before they can pick a time in the past. Issue #1406.
   const [recordWalkIn, setRecordWalkIn] = useState(false);
+
+  // Prepayment fields (#4489)
+  const [prepaymentRequired, setPrepaymentRequired] = useState(false);
+  const [prepaymentAmount, setPrepaymentAmount] = useState("");
 
   // Drag-to-reposition state — users want to peek at the calendar underneath
   // without closing the dialog (issue #977). Offset resets when the dialog
@@ -982,6 +988,11 @@ export function AppointmentDialog({
         packageTreatmentId: packageTreatmentId ?? undefined,
         allowPast: recordWalkIn || undefined,
         allowConflict: hasBookingConflict || undefined,
+        prepaymentRequired: prepaymentRequired || undefined,
+        prepaymentAmount:
+          prepaymentRequired && prepaymentAmount
+            ? parseFloat(prepaymentAmount)
+            : undefined,
       });
       // Refresh the calendar immediately — Convex actions don't invalidate
       // the Supabase React Query cache automatically.
@@ -1023,6 +1034,8 @@ export function AppointmentDialog({
     packageTreatmentId,
     recordWalkIn,
     hasBookingConflict,
+    prepaymentRequired,
+    prepaymentAmount,
     onOpenChange,
     queryClient,
     t,
@@ -1074,6 +1087,8 @@ export function AppointmentDialog({
       setAddPatientOpen(false);
       setPendingPatientLabel(null);
       setRecordWalkIn(false);
+      setPrepaymentRequired(false);
+      setPrepaymentAmount("");
     }
   }, [open, defaultDate, defaultTime, defaultEndTime, defaultUserId]);
 
@@ -1597,6 +1612,46 @@ export function AppointmentDialog({
                           "gabinet.appointments.notesPlaceholder",
                         )}
                       />
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+
+                {/* Prepayment (#4489) */}
+                <Accordion type="single" collapsible>
+                  <AccordionItem value="prepayment" className="border-none">
+                    <AccordionTrigger className="py-0 text-xs text-muted-foreground hover:text-foreground hover:no-underline gap-1.5">
+                      <span className="flex items-center gap-1.5">
+                        <DollarSign className="size-3" />
+                        {t("gabinet.appointments.prepayment")}
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-0 pt-1.5 space-y-2">
+                      <Label
+                        htmlFor="prepayment-required"
+                        className="-mx-1 flex min-h-9 select-none items-center gap-3 rounded-md px-1 py-1.5 text-sm cursor-pointer transition-colors hover:bg-accent/40 active:bg-accent"
+                      >
+                        <Checkbox
+                          id="prepayment-required"
+                          checked={prepaymentRequired}
+                          onCheckedChange={(c) =>
+                            setPrepaymentRequired(c as boolean)
+                          }
+                        />
+                        {t("gabinet.appointments.prepaymentRequired")}
+                      </Label>
+                      {prepaymentRequired && (
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder={t(
+                            "gabinet.appointments.prepaymentAmount",
+                          )}
+                          value={prepaymentAmount}
+                          onChange={(e) => setPrepaymentAmount(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      )}
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>

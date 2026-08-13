@@ -15,6 +15,7 @@
  *   • CREATE TYPE ... AS ENUM (...)
  *   • CREATE TABLE [IF NOT EXISTS] <name> ( ... )
  *   • ALTER TABLE [IF EXISTS] <name> ADD COLUMN [IF NOT EXISTS] <col> <type> ...
+ *   • ALTER TABLE [IF EXISTS] <name> DROP COLUMN [IF EXISTS] <col>
  *   • ALTER TABLE [IF EXISTS] <name> ALTER COLUMN <col> DROP NOT NULL
  *
  * SQL column → TypeScript mapping rules:
@@ -340,6 +341,16 @@ function applyMigration(sql) {
       if (col) {
         const newTsType = mapSqlType(rawType);
         if (newTsType !== null) col.tsType = newTsType;
+      }
+    }
+
+    const dropColRe = /DROP\s+COLUMN\s+(?:IF\s+EXISTS\s+)?"?(\w+)"?/gi;
+    for (const a of actions.matchAll(dropColRe)) {
+      const colName = a[1];
+      const idx = table.columns.findIndex((c) => c.name === colName);
+      if (idx !== -1) {
+        table.columns.splice(idx, 1);
+        table.relationships = table.relationships.filter((r) => !r.columns.includes(colName));
       }
     }
   }

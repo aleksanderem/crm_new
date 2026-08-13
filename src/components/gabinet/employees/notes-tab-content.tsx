@@ -18,7 +18,7 @@ export function NotesTabContent({
   isAddingNote: boolean;
   setIsAddingNote: (v: boolean) => void;
   handleAddNote: () => Promise<void>;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   return (
     <div className="space-y-4">

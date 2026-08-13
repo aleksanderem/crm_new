@@ -23,7 +23,7 @@ export function PatientLoyaltyTab({
 }: {
   loyaltyBalance: LoyaltyBalance;
   loyaltyTransactions: LoyaltyTransaction[] | undefined;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   return (
     <div className="space-y-6">

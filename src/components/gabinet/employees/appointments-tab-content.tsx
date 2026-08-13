@@ -32,7 +32,7 @@ export function AppointmentsTabContent({
   setAppointmentsView: (v: "calendar" | "list") => void;
   treatmentMap: Map<string, string>;
   navigate: (opts: { to: string }) => void;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
   i18nLanguage: string;
 }) {
   return (

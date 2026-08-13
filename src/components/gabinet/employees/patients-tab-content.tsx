@@ -37,7 +37,7 @@ export function PatientsTabContent({
   setClientTreatmentFilter: (v: string) => void;
   treatments: Array<{ _id: string; name: string }> | undefined;
   navigate: (opts: { to: string }) => void;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
   i18nLanguage: string;
 }) {
   return (

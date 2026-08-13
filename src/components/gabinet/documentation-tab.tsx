@@ -644,7 +644,7 @@ function PhotosSection({
   onRemove: (storageId: Id<"_storage">) => void;
   uploadFile: (file: File, type: "before" | "after") => void;
   uploadingFiles: UploadingFile[];
-  t: (key: string, fallback?: string) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   const orderedPhotos = useMemo(
     () => [...beforePhotos, ...afterPhotos],
@@ -744,7 +744,7 @@ function PhotoColumn({
   onPreview: (globalIndex: number) => void;
   uploadFile: (file: File, type: "before" | "after") => void;
   uploadingFiles: UploadingFile[];
-  t: (key: string, fallback?: string) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -949,7 +949,7 @@ function PhotoPreviewDialog({
   compareMode: boolean;
   onToggleCompare: (next: boolean) => void;
   onClose: () => void;
-  t: (key: string, fallback?: string) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   const open = index !== null;
   const photo = index !== null ? photos[index] : undefined;
@@ -1153,7 +1153,7 @@ function ComparePane({
   label: string;
   url: string | null | undefined;
   photo: Photo | undefined;
-  t: (key: string, fallback?: string) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   return (
     <div className="flex flex-col gap-2">

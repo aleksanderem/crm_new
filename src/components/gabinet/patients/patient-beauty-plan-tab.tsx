@@ -12,7 +12,7 @@ export function PatientBeautyPlanTab({
   beautyPlanEntries: MappedGabinetAppointment[];
   getApptTreatmentDisplay: (apt?: MappedGabinetAppointment | null) => string | undefined;
   navigate: (opts: { to: string; params?: Record<string, string>; search?: Record<string, string> }) => void;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   return (
     <div className="space-y-4">

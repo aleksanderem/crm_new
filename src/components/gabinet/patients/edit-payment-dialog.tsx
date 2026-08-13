@@ -55,7 +55,7 @@ export function EditPaymentDialog({
   onSubmit: () => Promise<void>;
   patientAppointments: MappedGabinetAppointment[] | undefined;
   getApptPrice: (apt?: MappedGabinetAppointment | null) => number;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   return (
     <Dialog

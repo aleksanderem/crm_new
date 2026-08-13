@@ -7,7 +7,7 @@ import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { toast } from "sonner";
 import { useOrganization } from "@/components/org-context";
-import { usePermission } from "@/hooks/use-permission";
+import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { PageHeader } from "@/components/layout/page-header";
 import { SidePanel } from "@/components/crm/side-panel";
@@ -43,10 +43,26 @@ import { useSupabasePaymentsRevenueByDateRange } from "@/hooks/use-supabase-paym
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 
+function GabinetCashSkeleton() {
+  return (
+    <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
+      <Skeleton className="h-10 w-64" />
+    </div>
+  );
+}
+
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/cash"
 )({
-  component: GabinetCash,
+  component: () => (
+    <PermissionGate
+      feature="gabinet_reports"
+      action="view"
+      loadingFallback={<GabinetCashSkeleton />}
+    >
+      <GabinetCash />
+    </PermissionGate>
+  ),
 });
 
 const PAYMENT_METHOD_COLORS: Record<string, string> = {

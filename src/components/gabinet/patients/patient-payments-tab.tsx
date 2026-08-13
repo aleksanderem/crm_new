@@ -113,7 +113,7 @@ export function PatientPaymentsTab({
   }) => void;
   openCancelDialog: (paymentId: string) => void;
   navigate: (opts: { to: string; params?: Record<string, string> }) => void;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   const completedPayments = (patientPayments ?? []).filter(
     (p) => p.status === "completed" && p.kind !== "credit_refund",

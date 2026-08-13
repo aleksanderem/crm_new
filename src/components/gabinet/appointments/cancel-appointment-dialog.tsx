@@ -24,7 +24,7 @@ export function CancelAppointmentDialog({
   isUpdating: boolean;
   onCancelReasonChange: (val: string) => void;
   onConfirm: () => void;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

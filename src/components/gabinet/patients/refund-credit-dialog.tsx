@@ -47,7 +47,7 @@ export function RefundCreditDialog({
   onClose: () => void;
   onRefund: () => Promise<void>;
   onRequestAuthorization: () => Promise<void>;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   return (
     <Dialog

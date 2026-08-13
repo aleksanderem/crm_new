@@ -32,7 +32,7 @@ export function PackageUsageDialog({
   isUsageSubmitting: boolean;
   onItemQtyChange: (idx: number, val: number) => void;
   onSubmit: () => void;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

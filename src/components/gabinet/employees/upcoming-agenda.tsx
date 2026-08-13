@@ -15,7 +15,7 @@ export function UpcomingAgenda({
   appointments: MappedGabinetAppointment[] | undefined;
   treatmentMap: Map<string, string>;
   navigate: (opts: { to: string }) => void;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
   i18nLanguage: string;
 }) {
   const today = new Date().toISOString().split("T")[0];

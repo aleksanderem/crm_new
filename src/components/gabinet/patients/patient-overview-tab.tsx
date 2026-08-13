@@ -39,7 +39,7 @@ export function PatientOverviewTab({
   getApptTreatmentDisplay: (apt?: MappedGabinetAppointment | null) => string | undefined;
   getVisitCountLabel: (apt: MappedGabinetAppointment) => { label: string; title: string } | null;
   navigate: (opts: { to: string; params?: Record<string, string> }) => void;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   return (
     <div className="flex flex-col space-y-6">

@@ -25,7 +25,7 @@ export function GdprEraseDialog({
   isGdprSubmitting: boolean;
   onClose: () => void;
   onSubmit: () => Promise<void>;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   return (
     <Dialog

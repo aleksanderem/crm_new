@@ -24,7 +24,7 @@ export function PatientBillingTab({
   canGenerateReceipt: boolean;
   generatingReceiptFor: string | null;
   handleDownloadReceipt: (receiptId: string) => Promise<void>;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   return (
     <div className="space-y-4">

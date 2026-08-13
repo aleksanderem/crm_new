@@ -16,7 +16,7 @@ export function AppointmentRow({
   treatmentDisplayName: string | undefined;
   onClick: () => void;
   isPast?: boolean;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   return (
     <div

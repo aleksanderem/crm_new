@@ -717,7 +717,6 @@ function EmployeeDetail() {
         <AccountTabContent
           employee={employee}
           userEmail={user?.email}
-          role={role}
           onChangePassword={async (newPassword) => {
             await changeEmployeePassword({ organizationId, employeeId, newPassword });
           }}

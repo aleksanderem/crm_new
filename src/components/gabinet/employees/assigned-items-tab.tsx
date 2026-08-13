@@ -12,6 +12,7 @@ import { Briefcase, Plus, X } from "@/lib/ez-icons";
 import type { TFunction } from "i18next";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
+import { usePermission } from "@/hooks/use-permission";
 
 export type AssignedItem = NonNullable<MappedGabinetEmployee["assignedItems"]>[number];
 
@@ -26,6 +27,8 @@ export function AssignedItemsTab({
   onUpdate: (args: FunctionArgs<typeof api.gabinet.employees.update>) => Promise<void>;
   t: TFunction;
 }) {
+  const { allowed: canEdit } = usePermission("gabinet_employees", "edit");
+
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [newName, setNewName] = useState("");
@@ -147,38 +150,40 @@ export function AssignedItemsTab({
           <p className="text-xs text-muted-foreground">{item.notes}</p>
         )}
       </div>
-      <div className="flex items-center gap-1">
-        {isReturned ? (
+      {canEdit && (
+        <div className="flex items-center gap-1">
+          {isReturned ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => handleUnmarkReturned(index)}
+              disabled={saving}
+            >
+              {t("gabinet.employees.assignedItems.markActive")}
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => handleMarkReturned(index)}
+              disabled={saving}
+            >
+              {t("gabinet.employees.assignedItems.markReturned")}
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 text-xs"
-            onClick={() => handleUnmarkReturned(index)}
+            className="h-7 w-7 p-0 text-destructive"
+            onClick={() => handleRemove(index)}
             disabled={saving}
           >
-            {t("gabinet.employees.assignedItems.markActive")}
+            <X className="h-3.5 w-3.5" />
           </Button>
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 text-xs"
-            onClick={() => handleMarkReturned(index)}
-            disabled={saving}
-          >
-            {t("gabinet.employees.assignedItems.markReturned")}
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0 text-destructive"
-          onClick={() => handleRemove(index)}
-          disabled={saving}
-        >
-          <X className="h-3.5 w-3.5" />
-        </Button>
-      </div>
+        </div>
+      )}
     </div>
   );
 
@@ -194,7 +199,7 @@ export function AssignedItemsTab({
               </span>
             )}
           </CardTitle>
-          {!adding && (
+          {!adding && canEdit && (
             <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
               <Plus className="mr-1 h-3.5 w-3.5" variant="stroke" />
               {t("gabinet.employees.assignedItems.add")}

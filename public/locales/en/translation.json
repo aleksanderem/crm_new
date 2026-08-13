@@ -3217,6 +3217,7 @@
       "active": "Active",
       "confirmDelete": "Are you sure you want to delete this employee?",
       "searchPlaceholder": "Search employees...",
+      "linkedAsMember": "Employee profile created and linked to existing account.",
       "errors": {
         "createFailed": "Could not add the employee.",
         "saveFailed": "Could not save employee changes.",

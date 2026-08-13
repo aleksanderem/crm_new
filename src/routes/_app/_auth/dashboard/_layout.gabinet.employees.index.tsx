@@ -677,6 +677,7 @@ function CreateEmployeeSheet({
   const createEmployee = useAction(api.gabinet.employees.create);
   const createInvitation = useAction(api.invitations.create);
   const createWithPassword = useAction(api.gabinet.employees.createWithPassword);
+  const createForExistingMember = useAction(api.gabinet.employees.createForExistingMember);
   const [saving, setSaving] = useState(false);
 
   return (
@@ -721,30 +722,59 @@ function CreateEmployeeSheet({
                     queryKey: supabaseKeys.gabinetEmployees.list(organizationId),
                   });
                 } else if (data.grantSystemAccess && data.accessEmail) {
-                  await createInvitation({
-                    organizationId,
-                    email: data.accessEmail,
-                    role: data.accessRole ?? "member",
-                    module: "gabinet",
-                    moduleData: {
-                      firstName: data.firstName,
-                      lastName: data.lastName,
-                      role: data.role,
-                      specialization: data.specialization,
-                      color: data.color,
-                      showInCalendar: data.showInCalendar,
-                      qualifiedTreatmentIds: data.qualifiedTreatmentIds,
-                      tagIds: data.tagIds,
-                      categoryId: data.categoryId,
-                      customFields: data.customFields,
-                      locationId: data.locationId,
-                      locationRole: data.locationRole,
-                    },
-                  });
-                  toast.success(t("team.invitationSent"));
-                  void queryClient.invalidateQueries({
-                    queryKey: supabaseKeys.invitations.list(organizationId),
-                  });
+                  try {
+                    await createInvitation({
+                      organizationId,
+                      email: data.accessEmail,
+                      role: data.accessRole ?? "member",
+                      module: "gabinet",
+                      moduleData: {
+                        firstName: data.firstName,
+                        lastName: data.lastName,
+                        role: data.role,
+                        specialization: data.specialization,
+                        color: data.color,
+                        showInCalendar: data.showInCalendar,
+                        qualifiedTreatmentIds: data.qualifiedTreatmentIds,
+                        tagIds: data.tagIds,
+                        categoryId: data.categoryId,
+                        customFields: data.customFields,
+                        locationId: data.locationId,
+                        locationRole: data.locationRole,
+                      },
+                    });
+                    toast.success(t("team.invitationSent"));
+                    void queryClient.invalidateQueries({
+                      queryKey: supabaseKeys.invitations.list(organizationId),
+                    });
+                  } catch (inviteErr) {
+                    const msg = inviteErr instanceof Error ? inviteErr.message : String(inviteErr);
+                    if (msg.includes("already a member")) {
+                      // User already belongs to this org — link them directly as an employee
+                      await createForExistingMember({
+                        organizationId,
+                        email: data.accessEmail,
+                        firstName: data.firstName,
+                        lastName: data.lastName,
+                        role: data.role,
+                        specialization: data.specialization,
+                        color: data.color,
+                        showInCalendar: data.showInCalendar,
+                        qualifiedTreatmentIds: data.qualifiedTreatmentIds as string[] | undefined,
+                        tagIds: data.tagIds as string[] | undefined,
+                        categoryId: data.categoryId as string | undefined,
+                        customFields: data.customFields,
+                        locationId: data.locationId,
+                        locationRole: data.locationRole,
+                      });
+                      toast.success(t("gabinet.employees.linkedAsMember"));
+                      void queryClient.invalidateQueries({
+                        queryKey: supabaseKeys.gabinetEmployees.list(organizationId),
+                      });
+                    } else {
+                      throw inviteErr;
+                    }
+                  }
                 } else {
                   await createEmployee({
                     organizationId,

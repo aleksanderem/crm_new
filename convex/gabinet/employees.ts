@@ -1405,3 +1405,80 @@ export const _changePasswordSideEffects = internalMutation({
     });
   },
 });
+
+// Creates a Gabinet employee profile for an existing org member (no invitation needed).
+// Used when createInvitation fails with "User is already a member" — the admin can
+// still link that member directly as an employee without re-inviting them.
+export const createForExistingMember = action({
+  args: {
+    organizationId: v.id("organizations"),
+    email: v.string(),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    role: gabinetEmployeeRoleValidator,
+    specialization: v.optional(v.string()),
+    licenseNumber: v.optional(v.string()),
+    color: v.optional(v.string()),
+    showInCalendar: v.optional(v.boolean()),
+    qualifiedTreatmentIds: v.optional(v.array(v.string())),
+    tagIds: v.optional(v.array(v.string())),
+    categoryId: v.optional(v.string()),
+    customFields: v.optional(v.array(v.any())),
+    locationId: v.optional(v.string()),
+    locationRole: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
+      organizationId: args.organizationId,
+    });
+    await ctx.runAction(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_employees",
+      action: "create",
+    }).then((perm: { allowed: boolean; scope: string }) => {
+      if (!perm.allowed) throw new Error("Permission denied");
+    });
+
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+
+    const user = await db.query("users").eq("email", args.email).first();
+    if (!user) {
+      throw new Error("No user account found for this email address.");
+    }
+
+    const membership = await db
+      .query("teamMemberships")
+      .eq("organizationId", orgIdStr)
+      .eq("userId", String(user._id))
+      .first();
+    if (!membership) {
+      throw new Error("This user is not a member of this organization.");
+    }
+
+    await ctx.runAction(internal.gabinet.employees._createFromInvitation, {
+      organizationId: args.organizationId,
+      userId: String(user._id),
+      invitedBy: String(authResult.userId),
+      data: {
+        firstName: args.firstName,
+        lastName: args.lastName,
+        role: args.role,
+        specialization: args.specialization,
+        licenseNumber: args.licenseNumber,
+        color: args.color,
+        showInCalendar: args.showInCalendar,
+        qualifiedTreatmentIds: args.qualifiedTreatmentIds,
+        tagIds: args.tagIds,
+        categoryId: args.categoryId,
+        customFields: args.customFields,
+        locationId: args.locationId,
+        locationRole: args.locationRole,
+      },
+    });
+  },
+});

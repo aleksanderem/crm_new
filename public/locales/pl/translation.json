@@ -3216,6 +3216,7 @@
       "active": "Aktywny",
       "confirmDelete": "Czy na pewno chcesz usunąć tego pracownika?",
       "searchPlaceholder": "Szukaj pracowników...",
+      "linkedAsMember": "Profil pracownika utworzony i powiązany z istniejącym kontem.",
       "errors": {
         "createFailed": "Nie udało się dodać pracownika.",
         "saveFailed": "Nie udało się zapisać zmian pracownika.",

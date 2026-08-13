@@ -476,7 +476,7 @@ export function AppointmentPreviewContent({
     setNotes(appt.notes ?? "");
     setInternalNotes(appt.internalNotes ?? "");
     setTreatmentId(detail.treatments?.[0]?.treatmentId ?? "");
-    setVariantId("");
+    setVariantId(detail.treatments?.[0]?.variantId ?? "");
     setTagIds((appt.tagIds ?? []).map((id) => id as Id<"tagDefinitions">));
   }, [detail, appointmentId]);
 
@@ -496,7 +496,7 @@ export function AppointmentPreviewContent({
   const junctionTreatments = detail.treatments ?? [];
   const isMultiTreatment = junctionTreatments.length > 1;
   const initialTreatmentId = detail.treatments?.[0]?.treatmentId ?? "";
-  const initialVariantId = "";
+  const initialVariantId = detail.treatments?.[0]?.variantId ?? "";
   const allTransitions = VALID_TRANSITIONS[initialStatus] ?? [];
   const availableTransitions = canDelete
     ? allTransitions
@@ -721,7 +721,13 @@ export function AppointmentPreviewContent({
           args.internalNotes = internalNotes || null;
         if (treatmentId && treatmentId !== initialTreatmentId)
           args.treatmentId = treatmentId;
-        if (variantId !== initialVariantId) args.variantId = variantId || null;
+        if (variantId !== initialVariantId) {
+          args.variantId = variantId || null;
+          // The backend updates junction rows only when treatmentId is present in
+          // the args. Include it even when unchanged so a variant-only change is
+          // persisted to the junction row (not silently dropped).
+          if (!args.treatmentId && treatmentId) args.treatmentId = treatmentId;
+        }
         if (tagsDirty) args.tagIds = tagIds.map((id) => String(id));
 
         await updateAppointment(args);

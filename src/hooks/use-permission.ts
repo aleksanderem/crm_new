@@ -102,6 +102,31 @@ export function useGabinetRole(): {
   return { gabinetRole: result.gabinetRole, isActive: result.isActive, loading: false };
 }
 
+export function useMyGabinetContext(): {
+  gabinetRole: string | null;
+  isActive: boolean | null;
+  assignedLocations: Array<{ locationId: string; role: string | null }>;
+  loading: boolean;
+} {
+  const { organizationId } = useOrganization();
+
+  const result = useQuery(
+    api.permissions.getMyGabinetContext,
+    organizationId ? { organizationId } : "skip"
+  );
+
+  if (result === undefined) {
+    return { gabinetRole: null, isActive: null, assignedLocations: [], loading: true };
+  }
+
+  return {
+    gabinetRole: result.gabinetRole,
+    isActive: result.isActive,
+    assignedLocations: result.assignedLocations,
+    loading: false,
+  };
+}
+
 export function PermissionGate({
   feature,
   action,

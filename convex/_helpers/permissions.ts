@@ -227,7 +227,7 @@ export async function checkPermission(
             q.eq("organizationId", orgId).eq("userId", user._id).eq("locationId", locationId),
           )
           .unique();
-        if (locationMembership) {
+        if (locationMembership?.role) {
           gRole = locationMembership.role;
         }
       }
@@ -326,7 +326,7 @@ export async function getEffectivePermissions(
           q.eq("organizationId", orgId).eq("userId", user._id).eq("locationId", locationId),
         )
         .unique();
-      if (locationMembership) {
+      if (locationMembership?.role) {
         gRole = locationMembership.role;
       }
     }

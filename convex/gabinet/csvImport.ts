@@ -2,18 +2,11 @@ import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
-import { GabinetEmployeeRole } from "../schema";
+import { GabinetEmployeeRole, gabinetEmployeeRoleValidator } from "../schema";
 
-const ALLOWED_EMPLOYEE_ROLES = [
-  "doctor",
-  "cosmetologist",
-  "nurse",
-  "therapist",
-  "receptionist",
-  "manager",
-  "admin",
-  "other",
-] as const;
+const ALLOWED_EMPLOYEE_ROLES = gabinetEmployeeRoleValidator.members.map(
+  (m) => m.value,
+) as GabinetEmployeeRole[];
 
 /**
  * Batch-import patients from CSV. Unlike the single-record `patients.create`,
@@ -360,7 +353,7 @@ export const batchImportEmployees = action({
         const safeRole: GabinetEmployeeRole =
           rec.role &&
           ALLOWED_EMPLOYEE_ROLES.includes(
-            rec.role as (typeof ALLOWED_EMPLOYEE_ROLES)[number],
+            rec.role as GabinetEmployeeRole,
           )
             ? (rec.role as GabinetEmployeeRole)
             : "other";

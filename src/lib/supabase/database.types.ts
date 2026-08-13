@@ -624,7 +624,6 @@ export interface Database {
           resource_sharing_enabled: boolean | null;
           reminder_enabled: boolean | null;
           reminder_hours_before: number | null;
-          appointment_workflow_config: string | null;
           created_at: number;
           updated_at: number;
           reminder_sms_48h: boolean | null;
@@ -643,7 +642,6 @@ export interface Database {
           resource_sharing_enabled?: boolean | null;
           reminder_enabled?: boolean | null;
           reminder_hours_before?: number | null;
-          appointment_workflow_config?: string | null;
           created_at: number;
           updated_at: number;
           reminder_sms_48h?: boolean | null;
@@ -662,7 +660,6 @@ export interface Database {
           resource_sharing_enabled?: boolean | null;
           reminder_enabled?: boolean | null;
           reminder_hours_before?: number | null;
-          appointment_workflow_config?: string | null;
           created_at?: number;
           updated_at?: number;
           reminder_sms_48h?: boolean | null;
@@ -4122,7 +4119,6 @@ export interface Database {
           updated_at: number;
           show_in_calendar: boolean;
           assigned_items: unknown | null;
-          location_id: string | null;
           bio: string | null;
           avatar_url: string | null;
         };
@@ -4162,7 +4158,6 @@ export interface Database {
           updated_at: number;
           show_in_calendar?: boolean;
           assigned_items?: unknown | null;
-          location_id?: string | null;
           bio?: string | null;
           avatar_url?: string | null;
         };
@@ -4202,7 +4197,6 @@ export interface Database {
           updated_at?: number;
           show_in_calendar?: boolean;
           assigned_items?: unknown | null;
-          location_id?: string | null;
           bio?: string | null;
           avatar_url?: string | null;
         };
@@ -4233,13 +4227,6 @@ export interface Database {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_employees_location_id_fkey";
-            columns: ["location_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_locations";
             referencedColumns: ["id"];
           },
         ];
@@ -4817,7 +4804,6 @@ export interface Database {
           id: string;
           organization_id: string;
           patient_id: string;
-          treatment_id: string | null;
           employee_id: string;
           date: string;
           start_time: string;
@@ -4857,18 +4843,13 @@ export interface Database {
           created_at: number;
           updated_at: number;
           contraindication_alerts_reviewed: boolean | null;
-          price_at_booking: number | null;
           reminder_overrides: string | null;
-          variant_id: string | null;
-          stock_deducted: boolean;
-          package_deducted: boolean;
           package_treatment_id: string | null;
         };
         Insert: {
           id?: string;
           organization_id: string;
           patient_id: string;
-          treatment_id?: string | null;
           employee_id: string;
           date: string;
           start_time: string;
@@ -4908,18 +4889,13 @@ export interface Database {
           created_at: number;
           updated_at: number;
           contraindication_alerts_reviewed?: boolean | null;
-          price_at_booking?: number | null;
           reminder_overrides?: string | null;
-          variant_id?: string | null;
-          stock_deducted?: boolean;
-          package_deducted?: boolean;
           package_treatment_id?: string | null;
         };
         Update: {
           id?: string;
           organization_id?: string;
           patient_id?: string;
-          treatment_id?: string | null;
           employee_id?: string;
           date?: string;
           start_time?: string;
@@ -4959,11 +4935,7 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
           contraindication_alerts_reviewed?: boolean | null;
-          price_at_booking?: number | null;
           reminder_overrides?: string | null;
-          variant_id?: string | null;
-          stock_deducted?: boolean;
-          package_deducted?: boolean;
           package_treatment_id?: string | null;
         };
         Relationships: [
@@ -4979,13 +4951,6 @@ export interface Database {
             columns: ["patient_id"];
             isOneToOne: false;
             referencedRelation: "gabinet_patients";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_appointments_treatment_id_fkey";
-            columns: ["treatment_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_treatments";
             referencedColumns: ["id"];
           },
           {
@@ -5049,13 +5014,6 @@ export interface Database {
             columns: ["package_usage_id"];
             isOneToOne: false;
             referencedRelation: "gabinet_package_usage";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_appointments_variant_id_fkey";
-            columns: ["variant_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_treatment_variants";
             referencedColumns: ["id"];
           },
           {
@@ -8089,6 +8047,3 @@ export type GabinetWaitlistUpdate = Database["public"]["Tables"]["gabinet_waitli
 export type LeadStageHistoryRow = Database["public"]["Tables"]["lead_stage_history"]["Row"];
 export type LeadStageHistoryInsert = Database["public"]["Tables"]["lead_stage_history"]["Insert"];
 export type LeadStageHistoryUpdate = Database["public"]["Tables"]["lead_stage_history"]["Update"];
-export type GoogleCalendarSyncConfigRow = Database["public"]["Tables"]["google_calendar_sync_configs"]["Row"];
-export type GoogleCalendarSyncConfigInsert = Database["public"]["Tables"]["google_calendar_sync_configs"]["Insert"];
-export type GoogleCalendarSyncConfigUpdate = Database["public"]["Tables"]["google_calendar_sync_configs"]["Update"];

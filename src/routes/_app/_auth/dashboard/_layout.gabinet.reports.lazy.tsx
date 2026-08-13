@@ -17,7 +17,7 @@ import {
 import type { MappedGabinetPackageUsage } from "@/lib/supabase/mappers/gabinet/package-usage";
 import type { MappedGabinetTreatmentPackage } from "@/lib/supabase/mappers/gabinet/treatment-packages";
 import { useOrganization } from "@/components/org-context";
-import { usePermission } from "@/hooks/use-permission";
+import { PermissionGate } from "@/hooks/use-permission";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { PageHeader } from "@/components/layout/page-header";
 import { SidePanel } from "@/components/crm/side-panel";
@@ -73,10 +73,36 @@ import StatisticsProfitCard from "@/components/shadcn-studio/blocks/statistics-p
 import StatisticsImpressionCard from "@/components/shadcn-studio/blocks/statistics-impression-card";
 import StatisticsSalesGrowthCard from "@/components/shadcn-studio/blocks/statistics-sales-growth-card";
 
+function GabinetReportsSkeleton() {
+  return (
+    <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
+      <Skeleton className="h-10 w-64" />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-28 rounded-lg" />
+        ))}
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-64 rounded-lg" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/reports"
 )({
-  component: GabinetReports,
+  component: () => (
+    <PermissionGate
+      feature="gabinet_reports"
+      action="view"
+      loadingFallback={<GabinetReportsSkeleton />}
+    >
+      <GabinetReports />
+    </PermissionGate>
+  ),
 });
 
 
@@ -1306,8 +1332,6 @@ function PackageSalesSection({
 function GabinetReports() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
-  const { allowed: canViewReports, loading: permLoading } = usePermission("gabinet_reports", "view");
-
   const [dateRange, setDateRange] = useState<DateRangeKey>("30d");
   const [selectedLocationId, setSelectedLocationId] = useState<string | undefined>(undefined);
   const [dateFilterPanelOpen, setDateFilterPanelOpen] = useState(false);
@@ -1761,25 +1785,6 @@ function GabinetReports() {
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
-
-  if (permLoading) {
-    return (
-      <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
-        <Skeleton className="h-10 w-64" />
-      </div>
-    );
-  }
-
-  if (!canViewReports) {
-    return (
-      <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
-        <PageHeader
-          title={t("gabinet.reports.title")}
-          description={t("common.noPermission", "You don't have permission to view this page.")}
-        />
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (

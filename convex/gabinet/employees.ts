@@ -1107,44 +1107,44 @@ export const _finalisePasswordUser = internalAction({
       throw new Error("Ten użytkownik jest już członkiem tej organizacji.");
     }
 
-    // The user was just created by Convex auth (createAccount) and is not yet
-    // mirrored to Supabase — intentional Convex-side read.
-    const user = await ctx.runQuery(internal.gabinet.employees._getConvexUser, {
-      userId: args.userId,
-    });
-    if (!user)
-      throw new Error(
-        `Convex user record missing for userId=${args.userId} (email=${args.email}). ` +
-          "The account may have been provisioned outside the Convex auth flow " +
-          "(e.g. direct Supabase insert). Use the employee-linking path for existing org members.",
-      );
-
-    let effectiveUsername = user.username ?? undefined;
-    if (!user.username) {
-      const local = args.email.split("@")[0] ?? "";
-      const base = local.toLowerCase().replace(/[^a-z0-9]/g, "");
-      let candidate = (base || "user").slice(0, 16);
-      let suffix = 0;
-      // Username uniqueness check against Supabase (authoritative post-migration).
-      while ((await db.query("users").eq("username", candidate).first()) !== null) {
-        suffix += 1;
-        candidate = `${(base || "user").slice(0, 14)}${suffix}`;
-        if (suffix > 50) break;
-      }
-      // Patch the Convex auth record so auth flows see the derived username.
-      await ctx.runMutation(internal.gabinet.employees._patchConvexUsername, {
-        userId: args.userId,
-        username: candidate,
-      });
-      effectiveUsername = candidate;
-    }
-
     const now = Date.now();
 
-    // Mirror user to Supabase only for newly-created accounts. Existing users
-    // are already in Supabase; re-writing them would waste a round-trip and
-    // could overwrite created_at with user._creationTime from Convex.
+    // New-account path only: the user was just created by Convex auth (createAccount)
+    // and is not yet mirrored to Supabase. Derive a username, patch the Convex
+    // record, then mirror to Supabase. Skipped for existing-user paths
+    // (userAlreadyInSupabase=true) where userId is a Supabase UUID that cannot
+    // be resolved via ctx.db.get(), and the Supabase record already exists.
     if (!args.userAlreadyInSupabase) {
+      const user = await ctx.runQuery(internal.gabinet.employees._getConvexUser, {
+        userId: args.userId,
+      });
+      if (!user)
+        throw new Error(
+          `Convex user record missing for userId=${args.userId} (email=${args.email}). ` +
+            "The account may have been provisioned outside the Convex auth flow " +
+            "(e.g. direct Supabase insert). Use the employee-linking path for existing org members.",
+        );
+
+      let effectiveUsername = user.username ?? undefined;
+      if (!user.username) {
+        const local = args.email.split("@")[0] ?? "";
+        const base = local.toLowerCase().replace(/[^a-z0-9]/g, "");
+        let candidate = (base || "user").slice(0, 16);
+        let suffix = 0;
+        // Username uniqueness check against Supabase (authoritative post-migration).
+        while ((await db.query("users").eq("username", candidate).first()) !== null) {
+          suffix += 1;
+          candidate = `${(base || "user").slice(0, 14)}${suffix}`;
+          if (suffix > 50) break;
+        }
+        // Patch the Convex auth record so auth flows see the derived username.
+        await ctx.runMutation(internal.gabinet.employees._patchConvexUsername, {
+          userId: args.userId,
+          username: candidate,
+        });
+        effectiveUsername = candidate;
+      }
+
       await ctx.runAction(internal.supabase.users.writeUserToSupabase, {
         userId: args.userId,
         email: args.email,

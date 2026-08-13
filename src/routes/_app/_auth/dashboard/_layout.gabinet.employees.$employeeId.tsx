@@ -621,7 +621,7 @@ function EmployeeDetail() {
         />
       ),
     },
-    {
+    ...(employee.performsServices ? [{
       label: t("gabinet.employees.tabs.qualificationsAndTreatments"),
       content: (
         <DetailedDataTab
@@ -638,7 +638,7 @@ function EmployeeDetail() {
           qualificationsOnlyView={true}
         />
       ),
-    },
+    }] : []),
     {
       label: t("gabinet.employees.tabs.detailedData"),
       content: (

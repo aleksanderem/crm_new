@@ -2,6 +2,7 @@ import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
+import { GabinetEmployeeRole } from "../schema";
 
 const ALLOWED_EMPLOYEE_ROLES = [
   "doctor",
@@ -356,12 +357,12 @@ export const batchImportEmployees = action({
           continue;
         }
 
-        const safeRole =
+        const safeRole: GabinetEmployeeRole =
           rec.role &&
           ALLOWED_EMPLOYEE_ROLES.includes(
             rec.role as (typeof ALLOWED_EMPLOYEE_ROLES)[number],
           )
-            ? rec.role
+            ? (rec.role as GabinetEmployeeRole)
             : "other";
 
         const newEmployeeId = await db.insert("gabinetEmployees", {

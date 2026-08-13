@@ -100,7 +100,7 @@ export function EditEmployeeDrawer({
     employee.workScope,
   );
   const [notes, setNotes] = useState(employee.notes ?? "");
-  const [locationId, setLocationId] = useState<string | null>(null);
+  const [locationId, setLocationId] = useState<string | null | undefined>(undefined);
   const [locationRole, setLocationRole] = useState<GabinetEmployeeRole | null>(null);
 
   // Re-sync form state when drawer opens
@@ -118,6 +118,8 @@ export function EditEmployeeDrawer({
       setPerformsServices(employee.performsServices ?? true);
       setWorkScope(employee.workScope);
       setNotes(employee.notes ?? "");
+      setLocationId(undefined);
+      setLocationRole(null);
     }
   }, [open, employee]);
 
@@ -162,8 +164,8 @@ export function EditEmployeeDrawer({
         performsServices,
         workScope: workScope ?? null,
         notes: notes || null,
-        locationId: locationId ?? null,
-        locationRole: locationRole ?? null,
+        locationId: locationId,
+        locationRole: locationId !== undefined ? (locationRole ?? null) : undefined,
       });
       toast.success(t("common.saved"));
       onOpenChange(false);

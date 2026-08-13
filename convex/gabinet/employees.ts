@@ -769,6 +769,24 @@ export const update = action({
           console.error("[employees.update] location insert failed:", e);
         }
       }
+    } else if (locationRole !== undefined) {
+      // locationId not provided — patch the role on the existing primary location in-place
+      const existingLocs = await db.query("gabinetEmployeeLocations")
+        .eq("organizationId", String(organizationId))
+        .eq("employeeId", employeeId)
+        .eq("isPrimary", true)
+        .collect();
+      for (const loc of existingLocs) {
+        const effectiveLocationRole =
+          locationRole != null && isSystemGabinetRole(locationRole) ? locationRole : null;
+        try {
+          await db.patch("gabinetEmployeeLocations", String(loc._id), {
+            role: effectiveLocationRole,
+          });
+        } catch (e) {
+          console.error("[employees.update] location role patch failed:", e);
+        }
+      }
     }
 
     // --- Delegate post-write side effects ---

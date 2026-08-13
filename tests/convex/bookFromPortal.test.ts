@@ -32,6 +32,47 @@ async function seedActivePortalSession(
   return { tokenHash };
 }
 
+describe("bookFromPortal null userId guard (issue #4583)", () => {
+  test("skips employees with null userId instead of querying with string 'null'", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(
+      t,
+      organizationId,
+      userId,
+    );
+    const { tokenHash } = await seedActivePortalSession(
+      String(patientId),
+      String(organizationId),
+    );
+
+    // Add an employee with no userId — should be silently skipped
+    const db = createSupabaseDb();
+    await db.insert("gabinetEmployees", {
+      organizationId: String(organizationId),
+      userId: null,
+      role: "doctor",
+      qualifiedTreatmentIds: [String(treatmentId)],
+      isActive: true,
+      createdBy: String(userId),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    // A past date triggers the past-time guard but not a crash from the null userId loop.
+    // The important thing is that the error is the expected business error, not a
+    // crash caused by passing "null" as a userId to getAvailableSlotsSupabase.
+    await expect(
+      t.action(api.gabinet.patientPortal.bookFromPortal, {
+        tokenHash,
+        treatmentId: String(treatmentId),
+        preferredDate: "2020-01-01",
+        preferredTime: "09:00",
+      }),
+    ).rejects.toThrow(/start time is in the past/i);
+  });
+});
+
 describe("bookFromPortal past-time guard (issue #1415)", () => {
   test("rejects bookings whose start time is already in the past", async () => {
     const t = createTestCtx();

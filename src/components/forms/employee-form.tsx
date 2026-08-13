@@ -64,6 +64,7 @@ export interface EmployeeFormData {
   tagIds?: Id<"tagDefinitions">[];
   categoryId?: Id<"categoryDefinitions">;
   customFields?: Array<{ fieldDefinitionId: string; value: unknown }>;
+  workScope?: "clinic" | "office" | "both";
   grantSystemAccess?: boolean;
   accessMode?: "invite" | "password" | "inactive";
   accessEmail?: string;
@@ -139,6 +140,9 @@ export function EmployeeForm({
   const [accessMode, setAccessMode] = useState<"invite" | "password" | "inactive">("invite");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [workScope, setWorkScope] = useState<"clinic" | "office" | "both" | undefined>(
+    initialData?.workScope,
+  );
   const [locationId, setLocationId] = useState<string | undefined>(undefined);
   const [locationRole, setLocationRole] = useState<GabinetEmployeeRole | undefined>(undefined);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
@@ -197,6 +201,7 @@ export function EmployeeForm({
       qualifiedTreatmentIds: performsServices
         ? (selectedTreatments as Id<"gabinetTreatments">[])
         : [],
+      workScope: workScope || undefined,
       tagIds: tagIds.length > 0 ? tagIds : undefined,
       categoryId: categoryId || undefined,
       customFields: customFields.length > 0 ? customFields : undefined,
@@ -311,6 +316,45 @@ export function EmployeeForm({
 
       {/* ── 3. Zakres pracy i dostępu ── */}
       <SectionHeader title={t("gabinet.employees.workAndAccessScope", { defaultValue: "Zakres pracy i dostępu" })} />
+
+      <div className="space-y-1.5">
+        <Label>{t("gabinet.employees.workScope", { defaultValue: "Zakres pracy" })}</Label>
+        <div className="flex flex-col gap-1.5">
+          <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+            <input
+              type="radio"
+              name="workScope"
+              value="clinic"
+              checked={workScope === "clinic"}
+              onChange={() => setWorkScope("clinic")}
+              className="accent-primary"
+            />
+            {t("gabinet.employees.workScopeClinic", { defaultValue: "Obsługa gabinetu" })}
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+            <input
+              type="radio"
+              name="workScope"
+              value="office"
+              checked={workScope === "office"}
+              onChange={() => setWorkScope("office")}
+              className="accent-primary"
+            />
+            {t("gabinet.employees.workScopeOffice", { defaultValue: "Praca biurowa i CRM" })}
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+            <input
+              type="radio"
+              name="workScope"
+              value="both"
+              checked={workScope === "both"}
+              onChange={() => setWorkScope("both")}
+              className="accent-primary"
+            />
+            {t("gabinet.employees.workScopeBoth", { defaultValue: "Obsługa gabinetu i praca biurowa" })}
+          </label>
+        </div>
+      </div>
 
       <div className="space-y-1.5">
         <label className="flex items-start gap-3 cursor-pointer">

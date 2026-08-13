@@ -122,6 +122,7 @@
  *   • 00115_leads_created_at_idx.sql
  *   • 00116_lead_stage_history.sql
  *   • 00117_gabinet_employees_performs_services.sql
+ *   • 00118_gabinet_employees_work_scope.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -4123,6 +4124,7 @@ export interface Database {
           assigned_items: unknown | null;
           bio: string | null;
           avatar_url: string | null;
+          work_scope: string | null;
         };
         Insert: {
           id?: string;
@@ -4163,6 +4165,7 @@ export interface Database {
           assigned_items?: unknown | null;
           bio?: string | null;
           avatar_url?: string | null;
+          work_scope?: string | null;
         };
         Update: {
           id?: string;
@@ -4203,6 +4206,7 @@ export interface Database {
           assigned_items?: unknown | null;
           bio?: string | null;
           avatar_url?: string | null;
+          work_scope?: string | null;
         };
         Relationships: [
           {

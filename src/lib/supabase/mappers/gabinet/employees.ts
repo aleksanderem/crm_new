@@ -44,6 +44,7 @@ export interface MappedGabinetEmployee {
   bankAccount?: string;
   showInCalendar?: boolean;
   performsServices?: boolean;
+  workScope?: "clinic" | "office" | "both";
   tagIds?: string[];
   categoryId?: string;
   bio?: string;

@@ -30,6 +30,9 @@ export function createPlatformTables({
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
     customerId: v.optional(v.string()),
+    // Set to true when an admin-generated one-time password is active.
+    // The auth layout redirects the user to /set-password until cleared.
+    mustChangePassword: v.optional(v.boolean()),
     // User preferences (Phase 2)
     language: v.optional(v.string()),
     theme: v.optional(

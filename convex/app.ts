@@ -7,6 +7,8 @@ import { v } from "convex/values";
 import { User } from "~/types";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import type { UserRow } from "./_helpers/supabaseRows";
+import { modifyAccountCredentials } from "@convex-dev/auth/server";
+import { Id } from "./_generated/dataModel";
 
 export const getCurrentUser = query({
   args: {},
@@ -380,6 +382,50 @@ export const deleteCurrentUserAccount = mutation({
         return;
       }
       await ctx.db.delete(authAccount._id);
+    });
+  },
+});
+
+// Clears mustChangePassword after the user successfully sets a new password.
+export const _clearMustChangePassword = internalMutation({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const userId = args.userId as Id<"users">;
+    const user = await ctx.db.get(userId);
+    if (!user) return;
+    // Setting to undefined removes the optional field from the document.
+    await ctx.db.patch(userId, { mustChangePassword: undefined });
+  },
+});
+
+// Action for a logged-in user to replace their one-time password.
+// Validates the new password, updates credentials via @convex-dev/auth,
+// and clears the mustChangePassword flag so the redirect gate is lifted.
+export const setOwnPassword = action({
+  args: { newPassword: v.string() },
+  handler: async (ctx, args) => {
+    if (args.newPassword.length < 8) {
+      throw new Error("Hasło musi mieć co najmniej 8 znaków.");
+    }
+
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    // Read user from Convex (auth store) to get the email used as account ID.
+    const user = await ctx.runQuery(internal.gabinet.employees._getConvexUser, {
+      userId: String(userId),
+    });
+    if (!user?.email) {
+      throw new Error("Nie znaleziono adresu e-mail użytkownika.");
+    }
+
+    await modifyAccountCredentials(ctx, {
+      provider: "password",
+      account: { id: user.email, secret: args.newPassword },
+    });
+
+    await ctx.runMutation(internal.app._clearMustChangePassword, {
+      userId: String(userId),
     });
   },
 });

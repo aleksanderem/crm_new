@@ -27,6 +27,7 @@ export const FEATURES = [
   "gabinet_photos",
   "gabinet_online_booking",
   "gabinet_inventory",
+  "gabinet_salary",
   "gabinet_settings",
   "settings",
   "team",

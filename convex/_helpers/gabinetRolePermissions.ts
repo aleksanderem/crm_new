@@ -157,6 +157,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_photos: { view: "all" },
     gabinet_online_booking: { view: "all", edit: "all" },
     gabinet_inventory: { view: "all", create: "all", edit: "all" },
+    gabinet_salary: { view: "all" },
     gabinet_settings: { view: "all" },
   }),
   admin: buildGabinet({
@@ -174,6 +175,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_photos: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_online_booking: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_inventory: { view: "all", create: "all", edit: "all", delete: "all" },
+    gabinet_salary: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_settings: { view: "all", create: "all", edit: "all", delete: "all" },
   }),
   other: buildGabinet({

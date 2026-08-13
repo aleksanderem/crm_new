@@ -3345,6 +3345,7 @@
       "internalNotesPlaceholder": "Add description",
       "prepayment": "Prepayment",
       "prepaymentAmount": "Prepayment amount",
+      "prepaymentPaid": "Prepayment paid",
       "prepaymentPending": "Prepayment pending",
       "prepaymentRequired": "Prepayment required",
       "scheduling": "Scheduling",

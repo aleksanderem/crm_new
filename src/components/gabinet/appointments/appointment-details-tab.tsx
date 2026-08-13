@@ -414,8 +414,16 @@ export function AppointmentDetailsTab({
               <span className="text-muted-foreground">
                 {t("common.status")}
               </span>
-              <Badge variant="secondary">
-                {t("gabinet.appointments.prepaymentPending")}
+              <Badge
+                variant={
+                  appointment.prepaymentStatus === "paid"
+                    ? "default"
+                    : "secondary"
+                }
+              >
+                {appointment.prepaymentStatus === "paid"
+                  ? t("gabinet.appointments.prepaymentPaid")
+                  : t("gabinet.appointments.prepaymentPending")}
               </Badge>
             </div>
           </CardContent>

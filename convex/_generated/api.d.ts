@@ -143,6 +143,7 @@ import type * as http from "../http.js";
 import type * as init from "../init.js";
 import type * as inventory from "../inventory.js";
 import type * as invitations from "../invitations.js";
+import type * as magazyn_movements from "../magazyn/movements.js";
 import type * as mail_adapter from "../mail/adapter.js";
 import type * as mail_adapters_google from "../mail/adapters/google.js";
 import type * as mail_adapters_mailgun from "../mail/adapters/mailgun.js";
@@ -343,6 +344,7 @@ declare const fullApi: ApiFromModules<{
   init: typeof init;
   inventory: typeof inventory;
   invitations: typeof invitations;
+  "magazyn/movements": typeof magazyn_movements;
   "mail/adapter": typeof mail_adapter;
   "mail/adapters/google": typeof mail_adapters_google;
   "mail/adapters/mailgun": typeof mail_adapters_mailgun;

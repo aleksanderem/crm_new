@@ -41,7 +41,7 @@ import {
 } from "@/components/documents/appointment-document-checklist";
 import { DocumentGateDialog } from "@/components/documents/document-gate-dialog";
 import { AfterCompletionDocumentsDialog } from "@/components/documents/after-completion-documents-dialog";
-import { Package, Send } from "@/lib/ez-icons";
+import { Calendar, Package, Send } from "@/lib/ez-icons";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { PermissionGate, usePermission } from "@/hooks/use-permission";
@@ -60,6 +60,7 @@ import { AppointmentReceiptsTab } from "@/components/gabinet/appointments/appoin
 import { CancelAppointmentDialog } from "@/components/gabinet/appointments/cancel-appointment-dialog";
 import { PaymentAppointmentDialog } from "@/components/gabinet/appointments/payment-appointment-dialog";
 import { PackageUsageDialog } from "@/components/gabinet/appointments/package-usage-dialog";
+import { RescheduleAppointmentDialog } from "@/components/gabinet/appointments/reschedule-appointment-dialog";
 
 function AppointmentDetailSkeleton() {
   return (
@@ -227,6 +228,10 @@ function AppointmentDetail() {
 
   // Change employee modal state
   const [changeEmployeeOpen, setChangeEmployeeOpen] = useState(false);
+
+  // Reschedule dialog state
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [isRescheduling, setIsRescheduling] = useState(false);
 
   // Document gate state
   const [gateDialogOpen, setGateDialogOpen] = useState(false);
@@ -710,6 +715,28 @@ function AppointmentDetail() {
       toast.error(msg);
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleReschedule = async (date: string, startTime: string, endTime: string) => {
+    setIsRescheduling(true);
+    try {
+      await updateAppointment({
+        organizationId,
+        appointmentId: appointment._id,
+        date,
+        startTime,
+        endTime,
+      });
+      toast.success(t("gabinet.appointments.rescheduled", "Wizyta przeniesiona"));
+      setRescheduleOpen(false);
+      await invalidateAppointmentCaches();
+      await refetch();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
+    } finally {
+      setIsRescheduling(false);
     }
   };
 
@@ -1225,6 +1252,12 @@ function AppointmentDetail() {
           appointment.status !== "no_show"
             ? [
                 {
+                  key: "reschedule",
+                  label: t("gabinet.appointments.reschedule", "Przenieś wizytę"),
+                  icon: <Calendar size={14} variant="stroke" />,
+                  onClick: () => setRescheduleOpen(true),
+                },
+                {
                   key: "sendReminder",
                   label: isSendingReminder
                     ? t("common.processing")
@@ -1274,6 +1307,18 @@ function AppointmentDetail() {
             })()}
         />
       )}
+
+      {/* Reschedule Dialog */}
+      <RescheduleAppointmentDialog
+        open={rescheduleOpen}
+        onOpenChange={setRescheduleOpen}
+        currentDate={appointment.date as string}
+        currentStartTime={appointment.startTime as string}
+        currentEndTime={appointment.endTime as string}
+        isSaving={isRescheduling}
+        onSave={handleReschedule}
+        t={t}
+      />
 
       {/* Cancel Dialog */}
       <CancelAppointmentDialog

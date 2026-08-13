@@ -238,14 +238,13 @@ export const create = action({
     });
 
     if (args.locationId) {
-      const locationRole = args.locationRole && isSystemGabinetRole(args.locationRole) ? args.locationRole : undefined;
       try {
         await db.insert("gabinetEmployeeLocations", {
           organizationId: String(args.organizationId),
           employeeId: String(employeeId),
           locationId: args.locationId,
           isPrimary: true,
-          role: locationRole,
+          role: args.locationRole,
           createdAt: now,
         });
       } catch (e) {
@@ -752,8 +751,7 @@ export const update = action({
         await db.delete("gabinetEmployeeLocations", String(loc._id));
       }
       if (locationId) {
-        const effectiveLocationRole =
-          locationRole != null && isSystemGabinetRole(locationRole) ? locationRole : undefined;
+        const effectiveLocationRole = locationRole != null ? locationRole : undefined;
         try {
           await db.insert("gabinetEmployeeLocations", {
             organizationId: String(organizationId),
@@ -775,8 +773,7 @@ export const update = action({
         .eq("isPrimary", true)
         .collect();
       for (const loc of existingLocs) {
-        const effectiveLocationRole =
-          locationRole != null && isSystemGabinetRole(locationRole) ? locationRole : null;
+        const effectiveLocationRole = locationRole ?? null;
         try {
           await db.patch("gabinetEmployeeLocations", String(loc._id), {
             role: effectiveLocationRole,
@@ -1323,17 +1320,13 @@ export const createWithPassword = action({
     });
 
     if (args.locationId) {
-      const locationRole =
-        args.locationRole && isSystemGabinetRole(args.locationRole)
-          ? args.locationRole
-          : undefined;
       try {
         await db.insert("gabinetEmployeeLocations", {
           organizationId: String(args.organizationId),
           employeeId: String(employeeId),
           locationId: args.locationId,
           isPrimary: true,
-          role: locationRole,
+          role: args.locationRole,
           createdAt: now,
         });
       } catch (e) {

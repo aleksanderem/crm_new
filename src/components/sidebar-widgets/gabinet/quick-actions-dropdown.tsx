@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSidebarActions } from "@/components/layout/sidebar-context";
-import { usePermission } from "@/hooks/use-permission";
+import { usePermission, usePermissions } from "@/hooks/use-permission";
 import { useOrganization } from "@/components/org-context";
 import { SellTreatmentPanel } from "@/components/gabinet/sell-treatment-panel";
 import { SellPackagePanel } from "@/components/gabinet/sell-package-panel";
@@ -29,6 +29,7 @@ export function GabinetQuickActionsDropdown() {
   const navigate = useNavigate();
   const { openQuickCreate } = useSidebarActions();
   const { allowed: canManageLeaves } = usePermission("gabinet_settings", "edit");
+  const { can } = usePermissions("create");
   const { organizationId } = useOrganization();
   const [sellTreatmentOpen, setSellTreatmentOpen] = useState(false);
   const [sellPackageOpen, setSellPackageOpen] = useState(false);
@@ -63,41 +64,51 @@ export function GabinetQuickActionsDropdown() {
         align="end"
         sideOffset={8}
       >
-        <DropdownMenuItem
-          className="px-3 py-2.5 text-sm"
-          onSelect={goToCalendarCreateAppointment}
-        >
-          <CalendarCheck className="text-foreground size-5" />
-          {t("sidebar.gabinet.bookAppointment", "Umów wizytę")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="px-3 py-2.5 text-sm"
-          onSelect={() => openQuickCreate("patient")}
-        >
-          <UserPlus className="text-foreground size-5" />
-          {t("sidebar.gabinet.addPatient", "Dodaj klienta")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="px-3 py-2.5 text-sm"
-          onSelect={() => setSellTreatmentOpen(true)}
-        >
-          <ShoppingCart className="text-foreground size-5 shrink-0" />
-          {t("sidebar.gabinet.sellProduct", "Sprzedaj produkt")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="px-3 py-2.5 text-sm"
-          onSelect={() => setSellPackageOpen(true)}
-        >
-          <Package className="text-foreground size-5 shrink-0" />
-          {t("sidebar.gabinet.sellPackage", "Sprzedaj pakiet")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="px-3 py-2.5 text-sm"
-          onSelect={() => openQuickCreate("package")}
-        >
-          <Package className="text-foreground size-5" />
-          {t("sidebar.gabinet.addPackage", "Dodaj pakiet")}
-        </DropdownMenuItem>
+        {can("gabinet_appointments") && (
+          <DropdownMenuItem
+            className="px-3 py-2.5 text-sm"
+            onSelect={goToCalendarCreateAppointment}
+          >
+            <CalendarCheck className="text-foreground size-5" />
+            {t("sidebar.gabinet.bookAppointment", "Umów wizytę")}
+          </DropdownMenuItem>
+        )}
+        {can("gabinet_patients") && (
+          <DropdownMenuItem
+            className="px-3 py-2.5 text-sm"
+            onSelect={() => openQuickCreate("patient")}
+          >
+            <UserPlus className="text-foreground size-5" />
+            {t("sidebar.gabinet.addPatient", "Dodaj klienta")}
+          </DropdownMenuItem>
+        )}
+        {can("gabinet_payments") && (
+          <DropdownMenuItem
+            className="px-3 py-2.5 text-sm"
+            onSelect={() => setSellTreatmentOpen(true)}
+          >
+            <ShoppingCart className="text-foreground size-5 shrink-0" />
+            {t("sidebar.gabinet.sellProduct", "Sprzedaj produkt")}
+          </DropdownMenuItem>
+        )}
+        {can("gabinet_payments") && (
+          <DropdownMenuItem
+            className="px-3 py-2.5 text-sm"
+            onSelect={() => setSellPackageOpen(true)}
+          >
+            <Package className="text-foreground size-5 shrink-0" />
+            {t("sidebar.gabinet.sellPackage", "Sprzedaj pakiet")}
+          </DropdownMenuItem>
+        )}
+        {can("gabinet_packages") && (
+          <DropdownMenuItem
+            className="px-3 py-2.5 text-sm"
+            onSelect={() => openQuickCreate("package")}
+          >
+            <Package className="text-foreground size-5" />
+            {t("sidebar.gabinet.addPackage", "Dodaj pakiet")}
+          </DropdownMenuItem>
+        )}
         {canManageLeaves && (
           <DropdownMenuItem
             className="px-3 py-2.5 text-sm"
@@ -107,20 +118,24 @@ export function GabinetQuickActionsDropdown() {
             {t("sidebar.gabinet.addLeave", "Dodaj nieobecność")}
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem
-          className="px-3 py-2.5 text-sm"
-          onSelect={() => navigate({ to: "/dashboard/gabinet/deliveries", search: { action: "create" } })}
-        >
-          <TruckIcon className="text-foreground size-5 shrink-0" />
-          {t("sidebar.gabinet.addDelivery", "Dodaj dostawę")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="px-3 py-2.5 text-sm"
-          onSelect={() => navigate({ to: "/dashboard/gabinet/documents" })}
-        >
-          <FileText className="text-foreground size-5" />
-          {t("sidebar.gabinet.issueDocument", "Wystaw dokument")}
-        </DropdownMenuItem>
+        {can("gabinet_inventory") && (
+          <DropdownMenuItem
+            className="px-3 py-2.5 text-sm"
+            onSelect={() => navigate({ to: "/dashboard/gabinet/deliveries", search: { action: "create" } })}
+          >
+            <TruckIcon className="text-foreground size-5 shrink-0" />
+            {t("sidebar.gabinet.addDelivery", "Dodaj dostawę")}
+          </DropdownMenuItem>
+        )}
+        {can("document_instances") && (
+          <DropdownMenuItem
+            className="px-3 py-2.5 text-sm"
+            onSelect={() => navigate({ to: "/dashboard/gabinet/documents" })}
+          >
+            <FileText className="text-foreground size-5" />
+            {t("sidebar.gabinet.issueDocument", "Wystaw dokument")}
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
     <SellTreatmentPanel

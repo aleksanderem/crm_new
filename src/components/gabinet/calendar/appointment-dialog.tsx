@@ -1334,6 +1334,10 @@ export function AppointmentDialog({
                       {selectedTreatments.map((sel, idx) => {
                         const tr = treatments?.find((t) => t._id === sel.treatmentId);
                         const isFirst = idx === 0;
+                        const displayPrice =
+                          isFirst && sel.variantId && selectedVariant?.resolvedPrice != null
+                            ? selectedVariant.resolvedPrice
+                            : tr?.price;
                         return (
                           <div
                             key={sel.treatmentId}
@@ -1353,9 +1357,9 @@ export function AppointmentDialog({
                                       <Clock className="size-3" />
                                       {tr.duration} min
                                     </Badge>
-                                    {tr.price != null && (
+                                    {displayPrice != null && (
                                       <Badge variant="secondary" className="text-xs">
-                                        {formatPrice(tr.price)}
+                                        {formatPrice(displayPrice)}
                                       </Badge>
                                     )}
                                   </div>

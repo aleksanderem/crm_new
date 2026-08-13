@@ -1243,6 +1243,11 @@ function AppointmentDetail() {
     },
   ];
 
+  const [apptStartH, apptStartM] = detail.appointment.startTime.split(":").map(Number);
+  const [apptEndH, apptEndM] = detail.appointment.endTime.split(":").map(Number);
+  const apptComputedDuration = apptEndH * 60 + apptEndM - (apptStartH * 60 + apptStartM);
+  const appointmentDurationMinutes = apptComputedDuration > 0 ? apptComputedDuration : (detail.treatment?.duration ?? 30);
+
   return (
     <>
       <EntityDetailLayout
@@ -1311,12 +1316,7 @@ function AppointmentDetail() {
           appointmentDate={detail.appointment.date}
           startTime={detail.appointment.startTime}
           endTime={detail.appointment.endTime}
-          durationMinutes={(() => {
-              const [sh, sm] = detail.appointment.startTime.split(":").map(Number);
-              const [eh, em] = detail.appointment.endTime.split(":").map(Number);
-              const computed = eh * 60 + em - (sh * 60 + sm);
-              return computed > 0 ? computed : (detail.treatment?.duration ?? 30);
-            })()}
+          durationMinutes={appointmentDurationMinutes}
         />
       )}
 

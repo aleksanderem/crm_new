@@ -537,6 +537,9 @@ function TreatmentsIndex() {
         setEditingTreatment(null);
         setTagIds([]);
         setCategoryId(undefined);
+        void queryClient.invalidateQueries({
+          queryKey: supabaseKeys.gabinetTreatments.list(organizationId),
+        });
 
         // Auto-create package from inline form data (create case only).
         if (isNewTreatment && inlinePackageData && savedTreatmentId) {
@@ -637,7 +640,7 @@ function TreatmentsIndex() {
         setIsSubmitting(false);
       }
     },
-    [editingTreatment, createTreatment, updateTreatment, setTreatmentProductsAction, createPackage, organizationId, tagIds, categoryId, t],
+    [editingTreatment, createTreatment, updateTreatment, setTreatmentProductsAction, createPackage, organizationId, tagIds, categoryId, t, queryClient],
   );
 
   const handleBulkAction = useCallback(

@@ -337,6 +337,10 @@ export function createGabinetTables({
     // of specialization, licenseNumber, and qualifiedTreatmentIds in the UI.
     // Independent from showInCalendar. Defaults to true for legacy rows.
     performsServices: v.optional(v.boolean()),
+    // Describes the employee's work area: clinic only, office/CRM only, or both.
+    workScope: v.optional(
+      v.union(v.literal("clinic"), v.literal("office"), v.literal("both")),
+    ),
     tagIds: v.optional(v.array(v.id("tagDefinitions"))),
     categoryId: v.optional(v.id("categoryDefinitions")),
     bio: v.optional(v.string()),

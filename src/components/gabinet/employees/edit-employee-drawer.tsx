@@ -85,6 +85,9 @@ export function EditEmployeeDrawer({
   const [performsServices, setPerformsServices] = useState<boolean>(
     employee.performsServices ?? true,
   );
+  const [workScope, setWorkScope] = useState<"clinic" | "office" | "both" | undefined>(
+    employee.workScope,
+  );
   const [notes, setNotes] = useState(employee.notes ?? "");
   const [locationId, setLocationId] = useState<string | null>(null);
   const [locationRole, setLocationRole] = useState<GabinetEmployeeRole | null>(null);
@@ -102,6 +105,7 @@ export function EditEmployeeDrawer({
       setColor(employee.color ?? "#3b82f6");
       setShowInCalendar(employee.showInCalendar ?? true);
       setPerformsServices(employee.performsServices ?? true);
+      setWorkScope(employee.workScope);
       setNotes(employee.notes ?? "");
     }
   }, [open, employee]);
@@ -145,6 +149,7 @@ export function EditEmployeeDrawer({
         color: showInCalendar ? color || null : null,
         showInCalendar,
         performsServices,
+        workScope: workScope ?? null,
         notes: notes || null,
         locationId: locationId ?? null,
         locationRole: locationRole ?? null,
@@ -220,6 +225,35 @@ export function EditEmployeeDrawer({
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>{t("gabinet.employees.workScope", { defaultValue: "Zakres pracy" })}</Label>
+          <div className="flex flex-col gap-1.5">
+            {(["clinic", "office", "both"] as const).map((value) => (
+              <label
+                key={value}
+                className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60"
+              >
+                <input
+                  type="radio"
+                  name="workScope"
+                  value={value}
+                  checked={workScope === value}
+                  onChange={() => setWorkScope(value)}
+                  className="accent-primary"
+                />
+                {t(`gabinet.employees.workScope${value.charAt(0).toUpperCase() + value.slice(1)}`, {
+                  defaultValue:
+                    value === "clinic"
+                      ? "Obsługa gabinetu"
+                      : value === "office"
+                        ? "Praca biurowa i CRM"
+                        : "Obsługa gabinetu i praca biurowa",
+                })}
+              </label>
+            ))}
+          </div>
         </div>
 
         <div className="space-y-1.5">

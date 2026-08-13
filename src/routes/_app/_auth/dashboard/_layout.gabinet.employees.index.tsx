@@ -7,6 +7,7 @@ import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-em
 import { useSupabaseGabinetEmployeeSchedulesList } from "@/hooks/use-supabase-gabinet-employee-schedules";
 import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
+import { useSupabasePendingInvitations } from "@/hooks/use-supabase-invitations";
 import { useOrganization } from "@/components/org-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
@@ -157,6 +158,11 @@ function EmployeesIndex() {
   const { data: employees } = useSupabaseGabinetEmployeesList(organizationId);
 
   const { data: members } = useSupabaseOrganizationMembers(organizationId);
+  const { data: pendingInvitations } = useSupabasePendingInvitations(organizationId);
+  const pendingGabinetInvitations = useMemo(
+    () => (pendingInvitations ?? []).filter((inv) => inv.module === "gabinet"),
+    [pendingInvitations],
+  );
   const { data: employeeSchedules } =
     useSupabaseGabinetEmployeeSchedulesList(organizationId);
   const { data: clinicHours } = useSupabaseGabinetWorkingHoursList(organizationId);
@@ -511,6 +517,37 @@ function EmployeesIndex() {
           navigate({ to: `/dashboard/gabinet/employees/${employeeId}` })
         }
       />
+
+      {pendingGabinetInvitations.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-fg-secondary">
+            {t("team.invitations", { defaultValue: "Oczekujące zaproszenia" })}
+          </p>
+          <div className="rounded-md border divide-y">
+            {pendingGabinetInvitations.map((inv) => {
+              const md = inv.moduleData as { firstName?: string; lastName?: string; role?: string } | undefined;
+              const name = [md?.firstName, md?.lastName].filter(Boolean).join(" ") || inv.email;
+              return (
+                <div key={inv._id} className="flex items-center gap-3 px-4 py-3">
+                  <Avatar size="sm" initials={name.substring(0, 2).toUpperCase()} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{name}</p>
+                    <p className="text-xs text-fg-quaternary truncate">{inv.email}</p>
+                  </div>
+                  {md?.role && (
+                    <span className="text-xs text-fg-tertiary hidden sm:block">
+                      {t(`gabinet.employees.roles.${md.role}`, { defaultValue: md.role })}
+                    </span>
+                  )}
+                  <Badge variant="outline" className="text-xs shrink-0">
+                    {t("gabinet.employees.pendingAcceptance", { defaultValue: "Oczekuje na akceptację" })}
+                  </Badge>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <TagsManagerSlideout
         isOpen={tagsSlideoutOpen}

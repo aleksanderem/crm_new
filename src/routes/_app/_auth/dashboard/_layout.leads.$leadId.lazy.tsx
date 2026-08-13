@@ -413,7 +413,7 @@ function LeadDetail() {
     try {
       await updateLead({
         organizationId,
-        leadId: leadId as Id<"leads">,
+        leadId,
         title: formData.title,
         value: formData.value,
         status: formData.status as any,
@@ -426,8 +426,8 @@ function LeadDetail() {
       if (formData.pipelineStageId) {
         await moveToStage({
           organizationId,
-          leadId: leadId as Id<"leads">,
-          pipelineStageId: formData.pipelineStageId as Id<"pipelineStages">,
+          leadId,
+          pipelineStageId: formData.pipelineStageId,
           stageOrder: 0,
         });
       }
@@ -435,7 +435,7 @@ function LeadDetail() {
         const fieldsToSave = leadCfDefs
           .filter((d) => customFieldRecord[d.fieldKey] !== undefined && customFieldRecord[d.fieldKey] !== "")
           .map((d) => ({
-            fieldDefinitionId: d._id as Id<"customFieldDefinitions">,
+            fieldDefinitionId: d._id,
             value: customFieldRecord[d.fieldKey],
           }));
         if (fieldsToSave.length > 0) {
@@ -465,7 +465,7 @@ function LeadDetail() {
   const handleMarkWon = async () => {
     await updateLead({
       organizationId,
-      leadId: leadId as Id<"leads">,
+      leadId,
       status: "won",
     });
     queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
@@ -475,8 +475,8 @@ function LeadDetail() {
     if (pendingLostStageId) {
       await moveToStage({
         organizationId,
-        leadId: leadId as Id<"leads">,
-        pipelineStageId: pendingLostStageId as Id<"pipelineStages">,
+        leadId,
+        pipelineStageId: pendingLostStageId,
         stageOrder: 0,
         lostReason: reason,
       });
@@ -484,7 +484,7 @@ function LeadDetail() {
     } else {
       await updateLead({
         organizationId,
-        leadId: leadId as Id<"leads">,
+        leadId,
         status: "lost",
         lostReason: reason,
       });
@@ -497,7 +497,7 @@ function LeadDetail() {
     if (window.confirm(t('detail.confirmDeleteDeal'))) {
       await removeLead({
         organizationId,
-        leadId: leadId as Id<"leads">,
+        leadId,
       });
       queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
       navigate({ to: "/dashboard/leads" });
@@ -513,8 +513,8 @@ function LeadDetail() {
     }
     await moveToStage({
       organizationId,
-      leadId: leadId as Id<"leads">,
-      pipelineStageId: stageId as Id<"pipelineStages">,
+      leadId,
+      pipelineStageId: stageId,
       stageOrder: 0,
     });
     queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
@@ -570,7 +570,7 @@ function LeadDetail() {
       );
 
       try {
-        await removeRelationship({ organizationId, relationshipId: rel._id as Id<"objectRelationships"> });
+        await removeRelationship({ organizationId, relationshipId: rel._id });
       } catch (error) {
         void queryClient.invalidateQueries({ queryKey: relationshipsQueryKey });
         throw error;
@@ -630,7 +630,7 @@ function LeadDetail() {
       );
 
       try {
-        await removeRelationship({ organizationId, relationshipId: rel._id as Id<"objectRelationships"> });
+        await removeRelationship({ organizationId, relationshipId: rel._id });
       } catch (error) {
         void queryClient.invalidateQueries({ queryKey: relationshipsQueryKey });
         throw error;
@@ -821,7 +821,7 @@ function LeadDetail() {
       dueDate: data.dueDate,
       endDate: data.endDate,
       description: data.description,
-      ownerId: currentUser._id as Id<"users">,
+      ownerId: currentUser._id,
       linkedEntityType: "lead",
       linkedEntityId: leadId,
     });
@@ -840,7 +840,7 @@ function LeadDetail() {
       const fieldsToSave = activityCustomFieldDefs
         .filter((d) => data.customFieldValues![d.fieldKey] !== undefined && data.customFieldValues![d.fieldKey] !== "")
         .map((d) => ({
-          fieldDefinitionId: d._id as Id<"customFieldDefinitions">,
+          fieldDefinitionId: d._id,
           value: data.customFieldValues![d.fieldKey],
         }));
       if (fieldsToSave.length > 0) {
@@ -865,7 +865,7 @@ function LeadDetail() {
   }) => {
     await updateScheduledActivity({
       organizationId,
-      activityId: data.activityId as Id<"scheduledActivities">,
+      activityId: data.activityId,
       title: data.title,
       activityType: data.activityType,
       dueDate: data.dueDate,
@@ -877,7 +877,7 @@ function LeadDetail() {
   const handleDeleteActivity = async (activityId: string) => {
     await removeScheduledActivity({
       organizationId,
-      activityId: activityId as Id<"scheduledActivities">,
+      activityId,
     });
     setActivityDrawerOpen(false);
     setSelectedActivityId(null);
@@ -885,9 +885,9 @@ function LeadDetail() {
 
   const handleToggleActivityComplete = async (activityId: string, isCompleted: boolean) => {
     if (isCompleted) {
-      await markActivityComplete({ organizationId, activityId: activityId as Id<"scheduledActivities"> });
+      await markActivityComplete({ organizationId, activityId });
     } else {
-      await markActivityIncomplete({ organizationId, activityId: activityId as Id<"scheduledActivities"> });
+      await markActivityIncomplete({ organizationId, activityId });
     }
   };
 
@@ -896,7 +896,7 @@ function LeadDetail() {
     const fieldsToSave = activityCustomFieldDefs
       .filter((d) => values[d.fieldKey] !== undefined && values[d.fieldKey] !== "")
       .map((d) => ({
-        fieldDefinitionId: d._id as Id<"customFieldDefinitions">,
+        fieldDefinitionId: d._id,
         value: values[d.fieldKey],
       }));
     if (fieldsToSave.length > 0) {

@@ -237,6 +237,7 @@ function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
   const setTreatmentProducts = useAction(api.gabinet.treatments.setTreatmentProducts);
   const createPackage = useAction(api.gabinet.packages.create);
   const createEmployee = useAction(api.gabinet.employees.create);
+  const createWithPassword = useAction(api.gabinet.employees.createWithPassword);
   const createActivity = useAction(api.scheduledActivities.create);
   const createLeave = useAction(api.gabinet.scheduling.createLeave);
   const createProduct = useAction(api.crm.products.create);
@@ -626,15 +627,32 @@ function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
             <EmployeeForm
               onSubmit={async (data) => {
                 setIsCreating(true);
-                const shouldInvite = !!(data.grantSystemAccess && data.accessEmail);
                 try {
-                  if (!shouldInvite) {
-                    await createEmployee({ organizationId: orgId, ...data, userId: data.userId });
+                  if (data.accessMode === "password" && data.accessEmail && data.password) {
+                    await createWithPassword({
+                      organizationId: orgId,
+                      email: data.accessEmail,
+                      password: data.password,
+                      teamRole: data.accessRole ?? "member",
+                      firstName: data.firstName,
+                      lastName: data.lastName,
+                      role: data.role,
+                      specialization: data.specialization,
+                      licenseNumber: data.licenseNumber,
+                      color: data.color,
+                      showInCalendar: data.showInCalendar,
+                      qualifiedTreatmentIds: data.qualifiedTreatmentIds as string[],
+                      tagIds: data.tagIds as string[] | undefined,
+                      categoryId: data.categoryId as string | undefined,
+                      customFields: data.customFields,
+                      locationId: data.locationId,
+                      locationRole: data.locationRole,
+                    });
                     void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(orgId) });
-                  } else {
+                  } else if (data.grantSystemAccess && data.accessEmail) {
                     await createInvitation({
                       organizationId: orgId,
-                      email: data.accessEmail!,
+                      email: data.accessEmail,
                       role: data.accessRole ?? "member",
                       module: "gabinet",
                       moduleData: {
@@ -648,9 +666,14 @@ function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
                         tagIds: data.tagIds,
                         categoryId: data.categoryId,
                         customFields: data.customFields,
+                        locationId: data.locationId,
+                        locationRole: data.locationRole,
                       },
                     });
                     void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(orgId) });
+                  } else {
+                    await createEmployee({ organizationId: orgId, ...data, userId: data.userId });
+                    void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(orgId) });
                   }
                   opts.onSuccess();
                 } catch (e) {

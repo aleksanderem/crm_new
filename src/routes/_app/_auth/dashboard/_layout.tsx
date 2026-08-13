@@ -97,6 +97,7 @@ import { DateRangePicker } from "@/components/crm/date-range-picker";
 import { AgendaStrip } from "@/components/layout/agenda-strip";
 import type { Id } from "@cvx/_generated/dataModel";
 import { NudgesProvider } from "@/contexts/nudges-context";
+import { GabinetLocationProvider } from "@/contexts/gabinet-location-context";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
 
@@ -1121,6 +1122,7 @@ function DashboardLayout() {
       <OrgProvider initialOrgId={firstOrg._id as Id<"organizations">} userId={user._id}>
         <SupabaseProvider>
           <NudgesProvider>
+            <GabinetLocationProvider>
             <MiniCalendarProvider>
               <SidebarSlotProvider>
                 <HeaderSlotProvider>
@@ -1128,6 +1130,7 @@ function DashboardLayout() {
                 </HeaderSlotProvider>
               </SidebarSlotProvider>
             </MiniCalendarProvider>
+            </GabinetLocationProvider>
           </NudgesProvider>
         </SupabaseProvider>
       </OrgProvider>

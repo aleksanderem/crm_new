@@ -200,6 +200,19 @@ function EmployeesIndex() {
     return map;
   }, [members]);
 
+  const invitationByEmail = useMemo(() => {
+    const map = new Map<string, (typeof pendingGabinetInvitations)[0]>();
+    pendingGabinetInvitations.forEach((inv) => map.set(inv.email, inv));
+    return map;
+  }, [pendingGabinetInvitations]);
+
+  const pendingGabinetInvitationsFiltered = useMemo(() => {
+    const employeeEmails = new Set(
+      (employees ?? []).filter((e) => !e.userId && e.email).map((e) => e.email!),
+    );
+    return pendingGabinetInvitations.filter((inv) => !employeeEmails.has(inv.email));
+  }, [pendingGabinetInvitations, employees]);
+
   function getDisplayName(emp: { firstName?: string; lastName?: string; userId: string }) {
     if (emp.firstName || emp.lastName) {
       return `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim();
@@ -243,13 +256,28 @@ function EmployeesIndex() {
                 <p className="text-xs text-fg-quaternary">{user.email}</p>
               )}
             </div>
-            {!item.isActive && (
-              <Badge variant="outline" className="text-xs text-muted-foreground">
-                {item.userId
-                  ? t("gabinet.employees.statusBlocked", "Konto zablokowane")
-                  : t("gabinet.employees.statusInactive", "Konto nieaktywne")}
-              </Badge>
-            )}
+            {!item.isActive && (() => {
+              if (!item.userId && item.email) {
+                const inv = invitationByEmail.get(item.email);
+                if (inv) {
+                  const isExpired = inv.expiresAt <= Date.now();
+                  return (
+                    <Badge variant="outline" className="text-xs text-muted-foreground">
+                      {isExpired
+                        ? t("gabinet.employees.statusInvitationExpired", "Zaproszenie wygasło")
+                        : t("gabinet.employees.statusInvitationPending", "Zaproszenie wysłane — oczekuje na akceptację")}
+                    </Badge>
+                  );
+                }
+              }
+              return (
+                <Badge variant="outline" className="text-xs text-muted-foreground">
+                  {item.userId
+                    ? t("gabinet.employees.statusBlocked", "Konto zablokowane")
+                    : t("gabinet.employees.statusInactive", "Konto nieaktywne")}
+                </Badge>
+              );
+            })()}
           </div>
         );
       },
@@ -307,7 +335,7 @@ function EmployeesIndex() {
       render: (item) => new Date(item.createdAt).toLocaleDateString(),
       getSortValue: (item) => item.createdAt,
     },
-  ], [t, userMap]);
+  ], [t, userMap, invitationByEmail]);
 
   const filteredEmployees = useMemo(() => {
     const data = applyFilterConditions(employees ?? [], activeFilters);
@@ -598,13 +626,13 @@ function EmployeesIndex() {
         }
       />
 
-      {pendingGabinetInvitations.length > 0 && (
+      {pendingGabinetInvitationsFiltered.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm font-medium text-fg-secondary">
             {t("team.invitations", { defaultValue: "Oczekujące zaproszenia" })}
           </p>
           <div className="rounded-md border divide-y">
-            {pendingGabinetInvitations.map((inv) => {
+            {pendingGabinetInvitationsFiltered.map((inv) => {
               const md = inv.moduleData as { firstName?: string; lastName?: string; role?: string } | undefined;
               const name = [md?.firstName, md?.lastName].filter(Boolean).join(" ") || inv.email;
               const isExpired = inv.expiresAt <= Date.now();

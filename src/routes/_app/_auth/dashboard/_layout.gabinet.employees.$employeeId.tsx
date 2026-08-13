@@ -567,10 +567,10 @@ function EmployeeDetail() {
     },
     {
       label: t("gabinet.employees.tabs.grafikPracy"),
-      content: (
+      content: employee.userId ? (
         <FlexibleScheduleEditor
           organizationId={organizationId}
-          userId={employee.userId as Id<"users">}
+          userId={employee.userId}
           periods={schedulePeriods}
           clinicHours={clinicHours ?? []}
           onSavePeriod={async (a) => { await saveSchedulePeriod(a); invalidateScheduleCache(); }}
@@ -578,6 +578,8 @@ function EmployeeDetail() {
           onSaveLegacy={async (a) => { await bulkSetEmployeeSchedule(a); invalidateScheduleCache(); }}
           onManageLeaves={() => navigate({ to: "/dashboard/gabinet/settings/leaves" })}
         />
+      ) : (
+        <p className="text-muted-foreground text-sm">{t("gabinet.employees.noUserAccount", "Pracownik nie ma powiązanego konta użytkownika.")}</p>
       ),
     },
     {
@@ -646,13 +648,15 @@ function EmployeeDetail() {
       ? [
           {
             label: t("gabinet.employees.tabs.permissions", "Uprawnienia"),
-            content: (
+            content: employee.userId ? (
               <EmployeePermissionsTab
                 organizationId={organizationId}
-                userId={employee.userId as Id<"users">}
+                userId={employee.userId}
                 gabinetRole={employee.role}
                 t={t}
               />
+            ) : (
+              <p className="text-muted-foreground text-sm">{t("gabinet.employees.noUserAccount", "Pracownik nie ma powiązanego konta użytkownika.")}</p>
             ),
           },
         ]

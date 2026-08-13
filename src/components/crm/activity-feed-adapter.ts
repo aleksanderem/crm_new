@@ -29,7 +29,7 @@ function looksLikeOpaqueId(value: string | undefined): boolean {
 }
 
 /** Shape returned by useSupabaseActivitiesByEntity */
-interface MappedActivityLike {
+export interface MappedActivityLike {
   _id: string;
   action: string;
   description: string;

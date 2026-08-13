@@ -395,6 +395,7 @@ function EmployeesIndex() {
   }, [resendInvitation, organizationId, t, queryClient]);
 
   const handleCancelInvitation = useCallback(async (invitationId: string) => {
+    if (!window.confirm(t("gabinet.employees.confirmCancelInvitation", "Czy na pewno chcesz anulować zaproszenie?"))) return;
     try {
       await cancelInvitation({ organizationId, invitationId });
       toast.success(t("team.invitationCancelled"));
@@ -426,6 +427,7 @@ function EmployeesIndex() {
               return [{
                 label: t("gabinet.employees.activateAccount", "Aktywuj konto"),
                 onClick: async () => {
+                  if (!window.confirm(t("gabinet.employees.confirmActivate", "Czy na pewno chcesz aktywować konto tego pracownika?"))) return;
                   try {
                     await updateEmployee({ organizationId, employeeId: row._id, isActive: true });
                     toast.success(t("gabinet.employees.activated", "Konto aktywowane."));
@@ -455,6 +457,7 @@ function EmployeesIndex() {
               return [{
                 label: t("gabinet.employees.unblockAccount", "Odblokuj konto"),
                 onClick: async () => {
+                  if (!window.confirm(t("gabinet.employees.confirmUnblock", "Czy na pewno chcesz odblokować konto tego pracownika?"))) return;
                   try {
                     await updateEmployee({ organizationId, employeeId: row._id, isActive: true });
                     toast.success(t("gabinet.employees.unblocked", "Konto odblokowane."));

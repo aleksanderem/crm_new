@@ -395,6 +395,7 @@ function EmployeeDetail() {
   };
 
   const handleActivate = async () => {
+    if (!window.confirm(t("gabinet.employees.confirmActivate", "Czy na pewno chcesz aktywować konto tego pracownika?"))) return;
     try {
       await updateEmployee({ organizationId, employeeId, isActive: true });
       toast.success(t("gabinet.employees.activated", "Konto aktywowane."));

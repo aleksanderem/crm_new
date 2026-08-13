@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
+import { Separator } from "@/components/ui/separator";
 import type { TFunction } from "i18next";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
@@ -262,6 +263,13 @@ export function EditEmployeeDrawer({
             value={hireDate}
             onChange={(e) => setHireDate(e.target.value)}
           />
+        </div>
+
+        <div className="space-y-1.5">
+          <Separator />
+          <p className="text-sm font-medium text-muted-foreground pt-1">
+            {t("gabinet.employees.calendarSettings", { defaultValue: "Ustawienia kalendarza" })}
+          </p>
         </div>
 
         <div className="space-y-1.5">

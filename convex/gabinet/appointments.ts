@@ -3358,6 +3358,7 @@ export interface AppointmentFullDetailTreatment {
   id: string;
   treatmentId: string | null;
   variantId: string | null;
+  variantName: string | null;
   priceAtBooking: number | null;
   sortOrder: number;
 }
@@ -3516,7 +3517,7 @@ export const getFullDetail = action({
       : null;
     const documents = documentsRaw as unknown as FormDocumentRow[];
     const payments = paymentsRaw as unknown as PaymentRow[];
-    const appointmentTreatments: AppointmentFullDetailTreatment[] = (
+    const rawTreatmentRows = (
       (appointmentTreatmentsRaw as unknown as Array<Record<string, unknown>>) ?? []
     ).map((row) => ({
       id: String(row.id ?? row._id),
@@ -3524,6 +3525,24 @@ export const getFullDetail = action({
       variantId: row.variantId ? String(row.variantId) : null,
       priceAtBooking: row.priceAtBooking != null ? Number(row.priceAtBooking) : null,
       sortOrder: Number(row.sortOrder ?? 0),
+    }));
+    const uniqueVariantIds = Array.from(
+      new Set(rawTreatmentRows.map((t) => t.variantId).filter((id): id is string => id !== null)),
+    );
+    const variantRows = await Promise.all(
+      uniqueVariantIds.map((id) =>
+        db.get("gabinetTreatmentVariants", id).catch(() => null),
+      ),
+    );
+    const variantNameMap = new Map<string, string>(
+      (variantRows.filter((v) => v !== null) as Array<Record<string, unknown>>).map((v) => [
+        String(v._id ?? v.id),
+        String(v.name),
+      ]),
+    );
+    const appointmentTreatments: AppointmentFullDetailTreatment[] = rawTreatmentRows.map((t) => ({
+      ...t,
+      variantName: t.variantId ? (variantNameMap.get(t.variantId) ?? null) : null,
     }));
     const primaryTreatmentId = appointmentTreatments[0]?.treatmentId ?? null;
     const treatment = (primaryTreatmentId

@@ -1419,13 +1419,17 @@ export const _changePasswordSideEffects = internalMutation({
   },
 });
 
-// Creates a Gabinet employee profile for an existing org member (no invitation needed).
-// Used when createInvitation fails with "User is already a member" — the admin can
-// still link that member directly as an employee without re-inviting them.
+// Creates a Gabinet employee profile for a user who already has an account.
+// If the user is not yet a member of the organisation, membership is created
+// automatically (no invitation email required). If membership already exists,
+// the existing record is reused — duplicates are never created.
+// Throws "No user account found" when the email is unknown, so callers can
+// fall back to createInvitation for genuinely new users.
 export const createForExistingMember = action({
   args: {
     organizationId: v.id("organizations"),
     email: v.string(),
+    teamRole: v.optional(v.union(v.literal("admin"), v.literal("member"), v.literal("viewer"))),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     role: gabinetEmployeeRoleValidator,
@@ -1469,8 +1473,25 @@ export const createForExistingMember = action({
       .eq("organizationId", orgIdStr)
       .eq("userId", String(user._id))
       .first();
+
     if (!membership) {
-      throw new Error("This user is not a member of this organization.");
+      // User has an account but is not yet an org member — create membership now.
+      const { canAddMore, currentSeats, seatLimit } = await ctx.runAction(
+        internal._helpers.seatLimits.checkSeatLimitAction,
+        { organizationId: args.organizationId },
+      );
+      if (!canAddMore) {
+        throw new Error(
+          `Seat limit reached (${currentSeats}/${seatLimit}). Upgrade your plan to add more team members.`,
+        );
+      }
+      await db.insert("teamMemberships", {
+        organizationId: orgIdStr,
+        userId: String(user._id),
+        role: args.teamRole ?? "member",
+        invitedBy: String(authResult.userId),
+        joinedAt: Date.now(),
+      });
     }
 
     await ctx.runAction(internal.gabinet.employees._createFromInvitation, {

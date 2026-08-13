@@ -723,56 +723,59 @@ function CreateEmployeeSheet({
                   });
                 } else if (data.grantSystemAccess && data.accessEmail) {
                   try {
-                    await createInvitation({
+                    // Try to link an existing account first (creates membership if missing).
+                    // Falls back to invitation email only when no account exists yet.
+                    await createForExistingMember({
                       organizationId,
                       email: data.accessEmail,
-                      role: data.accessRole ?? "member",
-                      module: "gabinet",
-                      moduleData: {
-                        firstName: data.firstName,
-                        lastName: data.lastName,
-                        role: data.role,
-                        specialization: data.specialization,
-                        color: data.color,
-                        showInCalendar: data.showInCalendar,
-                        qualifiedTreatmentIds: data.qualifiedTreatmentIds,
-                        tagIds: data.tagIds,
-                        categoryId: data.categoryId,
-                        customFields: data.customFields,
-                        locationId: data.locationId,
-                        locationRole: data.locationRole,
-                      },
+                      teamRole: data.accessRole ?? "member",
+                      firstName: data.firstName,
+                      lastName: data.lastName,
+                      role: data.role,
+                      specialization: data.specialization,
+                      color: data.color,
+                      showInCalendar: data.showInCalendar,
+                      qualifiedTreatmentIds: data.qualifiedTreatmentIds as string[] | undefined,
+                      tagIds: data.tagIds as string[] | undefined,
+                      categoryId: data.categoryId as string | undefined,
+                      customFields: data.customFields,
+                      locationId: data.locationId,
+                      locationRole: data.locationRole,
                     });
-                    toast.success(t("team.invitationSent"));
+                    toast.success(t("gabinet.employees.linkedAsMember"));
                     void queryClient.invalidateQueries({
-                      queryKey: supabaseKeys.invitations.list(organizationId),
+                      queryKey: supabaseKeys.gabinetEmployees.list(organizationId),
                     });
-                  } catch (inviteErr) {
-                    const msg = inviteErr instanceof Error ? inviteErr.message : String(inviteErr);
-                    if (msg.includes("already a member")) {
-                      // User already belongs to this org — link them directly as an employee
-                      await createForExistingMember({
+                  } catch (linkErr) {
+                    const msg = linkErr instanceof Error ? linkErr.message : String(linkErr);
+                    if (msg.includes("No user account found")) {
+                      // No account exists yet — send an invitation email.
+                      await createInvitation({
                         organizationId,
                         email: data.accessEmail,
-                        firstName: data.firstName,
-                        lastName: data.lastName,
-                        role: data.role,
-                        specialization: data.specialization,
-                        color: data.color,
-                        showInCalendar: data.showInCalendar,
-                        qualifiedTreatmentIds: data.qualifiedTreatmentIds as string[] | undefined,
-                        tagIds: data.tagIds as string[] | undefined,
-                        categoryId: data.categoryId as string | undefined,
-                        customFields: data.customFields,
-                        locationId: data.locationId,
-                        locationRole: data.locationRole,
+                        role: data.accessRole ?? "member",
+                        module: "gabinet",
+                        moduleData: {
+                          firstName: data.firstName,
+                          lastName: data.lastName,
+                          role: data.role,
+                          specialization: data.specialization,
+                          color: data.color,
+                          showInCalendar: data.showInCalendar,
+                          qualifiedTreatmentIds: data.qualifiedTreatmentIds,
+                          tagIds: data.tagIds,
+                          categoryId: data.categoryId,
+                          customFields: data.customFields,
+                          locationId: data.locationId,
+                          locationRole: data.locationRole,
+                        },
                       });
-                      toast.success(t("gabinet.employees.linkedAsMember"));
+                      toast.success(t("team.invitationSent"));
                       void queryClient.invalidateQueries({
-                        queryKey: supabaseKeys.gabinetEmployees.list(organizationId),
+                        queryKey: supabaseKeys.invitations.list(organizationId),
                       });
                     } else {
-                      throw inviteErr;
+                      throw linkErr;
                     }
                   }
                 } else {

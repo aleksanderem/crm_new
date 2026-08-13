@@ -97,6 +97,8 @@ function PatientDetail() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { allowed: canEdit } = usePermission("gabinet_patients", "edit");
+  const { allowed: canDelete } = usePermission("gabinet_patients", "delete");
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action
   const updatePatient = useAction(api.gabinet.patients.update);
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action
@@ -1044,13 +1046,13 @@ function PatientDetail() {
             ? `${patient.firstName?.[0] ?? ""}${patient.lastName?.[0] ?? ""}`.toUpperCase()
             : "?"
         }
-        onEdit={() => setEditDrawerOpen(true)}
+        onEdit={canEdit ? () => setEditDrawerOpen(true) : undefined}
         secondaryActions={[
-          {
+          ...(canDelete ? [{
             label: t("common.delete"),
             onClick: handleDelete,
             variant: "destructive" as const,
-          },
+          }] : []),
           ...(canGdprErase
             ? [
                 {

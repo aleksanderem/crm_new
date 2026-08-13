@@ -291,7 +291,7 @@ function CompanyDetail() {
     try {
       await updateCompany({
         organizationId,
-        companyId: companyId as Id<"companies">,
+        companyId,
         name: formData.name,
         domain: formData.domain,
         industry: formData.industry,
@@ -308,7 +308,7 @@ function CompanyDetail() {
         const fieldsToSave = companyCfDefs
           .filter((d) => customFieldRecord[d.fieldKey] !== undefined && customFieldRecord[d.fieldKey] !== "")
           .map((d) => ({
-            fieldDefinitionId: d._id as Id<"customFieldDefinitions">,
+            fieldDefinitionId: d._id,
             value: customFieldRecord[d.fieldKey],
           }));
         if (fieldsToSave.length > 0) {
@@ -338,7 +338,7 @@ function CompanyDetail() {
     if (window.confirm(t('detail.confirmDeleteCompany'))) {
       await removeCompany({
         organizationId,
-        companyId: companyId as Id<"companies">,
+        companyId,
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.companies.all });
       navigate({ to: "/dashboard/companies" });
@@ -594,7 +594,7 @@ function CompanyDetail() {
       dueDate: data.dueDate,
       endDate: data.endDate,
       description: data.description,
-      ownerId: currentUser._id as Id<"users">,
+      ownerId: currentUser._id,
       linkedEntityType: "company",
       linkedEntityId: companyId,
     });
@@ -617,7 +617,7 @@ function CompanyDetail() {
       const fieldsToSave = activityCustomFieldDefs
         .filter((d) => data.customFieldValues![d.fieldKey] !== undefined && data.customFieldValues![d.fieldKey] !== "")
         .map((d) => ({
-          fieldDefinitionId: d._id as Id<"customFieldDefinitions">,
+          fieldDefinitionId: d._id,
           value: data.customFieldValues![d.fieldKey],
         }));
       if (fieldsToSave.length > 0) {
@@ -644,7 +644,7 @@ function CompanyDetail() {
   }) => {
     await updateScheduledActivity({
       organizationId,
-      activityId: data.activityId as Id<"scheduledActivities">,
+      activityId: data.activityId,
       title: data.title,
       activityType: data.activityType,
       dueDate: data.dueDate,
@@ -657,7 +657,7 @@ function CompanyDetail() {
   const handleDeleteActivity = async (activityId: string) => {
     await removeScheduledActivity({
       organizationId,
-      activityId: activityId as Id<"scheduledActivities">,
+      activityId,
     });
     void queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.list(organizationId) });
     setActivityDrawerOpen(false);
@@ -666,9 +666,9 @@ function CompanyDetail() {
 
   const handleToggleActivityComplete = async (activityId: string, isCompleted: boolean) => {
     if (isCompleted) {
-      await markActivityComplete({ organizationId, activityId: activityId as Id<"scheduledActivities"> });
+      await markActivityComplete({ organizationId, activityId });
     } else {
-      await markActivityIncomplete({ organizationId, activityId: activityId as Id<"scheduledActivities"> });
+      await markActivityIncomplete({ organizationId, activityId });
     }
     void queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.list(organizationId) });
   };
@@ -678,7 +678,7 @@ function CompanyDetail() {
     const fieldsToSave = activityCustomFieldDefs
       .filter((d) => values[d.fieldKey] !== undefined && values[d.fieldKey] !== "")
       .map((d) => ({
-        fieldDefinitionId: d._id as Id<"customFieldDefinitions">,
+        fieldDefinitionId: d._id,
         value: values[d.fieldKey],
       }));
     if (fieldsToSave.length > 0) {

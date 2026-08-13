@@ -3328,6 +3328,7 @@
       },
       "actions": {
         "cancel": "Cancel appointment",
+        "cancelSeries": "Cancel series",
         "complete": "Complete",
         "confirm": "Confirm",
         "noShow": "No show",
@@ -3337,8 +3338,14 @@
       "cancelDesc": "Provide a reason for cancelling the appointment",
       "cancelReasonPlaceholder": "Enter cancellation reason...",
       "cancelReasonRequired": "Cancellation reason is required",
+      "cancelScope": {
+        "single": "Only this appointment",
+        "series": "This and all following"
+      },
+      "cancelSeriesTitle": "Cancel appointment series",
       "cancelTitle": "Cancel appointment",
       "cancelled": "Appointment cancelled",
+      "seriesCancelled": "Appointment series cancelled",
       "details": "Appointment details",
       "internalNotes": "Staff notes",
       "internalNotesDesc": "Visible to staff only. The client cannot see this information.",

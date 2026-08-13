@@ -179,6 +179,8 @@ export const create = action({
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),
     customFields: v.optional(v.array(v.any())),
+    locationId: v.optional(v.string()),
+    locationRole: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     try {
@@ -235,6 +237,23 @@ export const create = action({
       createdAt: now,
       updatedAt: now,
     });
+
+    if (args.locationId) {
+      const allowedRoles = ["doctor", "cosmetologist", "nurse", "therapist", "receptionist", "manager", "admin", "other"];
+      const locationRole = args.locationRole && allowedRoles.includes(args.locationRole) ? args.locationRole : undefined;
+      try {
+        await db.insert("gabinetEmployeeLocations", {
+          organizationId: String(args.organizationId),
+          employeeId: String(employeeId),
+          locationId: args.locationId,
+          isPrimary: true,
+          role: locationRole,
+          createdAt: now,
+        });
+      } catch (e) {
+        console.error("[employees.create] location insert failed:", e);
+      }
+    }
 
     // --- Delegate post-write side effects ---
     try {
@@ -673,6 +692,7 @@ export const update = action({
     categoryId: v.optional(v.union(v.string(), v.null())),
     bio: v.optional(v.union(v.string(), v.null())),
     avatarUrl: v.optional(v.union(v.string(), v.null())),
+    locationId: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     try {
@@ -719,8 +739,33 @@ export const update = action({
     }
 
     // --- Build updates and PATCH to Supabase ---
-    const { organizationId, employeeId, ...updates } = args;
+    // locationId lives in gabinetEmployeeLocations, not gabinetEmployees — exclude from patch
+    const { organizationId, employeeId, locationId, ...updates } = args;
     await db.patch("gabinetEmployees", employeeId, { ...updates, updatedAt: Date.now() });
+
+    // --- Upsert primary location ---
+    if (locationId !== undefined) {
+      const existingLocs = await db.query("gabinetEmployeeLocations")
+        .eq("employeeId", employeeId)
+        .eq("isPrimary", true)
+        .collect();
+      for (const loc of existingLocs) {
+        await db.delete("gabinetEmployeeLocations", String(loc._id));
+      }
+      if (locationId) {
+        try {
+          await db.insert("gabinetEmployeeLocations", {
+            organizationId: String(organizationId),
+            employeeId,
+            locationId,
+            isPrimary: true,
+            createdAt: Date.now(),
+          });
+        } catch (e) {
+          console.error("[employees.update] location insert failed:", e);
+        }
+      }
+    }
 
     // --- Delegate post-write side effects ---
     try {

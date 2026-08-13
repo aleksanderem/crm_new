@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { FunctionArgs } from "convex/server";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
@@ -19,6 +20,8 @@ import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import type { TFunction } from "i18next";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
+import { useSupabase } from "@/components/supabase-provider";
+import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 
 export const ROLES = ["doctor", "cosmetologist", "nurse", "therapist", "receptionist", "manager", "admin", "other"] as const;
 
@@ -45,6 +48,25 @@ export function EditEmployeeDrawer({
   setIsSubmitting: (v: boolean) => void;
   t: TFunction;
 }) {
+  const { client, isReady } = useSupabase();
+  const { data: locations } = useSupabaseGabinetLocationsList(String(organizationId));
+
+  const { data: currentLocationId } = useQuery({
+    queryKey: ["gabinet_employee_locations_primary", String(organizationId), employee._id],
+    queryFn: async () => {
+      if (!client) return null;
+      const { data } = await client
+        .from("gabinet_employee_locations")
+        .select("location_id")
+        .eq("organization_id", String(organizationId))
+        .eq("employee_id", employee._id)
+        .eq("is_primary", true)
+        .maybeSingle();
+      return data?.location_id ?? null;
+    },
+    enabled: isReady && !!client,
+  });
+
   const [userId, setUserId] = useState<string>(employee.userId);
   const [firstName, setFirstName] = useState(employee.firstName ?? "");
   const [lastName, setLastName] = useState(employee.lastName ?? "");
@@ -57,6 +79,7 @@ export function EditEmployeeDrawer({
     employee.showInCalendar ?? true,
   );
   const [notes, setNotes] = useState(employee.notes ?? "");
+  const [locationId, setLocationId] = useState<string | null>(null);
 
   // Re-sync form state when drawer opens
   useEffect(() => {
@@ -73,6 +96,13 @@ export function EditEmployeeDrawer({
       setNotes(employee.notes ?? "");
     }
   }, [open, employee]);
+
+  // Sync location separately when query resolves
+  useEffect(() => {
+    if (open && currentLocationId !== undefined) {
+      setLocationId(currentLocationId);
+    }
+  }, [open, currentLocationId]);
 
   // Org members eligible for linking: current user + any user not linked to another employee
   const availableUsers = useMemo(() => {
@@ -105,6 +135,7 @@ export function EditEmployeeDrawer({
         color: color || null,
         showInCalendar,
         notes: notes || null,
+        locationId: locationId ?? null,
       });
       toast.success(t("common.saved"));
       onOpenChange(false);
@@ -239,6 +270,28 @@ export function EditEmployeeDrawer({
             onChange={(val) => setNotes(val ?? "")}
           />
         </div>
+
+        {locations && locations.length > 0 && (
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.employees.location", { defaultValue: "Lokalizacja" })}</Label>
+            <Select
+              value={locationId ?? ""}
+              onValueChange={(v) => setLocationId(v || null)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={t("gabinet.employees.locationPlaceholder", { defaultValue: "Wybierz lokalizację" })} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">{t("gabinet.employees.noLocation", { defaultValue: "Brak lokalizacji" })}</SelectItem>
+                {locations.map((loc) => (
+                  <SelectItem key={loc._id} value={loc._id}>
+                    {loc.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
     </SidePanel>
   );

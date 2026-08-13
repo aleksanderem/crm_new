@@ -3344,6 +3344,7 @@
       "internalNotesPlaceholder": "Dodaj opis",
       "prepayment": "Przedpłata",
       "prepaymentAmount": "Kwota przedpłaty",
+      "prepaymentPaid": "Przedpłata opłacona",
       "prepaymentPending": "Oczekuje na przedpłatę",
       "prepaymentRequired": "Wymagana przedpłata",
       "scheduling": "Harmonogram",

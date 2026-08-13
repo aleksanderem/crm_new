@@ -28,6 +28,17 @@ import { EMPLOYEE_ROLES } from "@/lib/options";
 
 export { EMPLOYEE_ROLES as ROLES };
 
+const COLOR_OPTIONS = [
+  { value: "#3b82f6", label: "Blue" },
+  { value: "#22c55e", label: "Green" },
+  { value: "#ef4444", label: "Red" },
+  { value: "#f59e0b", label: "Yellow" },
+  { value: "#8b5cf6", label: "Purple" },
+  { value: "#ec4899", label: "Pink" },
+  { value: "#f97316", label: "Orange" },
+  { value: "#6b7280", label: "Gray" },
+];
+
 export function EditEmployeeDrawer({
   open,
   onOpenChange,
@@ -383,12 +394,22 @@ export function EditEmployeeDrawer({
         {showInCalendar && (
           <div className="space-y-1.5">
             <Label>{t("gabinet.employees.color")}</Label>
-            <input
-              type="color"
-              className="h-9 w-16 cursor-pointer rounded border bg-transparent"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-            />
+            <div className="flex gap-2">
+              {COLOR_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`h-7 w-7 rounded-full border-2 transition-all ${
+                    color === opt.value
+                      ? "border-foreground scale-110"
+                      : "border-transparent hover:border-muted-foreground/40"
+                  }`}
+                  style={{ backgroundColor: opt.value }}
+                  onClick={() => setColor(color === opt.value ? "" : opt.value)}
+                  title={opt.label}
+                />
+              ))}
+            </div>
           </div>
         )}
 

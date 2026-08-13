@@ -98,7 +98,7 @@ function EmployeeDetail() {
     void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(organizationId) });
     void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.detail(organizationId, employeeId) });
     void queryClient.invalidateQueries({
-      queryKey: ["gabinet_employee_locations_primary", String(organizationId), employeeId],
+      queryKey: supabaseKeys.gabinetEmployeeLocations.detail(organizationId, employeeId),
     });
   };
   const invalidateScheduleCache = () => {
@@ -162,7 +162,7 @@ function EmployeeDetail() {
 
   const { client: supabaseClient, isReady: supabaseReady } = useSupabase();
   const { data: primaryLocationData } = useQuery({
-    queryKey: ["gabinet_employee_locations_primary", String(organizationId), employeeId],
+    queryKey: supabaseKeys.gabinetEmployeeLocations.detail(organizationId, employeeId),
     queryFn: async () => {
       if (!supabaseClient) return null;
       const { data } = await supabaseClient

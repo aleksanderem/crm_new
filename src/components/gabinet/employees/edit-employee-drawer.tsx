@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
 import { useSupabase } from "@/components/supabase-provider";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
+import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { EMPLOYEE_ROLES } from "@/lib/options";
 
 export { EMPLOYEE_ROLES as ROLES };
@@ -53,7 +54,7 @@ export function EditEmployeeDrawer({
   const { data: locations } = useSupabaseGabinetLocationsList(String(organizationId));
 
   const { data: currentPrimaryLocation } = useQuery({
-    queryKey: ["gabinet_employee_locations_primary", String(organizationId), employee._id],
+    queryKey: supabaseKeys.gabinetEmployeeLocations.detail(String(organizationId), employee._id),
     queryFn: async () => {
       if (!client) return null;
       const { data } = await client

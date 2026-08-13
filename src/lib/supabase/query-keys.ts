@@ -75,6 +75,7 @@ export const supabaseKeys = {
   gabinetTreatments: entityKeys("gabinetTreatments"),
   gabinetTreatmentVariants: entityKeys("gabinetTreatmentVariants"),
   gabinetEmployees: entityKeys("gabinetEmployees"),
+  gabinetEmployeeLocations: entityKeys("gabinetEmployeeLocations"),
   gabinetLocations: entityKeys("gabinetLocations"),
   gabinetRooms: entityKeys("gabinetRooms"),
   gabinetEquipment: entityKeys("gabinetEquipment"),

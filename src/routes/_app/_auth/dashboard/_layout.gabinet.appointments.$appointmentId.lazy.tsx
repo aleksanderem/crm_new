@@ -747,6 +747,7 @@ function AppointmentDetail() {
         treatmentId: newTreatmentId,
       });
       toast.success(t("common.saved"));
+      await invalidateAppointmentCaches();
       refetch();
     } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
@@ -1216,6 +1217,7 @@ function AppointmentDetail() {
         <ChangeEmployeeModal
           open={changeEmployeeOpen}
           onOpenChange={setChangeEmployeeOpen}
+          onSuccess={() => refetch()}
           organizationId={organizationId}
           appointmentId={appointmentId as Id<"gabinetAppointments">}
           treatmentIds={

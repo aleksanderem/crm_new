@@ -9,7 +9,7 @@ export interface MappedGabinetEmployee {
   _id: string;
   _creationTime: number;
   organizationId: string;
-  userId: string;
+  userId?: string;
   firstName?: string;
   lastName?: string;
   role: string;

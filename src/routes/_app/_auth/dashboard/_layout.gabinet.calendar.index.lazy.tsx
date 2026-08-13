@@ -1317,7 +1317,7 @@ function GabinetCalendarPage() {
     // Hide employees flagged as not visible in the calendar (issue #1859).
     // Older rows without the column default to true at the DB level, so
     // anything strictly === false is the only thing to exclude.
-    const list = (employees ?? []).filter((e) => e.showInCalendar !== false);
+    const list = (employees ?? []).filter((e) => e.showInCalendar !== false && e.userId);
     return list.map((emp) => {
       const name = getEmployeeName(emp);
       const initials = getEmployeeInitials(name);

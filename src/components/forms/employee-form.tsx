@@ -195,7 +195,7 @@ export function EmployeeForm({
       role,
       specialization: performsServices ? specialization || undefined : undefined,
       licenseNumber: performsServices ? licenseNumber || undefined : undefined,
-      color: showInCalendar ? color || undefined : undefined,
+      color: color || undefined,
       showInCalendar,
       performsServices,
       qualifiedTreatmentIds: performsServices

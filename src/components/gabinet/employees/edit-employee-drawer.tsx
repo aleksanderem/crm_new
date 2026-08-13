@@ -157,7 +157,7 @@ export function EditEmployeeDrawer({
         specialization: performsServices ? specialization || null : undefined,
         licenseNumber: performsServices ? licenseNumber || null : undefined,
         hireDate: hireDate || null,
-        color: showInCalendar ? color || null : null,
+        color: color || null,
         showInCalendar,
         performsServices,
         workScope: workScope ?? null,

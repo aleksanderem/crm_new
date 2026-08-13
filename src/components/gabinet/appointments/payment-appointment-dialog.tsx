@@ -84,7 +84,7 @@ export function PaymentAppointmentDialog({
   onMarkCompleted: () => Promise<void>;
   onSuccess: () => void;
   onCancel: () => void;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

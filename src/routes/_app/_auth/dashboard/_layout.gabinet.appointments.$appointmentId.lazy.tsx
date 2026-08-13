@@ -1059,7 +1059,6 @@ function AppointmentDetail() {
           calculateDuration={calculateDuration}
           getEmployeeName={getEmployeeName}
           getEmployeeInitials={getEmployeeInitials}
-          language={i18n.language}
           t={t}
         />
       ),

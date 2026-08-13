@@ -76,7 +76,6 @@ export function AppointmentDetailsTab({
   calculateDuration,
   getEmployeeName,
   getEmployeeInitials,
-  language,
   t,
 }: {
   appointment: Record<string, unknown>;
@@ -103,8 +102,7 @@ export function AppointmentDetailsTab({
   calculateDuration: () => number;
   getEmployeeName: () => string;
   getEmployeeInitials: () => string;
-  language: string;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   return (
     <div className="space-y-4">

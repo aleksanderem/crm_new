@@ -11,12 +11,6 @@ import { CreditCard, DollarSign, Info, Package, Plus } from "@/lib/ez-icons";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { EmptyState } from "@/components/layout/empty-state";
 
-type JunctionTreatment = {
-  id: string;
-  treatmentId: string;
-  priceAtBooking?: number | null;
-};
-
 type PackageUsageEntry = {
   _id: string;
   packageName?: string | null;
@@ -25,7 +19,6 @@ type PackageUsageEntry = {
 export function AppointmentPaymentsTab({
   appointment,
   payments,
-  junctionTreatments,
   treatmentPrice,
   totalPaid,
   outstanding,
@@ -44,7 +37,6 @@ export function AppointmentPaymentsTab({
 }: {
   appointment: Record<string, unknown>;
   payments: Record<string, unknown>[];
-  junctionTreatments: JunctionTreatment[];
   treatmentPrice: number;
   totalPaid: number;
   outstanding: number;
@@ -59,7 +51,7 @@ export function AppointmentPaymentsTab({
   onRefundPayment: (paymentId: string) => void;
   onDownloadReceipt: (paymentId: string) => void;
   language: string;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   return (
     <div className="space-y-4">

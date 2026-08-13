@@ -75,7 +75,7 @@ export function AppointmentHistoryTab({
   formatDate: (dateStr: string) => string;
   formatTime: (time: string) => string;
   language: string;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   return (
     <div className="space-y-4">

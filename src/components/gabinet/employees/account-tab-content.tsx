@@ -83,9 +83,13 @@ export function AccountTabContent({
             </div>
             <div className="flex items-center justify-between px-4 py-3">
               <span className="text-sm text-muted-foreground">{t("gabinet.employees.accountStatus", "Status konta")}</span>
-              <Badge variant={employee.isActive ? "default" : "secondary"}>
-                {employee.isActive ? t("gabinet.employees.accountActive", "Aktywny") : t("gabinet.employees.accountInactive", "Nieaktywny")}
-              </Badge>
+              {employee.isActive ? (
+                <Badge variant="default">{t("gabinet.employees.statusActive", "Konto aktywne")}</Badge>
+              ) : employee.userId ? (
+                <Badge variant="destructive">{t("gabinet.employees.statusBlocked", "Konto zablokowane")}</Badge>
+              ) : (
+                <Badge variant="secondary">{t("gabinet.employees.statusInactive", "Konto nieaktywne")}</Badge>
+              )}
             </div>
           </div>
         </div>

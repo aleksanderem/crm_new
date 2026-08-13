@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { z } from "zod";
@@ -335,7 +334,7 @@ function PasswordForm({ onBack, onForgotPassword }: { onBack: () => void; onForg
                   onClick={() => setIsVisible((prev) => !prev)}
                   className="text-muted-foreground absolute inset-y-0 right-0 rounded-l-none hover:bg-transparent"
                 >
-                  {isVisible ? <EyeOffIcon className="h-4 w-4" variant="stroke" /> : <EyeIcon className="h-4 w-4" variant="stroke" />}
+                  {isVisible ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
                 </Button>
               </div>
               {field.state.meta?.errors.length > 0 && (
@@ -772,7 +771,7 @@ function ResetPasswordForm({
                   onClick={() => setIsPasswordVisible((prev) => !prev)}
                   className="text-muted-foreground absolute inset-y-0 right-0 rounded-l-none hover:bg-transparent"
                 >
-                  {isPasswordVisible ? <EyeOffIcon className="h-4 w-4" variant="stroke" /> : <EyeIcon className="h-4 w-4" variant="stroke" />}
+                  {isPasswordVisible ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
                 </Button>
               </div>
               {field.state.meta?.errors.length > 0 && (
@@ -806,7 +805,7 @@ function ResetPasswordForm({
                   onClick={() => setIsConfirmVisible((prev) => !prev)}
                   className="text-muted-foreground absolute inset-y-0 right-0 rounded-l-none hover:bg-transparent"
                 >
-                  {isConfirmVisible ? <EyeOffIcon className="h-4 w-4" variant="stroke" /> : <EyeIcon className="h-4 w-4" variant="stroke" />}
+                  {isConfirmVisible ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
                 </Button>
               </div>
               {field.state.meta?.errors.length > 0 && (

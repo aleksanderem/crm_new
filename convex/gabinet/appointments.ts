@@ -1760,6 +1760,8 @@ export const update = action({
         ? [{ treatmentId: args.treatmentId, variantId: args.variantId ?? undefined }]
         : null;
 
+    let newPrimaryTreatmentName: string | null = null;
+
     if (updatesTreatmentList !== null) {
       const existingJunctionRows = await db
         .query("gabinetAppointmentTreatments")
@@ -1772,6 +1774,9 @@ export const update = action({
       for (let i = 0; i < updatesTreatmentList.length; i++) {
         const t = updatesTreatmentList[i];
         const newTreatment = (await db.get("gabinetTreatments", t.treatmentId)) as GabinetTreatmentRow | null;
+        if (i === 0) {
+          newPrimaryTreatmentName = (newTreatment?.name as string | null) ?? null;
+        }
         let tPrice: number | null = (newTreatment?.price as number | undefined) ?? null;
         const effectiveVariantId = t.variantId ?? null;
         if (effectiveVariantId) {
@@ -1807,6 +1812,8 @@ export const update = action({
     const scheduledActivityIdStr = (appt.scheduledActivityId as string) ?? undefined;
     const dateChanged = !!(args.date || args.startTime || args.endTime);
     const employeeChanged = !!args.employeeId;
+    const newStatus = status ?? (appt.status as string);
+    const isTerminal = newStatus === "completed" || newStatus === "cancelled" || newStatus === "no_show";
     if (scheduledActivityIdStr) {
       try {
         const actPatch: Record<string, unknown> = { updatedAt: now };
@@ -1816,6 +1823,17 @@ export const update = action({
         }
         if (employeeChanged) {
           actPatch.resourceId = newEmployee;
+        }
+        if (isTerminal) {
+          actPatch.isCompleted = true;
+          actPatch.completedAt = now;
+        }
+        if (newPrimaryTreatmentName !== null) {
+          const patientRow = await db.get("gabinetPatients", appt.patientId as string);
+          const pName = patientRow
+            ? `${(patientRow.firstName as string) ?? ""}${patientRow.lastName ? " " + (patientRow.lastName as string) : ""}`
+            : "Patient";
+          actPatch.title = `${newPrimaryTreatmentName} — ${pName}`;
         }
         if (Object.keys(actPatch).length > 1) {
           await db.patch("scheduledActivities", scheduledActivityIdStr, actPatch);
@@ -3259,6 +3277,20 @@ export const cancelRecurringSeries = action({
         cancellationReason: "Series cancelled",
         updatedAt: now,
       });
+
+      // Mark linked scheduledActivity as completed so it no longer shows as active
+      const recurScheduledActivityId = (appt.scheduledActivityId as string) ?? undefined;
+      if (recurScheduledActivityId) {
+        try {
+          await db.patch("scheduledActivities", recurScheduledActivityId, {
+            isCompleted: true,
+            completedAt: now,
+            updatedAt: now,
+          });
+        } catch (e) {
+          console.warn("[cancelRecurringSeries] scheduledActivity patch failed (non-fatal):", e);
+        }
+      }
 
       count++;
     }

@@ -487,7 +487,9 @@ function EmployeeDetail() {
       </Badge>
       {!employee.isActive && (
         <Badge variant="outline" className="text-muted-foreground">
-          {t("common.inactive")}
+          {employee.userId
+            ? t("gabinet.employees.statusBlocked", "Konto zablokowane")
+            : t("gabinet.employees.statusInactive", "Konto nieaktywne")}
         </Badge>
       )}
     </div>

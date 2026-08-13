@@ -245,7 +245,9 @@ function EmployeesIndex() {
             </div>
             {!item.isActive && (
               <Badge variant="outline" className="text-xs text-muted-foreground">
-                {t("common.inactive")}
+                {item.userId
+                  ? t("gabinet.employees.statusBlocked", "Konto zablokowane")
+                  : t("gabinet.employees.statusInactive", "Konto nieaktywne")}
               </Badge>
             )}
           </div>
@@ -620,8 +622,8 @@ function EmployeesIndex() {
                   )}
                   <Badge variant="outline" className="text-xs shrink-0">
                     {isExpired
-                      ? t("gabinet.employees.invitationExpired", "Wygasło")
-                      : t("gabinet.employees.pendingAcceptance", { defaultValue: "Oczekuje na akceptację" })}
+                      ? t("gabinet.employees.statusInvitationExpired", "Zaproszenie wygasło")
+                      : t("gabinet.employees.statusInvitationPending", "Zaproszenie wysłane — oczekuje na akceptację")}
                   </Badge>
                   <Button
                     size="sm"

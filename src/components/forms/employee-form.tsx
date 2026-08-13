@@ -564,38 +564,53 @@ export function EmployeeForm({
         <div className="space-y-1.5">
           <Label>{t("gabinet.employees.accessMethod", { defaultValue: "Sposób aktywacji konta" })}</Label>
           <div className="flex flex-col gap-1.5">
-            <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+            <label className="flex cursor-pointer items-start gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
               <input
                 type="radio"
                 name="accessMode"
                 value="invite"
                 checked={accessMode === "invite"}
                 onChange={() => setAccessMode("invite")}
-                className="accent-primary"
+                className="accent-primary mt-0.5"
               />
-              {t("gabinet.employees.accessModeInvite", { defaultValue: "Wyślij zaproszenie e-mailem" })}
+              <span className="flex flex-col gap-0.5">
+                <span>{t("gabinet.employees.accessModeInvite", { defaultValue: "Wyślij zaproszenie e-mailem" })}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t("gabinet.employees.accessModeInviteDesc", { defaultValue: "Pracownik otrzyma link aktywacyjny na wskazany adres e-mail." })}
+                </span>
+              </span>
             </label>
-            <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+            <label className="flex cursor-pointer items-start gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
               <input
                 type="radio"
                 name="accessMode"
                 value="password"
                 checked={accessMode === "password"}
                 onChange={() => setAccessMode("password")}
-                className="accent-primary"
+                className="accent-primary mt-0.5"
               />
-              {t("gabinet.employees.accessModePassword", { defaultValue: "Utwórz hasło jednorazowe" })}
+              <span className="flex flex-col gap-0.5">
+                <span>{t("gabinet.employees.accessModePassword", { defaultValue: "Utwórz hasło jednorazowe" })}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t("gabinet.employees.accessModePasswordDesc", { defaultValue: "Administrator ustawia hasło i przekazuje je pracownikowi bezpośrednio." })}
+                </span>
+              </span>
             </label>
-            <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+            <label className="flex cursor-pointer items-start gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
               <input
                 type="radio"
                 name="accessMode"
                 value="inactive"
                 checked={accessMode === "inactive"}
                 onChange={() => setAccessMode("inactive")}
-                className="accent-primary"
+                className="accent-primary mt-0.5"
               />
-              {t("gabinet.employees.accessModeInactive", { defaultValue: "Utwórz konto jako nieaktywne" })}
+              <span className="flex flex-col gap-0.5">
+                <span>{t("gabinet.employees.accessModeInactive", { defaultValue: "Utwórz konto jako nieaktywne" })}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t("gabinet.employees.accessModeInactiveDesc", { defaultValue: "Pracownik zostanie dodany bez dostępu do systemu — konto można aktywować później." })}
+                </span>
+              </span>
             </label>
           </div>
         </div>

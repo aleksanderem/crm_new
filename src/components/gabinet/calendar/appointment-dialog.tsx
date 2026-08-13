@@ -6,7 +6,7 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
@@ -547,12 +547,19 @@ export function AppointmentDialog({
   const [nowDate, nowTimeFull] = _nowInClinic.split(" ");
   const nowTime = nowTimeFull.slice(0, 5);
 
-  // Variants query — load variants for the selected treatment
-  const { data: variants } = useQuery({
-    queryKey: ["gabinet.treatments.listVariants", organizationId, treatmentId],
-    queryFn: () => listVariantsAction({ organizationId, treatmentId }),
-    enabled: !!organizationId && !!treatmentId,
-  }) as { data: any[] | undefined };
+  // Variants queries — one per selected treatment so the reduce can honour
+  // per-treatment variantId values even when multi-treatment mode gains a
+  // variant picker (issue #4502).
+  const variantQueryResults = useQueries({
+    queries: selectedTreatments.map((t) => ({
+      queryKey: ["gabinet.treatments.listVariants", organizationId, t.treatmentId],
+      queryFn: () => listVariantsAction({ organizationId, treatmentId: t.treatmentId }),
+      enabled: !!organizationId && !!t.treatmentId,
+    })),
+  });
+
+  // Variants for the primary treatment (backward-compat for single-treatment UI).
+  const variants = variantQueryResults[0]?.data as any[] | undefined;
 
   const selectedVariant = useMemo(
     () => variants?.find((v) => v._id === variantId),
@@ -567,10 +574,16 @@ export function AppointmentDialog({
       return selectedVariant?.resolvedDuration ?? selectedTreatment?.duration ?? 30;
     }
     return selectedTreatments.reduce((sum, t) => {
+      if (t.variantId) {
+        for (const q of variantQueryResults) {
+          const variant = (q.data as any[] | undefined)?.find((v: any) => v._id === t.variantId);
+          if (variant) return sum + variant.resolvedDuration;
+        }
+      }
       const tr = treatments?.find((tr) => tr._id === t.treatmentId);
       return sum + (tr?.duration ?? 30);
     }, 0);
-  }, [selectedTreatments, selectedVariant, selectedTreatment, treatments]);
+  }, [selectedTreatments, selectedVariant, selectedTreatment, treatments, variantQueryResults]);
 
   // Available slots — action reading from Supabase
   const getAvailableSlots = useAction(api.gabinet.appointments.getAvailableSlotsQuery);

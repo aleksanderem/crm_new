@@ -6,11 +6,11 @@ import type { MappedInvitation } from "@/lib/supabase/mappers";
 import { ChangePasswordDialog } from "./change-password-dialog";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
+import { usePermission } from "@/hooks/use-permission";
 
 export function AccountTabContent({
   employee,
   userEmail,
-  role,
   onChangePassword,
   onEditEmployee,
   onDeactivate,
@@ -21,7 +21,6 @@ export function AccountTabContent({
 }: {
   employee: MappedGabinetEmployee;
   userEmail?: string | null;
-  role?: string | null;
   onChangePassword: (newPassword: string) => Promise<void>;
   onEditEmployee: () => void;
   onDeactivate: () => void;
@@ -30,6 +29,7 @@ export function AccountTabContent({
   onResendInvitation?: () => Promise<void>;
   t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
+  const { allowed: canEdit } = usePermission("gabinet_employees", "edit");
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -106,7 +106,7 @@ export function AccountTabContent({
           </div>
         </div>
 
-        {(role === "admin" || role === "owner") && (
+        {canEdit && (
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
               {t("gabinet.employees.adminActions", "Akcje administracyjne")}

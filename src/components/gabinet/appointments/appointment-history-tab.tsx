@@ -19,7 +19,10 @@ import {
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { EmptyState } from "@/components/layout/empty-state";
 import { ActivityFeed } from "@/components/crm/activity-feed";
-import { activitiesToFeedEntries } from "@/components/crm/activity-feed-adapter";
+import {
+  activitiesToFeedEntries,
+  type MappedActivityLike,
+} from "@/components/crm/activity-feed-adapter";
 import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
 import { Link } from "@tanstack/react-router";
 
@@ -63,7 +66,7 @@ export function AppointmentHistoryTab({
   language,
   t,
 }: {
-  mergedTimeline: unknown[];
+  mergedTimeline: MappedActivityLike[];
   patientHistory: HistoryAppointment[];
   patientPackageUsage: PackageUsageEntry[];
   loyaltyBalance: number;
@@ -94,7 +97,7 @@ export function AppointmentHistoryTab({
         </CardHeader>
         <CardContent className="px-6 py-4">
           <ActivityFeed
-            entries={activitiesToFeedEntries(mergedTimeline as any[], t)}
+            entries={activitiesToFeedEntries(mergedTimeline, t)}
             maxHeight="400px"
           />
         </CardContent>

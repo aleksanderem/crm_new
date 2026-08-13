@@ -1108,7 +1108,12 @@ export const _finalisePasswordUser = internalAction({
     const user = await ctx.runQuery(internal.gabinet.employees._getConvexUser, {
       userId: args.userId,
     });
-    if (!user) throw new Error("User not found after account creation");
+    if (!user)
+      throw new Error(
+        `Convex user record missing for userId=${args.userId} (email=${args.email}). ` +
+          "The account may have been provisioned outside the Convex auth flow " +
+          "(e.g. direct Supabase insert). Use the employee-linking path for existing org members.",
+      );
 
     let effectiveUsername = user.username ?? undefined;
     if (!user.username) {

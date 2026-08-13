@@ -181,7 +181,7 @@ export const create = action({
     categoryId: v.optional(v.union(v.string(), v.null())),
     customFields: v.optional(v.array(v.any())),
     locationId: v.optional(v.string()),
-    locationRole: v.optional(v.string()),
+    locationRole: v.optional(gabinetEmployeeRoleValidator),
   },
   handler: async (ctx, args) => {
     try {
@@ -1218,7 +1218,7 @@ export const createWithPassword = action({
     categoryId: v.optional(v.string()),
     customFields: v.optional(v.array(v.any())),
     locationId: v.optional(v.string()),
-    locationRole: v.optional(v.string()),
+    locationRole: v.optional(gabinetEmployeeRoleValidator),
   },
   handler: async (ctx, args) => {
     if (args.password.length < 8) {
@@ -1473,7 +1473,7 @@ export const createForExistingMember = action({
     categoryId: v.optional(v.string()),
     customFields: v.optional(v.array(v.any())),
     locationId: v.optional(v.string()),
-    locationRole: v.optional(v.string()),
+    locationRole: v.optional(gabinetEmployeeRoleValidator),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runAction(

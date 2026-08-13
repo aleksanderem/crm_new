@@ -121,6 +121,7 @@
  *   • 00114_audit_log_nullable_user_id.sql
  *   • 00115_leads_created_at_idx.sql
  *   • 00116_lead_stage_history.sql
+ *   • 00117_gabinet_employees_performs_services.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -4118,6 +4119,7 @@ export interface Database {
           created_at: number;
           updated_at: number;
           show_in_calendar: boolean;
+          performs_services: boolean;
           assigned_items: unknown | null;
           bio: string | null;
           avatar_url: string | null;
@@ -4157,6 +4159,7 @@ export interface Database {
           created_at: number;
           updated_at: number;
           show_in_calendar?: boolean;
+          performs_services?: boolean;
           assigned_items?: unknown | null;
           bio?: string | null;
           avatar_url?: string | null;
@@ -4196,6 +4199,7 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
           show_in_calendar?: boolean;
+          performs_services?: boolean;
           assigned_items?: unknown | null;
           bio?: string | null;
           avatar_url?: string | null;

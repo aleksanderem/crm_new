@@ -43,6 +43,7 @@ export interface MappedGabinetEmployee {
   commissionPercent?: number;
   bankAccount?: string;
   showInCalendar?: boolean;
+  performsServices?: boolean;
   tagIds?: string[];
   categoryId?: string;
   bio?: string;

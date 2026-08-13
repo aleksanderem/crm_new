@@ -82,6 +82,15 @@ interface EmployeeFormProps {
   categoryDefinitions?: CategoryDef[];
 }
 
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <div className="space-y-1.5 pt-1">
+      <Separator />
+      <p className="text-sm font-medium text-muted-foreground pt-1">{title}</p>
+    </div>
+  );
+}
+
 export function EmployeeForm({
   initialData,
   onSubmit,
@@ -211,7 +220,8 @@ export function EmployeeForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {/* Name fields */}
+
+      {/* ── 1. Dane podstawowe ── */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label>{t("gabinet.employees.firstName")}</Label>
@@ -231,7 +241,6 @@ export function EmployeeForm({
         </div>
       </div>
 
-      {/* Role */}
       <div className="space-y-1.5">
         <Label>
           {t("gabinet.employees.role")} <span className="text-destructive">*</span>
@@ -250,7 +259,59 @@ export function EmployeeForm({
         </Select>
       </div>
 
-      {/* Performs services */}
+      {/* ── 2. Gabinety i lokalizacje ── */}
+      {locations && locations.length > 0 && (
+        <>
+          <SectionHeader title={t("gabinet.employees.officesAndLocations", { defaultValue: "Gabinety i lokalizacje" })} />
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.employees.location", { defaultValue: "Lokalizacja" })}</Label>
+            <Select
+              value={locationId ?? ""}
+              onValueChange={(v) => {
+                setLocationId(v || undefined);
+                if (!v) setLocationRole(undefined);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={t("gabinet.employees.locationPlaceholder", { defaultValue: "Wybierz lokalizację" })} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">{t("gabinet.employees.noLocation", { defaultValue: "Brak lokalizacji" })}</SelectItem>
+                {locations.map((loc) => (
+                  <SelectItem key={loc._id} value={loc._id}>
+                    {loc.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {locationId && (
+            <div className="space-y-1.5">
+              <Label>{t("gabinet.employees.locationRole", { defaultValue: "Rola w tej lokalizacji (opcjonalne nadpisanie)" })}</Label>
+              <Select
+                value={locationRole ?? ""}
+                onValueChange={(v) => setLocationRole(v ? (v as GabinetEmployeeRole) : undefined)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("gabinet.employees.locationRolePlaceholder", { defaultValue: "Taka sama jak rola główna" })} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">{t("gabinet.employees.locationRoleNone", { defaultValue: "Taka sama jak rola główna" })}</SelectItem>
+                  {EMPLOYEE_ROLES.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {t(`gabinet.employees.roles.${r}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── 3. Zakres pracy i dostępu ── */}
+      <SectionHeader title={t("gabinet.employees.workAndAccessScope", { defaultValue: "Zakres pracy i dostępu" })} />
+
       <div className="space-y-1.5">
         <label className="flex items-start gap-3 cursor-pointer">
           <Checkbox
@@ -269,7 +330,6 @@ export function EmployeeForm({
         </label>
       </div>
 
-      {/* Show in calendar */}
       <div className="space-y-1.5">
         <label className="flex items-start gap-3 cursor-pointer">
           <Checkbox
@@ -288,9 +348,33 @@ export function EmployeeForm({
         </label>
       </div>
 
-      {/* Calendar settings — color, conditional on showInCalendar */}
+      {/* ── 4. Wykonywanie usług (conditional on performsServices) ── */}
+      {performsServices && (
+        <>
+          <SectionHeader title={t("gabinet.employees.performingServicesSection", { defaultValue: "Wykonywanie usług" })} />
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.employees.specialization")}</Label>
+            <Input
+              value={specialization}
+              onChange={(e) => setSpecialization(e.target.value)}
+              placeholder={t("gabinet.employees.specializationPlaceholder")}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.employees.license")}</Label>
+            <Input
+              value={licenseNumber}
+              onChange={(e) => setLicenseNumber(e.target.value)}
+              placeholder={t("gabinet.employees.licensePlaceholder")}
+            />
+          </div>
+        </>
+      )}
+
+      {/* ── 5. Kalendarz (conditional on showInCalendar) ── */}
       {showInCalendar && (
-        <div className="space-y-4 pl-8">
+        <>
+          <SectionHeader title={t("gabinet.employees.calendarSection", { defaultValue: "Kalendarz" })} />
           <div className="space-y-2">
             <Label>{t("gabinet.employees.color")}</Label>
             <div className="flex gap-2">
@@ -310,29 +394,14 @@ export function EmployeeForm({
               ))}
             </div>
           </div>
-        </div>
+        </>
       )}
 
-      {/* Service fields — conditional on performsServices */}
+      {/* ── 6. Kwalifikacje ── */}
+      <SectionHeader title={t("gabinet.employees.qualificationsSection", { defaultValue: "Kwalifikacje" })} />
+
       {performsServices && (
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.employees.specialization")}</Label>
-            <Input
-              value={specialization}
-              onChange={(e) => setSpecialization(e.target.value)}
-              placeholder={t("gabinet.employees.specializationPlaceholder")}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.employees.license")}</Label>
-            <Input
-              value={licenseNumber}
-              onChange={(e) => setLicenseNumber(e.target.value)}
-              placeholder={t("gabinet.employees.licensePlaceholder")}
-            />
-          </div>
-          <div className="space-y-2">
+        <div className="space-y-2">
           <Label>{t("gabinet.employees.qualifiedTreatments")}</Label>
           {treatments && treatments.length > 0 && (
             <div className="relative">
@@ -410,73 +479,17 @@ export function EmployeeForm({
               {t("gabinet.employees.selectedTreatments", { count: selectedTreatments.length })}
             </p>
           )}
-          </div>
-        </div>
-      )}
-
-      {/* Offices & Locations — separate section, not gated by showInCalendar */}
-      {locations && locations.length > 0 && (
-        <div className="space-y-4 pt-2">
-          <div className="space-y-1.5">
-            <Separator />
-            <p className="text-sm font-medium text-muted-foreground pt-1">
-              {t("gabinet.employees.officesAndLocations", { defaultValue: "Gabinety i lokalizacje" })}
-            </p>
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.employees.location", { defaultValue: "Lokalizacja" })}</Label>
-            <Select
-              value={locationId ?? ""}
-              onValueChange={(v) => {
-                setLocationId(v || undefined);
-                if (!v) setLocationRole(undefined);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={t("gabinet.employees.locationPlaceholder", { defaultValue: "Wybierz lokalizację" })} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">{t("gabinet.employees.noLocation", { defaultValue: "Brak lokalizacji" })}</SelectItem>
-                {locations.map((loc) => (
-                  <SelectItem key={loc._id} value={loc._id}>
-                    {loc.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {locationId && (
-            <div className="space-y-1.5">
-              <Label>{t("gabinet.employees.locationRole", { defaultValue: "Rola w tej lokalizacji (opcjonalne nadpisanie)" })}</Label>
-              <Select
-                value={locationRole ?? ""}
-                onValueChange={(v) => setLocationRole(v ? (v as GabinetEmployeeRole) : undefined)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t("gabinet.employees.locationRolePlaceholder", { defaultValue: "Taka sama jak rola główna" })} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">{t("gabinet.employees.locationRoleNone", { defaultValue: "Taka sama jak rola główna" })}</SelectItem>
-                  {EMPLOYEE_ROLES.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {t(`gabinet.employees.roles.${r}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
       )}
 
       {tagDefinitions.length > 0 && (
-        <div className="space-y-1.5 sm:col-span-2">
+        <div className="space-y-1.5">
           <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
           <TagsPicker tags={tagDefinitions} selectedIds={tagIds} onChange={setTagIds} />
         </div>
       )}
       {organizationId && (
-        <div className="space-y-1.5 sm:col-span-2">
+        <div className="space-y-1.5">
           <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
           <CategoryPicker
             categories={categoryDefinitions}
@@ -489,7 +502,7 @@ export function EmployeeForm({
       )}
 
       {customFieldDefs && customFieldDefs.length > 0 && (
-        <div className="space-y-2 pt-2 border-t">
+        <div className="space-y-2">
           <CustomFieldFormSection
             definitions={customFieldDefs as any}
             values={customFieldValues}
@@ -500,165 +513,163 @@ export function EmployeeForm({
         </div>
       )}
 
-      {/* System access */}
-      <div className="space-y-2 rounded-md border p-4">
-        <p className="text-sm font-medium">
-          {t("gabinet.employees.systemAccess", { defaultValue: "Dostęp do systemu" })}
-        </p>
+      {/* ── 7. Aktywacja konta ── */}
+      <SectionHeader title={t("gabinet.employees.accountActivationSection", { defaultValue: "Aktywacja konta" })} />
 
-        <div className="space-y-3">
-            {/* Access mode toggle */}
-            <div className="space-y-1.5">
-              <Label>{t("gabinet.employees.accessMethod", { defaultValue: "Sposób aktywacji konta" })}</Label>
-              <div className="flex flex-col gap-1.5">
-                <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
-                  <input
-                    type="radio"
-                    name="accessMode"
-                    value="invite"
-                    checked={accessMode === "invite"}
-                    onChange={() => setAccessMode("invite")}
-                    className="accent-primary"
-                  />
-                  {t("gabinet.employees.accessModeInvite", { defaultValue: "Wyślij zaproszenie e-mailem" })}
-                </label>
-                <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
-                  <input
-                    type="radio"
-                    name="accessMode"
-                    value="password"
-                    checked={accessMode === "password"}
-                    onChange={() => setAccessMode("password")}
-                    className="accent-primary"
-                  />
-                  {t("gabinet.employees.accessModePassword", { defaultValue: "Utwórz hasło jednorazowe" })}
-                </label>
-                <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
-                  <input
-                    type="radio"
-                    name="accessMode"
-                    value="inactive"
-                    checked={accessMode === "inactive"}
-                    onChange={() => setAccessMode("inactive")}
-                    className="accent-primary"
-                  />
-                  {t("gabinet.employees.accessModeInactive", { defaultValue: "Utwórz konto jako nieaktywne" })}
-                </label>
-              </div>
-            </div>
-
-            {accessMode !== "inactive" && (
-            <div className="space-y-1.5">
-              <Label>
-                {t("gabinet.employees.accessEmail", { defaultValue: "Adres e-mail" })} <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                type="email"
-                value={accessEmail}
-                onChange={(e) => setAccessEmail(e.target.value)}
-                placeholder={t("gabinet.employees.accessEmailPlaceholder", { defaultValue: "np. jan.kowalski@firma.pl" })}
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <Label>{t("gabinet.employees.accessMethod", { defaultValue: "Sposób aktywacji konta" })}</Label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+              <input
+                type="radio"
+                name="accessMode"
+                value="invite"
+                checked={accessMode === "invite"}
+                onChange={() => setAccessMode("invite")}
+                className="accent-primary"
               />
-            </div>
-            )}
-            {accessMode !== "inactive" && (
+              {t("gabinet.employees.accessModeInvite", { defaultValue: "Wyślij zaproszenie e-mailem" })}
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+              <input
+                type="radio"
+                name="accessMode"
+                value="password"
+                checked={accessMode === "password"}
+                onChange={() => setAccessMode("password")}
+                className="accent-primary"
+              />
+              {t("gabinet.employees.accessModePassword", { defaultValue: "Utwórz hasło jednorazowe" })}
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+              <input
+                type="radio"
+                name="accessMode"
+                value="inactive"
+                checked={accessMode === "inactive"}
+                onChange={() => setAccessMode("inactive")}
+                className="accent-primary"
+              />
+              {t("gabinet.employees.accessModeInactive", { defaultValue: "Utwórz konto jako nieaktywne" })}
+            </label>
+          </div>
+        </div>
+
+        {accessMode !== "inactive" && (
+          <div className="space-y-1.5">
+            <Label>
+              {t("gabinet.employees.accessEmail", { defaultValue: "Adres e-mail" })} <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              type="email"
+              value={accessEmail}
+              onChange={(e) => setAccessEmail(e.target.value)}
+              placeholder={t("gabinet.employees.accessEmailPlaceholder", { defaultValue: "np. jan.kowalski@firma.pl" })}
+            />
+          </div>
+        )}
+
+        {accessMode === "password" && (
+          <div className="space-y-3 pt-1">
             <div className="space-y-1.5">
               <Label>
-                {t("gabinet.employees.accessRole", { defaultValue: "Rola dostępu" })} <span className="text-destructive">*</span>
+                {t("gabinet.employees.password", { defaultValue: "Hasło" })} <span className="text-destructive">*</span>
               </Label>
-              <Select value={accessRole} onValueChange={(v) => setAccessRole(v as "admin" | "member" | "viewer")}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">
-                    {t("gabinet.employees.accessRoles.admin", { defaultValue: "Administrator" })}
-                  </SelectItem>
-                  <SelectItem value="member">
-                    {t("gabinet.employees.accessRoles.member", { defaultValue: "Pracownik" })}
-                  </SelectItem>
-                  <SelectItem value="viewer">
-                    {t("gabinet.employees.accessRoles.viewer", { defaultValue: "Tylko podgląd" })}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            )}
-
-            {/* Password fields — only shown in manual password mode */}
-            {accessMode === "password" && (
-              <div className="space-y-3 pt-1">
-                <div className="space-y-1.5">
-                  <Label>
-                    {t("gabinet.employees.password", { defaultValue: "Hasło" })} <span className="text-destructive">*</span>
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      autoComplete="new-password"
-                      className="pr-9"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      aria-label={showPassword ? t("common.hidePassword", { defaultValue: "Ukryj hasło" }) : t("common.showPassword", { defaultValue: "Pokaż hasło" })}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <Eye className="h-4 w-4" variant="stroke" />
-                      {showPassword && (
-                        <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                          <span className="block h-px w-4 rotate-45 bg-current" />
-                        </span>
-                      )}
-                    </button>
-                  </div>
-                  {passwordError && (
-                    <p className="text-xs text-destructive">{passwordError}</p>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  className="pr-9"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? t("common.hidePassword", { defaultValue: "Ukryj hasło" }) : t("common.showPassword", { defaultValue: "Pokaż hasło" })}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <Eye className="h-4 w-4" variant="stroke" />
+                  {showPassword && (
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      <span className="block h-px w-4 rotate-45 bg-current" />
+                    </span>
                   )}
-                  {!passwordError && (
-                    <p className="text-xs text-muted-foreground">
-                      {t("gabinet.employees.passwordHint", { defaultValue: "Min. 8 znaków, 1 wielka litera, 1 cyfra." })}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  <Label>
-                    {t("gabinet.employees.confirmPassword", { defaultValue: "Powtórz hasło" })} <span className="text-destructive">*</span>
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="••••••••"
-                      autoComplete="new-password"
-                      className="pr-9"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword((v) => !v)}
-                      aria-label={showConfirmPassword ? t("common.hidePassword", { defaultValue: "Ukryj hasło" }) : t("common.showPassword", { defaultValue: "Pokaż hasło" })}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <Eye className="h-4 w-4" variant="stroke" />
-                      {showConfirmPassword && (
-                        <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                          <span className="block h-px w-4 rotate-45 bg-current" />
-                        </span>
-                      )}
-                    </button>
-                  </div>
-                  {confirmPasswordError && (
-                    <p className="text-xs text-destructive">{confirmPasswordError}</p>
-                  )}
-                </div>
+                </button>
               </div>
-            )}
-
-        </div>
+              {passwordError && (
+                <p className="text-xs text-destructive">{passwordError}</p>
+              )}
+              {!passwordError && (
+                <p className="text-xs text-muted-foreground">
+                  {t("gabinet.employees.passwordHint", { defaultValue: "Min. 8 znaków, 1 wielka litera, 1 cyfra." })}
+                </p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label>
+                {t("gabinet.employees.confirmPassword", { defaultValue: "Powtórz hasło" })} <span className="text-destructive">*</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  className="pr-9"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  aria-label={showConfirmPassword ? t("common.hidePassword", { defaultValue: "Ukryj hasło" }) : t("common.showPassword", { defaultValue: "Pokaż hasło" })}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <Eye className="h-4 w-4" variant="stroke" />
+                  {showConfirmPassword && (
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      <span className="block h-px w-4 rotate-45 bg-current" />
+                    </span>
+                  )}
+                </button>
+              </div>
+              {confirmPasswordError && (
+                <p className="text-xs text-destructive">{confirmPasswordError}</p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* ── 8. Uprawnienia ── */}
+      {accessMode !== "inactive" && (
+        <>
+          <SectionHeader title={t("gabinet.employees.permissionsSection", { defaultValue: "Uprawnienia" })} />
+          <div className="space-y-1.5">
+            <Label>
+              {t("gabinet.employees.accessRole", { defaultValue: "Rola dostępu" })} <span className="text-destructive">*</span>
+            </Label>
+            <Select value={accessRole} onValueChange={(v) => setAccessRole(v as "admin" | "member" | "viewer")}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">
+                  {t("gabinet.employees.accessRoles.admin", { defaultValue: "Administrator" })}
+                </SelectItem>
+                <SelectItem value="member">
+                  {t("gabinet.employees.accessRoles.member", { defaultValue: "Pracownik" })}
+                </SelectItem>
+                <SelectItem value="viewer">
+                  {t("gabinet.employees.accessRoles.viewer", { defaultValue: "Tylko podgląd" })}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </>
+      )}
 
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="outline" onClick={onCancel}>

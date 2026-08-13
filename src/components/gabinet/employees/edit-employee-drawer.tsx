@@ -68,7 +68,7 @@ export function EditEmployeeDrawer({
     enabled: isReady && !!client,
   });
 
-  const [userId, setUserId] = useState<string>(employee.userId);
+  const [userId, setUserId] = useState<string | undefined>(employee.userId);
   const [firstName, setFirstName] = useState(employee.firstName ?? "");
   const [lastName, setLastName] = useState(employee.lastName ?? "");
   const [role, setRole] = useState<GabinetEmployeeRole>(employee.role as GabinetEmployeeRole);

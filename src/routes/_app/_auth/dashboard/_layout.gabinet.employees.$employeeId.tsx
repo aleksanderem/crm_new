@@ -334,7 +334,7 @@ function EmployeeDetail() {
 
   // --- Derived data (used in both layout props and tab content) ---
 
-  const user = employee ? userMap.get(employee.userId) : undefined;
+  const user = employee?.userId ? userMap.get(employee.userId) : undefined;
   const fullName = employee
     ? (employee.firstName || employee.lastName
         ? `${employee.firstName ?? ""} ${employee.lastName ?? ""}`.trim()

@@ -41,6 +41,8 @@ type TreatmentListItem = {
 type JunctionTreatment = {
   id: string;
   treatmentId: string;
+  variantId?: string | null;
+  variantName?: string | null;
   priceAtBooking?: number | null;
 };
 
@@ -128,7 +130,12 @@ export function AppointmentDetailsTab({
                 >
                   <div className="flex items-center gap-2">
                     <Stethoscope className="h-4 w-4 shrink-0 text-primary" />
-                    <span className="text-sm font-medium">{name}</span>
+                    <div>
+                      <span className="text-sm font-medium">{name}</span>
+                      {jt.variantName && (
+                        <span className="block text-xs text-muted-foreground">{jt.variantName}</span>
+                      )}
+                    </div>
                   </div>
                   {price != null && (
                     <span className="text-sm text-muted-foreground">
@@ -182,17 +189,30 @@ export function AppointmentDetailsTab({
                   searchPlaceholder={t("gabinet.appointments.searchTreatment")}
                   emptyText={t("common.noResults")}
                   closeLabel={t("common.close")}
-                  selectedLabel={treatment?.name as string | undefined}
+                  selectedLabel={
+                    junctionTreatments[0]?.variantName
+                      ? `${(treatment?.name as string | undefined) ?? ""} — ${junctionTreatments[0].variantName}`
+                      : (treatment?.name as string | undefined)
+                  }
                   triggerIcon={
                     <Stethoscope className="size-4 shrink-0 text-primary" />
                   }
                   disabled={isSavingTreatment}
                 />
               ) : (
-                <span className="flex items-center gap-2 text-sm font-medium">
+                <div className="flex items-center gap-2">
                   <Stethoscope className="size-4 shrink-0 text-primary" />
-                  {(treatment?.name as string | undefined) ?? "-"}
-                </span>
+                  <div>
+                    <span className="text-sm font-medium">
+                      {(treatment?.name as string | undefined) ?? "-"}
+                    </span>
+                    {junctionTreatments[0]?.variantName && (
+                      <span className="block text-xs text-muted-foreground">
+                        {junctionTreatments[0].variantName}
+                      </span>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
             <div className="flex items-center justify-between">

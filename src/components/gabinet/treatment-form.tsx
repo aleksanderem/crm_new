@@ -287,7 +287,7 @@ export function TreatmentForm({
       price: parseFloat(price.replace(",", ".")) || 0,
       currency: currency || undefined,
       taxRate: numericTaxRate,
-      taxExempt: isExempt ? true : undefined,
+      taxExempt: isExempt ? true : false,
       requiredEquipmentIds: selectedEquipmentIds.length > 0 ? selectedEquipmentIds : undefined,
       contraindications: initialData?.contraindications ?? null,
       preparationInstructions: initialData?.preparationInstructions ?? null,

@@ -355,7 +355,10 @@ export const getQualifiedEmployees = action({
 
     // Filter to those qualified for the treatment (empty list ⇒ qualified
     // for everything, matching the original Convex behaviour).
+    // Also exclude employees without a linked user account — slot lookup
+    // requires a userId and they cannot participate in the booking flow.
     const qualified = employees.filter((e) => {
+      if (!e.userId) return false;
       const qualifiedIds = (e.qualifiedTreatmentIds as string[] | undefined) ?? [];
       return qualifiedIds.length === 0 || qualifiedIds.includes(args.treatmentId);
     });

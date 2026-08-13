@@ -246,6 +246,7 @@ export const CrownIcon = createIcon("CrownIcon");
 export const DatabaseIcon = createIcon("DatabaseIcon");
 export const DownloadIcon = createIcon("DownloadIcon");
 export const EyeIcon = createIcon("EyeIcon");
+export const EyeOffIcon = createIcon("EyeOffIcon");
 export const FileSpreadsheetIcon = createIcon("FileSpreadsheetIcon");
 export const Gamepad2Icon = createIcon("Gamepad2Icon");
 export const HeadphonesIcon = createIcon("HeadphonesIcon");

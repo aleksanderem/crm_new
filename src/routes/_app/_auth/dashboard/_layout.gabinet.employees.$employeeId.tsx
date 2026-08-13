@@ -19,6 +19,7 @@ import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
 import { useSupabaseScheduledActivitiesByEntity } from "@/hooks/use-supabase-scheduled-activities";
 import { useSupabaseNotesByEntity } from "@/hooks/use-supabase-notes";
 import { useSupabaseGabinetAppointmentsByEmployee } from "@/hooks/use-supabase-gabinet-appointments";
+import { useSupabasePendingInvitations } from "@/hooks/use-supabase-invitations";
 import {
   FlexibleScheduleEditor,
   groupSchedulesIntoPeriods,
@@ -92,6 +93,7 @@ function EmployeeDetail() {
   const trackView = useAction(api.recentlyViewed.track);
   const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
   const changeEmployeePassword = useAction(api.gabinet.employees.changeEmployeePassword);
+  const resendInvitation = useAction(api.invitations.resend);
 
   // Supabase cache invalidation helpers
   const invalidateEmployeeCache = () => {
@@ -180,6 +182,7 @@ function EmployeeDetail() {
   const { data: locations } = useSupabaseGabinetLocationsList(String(organizationId));
 
   const { data: members } = useSupabaseOrganizationMembers(organizationId);
+  const { data: pendingInvitations } = useSupabasePendingInvitations(organizationId);
 
   const { data: allEmployees } = useSupabaseGabinetEmployeesList(organizationId);
 
@@ -358,6 +361,16 @@ function EmployeeDetail() {
   // --- Derived data (used in both layout props and tab content) ---
 
   const user = employee?.userId ? userMap.get(employee.userId) : undefined;
+
+  // Match a pending invitation to this employee by email (employee.email or linked user email).
+  // Used to show "Zaproszenie wysłane/wygasło" status and the resend action.
+  const pendingInvitation = useMemo(() => {
+    const email = employee?.email || user?.email;
+    if (!email || !pendingInvitations) return null;
+    return pendingInvitations.find((inv) => inv.email === email) ?? null;
+  }, [pendingInvitations, employee?.email, user?.email]);
+
+  const isExpiredInvitation = pendingInvitation ? pendingInvitation.expiresAt <= Date.now() : false;
   const fullName = employee
     ? (employee.firstName || employee.lastName
         ? `${employee.firstName ?? ""} ${employee.lastName ?? ""}`.trim()
@@ -391,6 +404,22 @@ function EmployeeDetail() {
         formatActionError(e, t, {
           key: "gabinet.employees.errors.activateFailed",
           defaultValue: "Nie udało się aktywować konta.",
+        }),
+      );
+    }
+  };
+
+  const handleResendInvitation = async () => {
+    if (!pendingInvitation) return;
+    try {
+      await resendInvitation({ organizationId, invitationId: pendingInvitation._id });
+      toast.success(t("team.invitationResent", "Zaproszenie zostało wysłane ponownie."));
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "team.errors.resendFailed",
+          defaultValue: "Nie udało się wysłać zaproszenia ponownie.",
         }),
       );
     }
@@ -488,7 +517,7 @@ function EmployeeDetail() {
 
   const sidebarExtra = undefined;
 
-  // Header subtitle with color swatch, role badge, and inactive badge
+  // Header subtitle with color swatch, role badge, and account/invitation status badge
   const headerSubtitle = !employee ? undefined : (
     <div className="flex items-center gap-2">
       {employee.color && (
@@ -500,13 +529,19 @@ function EmployeeDetail() {
       <Badge variant={employee.isActive ? "default" : "secondary"}>
         {t(`gabinet.employees.roles.${employee.role}`)}
       </Badge>
-      {!employee.isActive && (
+      {pendingInvitation ? (
+        <Badge variant="outline" className="text-muted-foreground">
+          {isExpiredInvitation
+            ? t("gabinet.employees.statusInvitationExpired", "Zaproszenie wygasło")
+            : t("gabinet.employees.statusInvitationPending", "Zaproszenie wysłane — oczekuje na akceptację")}
+        </Badge>
+      ) : !employee.isActive ? (
         <Badge variant="outline" className="text-muted-foreground">
           {employee.userId
             ? t("gabinet.employees.statusBlocked", "Konto zablokowane")
             : t("gabinet.employees.statusInactive", "Konto nieaktywne")}
         </Badge>
-      )}
+      ) : null}
     </div>
   );
 
@@ -688,6 +723,8 @@ function EmployeeDetail() {
           onEditEmployee={() => setEditDrawerOpen(true)}
           onDeactivate={handleDeactivate}
           onActivate={handleActivate}
+          pendingInvitation={pendingInvitation}
+          onResendInvitation={isExpiredInvitation ? handleResendInvitation : undefined}
           t={t}
         />
       ),

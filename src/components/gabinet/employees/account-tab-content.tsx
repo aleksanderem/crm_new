@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, Pencil, Power, Settings } from "@/lib/ez-icons";
+import { ChevronRight, Pencil, Power, Send, Settings } from "@/lib/ez-icons";
 import type { MappedGabinetEmployee } from "@/lib/supabase/mappers/gabinet/employees";
+import type { MappedInvitation } from "@/lib/supabase/mappers";
 import type { TFunction } from "i18next";
 import { ChangePasswordDialog } from "./change-password-dialog";
 import { toast } from "sonner";
@@ -15,6 +16,8 @@ export function AccountTabContent({
   onEditEmployee,
   onDeactivate,
   onActivate,
+  pendingInvitation,
+  onResendInvitation,
   t,
 }: {
   employee: MappedGabinetEmployee;
@@ -24,6 +27,8 @@ export function AccountTabContent({
   onEditEmployee: () => void;
   onDeactivate: () => void;
   onActivate?: () => Promise<void>;
+  pendingInvitation?: MappedInvitation | null;
+  onResendInvitation?: () => Promise<void>;
   t: TFunction;
 }) {
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
@@ -85,7 +90,13 @@ export function AccountTabContent({
             </div>
             <div className="flex items-center justify-between px-4 py-3">
               <span className="text-sm text-muted-foreground">{t("gabinet.employees.accountStatus", "Status konta")}</span>
-              {employee.isActive ? (
+              {pendingInvitation ? (
+                pendingInvitation.expiresAt <= Date.now() ? (
+                  <Badge variant="outline">{t("gabinet.employees.statusInvitationExpired", "Zaproszenie wygasło")}</Badge>
+                ) : (
+                  <Badge variant="secondary">{t("gabinet.employees.statusInvitationPending", "Zaproszenie wysłane — oczekuje na akceptację")}</Badge>
+                )
+              ) : employee.isActive ? (
                 <Badge variant="default">{t("gabinet.employees.statusActive", "Konto aktywne")}</Badge>
               ) : employee.userId ? (
                 <Badge variant="destructive">{t("gabinet.employees.statusBlocked", "Konto zablokowane")}</Badge>
@@ -126,6 +137,20 @@ export function AccountTabContent({
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
               </button>
+              {pendingInvitation && pendingInvitation.expiresAt <= Date.now() && onResendInvitation && (
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                  onClick={onResendInvitation}
+                >
+                  <Send className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">{t("gabinet.employees.resendInvitation", "Wyślij zaproszenie ponownie")}</p>
+                    <p className="text-xs text-muted-foreground">{t("gabinet.employees.resendInvitationDesc", "Ponów wysyłkę zaproszenia z nowym terminem ważności")}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
+                </button>
+              )}
               {!employee.isActive && !employee.userId && onActivate ? (
                 <button
                   type="button"

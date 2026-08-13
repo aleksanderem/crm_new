@@ -1,4 +1,4 @@
-import type { TFunction } from "i18next";
+type TFn = (key: string, opts?: Record<string, unknown> | string) => string;
 
 // Snake_case Postgres column name → Polish form label. Used to turn raw
 // backend errors like `null value in column "duration"` into something the
@@ -417,7 +417,7 @@ const APPOINTMENT_ERROR_MAP: Array<{
 // Falls back to a provided generic message when nothing matches.
 export function formatAppointmentError(
   err: unknown,
-  t: TFunction,
+  t: TFn,
   fallback: { key: string; defaultValue: string },
 ): string {
   console.error("[formatAppointmentError]", err);
@@ -490,7 +490,7 @@ const TREATMENT_ERROR_MAP: Array<{
 // users.
 export function formatTreatmentError(
   err: unknown,
-  t: TFunction,
+  t: TFn,
   fallback: { key: string; defaultValue: string },
 ): string {
   console.error("[formatTreatmentError]", err);
@@ -616,7 +616,7 @@ const GENERIC_ERROR_MAP: Array<{
 // backend output never leaks to end users.
 export function formatActionError(
   err: unknown,
-  t: TFunction,
+  t: TFn,
   fallback: { key: string; defaultValue: string },
 ): string {
   console.error("[formatActionError]", err);

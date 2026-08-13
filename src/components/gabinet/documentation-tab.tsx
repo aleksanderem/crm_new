@@ -618,7 +618,7 @@ export function DocumentationTab({
         onRemove={handleRemovePhoto}
         uploadFile={uploadFile}
         uploadingFiles={uploadingFiles}
-        t={t as (key: string, fallback?: string) => string}
+        t={t as (key: string, opts?: Record<string, unknown> | string) => string}
       />
 
     </div>

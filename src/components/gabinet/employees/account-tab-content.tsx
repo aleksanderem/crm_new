@@ -3,7 +3,6 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronRight, Pencil, Power, Send, Settings } from "@/lib/ez-icons";
 import type { MappedGabinetEmployee } from "@/lib/supabase/mappers/gabinet/employees";
 import type { MappedInvitation } from "@/lib/supabase/mappers";
-import type { TFunction } from "i18next";
 import { ChangePasswordDialog } from "./change-password-dialog";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
@@ -29,7 +28,7 @@ export function AccountTabContent({
   onActivate?: () => Promise<void>;
   pendingInvitation?: MappedInvitation | null;
   onResendInvitation?: () => Promise<void>;
-  t: TFunction;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");

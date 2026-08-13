@@ -649,9 +649,9 @@ export function AppointmentPreviewContent({
     const previous = status;
     setSavingStatus(true);
     try {
-      await updateAppointment({
+      await updateStatus({
         organizationId,
-        appointmentId: appointment._id as Id<"gabinetAppointments">,
+        appointmentId: appointment._id,
         status: "cancelled",
         cancellationReason: cancelReason.trim(),
       });

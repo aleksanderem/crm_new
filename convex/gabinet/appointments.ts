@@ -2126,6 +2126,7 @@ export const updateStatus = action({
     appointmentId: v.string(),
     status: gabinetAppointmentStatusValidator,
     forceSkipDocumentGate: v.optional(v.boolean()),
+    cancellationReason: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     try {
@@ -2218,6 +2219,9 @@ export const updateStatus = action({
     if (args.status === "cancelled") {
       patch.cancelledAt = now;
       patch.cancelledBy = String(authResult.userId);
+      if (args.cancellationReason !== undefined) {
+        patch.cancellationReason = args.cancellationReason;
+      }
     }
     console.info("[updateStatus] patching status in Supabase:", args.appointmentId, "->", args.status);
     await db.patch("gabinetAppointments", args.appointmentId, patch);

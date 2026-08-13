@@ -781,6 +781,23 @@ export function createCrmTables({
     .index("by_orgAndUser", ["organizationId", "userId"])
     .index("by_user", ["userId"]),
 
+  // --- RBAC: Gabinet Location Role Mirror ---
+  // Convex mirror of gabinetEmployeeLocations.role so that checkPermission
+  // (which runs in QueryCtx and cannot reach Supabase) can resolve the
+  // location-scoped gabinet role for the current user. Maintained alongside
+  // the Supabase row writes in convex/gabinet/employees.ts. Rows are absent
+  // when the location row has no role override (null role → global role wins).
+  gabinetLocationMemberships: defineTable({
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    locationId: v.id("gabinetLocations"),
+    role: gabinetEmployeeRoleValidator,
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndUser", ["organizationId", "userId"])
+    .index("by_orgAndUserAndLocation", ["organizationId", "userId", "locationId"]),
+
   // --- RBAC: Resource Invites (External Guests) ---
 
   resourceInvites: defineTable({

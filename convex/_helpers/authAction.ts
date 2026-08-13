@@ -31,6 +31,7 @@ export const _getGabinetPermissionData = internalQuery({
   args: {
     organizationId: v.id("organizations"),
     userId: v.id("users"),
+    locationId: v.optional(v.id("gabinetLocations")),
   },
   handler: async (ctx, args) => {
     const gabinetMembership = await ctx.db
@@ -44,7 +45,24 @@ export const _getGabinetPermissionData = internalQuery({
       return { membership: null, rolePermissions: null, membershipPermissions: null };
     }
 
-    const gRole = gabinetMembership.gabinetRole;
+    let gRole = gabinetMembership.gabinetRole;
+
+    // Location-scoped role override: if a locationId is provided, check the
+    // Convex mirror (gabinetLocationMemberships) for a per-location role
+    // override. When found, it replaces the global gabinet role for this check.
+    if (args.locationId) {
+      const locationMembership = await ctx.db
+        .query("gabinetLocationMemberships")
+        .withIndex("by_orgAndUserAndLocation", (q) =>
+          q.eq("organizationId", args.organizationId)
+           .eq("userId", args.userId)
+           .eq("locationId", args.locationId!),
+        )
+        .unique();
+      if (locationMembership) {
+        gRole = locationMembership.role;
+      }
+    }
 
     const gOverride = await ctx.db
       .query("gabinetRolePermissions")
@@ -123,6 +141,7 @@ export const checkPermission = internalAction({
     organizationId: v.id("organizations"),
     feature: v.string(),
     action: v.string(),
+    locationId: v.optional(v.id("gabinetLocations")),
   },
   handler: async (ctx, args): Promise<PermissionResult> => {
     const userId = await auth.getUserId(ctx);
@@ -170,7 +189,7 @@ export const checkPermission = internalAction({
     if (feature.startsWith("gabinet_")) {
       const gabinetData = await ctx.runQuery(
         internal._helpers.authAction._getGabinetPermissionData,
-        { organizationId: args.organizationId, userId },
+        { organizationId: args.organizationId, userId, locationId: args.locationId },
       );
       if (gabinetData.membership) {
         const gRole = gabinetData.membership.gabinetRole;

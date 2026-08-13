@@ -176,6 +176,7 @@ export async function checkPermission(
   orgId: Id<"organizations">,
   feature: Feature,
   action: Action,
+  locationId?: Id<"gabinetLocations">,
 ): Promise<PermissionResult> {
   const { user, membership } = await verifyOrgAccess(ctx, orgId);
   const role = membership.role as OrgRole;
@@ -215,7 +216,22 @@ export async function checkPermission(
       )
       .unique();
     if (gabinetMembership && gabinetMembership.isActive) {
-      const gRole = gabinetMembership.gabinetRole;
+      let gRole = gabinetMembership.gabinetRole;
+
+      // Location-scoped role override: when locationId is provided, check the
+      // Convex mirror for a per-location role that replaces the global gabinet role.
+      if (locationId) {
+        const locationMembership = await ctx.db
+          .query("gabinetLocationMemberships")
+          .withIndex("by_orgAndUserAndLocation", (q) =>
+            q.eq("organizationId", orgId).eq("userId", user._id).eq("locationId", locationId),
+          )
+          .unique();
+        if (locationMembership) {
+          gRole = locationMembership.role;
+        }
+      }
+
       const gOverride = await ctx.db
         .query("gabinetRolePermissions")
         .withIndex("by_orgAndRole", (q) =>
@@ -256,6 +272,7 @@ export async function checkPermission(
 export async function getEffectivePermissions(
   ctx: QueryCtx | MutationCtx,
   orgId: Id<"organizations">,
+  locationId?: Id<"gabinetLocations">,
 ): Promise<FeaturePermissions> {
   const { membership, user } = await verifyOrgAccess(ctx, orgId);
   const role = membership.role as OrgRole;
@@ -298,7 +315,22 @@ export async function getEffectivePermissions(
     .unique();
 
   if (gabinetMembership && gabinetMembership.isActive) {
-    const gRole = gabinetMembership.gabinetRole;
+    let gRole = gabinetMembership.gabinetRole;
+
+    // Location-scoped role override: when locationId is provided, check the
+    // Convex mirror for a per-location role that replaces the global gabinet role.
+    if (locationId) {
+      const locationMembership = await ctx.db
+        .query("gabinetLocationMemberships")
+        .withIndex("by_orgAndUserAndLocation", (q) =>
+          q.eq("organizationId", orgId).eq("userId", user._id).eq("locationId", locationId),
+        )
+        .unique();
+      if (locationMembership) {
+        gRole = locationMembership.role;
+      }
+    }
+
     const gOverride = await ctx.db
       .query("gabinetRolePermissions")
       .withIndex("by_orgAndRole", (q) =>

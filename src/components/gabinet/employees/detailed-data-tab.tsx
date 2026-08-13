@@ -68,6 +68,8 @@ export function DetailedDataTab({
     department: employee.department ?? "",
     role: employee.role,
     notes: employee.notes ?? "",
+    specialization: employee.specialization ?? "",
+    licenseNumber: employee.licenseNumber ?? "",
     skills: (employee.skills ?? []).join(", "),
     yearsOfExperience: employee.yearsOfExperience?.toString() ?? "",
     baseSalary: employee.baseSalary?.toString() ?? "",
@@ -148,6 +150,8 @@ export function DetailedDataTab({
         updatePayload.role = formData.role as GabinetEmployeeRole;
         updatePayload.notes = formData.notes || null;
       } else if (section === "qualifications") {
+        updatePayload.specialization = formData.specialization || null;
+        updatePayload.licenseNumber = formData.licenseNumber || null;
         const skillsList = formData.skills
           ? formData.skills.split(",").map((s: string) => s.trim()).filter(Boolean)
           : [];
@@ -221,33 +225,37 @@ export function DetailedDataTab({
 
       {(!limitedView || qualificationsOnlyView) && (
         <>
-          <QualificationsSection
-            {...sharedSectionProps}
-            employee={employee}
-            certifications={certifications}
-            setCertifications={setCertifications}
-            newCertName={newCertName}
-            setNewCertName={setNewCertName}
-            newCertDate={newCertDate}
-            setNewCertDate={setNewCertDate}
-            newCertExpiry={newCertExpiry}
-            setNewCertExpiry={setNewCertExpiry}
-          />
-          <AssignedTreatmentsSection
-            employee={employee}
-            treatmentMap={treatmentMap}
-            editing={editing}
-            saving={saving}
-            treatmentSearchLocal={treatmentSearchLocal}
-            setTreatmentSearchLocal={setTreatmentSearchLocal}
-            filteredTreatments={filteredTreatments}
-            pendingTreatmentIds={pendingTreatmentIds}
-            setPendingTreatmentIds={setPendingTreatmentIds}
-            onStartEdit={startEdit}
-            onCancelEdit={cancelEdit}
-            onSaveSection={saveSection}
-            t={t}
-          />
+          {employee.performsServices && (
+            <>
+              <QualificationsSection
+                {...sharedSectionProps}
+                employee={employee}
+                certifications={certifications}
+                setCertifications={setCertifications}
+                newCertName={newCertName}
+                setNewCertName={setNewCertName}
+                newCertDate={newCertDate}
+                setNewCertDate={setNewCertDate}
+                newCertExpiry={newCertExpiry}
+                setNewCertExpiry={setNewCertExpiry}
+              />
+              <AssignedTreatmentsSection
+                employee={employee}
+                treatmentMap={treatmentMap}
+                editing={editing}
+                saving={saving}
+                treatmentSearchLocal={treatmentSearchLocal}
+                setTreatmentSearchLocal={setTreatmentSearchLocal}
+                filteredTreatments={filteredTreatments}
+                pendingTreatmentIds={pendingTreatmentIds}
+                setPendingTreatmentIds={setPendingTreatmentIds}
+                onStartEdit={startEdit}
+                onCancelEdit={cancelEdit}
+                onSaveSection={saveSection}
+                t={t}
+              />
+            </>
+          )}
 
           {!qualificationsOnlyView && (
             <CompensationSection

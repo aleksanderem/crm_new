@@ -18,6 +18,8 @@ export type EmployeeFormData = {
   department: string;
   role: string;
   notes: string;
+  specialization: string;
+  licenseNumber: string;
   skills: string;
   yearsOfExperience: string;
   baseSalary: string;

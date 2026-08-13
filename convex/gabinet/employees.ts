@@ -1089,6 +1089,10 @@ export const _finalisePasswordUser = internalAction({
     organizationId: v.id("organizations"),
     teamRole: v.union(v.literal("admin"), v.literal("member"), v.literal("viewer")),
     invitedBy: v.string(),
+    // Set to true when the user row already exists in Supabase (existing-user
+    // linking path). Skips writeUserToSupabase to avoid a redundant write that
+    // could overwrite created_at with Convex _creationTime.
+    userAlreadyInSupabase: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
@@ -1137,16 +1141,19 @@ export const _finalisePasswordUser = internalAction({
 
     const now = Date.now();
 
-    // Mirror user to Supabase synchronously so the FK exists when we insert
-    // team_memberships below. Supabase enforces team_memberships.user_id → users.id.
-    await ctx.runAction(internal.supabase.users.writeUserToSupabase, {
-      userId: args.userId,
-      email: args.email,
-      name: args.name,
-      username: effectiveUsername,
-      createdAt: Math.floor(user._creationTime),
-      updatedAt: now,
-    });
+    // Mirror user to Supabase only for newly-created accounts. Existing users
+    // are already in Supabase; re-writing them would waste a round-trip and
+    // could overwrite created_at with user._creationTime from Convex.
+    if (!args.userAlreadyInSupabase) {
+      await ctx.runAction(internal.supabase.users.writeUserToSupabase, {
+        userId: args.userId,
+        email: args.email,
+        name: args.name,
+        username: effectiveUsername,
+        createdAt: Math.floor(user._creationTime),
+        updatedAt: now,
+      });
+    }
 
     // Insert team membership directly into Supabase (primary store post-migration).
     await db.insert("teamMemberships", {
@@ -1238,6 +1245,7 @@ export const createWithPassword = action({
           organizationId: args.organizationId,
           teamRole: args.teamRole,
           invitedBy: String(authResult.userId),
+          userAlreadyInSupabase: true,
         },
       );
       userId = resolvedId;

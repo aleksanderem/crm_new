@@ -277,6 +277,14 @@ export const create = action({
         gabinetRole: args.role,
         isActive: true,
       });
+      if (args.locationId && args.locationRole) {
+        await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
+          organizationId: args.organizationId,
+          userId: args.userId,
+          locationId: args.locationId,
+          role: args.locationRole,
+        });
+      }
     }
 
     if (args.customFields && args.customFields.length > 0) {
@@ -380,6 +388,14 @@ export const _createFromInvitation = internalAction({
               role: locationRole2,
               createdAt: Date.now(),
             });
+            if (locationRole2) {
+              await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
+                organizationId: args.organizationId,
+                userId: args.userId,
+                locationId: locationId2,
+                role: locationRole2,
+              });
+            }
           }
         } catch (e) {
           console.error(
@@ -438,6 +454,14 @@ export const _createFromInvitation = internalAction({
           role: locationRole,
           createdAt: now,
         });
+        if (locationRole) {
+          await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
+            organizationId: args.organizationId,
+            userId: args.userId,
+            locationId,
+            role: locationRole,
+          });
+        }
       } catch (e) {
         console.error(
           `[gabinet.employees._createFromInvitation] location insert failed:`,
@@ -580,6 +604,60 @@ export const _upsertMembership = internalMutation({
       updatedAt: now,
     });
     return { id: String(id), updated: false };
+  },
+});
+
+// Mirror gabinetEmployeeLocations.role into Convex so checkPermission
+// (QueryCtx/MutationCtx, no Supabase access) can resolve location-scoped roles.
+export const _upsertLocationMembership = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.string(),
+    locationId: v.string(),
+    role: gabinetEmployeeRoleValidator,
+  },
+  handler: async (ctx, args) => {
+    const userId = args.userId as Id<"users">;
+    const locationId = args.locationId as Id<"gabinetLocations">;
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("gabinetLocationMemberships")
+      .withIndex("by_orgAndUserAndLocation", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", userId).eq("locationId", locationId),
+      )
+      .unique();
+    if (existing) {
+      await ctx.db.patch(existing._id, { role: args.role, updatedAt: now });
+    } else {
+      await ctx.db.insert("gabinetLocationMemberships", {
+        organizationId: args.organizationId,
+        userId,
+        locationId,
+        role: args.role,
+        updatedAt: now,
+      });
+    }
+  },
+});
+
+export const _deleteLocationMembership = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.string(),
+    locationId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = args.userId as Id<"users">;
+    const locationId = args.locationId as Id<"gabinetLocations">;
+    const existing = await ctx.db
+      .query("gabinetLocationMemberships")
+      .withIndex("by_orgAndUserAndLocation", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", userId).eq("locationId", locationId),
+      )
+      .unique();
+    if (existing) {
+      await ctx.db.delete(existing._id);
+    }
   },
 });
 
@@ -755,6 +833,13 @@ export const update = action({
         .collect();
       for (const loc of existingLocs) {
         await db.delete("gabinetEmployeeLocations", String(loc._id));
+        if (emp.userId) {
+          await ctx.runMutation(internal.gabinet.employees._deleteLocationMembership, {
+            organizationId,
+            userId: String(emp.userId),
+            locationId: String(loc.locationId),
+          });
+        }
       }
       if (locationId) {
         const effectiveLocationRole = locationRole != null ? locationRole : undefined;
@@ -767,6 +852,14 @@ export const update = action({
             role: effectiveLocationRole,
             createdAt: Date.now(),
           });
+          if (emp.userId && effectiveLocationRole) {
+            await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
+              organizationId,
+              userId: String(emp.userId),
+              locationId,
+              role: effectiveLocationRole,
+            });
+          }
         } catch (e) {
           console.error("[employees.update] location insert failed:", e);
         }
@@ -784,6 +877,22 @@ export const update = action({
           await db.patch("gabinetEmployeeLocations", String(loc._id), {
             role: effectiveLocationRole,
           });
+          if (emp.userId) {
+            if (effectiveLocationRole) {
+              await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
+                organizationId,
+                userId: String(emp.userId),
+                locationId: String(loc.locationId),
+                role: effectiveLocationRole,
+              });
+            } else {
+              await ctx.runMutation(internal.gabinet.employees._deleteLocationMembership, {
+                organizationId,
+                userId: String(emp.userId),
+                locationId: String(loc.locationId),
+              });
+            }
+          }
         } catch (e) {
           console.error("[employees.update] location role patch failed:", e);
         }
@@ -1379,6 +1488,14 @@ export const createWithPassword = action({
       gabinetRole: args.role,
       isActive: true,
     });
+    if (userId && args.locationId && args.locationRole) {
+      await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
+        organizationId: args.organizationId,
+        userId,
+        locationId: args.locationId,
+        role: args.locationRole,
+      });
+    }
 
     return String(employeeId);
   },

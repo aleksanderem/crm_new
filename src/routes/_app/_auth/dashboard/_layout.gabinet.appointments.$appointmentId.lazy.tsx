@@ -195,6 +195,7 @@ function AppointmentDetail() {
 
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [cancelScope, setCancelScope] = useState<"single" | "series">("single");
   const [isUpdating, setIsUpdating] = useState(false);
   const [internalNotes, setInternalNotes] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
@@ -249,6 +250,7 @@ function AppointmentDetail() {
 
   const updateStatus = useAction(api.gabinet.appointments.updateStatus);
   const updateAppointment = useAction(api.gabinet.appointments.update);
+  const cancelRecurringSeries = useAction(api.gabinet.appointments.cancelRecurringSeries);
   const trackView = useAction(api.recentlyViewed.track);
   const sendReminderNow = useAction(api.gabinet.appointmentReminders.sendReminderNow);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
@@ -699,15 +701,25 @@ function AppointmentDetail() {
 
     setIsUpdating(true);
     try {
-      await updateAppointment({
-        organizationId,
-        appointmentId: appointment._id,
-        status: "cancelled",
-        cancellationReason: cancelReason.trim(),
-      });
-      toast.success(t("gabinet.appointments.cancelled"));
+      if (cancelScope === "series" && appointment.recurringGroupId) {
+        await cancelRecurringSeries({
+          organizationId,
+          recurringGroupId: String(appointment.recurringGroupId),
+          fromDate: appointment.date as string,
+        });
+        toast.success(t("gabinet.appointments.seriesCancelled", "Seria wizyt anulowana"));
+      } else {
+        await updateAppointment({
+          organizationId,
+          appointmentId: appointment._id,
+          status: "cancelled",
+          cancellationReason: cancelReason.trim(),
+        });
+        toast.success(t("gabinet.appointments.cancelled"));
+      }
       setCancelDialogOpen(false);
       setCancelReason("");
+      setCancelScope("single");
       await invalidateAppointmentCaches();
       await refetch();
     } catch (error) {
@@ -1323,11 +1335,17 @@ function AppointmentDetail() {
       {/* Cancel Dialog */}
       <CancelAppointmentDialog
         open={cancelDialogOpen}
-        onOpenChange={setCancelDialogOpen}
+        onOpenChange={(o) => {
+          setCancelDialogOpen(o);
+          if (!o) { setCancelReason(""); setCancelScope("single"); }
+        }}
         cancelReason={cancelReason}
         isUpdating={isUpdating}
         onCancelReasonChange={setCancelReason}
         onConfirm={handleCancelConfirm}
+        isRecurring={!!(appointment.isRecurring && appointment.recurringGroupId)}
+        cancelScope={cancelScope}
+        onCancelScopeChange={setCancelScope}
         t={t}
       />
 

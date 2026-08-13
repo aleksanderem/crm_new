@@ -3327,6 +3327,7 @@
       },
       "actions": {
         "cancel": "Anuluj wizytę",
+        "cancelSeries": "Anuluj serię",
         "complete": "Zakończ",
         "confirm": "Potwierdź",
         "noShow": "Nie pojawił się",
@@ -3336,8 +3337,14 @@
       "cancelDesc": "Podaj powód anulowania wizyty",
       "cancelReasonPlaceholder": "Wpisz powód anulowania...",
       "cancelReasonRequired": "Powód anulowania jest wymagany",
+      "cancelScope": {
+        "single": "Tylko ta wizyta",
+        "series": "Ta i wszystkie następne"
+      },
+      "cancelSeriesTitle": "Anuluj serię wizyt",
       "cancelTitle": "Anuluj wizytę",
       "cancelled": "Wizyta anulowana",
+      "seriesCancelled": "Seria wizyt anulowana",
       "details": "Szczegóły wizyty",
       "internalNotes": "Uwagi dla personelu",
       "internalNotesDesc": "Widoczne tylko dla personelu. Klient nie widzi tych informacji.",

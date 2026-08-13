@@ -53,6 +53,7 @@ import { DocumentGateDialog } from "@/components/documents/document-gate-dialog"
 import { useAppointmentDocumentCounts } from "@/components/documents/appointment-document-checklist";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Tooltip,
   TooltipContent,
@@ -227,6 +228,7 @@ export function AppointmentPreviewContent({
   const getFullDetail = useAction(api.gabinet.appointments.getFullDetail);
   const updateAppointment = useAction(api.gabinet.appointments.update);
   const updateStatus = useAction(api.gabinet.appointments.updateStatus);
+  const cancelRecurringSeries = useAction(api.gabinet.appointments.cancelRecurringSeries);
   const updatePatient = useAction(api.gabinet.patients.update);
   const getWarnings = useAction(api.gabinet.appointments.getWarnings);
   const listActiveTreatments = useAction(api.gabinet.treatments.listActive);
@@ -404,6 +406,7 @@ export function AppointmentPreviewContent({
   const [savingPhone, setSavingPhone] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [cancelScope, setCancelScope] = useState<"single" | "series">("single");
   const [gateDialogOpen, setGateDialogOpen] = useState(false);
   const [gateTiming, setGateTiming] = useState<"before_start" | "during_visit">(
     "before_start",
@@ -649,13 +652,23 @@ export function AppointmentPreviewContent({
     const previous = status;
     setSavingStatus(true);
     try {
-      await updateStatus({
-        organizationId,
-        appointmentId: appointment._id,
-        status: "cancelled",
-        cancellationReason: cancelReason.trim(),
-      });
-      setStatus("cancelled");
+      if (cancelScope === "series" && appointment.recurringGroupId) {
+        await cancelRecurringSeries({
+          organizationId,
+          recurringGroupId: String(appointment.recurringGroupId),
+          fromDate: appointment.date,
+        });
+        toast.success(t("gabinet.appointments.seriesCancelled", "Seria wizyt anulowana"));
+      } else {
+        await updateStatus({
+          organizationId,
+          appointmentId: appointment._id,
+          status: "cancelled",
+          cancellationReason: cancelReason.trim(),
+        });
+        setStatus("cancelled");
+        toast.success(t("gabinet.appointments.cancelled"));
+      }
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: supabaseKeys.gabinetAppointments.all,
@@ -667,7 +680,7 @@ export function AppointmentPreviewContent({
       await refetch();
       setCancelDialogOpen(false);
       setCancelReason("");
-      toast.success(t("gabinet.appointments.cancelled"));
+      setCancelScope("single");
     } catch (error) {
       setStatus(previous);
       console.error("[appointment-preview] cancel failed", error);
@@ -1617,7 +1630,7 @@ export function AppointmentPreviewContent({
         open={cancelDialogOpen}
         onOpenChange={(o) => {
           setCancelDialogOpen(o);
-          if (!o) setCancelReason("");
+          if (!o) { setCancelReason(""); setCancelScope("single"); }
         }}
       >
         <DialogContent
@@ -1629,12 +1642,36 @@ export function AppointmentPreviewContent({
           )}
         >
           <DialogHeader>
-            <DialogTitle>{t("gabinet.appointments.cancelTitle")}</DialogTitle>
+            <DialogTitle>
+              {appointment.isRecurring && appointment.recurringGroupId && cancelScope === "series"
+                ? t("gabinet.appointments.cancelSeriesTitle", "Anuluj serię wizyt")
+                : t("gabinet.appointments.cancelTitle")}
+            </DialogTitle>
             <DialogDescription>
               {t("gabinet.appointments.cancelDesc")}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
+          <div className="space-y-4 py-4">
+            {appointment.isRecurring && appointment.recurringGroupId && (
+              <RadioGroup
+                value={cancelScope}
+                onValueChange={(v) => setCancelScope(v as "single" | "series")}
+                className="gap-2"
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="single" id="preview-cancel-scope-single" />
+                  <Label htmlFor="preview-cancel-scope-single" className="cursor-pointer font-normal">
+                    {t("gabinet.appointments.cancelScope.single", "Tylko ta wizyta")}
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="series" id="preview-cancel-scope-series" />
+                  <Label htmlFor="preview-cancel-scope-series" className="cursor-pointer font-normal">
+                    {t("gabinet.appointments.cancelScope.series", "Ta i wszystkie następne")}
+                  </Label>
+                </div>
+              </RadioGroup>
+            )}
             <RichTextEditor
               placeholder={t("gabinet.appointments.cancelReasonPlaceholder")}
               value={cancelReason}
@@ -1648,6 +1685,7 @@ export function AppointmentPreviewContent({
               onClick={() => {
                 setCancelDialogOpen(false);
                 setCancelReason("");
+                setCancelScope("single");
               }}
             >
               {t("common.cancel")}
@@ -1659,7 +1697,9 @@ export function AppointmentPreviewContent({
             >
               {savingStatus
                 ? t("common.processing")
-                : t("gabinet.appointments.actions.cancel")}
+                : appointment.isRecurring && appointment.recurringGroupId && cancelScope === "series"
+                  ? t("gabinet.appointments.actions.cancelSeries", "Anuluj serię")
+                  : t("gabinet.appointments.actions.cancel")}
             </Button>
           </DialogFooter>
         </DialogContent>

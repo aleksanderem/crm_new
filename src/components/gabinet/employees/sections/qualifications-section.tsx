@@ -85,6 +85,22 @@ export function QualificationsSection({
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
+                <Label>{t("gabinet.employees.specialization")}</Label>
+                <Input
+                  value={formData.specialization}
+                  onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("gabinet.employees.license")}</Label>
+                <Input
+                  value={formData.licenseNumber}
+                  onChange={(e) => setFormData({ ...formData, licenseNumber: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
                 <Label>{t("gabinet.employees.detailedData.skills")}</Label>
                 <Input
                   value={formData.skills}
@@ -163,6 +179,14 @@ export function QualificationsSection({
           </div>
         ) : (
           <div className="space-y-3">
+            <ReadOnlyField
+              label={t("gabinet.employees.specialization")}
+              value={employee.specialization}
+            />
+            <ReadOnlyField
+              label={t("gabinet.employees.license")}
+              value={employee.licenseNumber}
+            />
             {employee.skills && employee.skills.length > 0 && (
               <div>
                 <p className="text-xs text-muted-foreground mb-1">
@@ -200,7 +224,9 @@ export function QualificationsSection({
                 </div>
               </div>
             )}
-            {(!employee.skills || employee.skills.length === 0) &&
+            {!employee.specialization &&
+              !employee.licenseNumber &&
+              (!employee.skills || employee.skills.length === 0) &&
               !employee.yearsOfExperience &&
               (!employee.certifications || employee.certifications.length === 0) && (
                 <p className="text-sm text-muted-foreground">

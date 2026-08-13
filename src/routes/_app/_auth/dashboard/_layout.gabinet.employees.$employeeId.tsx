@@ -381,6 +381,21 @@ function EmployeeDetail() {
     }
   };
 
+  const handleActivate = async () => {
+    try {
+      await updateEmployee({ organizationId, employeeId, isActive: true });
+      toast.success(t("gabinet.employees.activated", "Konto aktywowane."));
+      invalidateEmployeeCache();
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.employees.errors.activateFailed",
+          defaultValue: "Nie udało się aktywować konta.",
+        }),
+      );
+    }
+  };
+
   const handleUpdateActivity = async (data: {
     activityId: string;
     title?: string;
@@ -672,6 +687,7 @@ function EmployeeDetail() {
           }}
           onEditEmployee={() => setEditDrawerOpen(true)}
           onDeactivate={handleDeactivate}
+          onActivate={handleActivate}
           t={t}
         />
       ),

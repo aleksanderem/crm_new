@@ -29,7 +29,7 @@ export function AppointmentReceiptsTab({
 }: {
   appointmentReceipts: Receipt[];
   language: string;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   return (
     <div className="space-y-4">

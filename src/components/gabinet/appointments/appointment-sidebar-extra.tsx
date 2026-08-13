@@ -82,7 +82,7 @@ export function AppointmentSidebarExtra({
   canEdit: boolean;
   onChangeEmployee: () => void;
   onTagsChange: (newTagIds: Id<"tagDefinitions">[]) => void;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   const empName = employee ? (employee.name ?? employee.email ?? "-") : "-";
 

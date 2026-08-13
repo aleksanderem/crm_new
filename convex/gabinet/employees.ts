@@ -277,12 +277,12 @@ export const create = action({
         gabinetRole: args.role,
         isActive: true,
       });
-      if (args.locationId && args.locationRole) {
+      if (args.locationId) {
         await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
           organizationId: args.organizationId,
           userId: args.userId,
           locationId: args.locationId,
-          role: args.locationRole,
+          role: args.locationRole ?? undefined,
         });
       }
     }
@@ -388,14 +388,12 @@ export const _createFromInvitation = internalAction({
               role: locationRole2,
               createdAt: Date.now(),
             });
-            if (locationRole2) {
-              await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
-                organizationId: args.organizationId,
-                userId: args.userId,
-                locationId: locationId2,
-                role: locationRole2,
-              });
-            }
+            await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
+              organizationId: args.organizationId,
+              userId: args.userId,
+              locationId: locationId2,
+              role: locationRole2 ?? undefined,
+            });
           }
         } catch (e) {
           console.error(
@@ -454,14 +452,12 @@ export const _createFromInvitation = internalAction({
           role: locationRole,
           createdAt: now,
         });
-        if (locationRole) {
-          await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
-            organizationId: args.organizationId,
-            userId: args.userId,
-            locationId,
-            role: locationRole,
-          });
-        }
+        await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
+          organizationId: args.organizationId,
+          userId: args.userId,
+          locationId,
+          role: locationRole ?? undefined,
+        });
       } catch (e) {
         console.error(
           `[gabinet.employees._createFromInvitation] location insert failed:`,
@@ -607,14 +603,14 @@ export const _upsertMembership = internalMutation({
   },
 });
 
-// Mirror gabinetEmployeeLocations.role into Convex so checkPermission
-// (QueryCtx/MutationCtx, no Supabase access) can resolve location-scoped roles.
+// Mirror gabinetEmployeeLocations into Convex so checkPermission (QueryCtx/MutationCtx,
+// no Supabase access) can resolve both location assignments and optional role overrides.
 export const _upsertLocationMembership = internalMutation({
   args: {
     organizationId: v.id("organizations"),
     userId: v.string(),
     locationId: v.string(),
-    role: gabinetEmployeeRoleValidator,
+    role: v.optional(gabinetEmployeeRoleValidator),
   },
   handler: async (ctx, args) => {
     const userId = args.userId as Id<"users">;
@@ -852,7 +848,7 @@ export const update = action({
             role: effectiveLocationRole,
             createdAt: Date.now(),
           });
-          if (emp.userId && effectiveLocationRole) {
+          if (emp.userId) {
             await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
               organizationId,
               userId: String(emp.userId),
@@ -878,20 +874,12 @@ export const update = action({
             role: effectiveLocationRole,
           });
           if (emp.userId) {
-            if (effectiveLocationRole) {
-              await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
-                organizationId,
-                userId: String(emp.userId),
-                locationId: String(loc.locationId),
-                role: effectiveLocationRole,
-              });
-            } else {
-              await ctx.runMutation(internal.gabinet.employees._deleteLocationMembership, {
-                organizationId,
-                userId: String(emp.userId),
-                locationId: String(loc.locationId),
-              });
-            }
+            await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
+              organizationId,
+              userId: String(emp.userId),
+              locationId: String(loc.locationId),
+              role: effectiveLocationRole ?? undefined,
+            });
           }
         } catch (e) {
           console.error("[employees.update] location role patch failed:", e);
@@ -1488,12 +1476,12 @@ export const createWithPassword = action({
       gabinetRole: args.role,
       isActive: true,
     });
-    if (userId && args.locationId && args.locationRole) {
+    if (userId && args.locationId) {
       await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
         organizationId: args.organizationId,
         userId,
         locationId: args.locationId,
-        role: args.locationRole,
+        role: args.locationRole ?? undefined,
       });
     }
 

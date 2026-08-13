@@ -36,6 +36,36 @@ export const getMyGabinetRole = query({
   },
 });
 
+export const getMyGabinetContext = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const membership = await ctx.db
+      .query("gabinetMemberships")
+      .withIndex("by_orgAndUser", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", user._id)
+      )
+      .unique();
+    if (!membership) {
+      return { gabinetRole: null, isActive: null, assignedLocations: [] };
+    }
+    const locationMemberships = await ctx.db
+      .query("gabinetLocationMemberships")
+      .withIndex("by_orgAndUser", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", user._id)
+      )
+      .collect();
+    return {
+      gabinetRole: membership.gabinetRole,
+      isActive: membership.isActive,
+      assignedLocations: locationMemberships.map((lm) => ({
+        locationId: lm.locationId,
+        role: lm.role ?? null,
+      })),
+    };
+  },
+});
+
 export const getOrgPermissionOverrides = action({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {

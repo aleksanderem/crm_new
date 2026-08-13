@@ -59,7 +59,7 @@ export const _getGabinetPermissionData = internalQuery({
            .eq("locationId", args.locationId!),
         )
         .unique();
-      if (locationMembership) {
+      if (locationMembership?.role) {
         gRole = locationMembership.role;
       }
     }

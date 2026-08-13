@@ -1276,6 +1276,15 @@ export const createWithPassword = action({
       userId = resolvedId;
     }
 
+    const existingProfile = await db
+      .query("gabinetEmployees")
+      .eq("organizationId", String(args.organizationId))
+      .eq("userId", userId)
+      .collect();
+    if (existingProfile.length > 0) {
+      throw new Error("Employee profile already exists for this user");
+    }
+
     const employeeId = await db.insert("gabinetEmployees", {
       organizationId: String(args.organizationId),
       userId,

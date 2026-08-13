@@ -14,6 +14,7 @@ export function AccountTabContent({
   onChangePassword,
   onEditEmployee,
   onDeactivate,
+  onActivate,
   t,
 }: {
   employee: MappedGabinetEmployee;
@@ -22,6 +23,7 @@ export function AccountTabContent({
   onChangePassword: (newPassword: string) => Promise<void>;
   onEditEmployee: () => void;
   onDeactivate: () => void;
+  onActivate?: () => Promise<void>;
   t: TFunction;
 }) {
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
@@ -124,18 +126,33 @@ export function AccountTabContent({
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
               </button>
-              <button
-                type="button"
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
-                onClick={onDeactivate}
-              >
-                <Power className="h-4 w-4 text-destructive shrink-0" variant="stroke" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-destructive">{t("gabinet.employees.deactivate")}</p>
-                  <p className="text-xs text-muted-foreground">{t("gabinet.employees.deactivateDesc", "Wyłącz dostęp pracownika do systemu")}</p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
-              </button>
+              {!employee.isActive && !employee.userId && onActivate ? (
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                  onClick={onActivate}
+                >
+                  <Power className="h-4 w-4 text-green-600 shrink-0" variant="stroke" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-green-600">{t("gabinet.employees.activateAccount", "Aktywuj konto")}</p>
+                    <p className="text-xs text-muted-foreground">{t("gabinet.employees.activateAccountDesc", "Przywróć dostęp pracownika do systemu")}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                  onClick={onDeactivate}
+                >
+                  <Power className="h-4 w-4 text-destructive shrink-0" variant="stroke" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-destructive">{t("gabinet.employees.deactivate")}</p>
+                    <p className="text-xs text-muted-foreground">{t("gabinet.employees.deactivateDesc", "Wyłącz dostęp pracownika do systemu")}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
+                </button>
+              )}
             </div>
           </div>
         )}

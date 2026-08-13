@@ -387,18 +387,16 @@ export const batchImportEmployees = action({
         });
 
         // Mirror gabinet role into Convex so permission checks work.
-        if (matchedUserId) {
-          existingUserIds.add(matchedUserId);
-          try {
-            await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
-              organizationId: args.organizationId,
-              userId: matchedUserId,
-              gabinetRole: safeRole,
-              isActive: true,
-            });
-          } catch {
-            // Non-fatal: membership mirror failure doesn't block the import
-          }
+        existingUserIds.add(matchedUserId);
+        try {
+          await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
+            organizationId: args.organizationId,
+            userId: matchedUserId,
+            gabinetRole: safeRole,
+            isActive: true,
+          });
+        } catch {
+          // Non-fatal: membership mirror failure doesn't block the import
         }
 
         void newEmployeeId;

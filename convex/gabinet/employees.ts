@@ -692,6 +692,7 @@ export const update = action({
     bio: v.optional(v.union(v.string(), v.null())),
     avatarUrl: v.optional(v.union(v.string(), v.null())),
     locationId: v.optional(v.union(v.string(), v.null())),
+    locationRole: v.optional(v.union(gabinetEmployeeRoleValidator, v.null())),
   },
   handler: async (ctx, args) => {
     try {
@@ -738,8 +739,8 @@ export const update = action({
     }
 
     // --- Build updates and PATCH to Supabase ---
-    // locationId lives in gabinetEmployeeLocations, not gabinetEmployees — exclude from patch
-    const { organizationId, employeeId, locationId, ...updates } = args;
+    // locationId and locationRole live in gabinetEmployeeLocations, not gabinetEmployees — exclude from patch
+    const { organizationId, employeeId, locationId, locationRole, ...updates } = args;
     await db.patch("gabinetEmployees", employeeId, { ...updates, updatedAt: Date.now() });
 
     // --- Upsert primary location ---
@@ -753,12 +754,15 @@ export const update = action({
         await db.delete("gabinetEmployeeLocations", String(loc._id));
       }
       if (locationId) {
+        const effectiveLocationRole =
+          locationRole != null && isSystemGabinetRole(locationRole) ? locationRole : undefined;
         try {
           await db.insert("gabinetEmployeeLocations", {
             organizationId: String(organizationId),
             employeeId,
             locationId,
             isPrimary: true,
+            role: effectiveLocationRole,
             createdAt: Date.now(),
           });
         } catch (e) {

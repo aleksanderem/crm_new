@@ -52,18 +52,19 @@ export function EditEmployeeDrawer({
   const { client, isReady } = useSupabase();
   const { data: locations } = useSupabaseGabinetLocationsList(String(organizationId));
 
-  const { data: currentLocationId } = useQuery({
+  const { data: currentPrimaryLocation } = useQuery({
     queryKey: ["gabinet_employee_locations_primary", String(organizationId), employee._id],
     queryFn: async () => {
       if (!client) return null;
       const { data } = await client
         .from("gabinet_employee_locations")
-        .select("location_id")
+        .select("location_id, role")
         .eq("organization_id", String(organizationId))
         .eq("employee_id", employee._id)
         .eq("is_primary", true)
         .maybeSingle();
-      return data?.location_id ?? null;
+      if (!data) return null;
+      return { locationId: data.location_id ?? null, locationRole: (data.role as string | null) ?? null };
     },
     enabled: isReady && !!client,
   });
@@ -81,6 +82,7 @@ export function EditEmployeeDrawer({
   );
   const [notes, setNotes] = useState(employee.notes ?? "");
   const [locationId, setLocationId] = useState<string | null>(null);
+  const [locationRole, setLocationRole] = useState<GabinetEmployeeRole | null>(null);
 
   // Re-sync form state when drawer opens
   useEffect(() => {
@@ -98,12 +100,13 @@ export function EditEmployeeDrawer({
     }
   }, [open, employee]);
 
-  // Sync location separately when query resolves
+  // Sync location + locationRole separately when query resolves
   useEffect(() => {
-    if (open && currentLocationId !== undefined) {
-      setLocationId(currentLocationId);
+    if (open && currentPrimaryLocation !== undefined) {
+      setLocationId(currentPrimaryLocation?.locationId ?? null);
+      setLocationRole((currentPrimaryLocation?.locationRole as GabinetEmployeeRole | null) ?? null);
     }
-  }, [open, currentLocationId]);
+  }, [open, currentPrimaryLocation]);
 
   // Org members eligible for linking: current user + any user not linked to another employee
   const availableUsers = useMemo(() => {
@@ -137,6 +140,7 @@ export function EditEmployeeDrawer({
         showInCalendar,
         notes: notes || null,
         locationId: locationId ?? null,
+        locationRole: locationRole ?? null,
       });
       toast.success(t("common.saved"));
       onOpenChange(false);
@@ -277,7 +281,10 @@ export function EditEmployeeDrawer({
             <Label>{t("gabinet.employees.location", { defaultValue: "Lokalizacja" })}</Label>
             <Select
               value={locationId ?? ""}
-              onValueChange={(v) => setLocationId(v || null)}
+              onValueChange={(v) => {
+                setLocationId(v || null);
+                if (!v) setLocationRole(null);
+              }}
             >
               <SelectTrigger>
                 <SelectValue placeholder={t("gabinet.employees.locationPlaceholder", { defaultValue: "Wybierz lokalizację" })} />
@@ -287,6 +294,27 @@ export function EditEmployeeDrawer({
                 {locations.map((loc) => (
                   <SelectItem key={loc._id} value={loc._id}>
                     {loc.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        {locationId && (
+          <div className="space-y-1.5">
+            <Label>{t("settings.team.gabinetLocationRole")}</Label>
+            <Select
+              value={locationRole ?? ""}
+              onValueChange={(v) => setLocationRole(v ? (v as GabinetEmployeeRole) : null)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={t("settings.team.gabinetLocationRolePlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">{t("settings.team.gabinetLocationRoleNone")}</SelectItem>
+                {EMPLOYEE_ROLES.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {t(`gabinet.employees.roles.${r}`)}
                   </SelectItem>
                 ))}
               </SelectContent>

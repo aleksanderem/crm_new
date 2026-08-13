@@ -63,7 +63,7 @@ export interface EmployeeFormData {
   categoryId?: Id<"categoryDefinitions">;
   customFields?: Array<{ fieldDefinitionId: string; value: unknown }>;
   grantSystemAccess?: boolean;
-  accessMode?: "invite" | "password";
+  accessMode?: "invite" | "password" | "inactive";
   accessEmail?: string;
   accessRole?: "admin" | "member" | "viewer";
   password?: string;
@@ -122,7 +122,7 @@ export function EmployeeForm({
   const [treatmentSearch, setTreatmentSearch] = useState("");
   const [accessEmail, setAccessEmail] = useState("");
   const [accessRole, setAccessRole] = useState<"admin" | "member" | "viewer">("member");
-  const [accessMode, setAccessMode] = useState<"invite" | "password">("invite");
+  const [accessMode, setAccessMode] = useState<"invite" | "password" | "inactive">("invite");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [locationId, setLocationId] = useState<string | undefined>(undefined);
@@ -187,10 +187,10 @@ export function EmployeeForm({
       tagIds: tagIds.length > 0 ? tagIds : undefined,
       categoryId: categoryId || undefined,
       customFields: customFields.length > 0 ? customFields : undefined,
-      grantSystemAccess: true,
+      grantSystemAccess: accessMode !== "inactive",
       accessMode,
-      accessEmail: accessEmail.trim() || undefined,
-      accessRole: accessRole,
+      accessEmail: accessMode !== "inactive" ? accessEmail.trim() || undefined : undefined,
+      accessRole: accessMode !== "inactive" ? accessRole : undefined,
       password: accessMode === "password" ? password : undefined,
       locationId: locationId,
       locationRole: locationRole,
@@ -430,8 +430,8 @@ export function EmployeeForm({
             {/* Access mode toggle */}
             <div className="space-y-1.5">
               <Label>{t("gabinet.employees.accessMethod", { defaultValue: "Sposób aktywacji konta" })}</Label>
-              <div className="flex gap-2">
-                <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+              <div className="flex flex-col gap-1.5">
+                <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
                   <input
                     type="radio"
                     name="accessMode"
@@ -442,7 +442,7 @@ export function EmployeeForm({
                   />
                   {t("gabinet.employees.accessModeInvite", { defaultValue: "Wyślij zaproszenie e-mailem" })}
                 </label>
-                <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+                <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
                   <input
                     type="radio"
                     name="accessMode"
@@ -451,11 +451,23 @@ export function EmployeeForm({
                     onChange={() => setAccessMode("password")}
                     className="accent-primary"
                   />
-                  {t("gabinet.employees.accessModePassword", { defaultValue: "Ustaw hasło ręcznie" })}
+                  {t("gabinet.employees.accessModePassword", { defaultValue: "Utwórz hasło jednorazowe" })}
+                </label>
+                <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+                  <input
+                    type="radio"
+                    name="accessMode"
+                    value="inactive"
+                    checked={accessMode === "inactive"}
+                    onChange={() => setAccessMode("inactive")}
+                    className="accent-primary"
+                  />
+                  {t("gabinet.employees.accessModeInactive", { defaultValue: "Utwórz konto jako nieaktywne" })}
                 </label>
               </div>
             </div>
 
+            {accessMode !== "inactive" && (
             <div className="space-y-1.5">
               <Label>
                 {t("gabinet.employees.accessEmail", { defaultValue: "Adres e-mail" })} <span className="text-destructive">*</span>
@@ -467,6 +479,8 @@ export function EmployeeForm({
                 placeholder={t("gabinet.employees.accessEmailPlaceholder", { defaultValue: "np. jan.kowalski@firma.pl" })}
               />
             </div>
+            )}
+            {accessMode !== "inactive" && (
             <div className="space-y-1.5">
               <Label>
                 {t("gabinet.employees.accessRole", { defaultValue: "Rola dostępu" })} <span className="text-destructive">*</span>
@@ -488,6 +502,7 @@ export function EmployeeForm({
                 </SelectContent>
               </Select>
             </div>
+            )}
 
             {/* Password fields — only shown in manual password mode */}
             {accessMode === "password" && (
@@ -618,7 +633,7 @@ export function EmployeeForm({
           type="submit"
           disabled={
             isSubmitting ||
-            !accessEmail.trim() ||
+            (accessMode !== "inactive" && !accessEmail.trim()) ||
             !isPasswordValid
           }
         >

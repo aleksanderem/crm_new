@@ -697,7 +697,32 @@ function CreateEmployeeSheet({
             onSubmit={async (data) => {
               setSaving(true);
               try {
-                if (data.accessMode === "password" && data.accessEmail && data.password) {
+                if (data.accessMode === "inactive") {
+                  // Create employee record without any user account (no login access).
+                  // isActive is a new param added to the create action validator — types
+                  // will be in sync after the next `npx convex dev` codegen run.
+                  await (createEmployee as (args: Record<string, unknown>) => Promise<unknown>)({
+                    organizationId,
+                    firstName: data.firstName,
+                    lastName: data.lastName,
+                    role: data.role,
+                    specialization: data.specialization,
+                    licenseNumber: data.licenseNumber,
+                    color: data.color,
+                    showInCalendar: data.showInCalendar,
+                    qualifiedTreatmentIds: data.qualifiedTreatmentIds as string[],
+                    tagIds: data.tagIds as string[] | undefined,
+                    categoryId: data.categoryId as string | undefined,
+                    customFields: data.customFields,
+                    locationId: data.locationId,
+                    locationRole: data.locationRole,
+                    isActive: false,
+                  });
+                  toast.success(t("common.created"));
+                  void queryClient.invalidateQueries({
+                    queryKey: supabaseKeys.gabinetEmployees.list(organizationId),
+                  });
+                } else if (data.accessMode === "password" && data.accessEmail && data.password) {
                   await createWithPassword({
                     organizationId,
                     email: data.accessEmail,

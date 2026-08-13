@@ -1146,25 +1146,44 @@ export const create = action({
       }
     }
 
-    // --- Past-time guard (issue #1414) ---
-    // Reject appointments whose start is already in the past unless the
-    // caller explicitly opts in via `allowPast` (walk-in flow). The same
-    // ISO-string parsing as `dueDateMs` below is used so the comparison is
-    // consistent with how the slot is later persisted.
-    if (!args.allowPast) {
-      const apptMs = new Date(`${args.date}T${args.startTime}:00`).getTime();
-      if (Number.isFinite(apptMs) && apptMs <= now) {
-        throw new Error("Appointment start time is in the past");
-      }
-    }
-
-    // --- Org settings (reminder default) ---
+    // --- Org settings (reminder default + timezone) ---
+    // Fetched before the past-time guard so we can use orgSettings.timezone
+    // to correctly localise "now" for the comparison (issue #4539).
     const orgSettings = await ctx.runAction(
       internal.gabinet.appointments._getOrgSettings,
       { organizationId: args.organizationId },
     );
     const shouldSendReminder =
       args.sendReminder ?? (orgSettings as any)?.reminderEnabled ?? false;
+
+    // --- Past-time guard (issue #1414) ---
+    // Reject appointments whose start is already in the past unless the
+    // caller explicitly opts in via `allowPast` (walk-in flow). Compare
+    // the appointment local date+time against "now" expressed in the
+    // clinic's configured timezone (orgSettings.timezone) so that clinics
+    // in UTC-N don't have morning slots incorrectly rejected when Convex
+    // runs in UTC (issue #4539). Falls back to UTC when no timezone is set.
+    if (!args.allowPast) {
+      const clinicTz = (orgSettings as any)?.timezone as string | null | undefined;
+      const apptStr = `${args.date}T${args.startTime}:00`;
+      let nowInClinicTz: string;
+      try {
+        nowInClinicTz = new Intl.DateTimeFormat("sv-SE", {
+          timeZone: clinicTz || "UTC",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }).format(now).replace(" ", "T");
+      } catch {
+        nowInClinicTz = new Date(now).toISOString().slice(0, 19);
+      }
+      if (apptStr <= nowInClinicTz) {
+        throw new Error("Appointment start time is in the past");
+      }
+    }
 
     // --- Normalize treatment list (#3356 multi-treatment model) ---
     // When `treatments` array is provided (new multi-treatment path), use it as

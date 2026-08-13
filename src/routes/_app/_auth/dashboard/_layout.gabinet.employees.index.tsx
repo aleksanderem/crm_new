@@ -141,7 +141,10 @@ function EmployeesIndex() {
     { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
   ], [t, tags, categories]);
 
+  const updateEmployee = useAction(api.gabinet.employees.update);
   const removeEmployee = useAction(api.gabinet.employees.remove);
+  const resendInvitation = useAction(api.invitations.resend);
+  const cancelInvitation = useAction(api.invitations.cancel);
   const bulkSetEmployeeSchedule = useAction(
     // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
     api.gabinet.scheduling.bulkSetEmployeeSchedule,
@@ -345,6 +348,32 @@ function EmployeesIndex() {
     });
   }, [queryClient, organizationId]);
 
+  const invalidateEmployeesCache = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: supabaseKeys.gabinetEmployees.list(organizationId),
+    });
+  }, [queryClient, organizationId]);
+
+  const handleResendInvitation = useCallback(async (invitationId: string) => {
+    try {
+      await resendInvitation({ organizationId, invitationId });
+      toast.success(t("team.invitationResent"));
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
+    } catch (e) {
+      toast.error(formatActionError(e, t, { key: "team.errors.resendFailed", defaultValue: "Nie udało się wysłać zaproszenia ponownie." }));
+    }
+  }, [resendInvitation, organizationId, t, queryClient]);
+
+  const handleCancelInvitation = useCallback(async (invitationId: string) => {
+    try {
+      await cancelInvitation({ organizationId, invitationId });
+      toast.success(t("team.invitationCancelled"));
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
+    } catch (e) {
+      toast.error(formatActionError(e, t, { key: "team.errors.cancelFailed", defaultValue: "Nie udało się anulować zaproszenia." }));
+    }
+  }, [cancelInvitation, organizationId, t, queryClient]);
+
   const rowActions = useCallback(
     (row: Employee) => [
       ...(canEdit
@@ -360,6 +389,55 @@ function EmployeesIndex() {
         icon: <Calendar className="h-4 w-4" variant="stroke" />,
         onClick: () => setEditingScheduleEmployee(row),
       },
+      ...(canEdit
+        ? (() => {
+            const hasUser = !!row.userId;
+            if (!hasUser && !row.isActive) {
+              return [{
+                label: t("gabinet.employees.activateAccount", "Aktywuj konto"),
+                onClick: async () => {
+                  try {
+                    await updateEmployee({ organizationId, employeeId: row._id, isActive: true });
+                    toast.success(t("gabinet.employees.activated", "Konto aktywowane."));
+                    invalidateEmployeesCache();
+                  } catch (e) {
+                    toast.error(formatActionError(e, t, { key: "gabinet.employees.errors.activateFailed", defaultValue: "Nie udało się aktywować konta." }));
+                  }
+                },
+              }];
+            }
+            if (hasUser && row.isActive) {
+              return [{
+                label: t("gabinet.employees.blockAccount", "Zablokuj konto"),
+                onClick: async () => {
+                  if (!window.confirm(t("gabinet.employees.confirmBlock", "Czy na pewno chcesz zablokować konto tego pracownika?"))) return;
+                  try {
+                    await updateEmployee({ organizationId, employeeId: row._id, isActive: false });
+                    toast.success(t("gabinet.employees.blocked", "Konto zablokowane."));
+                    invalidateEmployeesCache();
+                  } catch (e) {
+                    toast.error(formatActionError(e, t, { key: "gabinet.employees.errors.blockFailed", defaultValue: "Nie udało się zablokować konta." }));
+                  }
+                },
+              }];
+            }
+            if (hasUser && !row.isActive) {
+              return [{
+                label: t("gabinet.employees.unblockAccount", "Odblokuj konto"),
+                onClick: async () => {
+                  try {
+                    await updateEmployee({ organizationId, employeeId: row._id, isActive: true });
+                    toast.success(t("gabinet.employees.unblocked", "Konto odblokowane."));
+                    invalidateEmployeesCache();
+                  } catch (e) {
+                    toast.error(formatActionError(e, t, { key: "gabinet.employees.errors.unblockFailed", defaultValue: "Nie udało się odblokować konta." }));
+                  }
+                },
+              }];
+            }
+            return [];
+          })()
+        : []),
       ...(canDelete
         ? [
             {
@@ -384,7 +462,7 @@ function EmployeesIndex() {
           ]
         : []),
     ],
-    [navigate, removeEmployee, organizationId, t, canEdit, canDelete]
+    [navigate, updateEmployee, removeEmployee, organizationId, t, canEdit, canDelete, invalidateEmployeesCache]
   );
 
   const handleBulkAction = useCallback(
@@ -527,6 +605,7 @@ function EmployeesIndex() {
             {pendingGabinetInvitations.map((inv) => {
               const md = inv.moduleData as { firstName?: string; lastName?: string; role?: string } | undefined;
               const name = [md?.firstName, md?.lastName].filter(Boolean).join(" ") || inv.email;
+              const isExpired = inv.expiresAt <= Date.now();
               return (
                 <div key={inv._id} className="flex items-center gap-3 px-4 py-3">
                   <Avatar size="sm" initials={name.substring(0, 2).toUpperCase()} />
@@ -540,8 +619,28 @@ function EmployeesIndex() {
                     </span>
                   )}
                   <Badge variant="outline" className="text-xs shrink-0">
-                    {t("gabinet.employees.pendingAcceptance", { defaultValue: "Oczekuje na akceptację" })}
+                    {isExpired
+                      ? t("gabinet.employees.invitationExpired", "Wygasło")
+                      : t("gabinet.employees.pendingAcceptance", { defaultValue: "Oczekuje na akceptację" })}
                   </Badge>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="shrink-0"
+                    onClick={() => handleResendInvitation(inv._id)}
+                  >
+                    {t("team.resendInvitation")}
+                  </Button>
+                  {!isExpired && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="shrink-0 text-destructive hover:text-destructive"
+                      onClick={() => handleCancelInvitation(inv._id)}
+                    >
+                      {t("team.cancelInvitation")}
+                    </Button>
+                  )}
                 </div>
               );
             })}

@@ -80,6 +80,7 @@ export function EditEmployeeDrawer({
       return { locationId: data.location_id ?? null, locationRole: (data.role as string | null) ?? null };
     },
     enabled: isReady && !!client,
+    staleTime: 0,
   });
 
   const [userId, setUserId] = useState<string | undefined>(employee.userId);

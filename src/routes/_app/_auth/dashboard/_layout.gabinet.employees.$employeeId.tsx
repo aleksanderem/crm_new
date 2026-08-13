@@ -8,6 +8,8 @@ import {
   useSupabaseGabinetEmployee,
   useSupabaseGabinetEmployeesList,
 } from "@/hooks/use-supabase-gabinet-employees";
+import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
+import { useSupabase } from "@/components/supabase-provider";
 import { useSupabaseGabinetEmployeeSchedulesList } from "@/hooks/use-supabase-gabinet-employee-schedules";
 import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
@@ -95,6 +97,9 @@ function EmployeeDetail() {
   const invalidateEmployeeCache = () => {
     void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(organizationId) });
     void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.detail(organizationId, employeeId) });
+    void queryClient.invalidateQueries({
+      queryKey: ["gabinet_employee_locations_primary", String(organizationId), employeeId],
+    });
   };
   const invalidateScheduleCache = () => {
     void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployeeSchedules.list(organizationId) });
@@ -154,6 +159,25 @@ function EmployeeDetail() {
     organizationId,
     employeeId,
   );
+
+  const { client: supabaseClient, isReady: supabaseReady } = useSupabase();
+  const { data: primaryLocationData } = useQuery({
+    queryKey: ["gabinet_employee_locations_primary", String(organizationId), employeeId],
+    queryFn: async () => {
+      if (!supabaseClient) return null;
+      const { data } = await supabaseClient
+        .from("gabinet_employee_locations")
+        .select("location_id, role")
+        .eq("organization_id", String(organizationId))
+        .eq("employee_id", employeeId)
+        .eq("is_primary", true)
+        .maybeSingle();
+      if (!data) return null;
+      return { locationId: data.location_id as string | null, locationRole: data.role as string | null };
+    },
+    enabled: supabaseReady && !!supabaseClient && !!employeeId,
+  });
+  const { data: locations } = useSupabaseGabinetLocationsList(String(organizationId));
 
   const { data: members } = useSupabaseOrganizationMembers(organizationId);
 
@@ -417,6 +441,10 @@ function EmployeeDetail() {
   };
 
   // Detail fields for EntityDetailLayout sidebar
+  const primaryLocationName = primaryLocationData?.locationId
+    ? (locations?.find((l) => l._id === primaryLocationData.locationId)?.name ?? primaryLocationData.locationId)
+    : undefined;
+
   const detailFields: DetailField[] = employee
     ? [
         { label: t("gabinet.employees.firstName"), value: employee.firstName, fieldKey: "firstName" },
@@ -428,6 +456,18 @@ function EmployeeDetail() {
           fieldKey: "role",
         },
         { label: t("gabinet.employees.specialization"), value: employee.specialization, fieldKey: "specialization" },
+        {
+          label: t("gabinet.employees.location", { defaultValue: "Lokalizacja" }),
+          value: primaryLocationName,
+          fieldKey: "location",
+        },
+        ...(primaryLocationData?.locationRole
+          ? [{
+              label: t("settings.team.gabinetLocationRole"),
+              value: t(`gabinet.employees.roles.${primaryLocationData.locationRole}`),
+              fieldKey: "locationRole",
+            }]
+          : []),
       ]
     : [];
 

@@ -1559,6 +1559,8 @@ export const update = action({
     contraindicationAlertsReviewed: v.optional(v.union(v.boolean(), v.null())),
     variantId: v.optional(v.union(v.string(), v.null())),
     reminderOverrides: v.optional(v.string()), // JSON: per-appointment channel overrides
+    prepaymentRequired: v.optional(v.union(v.boolean(), v.null())),
+    prepaymentAmount: v.optional(v.union(v.number(), v.null())),
     // Multi-treatment model (#3356): when provided, replaces all existing
     // junction rows for this appointment with the new list.
     treatments: v.optional(
@@ -1743,6 +1745,18 @@ export const update = action({
         status === "cancelled" || (!status && appt.status === "cancelled");
       if (willBeCancelled) {
         patch.cancellationReason = cancellationReason;
+      }
+    }
+
+    // Keep prepaymentStatus in sync when prepaymentRequired changes.
+    // Turning it on → "pending" (if not already paid); turning it off → null.
+    if (args.prepaymentRequired !== undefined) {
+      if (args.prepaymentRequired) {
+        if (!appt.prepaymentStatus) {
+          patch.prepaymentStatus = "pending";
+        }
+      } else {
+        patch.prepaymentStatus = null;
       }
     }
 

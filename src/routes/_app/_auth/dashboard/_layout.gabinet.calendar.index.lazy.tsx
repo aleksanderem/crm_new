@@ -591,7 +591,10 @@ function GabinetCalendarPage() {
       if (a.recurringGroupId) recurringGroupIds.add(a.recurringGroupId);
       // Only payable appointments contribute to the paid/unpaid indicator
       // lookup. Cancelled appointments can't be paid by definition.
-      if (a.status !== "cancelled" && a.treatmentId) appointmentIds.add(a._id);
+      // treatment_id was dropped from gabinet_appointments (migration 00076);
+      // all treatment data lives in the junction table — the old scalar guard
+      // was incorrectly excluding new appointments that have no scalar treatmentId.
+      if (a.status !== "cancelled") appointmentIds.add(a._id);
     }
     return {
       patientIds: Array.from(patientIds),

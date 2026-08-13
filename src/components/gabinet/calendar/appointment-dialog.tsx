@@ -604,6 +604,7 @@ export function AppointmentDialog({
       employeeId,
       dateStr,
       effectiveDuration,
+      locationId || null,
       // Bucket by the hour so the query is cached but still refreshes as the
       // clock advances past past-slot boundaries. Walk-in mode disables the
       // filter so it must also key the cache.
@@ -616,6 +617,7 @@ export function AppointmentDialog({
         userId: employeeId as string,
         date: dateStr,
         duration: effectiveDuration,
+        locationId: locationId || undefined,
         nowDate: recordWalkIn ? undefined : nowDate,
         nowTime: recordWalkIn ? undefined : nowTime,
       }),

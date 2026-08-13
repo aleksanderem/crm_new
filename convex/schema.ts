@@ -531,6 +531,7 @@ const crmTables = createCrmTables({
   emailDirectionValidator,
   orgRoleValidator,
   invitationStatusValidator,
+  gabinetEmployeeRoleValidator,
 });
 
 const gabinetTables = createGabinetTables({

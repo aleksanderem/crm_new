@@ -1,8 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { z } from "zod";
-import { Loader2 } from "@/lib/ez-icons";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { Loader2, EyeIcon, EyeOffIcon } from "@/lib/ez-icons";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
+import type { GabinetEmployeeRole } from "@cvx/schema";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
@@ -22,9 +23,7 @@ import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { CustomFieldFormSection } from "@/components/custom-fields/custom-field-form-section";
 import { Eye, Search } from "@/lib/ez-icons";
-
-const ROLES = ["doctor", "cosmetologist", "nurse", "therapist", "receptionist", "manager", "admin", "other"] as const;
-type EmployeeRole = (typeof ROLES)[number];
+import { EMPLOYEE_ROLES } from "@/lib/options";
 
 interface TagDef {
   _id: Id<"tagDefinitions">;
@@ -54,7 +53,7 @@ export interface EmployeeFormData {
   userId?: Id<"users">;
   firstName?: string;
   lastName?: string;
-  role: EmployeeRole;
+  role: GabinetEmployeeRole;
   specialization?: string;
   licenseNumber?: string;
   color?: string;
@@ -69,7 +68,7 @@ export interface EmployeeFormData {
   accessRole?: "admin" | "member" | "viewer";
   password?: string;
   locationId?: string;
-  locationRole?: EmployeeRole;
+  locationRole?: GabinetEmployeeRole;
 }
 
 interface EmployeeFormProps {
@@ -108,7 +107,7 @@ export function EmployeeForm({
 
   const [firstName, setFirstName] = useState(initialData?.firstName ?? "");
   const [lastName, setLastName] = useState(initialData?.lastName ?? "");
-  const [role, setRole] = useState<EmployeeRole>(initialData?.role ?? "doctor");
+  const [role, setRole] = useState<GabinetEmployeeRole>(initialData?.role ?? "doctor");
   const [specialization, setSpecialization] = useState(initialData?.specialization ?? "");
   const [licenseNumber, setLicenseNumber] = useState(initialData?.licenseNumber ?? "");
   const [color, setColor] = useState(initialData?.color ?? "#3b82f6");
@@ -127,7 +126,7 @@ export function EmployeeForm({
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [locationId, setLocationId] = useState<string | undefined>(undefined);
-  const [locationRole, setLocationRole] = useState<EmployeeRole | undefined>(undefined);
+  const [locationRole, setLocationRole] = useState<GabinetEmployeeRole | undefined>(undefined);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -233,12 +232,12 @@ export function EmployeeForm({
         <Label>
           {t("gabinet.employees.role")} <span className="text-destructive">*</span>
         </Label>
-        <Select value={role} onValueChange={(v) => setRole(v as EmployeeRole)}>
+        <Select value={role} onValueChange={(v) => setRole(v as GabinetEmployeeRole)}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {ROLES.map((r) => (
+            {EMPLOYEE_ROLES.map((r) => (
               <SelectItem key={r} value={r}>
                 {t(`gabinet.employees.roles.${r}`)}
               </SelectItem>
@@ -592,14 +591,14 @@ export function EmployeeForm({
                 <Label>{t("settings.team.gabinetLocationRole")}</Label>
                 <Select
                   value={locationRole ?? "none"}
-                  onValueChange={(v) => setLocationRole(v === "none" ? undefined : v as EmployeeRole)}
+                  onValueChange={(v) => setLocationRole(v === "none" ? undefined : v as GabinetEmployeeRole)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={t("settings.team.gabinetLocationRolePlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">{t("settings.team.gabinetLocationRoleNone")}</SelectItem>
-                    {ROLES.map((r) => (
+                    {EMPLOYEE_ROLES.map((r) => (
                       <SelectItem key={r} value={r}>
                         {t(`gabinet.employees.roles.${r}`)}
                       </SelectItem>

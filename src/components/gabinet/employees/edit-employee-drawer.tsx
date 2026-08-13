@@ -22,8 +22,9 @@ import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
 import { useSupabase } from "@/components/supabase-provider";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
+import { EMPLOYEE_ROLES } from "@/lib/options";
 
-export const ROLES = ["doctor", "cosmetologist", "nurse", "therapist", "receptionist", "manager", "admin", "other"] as const;
+export { EMPLOYEE_ROLES as ROLES };
 
 export function EditEmployeeDrawer({
   open,
@@ -201,7 +202,7 @@ export function EditEmployeeDrawer({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {ROLES.map((r) => (
+              {EMPLOYEE_ROLES.map((r) => (
                 <SelectItem key={r} value={r}>
                   {t(`gabinet.employees.roles.${r}`)}
                 </SelectItem>

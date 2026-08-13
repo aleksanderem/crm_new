@@ -201,15 +201,15 @@ export function AppointmentDetailsTab({
               </span>
               <span className="font-medium">{calculateDuration()} min</span>
             </div>
-            {treatment?.price !== undefined && (
+            {(junctionTreatments[0]?.priceAtBooking ?? treatment?.price) != null && (
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">
                   {t("common.price")}
                 </span>
                 <span className="font-medium">
                   {formatCurrencyPLN(
-                    treatment.price as number,
-                    (treatment.currency as string | undefined) ?? "PLN",
+                    (junctionTreatments[0]?.priceAtBooking ?? treatment?.price) as number,
+                    (treatment?.currency as string | undefined) ?? "PLN",
                   )}
                 </span>
               </div>

@@ -201,6 +201,7 @@ function AppointmentDetail() {
   const [isSavingTags, setIsSavingTags] = useState(false);
 
   const [editTreatmentId, setEditTreatmentId] = useState("");
+  const [editVariantId, setEditVariantId] = useState("");
   const [treatmentPickerOpen, setTreatmentPickerOpen] = useState(false);
   const [treatmentSearch, setTreatmentSearch] = useState("");
   const [isSavingTreatment, setIsSavingTreatment] = useState(false);
@@ -309,6 +310,14 @@ function AppointmentDetail() {
         }>
       | undefined;
   };
+
+  // Variants for the currently-selected treatment on the Details tab
+  const listVariantsAction = useAction(api.gabinet.treatments.listVariants);
+  const { data: editTreatmentVariants } = useQuery({
+    queryKey: ["gabinet.treatments.listVariants", organizationId, editTreatmentId],
+    queryFn: () => listVariantsAction({ organizationId, treatmentId: editTreatmentId }),
+    enabled: !!organizationId && !!editTreatmentId,
+  }) as { data: Array<{ _id: string; name: string; resolvedPrice: number | null; resolvedDuration: number | null }> | undefined };
 
   const listSmsEventsAction = useAction(
     api.gabinet.appointmentSms.listByAppointment,
@@ -435,6 +444,7 @@ function AppointmentDetail() {
           ? String(appt.treatmentId)
           : "",
     );
+    setEditVariantId(detail.treatments?.[0]?.variantId ?? "");
   }, [detail]);
 
   // Initialize tagIds from appointment data
@@ -740,11 +750,33 @@ function AppointmentDetail() {
   const handleSaveTreatment = async (newTreatmentId: string) => {
     if (!newTreatmentId) return;
     setIsSavingTreatment(true);
+    setEditVariantId("");
     try {
       await updateAppointment({
         organizationId,
         appointmentId: appointment._id,
         treatmentId: newTreatmentId,
+        variantId: null,
+      });
+      toast.success(t("common.saved"));
+      await invalidateAppointmentCaches();
+      refetch();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : t("common.error");
+      toast.error(msg);
+    } finally {
+      setIsSavingTreatment(false);
+    }
+  };
+
+  const handleSaveVariant = async (newVariantId: string) => {
+    setIsSavingTreatment(true);
+    try {
+      await updateAppointment({
+        organizationId,
+        appointmentId: appointment._id,
+        treatmentId: editTreatmentId,
+        variantId: newVariantId || null,
       });
       toast.success(t("common.saved"));
       await invalidateAppointmentCaches();
@@ -1029,6 +1061,8 @@ function AppointmentDetail() {
           canEdit={canEdit}
           isSavingTreatment={isSavingTreatment}
           editTreatmentId={editTreatmentId}
+          editVariantId={editVariantId}
+          editTreatmentVariants={editTreatmentVariants}
           treatmentPickerOpen={treatmentPickerOpen}
           treatmentSearch={treatmentSearch}
           onTreatmentPickerOpenChange={setTreatmentPickerOpen}
@@ -1036,6 +1070,10 @@ function AppointmentDetail() {
           onTreatmentSelect={(id) => {
             setEditTreatmentId(id);
             void handleSaveTreatment(id);
+          }}
+          onVariantSelect={(vid) => {
+            setEditVariantId(vid);
+            void handleSaveVariant(vid);
           }}
           onInternalNotesChange={setInternalNotes}
           onSaveInternalNotes={handleSaveInternalNotes}

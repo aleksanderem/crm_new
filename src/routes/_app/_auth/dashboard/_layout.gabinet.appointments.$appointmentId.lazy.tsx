@@ -1227,7 +1227,12 @@ function AppointmentDetail() {
           appointmentDate={detail.appointment.date}
           startTime={detail.appointment.startTime}
           endTime={detail.appointment.endTime}
-          durationMinutes={detail.treatment?.duration ?? 30}
+          durationMinutes={(() => {
+              const [sh, sm] = detail.appointment.startTime.split(":").map(Number);
+              const [eh, em] = detail.appointment.endTime.split(":").map(Number);
+              const computed = eh * 60 + em - (sh * 60 + sm);
+              return computed > 0 ? computed : (detail.treatment?.duration ?? 30);
+            })()}
         />
       )}
 

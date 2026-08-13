@@ -366,6 +366,7 @@ export const _createFromInvitation = internalAction({
         try {
           const existingLocation = await db
             .query("gabinetEmployeeLocations")
+            .eq("organizationId", String(args.organizationId))
             .eq("employeeId", existingEmployeeId)
             .eq("locationId", locationId2)
             .collect();
@@ -744,6 +745,7 @@ export const update = action({
     // --- Upsert primary location ---
     if (locationId !== undefined) {
       const existingLocs = await db.query("gabinetEmployeeLocations")
+        .eq("organizationId", String(organizationId))
         .eq("employeeId", employeeId)
         .eq("isPrimary", true)
         .collect();

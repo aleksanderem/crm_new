@@ -635,7 +635,7 @@ function AppointmentDetail() {
         toast.warning(t("gabinet.stock.negativeWarning"));
       }
       await invalidateAppointmentCaches();
-      refetch();
+      await refetch();
 
       // When completing: the backend auto-generates after_completion docs.
       // Open dialog so the employee can fill them before they're sent to client.
@@ -694,7 +694,7 @@ function AppointmentDetail() {
       setCancelDialogOpen(false);
       setCancelReason("");
       await invalidateAppointmentCaches();
-      refetch();
+      await refetch();
     } catch (error) {
       const msg = error instanceof Error ? error.message : t("common.error");
       toast.error(msg);
@@ -1299,6 +1299,7 @@ function AppointmentDetail() {
             toast.warning(t("gabinet.stock.negativeWarning"));
           }
           await invalidateAppointmentCaches();
+          await refetch();
           setTimeout(() => setAfterCompletionDialogOpen(true), 500);
         }}
         onSuccess={() => {

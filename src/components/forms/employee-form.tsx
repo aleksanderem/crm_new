@@ -58,6 +58,7 @@ export interface EmployeeFormData {
   licenseNumber?: string;
   color?: string;
   showInCalendar?: boolean;
+  performsServices?: boolean;
   qualifiedTreatmentIds: Id<"gabinetTreatments">[];
   tagIds?: Id<"tagDefinitions">[];
   categoryId?: Id<"categoryDefinitions">;
@@ -114,6 +115,9 @@ export function EmployeeForm({
   const [showInCalendar, setShowInCalendar] = useState<boolean>(
     initialData?.showInCalendar ?? true,
   );
+  const [performsServices, setPerformsServices] = useState<boolean>(
+    initialData?.performsServices ?? true,
+  );
   const [selectedTreatments, setSelectedTreatments] = useState<string[]>(
     initialData?.qualifiedTreatmentIds?.map((id) => id as string) ?? []
   );
@@ -164,8 +168,6 @@ export function EmployeeForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const isClinicalRole = role !== "receptionist" && role !== "manager";
-
     const customFields = (customFieldDefs ?? [])
       .map((def) => ({
         fieldDefinitionId: def._id,
@@ -177,11 +179,12 @@ export function EmployeeForm({
       firstName: firstName || undefined,
       lastName: lastName || undefined,
       role,
-      specialization: specialization || undefined,
-      licenseNumber: licenseNumber || undefined,
-      color: color || undefined,
+      specialization: performsServices ? specialization || undefined : undefined,
+      licenseNumber: performsServices ? licenseNumber || undefined : undefined,
+      color: showInCalendar ? color || undefined : undefined,
       showInCalendar,
-      qualifiedTreatmentIds: isClinicalRole
+      performsServices,
+      qualifiedTreatmentIds: performsServices
         ? (selectedTreatments as Id<"gabinetTreatments">[])
         : [],
       tagIds: tagIds.length > 0 ? tagIds : undefined,
@@ -192,8 +195,8 @@ export function EmployeeForm({
       accessEmail: accessMode !== "inactive" ? accessEmail.trim() || undefined : undefined,
       accessRole: accessMode !== "inactive" ? accessRole : undefined,
       password: accessMode === "password" ? password : undefined,
-      locationId: locationId,
-      locationRole: locationRole,
+      locationId: showInCalendar ? locationId : undefined,
+      locationRole: showInCalendar ? locationRole : undefined,
     });
   };
 
@@ -246,45 +249,23 @@ export function EmployeeForm({
         </Select>
       </div>
 
-      {/* Specialization */}
+      {/* Performs services */}
       <div className="space-y-1.5">
-        <Label>{t("gabinet.employees.specialization")}</Label>
-        <Input
-          value={specialization}
-          onChange={(e) => setSpecialization(e.target.value)}
-          placeholder={t("gabinet.employees.specializationPlaceholder")}
-        />
-      </div>
-
-      {/* License number */}
-      <div className="space-y-1.5">
-        <Label>{t("gabinet.employees.license")}</Label>
-        <Input
-          value={licenseNumber}
-          onChange={(e) => setLicenseNumber(e.target.value)}
-          placeholder={t("gabinet.employees.licensePlaceholder")}
-        />
-      </div>
-
-      {/* Color picker */}
-      <div className="space-y-2">
-        <Label>{t("gabinet.employees.color")}</Label>
-        <div className="flex gap-2">
-          {COLOR_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              className={`h-7 w-7 rounded-full border-2 transition-all ${
-                color === opt.value
-                  ? "border-foreground scale-110"
-                  : "border-transparent hover:border-muted-foreground/40"
-              }`}
-              style={{ backgroundColor: opt.value }}
-              onClick={() => setColor(color === opt.value ? "" : opt.value)}
-              title={opt.label}
-            />
-          ))}
-        </div>
+        <label className="flex items-start gap-3 cursor-pointer">
+          <Checkbox
+            className="mt-0.5 h-5 w-5"
+            checked={performsServices}
+            onCheckedChange={(checked) => setPerformsServices(checked === true)}
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium leading-none">
+              {t("gabinet.employees.performsServices", { defaultValue: "Czy pracownik wykonuje usługi lub zabiegi?" })}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {t("gabinet.employees.performsServicesHint", { defaultValue: "Przy Tak wyświetlane są pola: specjalizacja, numer licencji, kwalifikacje i lista usług." })}
+            </span>
+          </span>
+        </label>
       </div>
 
       {/* Show in calendar */}
@@ -306,9 +287,96 @@ export function EmployeeForm({
         </label>
       </div>
 
-      {/* Qualified treatments — hidden for non-clinical roles */}
-      {role !== "receptionist" && role !== "manager" && (
-        <div className="space-y-2">
+      {/* Calendar settings — color and location, conditional on showInCalendar */}
+      {showInCalendar && (
+        <div className="space-y-4 pl-8">
+          <div className="space-y-2">
+            <Label>{t("gabinet.employees.color")}</Label>
+            <div className="flex gap-2">
+              {COLOR_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`h-7 w-7 rounded-full border-2 transition-all ${
+                    color === opt.value
+                      ? "border-foreground scale-110"
+                      : "border-transparent hover:border-muted-foreground/40"
+                  }`}
+                  style={{ backgroundColor: opt.value }}
+                  onClick={() => setColor(color === opt.value ? "" : opt.value)}
+                  title={opt.label}
+                />
+              ))}
+            </div>
+          </div>
+          {locations && locations.filter((l) => l.isActive).length > 0 && (
+            <div className="space-y-1.5">
+              <Label>{t("settings.team.gabinetLocation")}</Label>
+              <Select
+                value={locationId ?? "none"}
+                onValueChange={(v) => {
+                  setLocationId(v === "none" ? undefined : v);
+                  if (v === "none") setLocationRole(undefined);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("settings.team.gabinetLocationPlaceholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t("settings.team.gabinetLocationNone")}</SelectItem>
+                  {locations.filter((l) => l.isActive).map((loc) => (
+                    <SelectItem key={loc._id} value={loc._id}>
+                      {loc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {locationId && (
+            <div className="space-y-1.5">
+              <Label>{t("settings.team.gabinetLocationRole")}</Label>
+              <Select
+                value={locationRole ?? "none"}
+                onValueChange={(v) => setLocationRole(v === "none" ? undefined : v as GabinetEmployeeRole)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("settings.team.gabinetLocationRolePlaceholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t("settings.team.gabinetLocationRoleNone")}</SelectItem>
+                  {EMPLOYEE_ROLES.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {t(`gabinet.employees.roles.${r}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Service fields — conditional on performsServices */}
+      {performsServices && (
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.employees.specialization")}</Label>
+            <Input
+              value={specialization}
+              onChange={(e) => setSpecialization(e.target.value)}
+              placeholder={t("gabinet.employees.specializationPlaceholder")}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.employees.license")}</Label>
+            <Input
+              value={licenseNumber}
+              onChange={(e) => setLicenseNumber(e.target.value)}
+              placeholder={t("gabinet.employees.licensePlaceholder")}
+            />
+          </div>
+          <div className="space-y-2">
           <Label>{t("gabinet.employees.qualifiedTreatments")}</Label>
           {treatments && treatments.length > 0 && (
             <div className="relative">
@@ -386,6 +454,7 @@ export function EmployeeForm({
               {t("gabinet.employees.selectedTreatments", { count: selectedTreatments.length })}
             </p>
           )}
+          </div>
         </div>
       )}
 
@@ -577,51 +646,6 @@ export function EmployeeForm({
               </div>
             )}
 
-            {locations && locations.filter((l) => l.isActive).length > 0 && (
-              <div className="space-y-1.5">
-                <Label>{t("settings.team.gabinetLocation")}</Label>
-                <Select
-                  value={locationId ?? "none"}
-                  onValueChange={(v) => {
-                    setLocationId(v === "none" ? undefined : v);
-                    if (v === "none") setLocationRole(undefined);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("settings.team.gabinetLocationPlaceholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">{t("settings.team.gabinetLocationNone")}</SelectItem>
-                    {locations.filter((l) => l.isActive).map((loc) => (
-                      <SelectItem key={loc._id} value={loc._id}>
-                        {loc.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            {locationId && (
-              <div className="space-y-1.5">
-                <Label>{t("settings.team.gabinetLocationRole")}</Label>
-                <Select
-                  value={locationRole ?? "none"}
-                  onValueChange={(v) => setLocationRole(v === "none" ? undefined : v as GabinetEmployeeRole)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("settings.team.gabinetLocationRolePlaceholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">{t("settings.team.gabinetLocationRoleNone")}</SelectItem>
-                    {EMPLOYEE_ROLES.map((r) => (
-                      <SelectItem key={r} value={r}>
-                        {t(`gabinet.employees.roles.${r}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
         </div>
       </div>
 

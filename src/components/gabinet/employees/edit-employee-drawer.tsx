@@ -81,6 +81,9 @@ export function EditEmployeeDrawer({
   const [showInCalendar, setShowInCalendar] = useState<boolean>(
     employee.showInCalendar ?? true,
   );
+  const [performsServices, setPerformsServices] = useState<boolean>(
+    employee.performsServices ?? true,
+  );
   const [notes, setNotes] = useState(employee.notes ?? "");
   const [locationId, setLocationId] = useState<string | null>(null);
   const [locationRole, setLocationRole] = useState<GabinetEmployeeRole | null>(null);
@@ -97,6 +100,7 @@ export function EditEmployeeDrawer({
       setHireDate(employee.hireDate ?? "");
       setColor(employee.color ?? "#3b82f6");
       setShowInCalendar(employee.showInCalendar ?? true);
+      setPerformsServices(employee.performsServices ?? true);
       setNotes(employee.notes ?? "");
     }
   }, [open, employee]);
@@ -134,14 +138,15 @@ export function EditEmployeeDrawer({
         firstName: firstName || undefined,
         lastName: lastName || undefined,
         role,
-        specialization: specialization || null,
-        licenseNumber: licenseNumber || null,
+        specialization: performsServices ? specialization || null : null,
+        licenseNumber: performsServices ? licenseNumber || null : null,
         hireDate: hireDate || null,
-        color: color || null,
+        color: showInCalendar ? color || null : null,
         showInCalendar,
+        performsServices,
         notes: notes || null,
-        locationId: locationId ?? null,
-        locationRole: locationRole ?? null,
+        locationId: showInCalendar ? locationId ?? null : null,
+        locationRole: showInCalendar ? locationRole ?? null : null,
       });
       toast.success(t("common.saved"));
       onOpenChange(false);
@@ -217,20 +222,38 @@ export function EditEmployeeDrawer({
         </div>
 
         <div className="space-y-1.5">
-          <Label>{t("gabinet.employees.specialization")}</Label>
-          <Input
-            value={specialization}
-            onChange={(e) => setSpecialization(e.target.value)}
-          />
+          <label className="flex items-start gap-3 cursor-pointer">
+            <Checkbox
+              className="mt-0.5 h-5 w-5"
+              checked={performsServices}
+              onCheckedChange={(checked) => setPerformsServices(checked === true)}
+            />
+            <span className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium leading-none">
+                {t("gabinet.employees.performsServices", { defaultValue: "Czy pracownik wykonuje usługi lub zabiegi?" })}
+              </span>
+            </span>
+          </label>
         </div>
 
-        <div className="space-y-1.5">
-          <Label>{t("gabinet.employees.license")}</Label>
-          <Input
-            value={licenseNumber}
-            onChange={(e) => setLicenseNumber(e.target.value)}
-          />
-        </div>
+        {performsServices && (
+          <>
+            <div className="space-y-1.5">
+              <Label>{t("gabinet.employees.specialization")}</Label>
+              <Input
+                value={specialization}
+                onChange={(e) => setSpecialization(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t("gabinet.employees.license")}</Label>
+              <Input
+                value={licenseNumber}
+                onChange={(e) => setLicenseNumber(e.target.value)}
+              />
+            </div>
+          </>
+        )}
 
         <div className="space-y-1.5">
           <Label>{t("gabinet.employees.hireDate")}</Label>
@@ -238,16 +261,6 @@ export function EditEmployeeDrawer({
             type="date"
             value={hireDate}
             onChange={(e) => setHireDate(e.target.value)}
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>{t("gabinet.employees.color")}</Label>
-          <input
-            type="color"
-            className="h-9 w-16 cursor-pointer rounded border bg-transparent"
-            value={color}
-            onChange={(e) => setColor(e.target.value)}
           />
         </div>
 
@@ -269,6 +282,65 @@ export function EditEmployeeDrawer({
           </label>
         </div>
 
+        {showInCalendar && (
+          <>
+            <div className="space-y-1.5">
+              <Label>{t("gabinet.employees.color")}</Label>
+              <input
+                type="color"
+                className="h-9 w-16 cursor-pointer rounded border bg-transparent"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+              />
+            </div>
+            {locations && locations.length > 0 && (
+              <div className="space-y-1.5">
+                <Label>{t("gabinet.employees.location", { defaultValue: "Lokalizacja" })}</Label>
+                <Select
+                  value={locationId ?? ""}
+                  onValueChange={(v) => {
+                    setLocationId(v || null);
+                    if (!v) setLocationRole(null);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("gabinet.employees.locationPlaceholder", { defaultValue: "Wybierz lokalizację" })} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">{t("gabinet.employees.noLocation", { defaultValue: "Brak lokalizacji" })}</SelectItem>
+                    {locations.map((loc) => (
+                      <SelectItem key={loc._id} value={loc._id}>
+                        {loc.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {locationId && (
+              <div className="space-y-1.5">
+                <Label>{t("settings.team.gabinetLocationRole")}</Label>
+                <Select
+                  value={locationRole ?? ""}
+                  onValueChange={(v) => setLocationRole(v ? (v as GabinetEmployeeRole) : null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("settings.team.gabinetLocationRolePlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">{t("settings.team.gabinetLocationRoleNone")}</SelectItem>
+                    {EMPLOYEE_ROLES.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {t(`gabinet.employees.roles.${r}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </>
+        )}
+
         <div className="space-y-1.5">
           <Label>{t("gabinet.employees.notes")}</Label>
           <RichTextEditor
@@ -276,52 +348,6 @@ export function EditEmployeeDrawer({
             onChange={(val) => setNotes(val ?? "")}
           />
         </div>
-
-        {locations && locations.length > 0 && (
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.employees.location", { defaultValue: "Lokalizacja" })}</Label>
-            <Select
-              value={locationId ?? ""}
-              onValueChange={(v) => {
-                setLocationId(v || null);
-                if (!v) setLocationRole(null);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={t("gabinet.employees.locationPlaceholder", { defaultValue: "Wybierz lokalizację" })} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">{t("gabinet.employees.noLocation", { defaultValue: "Brak lokalizacji" })}</SelectItem>
-                {locations.map((loc) => (
-                  <SelectItem key={loc._id} value={loc._id}>
-                    {loc.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-        {locationId && (
-          <div className="space-y-1.5">
-            <Label>{t("settings.team.gabinetLocationRole")}</Label>
-            <Select
-              value={locationRole ?? ""}
-              onValueChange={(v) => setLocationRole(v ? (v as GabinetEmployeeRole) : null)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={t("settings.team.gabinetLocationRolePlaceholder")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">{t("settings.team.gabinetLocationRoleNone")}</SelectItem>
-                {EMPLOYEE_ROLES.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {t(`gabinet.employees.roles.${r}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
       </div>
     </SidePanel>
   );

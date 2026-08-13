@@ -333,6 +333,10 @@ export function createGabinetTables({
     // calendar view. Defaults to true at the DB level; optional here so legacy
     // rows without the field don't fail validation.
     showInCalendar: v.optional(v.boolean()),
+    // Whether this employee performs treatments/services. Controls visibility
+    // of specialization, licenseNumber, and qualifiedTreatmentIds in the UI.
+    // Independent from showInCalendar. Defaults to true for legacy rows.
+    performsServices: v.optional(v.boolean()),
     tagIds: v.optional(v.array(v.id("tagDefinitions"))),
     categoryId: v.optional(v.id("categoryDefinitions")),
     bio: v.optional(v.string()),

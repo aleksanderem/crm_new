@@ -213,6 +213,14 @@ export function EmployeePermissionsTab({
           )}
         </CardHeader>
         <CardContent>
+          <div className="flex items-center justify-between py-2 mb-3 border-b text-sm">
+            <span className="text-muted-foreground">
+              {t("gabinet.employees.role", "Rola pracownika")}
+            </span>
+            <span className="font-medium">
+              {t(`gabinet.employees.roles.${gabinetRole}`, gabinetRole)}
+            </span>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

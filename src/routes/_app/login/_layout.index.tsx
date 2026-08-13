@@ -78,6 +78,10 @@ function Login() {
       navigate({ to: DashboardRoute.fullPath, replace: true });
       return;
     }
+    if (user.mustChangePassword) {
+      navigate({ to: "/set-password", replace: true });
+      return;
+    }
     if (!user.username) {
       navigate({ to: OnboardingUsernameRoute.fullPath, replace: true });
       return;

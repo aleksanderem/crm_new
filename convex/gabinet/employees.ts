@@ -580,12 +580,20 @@ export const _upsertMembership = internalMutation({
   },
 });
 
+export const _setMustChangePassword = internalMutation({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId as Id<"users">, { mustChangePassword: true });
+  },
+});
+
 export const _createSideEffects = internalMutation({
   args: {
     employeeId: v.string(),
     organizationId: v.id("organizations"),
     createdBy: v.string(),
     actorLabel: v.optional(v.string()),
+    isOneTimePassword: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const createdByUserId = args.createdBy as Id<"users">;
@@ -608,6 +616,17 @@ export const _createSideEffects = internalMutation({
       entityId: args.employeeId,
       details: `Created employee profile`,
     });
+
+    if (args.isOneTimePassword) {
+      await logAudit(ctx, {
+        organizationId: args.organizationId,
+        userId: createdByUserId,
+        action: "employee_one_time_password_set",
+        entityType: "gabinetEmployee",
+        entityId: args.employeeId,
+        details: `One-time password set — employee must change on first login`,
+      });
+    }
   },
 });
 
@@ -1278,6 +1297,11 @@ export const createWithPassword = action({
         shouldLinkViaPhone: false,
       });
 
+      // Mark the account as requiring a password change on first login.
+      await ctx.runMutation(internal.gabinet.employees._setMustChangePassword, {
+        userId: String(user._id),
+      });
+
       const { userId: resolvedId } = await ctx.runAction(
         internal.gabinet.employees._finalisePasswordUser,
         {
@@ -1369,6 +1393,7 @@ export const createWithPassword = action({
         organizationId: args.organizationId,
         createdBy: String(authResult.userId),
         actorLabel: authResult.userName ?? authResult.userEmail,
+        isOneTimePassword: true,
       });
     } catch (e) {
       console.error("[employees.createWithPassword] side effects failed:", e);

@@ -24,6 +24,7 @@ import { Route as AppPatientLoginRouteImport } from './routes/_app/patient/login
 import { Route as AppPatientLayoutRouteImport } from './routes/_app/patient/_layout'
 import { Route as AppLoginLayoutRouteImport } from './routes/_app/login/_layout'
 import { Route as AppInviteTokenRouteImport } from './routes/_app/invite.$token'
+import { Route as AppSetPasswordRouteImport } from './routes/_app/set-password'
 import { Route as AppPatientLayoutIndexRouteImport } from './routes/_app/patient/_layout.index'
 import { Route as AppLoginLayoutIndexRouteImport } from './routes/_app/login/_layout.index'
 import { Route as AppAuthAdminIndexRouteImport } from './routes/_app/_auth/admin.index'
@@ -200,6 +201,11 @@ const AppLoginLayoutRoute = AppLoginLayoutRouteImport.update({
 const AppInviteTokenRoute = AppInviteTokenRouteImport.update({
   id: '/invite/$token',
   path: '/invite/$token',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSetPasswordRoute = AppSetPasswordRouteImport.update({
+  id: '/set-password',
+  path: '/set-password',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPatientLayoutIndexRoute = AppPatientLayoutIndexRouteImport.update({
@@ -854,6 +860,7 @@ export interface FileRoutesByFullPath {
   '/sign-stub/$stubId': typeof SignStubStubIdRoute
   '/sign/$token': typeof SignTokenRoute
   '/invite/$token': typeof AppInviteTokenRoute
+  '/set-password': typeof AppSetPasswordRoute
   '/login': typeof AppLoginLayoutRouteWithChildren
   '/patient': typeof AppPatientLayoutRouteWithChildren
   '/patient/login': typeof AppPatientLoginRoute
@@ -973,6 +980,7 @@ export interface FileRoutesByTo {
   '/sign-stub/$stubId': typeof SignStubStubIdRoute
   '/sign/$token': typeof SignTokenRoute
   '/invite/$token': typeof AppInviteTokenRoute
+  '/set-password': typeof AppSetPasswordRoute
   '/patient/login': typeof AppPatientLoginRoute
   '/sign/form/$token': typeof SignFormTokenRoute
   '/admin/email-config': typeof AppAuthAdminEmailConfigRoute
@@ -1086,6 +1094,7 @@ export interface FileRoutesById {
   '/sign-stub/$stubId': typeof SignStubStubIdRoute
   '/sign/$token': typeof SignTokenRoute
   '/_app/invite/$token': typeof AppInviteTokenRoute
+  '/_app/set-password': typeof AppSetPasswordRoute
   '/_app/login/_layout': typeof AppLoginLayoutRouteWithChildren
   '/_app/patient/_layout': typeof AppPatientLayoutRouteWithChildren
   '/_app/patient/login': typeof AppPatientLoginRoute
@@ -1207,6 +1216,7 @@ export interface FileRouteTypes {
     | '/sign-stub/$stubId'
     | '/sign/$token'
     | '/invite/$token'
+    | '/set-password'
     | '/login'
     | '/patient'
     | '/patient/login'
@@ -1326,6 +1336,7 @@ export interface FileRouteTypes {
     | '/sign-stub/$stubId'
     | '/sign/$token'
     | '/invite/$token'
+    | '/set-password'
     | '/patient/login'
     | '/sign/form/$token'
     | '/admin/email-config'
@@ -1438,6 +1449,7 @@ export interface FileRouteTypes {
     | '/sign-stub/$stubId'
     | '/sign/$token'
     | '/_app/invite/$token'
+    | '/_app/set-password'
     | '/_app/login/_layout'
     | '/_app/patient/_layout'
     | '/_app/patient/login'
@@ -1666,6 +1678,13 @@ declare module '@tanstack/react-router' {
       path: '/invite/$token'
       fullPath: '/invite/$token'
       preLoaderRoute: typeof AppInviteTokenRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/set-password': {
+      id: '/_app/set-password'
+      path: '/set-password'
+      fullPath: '/set-password'
+      preLoaderRoute: typeof AppSetPasswordRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/patient/_layout/': {
@@ -2832,6 +2851,7 @@ interface AppRouteChildren {
   AppLoginLayoutRoute: typeof AppLoginLayoutRouteWithChildren
   AppPatientLayoutRoute: typeof AppPatientLayoutRouteWithChildren
   AppPatientLoginRoute: typeof AppPatientLoginRoute
+  AppSetPasswordRoute: typeof AppSetPasswordRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -2840,6 +2860,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppLoginLayoutRoute: AppLoginLayoutRouteWithChildren,
   AppPatientLayoutRoute: AppPatientLayoutRouteWithChildren,
   AppPatientLoginRoute: AppPatientLoginRoute,
+  AppSetPasswordRoute: AppSetPasswordRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

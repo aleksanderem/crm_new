@@ -32,7 +32,6 @@ import { ActivityFeed } from "@/components/crm/activity-feed";
 import { activitiesToFeedEntries } from "@/components/crm/activity-feed-adapter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
@@ -351,7 +350,7 @@ function EmployeeDetail() {
     if (window.confirm(t("gabinet.employees.confirmDeactivate"))) {
       await removeEmployee({
         organizationId,
-        employeeId: employeeId as Id<"gabinetEmployees">,
+        employeeId: employeeId,
       });
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(organizationId) });
       navigate({ to: "/dashboard/gabinet/employees" });
@@ -368,7 +367,7 @@ function EmployeeDetail() {
   }) => {
     await updateScheduledActivity({
       organizationId,
-      activityId: data.activityId as Id<"scheduledActivities">,
+      activityId: data.activityId,
       title: data.title,
       activityType: data.activityType,
       dueDate: data.dueDate,
@@ -380,7 +379,7 @@ function EmployeeDetail() {
   const handleDeleteActivity = async (activityId: string) => {
     await removeScheduledActivity({
       organizationId,
-      activityId: activityId as Id<"scheduledActivities">,
+      activityId: activityId,
     });
     setActivityDrawerOpen(false);
     setSelectedActivityId(null);
@@ -388,9 +387,9 @@ function EmployeeDetail() {
 
   const handleToggleActivityComplete = async (activityId: string, isCompleted: boolean) => {
     if (isCompleted) {
-      await markActivityComplete({ organizationId, activityId: activityId as Id<"scheduledActivities"> });
+      await markActivityComplete({ organizationId, activityId: activityId });
     } else {
-      await markActivityIncomplete({ organizationId, activityId: activityId as Id<"scheduledActivities"> });
+      await markActivityIncomplete({ organizationId, activityId: activityId });
     }
   };
 

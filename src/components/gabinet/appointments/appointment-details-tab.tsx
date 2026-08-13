@@ -10,6 +10,13 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   CheckCircle,
   DollarSign,
   Heart,
@@ -46,6 +53,13 @@ type JunctionTreatment = {
   priceAtBooking?: number | null;
 };
 
+type TreatmentVariant = {
+  _id: string;
+  name: string;
+  resolvedPrice: number | null;
+  resolvedDuration: number | null;
+};
+
 type SmsSummary = {
   labelKey: string;
   tone: "default" | "destructive" | "secondary" | "outline";
@@ -67,11 +81,14 @@ export function AppointmentDetailsTab({
   canEdit,
   isSavingTreatment,
   editTreatmentId,
+  editVariantId,
+  editTreatmentVariants,
   treatmentPickerOpen,
   treatmentSearch,
   onTreatmentPickerOpenChange,
   onTreatmentSearchChange,
   onTreatmentSelect,
+  onVariantSelect,
   onInternalNotesChange,
   onSaveInternalNotes,
   onMarkContraindicationReviewed,
@@ -93,11 +110,14 @@ export function AppointmentDetailsTab({
   canEdit: boolean;
   isSavingTreatment: boolean;
   editTreatmentId: string;
+  editVariantId: string;
+  editTreatmentVariants: TreatmentVariant[] | undefined;
   treatmentPickerOpen: boolean;
   treatmentSearch: string;
   onTreatmentPickerOpenChange: (open: boolean) => void;
   onTreatmentSearchChange: (search: string) => void;
   onTreatmentSelect: (id: string) => void;
+  onVariantSelect: (id: string) => void;
   onInternalNotesChange: (val: string) => void;
   onSaveInternalNotes: () => void;
   onMarkContraindicationReviewed: () => void;
@@ -170,35 +190,70 @@ export function AppointmentDetailsTab({
                 {t("common.name")}
               </Label>
               {canEdit ? (
-                <TreatmentPicker
-                  treatments={treatmentsList}
-                  value={editTreatmentId}
-                  onSelect={(id) => {
-                    onTreatmentSelect(id);
-                    onTreatmentPickerOpenChange(false);
-                    onTreatmentSearchChange("");
-                  }}
-                  open={treatmentPickerOpen}
-                  onOpenChange={onTreatmentPickerOpenChange}
-                  search={treatmentSearch}
-                  onSearchChange={onTreatmentSearchChange}
-                  formatPrice={(price, currency) =>
-                    formatCurrencyPLN(price ?? 0, currency ?? "PLN")
-                  }
-                  placeholder={t("gabinet.appointments.selectTreatment")}
-                  searchPlaceholder={t("gabinet.appointments.searchTreatment")}
-                  emptyText={t("common.noResults")}
-                  closeLabel={t("common.close")}
-                  selectedLabel={
-                    junctionTreatments[0]?.variantName
-                      ? `${(treatment?.name as string | undefined) ?? ""} — ${junctionTreatments[0].variantName}`
-                      : (treatment?.name as string | undefined)
-                  }
-                  triggerIcon={
-                    <Stethoscope className="size-4 shrink-0 text-primary" />
-                  }
-                  disabled={isSavingTreatment}
-                />
+                <>
+                  <TreatmentPicker
+                    treatments={treatmentsList}
+                    value={editTreatmentId}
+                    onSelect={(id) => {
+                      onTreatmentSelect(id);
+                      onTreatmentPickerOpenChange(false);
+                      onTreatmentSearchChange("");
+                    }}
+                    open={treatmentPickerOpen}
+                    onOpenChange={onTreatmentPickerOpenChange}
+                    search={treatmentSearch}
+                    onSearchChange={onTreatmentSearchChange}
+                    formatPrice={(price, currency) =>
+                      formatCurrencyPLN(price ?? 0, currency ?? "PLN")
+                    }
+                    placeholder={t("gabinet.appointments.selectTreatment")}
+                    searchPlaceholder={t("gabinet.appointments.searchTreatment")}
+                    emptyText={t("common.noResults")}
+                    closeLabel={t("common.close")}
+                    selectedLabel={
+                      junctionTreatments[0]?.variantName
+                        ? `${(treatment?.name as string | undefined) ?? ""} — ${junctionTreatments[0].variantName}`
+                        : (treatment?.name as string | undefined)
+                    }
+                    triggerIcon={
+                      <Stethoscope className="size-4 shrink-0 text-primary" />
+                    }
+                    disabled={isSavingTreatment}
+                  />
+                  {editTreatmentVariants && editTreatmentVariants.length > 0 && (
+                    <div className="space-y-1.5 mt-2">
+                      <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                        {t("gabinet.treatments.variant", "Wariant")}
+                      </Label>
+                      <Select
+                        value={editVariantId || "__none__"}
+                        onValueChange={(v) => onVariantSelect(v === "__none__" ? "" : v)}
+                        disabled={isSavingTreatment}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">
+                            {t("gabinet.appointments.noVariant", "Bez wariantu")}
+                          </SelectItem>
+                          {editTreatmentVariants.map((v) => (
+                            <SelectItem key={v._id} value={v._id}>
+                              <div className="flex flex-col">
+                                <span>{v.name}</span>
+                                {v.resolvedPrice != null && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {formatCurrencyPLN(v.resolvedPrice)}
+                                  </span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="flex items-center gap-2">
                   <Stethoscope className="size-4 shrink-0 text-primary" />

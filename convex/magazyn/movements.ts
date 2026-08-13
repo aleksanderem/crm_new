@@ -6,6 +6,7 @@
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { applyMovementInternal, selectFefoLotsForProduct } from "../inventory";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 // Deduct stock for a single product when an appointment is completed.
 // Applies FEFO (First-Expired-First-Out) lot selection internally: if tracked
@@ -66,5 +67,66 @@ export const consumeForAppointment = internalAction({
     }
 
     return { negativeStock };
+  },
+});
+
+// Return stock for a single appointment by inverting its original appointment_use
+// movements. Preserves per-lot granularity so lot quantities are restored correctly.
+// Idempotent: skips if appointment_return movements already exist for this appointment.
+export const returnStockForAppointment = internalAction({
+  args: {
+    organizationId: v.string(),
+    appointmentId: v.string(),
+    performedBy: v.string(),
+  },
+  handler: async (_ctx, args): Promise<void> => {
+    const db = createSupabaseDb();
+
+    const { data: existingReturns } = await db.raw()
+      .from("product_stock_movements")
+      .select("id")
+      .eq("source_type", "appointment")
+      .eq("source_id", args.appointmentId)
+      .eq("reason", "appointment_return")
+      .limit(1);
+    if (Array.isArray(existingReturns) && existingReturns.length > 0) return;
+
+    const { data: useMovements } = await db.raw()
+      .from("product_stock_movements")
+      .select("product_id, delta, lot_number, expiry_date, location_id")
+      .eq("source_type", "appointment")
+      .eq("source_id", args.appointmentId)
+      .eq("reason", "appointment_use");
+    const movements = (useMovements ?? []) as Array<{
+      product_id: string;
+      delta: number;
+      lot_number: string | null;
+      expiry_date: string | null;
+      location_id: string | null;
+    }>;
+
+    for (const mv of movements) {
+      try {
+        await applyMovementInternal({
+          organizationId: args.organizationId,
+          productId: mv.product_id,
+          locationId: mv.location_id ?? null,
+          delta: -Number(mv.delta), // original delta was negative; negating restores stock
+          reason: "appointment_return",
+          sourceType: "appointment",
+          sourceId: args.appointmentId,
+          lotNumber: mv.lot_number ?? undefined,
+          expiryDate: mv.expiry_date ?? undefined,
+          performedBy: args.performedBy,
+        });
+      } catch (e) {
+        console.warn(
+          "[returnStockForAppointment] stock return failed for product",
+          mv.product_id,
+          ":",
+          e,
+        );
+      }
+    }
   },
 });

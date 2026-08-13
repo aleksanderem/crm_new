@@ -18,6 +18,8 @@ export interface MappedInvitation {
   acceptedAt?: number;
   createdAt: number;
   updatedAt: number;
+  module?: string;
+  moduleData?: Record<string, unknown>;
   _source: "supabase";
 }
 

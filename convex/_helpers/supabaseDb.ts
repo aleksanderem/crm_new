@@ -422,6 +422,11 @@ class SupabaseQueryBuilder<T = Record<string, unknown>> {
     return this;
   }
 
+  isNull(field: string) {
+    this.filters.push((q) => q.is(toSnakeCase(field), null));
+    return this;
+  }
+
   /**
    * JSONB containment filter (`@>` operator). Checks whether the column value
    * contains all key-value pairs in `value` (for objects) or all elements in

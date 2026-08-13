@@ -58,11 +58,16 @@ export const setWorkingHours = action({
     const now = Date.now();
     const db = createSupabaseDb();
 
-    // Check if entry already exists for this org+day
-    const existing = await db.query("gabinetWorkingHours")
+    // Check if entry already exists for this org+day+locationId
+    const whQuery = db.query("gabinetWorkingHours")
       .eq("organizationId", String(args.organizationId))
-      .eq("dayOfWeek", args.dayOfWeek)
-      .first();
+      .eq("dayOfWeek", args.dayOfWeek);
+    if (args.locationId) {
+      whQuery.eq("locationId", args.locationId);
+    } else {
+      whQuery.isNull("locationId");
+    }
+    const existing = await whQuery.first();
 
     let whId: string;
     if (existing) {
@@ -136,10 +141,15 @@ export const bulkSetWorkingHours = action({
     const db = createSupabaseDb();
 
     for (const h of args.hours) {
-      const existing = await db.query("gabinetWorkingHours")
+      const hQuery = db.query("gabinetWorkingHours")
         .eq("organizationId", String(args.organizationId))
-        .eq("dayOfWeek", h.dayOfWeek)
-        .first();
+        .eq("dayOfWeek", h.dayOfWeek);
+      if (h.locationId) {
+        hQuery.eq("locationId", h.locationId);
+      } else {
+        hQuery.isNull("locationId");
+      }
+      const existing = await hQuery.first();
 
       if (existing) {
         await db.patch("gabinetWorkingHours", existing._id as string, {

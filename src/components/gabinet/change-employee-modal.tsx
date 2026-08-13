@@ -55,7 +55,7 @@ interface ChangeEmployeeModalProps {
   startTime: string; // HH:MM
   endTime: string; // HH:MM
   durationMinutes: number;
-  onSuccess?: () => void;
+  onSuccess?: () => Promise<void> | void;
 }
 
 interface EmployeeRow {
@@ -267,7 +267,7 @@ export function ChangeEmployeeModal({
         queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetAppointments.all }),
         queryClient.invalidateQueries({ queryKey: supabaseKeys.scheduledActivities.all }),
       ]);
-      onSuccess?.();
+      await onSuccess?.();
       onOpenChange(false);
       setSelectedId(null);
       setUseNewSlot(false);

@@ -249,12 +249,9 @@ export const batchImportTreatments = action({
 /**
  * Batch-import employees from CSV.
  *
- * Email matching: if a row has an `email` field, we look up the org's team
- * members and link the employee to the matching user account (`userId`). If
- * the email doesn't match any org member, a stub record is created without a
- * linked user account (`userId = null`). This is intentional for data
- * migration — the stub can be linked to an account later via the employee
- * detail page.
+ * Email matching: every row MUST supply an `email` that matches an existing org
+ * team member. Rows without an email, or whose email doesn't match any member,
+ * are skipped with an error — unlinked records (userId = null) are not allowed.
  *
  * Duplicate guard: if a user-matched employee already has a `gabinetEmployees`
  * row in this org, that row is skipped with an error (not created again).
@@ -339,14 +336,19 @@ export const batchImportEmployees = action({
           continue;
         }
 
-        // Resolve userId from email if provided.
-        let matchedUserId: string | null = null;
-        if (rec.email?.trim()) {
-          matchedUserId = emailToUserId.get(rec.email.trim().toLowerCase()) ?? null;
+        // Resolve userId from email — required; skip if no match.
+        if (!rec.email?.trim()) {
+          errors.push({ row: i, error: "email is required to link employee to a user account" });
+          continue;
+        }
+        const matchedUserId = emailToUserId.get(rec.email.trim().toLowerCase()) ?? null;
+        if (!matchedUserId) {
+          errors.push({ row: i, error: `No org member found with email ${rec.email} — invite them first` });
+          continue;
         }
 
         // Skip if this org user already has an employee profile.
-        if (matchedUserId && existingUserIds.has(matchedUserId)) {
+        if (existingUserIds.has(matchedUserId)) {
           errors.push({
             row: i,
             error: `Employee profile already exists for ${rec.email}`,

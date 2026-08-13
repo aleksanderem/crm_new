@@ -267,8 +267,9 @@ export function createGabinetTables({
 
   gabinetEmployees: defineTable({
     organizationId: v.id("organizations"),
-    // Nullable: employees can exist without a linked system user account.
-    // Migration 00042 dropped the NOT NULL constraint in Postgres to support this.
+    // Application policy: new employees must always have a linked user account.
+    // The DB column is nullable (migration 00042) only to preserve historical rows;
+    // the `create` action and CSV import both reject writes with userId = null.
     userId: v.optional(v.id("users")),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),

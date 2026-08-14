@@ -639,6 +639,82 @@ export const createLeave = action({
   },
 });
 
+// Self-service: employee submits a leave request for themselves.
+// userId is derived from the authenticated session — not accepted from the client.
+export const requestLeave = action({
+  args: {
+    organizationId: v.id("organizations"),
+    type: gabinetLeaveTypeValidator,
+    leaveTypeId: v.optional(v.string()),
+    startDate: v.string(),
+    endDate: v.string(),
+    startTime: v.optional(v.string()),
+    endTime: v.optional(v.string()),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const authResult = await ctx.runAction(
+        internal._helpers.authAction.verifyOrgAccess,
+        { organizationId: args.organizationId },
+      );
+      await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+      const userId = String(authResult.userId);
+      const now = Date.now();
+      const db = createSupabaseDb();
+
+      let initialStatus: "pending" | "approved" = "pending";
+      if (args.leaveTypeId) {
+        const leaveType = (await db.get("gabinetLeaveTypes", args.leaveTypeId)) as GabinetLeaveTypeRow | null;
+        if (leaveType && !leaveType.requiresApproval) {
+          initialStatus = "approved";
+        }
+      }
+
+      const leaveId = await db.insert("gabinetLeaves", {
+        organizationId: String(args.organizationId),
+        userId,
+        type: args.type,
+        leaveTypeId: args.leaveTypeId ?? null,
+        startDate: args.startDate,
+        endDate: args.endDate,
+        startTime: args.startTime ?? null,
+        endTime: args.endTime ?? null,
+        status: initialStatus,
+        reason: args.reason ?? null,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      try {
+        await ctx.runMutation(internal.gabinet.scheduling._createLeaveSideEffects, {
+          organizationId: args.organizationId,
+          leaveId,
+          userId,
+          type: args.type,
+          startDate: args.startDate,
+          endDate: args.endDate,
+          performedBy: userId,
+          actorLabel: authResult.userName ?? authResult.userEmail,
+        });
+      } catch (e) {
+        console.error("[scheduling.requestLeave] Side effects FAILED:", e);
+      }
+
+      return leaveId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.scheduling",
+        fnName: "requestLeave",
+        argsJson: JSON.stringify(args),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
+  },
+});
+
 // Fetches the gabinet membership and location assignments needed to evaluate
 // manager-scoped leave approval. Convex-only tables — must run in a query ctx.
 export const _leaveApprovalData = internalQuery({

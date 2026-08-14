@@ -854,8 +854,8 @@ export const getLeavesByDateRange = action({
     const leaves = (await db
       .query("gabinetLeaves")
       .eq("organizationId", String(args.organizationId))
-      .gte("startDate", args.startDate)
       .lte("startDate", args.endDate)
+      .gte("endDate", args.startDate)
       .collect()) as GabinetLeaveRow[];
 
     return leaves.filter((l) => l.status === "approved");

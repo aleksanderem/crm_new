@@ -154,6 +154,7 @@ function GabinetCalendarPage() {
   const routeNavigate = useNavigate();
   const nudgeFilter = search.nudge;
   const actionParam = search.action;
+  const initialEmployeeId = search.employeeId;
 
   // Indicate this page has wide content (hides Column 2 on 1024-1400px screens)
   useWideContent(true);
@@ -170,7 +171,7 @@ function GabinetCalendarPage() {
     }
   }, []);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [employeeFilter, setEmployeeFilter] = useState<string>("all");
+  const [employeeFilter, setEmployeeFilter] = useState<string>(initialEmployeeId ?? "all");
   const [treatmentFilter, setTreatmentFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>(
     nudgeFilter === "unconfirmed-today" ? "scheduled" : "all",
@@ -1054,6 +1055,9 @@ function GabinetCalendarPage() {
       setSellPackageOpen(true);
     } else if (actionParam === "create-appointment") {
       openCreateDialog();
+      if (initialEmployeeId) {
+        setCreateDefaultUserId(initialEmployeeId);
+      }
     } else {
       return;
     }
@@ -1062,7 +1066,7 @@ function GabinetCalendarPage() {
       search: { nudge: nudgeFilter, action: undefined },
       replace: true,
     });
-  }, [actionParam, nudgeFilter, routeNavigate, openCreateDialog]);
+  }, [actionParam, nudgeFilter, routeNavigate, openCreateDialog, initialEmployeeId]);
 
   // Click-to-create handler
   const handleSlotClick = useCallback(

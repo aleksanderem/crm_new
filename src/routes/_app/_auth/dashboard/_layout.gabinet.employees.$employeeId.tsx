@@ -637,6 +637,7 @@ function EmployeeDetail() {
           appointmentsView={appointmentsView}
           setAppointmentsView={setAppointmentsView}
           treatmentMap={treatmentMap}
+          employeeUserId={employee?.userId}
           navigate={navigate}
           t={t}
           i18nLanguage={i18n.language}

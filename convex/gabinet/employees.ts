@@ -1585,6 +1585,16 @@ export const createWithPassword = action({
       .eq("email", args.email)
       .collect()) as Array<{ _id: string; userId: string | null }>;
     const unlinkedByEmail = byEmail.filter((e) => !e.userId);
+    if (unlinkedByEmail.length > 1) {
+      console.warn(
+        "[employees.createWithPassword] email collision — multiple unlinked employees share the same email; skipping pre-created link",
+        {
+          email: args.email,
+          organizationId: String(args.organizationId),
+          candidateIds: unlinkedByEmail.map((e) => e._id),
+        },
+      );
+    }
     const preCreated = unlinkedByEmail.length === 1 ? unlinkedByEmail[0] : undefined;
 
     let employeeId: string;

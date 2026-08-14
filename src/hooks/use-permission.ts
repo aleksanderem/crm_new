@@ -132,17 +132,19 @@ export function useMyGabinetContext(): {
 export function PermissionGate({
   feature,
   action,
+  locationId,
   children,
   fallback,
   loadingFallback,
 }: {
   feature: Feature;
   action: Action;
+  locationId?: Id<"gabinetLocations">;
   children: React.ReactNode;
   fallback?: React.ReactNode;
   loadingFallback?: React.ReactNode;
 }): React.ReactNode {
-  const { allowed, loading } = usePermission(feature, action);
+  const { allowed, loading } = usePermission(feature, action, locationId);
   if (loading) return loadingFallback ?? null;
   if (!allowed) return fallback ?? null;
   return children;

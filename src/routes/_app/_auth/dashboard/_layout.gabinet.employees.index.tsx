@@ -78,14 +78,24 @@ function EmployeesIndexSkeleton() {
   );
 }
 
+function EmployeesIndexRoute() {
+  const { activeLocationId } = useActiveLocation();
+  return (
+    <PermissionGate
+      feature="gabinet_employees"
+      action="view"
+      locationId={(activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined}
+      loadingFallback={<EmployeesIndexSkeleton />}
+    >
+      <EmployeesIndex />
+    </PermissionGate>
+  );
+}
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/employees/"
 )({
-  component: () => (
-    <PermissionGate feature="gabinet_employees" action="view" loadingFallback={<EmployeesIndexSkeleton />}>
-      <EmployeesIndex />
-    </PermissionGate>
-  ),
+  component: EmployeesIndexRoute,
 });
 
 
@@ -97,9 +107,10 @@ function EmployeesIndex() {
   const { activeLocationId } = useActiveLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { allowed: canCreate } = usePermission("gabinet_employees", "create");
-  const { allowed: canEdit } = usePermission("gabinet_employees", "edit");
-  const { allowed: canDelete } = usePermission("gabinet_employees", "delete");
+  const locationIdParam = (activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined;
+  const { allowed: canCreate } = usePermission("gabinet_employees", "create", locationIdParam);
+  const { allowed: canEdit } = usePermission("gabinet_employees", "edit", locationIdParam);
+  const { allowed: canDelete } = usePermission("gabinet_employees", "delete", locationIdParam);
   const { tags } = useTagDefinitions(organizationId);
   const { categories } = useCategoryDefinitions(organizationId, "gabinetEmployee");
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
@@ -538,7 +549,7 @@ function EmployeesIndex() {
         title={t("gabinet.employees.title")}
         description={t("gabinet.employees.description")}
         actions={
-          <PermissionGate feature="gabinet_employees" action="create">
+          <PermissionGate feature="gabinet_employees" action="create" locationId={locationIdParam}>
             <Button onClick={() => setShowCreate(true)}>
               <Plus className="mr-2 h-4 w-4" variant="stroke" />
               {t("gabinet.employees.add")}

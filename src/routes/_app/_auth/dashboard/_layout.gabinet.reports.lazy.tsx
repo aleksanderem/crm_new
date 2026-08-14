@@ -1,4 +1,5 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
+import type { Id } from "@cvx/_generated/dataModel";
 import Papa from "papaparse";
 import { toast } from "sonner";
 import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
@@ -92,18 +93,24 @@ function GabinetReportsSkeleton() {
   );
 }
 
-export const Route = createLazyFileRoute(
-  "/_app/_auth/dashboard/_layout/gabinet/reports"
-)({
-  component: () => (
+function GabinetReportsRoute() {
+  const { activeLocationId } = useActiveLocation();
+  return (
     <PermissionGate
       feature="gabinet_reports"
       action="view"
+      locationId={(activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined}
       loadingFallback={<GabinetReportsSkeleton />}
     >
       <GabinetReports />
     </PermissionGate>
-  ),
+  );
+}
+
+export const Route = createLazyFileRoute(
+  "/_app/_auth/dashboard/_layout/gabinet/reports"
+)({
+  component: GabinetReportsRoute,
 });
 
 

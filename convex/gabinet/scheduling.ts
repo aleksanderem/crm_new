@@ -11,7 +11,6 @@ import { gabinetLeaveTypeValidator, gabinetLeaveStatusValidator } from "../schem
 import { getAvailableSlotsSupabase } from "./_availability_supabase";
 import type {
   GabinetEmployeeScheduleRow,
-  GabinetLeaveBalanceRow,
   GabinetLeaveRow,
   GabinetLeaveTypeRow,
   GabinetWorkingHoursRow,
@@ -759,48 +758,20 @@ export const deleteLeave = action({
     if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
 
+    // Capture leave metadata before deletion for the side-effects call below.
     const leave = await db.get("gabinetLeaves", args.leaveId);
     if (!leave || String(leave.organizationId) !== String(args.organizationId)) {
       throw new Error("Leave not found");
     }
 
-    // If the leave was approved and had a leave type, reverse the balance deduction
-    if (leave.status === "approved" && leave.leaveTypeId) {
-      const startD = new Date(leave.startDate as string);
-      const endD = new Date(leave.endDate as string);
-      let days: number;
-      if (leave.startTime && leave.endTime) {
-        const [sh, sm] = (leave.startTime as string).split(":").map(Number);
-        const [eh, em] = (leave.endTime as string).split(":").map(Number);
-        days = Math.max(0, (eh * 60 + em - sh * 60 - sm) / 480);
-      } else {
-        days = Math.max(1, Math.ceil((endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-      }
-      const year = startD.getFullYear();
-
-      const employee = await db.query("gabinetEmployees")
-        .eq("organizationId", String(args.organizationId))
-        .eq("userId", leave.userId as string)
-        .first();
-
-      if (employee) {
-        const balance = (await db.query("gabinetLeaveBalances")
-          .eq("organizationId", String(args.organizationId))
-          .eq("employeeId", employee._id as string)
-          .eq("leaveTypeId", leave.leaveTypeId as string)
-          .eq("year", year)
-          .first()) as GabinetLeaveBalanceRow | null;
-
-        if (balance) {
-          await db.patch("gabinetLeaveBalances", balance._id as string, {
-            usedDays: Math.max(0, (balance.usedDays as number) - days),
-            updatedAt: Date.now(),
-          });
-        }
-      }
-    }
-
-    await db.delete("gabinetLeaves", args.leaveId);
+    // Atomic: balance rollback (if approved) + delete happen in one Postgres
+    // transaction via RPC (issue #4783 — two separate patches were non-atomic).
+    const { error: rpcError } = await db.raw().rpc("delete_gabinet_leave", {
+      p_leave_id: args.leaveId,
+      p_org_id:   String(args.organizationId),
+      p_now:      Date.now(),
+    });
+    if (rpcError) throw new Error(`deleteLeave RPC failed: ${rpcError.message}`);
 
     try {
       await ctx.runMutation(internal.gabinet.scheduling._leaveSideEffects, {

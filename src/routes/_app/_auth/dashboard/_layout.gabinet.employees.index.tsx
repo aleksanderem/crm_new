@@ -635,11 +635,6 @@ function EmployeesIndex() {
                 },
               ]
             : []),
-          {
-            label: t("gabinet.timetable.title"),
-            icon: <Calendar className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: () => navigate({ to: "/dashboard/gabinet/settings/timetable" }),
-          },
         ]}
         columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
         hiddenColumnIds={hiddenColumnIds}

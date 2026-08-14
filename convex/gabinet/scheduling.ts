@@ -604,12 +604,24 @@ export const createLeave = action({
       endDate: args.endDate,
       startTime: args.startTime ?? null,
       endTime: args.endTime ?? null,
-      status: initialStatus,
+      status: "pending",
       reason: args.reason ?? null,
       createdBy: authResult.userId,
       createdAt: now,
       updatedAt: now,
     });
+
+    // Auto-approve atomically when requiresApproval=false so balance is
+    // updated in the same Postgres transaction as the status change.
+    if (initialStatus === "approved") {
+      const { error: rpcError } = await db.raw().rpc("approve_gabinet_leave", {
+        p_leave_id:    leaveId,
+        p_org_id:      String(args.organizationId),
+        p_approved_by: String(authResult.userId),
+        p_now:         now,
+      });
+      if (rpcError) throw new Error(`Auto-approve RPC failed: ${rpcError.message}`);
+    }
 
     try {
       await ctx.runMutation(internal.gabinet.scheduling._createLeaveSideEffects, {
@@ -680,12 +692,24 @@ export const requestLeave = action({
         endDate: args.endDate,
         startTime: args.startTime ?? null,
         endTime: args.endTime ?? null,
-        status: initialStatus,
+        status: "pending",
         reason: args.reason ?? null,
         createdBy: userId,
         createdAt: now,
         updatedAt: now,
       });
+
+      // Auto-approve atomically when requiresApproval=false so balance is
+      // updated in the same Postgres transaction as the status change.
+      if (initialStatus === "approved") {
+        const { error: rpcError } = await db.raw().rpc("approve_gabinet_leave", {
+          p_leave_id:    leaveId,
+          p_org_id:      String(args.organizationId),
+          p_approved_by: userId,
+          p_now:         now,
+        });
+        if (rpcError) throw new Error(`Auto-approve RPC failed: ${rpcError.message}`);
+      }
 
       try {
         await ctx.runMutation(internal.gabinet.scheduling._createLeaveSideEffects, {

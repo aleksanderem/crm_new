@@ -2982,10 +2982,13 @@
       "confirmRejectDesc": "Czy na pewno chcesz odrzucić ten wniosek urlopowy? Pracownik zostanie powiadomiony.",
       "confirmDeleteTitle": "Usuń wniosek urlopowy",
       "confirmDeleteDesc": "Czy na pewno chcesz usunąć ten wniosek urlopowy? Tej operacji nie można cofnąć.",
+      "withdraw": "Wycofaj wniosek",
+      "withdrawn": "Wniosek urlopowy wycofany",
       "errors": {
         "createFailed": "Nie udało się utworzyć wniosku urlopowego.",
         "statusChangeFailed": "Nie udało się zaktualizować statusu wniosku urlopowego.",
-        "deleteFailed": "Nie udało się usunąć wniosku urlopowego."
+        "deleteFailed": "Nie udało się usunąć wniosku urlopowego.",
+        "withdrawFailed": "Nie udało się wycofać wniosku urlopowego."
       }
     },
     "overtime": {

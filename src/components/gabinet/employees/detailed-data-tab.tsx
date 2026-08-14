@@ -9,6 +9,7 @@ import type { TFunction } from "i18next";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
 import { usePermission } from "@/hooks/use-permission";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PersonalInfoSection } from "./sections/personal-info-section";
 import { EmploymentSection } from "./sections/employment-section";
 import { QualificationsSection } from "./sections/qualifications-section";
@@ -229,6 +230,16 @@ export function DetailedDataTab({
 
       {(!limitedView || qualificationsOnlyView) && (
         <>
+          {qualificationsOnlyView && !employee.performsServices && (
+            <Alert>
+              <AlertDescription>
+                {t(
+                  "gabinet.employees.detailedData.notPerformingServicesNotice",
+                  "Pracownik aktualnie nie wykonuje usług ani zabiegów. Dane kwalifikacji są dostępne poniżej w trybie podglądu.",
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
           <QualificationsSection
             {...sharedSectionProps}
             canEdit={canEdit && !!employee.performsServices}

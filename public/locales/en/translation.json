@@ -3196,6 +3196,7 @@
         "certifications": "Certifications / Courses",
         "certNamePlaceholder": "Certificate name",
         "noQualificationsYet": "No qualifications or skills added yet.",
+        "notPerformingServicesNotice": "The employee currently does not perform services or treatments. Qualification data is available below in read-only mode.",
         "assignedTreatments": "Assigned Treatments",
         "compensation": "Compensation",
         "baseSalary": "Base Salary",

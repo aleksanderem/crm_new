@@ -194,7 +194,7 @@ export function AccountTabContent({
                     </button>
                   );
                 }
-                if (status === "inactive" && !employee.userId && onActivate) {
+                if (status === "inactive" && onActivate) {
                   return (
                     <button
                       type="button"

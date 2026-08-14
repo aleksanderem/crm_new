@@ -714,12 +714,15 @@ export const rejectLeave = action({
       throw new Error("Leave not found");
     }
 
-    await db.patch("gabinetLeaves", args.leaveId, {
-      status: "rejected",
-      approvedBy: authResult.userId,
-      approvedAt: now,
-      updatedAt: now,
+    // Atomic: reject status + balance rollback (if previously approved) happen
+    // in one Postgres transaction via RPC (issue #4782 — bare patch was non-atomic).
+    const { error: rpcError } = await db.raw().rpc("reject_gabinet_leave", {
+      p_leave_id:    args.leaveId,
+      p_org_id:      String(args.organizationId),
+      p_rejected_by: String(authResult.userId),
+      p_now:         now,
     });
+    if (rpcError) throw new Error(`rejectLeave RPC failed: ${rpcError.message}`);
 
     try {
       await ctx.runMutation(internal.gabinet.scheduling._leaveSideEffects, {

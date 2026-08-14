@@ -1331,6 +1331,65 @@ export const _createLeaveSideEffects = internalMutation({
       performedBy: args.performedBy as Id<"users">,
       actorLabel: args.actorLabel,
     });
+
+    // Notify managers who share a location with the requesting employee.
+    try {
+      const [requesterLocations, orgMemberships, allOrgLocations] = await Promise.all([
+        ctx.db
+          .query("gabinetLocationMemberships")
+          .withIndex("by_orgAndUser", (q) =>
+            q.eq("organizationId", args.organizationId).eq("userId", args.userId as Id<"users">)
+          )
+          .collect(),
+        ctx.db
+          .query("gabinetMemberships")
+          .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+          .collect(),
+        ctx.db
+          .query("gabinetLocationMemberships")
+          .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+          .collect(),
+      ]);
+
+      if (requesterLocations.length > 0) {
+        const requesterLocationIds = new Set(requesterLocations.map((l) => String(l.locationId)));
+
+        // Build a map of userId → global gabinet role for active members
+        const globalRoleMap = new Map(
+          orgMemberships
+            .filter((m) => m.isActive)
+            .map((m) => [String(m.userId), m.gabinetRole])
+        );
+
+        const managerUserIds = new Set<Id<"users">>();
+        for (const loc of allOrgLocations) {
+          if (String(loc.userId) === args.userId) continue;
+          if (!requesterLocationIds.has(String(loc.locationId))) continue;
+
+          const globalRole = globalRoleMap.get(String(loc.userId));
+          if (!globalRole) continue; // not an active member
+
+          // Location-level role override takes priority over the global role
+          const effectiveRole = loc.role ?? globalRole;
+          if (effectiveRole === "manager" || effectiveRole === "admin") {
+            managerUserIds.add(loc.userId);
+          }
+        }
+
+        const requesterName = args.actorLabel ?? "An employee";
+        for (const managerId of managerUserIds) {
+          await createNotificationDirect(ctx, {
+            organizationId: args.organizationId,
+            userId: managerId,
+            type: "leave_request",
+            title: "New leave request",
+            message: `${requesterName} submitted a leave request (${args.type}: ${args.startDate} – ${args.endDate}).`,
+          });
+        }
+      }
+    } catch (e) {
+      console.error("[scheduling._createLeaveSideEffects] Manager notifications FAILED:", e);
+    }
   },
 });
 

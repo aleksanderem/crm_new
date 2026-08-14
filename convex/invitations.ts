@@ -455,32 +455,48 @@ export const _acceptInternal = internalMutation({
     const invitedById = args.invitationInvitedBy as Id<"users">;
 
     const joinedAt = Date.now();
-    const membershipId = await ctx.db.insert("teamMemberships", {
-      userId: user._id,
-      organizationId: orgId,
-      role: args.invitationRole,
-      invitedBy: invitedById,
-      joinedAt,
-    });
 
-    // Mirror to Supabase so the team-settings page (which reads members
-    // via useSupabaseOrganizationMembers) and the RBAC bridge (which
-    // also reads team_memberships from Supabase) both see the new
-    // membership. Without this, an invited admin/member has a row in
-    // Convex teamMemberships but is invisible to the UI's permission
-    // checks — UI shows empty / 403 on protected actions.
-    await ctx.scheduler.runAfter(
-      500, // delay so writeUserToSupabase lands first (avoids 23503 FK violation)
-      internal.supabase.organizations.writeTeamMembershipToSupabase,
-      {
-        membershipId: String(membershipId),
-        userId: String(user._id),
-        organizationId: String(orgId),
+    // Guard against duplicate membership — e.g. a user already linked to this
+    // org via another path (password-employee creation, manual addMember) who
+    // then accepts a still-pending invitation. Without this check,
+    // ctx.db.insert creates a second Convex row and the Supabase mirror fails
+    // silently because upsertWithFkRetry uses onConflict:"id" while Supabase
+    // enforces a UNIQUE index on (organization_id, user_id).
+    const existingMembership = await ctx.db
+      .query("teamMemberships")
+      .withIndex("by_orgAndUser", (q) =>
+        q.eq("organizationId", orgId).eq("userId", user._id),
+      )
+      .first();
+
+    if (!existingMembership) {
+      const membershipId = await ctx.db.insert("teamMemberships", {
+        userId: user._id,
+        organizationId: orgId,
         role: args.invitationRole,
-        invitedBy: args.invitationInvitedBy,
+        invitedBy: invitedById,
         joinedAt,
-      },
-    );
+      });
+
+      // Mirror to Supabase so the team-settings page (which reads members
+      // via useSupabaseOrganizationMembers) and the RBAC bridge (which
+      // also reads team_memberships from Supabase) both see the new
+      // membership. Without this, an invited admin/member has a row in
+      // Convex teamMemberships but is invisible to the UI's permission
+      // checks — UI shows empty / 403 on protected actions.
+      await ctx.scheduler.runAfter(
+        500, // delay so writeUserToSupabase lands first (avoids 23503 FK violation)
+        internal.supabase.organizations.writeTeamMembershipToSupabase,
+        {
+          membershipId: String(membershipId),
+          userId: String(user._id),
+          organizationId: String(orgId),
+          role: args.invitationRole,
+          invitedBy: args.invitationInvitedBy,
+          joinedAt,
+        },
+      );
+    }
 
     // If the invitee just signed up via OTP and has no username yet, derive
     // one from the email local-part so they skip the /onboarding/username

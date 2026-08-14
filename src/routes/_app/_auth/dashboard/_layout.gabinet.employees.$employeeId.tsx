@@ -105,6 +105,8 @@ function EmployeeDetail() {
   const trackView = useAction(api.recentlyViewed.track);
   const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
   const changeEmployeePassword = useAction(api.gabinet.employees.changeEmployeePassword);
+  const blockEmployee = useAction(api.gabinet.employees.blockEmployee);
+  const unblockEmployee = useAction(api.gabinet.employees.unblockEmployee);
   const resendInvitation = useAction(api.invitations.resend);
 
   // Supabase cache invalidation helpers
@@ -422,6 +424,38 @@ function EmployeeDetail() {
     }
   };
 
+  const handleBlock = async () => {
+    if (!window.confirm(t("gabinet.employees.confirmBlock", "Czy na pewno chcesz zablokować konto tego pracownika?"))) return;
+    try {
+      await blockEmployee({ organizationId, employeeId });
+      toast.success(t("gabinet.employees.blocked", "Konto zablokowane."));
+      invalidateEmployeeCache();
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.employees.errors.blockFailed",
+          defaultValue: "Nie udało się zablokować konta.",
+        }),
+      );
+    }
+  };
+
+  const handleUnblock = async () => {
+    if (!window.confirm(t("gabinet.employees.confirmUnblock", "Czy na pewno chcesz odblokować konto tego pracownika?"))) return;
+    try {
+      await unblockEmployee({ organizationId, employeeId });
+      toast.success(t("gabinet.employees.unblocked", "Konto odblokowane."));
+      invalidateEmployeeCache();
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.employees.errors.unblockFailed",
+          defaultValue: "Nie udało się odblokować konta.",
+        }),
+      );
+    }
+  };
+
   const handleResendInvitation = async () => {
     if (!pendingInvitation) return;
     try {
@@ -548,11 +582,13 @@ function EmployeeDetail() {
             ? t("gabinet.employees.statusInvitationExpired", "Zaproszenie wygasło")
             : t("gabinet.employees.statusInvitationPending", "Zaproszenie wysłane — oczekuje na akceptację")}
         </Badge>
+      ) : employee.isBlocked ? (
+        <Badge variant="outline" className="text-muted-foreground">
+          {t("gabinet.employees.statusBlocked", "Konto zablokowane")}
+        </Badge>
       ) : !employee.isActive ? (
         <Badge variant="outline" className="text-muted-foreground">
-          {employee.userId
-            ? t("gabinet.employees.statusBlocked", "Konto zablokowane")
-            : t("gabinet.employees.statusInactive", "Konto nieaktywne")}
+          {t("gabinet.employees.statusInactive", "Konto nieaktywne")}
         </Badge>
       ) : null}
     </div>
@@ -735,6 +771,8 @@ function EmployeeDetail() {
           onEditEmployee={() => setEditDrawerOpen(true)}
           onDeactivate={handleDeactivate}
           onActivate={handleActivate}
+          onBlock={handleBlock}
+          onUnblock={handleUnblock}
           pendingInvitation={pendingInvitation}
           onResendInvitation={isExpiredInvitation ? handleResendInvitation : undefined}
           t={t}

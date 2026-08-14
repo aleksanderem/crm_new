@@ -123,6 +123,7 @@
  *   • 00116_lead_stage_history.sql
  *   • 00117_gabinet_employees_performs_services.sql
  *   • 00118_gabinet_employees_work_scope.sql
+ *   • 00119_gabinet_employees_is_blocked.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -4125,6 +4126,7 @@ export interface Database {
           bio: string | null;
           avatar_url: string | null;
           work_scope: string | null;
+          is_blocked: boolean;
         };
         Insert: {
           id?: string;
@@ -4138,6 +4140,7 @@ export interface Database {
           license_number?: string | null;
           hire_date?: string | null;
           is_active: boolean;
+          is_blocked?: boolean;
           color?: string | null;
           notes?: string | null;
           phone?: string | null;
@@ -4179,6 +4182,7 @@ export interface Database {
           license_number?: string | null;
           hire_date?: string | null;
           is_active?: boolean;
+          is_blocked?: boolean;
           color?: string | null;
           notes?: string | null;
           phone?: string | null;

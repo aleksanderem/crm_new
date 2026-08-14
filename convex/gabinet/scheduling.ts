@@ -1396,6 +1396,25 @@ export const _createLeaveSideEffects = internalMutation({
             message: `${requesterName} submitted a leave request (${args.type}: ${args.startDate} – ${args.endDate}).`,
           });
         }
+      } else {
+        // Fallback: employee has no location assignments — notify org admins/owners.
+        const orgAdminMemberships = await ctx.db
+          .query("teamMemberships")
+          .withIndex("by_organizationId", (q) => q.eq("organizationId", args.organizationId))
+          .collect();
+
+        const requesterName = args.actorLabel ?? "An employee";
+        for (const membership of orgAdminMemberships) {
+          if (membership.role !== "owner" && membership.role !== "admin") continue;
+          if (String(membership.userId) === args.userId) continue;
+          await createNotificationDirect(ctx, {
+            organizationId: args.organizationId,
+            userId: membership.userId,
+            type: "leave_request",
+            title: "New leave request",
+            message: `${requesterName} submitted a leave request (${args.type}: ${args.startDate} – ${args.endDate}).`,
+          });
+        }
       }
     } catch (e) {
       console.error("[scheduling._createLeaveSideEffects] Manager notifications FAILED:", e);

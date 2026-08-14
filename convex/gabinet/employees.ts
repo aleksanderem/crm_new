@@ -1567,26 +1567,57 @@ export const createWithPassword = action({
       throw new Error("Employee profile already exists for this user");
     }
 
-    const employeeId = await db.insert("gabinetEmployees", {
-      organizationId: String(args.organizationId),
-      userId,
-      firstName: args.firstName ?? null,
-      lastName: args.lastName ?? null,
-      role: args.role,
-      specialization: args.specialization ?? null,
-      qualifiedTreatmentIds: args.qualifiedTreatmentIds ?? [],
-      licenseNumber: args.licenseNumber ?? null,
-      hireDate: args.hireDate ?? null,
-      isActive: true,
-      color: args.color ?? null,
-      notes: null,
-      showInCalendar: args.showInCalendar ?? true,
-      tagIds: args.tagIds ?? null,
-      categoryId: args.categoryId ?? null,
-      createdBy: String(authResult.userId),
-      createdAt: now,
-      updatedAt: now,
-    });
+    // Check for a pre-created employee row (userId=null) matched by email — link
+    // it instead of inserting a duplicate that would leave the pre-created row orphaned.
+    const byEmail = (await db
+      .query("gabinetEmployees")
+      .eq("organizationId", String(args.organizationId))
+      .eq("email", args.email)
+      .collect()) as Array<{ _id: string; userId: string | null }>;
+    const unlinkedByEmail = byEmail.filter((e) => !e.userId);
+    const preCreated = unlinkedByEmail.length === 1 ? unlinkedByEmail[0] : undefined;
+
+    let employeeId: string;
+    if (preCreated) {
+      employeeId = String(preCreated._id);
+      await db.patch("gabinetEmployees", employeeId, {
+        userId,
+        firstName: args.firstName ?? null,
+        lastName: args.lastName ?? null,
+        role: args.role,
+        specialization: args.specialization ?? null,
+        qualifiedTreatmentIds: args.qualifiedTreatmentIds ?? [],
+        licenseNumber: args.licenseNumber ?? null,
+        hireDate: args.hireDate ?? null,
+        isActive: true,
+        color: args.color ?? null,
+        showInCalendar: args.showInCalendar ?? true,
+        tagIds: args.tagIds ?? null,
+        categoryId: args.categoryId ?? null,
+        updatedAt: now,
+      });
+    } else {
+      employeeId = String(await db.insert("gabinetEmployees", {
+        organizationId: String(args.organizationId),
+        userId,
+        firstName: args.firstName ?? null,
+        lastName: args.lastName ?? null,
+        role: args.role,
+        specialization: args.specialization ?? null,
+        qualifiedTreatmentIds: args.qualifiedTreatmentIds ?? [],
+        licenseNumber: args.licenseNumber ?? null,
+        hireDate: args.hireDate ?? null,
+        isActive: true,
+        color: args.color ?? null,
+        notes: null,
+        showInCalendar: args.showInCalendar ?? true,
+        tagIds: args.tagIds ?? null,
+        categoryId: args.categoryId ?? null,
+        createdBy: String(authResult.userId),
+        createdAt: now,
+        updatedAt: now,
+      }));
+    }
 
     if (args.locationId) {
       try {

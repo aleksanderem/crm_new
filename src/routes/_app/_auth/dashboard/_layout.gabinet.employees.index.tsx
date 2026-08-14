@@ -9,6 +9,7 @@ import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
 import { useSupabasePendingInvitations } from "@/hooks/use-supabase-invitations";
 import { useOrganization } from "@/components/org-context";
+import { useActiveLocation } from "@/contexts/gabinet-location-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
 import { SidePanel } from "@/components/crm/side-panel";
@@ -93,6 +94,7 @@ type Employee = MappedGabinetEmployee;
 function EmployeesIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const { activeLocationId } = useActiveLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { allowed: canCreate } = usePermission("gabinet_employees", "create");
@@ -158,7 +160,9 @@ function EmployeesIndex() {
     api.gabinet.scheduling.removeSchedulePeriod,
   );
 
-  const { data: employees } = useSupabaseGabinetEmployeesList(organizationId);
+  const { data: employees } = useSupabaseGabinetEmployeesList(organizationId, {
+    locationId: activeLocationId,
+  });
 
   const { data: members } = useSupabaseOrganizationMembers(organizationId);
   const { data: pendingInvitations } = useSupabasePendingInvitations(organizationId);

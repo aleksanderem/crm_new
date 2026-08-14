@@ -19,6 +19,7 @@ interface UseSupabaseGabinetEmployeesListOptions {
   limit?: number;
   activeOnly?: boolean;
   sortOrder?: "asc" | "desc";
+  locationId?: string | null;
 }
 
 export function useSupabaseGabinetEmployeesList(
@@ -31,20 +32,30 @@ export function useSupabaseGabinetEmployeesList(
     limit = 100,
     activeOnly,
     sortOrder = "desc",
+    locationId,
   } = options;
 
   return useQuery<MappedGabinetEmployee[], Error>({
     queryKey: [
       ...supabaseKeys.gabinetEmployees.list(organizationId),
       activeOnly ?? "all",
+      locationId ?? "all",
     ],
     queryFn: async (): Promise<MappedGabinetEmployee[]> => {
       if (!client) throw new Error("Supabase client not ready");
 
       let query = client
         .from("gabinet_employees")
-        .select("*")
+        .select(
+          locationId
+            ? "*, gabinet_employee_locations!inner(location_id)"
+            : "*",
+        )
         .eq("organization_id", organizationId);
+
+      if (locationId) {
+        query = query.eq("gabinet_employee_locations.location_id", locationId);
+      }
 
       if (activeOnly !== undefined) {
         query = query.eq("is_active", activeOnly);

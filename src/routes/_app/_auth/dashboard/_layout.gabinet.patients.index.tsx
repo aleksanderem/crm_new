@@ -66,18 +66,24 @@ function PatientListSkeleton() {
   );
 }
 
-export const Route = createFileRoute(
-  "/_app/_auth/dashboard/_layout/gabinet/patients/",
-)({
-  component: () => (
+function PatientsIndexRoute() {
+  const { activeLocationId } = useActiveLocation();
+  return (
     <PermissionGate
       feature="gabinet_patients"
       action="view"
+      locationId={(activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined}
       loadingFallback={<PatientListSkeleton />}
     >
       <PatientsIndex />
     </PermissionGate>
-  ),
+  );
+}
+
+export const Route = createFileRoute(
+  "/_app/_auth/dashboard/_layout/gabinet/patients/",
+)({
+  component: PatientsIndexRoute,
   validateSearch: (search: Record<string, unknown>): { nudge?: PatientNudgeFilter } => {
     const nudge =
       search.nudge === "missing-contact" ||
@@ -106,9 +112,9 @@ function PatientsIndex() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { nudge: nudgeFilter } = useSearch({ from: Route.id });
-  const { allowed: _canCreate } = usePermission("gabinet_patients", "create");
-  const { allowed: canEdit } = usePermission("gabinet_patients", "edit");
-  const { allowed: canDelete } = usePermission("gabinet_patients", "delete");
+  const { allowed: _canCreate } = usePermission("gabinet_patients", "create", (activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined);
+  const { allowed: canEdit } = usePermission("gabinet_patients", "edit", (activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined);
+  const { allowed: canDelete } = usePermission("gabinet_patients", "delete", (activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined);
 
   const createPatient = useAction(api.gabinet.patients.create);
   const removePatient = useAction(api.gabinet.patients.remove);
@@ -611,7 +617,7 @@ function PatientsIndex() {
         title={t("gabinet.patients.title")}
         description={t("gabinet.patients.description")}
         actions={
-          <PermissionGate feature="gabinet_patients" action="create">
+          <PermissionGate feature="gabinet_patients" action="create" locationId={(activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined}>
             <Button onClick={() => setPanelOpen(true)}>
               <Plus className="mr-2 h-4 w-4" variant="stroke" />
               {t("gabinet.patients.addPatient")}

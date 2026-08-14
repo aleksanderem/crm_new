@@ -80,18 +80,24 @@ function PatientDetailSkeleton() {
   );
 }
 
-export const Route = createFileRoute(
-  "/_app/_auth/dashboard/_layout/gabinet/patients/$patientId",
-)({
-  component: () => (
+function PatientDetailRoute() {
+  const { activeLocationId } = useActiveLocation();
+  return (
     <PermissionGate
       feature="gabinet_patients"
       action="view"
+      locationId={(activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined}
       loadingFallback={<PatientDetailSkeleton />}
     >
       <PatientDetail />
     </PermissionGate>
-  ),
+  );
+}
+
+export const Route = createFileRoute(
+  "/_app/_auth/dashboard/_layout/gabinet/patients/$patientId",
+)({
+  component: PatientDetailRoute,
 });
 
 function PatientDetail() {
@@ -100,8 +106,8 @@ function PatientDetail() {
   const { activeLocationId } = useActiveLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { allowed: canEdit } = usePermission("gabinet_patients", "edit");
-  const { allowed: canDelete } = usePermission("gabinet_patients", "delete");
+  const { allowed: canEdit } = usePermission("gabinet_patients", "edit", (activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined);
+  const { allowed: canDelete } = usePermission("gabinet_patients", "delete", (activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined);
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action
   const updatePatient = useAction(api.gabinet.patients.update);
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action

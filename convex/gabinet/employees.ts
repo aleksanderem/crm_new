@@ -1031,6 +1031,104 @@ export const remove = action({
   },
 });
 
+export const blockEmployee = action({
+  args: {
+    organizationId: v.id("organizations"),
+    employeeId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_employees", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+    const emp = await db.get("gabinetEmployees", args.employeeId);
+    if (!emp || String(emp.organizationId) !== String(args.organizationId)) {
+      throw new Error("Employee not found");
+    }
+
+    await db.patch("gabinetEmployees", args.employeeId, {
+      isBlocked: true,
+      isActive: false,
+      updatedAt: Date.now(),
+    });
+
+    if (emp.userId) {
+      await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
+        organizationId: args.organizationId,
+        userId: String(emp.userId),
+        gabinetRole: emp.role as GabinetEmployeeRole,
+        isActive: false,
+      });
+    }
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: authResult.userId as Id<"users">,
+      action: "employee_blocked",
+      entityType: "gabinetEmployee",
+      entityId: args.employeeId,
+      details: `Blocked employee account`,
+    });
+  },
+});
+
+export const unblockEmployee = action({
+  args: {
+    organizationId: v.id("organizations"),
+    employeeId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_employees", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+    const emp = await db.get("gabinetEmployees", args.employeeId);
+    if (!emp || String(emp.organizationId) !== String(args.organizationId)) {
+      throw new Error("Employee not found");
+    }
+
+    await db.patch("gabinetEmployees", args.employeeId, {
+      isBlocked: false,
+      isActive: true,
+      updatedAt: Date.now(),
+    });
+
+    if (emp.userId) {
+      await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
+        organizationId: args.organizationId,
+        userId: String(emp.userId),
+        gabinetRole: emp.role as GabinetEmployeeRole,
+        isActive: true,
+      });
+    }
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: authResult.userId as Id<"users">,
+      action: "employee_unblocked",
+      entityType: "gabinetEmployee",
+      entityId: args.employeeId,
+      details: `Unblocked employee account`,
+    });
+  },
+});
+
 export const _removeSideEffects = internalMutation({
   args: {
     employeeId: v.string(),

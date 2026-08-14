@@ -279,6 +279,10 @@ export function createGabinetTables({
     licenseNumber: v.optional(v.string()),
     hireDate: v.optional(v.string()),
     isActive: v.boolean(),
+    // Explicit block flag — true when an admin has blocked this account.
+    // Separate from isActive so that inactive (deactivated) records are not
+    // automatically treated as blocked. Old rows default to false.
+    isBlocked: v.optional(v.boolean()),
     color: v.optional(v.string()),
     notes: v.optional(v.string()),
     // Detailed employee data (beauty salon context)

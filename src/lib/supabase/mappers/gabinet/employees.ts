@@ -18,6 +18,7 @@ export interface MappedGabinetEmployee {
   licenseNumber?: string;
   hireDate?: string;
   isActive: boolean;
+  isBlocked?: boolean;
   color?: string;
   notes?: string;
   phone?: string;

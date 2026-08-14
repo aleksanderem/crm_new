@@ -534,6 +534,7 @@ export const _acceptInternal = internalMutation({
           userId: String(user._id),
           invitedBy: args.invitationInvitedBy,
           data: args.invitationModuleData,
+          email: args.invitationEmail,
         },
       );
     }

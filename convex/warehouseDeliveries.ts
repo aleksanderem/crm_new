@@ -83,6 +83,7 @@ export const listDeliveries = action({
   args: {
     organizationId: v.id("organizations"),
     status: v.optional(v.union(v.literal("draft"), v.literal("posted"))),
+    locationId: v.optional(v.id("gabinetLocations")),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args): Promise<DeliveryRow[]> => {
@@ -102,6 +103,9 @@ export const listDeliveries = action({
       .eq("organizationId", String(args.organizationId));
     if (args.status) {
       query = query.eq("status", args.status);
+    }
+    if (args.locationId) {
+      query = query.eq("locationId", String(args.locationId));
     }
     return await query.order("createdAt", false).take(limit).collect();
   },

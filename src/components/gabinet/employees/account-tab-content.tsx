@@ -210,6 +210,9 @@ export function AccountTabContent({
                     </button>
                   );
                 }
+                if (status === "invitation_pending") {
+                  return null;
+                }
                 return (
                   <button
                     type="button"

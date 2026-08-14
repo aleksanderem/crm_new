@@ -54,6 +54,7 @@ export interface EmployeeFormData {
   userId?: Id<"users">;
   firstName?: string;
   lastName?: string;
+  hireDate?: string;
   role: GabinetEmployeeRole;
   specialization?: string;
   licenseNumber?: string;
@@ -119,6 +120,7 @@ export function EmployeeForm({
 
   const [firstName, setFirstName] = useState(initialData?.firstName ?? "");
   const [lastName, setLastName] = useState(initialData?.lastName ?? "");
+  const [hireDate, setHireDate] = useState(initialData?.hireDate ?? "");
   const [role, setRole] = useState<GabinetEmployeeRole>(initialData?.role ?? "doctor");
   const [specialization, setSpecialization] = useState(initialData?.specialization ?? "");
   const [licenseNumber, setLicenseNumber] = useState(initialData?.licenseNumber ?? "");
@@ -192,6 +194,7 @@ export function EmployeeForm({
     onSubmit({
       firstName: firstName || undefined,
       lastName: lastName || undefined,
+      hireDate: hireDate || undefined,
       role,
       specialization: performsServices ? specialization || undefined : undefined,
       licenseNumber: performsServices ? licenseNumber || undefined : undefined,
@@ -262,6 +265,15 @@ export function EmployeeForm({
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>{t("gabinet.employees.hireDate")}</Label>
+        <Input
+          type="date"
+          value={hireDate}
+          onChange={(e) => setHireDate(e.target.value)}
+        />
       </div>
 
       {/* ── 2. Gabinety i lokalizacje ── */}

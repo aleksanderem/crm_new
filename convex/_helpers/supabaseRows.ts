@@ -23,6 +23,7 @@ export type GabinetEmployeeScheduleRow = SupabaseRow<"gabinetEmployeeSchedules">
 export type GabinetWorkingHoursRow = SupabaseRow<"gabinetWorkingHours">;
 export type GabinetLeaveRow = SupabaseRow<"gabinetLeaves">;
 export type GabinetLeaveTypeRow = SupabaseRow<"gabinetLeaveTypes">;
+export type GabinetLeaveBalanceRow = SupabaseRow<"gabinetLeaveBalances">;
 export type GabinetOvertimeRow = SupabaseRow<"gabinetOvertime">;
 export type GabinetPaymentMethodRow = SupabaseRow<"gabinetPaymentMethods">;
 export type GabinetLocationRow = SupabaseRow<"gabinetLocations">;

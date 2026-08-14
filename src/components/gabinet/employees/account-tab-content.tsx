@@ -210,20 +210,38 @@ export function AccountTabContent({
                     </button>
                   );
                 }
-                if (status === "invitation_pending" && onCancelInvitation) {
+                if (status === "invitation_pending") {
                   return (
-                    <button
-                      type="button"
-                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
-                      onClick={onCancelInvitation}
-                    >
-                      <XCircle className="h-4 w-4 text-destructive shrink-0" variant="stroke" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-destructive">{t("gabinet.employees.cancelInvitation", "Anuluj zaproszenie")}</p>
-                        <p className="text-xs text-muted-foreground">{t("gabinet.employees.cancelInvitationDesc", "Cofnij wysłane zaproszenie do logowania")}</p>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
-                    </button>
+                    <>
+                      {onResendInvitation && (
+                        <button
+                          type="button"
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                          onClick={onResendInvitation}
+                        >
+                          <Send className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm">{t("gabinet.employees.resendInvitation", "Wyślij zaproszenie ponownie")}</p>
+                            <p className="text-xs text-muted-foreground">{t("gabinet.employees.resendInvitationDesc", "Ponów wysyłkę zaproszenia z nowym terminem ważności")}</p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
+                        </button>
+                      )}
+                      {onCancelInvitation && (
+                        <button
+                          type="button"
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                          onClick={onCancelInvitation}
+                        >
+                          <XCircle className="h-4 w-4 text-destructive shrink-0" variant="stroke" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-destructive">{t("gabinet.employees.cancelInvitation", "Anuluj zaproszenie")}</p>
+                            <p className="text-xs text-muted-foreground">{t("gabinet.employees.cancelInvitationDesc", "Cofnij wysłane zaproszenie do logowania")}</p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
+                        </button>
+                      )}
+                    </>
                   );
                 }
                 return null;

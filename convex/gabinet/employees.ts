@@ -351,6 +351,7 @@ export const _createFromInvitation = internalAction({
     userId: v.string(),
     invitedBy: v.string(),
     data: v.any(),
+    email: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
@@ -404,6 +405,70 @@ export const _createFromInvitation = internalAction({
       }
 
       return { skipped: true, employeeId: existingEmployeeId };
+    }
+
+    // Fallback: if no userId match but an email is known, look for a pre-created
+    // employee row (userId=null) so we link it instead of inserting a duplicate.
+    if (args.email) {
+      const byEmail = (await db
+        .query("gabinetEmployees")
+        .eq("organizationId", String(args.organizationId))
+        .eq("email", args.email)
+        .collect()) as Array<{ _id: string; userId: string | null; role: string; isActive: boolean }>;
+
+      const preCreated = byEmail.find((e) => !e.userId);
+      if (preCreated) {
+        const existingEmployeeId = String(preCreated._id);
+        log.info("linking pre-created employee by email", { email: args.email, employeeId: existingEmployeeId });
+
+        await db.patch("gabinetEmployees", existingEmployeeId, {
+          userId: args.userId,
+          updatedAt: Date.now(),
+        });
+
+        const d2 = (args.data ?? {}) as Record<string, unknown>;
+        const locationId2 = typeof d2.locationId === "string" && d2.locationId.length > 0 ? d2.locationId : null;
+        const locationRole2Raw = typeof d2.locationRole === "string" ? d2.locationRole : null;
+        const locationRole2 = locationRole2Raw && isSystemGabinetRole(locationRole2Raw) ? locationRole2Raw : undefined;
+        if (locationId2) {
+          try {
+            const existingLocation = await db
+              .query("gabinetEmployeeLocations")
+              .eq("organizationId", String(args.organizationId))
+              .eq("employeeId", existingEmployeeId)
+              .eq("locationId", locationId2)
+              .collect();
+            if (existingLocation.length === 0) {
+              await db.insert("gabinetEmployeeLocations", {
+                organizationId: String(args.organizationId),
+                employeeId: existingEmployeeId,
+                locationId: locationId2,
+                isPrimary: false,
+                role: locationRole2,
+                createdAt: Date.now(),
+              });
+              await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
+                organizationId: args.organizationId,
+                userId: args.userId,
+                locationId: locationId2,
+                role: locationRole2 ?? undefined,
+              });
+            }
+          } catch (e) {
+            console.error(`[gabinet.employees._createFromInvitation] location insert on email-link failed:`, e);
+          }
+        }
+
+        const empRole = isSystemGabinetRole(preCreated.role) ? (preCreated.role as GabinetEmployeeRole) : "doctor";
+        await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
+          organizationId: args.organizationId,
+          userId: args.userId,
+          gabinetRole: empRole,
+          isActive: preCreated.isActive ?? true,
+        });
+
+        return { skipped: true, employeeId: existingEmployeeId };
+      }
     }
 
     const d = (args.data ?? {}) as Record<string, unknown>;

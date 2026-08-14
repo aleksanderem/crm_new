@@ -36,6 +36,7 @@ import { useSupabasePaymentsByPatient } from "@/hooks/use-supabase-payments";
 import { useSupabaseGabinetReceiptsByPatient } from "@/hooks/use-supabase-gabinet-receipts";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
+import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SidePanel } from "@/components/crm/side-panel";
 import { PatientForm } from "@/components/forms/patient-form";
@@ -142,6 +143,7 @@ function PatientDetail() {
     organizationId,
     "gabinetPatient",
   );
+  const { data: orgLocations = [] } = useSupabaseGabinetLocationsList(organizationId, { activeOnly: true });
 
   const [generatingReceiptFor, setGeneratingReceiptFor] = useState<string | null>(null);
 
@@ -488,6 +490,7 @@ function PatientDetail() {
     emergencyContactName?: string | null;
     emergencyContactPhone?: string | null;
     referralSource?: string | null;
+    preferredLocationId?: string | null;
     tagIds?: Id<"tagDefinitions">[];
     categoryId?: Id<"categoryDefinitions">;
   }) => {
@@ -1116,6 +1119,7 @@ function PatientDetail() {
               emergencyContactName: patient.emergencyContactName ?? undefined,
               emergencyContactPhone: patient.emergencyContactPhone ?? undefined,
               referralSource: patient.referralSource ?? undefined,
+              preferredLocationId: patient.preferredLocationId ?? undefined,
               tagIds: patient.tagIds as Id<"tagDefinitions">[] | undefined,
               categoryId: patient.categoryId as
                 | Id<"categoryDefinitions">
@@ -1127,6 +1131,7 @@ function PatientDetail() {
             organizationId={organizationId}
             tagDefinitions={orgTags}
             categoryDefinitions={patientCategories}
+            locations={orgLocations.map((l) => ({ id: l.id, name: l.name }))}
           />
         </SidePanel>
       )}

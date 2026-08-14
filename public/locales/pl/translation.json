@@ -2666,7 +2666,8 @@
           "medicalNotes": "Notatki medyczne",
           "referralSource": "Źródło polecenia"
         }
-      }
+      },
+      "preferredLocation": "Preferowana lokalizacja"
     },
     "treatments": {
       "title": "Zabiegi",

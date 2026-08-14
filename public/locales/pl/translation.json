@@ -2947,6 +2947,7 @@
       "title": "Zarządzanie urlopami",
       "description": "Zarządzaj urlopami i dniami wolnymi pracowników",
       "requestLeave": "Złóż wniosek",
+      "addLeaveRequest": "Dodaj wniosek urlopowy",
       "type": "Typ",
       "startDate": "Data rozpoczęcia",
       "endDate": "Data zakończenia",

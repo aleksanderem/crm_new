@@ -2983,10 +2983,13 @@
       "confirmRejectDesc": "Are you sure you want to reject this leave request? The employee will be notified.",
       "confirmDeleteTitle": "Delete Leave Request",
       "confirmDeleteDesc": "Are you sure you want to delete this leave request? This action cannot be undone.",
+      "withdraw": "Withdraw Request",
+      "withdrawn": "Leave request withdrawn",
       "errors": {
         "createFailed": "Could not create the leave request.",
         "statusChangeFailed": "Could not update the leave request status.",
-        "deleteFailed": "Could not delete the leave request."
+        "deleteFailed": "Could not delete the leave request.",
+        "withdrawFailed": "Could not withdraw the leave request."
       }
     },
     "overtime": {

@@ -715,6 +715,69 @@ export const requestLeave = action({
   },
 });
 
+// Self-service: employee withdraws their own pending leave request.
+// Only the leave owner can withdraw, and only while the status is "pending".
+// Reuses the existing delete_gabinet_leave RPC — for pending leaves the RPC
+// skips balance rollback (v_prev_status != 'approved'), so no migration is needed.
+export const withdrawLeave = action({
+  args: {
+    organizationId: v.id("organizations"),
+    leaveId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const authResult = await ctx.runAction(
+        internal._helpers.authAction.verifyOrgAccess,
+        { organizationId: args.organizationId },
+      );
+      await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+      const userId = String(authResult.userId);
+      const db = createSupabaseDb();
+
+      const leave = await db.get("gabinetLeaves", args.leaveId);
+      if (!leave || String(leave.organizationId) !== String(args.organizationId)) {
+        throw new Error("Leave not found");
+      }
+      if (String(leave.userId) !== userId) {
+        throw new Error("Permission denied");
+      }
+      if (leave.status !== "pending") {
+        throw new Error("Only pending leave requests can be withdrawn");
+      }
+
+      const { error: rpcError } = await db.raw().rpc("delete_gabinet_leave", {
+        p_leave_id: args.leaveId,
+        p_org_id:   String(args.organizationId),
+        p_now:      Date.now(),
+      });
+      if (rpcError) throw new Error(`withdrawLeave RPC failed: ${rpcError.message}`);
+
+      try {
+        await ctx.runMutation(internal.gabinet.scheduling._leaveSideEffects, {
+          organizationId: args.organizationId,
+          leaveId: args.leaveId,
+          userId,
+          action: "deleted",
+          description: `Leave request withdrawn by employee`,
+          performedBy: userId,
+          actorLabel: authResult.userName ?? authResult.userEmail,
+          auditAction: "leave_withdrawn",
+        });
+      } catch (e) {
+        console.error("[scheduling.withdrawLeave] Side effects FAILED:", e);
+      }
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.scheduling",
+        fnName: "withdrawLeave",
+        argsJson: JSON.stringify(args),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
+  },
+});
+
 // Fetches the gabinet membership and location assignments needed to evaluate
 // manager-scoped leave approval. Convex-only tables — must run in a query ctx.
 export const _leaveApprovalData = internalQuery({

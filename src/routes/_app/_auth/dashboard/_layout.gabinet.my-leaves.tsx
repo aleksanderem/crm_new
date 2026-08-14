@@ -66,6 +66,8 @@ function MyLeavesPage() {
   const { data: currentUser } = useQuery(convexQuery(api.app.getCurrentUser, {}));
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
   const requestLeave = useAction(api.gabinet.scheduling.requestLeave);
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
+  const withdrawLeave = useAction(api.gabinet.scheduling.withdrawLeave);
 
   const { data: leaves, isLoading } = useSupabaseGabinetLeavesList(organizationId, {
     userId: currentUser?._id ? String(currentUser._id) : undefined,
@@ -78,6 +80,7 @@ function MyLeavesPage() {
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     if (!startDate || !endDate) return;
@@ -106,6 +109,24 @@ function MyLeavesPage() {
       );
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleWithdraw = async (leaveId: string) => {
+    setWithdrawingId(leaveId);
+    try {
+      await withdrawLeave({ organizationId, leaveId });
+      toast.success(t("gabinet.leaves.withdrawn"));
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLeaves.all });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "gabinet.leaves.errors.withdrawFailed",
+          defaultValue: "Nie udało się wycofać wniosku urlopowego.",
+        }),
+      );
+    } finally {
+      setWithdrawingId(null);
     }
   };
 
@@ -197,6 +218,7 @@ function MyLeavesPage() {
                 <th className="px-4 py-2 text-left">{t("gabinet.leaves.endDate")}</th>
                 <th className="px-4 py-2 text-left">{t("gabinet.leaves.reason")}</th>
                 <th className="px-4 py-2 text-left">{t("gabinet.leaves.status")}</th>
+                <th className="px-4 py-2" />
               </tr>
             </thead>
             <tbody>
@@ -216,11 +238,23 @@ function MyLeavesPage() {
                        leave.status}
                     </Badge>
                   </td>
+                  <td className="px-4 py-2 text-right">
+                    {leave.status === "pending" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={withdrawingId === leave._id}
+                        onClick={() => handleWithdraw(leave._id)}
+                      >
+                        {withdrawingId === leave._id ? t("common.saving") : t("gabinet.leaves.withdraw")}
+                      </Button>
+                    )}
+                  </td>
                 </tr>
               ))}
               {(!leaves || leaves.length === 0) && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
                     {t("gabinet.leaves.empty")}
                   </td>
                 </tr>

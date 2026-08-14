@@ -131,15 +131,19 @@ export function DeliveriesPage() {
   // @ts-ignore
   const postDeliveryFromDecisionsAction = useAction(api.warehouseDeliveries.postDeliveryFromDecisions);
 
-  const queryKey = ["warehouseDeliveries.list", organizationId];
+  const { activeLocationId, setActiveLocationId } = useActiveLocation();
+
+  const queryKey = ["warehouseDeliveries.list", organizationId, activeLocationId];
 
   const { data: deliveries = [], isLoading } = useQuery({
     queryKey,
-    queryFn: () => listDeliveriesAction({ organizationId, limit: 100 }),
+    queryFn: () => listDeliveriesAction({
+      organizationId,
+      limit: 100,
+      ...(activeLocationId ? { locationId: activeLocationId as Id<"gabinetLocations"> } : {}),
+    }),
     staleTime: 30_000,
   });
-
-  const { activeLocationId, setActiveLocationId } = useActiveLocation();
 
   const { data: productsData = [] } = useSupabaseProductsList(String(organizationId));
   const { data: locations = [] } = useSupabaseGabinetLocationsList(String(organizationId), { activeOnly: true });

@@ -93,7 +93,6 @@ function EmployeeDetail() {
 
   // Mutations
   const updateEmployee = useAction(api.gabinet.employees.update);
-  const removeEmployee = useAction(api.gabinet.employees.remove);
   const setQualifiedTreatments = useAction(api.gabinet.employees.setQualifiedTreatments);
   const createNote = useAction(api.crm.notes.create);
   const markActivityComplete = useAction(api.scheduledActivities.markComplete);
@@ -398,17 +397,6 @@ function EmployeeDetail() {
     : "?";
 
   // --- Handlers ---
-
-  const handleDeactivate = async () => {
-    if (window.confirm(t("gabinet.employees.confirmDeactivate"))) {
-      await removeEmployee({
-        organizationId,
-        employeeId: employeeId,
-      });
-      void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(organizationId) });
-      navigate({ to: "/dashboard/gabinet/employees" });
-    }
-  };
 
   const handleActivate = async () => {
     if (!window.confirm(t("gabinet.employees.confirmActivate", "Czy na pewno chcesz aktywować konto tego pracownika?"))) return;
@@ -799,7 +787,6 @@ function EmployeeDetail() {
             await changeEmployeePassword({ organizationId, employeeId, newPassword });
           }}
           onEditEmployee={() => setEditDrawerOpen(true)}
-          onDeactivate={handleDeactivate}
           onActivate={handleActivate}
           onBlock={handleBlock}
           onUnblock={handleUnblock}

@@ -14,7 +14,6 @@ export function AccountTabContent({
   userEmail,
   onChangePassword,
   onEditEmployee,
-  onDeactivate,
   onActivate,
   onBlock,
   onUnblock,
@@ -27,7 +26,6 @@ export function AccountTabContent({
   userEmail?: string | null;
   onChangePassword: (newPassword: string) => Promise<void>;
   onEditEmployee: () => void;
-  onDeactivate: () => void;
   onActivate?: () => Promise<void>;
   onBlock?: () => Promise<void>;
   onUnblock?: () => Promise<void>;
@@ -228,23 +226,7 @@ export function AccountTabContent({
                     </button>
                   );
                 }
-                if (status === "invitation_pending") {
-                  return null;
-                }
-                return (
-                  <button
-                    type="button"
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
-                    onClick={onDeactivate}
-                  >
-                    <Power className="h-4 w-4 text-destructive shrink-0" variant="stroke" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-destructive">{t("gabinet.employees.deactivate")}</p>
-                      <p className="text-xs text-muted-foreground">{t("gabinet.employees.deactivateDesc", "Wyłącz dostęp pracownika do systemu")}</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
-                  </button>
-                );
+                return null;
               })()}
             </div>
           </div>

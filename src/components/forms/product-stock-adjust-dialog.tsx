@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
+import { useActiveLocation } from "@/contexts/gabinet-location-context";
 import { useSupabaseProductStockTotals } from "@/hooks/use-supabase-products";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatActionError } from "@/lib/format-action-error";
@@ -94,9 +95,10 @@ export function ProductStockAdjustDialog({
   );
   const { totalsByProductId } = useSupabaseProductStockTotals(organizationId);
 
+  const { activeLocationId, setActiveLocationId } = useActiveLocation();
+
   const [mode, setMode] = useState<Mode>("receive");
   const [quantity, setQuantity] = useState("");
-  const [locationId, setLocationId] = useState<string>(ALL_LOCATIONS_VALUE);
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -105,7 +107,6 @@ export function ProductStockAdjustDialog({
     if (open) {
       setMode("receive");
       setQuantity("");
-      setLocationId(ALL_LOCATIONS_VALUE);
       setNote("");
     }
   }, [open, product?._id]);
@@ -115,13 +116,11 @@ export function ProductStockAdjustDialog({
 
   const currentBalance = useMemo(() => {
     if (!stockSummary) return 0;
-    const targetLocationId =
-      locationId === ALL_LOCATIONS_VALUE ? null : locationId;
     const match = stockSummary.byLocation.find(
-      (row) => row.locationId === targetLocationId,
+      (row) => row.locationId === activeLocationId,
     );
     return match?.quantity ?? 0;
-  }, [stockSummary, locationId]);
+  }, [stockSummary, activeLocationId]);
 
   const parsedQuantity = (() => {
     if (!quantity.trim()) return null;
@@ -141,10 +140,7 @@ export function ProductStockAdjustDialog({
       const result = await adjustStock({
         organizationId: organizationId as Id<"organizations">,
         productId: product._id,
-        locationId:
-          locationId === ALL_LOCATIONS_VALUE
-            ? null
-            : (locationId as Id<"gabinetLocations">),
+        locationId: activeLocationId as Id<"gabinetLocations"> | null,
         delta,
         reason: mode === "receive" ? "warehouse_receive" : "manual_adjust",
         note: note.trim() || null,
@@ -311,7 +307,7 @@ export function ProductStockAdjustDialog({
                   defaultValue: "Lokalizacja",
                 })}
               </Label>
-              <Select value={locationId} onValueChange={setLocationId}>
+              <Select value={activeLocationId ?? ALL_LOCATIONS_VALUE} onValueChange={(v) => setActiveLocationId(v === ALL_LOCATIONS_VALUE ? null : v)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useSupabase } from "@/components/supabase-provider";
 import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
+import { useActiveLocation } from "@/contexts/gabinet-location-context";
 import {
   Dialog,
   DialogContent,
@@ -106,15 +107,15 @@ export function WarehouseInventoryDialog({
   // after midnight don't drift todayStr away from the selectedDate initial value.
   const todayStr = useMemo(() => toLocalDateStr(new Date()), [open]);
 
+  const { activeLocationId, setActiveLocationId } = useActiveLocation();
+
   const [step, setStep] = useState<Step>("count");
   const [counts, setCounts] = useState<Map<string, string>>(new Map());
-  const [locationId, setLocationId] = useState<string>(NO_LOCATION_VALUE);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
 
-  const resolvedLocationId: string | null =
-    locationId === NO_LOCATION_VALUE ? null : locationId;
+  const resolvedLocationId = activeLocationId;
 
   const isHistoricalMode = selectedDate < todayStr;
 
@@ -208,7 +209,6 @@ export function WarehouseInventoryDialog({
     if (nextOpen) {
       setStep("count");
       setCounts(new Map());
-      setLocationId(NO_LOCATION_VALUE);
       setSelectedDate(toLocalDateStr(new Date()));
     }
     onOpenChange(nextOpen);
@@ -466,7 +466,7 @@ export function WarehouseInventoryDialog({
                   defaultValue: "Lokalizacja",
                 })}
               </Label>
-              <Select value={locationId} onValueChange={(v) => { setLocationId(v); setCounts(new Map()); }}>
+              <Select value={activeLocationId ?? NO_LOCATION_VALUE} onValueChange={(v) => { setActiveLocationId(v === NO_LOCATION_VALUE ? null : v); setCounts(new Map()); }}>
                 <SelectTrigger id="inventory-location">
                   <SelectValue />
                 </SelectTrigger>

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
+import { useActiveLocation } from "@/contexts/gabinet-location-context";
 import { useSupabaseProductsLastDeliveryInfo } from "@/hooks/use-supabase-products";
 import { CopyIcon } from "@/lib/ez-icons";
 import { formatCurrencyPLN } from "@/lib/format-currency";
@@ -211,23 +212,14 @@ export function WarehouseShoppingListDialog({
   plannedUsageByProductId,
 }: WarehouseShoppingListDialogProps) {
   const { t } = useTranslation();
+  const { activeLocationId, setActiveLocationId } = useActiveLocation();
   const { data: locations = [] } = useSupabaseGabinetLocationsList(organizationId, { activeOnly: true });
   const { lastDeliveryByProductId } = useSupabaseProductsLastDeliveryInfo(organizationId, {
     enabled: open,
   });
-  const [locationId, setLocationId] = useState<string>(NO_LOCATION_VALUE);
   const [quantities, setQuantities] = useState<Map<string, string>>(new Map());
-  const hasAutoSelectedRef = useRef(false);
 
-  // Auto-select the single location when locations data loads asynchronously after dialog opens.
-  useEffect(() => {
-    if (open && !hasAutoSelectedRef.current && locations.length === 1) {
-      hasAutoSelectedRef.current = true;
-      setLocationId(locations[0]!._id);
-    }
-  }, [open, locations]);
-
-  const resolvedLocationId: string | null = locationId === NO_LOCATION_VALUE ? null : locationId;
+  const resolvedLocationId = activeLocationId;
 
   function getStock(productId: string): number {
     const stock = totalsByProductId.get(productId);
@@ -262,7 +254,7 @@ export function WarehouseShoppingListDialog({
           unitPriceGross,
         };
       });
-  }, [products, totalsByProductId, locationId, locations, resolvedLocationId, plannedUsageByProductId, lastDeliveryByProductId]);
+  }, [products, totalsByProductId, activeLocationId, locations, resolvedLocationId, plannedUsageByProductId, lastDeliveryByProductId]);
 
   const supplierGroups = useMemo(
     () => groupShoppingItems(shoppingItems),
@@ -286,17 +278,13 @@ export function WarehouseShoppingListDialog({
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
-      hasAutoSelectedRef.current = false;
-      const initial = locations.length === 1 ? locations[0]!._id : NO_LOCATION_VALUE;
-      if (locations.length === 1) hasAutoSelectedRef.current = true;
-      setLocationId(initial);
       setQuantities(new Map());
     }
     onOpenChange(nextOpen);
   };
 
   const handleLocationChange = (v: string) => {
-    setLocationId(v);
+    setActiveLocationId(v === NO_LOCATION_VALUE ? null : v);
     setQuantities(new Map());
   };
 
@@ -405,7 +393,7 @@ export function WarehouseShoppingListDialog({
               <Label htmlFor="shopping-list-location">
                 {t("inventory.count.locationLabel", { defaultValue: "Lokalizacja" })}
               </Label>
-              <Select value={locationId} onValueChange={handleLocationChange}>
+              <Select value={activeLocationId ?? NO_LOCATION_VALUE} onValueChange={handleLocationChange}>
                 <SelectTrigger id="shopping-list-location">
                   <SelectValue />
                 </SelectTrigger>

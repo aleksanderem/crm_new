@@ -34,6 +34,7 @@ import type { MiniChartData } from "@/components/crm/mini-charts";
 import { useSavedViews, applyFilterConditions } from "@/hooks/use-saved-views";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
+import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 import { formatPhoneNumber } from "@/lib/phone";
@@ -126,6 +127,7 @@ function PatientsIndex() {
 
   const { tags } = useTagDefinitions(organizationId);
   const { categories } = useCategoryDefinitions(organizationId, "gabinetPatient");
+  const { data: locations = [] } = useSupabaseGabinetLocationsList(organizationId, { activeOnly: true });
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor | undefined>({
@@ -491,6 +493,7 @@ function PatientsIndex() {
       emergencyContactName?: string | null;
       emergencyContactPhone?: string | null;
       referralSource?: string | null;
+      preferredLocationId?: string | null;
       tagIds?: Id<"tagDefinitions">[];
       categoryId?: Id<"categoryDefinitions">;
     }) => {
@@ -769,6 +772,7 @@ function PatientsIndex() {
           organizationId={organizationId}
           tagDefinitions={tags}
           categoryDefinitions={categories}
+          locations={locations.map((l) => ({ id: l.id, name: l.name }))}
         />
       </SidePanel>
 

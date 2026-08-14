@@ -56,8 +56,14 @@ interface PatientFormData {
   emergencyContactName?: string | null;
   emergencyContactPhone?: string | null;
   referralSource?: string | null;
+  preferredLocationId?: string | null;
   tagIds?: Id<"tagDefinitions">[];
   categoryId?: Id<"categoryDefinitions">;
+}
+
+interface LocationOption {
+  id: string;
+  name: string;
 }
 
 interface PatientFormProps {
@@ -69,6 +75,7 @@ interface PatientFormProps {
   tagDefinitions?: TagDef[];
   categoryDefinitions?: CategoryDef[];
   organizationId?: Id<"organizations">;
+  locations?: LocationOption[];
 }
 
 const ADD_NEW_REFERRAL_SOURCE = "__add_new__";
@@ -82,6 +89,7 @@ export function PatientForm({
   tagDefinitions = [],
   categoryDefinitions = [],
   organizationId,
+  locations = [],
 }: PatientFormProps) {
   const isEditMode = mode === "edit" || (!mode && !!initialData);
   const { t } = useTranslation();
@@ -113,6 +121,7 @@ export function PatientForm({
   const referralOptions = patientReferralSourceOptions(t).filter((opt) => opt.value !== "other");
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
+  const [preferredLocationId, setPreferredLocationId] = useState<string>(initialData?.preferredLocationId ?? "");
 
   const listCustomReferralSources = useAction(api.gabinet.patients.listCustomReferralSources);
 
@@ -186,6 +195,7 @@ export function PatientForm({
       emergencyContactName: emergencyContactName || null,
       emergencyContactPhone: emergencyContactPhone || null,
       referralSource,
+      preferredLocationId: preferredLocationId || null,
       tagIds: tagIds.length > 0 ? tagIds : undefined,
       categoryId: categoryId || undefined,
     });
@@ -390,6 +400,21 @@ export function PatientForm({
             </div>
           )}
         </div>
+        {locations.length > 0 && (
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.patients.preferredLocation")}</Label>
+            <Select value={preferredLocationId} onValueChange={setPreferredLocationId}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {locations.map((loc) => (
+                  <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("gabinet.patients.medicalNotes")}</Label>
           <RichTextEditor

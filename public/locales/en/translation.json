@@ -2667,7 +2667,8 @@
           "medicalNotes": "Medical notes",
           "referralSource": "Referral source"
         }
-      }
+      },
+      "preferredLocation": "Preferred location"
     },
     "treatments": {
       "title": "Treatments",

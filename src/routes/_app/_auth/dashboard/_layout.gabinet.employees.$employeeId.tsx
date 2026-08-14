@@ -3,7 +3,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
+import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
+import { useActiveLocation } from "@/contexts/gabinet-location-context";
 import {
   useSupabaseGabinetEmployee,
   useSupabaseGabinetEmployeesList,
@@ -61,14 +63,24 @@ function EmployeeDetailSkeleton() {
   );
 }
 
+function EmployeeDetailRoute() {
+  const { activeLocationId } = useActiveLocation();
+  return (
+    <PermissionGate
+      feature="gabinet_employees"
+      action="view"
+      locationId={(activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined}
+      loadingFallback={<EmployeeDetailSkeleton />}
+    >
+      <EmployeeDetail />
+    </PermissionGate>
+  );
+}
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/employees/$employeeId"
 )({
-  component: () => (
-    <PermissionGate feature="gabinet_employees" action="view" loadingFallback={<EmployeeDetailSkeleton />}>
-      <EmployeeDetail />
-    </PermissionGate>
-  ),
+  component: EmployeeDetailRoute,
 });
 
 function EmployeeDetail() {

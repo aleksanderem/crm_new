@@ -183,6 +183,7 @@ export const create = action({
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),
     customFields: v.optional(v.array(v.any())),
+    email: v.optional(v.union(v.string(), v.null())),
     locationId: v.optional(v.string()),
     locationRole: v.optional(gabinetEmployeeRoleValidator),
   },
@@ -221,6 +222,7 @@ export const create = action({
     const employeeId = await db.insert("gabinetEmployees", {
       organizationId: String(args.organizationId),
       userId: args.userId ?? null,
+      email: args.email ?? null,
       firstName: args.firstName ?? null,
       lastName: args.lastName ?? null,
       role: args.role,

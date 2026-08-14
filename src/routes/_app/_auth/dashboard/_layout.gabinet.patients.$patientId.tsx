@@ -11,6 +11,7 @@ import {
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
+import { useActiveLocation } from "@/contexts/gabinet-location-context";
 import { useSupabaseGabinetPatient } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
 import {
@@ -95,6 +96,7 @@ export const Route = createFileRoute(
 function PatientDetail() {
   const { patientId } = Route.useParams();
   const { organizationId } = useOrganization();
+  const { activeLocationId } = useActiveLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { allowed: canEdit } = usePermission("gabinet_patients", "edit");
@@ -219,6 +221,7 @@ function PatientDetail() {
   const { data: patientAppointments } = useSupabaseGabinetAppointmentsByPatient(
     organizationId,
     patientId,
+    { locationId: activeLocationId ?? undefined },
   );
 
   const { data: loyaltyBalance } = useSupabaseGabinetLoyaltyBalance(

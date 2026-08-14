@@ -11,6 +11,7 @@ import { getAvailableSlotsSupabase } from "./_availability_supabase";
 import type {
   GabinetEmployeeScheduleRow,
   GabinetLeaveRow,
+  GabinetLeaveTypeRow,
   GabinetWorkingHoursRow,
 } from "../_helpers/supabaseRows";
 
@@ -584,6 +585,14 @@ export const createLeave = action({
     const now = Date.now();
     const db = createSupabaseDb();
 
+    let initialStatus: "pending" | "approved" = "pending";
+    if (args.leaveTypeId) {
+      const leaveType = (await db.get("gabinetLeaveTypes", args.leaveTypeId)) as GabinetLeaveTypeRow | null;
+      if (leaveType && !leaveType.requiresApproval) {
+        initialStatus = "approved";
+      }
+    }
+
     const leaveId = await db.insert("gabinetLeaves", {
       organizationId: String(args.organizationId),
       userId: args.userId,
@@ -593,7 +602,7 @@ export const createLeave = action({
       endDate: args.endDate,
       startTime: args.startTime ?? null,
       endTime: args.endTime ?? null,
-      status: "pending",
+      status: initialStatus,
       reason: args.reason ?? null,
       createdBy: authResult.userId,
       createdAt: now,

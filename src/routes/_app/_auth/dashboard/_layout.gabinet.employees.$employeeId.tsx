@@ -727,7 +727,7 @@ function EmployeeDetail() {
           onSavePeriod={async (a) => { await saveSchedulePeriod(a); invalidateScheduleCache(); }}
           onRemovePeriod={async (a) => { await removeSchedulePeriod(a); invalidateScheduleCache(); }}
           onSaveLegacy={async (a) => { await bulkSetEmployeeSchedule(a); invalidateScheduleCache(); }}
-          onManageLeaves={() => navigate({ to: "/dashboard/gabinet/settings/leaves" })}
+          onManageLeaves={() => navigate({ to: "/dashboard/gabinet/settings/leaves", search: { userId: employee.userId } })}
         />
       ) : (
         <p className="text-muted-foreground text-sm">{t("gabinet.employees.noUserAccount", "Pracownik nie ma powiązanego konta użytkownika.")}</p>

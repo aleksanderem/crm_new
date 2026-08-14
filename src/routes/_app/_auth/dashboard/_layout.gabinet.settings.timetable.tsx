@@ -1102,7 +1102,7 @@ function TimetablePage() {
                   invalidateScheduleCache();
                 }}
                 onManageLeaves={() =>
-                  navigate({ to: "/dashboard/gabinet/settings/leaves" })
+                  navigate({ to: "/dashboard/gabinet/settings/leaves", search: { userId: editingEmployee.userId } })
                 }
               />
             </div>

@@ -96,14 +96,24 @@ function CalendarSkeleton() {
   );
 }
 
+function CalendarRoute() {
+  const { activeLocationId } = useActiveLocation();
+  return (
+    <PermissionGate
+      feature="gabinet_appointments"
+      action="view"
+      locationId={(activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined}
+      loadingFallback={<CalendarSkeleton />}
+    >
+      <GabinetCalendarPage />
+    </PermissionGate>
+  );
+}
+
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/calendar/",
 )({
-  component: () => (
-    <PermissionGate feature="gabinet_appointments" action="view" loadingFallback={<CalendarSkeleton />}>
-      <GabinetCalendarPage />
-    </PermissionGate>
-  ),
+  component: CalendarRoute,
 });
 
 type ViewMode = "day" | "week" | "month";
@@ -137,8 +147,9 @@ function formatDateStr(d: Date): string {
 function GabinetCalendarPage() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
-  const { allowed: canCreate } = usePermission("gabinet_appointments", "create");
-  const { allowed: canUpdate } = usePermission("gabinet_appointments", "edit");
+  const { activeLocationId, setActiveLocationId } = useActiveLocation();
+  const { allowed: canCreate } = usePermission("gabinet_appointments", "create", (activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined);
+  const { allowed: canUpdate } = usePermission("gabinet_appointments", "edit", (activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined);
   const search = useSearch({ from: "/_app/_auth/dashboard/_layout/gabinet/calendar/" });
   const routeNavigate = useNavigate();
   const nudgeFilter = search.nudge;
@@ -164,7 +175,6 @@ function GabinetCalendarPage() {
   const [statusFilter, setStatusFilter] = useState<string>(
     nudgeFilter === "unconfirmed-today" ? "scheduled" : "all",
   );
-  const { activeLocationId, setActiveLocationId } = useActiveLocation();
   const [clientSearch, setClientSearch] = useState("");
 
   // Filter dialog
@@ -1442,7 +1452,7 @@ function GabinetCalendarPage() {
                 </Button>
                 <h2 className="ml-2 truncate text-xs font-semibold">{title}</h2>
               </div>
-              <PermissionGate feature="gabinet_appointments" action="create">
+              <PermissionGate feature="gabinet_appointments" action="create" locationId={(activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined}>
                 <Button
                   size="sm"
                   className="h-7 shrink-0 text-xs md:hidden"
@@ -1497,7 +1507,7 @@ function GabinetCalendarPage() {
 
               {/* Create button — hidden on mobile where it lives next to the
                   date nav (above) to avoid wrapping onto its own row. */}
-              <PermissionGate feature="gabinet_appointments" action="create">
+              <PermissionGate feature="gabinet_appointments" action="create" locationId={(activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined}>
                 <Button
                   size="sm"
                   className="hidden h-7 text-xs md:inline-flex"

@@ -1,4 +1,5 @@
-import { action, internalMutation } from "../_generated/server";
+import { action, internalMutation, internalQuery } from "../_generated/server";
+import type { ActionCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
@@ -638,6 +639,89 @@ export const createLeave = action({
   },
 });
 
+// Fetches the gabinet membership and location assignments needed to evaluate
+// manager-scoped leave approval. Convex-only tables — must run in a query ctx.
+export const _leaveApprovalData = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    approverUserId: v.id("users"),
+    employeeUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const [approverMembership, approverLocations, employeeLocations] = await Promise.all([
+      ctx.db
+        .query("gabinetMemberships")
+        .withIndex("by_orgAndUser", (q) =>
+          q.eq("organizationId", args.organizationId).eq("userId", args.approverUserId),
+        )
+        .unique(),
+      ctx.db
+        .query("gabinetLocationMemberships")
+        .withIndex("by_orgAndUser", (q) =>
+          q.eq("organizationId", args.organizationId).eq("userId", args.approverUserId),
+        )
+        .collect(),
+      ctx.db
+        .query("gabinetLocationMemberships")
+        .withIndex("by_orgAndUser", (q) =>
+          q.eq("organizationId", args.organizationId).eq("userId", args.employeeUserId),
+        )
+        .collect(),
+    ]);
+    return { approverMembership, approverLocations, employeeLocations };
+  },
+});
+
+// Returns true if the acting user may approve or reject the given employee's leave.
+// Priority order:
+//   1. org owner / org admin → always allowed
+//   2. gabinet admin (global gabinetRole) → always allowed
+//   3. gabinet manager: allowed only when there is ≥1 shared location where the
+//      approver holds the manager role (global or per-location override) AND the
+//      employee also has an assignment
+//   4. everything else → denied
+async function canApproveOrRejectLeave(
+  ctx: ActionCtx,
+  organizationId: Id<"organizations">,
+  orgRole: string,
+  approverUserId: Id<"users">,
+  employeeUserId: Id<"users">,
+): Promise<boolean> {
+  if (orgRole === "owner" || orgRole === "admin") return true;
+
+  const { approverMembership, approverLocations, employeeLocations } =
+    await ctx.runQuery(internal.gabinet.scheduling._leaveApprovalData, {
+      organizationId,
+      approverUserId,
+      employeeUserId,
+    });
+
+  if (!approverMembership?.isActive) return false;
+
+  const globalRole = approverMembership.gabinetRole as string;
+
+  if (globalRole === "admin") return true;
+
+  // Not a manager in any capacity → deny immediately
+  if (globalRole !== "manager" && !approverLocations.some((lm) => lm.role === "manager")) {
+    return false;
+  }
+
+  // Employee must have at least one location assignment for shared-location check
+  if (employeeLocations.length === 0) return false;
+
+  const employeeLocationIds = new Set(employeeLocations.map((lm) => String(lm.locationId)));
+
+  for (const approverLoc of approverLocations) {
+    const effectiveRole = (approverLoc.role as string | undefined) ?? globalRole;
+    if (effectiveRole === "manager" && employeeLocationIds.has(String(approverLoc.locationId))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export const approveLeave = action({
   args: {
     organizationId: v.id("organizations"),
@@ -649,11 +733,6 @@ export const approveLeave = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runAction(
-      internal._helpers.authAction.checkPermission,
-      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
-    ) as { allowed: boolean; scope: string };
-    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     const db = createSupabaseDb();
 
@@ -661,6 +740,15 @@ export const approveLeave = action({
     if (!leave || String(leave.organizationId) !== String(args.organizationId)) {
       throw new Error("Leave not found");
     }
+
+    const allowed = await canApproveOrRejectLeave(
+      ctx,
+      args.organizationId,
+      authResult.role,
+      authResult.userId,
+      leave.userId as Id<"users">,
+    );
+    if (!allowed) throw new Error("Permission denied");
 
     // Atomic: approve status + balance increment happen in one Postgres
     // transaction via RPC (issue #4771 — two separate patches were non-atomic).
@@ -700,11 +788,6 @@ export const rejectLeave = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runAction(
-      internal._helpers.authAction.checkPermission,
-      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
-    ) as { allowed: boolean; scope: string };
-    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     const db = createSupabaseDb();
 
@@ -712,6 +795,15 @@ export const rejectLeave = action({
     if (!leave || String(leave.organizationId) !== String(args.organizationId)) {
       throw new Error("Leave not found");
     }
+
+    const allowed = await canApproveOrRejectLeave(
+      ctx,
+      args.organizationId,
+      authResult.role,
+      authResult.userId,
+      leave.userId as Id<"users">,
+    );
+    if (!allowed) throw new Error("Permission denied");
 
     // Atomic: reject status + balance rollback (if previously approved) happen
     // in one Postgres transaction via RPC (issue #4782 — bare patch was non-atomic).

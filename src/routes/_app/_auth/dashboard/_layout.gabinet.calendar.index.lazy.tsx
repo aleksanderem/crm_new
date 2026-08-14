@@ -82,6 +82,7 @@ import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatAppointmentError } from "@/lib/format-action-error";
 import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useActiveLocation } from "@/contexts/gabinet-location-context";
 
 function CalendarSkeleton() {
   return (
@@ -163,7 +164,7 @@ function GabinetCalendarPage() {
   const [statusFilter, setStatusFilter] = useState<string>(
     nudgeFilter === "unconfirmed-today" ? "scheduled" : "all",
   );
-  const [locationFilter, setLocationFilter] = useState<string>("all");
+  const { activeLocationId, setActiveLocationId } = useActiveLocation();
   const [clientSearch, setClientSearch] = useState("");
 
   // Filter dialog
@@ -711,7 +712,7 @@ function GabinetCalendarPage() {
       for (const a of rawAppointments) {
         if (treatmentFilter !== "all" && a.treatmentId !== treatmentFilter) continue;
         if (statusFilter !== "all" && a.status !== statusFilter) continue;
-        if (locationFilter !== "all" && a.locationId !== locationFilter) continue;
+        if (activeLocationId !== null && a.locationId !== activeLocationId) continue;
         if (searchLower) {
           const name = patientMap.get(a.patientId) ?? "";
           if (!name.toLowerCase().includes(searchLower)) continue;
@@ -917,7 +918,7 @@ function GabinetCalendarPage() {
     }
 
     return items;
-  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, variantMap, tagMap, employeeColorMap, eventTypeColorMap, firstAppointmentIds, packagePositions, recurringPositions, appointmentPaymentTotals, creditByAppointmentId, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
+  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, variantMap, tagMap, employeeColorMap, eventTypeColorMap, firstAppointmentIds, packagePositions, recurringPositions, appointmentPaymentTotals, creditByAppointmentId, treatmentFilter, statusFilter, activeLocationId, clientSearch, t]);
 
   // Collapse blocked-time events that target multiple employees into a single
   // tile for views that don't break the day into per-employee columns
@@ -1265,16 +1266,14 @@ function GabinetCalendarPage() {
     let count = 0;
     if (treatmentFilter !== "all") count++;
     if (statusFilter !== "all") count++;
-    if (locationFilter !== "all") count++;
     if (clientSearch.trim()) count++;
     return count;
-  }, [treatmentFilter, statusFilter, locationFilter, clientSearch]);
+  }, [treatmentFilter, statusFilter, clientSearch]);
 
   const clearAllFilters = useCallback(() => {
     setEmployeeFilter("all");
     setTreatmentFilter("all");
     setStatusFilter("all");
-    setLocationFilter("all");
     setClientSearch("");
   }, []);
 
@@ -1761,7 +1760,10 @@ function GabinetCalendarPage() {
                 {locations.length > 0 && (
                   <div className="space-y-1.5">
                     <Label>{t("gabinet.locations.title", "Lokalizacja")}</Label>
-                    <Select value={locationFilter} onValueChange={setLocationFilter}>
+                    <Select
+                      value={activeLocationId ?? "all"}
+                      onValueChange={(v) => setActiveLocationId(v === "all" ? null : v)}
+                    >
                       <SelectTrigger>
                         <SelectValue
                           placeholder={t("gabinet.calendar.allLocations", "Wszystkie lokalizacje")}

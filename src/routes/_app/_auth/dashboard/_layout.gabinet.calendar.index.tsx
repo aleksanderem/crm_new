@@ -8,7 +8,7 @@ export const Route = createFileRoute(
 )({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { nudge?: CalendarNudgeFilter; action?: CalendarAction } => ({
+  ): { nudge?: CalendarNudgeFilter; action?: CalendarAction; employeeId?: string } => ({
     nudge:
       search.nudge === "unconfirmed-today"
         ? (search.nudge as CalendarNudgeFilter)
@@ -17,5 +17,7 @@ export const Route = createFileRoute(
       search.action === "sell-package" || search.action === "create-appointment"
         ? (search.action as CalendarAction)
         : undefined,
+    employeeId:
+      typeof search.employeeId === "string" ? search.employeeId : undefined,
   }),
 });

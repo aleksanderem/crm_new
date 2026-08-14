@@ -19,6 +19,7 @@ export function AppointmentsTabContent({
   appointmentsView,
   setAppointmentsView,
   treatmentMap,
+  employeeUserId,
   navigate,
   t,
   i18nLanguage,
@@ -31,7 +32,8 @@ export function AppointmentsTabContent({
   appointmentsView: "calendar" | "list";
   setAppointmentsView: (v: "calendar" | "list") => void;
   treatmentMap: Map<string, string>;
-  navigate: (opts: { to: string }) => void;
+  employeeUserId?: string;
+  navigate: (opts: { to: string; search?: Record<string, unknown> }) => void;
   t: (key: string, opts?: Record<string, unknown> | string) => string;
   i18nLanguage: string;
 }) {
@@ -63,7 +65,15 @@ export function AppointmentsTabContent({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => navigate({ to: "/dashboard/gabinet/calendar" })}
+            onClick={() =>
+              navigate({
+                to: "/dashboard/gabinet/calendar",
+                search: {
+                  action: "create-appointment",
+                  ...(employeeUserId ? { employeeId: employeeUserId } : {}),
+                },
+              })
+            }
           >
             <Plus className="mr-1 h-4 w-4" variant="stroke" />
             {t("gabinet.appointments.createAppointment")}

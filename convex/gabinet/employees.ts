@@ -416,13 +416,16 @@ export const _createFromInvitation = internalAction({
         .eq("email", args.email)
         .collect()) as Array<{ _id: string; userId: string | null; role: string; isActive: boolean }>;
 
-      const preCreated = byEmail.find((e) => !e.userId);
+      // Don't guess when multiple unlinked candidates share the same email.
+      const unlinkedCandidates = byEmail.filter((e) => !e.userId);
+      const preCreated = unlinkedCandidates.length === 1 ? unlinkedCandidates[0] : undefined;
       if (preCreated) {
         const existingEmployeeId = String(preCreated._id);
         log.info("linking pre-created employee by email", { email: args.email, employeeId: existingEmployeeId });
 
         await db.patch("gabinetEmployees", existingEmployeeId, {
           userId: args.userId,
+          isActive: true,
           updatedAt: Date.now(),
         });
 
@@ -464,7 +467,7 @@ export const _createFromInvitation = internalAction({
           organizationId: args.organizationId,
           userId: args.userId,
           gabinetRole: empRole,
-          isActive: preCreated.isActive ?? true,
+          isActive: true,
         });
 
         return { skipped: true, employeeId: existingEmployeeId };

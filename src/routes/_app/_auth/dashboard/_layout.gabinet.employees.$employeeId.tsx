@@ -41,6 +41,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
 import { useSidebarSlot } from "@/components/layout/sidebar-slot-context";
+import { computeEmployeeAccountStatus } from "@/lib/gabinet/employee-account-status";
 import { PermissionGate, useRole } from "@/hooks/use-permission";
 import { EmployeeNavGroups } from "@/components/gabinet/employees/employee-nav-groups";
 import { AppointmentsTabContent } from "@/components/gabinet/employees/appointments-tab-content";
@@ -565,6 +566,14 @@ function EmployeeDetail() {
   const sidebarExtra = undefined;
 
   // Header subtitle with color swatch, role badge, and account/invitation status badge
+  const accountStatus = employee
+    ? computeEmployeeAccountStatus({
+        isActive: employee.isActive,
+        isBlocked: employee.isBlocked,
+        invitation: pendingInvitation,
+      })
+    : null;
+
   const headerSubtitle = !employee ? undefined : (
     <div className="flex items-center gap-2">
       {employee.color && (
@@ -576,17 +585,19 @@ function EmployeeDetail() {
       <Badge variant={employee.isActive ? "default" : "secondary"}>
         {t(`gabinet.employees.roles.${employee.role}`)}
       </Badge>
-      {pendingInvitation ? (
-        <Badge variant="outline" className="text-muted-foreground">
-          {isExpiredInvitation
-            ? t("gabinet.employees.statusInvitationExpired", "Zaproszenie wygasło")
-            : t("gabinet.employees.statusInvitationPending", "Zaproszenie wysłane — oczekuje na akceptację")}
-        </Badge>
-      ) : employee.isBlocked ? (
+      {accountStatus === "blocked" ? (
         <Badge variant="outline" className="text-muted-foreground">
           {t("gabinet.employees.statusBlocked", "Konto zablokowane")}
         </Badge>
-      ) : !employee.isActive ? (
+      ) : accountStatus === "invitation_pending" ? (
+        <Badge variant="outline" className="text-muted-foreground">
+          {t("gabinet.employees.statusInvitationPending", "Zaproszenie wysłane — oczekuje na akceptację")}
+        </Badge>
+      ) : accountStatus === "invitation_expired" ? (
+        <Badge variant="outline" className="text-muted-foreground">
+          {t("gabinet.employees.statusInvitationExpired", "Zaproszenie wygasło")}
+        </Badge>
+      ) : accountStatus === "inactive" ? (
         <Badge variant="outline" className="text-muted-foreground">
           {t("gabinet.employees.statusInactive", "Konto nieaktywne")}
         </Badge>

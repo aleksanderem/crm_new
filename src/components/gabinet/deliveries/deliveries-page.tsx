@@ -52,6 +52,7 @@ import { useSupabaseProductsList, useSupabaseProductStockTotals } from "@/hooks/
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import { cn } from "@/lib/utils";
 import { usePermission } from "@/hooks/use-permission";
+import { useActiveLocation } from "@/contexts/gabinet-location-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   NO_LOCATION,
@@ -137,6 +138,8 @@ export function DeliveriesPage() {
     queryFn: () => listDeliveriesAction({ organizationId, limit: 100 }),
     staleTime: 30_000,
   });
+
+  const { activeLocationId, setActiveLocationId } = useActiveLocation();
 
   const { data: productsData = [] } = useSupabaseProductsList(String(organizationId));
   const { data: locations = [] } = useSupabaseGabinetLocationsList(String(organizationId), { activeOnly: true });
@@ -244,7 +247,7 @@ export function DeliveriesPage() {
     setSupplierName("");
     setInvoiceNumber("");
     setDeliveryDate("");
-    setLocationId(NO_LOCATION);
+    setLocationId(activeLocationId ?? NO_LOCATION);
     setNotes("");
     setItems([newLine()]);
     setEditInvoicePageUrls([]);
@@ -252,7 +255,7 @@ export function DeliveriesPage() {
     setEditAnalysisItems([]);
     setEditProposals(null);
     setEditItemDecisions(null);
-  }, []);
+  }, [activeLocationId]);
 
   const handleEditOpen = async (id: string) => {
     setEditLoading(true);
@@ -860,7 +863,7 @@ export function DeliveriesPage() {
                 <Label>
                   {t("gabinet.deliveries.location", "Lokalizacja")}
                 </Label>
-                <Select value={locationId} onValueChange={setLocationId}>
+                <Select value={locationId} onValueChange={(v) => { setLocationId(v); setActiveLocationId(v === NO_LOCATION ? null : v); }}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

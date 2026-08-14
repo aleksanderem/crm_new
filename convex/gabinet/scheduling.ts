@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import type { SupabaseDb } from "../_helpers/supabaseDb";
 import { logError } from "../_helpers/logged";
 import { logActivity } from "../_helpers/activities";
 import { logAudit } from "../auditLog";
@@ -560,6 +561,33 @@ export const listLeaves = action({
   },
 });
 
+async function resolveInitialLeaveStatus(
+  db: SupabaseDb,
+  leaveTypeId: string | undefined,
+): Promise<"pending" | "approved"> {
+  if (!leaveTypeId) return "pending";
+  const leaveType = (await db.get("gabinetLeaveTypes", leaveTypeId)) as GabinetLeaveTypeRow | null;
+  return leaveType && !leaveType.requiresApproval ? "approved" : "pending";
+}
+
+async function autoApproveLeaveIfNeeded(
+  db: SupabaseDb,
+  initialStatus: "pending" | "approved",
+  leaveId: string,
+  organizationId: string,
+  approvedBy: string,
+  now: number,
+): Promise<void> {
+  if (initialStatus !== "approved") return;
+  const { error: rpcError } = await db.raw().rpc("approve_gabinet_leave", {
+    p_leave_id:    leaveId,
+    p_org_id:      organizationId,
+    p_approved_by: approvedBy,
+    p_now:         now,
+  });
+  if (rpcError) throw new Error(`Auto-approve RPC failed: ${rpcError.message}`);
+}
+
 export const createLeave = action({
   args: {
     organizationId: v.id("organizations"),
@@ -587,13 +615,7 @@ export const createLeave = action({
     const now = Date.now();
     const db = createSupabaseDb();
 
-    let initialStatus: "pending" | "approved" = "pending";
-    if (args.leaveTypeId) {
-      const leaveType = (await db.get("gabinetLeaveTypes", args.leaveTypeId)) as GabinetLeaveTypeRow | null;
-      if (leaveType && !leaveType.requiresApproval) {
-        initialStatus = "approved";
-      }
-    }
+    const initialStatus = await resolveInitialLeaveStatus(db, args.leaveTypeId);
 
     const leaveId = await db.insert("gabinetLeaves", {
       organizationId: String(args.organizationId),
@@ -613,15 +635,7 @@ export const createLeave = action({
 
     // Auto-approve atomically when requiresApproval=false so balance is
     // updated in the same Postgres transaction as the status change.
-    if (initialStatus === "approved") {
-      const { error: rpcError } = await db.raw().rpc("approve_gabinet_leave", {
-        p_leave_id:    leaveId,
-        p_org_id:      String(args.organizationId),
-        p_approved_by: String(authResult.userId),
-        p_now:         now,
-      });
-      if (rpcError) throw new Error(`Auto-approve RPC failed: ${rpcError.message}`);
-    }
+    await autoApproveLeaveIfNeeded(db, initialStatus, leaveId, String(args.organizationId), String(authResult.userId), now);
 
     try {
       await ctx.runMutation(internal.gabinet.scheduling._createLeaveSideEffects, {
@@ -675,13 +689,7 @@ export const requestLeave = action({
       const now = Date.now();
       const db = createSupabaseDb();
 
-      let initialStatus: "pending" | "approved" = "pending";
-      if (args.leaveTypeId) {
-        const leaveType = (await db.get("gabinetLeaveTypes", args.leaveTypeId)) as GabinetLeaveTypeRow | null;
-        if (leaveType && !leaveType.requiresApproval) {
-          initialStatus = "approved";
-        }
-      }
+      const initialStatus = await resolveInitialLeaveStatus(db, args.leaveTypeId);
 
       const leaveId = await db.insert("gabinetLeaves", {
         organizationId: String(args.organizationId),
@@ -701,15 +709,7 @@ export const requestLeave = action({
 
       // Auto-approve atomically when requiresApproval=false so balance is
       // updated in the same Postgres transaction as the status change.
-      if (initialStatus === "approved") {
-        const { error: rpcError } = await db.raw().rpc("approve_gabinet_leave", {
-          p_leave_id:    leaveId,
-          p_org_id:      String(args.organizationId),
-          p_approved_by: userId,
-          p_now:         now,
-        });
-        if (rpcError) throw new Error(`Auto-approve RPC failed: ${rpcError.message}`);
-      }
+      await autoApproveLeaveIfNeeded(db, initialStatus, leaveId, String(args.organizationId), userId, now);
 
       try {
         await ctx.runMutation(internal.gabinet.scheduling._createLeaveSideEffects, {

@@ -814,7 +814,7 @@ function EmployeesIndex() {
                   invalidateScheduleCache();
                 }}
                 onManageLeaves={() =>
-                  navigate({ to: "/dashboard/gabinet/settings/leaves" })
+                  navigate({ to: "/dashboard/gabinet/settings/leaves", search: { userId: editingScheduleEmployee.userId } })
                 }
               />
             </div>

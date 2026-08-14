@@ -76,11 +76,12 @@ export const Route = createFileRoute(
   ),
   validateSearch: (
     search: Record<string, unknown>,
-  ): { nudge?: LeavesNudgeFilter } => ({
+  ): { nudge?: LeavesNudgeFilter; userId?: string } => ({
     nudge:
       search.nudge === "pending"
         ? (search.nudge as LeavesNudgeFilter)
         : undefined,
+    userId: typeof search.userId === "string" ? search.userId : undefined,
   }),
 });
 
@@ -89,7 +90,7 @@ const LEAVE_TYPES = ["vacation", "sick", "personal", "training", "other"] as con
 function LeavesPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
-  const { nudge: nudgeFilter } = useSearch({ from: Route.id });
+  const { nudge: nudgeFilter, userId: userIdFilter } = useSearch({ from: Route.id });
   const { allowed: canManageLeaves } = usePermission("gabinet_settings", "edit");
   const routeNavigate = useNavigate();
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
@@ -109,6 +110,7 @@ function LeavesPage() {
   // Fetch leaves from Supabase
   const { data: leaves } = useSupabaseGabinetLeavesList(organizationId, {
     status: statusFilter !== "all" ? statusFilter : undefined,
+    userId: userIdFilter,
   });
 
   const { data: employees } = useSupabaseGabinetEmployeesList(organizationId, { activeOnly: true });
@@ -385,6 +387,31 @@ function LeavesPage() {
                   search: { nudge: undefined },
                 });
               }}
+            >
+              <X className="h-3.5 w-3.5" variant="stroke" />
+              {t("common.clearFilters")}
+            </Button>
+          </div>
+        )}
+
+        {userIdFilter && (
+          <div className="flex items-center justify-between rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-sm text-blue-900 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-100">
+            <span>
+              {t("gabinet.leaves.userFilter.active", {
+                name: getEmployeeName(userIdFilter),
+                defaultValue: "Filtrowanie według pracownika: {{name}}",
+              })}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() =>
+                routeNavigate({
+                  to: "/dashboard/gabinet/settings/leaves",
+                  search: { nudge: nudgeFilter, userId: undefined },
+                })
+              }
             >
               <X className="h-3.5 w-3.5" variant="stroke" />
               {t("common.clearFilters")}

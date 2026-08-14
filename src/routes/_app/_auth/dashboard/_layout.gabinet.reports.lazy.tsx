@@ -17,6 +17,7 @@ import {
 import type { MappedGabinetPackageUsage } from "@/lib/supabase/mappers/gabinet/package-usage";
 import type { MappedGabinetTreatmentPackage } from "@/lib/supabase/mappers/gabinet/treatment-packages";
 import { useOrganization } from "@/components/org-context";
+import { useActiveLocation } from "@/contexts/gabinet-location-context";
 import { PermissionGate } from "@/hooks/use-permission";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { PageHeader } from "@/components/layout/page-header";
@@ -1332,8 +1333,8 @@ function PackageSalesSection({
 function GabinetReports() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const { activeLocationId, setActiveLocationId } = useActiveLocation();
   const [dateRange, setDateRange] = useState<DateRangeKey>("30d");
-  const [selectedLocationId, setSelectedLocationId] = useState<string | undefined>(undefined);
   const [dateFilterPanelOpen, setDateFilterPanelOpen] = useState(false);
   const todayIso = new Date().toISOString().split("T")[0];
   const defaultCustomStart = useMemo(() => {
@@ -1390,7 +1391,7 @@ function GabinetReports() {
 
   const { data: appointments, isLoading: loadingAppointments } =
     useSupabaseGabinetAppointmentsByDateRange(organizationId, startDate, endDate, {
-      locationId: selectedLocationId,
+      locationId: activeLocationId ?? undefined,
     });
 
   const { data: treatments, isLoading: loadingTreatments } =
@@ -1414,7 +1415,7 @@ function GabinetReports() {
 
   const { data: actualPayments, isLoading: loadingActualPayments } =
     useSupabasePaymentsRevenueByDateRange(organizationId, startDate, endDate, {
-      locationId: selectedLocationId,
+      locationId: activeLocationId ?? undefined,
     });
 
   const { data: packageUsages, isLoading: loadingPackageUsages } =
@@ -1814,8 +1815,8 @@ function GabinetReports() {
         <div className="flex gap-2 shrink-0">
           {locations && locations.length > 0 && (
             <Select
-              value={selectedLocationId ?? "all"}
-              onValueChange={(v) => setSelectedLocationId(v === "all" ? undefined : v)}
+              value={activeLocationId ?? "all"}
+              onValueChange={(v) => setActiveLocationId(v === "all" ? null : v)}
             >
               <SelectTrigger className="w-40" aria-label={t("gabinet.reports.location", "Location")}>
                 <SelectValue />
@@ -1884,9 +1885,9 @@ function GabinetReports() {
         />
         <StatisticsImpressionCard
           title={t("gabinet.reports.totalPatients")}
-          description={selectedLocationId ? t("gabinet.reports.allClientsOrgWide") : t("gabinet.reports.allClientsInSystem")}
+          description={activeLocationId ? t("gabinet.reports.allClientsOrgWide") : t("gabinet.reports.allClientsInSystem")}
           value={totalPatients.toLocaleString()}
-          changePercentage={selectedLocationId ? t("gabinet.reports.allClientsOrgWide") : t("gabinet.reports.allClientsInSystem")}
+          changePercentage={activeLocationId ? t("gabinet.reports.allClientsOrgWide") : t("gabinet.reports.allClientsInSystem")}
           chartData={revenueChartPoints.map((d) => ({ month: String(d.index), impression: d.count }))}
         />
       </div>

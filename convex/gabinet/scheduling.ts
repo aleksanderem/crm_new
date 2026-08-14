@@ -689,6 +689,16 @@ export const requestLeave = action({
       const now = Date.now();
       const db = createSupabaseDb();
 
+      const employeeProfile = await db
+        .query("gabinetEmployees")
+        .eq("organizationId", String(args.organizationId))
+        .eq("userId", userId)
+        .eq("isActive", true)
+        .collect();
+      if (employeeProfile.length === 0) {
+        throw new Error("Brak profilu pracownika. Tylko pracownicy z aktywnym profilem mogą składać wnioski urlopowe.");
+      }
+
       const initialStatus = await resolveInitialLeaveStatus(db, args.leaveTypeId);
 
       const leaveId = await db.insert("gabinetLeaves", {

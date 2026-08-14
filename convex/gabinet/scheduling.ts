@@ -10,6 +10,7 @@ import { gabinetLeaveTypeValidator, gabinetLeaveStatusValidator } from "../schem
 import { getAvailableSlotsSupabase } from "./_availability_supabase";
 import type {
   GabinetEmployeeScheduleRow,
+  GabinetLeaveBalanceRow,
   GabinetLeaveRow,
   GabinetLeaveTypeRow,
   GabinetWorkingHoursRow,
@@ -697,12 +698,12 @@ export const approveLeave = action({
         .first();
 
       if (employee) {
-        const balance = await db.query("gabinetLeaveBalances")
+        const balance = (await db.query("gabinetLeaveBalances")
           .eq("organizationId", String(args.organizationId))
           .eq("employeeId", employee._id as string)
           .eq("leaveTypeId", leave.leaveTypeId as string)
           .eq("year", year)
-          .first();
+          .first()) as GabinetLeaveBalanceRow | null;
 
         if (balance) {
           await db.patch("gabinetLeaveBalances", balance._id as string, {
@@ -799,12 +800,12 @@ export const deleteLeave = action({
         .first();
 
       if (employee) {
-        const balance = await db.query("gabinetLeaveBalances")
+        const balance = (await db.query("gabinetLeaveBalances")
           .eq("organizationId", String(args.organizationId))
           .eq("employeeId", employee._id as string)
           .eq("leaveTypeId", leave.leaveTypeId as string)
           .eq("year", year)
-          .first();
+          .first()) as GabinetLeaveBalanceRow | null;
 
         if (balance) {
           await db.patch("gabinetLeaveBalances", balance._id as string, {

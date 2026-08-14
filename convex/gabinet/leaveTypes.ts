@@ -5,7 +5,7 @@ import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { logError } from "../_helpers/logged";
 import { logActivity } from "../_helpers/activities";
-import type { GabinetLeaveTypeRow } from "../_helpers/supabaseRows";
+import type { GabinetLeaveBalanceRow, GabinetLeaveTypeRow } from "../_helpers/supabaseRows";
 
 // Dual-write refs removed — Supabase is now primary for leaveType writes
 
@@ -270,7 +270,7 @@ export const getBalances = action({
     employeeId: v.string(),
     year: v.number(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<GabinetLeaveBalanceRow[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -282,12 +282,12 @@ export const getBalances = action({
     if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
-    return await db
+    return (await db
       .query("gabinetLeaveBalances")
       .eq("organizationId", String(args.organizationId))
       .eq("employeeId", args.employeeId)
       .eq("year", args.year)
-      .collect();
+      .collect()) as GabinetLeaveBalanceRow[];
   },
 });
 
@@ -296,7 +296,7 @@ export const getAllBalances = action({
     organizationId: v.id("organizations"),
     year: v.number(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<GabinetLeaveBalanceRow[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -308,11 +308,11 @@ export const getAllBalances = action({
     if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
-    return await db
+    return (await db
       .query("gabinetLeaveBalances")
       .eq("organizationId", String(args.organizationId))
       .eq("year", args.year)
-      .collect();
+      .collect()) as GabinetLeaveBalanceRow[];
   },
 });
 
@@ -339,12 +339,12 @@ export const initializeBalance = action({
     const db = createSupabaseDb();
 
     // Check if balance already exists
-    const existing = await db.query("gabinetLeaveBalances")
+    const existing = (await db.query("gabinetLeaveBalances")
       .eq("organizationId", String(args.organizationId))
       .eq("employeeId", args.employeeId)
       .eq("leaveTypeId", args.leaveTypeId)
       .eq("year", args.year)
-      .first();
+      .first()) as GabinetLeaveBalanceRow | null;
 
     if (existing) {
       if (args.totalDays !== undefined) {
@@ -421,7 +421,7 @@ export const adjustBalance = action({
     if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
 
-    const balance = await db.get("gabinetLeaveBalances", args.balanceId);
+    const balance = (await db.get("gabinetLeaveBalances", args.balanceId)) as GabinetLeaveBalanceRow | null;
     if (!balance || String(balance.organizationId) !== String(args.organizationId)) {
       throw new Error("Balance not found");
     }
@@ -586,12 +586,12 @@ export const initializeAllBalances = action({
       for (const lt of leaveTypes) {
         if ((lt.annualQuotaDays as number | undefined) === undefined) continue;
 
-        const existing = await db.query("gabinetLeaveBalances")
+        const existing = (await db.query("gabinetLeaveBalances")
           .eq("organizationId", String(args.organizationId))
           .eq("employeeId", emp._id as string)
           .eq("leaveTypeId", lt._id as string)
           .eq("year", args.year)
-          .first();
+          .first()) as GabinetLeaveBalanceRow | null;
 
         if (!existing) {
           const balanceId = await db.insert("gabinetLeaveBalances", {

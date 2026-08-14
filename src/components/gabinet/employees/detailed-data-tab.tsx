@@ -229,37 +229,36 @@ export function DetailedDataTab({
 
       {(!limitedView || qualificationsOnlyView) && (
         <>
+          <QualificationsSection
+            {...sharedSectionProps}
+            canEdit={canEdit && !!employee.performsServices}
+            employee={employee}
+            certifications={certifications}
+            setCertifications={setCertifications}
+            newCertName={newCertName}
+            setNewCertName={setNewCertName}
+            newCertDate={newCertDate}
+            setNewCertDate={setNewCertDate}
+            newCertExpiry={newCertExpiry}
+            setNewCertExpiry={setNewCertExpiry}
+          />
           {employee.performsServices && (
-            <>
-              <QualificationsSection
-                {...sharedSectionProps}
-                employee={employee}
-                certifications={certifications}
-                setCertifications={setCertifications}
-                newCertName={newCertName}
-                setNewCertName={setNewCertName}
-                newCertDate={newCertDate}
-                setNewCertDate={setNewCertDate}
-                newCertExpiry={newCertExpiry}
-                setNewCertExpiry={setNewCertExpiry}
-              />
-              <AssignedTreatmentsSection
-                employee={employee}
-                treatmentMap={treatmentMap}
-                editing={editing}
-                saving={saving}
-                canEdit={canEdit}
-                treatmentSearchLocal={treatmentSearchLocal}
-                setTreatmentSearchLocal={setTreatmentSearchLocal}
-                filteredTreatments={filteredTreatments}
-                pendingTreatmentIds={pendingTreatmentIds}
-                setPendingTreatmentIds={setPendingTreatmentIds}
-                onStartEdit={startEdit}
-                onCancelEdit={cancelEdit}
-                onSaveSection={saveSection}
-                t={t}
-              />
-            </>
+            <AssignedTreatmentsSection
+              employee={employee}
+              treatmentMap={treatmentMap}
+              editing={editing}
+              saving={saving}
+              canEdit={canEdit}
+              treatmentSearchLocal={treatmentSearchLocal}
+              setTreatmentSearchLocal={setTreatmentSearchLocal}
+              filteredTreatments={filteredTreatments}
+              pendingTreatmentIds={pendingTreatmentIds}
+              setPendingTreatmentIds={setPendingTreatmentIds}
+              onStartEdit={startEdit}
+              onCancelEdit={cancelEdit}
+              onSaveSection={saveSection}
+              t={t}
+            />
           )}
 
           {!qualificationsOnlyView && (

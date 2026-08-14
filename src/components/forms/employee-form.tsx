@@ -590,9 +590,9 @@ export function EmployeeForm({
                 className="accent-primary mt-0.5"
               />
               <span className="flex flex-col gap-0.5">
-                <span>{t("gabinet.employees.accessModePassword", { defaultValue: "Utwórz hasło jednorazowe" })}</span>
+                <span>{t("gabinet.employees.accessModePassword", { defaultValue: "Utwórz hasło startowe" })}</span>
                 <span className="text-xs text-muted-foreground">
-                  {t("gabinet.employees.accessModePasswordDesc", { defaultValue: "Administrator ustawia hasło i przekazuje je pracownikowi bezpośrednio." })}
+                  {t("gabinet.employees.accessModePasswordDesc", { defaultValue: "Administrator ustawia hasło startowe, które pracownik może samodzielnie zmienić po zalogowaniu." })}
                 </span>
               </span>
             </label>

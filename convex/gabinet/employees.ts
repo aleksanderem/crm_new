@@ -1622,14 +1622,22 @@ export const createWithPassword = action({
 
     if (args.locationId) {
       try {
-        await db.insert("gabinetEmployeeLocations", {
-          organizationId: String(args.organizationId),
-          employeeId: String(employeeId),
-          locationId: args.locationId,
-          isPrimary: true,
-          role: args.locationRole,
-          createdAt: now,
-        });
+        const existingLocation = await db
+          .query("gabinetEmployeeLocations")
+          .eq("organizationId", String(args.organizationId))
+          .eq("employeeId", String(employeeId))
+          .eq("locationId", args.locationId)
+          .collect();
+        if (existingLocation.length === 0) {
+          await db.insert("gabinetEmployeeLocations", {
+            organizationId: String(args.organizationId),
+            employeeId: String(employeeId),
+            locationId: args.locationId,
+            isPrimary: true,
+            role: args.locationRole,
+            createdAt: now,
+          });
+        }
       } catch (e) {
         console.error("[employees.createWithPassword] location insert failed:", e);
       }

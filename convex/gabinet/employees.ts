@@ -488,6 +488,7 @@ export const _createFromInvitation = internalAction({
     const employeeId = await db.insert("gabinetEmployees", {
       organizationId: String(args.organizationId),
       userId: args.userId,
+      email: args.email ?? null,
       firstName: asString(d.firstName),
       lastName: asString(d.lastName),
       role: safeRole,

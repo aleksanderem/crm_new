@@ -5,6 +5,7 @@ import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetLeavesList } from "@/hooks/use-supabase-gabinet-leaves";
+import { useSupabaseGabinetLeaveTypesList } from "@/hooks/use-supabase-gabinet-leave-types";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
@@ -35,7 +36,7 @@ import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const LEAVE_TYPES = ["vacation", "sick", "personal", "training", "other"] as const;
+const LEGACY_LEAVE_TYPES = ["vacation", "sick", "personal", "training", "other"] as const;
 
 function MyLeavesPageSkeleton() {
   return (
@@ -74,7 +75,15 @@ function MyLeavesPage() {
     enabled: !!currentUser?._id,
   });
 
+  const { data: leaveTypes = [] } = useSupabaseGabinetLeaveTypesList(organizationId, {
+    activeOnly: true,
+    enabled: !!organizationId,
+  });
+
+  const leaveTypeMap = Object.fromEntries(leaveTypes.map((lt) => [lt._id, lt.name]));
+
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [leaveTypeId, setLeaveTypeId] = useState<string>("");
   const [leaveType, setLeaveType] = useState<string>("vacation");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -84,11 +93,14 @@ function MyLeavesPage() {
 
   const handleSubmit = async () => {
     if (!startDate || !endDate) return;
+    const usingCustomType = leaveTypes.length > 0;
+    if (usingCustomType && !leaveTypeId) return;
     setSubmitting(true);
     try {
       await requestLeave({
         organizationId,
-        type: leaveType as any,
+        type: usingCustomType ? "other" : (leaveType as any),
+        leaveTypeId: usingCustomType ? leaveTypeId : undefined,
         startDate,
         endDate,
         reason: reason || undefined,
@@ -96,6 +108,7 @@ function MyLeavesPage() {
       toast.success(t("gabinet.leaves.created"));
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetLeaves.all });
       setDialogOpen(false);
+      setLeaveTypeId("");
       setLeaveType("vacation");
       setStartDate("");
       setEndDate("");
@@ -163,18 +176,33 @@ function MyLeavesPage() {
                 <div className="space-y-4">
                   <div className="space-y-1.5">
                     <Label>{t("gabinet.leaves.type")}</Label>
-                    <Select value={leaveType} onValueChange={setLeaveType}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LEAVE_TYPES.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            {t(`gabinet.leaves.types.${type}`)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {leaveTypes.length > 0 ? (
+                      <Select value={leaveTypeId} onValueChange={setLeaveTypeId}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder={t("gabinet.leaves.selectType")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {leaveTypes.map((lt) => (
+                            <SelectItem key={lt._id} value={lt._id}>
+                              {lt.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Select value={leaveType} onValueChange={setLeaveType}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LEGACY_LEAVE_TYPES.map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {t(`gabinet.leaves.types.${type}`)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -194,7 +222,7 @@ function MyLeavesPage() {
                     <Button variant="outline" onClick={() => setDialogOpen(false)}>
                       {t("common.cancel")}
                     </Button>
-                    <Button onClick={handleSubmit} disabled={submitting || !startDate || !endDate}>
+                    <Button onClick={handleSubmit} disabled={submitting || !startDate || !endDate || (leaveTypes.length > 0 && !leaveTypeId)}>
                       {submitting ? t("common.saving") : t("gabinet.leaves.submit")}
                     </Button>
                   </div>
@@ -224,7 +252,11 @@ function MyLeavesPage() {
             <tbody>
               {(leaves ?? []).map((leave) => (
                 <tr key={leave._id} className="border-b last:border-b-0">
-                  <td className="px-4 py-2 text-sm">{t(`gabinet.leaves.types.${leave.type}`)}</td>
+                  <td className="px-4 py-2 text-sm">
+                    {leave.leaveTypeId && leaveTypeMap[leave.leaveTypeId]
+                      ? leaveTypeMap[leave.leaveTypeId]
+                      : t(`gabinet.leaves.types.${leave.type}`)}
+                  </td>
                   <td className="px-4 py-2 text-sm">{leave.startDate}</td>
                   <td className="px-4 py-2 text-sm">{leave.endDate}</td>
                   <td className="px-4 py-2 text-sm text-muted-foreground">

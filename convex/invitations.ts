@@ -389,6 +389,22 @@ export const accept = action({
         `Seat limit reached (${currentSeats}/${seatLimit}). The organization needs to upgrade their plan.`,
       );
     }
+
+    // Early membership pre-check: if the invitee already has an account and is
+    // already a member of this org, surface a user-friendly error before reaching
+    // _acceptInternal — which would otherwise silently skip the insert.
+    const inviteeUser = await db.query("users").eq("email", invitation.email).first();
+    if (inviteeUser) {
+      const existingMembership = await db
+        .query("teamMemberships")
+        .eq("organizationId", String(invitation.organizationId))
+        .eq("userId", String(inviteeUser._id))
+        .first();
+      if (existingMembership) {
+        throw new Error("You are already a member of this organization");
+      }
+    }
+
     // Read org owner from Supabase so _acceptInternal (a mutation) doesn't need ctx.db.get on organizations
     const org = await db.get("organizations", String(invitation.organizationId));
     const orgOwnerId = org?.ownerId ? String(org.ownerId) : undefined;

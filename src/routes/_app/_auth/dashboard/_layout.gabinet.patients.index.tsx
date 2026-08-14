@@ -8,6 +8,7 @@ import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-pat
 import { useSupabaseGabinetRecentVisitPatientIds, useSupabaseGabinetNextAppointmentByPatient } from "@/hooks/use-supabase-gabinet-appointments";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { useOrganization } from "@/components/org-context";
+import { useActiveLocation } from "@/contexts/gabinet-location-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
@@ -100,6 +101,7 @@ type Patient = MappedGabinetPatient;
 function PatientsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const { activeLocationId } = useActiveLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { nudge: nudgeFilter } = useSearch({ from: Route.id });
@@ -285,6 +287,11 @@ function PatientsIndex() {
     } else if (nudgeFilter === "duplicates") {
       data = data.filter((p) => duplicatePatientIds.has(p._id));
     }
+    if (activeLocationId) {
+      data = data.filter(
+        (p) => !p.preferredLocationId || p.preferredLocationId === activeLocationId,
+      );
+    }
     const q = searchValue.trim().toLowerCase();
     if (q) {
       const tokens = q.split(/\s+/).filter(Boolean);
@@ -297,7 +304,7 @@ function PatientsIndex() {
       });
     }
     return data;
-  }, [patients, activeViewId, applyFilters, activeFilters, searchValue, nudgeFilter, recentVisitPatientIds, duplicatePatientIds]);
+  }, [patients, activeViewId, applyFilters, activeFilters, searchValue, nudgeFilter, recentVisitPatientIds, duplicatePatientIds, activeLocationId]);
 
   const patientsByDay = useMemo<MiniChartData[]>(() => {
     const dayMap = new Map<string, number>();

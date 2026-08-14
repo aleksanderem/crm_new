@@ -1397,15 +1397,11 @@ export const _createLeaveSideEffects = internalMutation({
           });
         }
       } else {
-        // Fallback: employee has no location assignments — notify org admins/owners.
-        const orgAdminMemberships = await ctx.db
-          .query("teamMemberships")
-          .withIndex("by_organizationId", (q) => q.eq("organizationId", args.organizationId))
-          .collect();
-
+        // Fallback: employee has no location assignments — notify active gabinet managers/admins.
         const requesterName = args.actorLabel ?? "An employee";
-        for (const membership of orgAdminMemberships) {
-          if (membership.role !== "owner" && membership.role !== "admin") continue;
+        for (const membership of orgMemberships) {
+          if (!membership.isActive) continue;
+          if (membership.gabinetRole !== "manager" && membership.gabinetRole !== "admin") continue;
           if (String(membership.userId) === args.userId) continue;
           await createNotificationDirect(ctx, {
             organizationId: args.organizationId,

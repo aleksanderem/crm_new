@@ -281,12 +281,12 @@ function LeavesPage() {
                 <DialogTrigger asChild>
                   <Button size="sm">
                     <Plus className="mr-2 h-4 w-4" variant="stroke" />
-                    {t("gabinet.leaves.requestLeave")}
+                    {t("gabinet.leaves.addLeaveRequest")}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
-                    <DialogTitle>{t("gabinet.leaves.requestLeave")}</DialogTitle>
+                    <DialogTitle>{t("gabinet.leaves.addLeaveRequest")}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div className="space-y-1.5">

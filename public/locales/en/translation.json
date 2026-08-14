@@ -2948,6 +2948,7 @@
       "title": "Leave Management",
       "description": "Manage employee leaves and time off",
       "requestLeave": "Request Leave",
+      "addLeaveRequest": "Add Leave Request",
       "type": "Type",
       "startDate": "Start Date",
       "endDate": "End Date",

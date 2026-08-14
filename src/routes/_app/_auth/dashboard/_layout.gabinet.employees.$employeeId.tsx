@@ -109,6 +109,7 @@ function EmployeeDetail() {
   const blockEmployee = useAction(api.gabinet.employees.blockEmployee);
   const unblockEmployee = useAction(api.gabinet.employees.unblockEmployee);
   const resendInvitation = useAction(api.invitations.resend);
+  const cancelInvitation = useAction(api.invitations.cancel);
 
   // Supabase cache invalidation helpers
   const invalidateEmployeeCache = () => {
@@ -473,6 +474,23 @@ function EmployeeDetail() {
     }
   };
 
+  const handleCancelInvitation = async () => {
+    if (!pendingInvitation) return;
+    if (!window.confirm(t("gabinet.employees.confirmCancelInvitation", "Czy na pewno chcesz anulować zaproszenie?"))) return;
+    try {
+      await cancelInvitation({ organizationId, invitationId: pendingInvitation._id });
+      toast.success(t("team.invitationCancelled", "Zaproszenie anulowane."));
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "team.errors.cancelFailed",
+          defaultValue: "Nie udało się anulować zaproszenia.",
+        }),
+      );
+    }
+  };
+
   const handleUpdateActivity = async (data: {
     activityId: string;
     title?: string;
@@ -787,6 +805,7 @@ function EmployeeDetail() {
           onUnblock={handleUnblock}
           pendingInvitation={pendingInvitation}
           onResendInvitation={isExpiredInvitation ? handleResendInvitation : undefined}
+          onCancelInvitation={!isExpiredInvitation && pendingInvitation ? handleCancelInvitation : undefined}
           t={t}
         />
       ),

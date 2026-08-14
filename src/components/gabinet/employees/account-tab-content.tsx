@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, Pencil, Power, Send, Settings } from "@/lib/ez-icons";
+import { ChevronRight, Pencil, Power, Send, Settings, XCircle } from "@/lib/ez-icons";
 import type { MappedGabinetEmployee } from "@/lib/supabase/mappers/gabinet/employees";
 import type { MappedInvitation } from "@/lib/supabase/mappers";
 import { ChangePasswordDialog } from "./change-password-dialog";
@@ -20,6 +20,7 @@ export function AccountTabContent({
   onUnblock,
   pendingInvitation,
   onResendInvitation,
+  onCancelInvitation,
   t,
 }: {
   employee: MappedGabinetEmployee;
@@ -32,6 +33,7 @@ export function AccountTabContent({
   onUnblock?: () => Promise<void>;
   pendingInvitation?: MappedInvitation | null;
   onResendInvitation?: () => Promise<void>;
+  onCancelInvitation?: () => Promise<void>;
   t: (key: string, opts?: Record<string, unknown> | string) => string;
 }) {
   const { allowed: canEdit } = usePermission("gabinet_employees", "edit");
@@ -205,6 +207,22 @@ export function AccountTabContent({
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-green-600">{t("gabinet.employees.activateAccount", "Aktywuj konto")}</p>
                         <p className="text-xs text-muted-foreground">{t("gabinet.employees.activateAccountDesc", "Przywróć dostęp pracownika do systemu")}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
+                    </button>
+                  );
+                }
+                if (status === "invitation_pending" && onCancelInvitation) {
+                  return (
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                      onClick={onCancelInvitation}
+                    >
+                      <XCircle className="h-4 w-4 text-destructive shrink-0" variant="stroke" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-destructive">{t("gabinet.employees.cancelInvitation", "Anuluj zaproszenie")}</p>
+                        <p className="text-xs text-muted-foreground">{t("gabinet.employees.cancelInvitationDesc", "Cofnij wysłane zaproszenie do logowania")}</p>
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
                     </button>

@@ -765,7 +765,14 @@ export const deleteLeave = action({
     if (leave.status === "approved" && leave.leaveTypeId) {
       const startD = new Date(leave.startDate as string);
       const endD = new Date(leave.endDate as string);
-      const days = Math.max(1, Math.ceil((endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+      let days: number;
+      if (leave.startTime && leave.endTime) {
+        const [sh, sm] = (leave.startTime as string).split(":").map(Number);
+        const [eh, em] = (leave.endTime as string).split(":").map(Number);
+        days = Math.max(0, (eh * 60 + em - sh * 60 - sm) / 480);
+      } else {
+        days = Math.max(1, Math.ceil((endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+      }
       const year = startD.getFullYear();
 
       const employee = await db.query("gabinetEmployees")

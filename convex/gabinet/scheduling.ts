@@ -6,6 +6,7 @@ import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { logError } from "../_helpers/logged";
 import { logActivity } from "../_helpers/activities";
 import { logAudit } from "../auditLog";
+import { createNotificationDirect } from "../notifications";
 import { gabinetLeaveTypeValidator, gabinetLeaveStatusValidator } from "../schema";
 import { getAvailableSlotsSupabase } from "./_availability_supabase";
 import type {
@@ -1155,6 +1156,17 @@ export const _leaveSideEffects = internalMutation({
         entityType: "gabinetLeave",
         entityId: args.leaveId,
         details: args.description,
+      });
+    }
+
+    if (args.action === "status_changed" && args.userId !== args.performedBy) {
+      const actorSuffix = args.actorLabel ? ` by ${args.actorLabel}` : "";
+      await createNotificationDirect(ctx, {
+        organizationId: args.organizationId,
+        userId: args.userId as Id<"users">,
+        type: "leave_decision",
+        title: args.description,
+        message: `${args.description}${actorSuffix}.`,
       });
     }
   },

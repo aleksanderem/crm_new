@@ -829,6 +829,7 @@ function EmployeeDetail() {
           tab =>
             tab.label === t("gabinet.employees.tabs.dataAndEmployment") ||
             tab.label === t("gabinet.employees.tabs.qualificationsAndTreatments") ||
+            tab.label === t("gabinet.employees.tabs.detailedData") ||
             tab.label === t("gabinet.employees.tabs.notes")
         );
       case "documentsAndAssets":

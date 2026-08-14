@@ -106,9 +106,11 @@ export function DeliveriesPage() {
   const queryClient = useQueryClient();
   const routeNavigate = useNavigate();
   const { action: actionParam } = useSearch({ from: "/_app/_auth/dashboard/_layout/gabinet/deliveries" });
-  const { allowed: canCreate } = usePermission("gabinet_inventory", "create");
-  const { allowed: canEdit } = usePermission("gabinet_inventory", "edit");
-  const { allowed: canDelete } = usePermission("gabinet_inventory", "delete");
+  const { activeLocationId, setActiveLocationId } = useActiveLocation();
+  const locationIdParam = (activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined;
+  const { allowed: canCreate } = usePermission("gabinet_inventory", "create", locationIdParam);
+  const { allowed: canEdit } = usePermission("gabinet_inventory", "edit", locationIdParam);
+  const { allowed: canDelete } = usePermission("gabinet_inventory", "delete", locationIdParam);
 
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen
   const listDeliveriesAction = useAction(api.warehouseDeliveries.listDeliveries);
@@ -130,8 +132,6 @@ export function DeliveriesPage() {
   const saveItemDecisionsAction = useAction(api.warehouseDeliveries.saveItemDecisions);
   // @ts-ignore
   const postDeliveryFromDecisionsAction = useAction(api.warehouseDeliveries.postDeliveryFromDecisions);
-
-  const { activeLocationId, setActiveLocationId } = useActiveLocation();
 
   const queryKey = ["warehouseDeliveries.list", organizationId, activeLocationId];
 

@@ -2,12 +2,14 @@ import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import type { Feature, Action, Scope } from "@cvx/_helpers/permissionTypes";
+import type { Id } from "@cvx/_generated/dataModel";
 
 export type { Feature, Action, Scope };
 
 export function usePermission(
   feature: Feature,
-  action: Action
+  action: Action,
+  locationId?: Id<"gabinetLocations">
 ): {
   allowed: boolean;
   scope: Scope;
@@ -17,7 +19,7 @@ export function usePermission(
 
   const permissions = useQuery(
     api.permissions.getMyPermissions,
-    organizationId ? { organizationId } : "skip"
+    organizationId ? { organizationId, ...(locationId ? { locationId } : {}) } : "skip"
   );
 
   if (permissions === undefined) {

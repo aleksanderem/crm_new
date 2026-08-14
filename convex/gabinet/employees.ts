@@ -420,6 +420,13 @@ export const _createFromInvitation = internalAction({
 
       // Don't guess when multiple unlinked candidates share the same email.
       const unlinkedCandidates = byEmail.filter((e) => !e.userId);
+      if (unlinkedCandidates.length > 1) {
+        log.warn("email collision — multiple unlinked employees share the same email; skipping pre-created link", {
+          email: args.email,
+          organizationId: String(args.organizationId),
+          candidateIds: unlinkedCandidates.map((e) => e._id),
+        });
+      }
       const preCreated = unlinkedCandidates.length === 1 ? unlinkedCandidates[0] : undefined;
       if (preCreated) {
         const existingEmployeeId = String(preCreated._id);

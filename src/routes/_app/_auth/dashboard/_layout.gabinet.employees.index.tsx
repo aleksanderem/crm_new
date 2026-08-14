@@ -35,6 +35,7 @@ import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
 import { Id } from "@cvx/_generated/dataModel";
 import type { MappedGabinetEmployee } from "@/lib/supabase/mappers/gabinet/employees";
+import { computeEmployeeAccountStatus } from "@/lib/gabinet/employee-account-status";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
@@ -156,6 +157,8 @@ function EmployeesIndex() {
 
   const updateEmployee = useAction(api.gabinet.employees.update);
   const removeEmployee = useAction(api.gabinet.employees.remove);
+  const blockEmployee = useAction(api.gabinet.employees.blockEmployee);
+  const unblockEmployee = useAction(api.gabinet.employees.unblockEmployee);
   const resendInvitation = useAction(api.invitations.resend);
   const cancelInvitation = useAction(api.invitations.cancel);
   const bulkSetEmployeeSchedule = useAction(
@@ -271,25 +274,23 @@ function EmployeesIndex() {
                 <p className="text-xs text-fg-quaternary">{user.email}</p>
               )}
             </div>
-            {!item.isActive && (() => {
-              if (!item.userId && item.email) {
-                const inv = invitationByEmail.get(item.email);
-                if (inv) {
-                  const isExpired = inv.expiresAt <= Date.now();
-                  return (
-                    <Badge variant="outline" className="text-xs text-muted-foreground">
-                      {isExpired
-                        ? t("gabinet.employees.statusInvitationExpired", "Zaproszenie wygasło")
-                        : t("gabinet.employees.statusInvitationPending", "Zaproszenie wysłane — oczekuje na akceptację")}
-                    </Badge>
-                  );
-                }
-              }
+            {(() => {
+              const inv = item.email ? invitationByEmail.get(item.email) : undefined;
+              const status = computeEmployeeAccountStatus({
+                isActive: item.isActive,
+                isBlocked: item.isBlocked,
+                invitation: inv ?? null,
+              });
+              if (status === "active") return null;
+              const statusLabels: Record<string, string> = {
+                blocked: t("gabinet.employees.statusBlocked", "Konto zablokowane"),
+                invitation_pending: t("gabinet.employees.statusInvitationPending", "Zaproszenie wysłane — oczekuje"),
+                invitation_expired: t("gabinet.employees.statusInvitationExpired", "Zaproszenie wygasło"),
+                inactive: t("gabinet.employees.statusInactive", "Konto nieaktywne"),
+              };
               return (
                 <Badge variant="outline" className="text-xs text-muted-foreground">
-                  {item.userId
-                    ? t("gabinet.employees.statusBlocked", "Konto zablokowane")
-                    : t("gabinet.employees.statusInactive", "Konto nieaktywne")}
+                  {statusLabels[status]}
                 </Badge>
               );
             })()}
@@ -437,8 +438,61 @@ function EmployeesIndex() {
       },
       ...(canEdit
         ? (() => {
-            const hasUser = !!row.userId;
-            if (!hasUser && !row.isActive) {
+            const inv = row.email ? invitationByEmail.get(row.email) : undefined;
+            const status = computeEmployeeAccountStatus({
+              isActive: row.isActive,
+              isBlocked: row.isBlocked,
+              invitation: inv ?? null,
+            });
+            if (status === "blocked") {
+              return [{
+                label: t("gabinet.employees.unblockAccount", "Odblokuj konto"),
+                onClick: async () => {
+                  if (!window.confirm(t("gabinet.employees.confirmUnblock", "Czy na pewno chcesz odblokować konto tego pracownika?"))) return;
+                  try {
+                    await unblockEmployee({ organizationId, employeeId: row._id });
+                    toast.success(t("gabinet.employees.unblocked", "Konto odblokowane."));
+                    invalidateEmployeesCache();
+                  } catch (e) {
+                    toast.error(formatActionError(e, t, { key: "gabinet.employees.errors.unblockFailed", defaultValue: "Nie udało się odblokować konta." }));
+                  }
+                },
+              }];
+            }
+            if (status === "active") {
+              return [{
+                label: t("gabinet.employees.blockAccount", "Zablokuj konto"),
+                onClick: async () => {
+                  if (!window.confirm(t("gabinet.employees.confirmBlock", "Czy na pewno chcesz zablokować konto tego pracownika?"))) return;
+                  try {
+                    await blockEmployee({ organizationId, employeeId: row._id });
+                    toast.success(t("gabinet.employees.blocked", "Konto zablokowane."));
+                    invalidateEmployeesCache();
+                  } catch (e) {
+                    toast.error(formatActionError(e, t, { key: "gabinet.employees.errors.blockFailed", defaultValue: "Nie udało się zablokować konta." }));
+                  }
+                },
+              }];
+            }
+            if (status === "invitation_pending" && inv) {
+              return [
+                {
+                  label: t("team.resendInvitation"),
+                  onClick: () => handleResendInvitation(inv._id),
+                },
+                {
+                  label: t("team.cancelInvitation"),
+                  onClick: () => handleCancelInvitation(inv._id),
+                },
+              ];
+            }
+            if (status === "invitation_expired" && inv) {
+              return [{
+                label: t("team.resendInvitation"),
+                onClick: () => handleResendInvitation(inv._id),
+              }];
+            }
+            if (status === "inactive" && !row.userId) {
               return [{
                 label: t("gabinet.employees.activateAccount", "Aktywuj konto"),
                 onClick: async () => {
@@ -449,36 +503,6 @@ function EmployeesIndex() {
                     invalidateEmployeesCache();
                   } catch (e) {
                     toast.error(formatActionError(e, t, { key: "gabinet.employees.errors.activateFailed", defaultValue: "Nie udało się aktywować konta." }));
-                  }
-                },
-              }];
-            }
-            if (hasUser && row.isActive) {
-              return [{
-                label: t("gabinet.employees.blockAccount", "Zablokuj konto"),
-                onClick: async () => {
-                  if (!window.confirm(t("gabinet.employees.confirmBlock", "Czy na pewno chcesz zablokować konto tego pracownika?"))) return;
-                  try {
-                    await updateEmployee({ organizationId, employeeId: row._id, isActive: false });
-                    toast.success(t("gabinet.employees.blocked", "Konto zablokowane."));
-                    invalidateEmployeesCache();
-                  } catch (e) {
-                    toast.error(formatActionError(e, t, { key: "gabinet.employees.errors.blockFailed", defaultValue: "Nie udało się zablokować konta." }));
-                  }
-                },
-              }];
-            }
-            if (hasUser && !row.isActive) {
-              return [{
-                label: t("gabinet.employees.unblockAccount", "Odblokuj konto"),
-                onClick: async () => {
-                  if (!window.confirm(t("gabinet.employees.confirmUnblock", "Czy na pewno chcesz odblokować konto tego pracownika?"))) return;
-                  try {
-                    await updateEmployee({ organizationId, employeeId: row._id, isActive: true });
-                    toast.success(t("gabinet.employees.unblocked", "Konto odblokowane."));
-                    invalidateEmployeesCache();
-                  } catch (e) {
-                    toast.error(formatActionError(e, t, { key: "gabinet.employees.errors.unblockFailed", defaultValue: "Nie udało się odblokować konta." }));
                   }
                 },
               }];
@@ -510,7 +534,7 @@ function EmployeesIndex() {
           ]
         : []),
     ],
-    [navigate, updateEmployee, removeEmployee, organizationId, t, canEdit, canDelete, invalidateEmployeesCache]
+    [navigate, updateEmployee, blockEmployee, unblockEmployee, removeEmployee, organizationId, t, canEdit, canDelete, invalidateEmployeesCache, invitationByEmail, handleResendInvitation, handleCancelInvitation]
   );
 
   const handleBulkAction = useCallback(

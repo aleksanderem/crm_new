@@ -7,6 +7,7 @@ import { ChangePasswordDialog } from "./change-password-dialog";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
 import { usePermission } from "@/hooks/use-permission";
+import { computeEmployeeAccountStatus } from "@/lib/gabinet/employee-account-status";
 
 export function AccountTabContent({
   employee,
@@ -93,19 +94,18 @@ export function AccountTabContent({
             </div>
             <div className="flex items-center justify-between px-4 py-3">
               <span className="text-sm text-muted-foreground">{t("gabinet.employees.accountStatus", "Status konta")}</span>
-              {pendingInvitation ? (
-                pendingInvitation.expiresAt <= Date.now() ? (
-                  <Badge variant="outline">{t("gabinet.employees.statusInvitationExpired", "Zaproszenie wygasło")}</Badge>
-                ) : (
-                  <Badge variant="secondary">{t("gabinet.employees.statusInvitationPending", "Zaproszenie wysłane — oczekuje na akceptację")}</Badge>
-                )
-              ) : employee.isBlocked ? (
-                <Badge variant="destructive">{t("gabinet.employees.statusBlocked", "Konto zablokowane")}</Badge>
-              ) : employee.isActive ? (
-                <Badge variant="default">{t("gabinet.employees.statusActive", "Konto aktywne")}</Badge>
-              ) : (
-                <Badge variant="secondary">{t("gabinet.employees.statusInactive", "Konto nieaktywne")}</Badge>
-              )}
+              {(() => {
+                const status = computeEmployeeAccountStatus({
+                  isActive: employee.isActive,
+                  isBlocked: employee.isBlocked,
+                  invitation: pendingInvitation ?? null,
+                });
+                if (status === "blocked") return <Badge variant="destructive">{t("gabinet.employees.statusBlocked", "Konto zablokowane")}</Badge>;
+                if (status === "active") return <Badge variant="default">{t("gabinet.employees.statusActive", "Konto aktywne")}</Badge>;
+                if (status === "invitation_pending") return <Badge variant="secondary">{t("gabinet.employees.statusInvitationPending", "Zaproszenie wysłane — oczekuje na akceptację")}</Badge>;
+                if (status === "invitation_expired") return <Badge variant="outline">{t("gabinet.employees.statusInvitationExpired", "Zaproszenie wygasło")}</Badge>;
+                return <Badge variant="secondary">{t("gabinet.employees.statusInactive", "Konto nieaktywne")}</Badge>;
+              })()}
             </div>
           </div>
         </div>
@@ -140,73 +140,91 @@ export function AccountTabContent({
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
               </button>
-              {pendingInvitation && pendingInvitation.expiresAt <= Date.now() && onResendInvitation && (
-                <button
-                  type="button"
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
-                  onClick={onResendInvitation}
-                >
-                  <Send className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm">{t("gabinet.employees.resendInvitation", "Wyślij zaproszenie ponownie")}</p>
-                    <p className="text-xs text-muted-foreground">{t("gabinet.employees.resendInvitationDesc", "Ponów wysyłkę zaproszenia z nowym terminem ważności")}</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
-                </button>
-              )}
-              {employee.isBlocked && onUnblock ? (
-                <button
-                  type="button"
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
-                  onClick={onUnblock}
-                >
-                  <Power className="h-4 w-4 text-green-600 shrink-0" variant="stroke" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-green-600">{t("gabinet.employees.unblockAccount", "Odblokuj konto")}</p>
-                    <p className="text-xs text-muted-foreground">{t("gabinet.employees.unblockAccountDesc", "Przywróć pracownikowi dostęp do systemu")}</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
-                </button>
-              ) : employee.isActive && onBlock ? (
-                <button
-                  type="button"
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
-                  onClick={onBlock}
-                >
-                  <Power className="h-4 w-4 text-destructive shrink-0" variant="stroke" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-destructive">{t("gabinet.employees.blockAccount", "Zablokuj konto")}</p>
-                    <p className="text-xs text-muted-foreground">{t("gabinet.employees.blockAccountDesc", "Zablokuj pracownikowi dostęp do systemu")}</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
-                </button>
-              ) : !employee.isActive && !employee.userId && onActivate ? (
-                <button
-                  type="button"
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
-                  onClick={onActivate}
-                >
-                  <Power className="h-4 w-4 text-green-600 shrink-0" variant="stroke" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-green-600">{t("gabinet.employees.activateAccount", "Aktywuj konto")}</p>
-                    <p className="text-xs text-muted-foreground">{t("gabinet.employees.activateAccountDesc", "Przywróć dostęp pracownika do systemu")}</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
-                  onClick={onDeactivate}
-                >
-                  <Power className="h-4 w-4 text-destructive shrink-0" variant="stroke" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-destructive">{t("gabinet.employees.deactivate")}</p>
-                    <p className="text-xs text-muted-foreground">{t("gabinet.employees.deactivateDesc", "Wyłącz dostęp pracownika do systemu")}</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
-                </button>
-              )}
+              {(() => {
+                const status = computeEmployeeAccountStatus({
+                  isActive: employee.isActive,
+                  isBlocked: employee.isBlocked,
+                  invitation: pendingInvitation ?? null,
+                });
+                if (status === "blocked" && onUnblock) {
+                  return (
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                      onClick={onUnblock}
+                    >
+                      <Power className="h-4 w-4 text-green-600 shrink-0" variant="stroke" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-green-600">{t("gabinet.employees.unblockAccount", "Odblokuj konto")}</p>
+                        <p className="text-xs text-muted-foreground">{t("gabinet.employees.unblockAccountDesc", "Przywróć pracownikowi dostęp do systemu")}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
+                    </button>
+                  );
+                }
+                if (status === "active" && onBlock) {
+                  return (
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                      onClick={onBlock}
+                    >
+                      <Power className="h-4 w-4 text-destructive shrink-0" variant="stroke" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-destructive">{t("gabinet.employees.blockAccount", "Zablokuj konto")}</p>
+                        <p className="text-xs text-muted-foreground">{t("gabinet.employees.blockAccountDesc", "Zablokuj pracownikowi dostęp do systemu")}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
+                    </button>
+                  );
+                }
+                if (status === "invitation_expired" && onResendInvitation) {
+                  return (
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                      onClick={onResendInvitation}
+                    >
+                      <Send className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm">{t("gabinet.employees.resendInvitation", "Wyślij zaproszenie ponownie")}</p>
+                        <p className="text-xs text-muted-foreground">{t("gabinet.employees.resendInvitationDesc", "Ponów wysyłkę zaproszenia z nowym terminem ważności")}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
+                    </button>
+                  );
+                }
+                if (status === "inactive" && !employee.userId && onActivate) {
+                  return (
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                      onClick={onActivate}
+                    >
+                      <Power className="h-4 w-4 text-green-600 shrink-0" variant="stroke" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-green-600">{t("gabinet.employees.activateAccount", "Aktywuj konto")}</p>
+                        <p className="text-xs text-muted-foreground">{t("gabinet.employees.activateAccountDesc", "Przywróć dostęp pracownika do systemu")}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
+                    </button>
+                  );
+                }
+                return (
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                    onClick={onDeactivate}
+                  >
+                    <Power className="h-4 w-4 text-destructive shrink-0" variant="stroke" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-destructive">{t("gabinet.employees.deactivate")}</p>
+                      <p className="text-xs text-muted-foreground">{t("gabinet.employees.deactivateDesc", "Wyłącz dostęp pracownika do systemu")}</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" variant="stroke" />
+                  </button>
+                );
+              })()}
             </div>
           </div>
         )}

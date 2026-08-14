@@ -1524,6 +1524,7 @@ export const createWithPassword = action({
       [args.firstName, args.lastName].filter(Boolean).join(" ") || undefined;
 
     const db = createSupabaseDb();
+    const log = createLogger("gabinet.employees", { correlationId: db.correlationId });
     const now = Date.now();
 
     // Check if a user with this email already exists before creating a new account.
@@ -1586,14 +1587,11 @@ export const createWithPassword = action({
       .collect()) as Array<{ _id: string; userId: string | null }>;
     const unlinkedByEmail = byEmail.filter((e) => !e.userId);
     if (unlinkedByEmail.length > 1) {
-      console.warn(
-        "[employees.createWithPassword] email collision — multiple unlinked employees share the same email; skipping pre-created link",
-        {
-          email: args.email,
-          organizationId: String(args.organizationId),
-          candidateIds: unlinkedByEmail.map((e) => e._id),
-        },
-      );
+      log.warn("email collision — multiple unlinked employees share the same email; skipping pre-created link", {
+        email: args.email,
+        organizationId: String(args.organizationId),
+        candidateIds: unlinkedByEmail.map((e) => e._id),
+      });
     }
     const preCreated = unlinkedByEmail.length === 1 ? unlinkedByEmail[0] : undefined;
 

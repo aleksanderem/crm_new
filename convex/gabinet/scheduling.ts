@@ -663,12 +663,15 @@ export const approveLeave = action({
       throw new Error("Leave not found");
     }
 
-    await db.patch("gabinetLeaves", args.leaveId, {
-      status: "approved",
-      approvedBy: authResult.userId,
-      approvedAt: now,
-      updatedAt: now,
+    // Atomic: approve status + balance increment happen in one Postgres
+    // transaction via RPC (issue #4771 — two separate patches were non-atomic).
+    const { error: rpcError } = await db.raw().rpc("approve_gabinet_leave", {
+      p_leave_id:    args.leaveId,
+      p_org_id:      String(args.organizationId),
+      p_approved_by: String(authResult.userId),
+      p_now:         now,
     });
+    if (rpcError) throw new Error(`approveLeave RPC failed: ${rpcError.message}`);
 
     try {
       await ctx.runMutation(internal.gabinet.scheduling._leaveSideEffects, {
@@ -683,36 +686,6 @@ export const approveLeave = action({
       });
     } catch (e) {
       console.error("[scheduling.approveLeave] Side effects FAILED:", e);
-    }
-
-    // Update leave balance if leaveTypeId is set
-    if (leave.leaveTypeId) {
-      const startD = new Date(leave.startDate as string);
-      const endD = new Date(leave.endDate as string);
-      const days = Math.max(1, Math.ceil((endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-      const year = startD.getFullYear();
-
-      // Find employee record from Supabase
-      const employee = await db.query("gabinetEmployees")
-        .eq("organizationId", String(args.organizationId))
-        .eq("userId", leave.userId as string)
-        .first();
-
-      if (employee) {
-        const balance = (await db.query("gabinetLeaveBalances")
-          .eq("organizationId", String(args.organizationId))
-          .eq("employeeId", employee._id as string)
-          .eq("leaveTypeId", leave.leaveTypeId as string)
-          .eq("year", year)
-          .first()) as GabinetLeaveBalanceRow | null;
-
-        if (balance) {
-          await db.patch("gabinetLeaveBalances", balance._id as string, {
-            usedDays: (balance.usedDays as number) + days,
-            updatedAt: now,
-          });
-        }
-      }
     }
   },
 });

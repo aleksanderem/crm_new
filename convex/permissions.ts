@@ -7,9 +7,12 @@ import { getEffectivePermissions } from "./_helpers/permissions";
 import { logAudit } from "./auditLog";
 
 export const getMyPermissions = query({
-  args: { organizationId: v.id("organizations") },
+  args: {
+    organizationId: v.id("organizations"),
+    locationId: v.optional(v.id("gabinetLocations")),
+  },
   handler: async (ctx, args) => {
-    return await getEffectivePermissions(ctx, args.organizationId);
+    return await getEffectivePermissions(ctx, args.organizationId, args.locationId);
   },
 });
 

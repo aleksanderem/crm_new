@@ -95,7 +95,7 @@ export function createGabinetTables({
     // numeric taxRate is ignored. Replaces a legacy -1 sentinel in taxRate.
     taxExempt: v.optional(v.boolean()),
     requiredEquipment: v.optional(v.array(v.string())),
-    requiredEquipmentIds: v.optional(v.array(v.id("gabinetEquipment"))),
+    requiredEquipmentIds: v.optional(v.array(v.string())),
     contraindications: v.optional(v.string()),
     preparationInstructions: v.optional(v.string()),
     aftercareInstructions: v.optional(v.string()),

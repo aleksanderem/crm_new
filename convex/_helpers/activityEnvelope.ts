@@ -1,4 +1,3 @@
-import type { Id } from "../_generated/dataModel";
 import type { ActivityAction } from "@cvx/schema";
 import { createSupabaseDb } from "./supabaseDb";
 
@@ -120,7 +119,7 @@ export function createActivityEnvelope(args: BuildActivityEnvelopeArgs): Activit
 }
 
 export async function publishActivityEnvelope(args: {
-    organizationId: Id<"organizations">;
+    organizationId: string;
     action: ActivityAction;
     performedBy: string;
     module: string;
@@ -148,7 +147,7 @@ export async function publishActivityEnvelope(args: {
     };
 
     await db.insert("activities", {
-      organizationId: args.organizationId as string,
+      organizationId: args.organizationId,
       entityType: target.entityType,
       entityId: target.entityId,
       action: args.action,

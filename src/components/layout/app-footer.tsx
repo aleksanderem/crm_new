@@ -158,7 +158,7 @@ export function AppFooter() {
 
         <div className="flex items-center gap-2 max-sm:min-w-0 max-sm:flex-1 max-sm:flex-nowrap max-sm:justify-end sm:flex-wrap">
           {actions.map((action) => {
-            const label = t(action.labelKey);
+            const label = t(action.labelKey) as string;
             return (
               <Button
                 key={action.labelKey}

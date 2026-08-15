@@ -1021,7 +1021,7 @@ export function createGabinetTables({
 
   gabinetEquipmentTransfers: defineTable({
     organizationId: v.string(),
-    equipmentId: v.id("gabinetEquipment"),
+    equipmentId: v.string(),
     fromLocationId: v.optional(v.string()),
     toLocationId: v.string(),
     toRoomId: v.optional(v.string()),

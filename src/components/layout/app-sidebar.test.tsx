@@ -20,9 +20,12 @@ vi.mock("@convex-dev/react-query", () => ({
 
 vi.mock("@cvx/_generated/api", () => ({
   api: {
-    app: { getCurrentUser: {} },
+    app: { getCurrentUser: {}, getIsPlatformAdmin: {} },
     productSubscriptions: { getActiveProducts: {} },
-    gabinet: { scheduling: { listLeaves: {} } },
+    gabinet: {
+      scheduling: { listLeaves: {} },
+      overtime: { listOvertime: {} },
+    },
   },
 }));
 

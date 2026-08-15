@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { TFunction } from "i18next";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 
 export function RefundCreditDialog({
@@ -47,7 +48,7 @@ export function RefundCreditDialog({
   onClose: () => void;
   onRefund: () => Promise<void>;
   onRequestAuthorization: () => Promise<void>;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   return (
     <Dialog

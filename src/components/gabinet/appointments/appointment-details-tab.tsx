@@ -29,6 +29,7 @@ import {
   Stethoscope,
   UserCircle,
 } from "@/lib/ez-icons";
+import type { TFunction } from "i18next";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import {
   plateJsonToText,
@@ -124,7 +125,7 @@ export function AppointmentDetailsTab({
   calculateDuration: () => number;
   getEmployeeName: () => string;
   getEmployeeInitials: () => string;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   return (
     <div className="space-y-4">

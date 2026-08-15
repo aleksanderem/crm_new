@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText } from "@/lib/ez-icons";
+import type { TFunction } from "i18next";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 
 type Receipt = {
@@ -24,7 +25,7 @@ export function PatientBillingTab({
   canGenerateReceipt: boolean;
   generatingReceiptFor: string | null;
   handleDownloadReceipt: (receiptId: string) => Promise<void>;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   return (
     <div className="space-y-4">

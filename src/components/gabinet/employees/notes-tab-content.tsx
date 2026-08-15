@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Plus } from "@/lib/ez-icons";
+import type { TFunction } from "i18next";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { plateJsonToText } from "@/components/plate-text";
 
@@ -18,7 +19,7 @@ export function NotesTabContent({
   isAddingNote: boolean;
   setIsAddingNote: (v: boolean) => void;
   handleAddNote: () => Promise<void>;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   return (
     <div className="space-y-4">

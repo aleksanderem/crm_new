@@ -1,4 +1,5 @@
 import { Calendar, Trophy, CreditCard, AlertCircle } from "@/lib/ez-icons";
+import type { TFunction } from "i18next";
 import type { MappedGabinetAppointment } from "@/lib/supabase/mappers/gabinet/appointments";
 import { PatientPackagesCard } from "@/components/gabinet/patient-packages-card";
 import { PatientTreatmentsCard } from "@/components/gabinet/patient-treatments-card";
@@ -29,7 +30,7 @@ export function PatientSidebarExtra({
   patientPayments: Payment[] | undefined;
   loyaltyBalance: LoyaltyBalance;
   latestIntake: LatestIntake;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   return (
     <div className="space-y-4">

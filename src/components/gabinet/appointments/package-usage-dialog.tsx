@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import type { TFunction } from "i18next";
 
 type UsageDialogItem = {
   treatmentId: string;
@@ -32,7 +33,7 @@ export function PackageUsageDialog({
   isUsageSubmitting: boolean;
   onItemQtyChange: (idx: number, val: number) => void;
   onSubmit: () => void;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

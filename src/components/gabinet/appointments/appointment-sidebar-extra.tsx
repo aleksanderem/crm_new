@@ -24,6 +24,7 @@ import {
   RefreshCcw,
   Star,
 } from "@/lib/ez-icons";
+import type { TFunction } from "i18next";
 import { formatPhoneNumber } from "@/lib/phone";
 import { Link } from "@tanstack/react-router";
 import { Id } from "@cvx/_generated/dataModel";
@@ -82,7 +83,7 @@ export function AppointmentSidebarExtra({
   canEdit: boolean;
   onChangeEmployee: () => void;
   onTagsChange: (newTagIds: Id<"tagDefinitions">[]) => void;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   const empName = employee ? (employee.name ?? employee.email ?? "-") : "-";
 

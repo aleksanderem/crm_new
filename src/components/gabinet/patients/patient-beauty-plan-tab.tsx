@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, Sparkles } from "@/lib/ez-icons";
+import type { TFunction } from "i18next";
 import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import type { MappedGabinetAppointment } from "@/lib/supabase/mappers/gabinet/appointments";
 
@@ -12,7 +13,7 @@ export function PatientBeautyPlanTab({
   beautyPlanEntries: MappedGabinetAppointment[];
   getApptTreatmentDisplay: (apt?: MappedGabinetAppointment | null) => string | undefined;
   navigate: (opts: { to: string; params?: Record<string, string>; search?: Record<string, string> }) => void;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   return (
     <div className="space-y-4">

@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Search, User, X } from "@/lib/ez-icons";
 import { formatPhoneNumber } from "@/lib/phone";
+import type { TFunction } from "i18next";
 import type { EmployeePatientStats } from "@cvx/gabinet/appointments";
 
 export function PatientsTabContent({
@@ -37,7 +38,7 @@ export function PatientsTabContent({
   setClientTreatmentFilter: (v: string) => void;
   treatments: Array<{ _id: string; name: string }> | undefined;
   navigate: (opts: { to: string }) => void;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
   i18nLanguage: string;
 }) {
   return (

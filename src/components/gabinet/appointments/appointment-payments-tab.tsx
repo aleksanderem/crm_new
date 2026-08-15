@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CreditCard, DollarSign, Info, Package, Plus } from "@/lib/ez-icons";
+import type { TFunction } from "i18next";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { EmptyState } from "@/components/layout/empty-state";
 
@@ -51,7 +52,7 @@ export function AppointmentPaymentsTab({
   onRefundPayment: (paymentId: string) => void;
   onDownloadReceipt: (paymentId: string) => void;
   language: string;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   return (
     <div className="space-y-4">

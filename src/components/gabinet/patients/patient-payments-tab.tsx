@@ -10,6 +10,7 @@ import {
   Pencil,
 } from "@/lib/ez-icons";
 import { formatCurrencyPLN } from "@/lib/format-currency";
+import type { TFunction } from "i18next";
 import type { MappedGabinetAppointment } from "@/lib/supabase/mappers/gabinet/appointments";
 
 type PaymentRowType =
@@ -113,7 +114,7 @@ export function PatientPaymentsTab({
   }) => void;
   openCancelDialog: (paymentId: string) => void;
   navigate: (opts: { to: string; params?: Record<string, string> }) => void;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   const completedPayments = (patientPayments ?? []).filter(
     (p) => p.status === "completed" && p.kind !== "credit_refund",

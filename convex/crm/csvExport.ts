@@ -147,6 +147,12 @@ export const exportProducts = action({
       taxRate: p.taxExempt ? "ZW" : p.taxRate != null ? p.taxRate.toString() : "",
       isActive: p.isActive ? "Yes" : "No",
       description: p.description ?? "",
+      purchasePrice: p.purchasePrice != null ? p.purchasePrice.toString() : "",
+      salePrice: p.salePrice != null ? p.salePrice.toString() : "",
+      trackStock: p.trackStock ? "Yes" : "No",
+      stockUnit: p.stockUnit ?? "",
+      minStock: p.minStock != null ? p.minStock.toString() : "",
+      productSection: p.productSection ?? "",
       createdAt: new Date(p.createdAt).toISOString(),
     }));
   },

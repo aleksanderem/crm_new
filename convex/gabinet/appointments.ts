@@ -1398,6 +1398,8 @@ export const create = action({
             variantId: t.variantId ?? null,
             priceAtBooking: treatmentPrices[i] ?? null,
             sortOrder: i,
+            stockDeducted: false,
+            packageDeducted: false,
             createdAt: now,
             updatedAt: now,
           });
@@ -1830,6 +1832,8 @@ export const update = action({
           variantId: effectiveVariantId,
           priceAtBooking: tPrice,
           sortOrder: i,
+          stockDeducted: false,
+          packageDeducted: false,
           createdAt: now,
           updatedAt: now,
         });

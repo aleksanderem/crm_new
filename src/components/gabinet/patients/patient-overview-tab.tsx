@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, Heart, Star, ChevronDown } from "@/lib/ez-icons";
 import type { TFunction } from "i18next";

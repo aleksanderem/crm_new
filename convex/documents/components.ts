@@ -1,4 +1,4 @@
-import { action, internalMutation } from "../_generated/server";
+import { action, internalAction, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
@@ -379,14 +379,13 @@ export const _relinkTemplateComponents = internalMutation({
 
 // ── Internal: Seed system components ─────────────────────────────────────────
 
-export const seedSystemComponents = internalMutation({
+export const seedSystemComponents = internalAction({
   args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+
     // Check if system components already exist
-    const existing = await ctx.db
-      .query("documentComponents")
-      .withIndex("by_scope", (q) => q.eq("scope", "system"))
-      .collect();
+    const existing = await db.query("documentComponents").eq("scope", "system").collect();
     if (existing.length > 0) {
       return { skipped: true, count: 0, message: "System components already seeded" };
     }
@@ -395,9 +394,10 @@ export const seedSystemComponents = internalMutation({
     const components = buildSystemComponents();
     let count = 0;
     for (const comp of components) {
-      await ctx.db.insert("documentComponents", {
+      await db.insert("documentComponents", {
         ...comp,
-        createdBy: args.userId,
+        organizationId: comp.organizationId ?? null,
+        createdBy: String(args.userId),
         createdAt: now,
         updatedAt: now,
       });

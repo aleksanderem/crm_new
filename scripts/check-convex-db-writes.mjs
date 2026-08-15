@@ -103,6 +103,15 @@ const WHITELIST_PATHS = new Set([
   // Convex writes are a permanent architectural necessity alongside the
   // Supabase writes already present in every calling action. See issue #4952.
   "organizations",
+
+  // invitations — _acceptInternal dual-writes teamMemberships and users to
+  // ctx.db for the same reason as organizations above: requireOrgAdmin /
+  // requireUser in _helpers/auth.ts read from ctx.db (QueryCtx | MutationCtx),
+  // which cannot make HTTP calls. The invitations table itself is now Supabase-
+  // only (migrated in issue #4953). The remaining ctx.db writes are limited to
+  // teamMemberships (Convex auth compat) and users (username derivation for
+  // new invitees). See issue #4953.
+  "invitations",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -128,10 +137,6 @@ const INSERT_PENDING = new Set([
 
   // gabinet/equipment.ts — ctx.db.insert("gabinetEquipment", ...).
   "gabinet/equipment",
-
-  // invitations.ts — ctx.db.insert("invitations", ...) and
-  // ("teamMemberships", ...) during invitation acceptance.
-  "invitations",
 
   // stripe.ts — ctx.db.insert("productSubscriptions", ...) during Stripe
   // webhook handling; should use createSupabaseDb().insert().
@@ -185,9 +190,6 @@ const PATCH_DELETE_PENDING = new Set([
   // gabinetAppointments records during GDPR erasure.
   "gabinet/patients",
 
-  // invitations.ts — ctx.db.patch(args.invitationId, ...) and
-  // patch(user._id, ...) where types are invitations and users.
-  "invitations",
 ]);
 
 // ---------------------------------------------------------------------------

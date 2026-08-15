@@ -46,7 +46,7 @@ export const findByMessageId = internalAction({
 
 export const findExistingGmailMessageIds = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     gmailMessageIds: v.array(v.string()),
   },
   handler: async (_ctx, args): Promise<string[]> => {
@@ -54,7 +54,7 @@ export const findExistingGmailMessageIds = internalAction({
     const db = createSupabaseDb();
     const rows = await db
       .query("emails")
-      .eq("organizationId", String(args.organizationId))
+      .eq("organizationId", args.organizationId)
       .in("gmailMessageId", args.gmailMessageIds)
       .collect();
     return rows
@@ -65,14 +65,14 @@ export const findExistingGmailMessageIds = internalAction({
 
 export const findContactByEmail = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     email: v.string(),
   },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     return await db
       .query("contacts")
-      .eq("organizationId", String(args.organizationId))
+      .eq("organizationId", args.organizationId)
       .eq("email", args.email)
       .first();
   },
@@ -208,7 +208,7 @@ export const insertInboundGmail = internalAction({
 
 export const insertInbound = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     threadId: v.string(),
     messageId: v.string(),
     inReplyTo: v.optional(v.string()),
@@ -224,10 +224,10 @@ export const insertInbound = internalAction({
     const db = createSupabaseDb();
     const now = Date.now();
 
-    const organization = await db.get("organizations", String(args.organizationId));
+    const organization = await db.get("organizations", args.organizationId);
 
     const emailId = await db.insert("emails", {
-      organizationId: String(args.organizationId),
+      organizationId: args.organizationId,
       threadId: args.threadId,
       messageId: args.messageId,
       inReplyTo: args.inReplyTo ?? null,

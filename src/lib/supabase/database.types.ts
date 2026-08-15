@@ -6771,6 +6771,7 @@ export interface Database {
           source_type: string | null;
           source_id: string | null;
           note: string | null;
+          payment_method: string | null;
           performed_by: string;
           created_at: number;
           unit_price: number | null;
@@ -6789,6 +6790,7 @@ export interface Database {
           source_type?: string | null;
           source_id?: string | null;
           note?: string | null;
+          payment_method?: string | null;
           performed_by: string;
           created_at: number;
           unit_price?: number | null;
@@ -6807,6 +6809,7 @@ export interface Database {
           source_type?: string | null;
           source_id?: string | null;
           note?: string | null;
+          payment_method?: string | null;
           performed_by?: string;
           created_at?: number;
           unit_price?: number | null;

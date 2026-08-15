@@ -80,7 +80,7 @@ export const findContactByEmail = internalAction({
 
 export const insertOutboundGmail = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     to: v.array(v.string()),
     cc: v.optional(v.array(v.string())),
     bcc: v.optional(v.array(v.string())),
@@ -142,7 +142,7 @@ export const insertOutboundGmail = internalAction({
 
 export const insertInboundGmail = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     gmailMessageId: v.string(),
     gmailThreadId: v.string(),
     from: v.string(),
@@ -263,7 +263,7 @@ export const insertInbound = internalAction({
 export const _publishInboundActivity = internalMutation({
   args: {
     emailId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     performedBy: v.string(),
     subject: v.string(),
     from: v.string(),
@@ -272,7 +272,7 @@ export const _publishInboundActivity = internalMutation({
   },
   handler: async (ctx, args) => {
     await publishActivityEnvelope(ctx, {
-      organizationId: args.organizationId,
+      organizationId: args.organizationId as any,
       action: "email_received",
       performedBy: args.performedBy as any,
       module: "crm",

@@ -401,11 +401,11 @@ function TimetablePage() {
       const aName =
         a.firstName || a.lastName
           ? `${a.firstName ?? ""} ${a.lastName ?? ""}`.trim()
-          : userMap.get(a.userId)?.name ?? userMap.get(a.userId)?.email ?? "";
+          : userMap.get(a.userId ?? "")?.name ?? userMap.get(a.userId ?? "")?.email ?? "";
       const bName =
         b.firstName || b.lastName
           ? `${b.firstName ?? ""} ${b.lastName ?? ""}`.trim()
-          : userMap.get(b.userId)?.name ?? userMap.get(b.userId)?.email ?? "";
+          : userMap.get(b.userId ?? "")?.name ?? userMap.get(b.userId ?? "")?.email ?? "";
       return aName.localeCompare(bName);
     });
     const needle = search.trim().toLowerCase();
@@ -415,11 +415,11 @@ function TimetablePage() {
       }
       if (roleFilter !== "all" && e.role !== roleFilter) return false;
       if (locationFilter !== "all") {
-        const locs = employeeLocationIds.get(e.userId);
+        const locs = employeeLocationIds.get(e.userId ?? "");
         if (!locs || !locs.has(locationFilter)) return false;
       }
       if (!needle) return true;
-      const u = userMap.get(e.userId);
+      const u = userMap.get(e.userId ?? "");
       const fullName = `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim();
       return (
         fullName.toLowerCase().includes(needle) ||
@@ -442,7 +442,7 @@ function TimetablePage() {
     if (e.firstName || e.lastName) {
       return `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim();
     }
-    const u = userMap.get(e.userId);
+    const u = userMap.get(e.userId ?? "");
     return u?.name || u?.email || t("common.unknown");
   };
 
@@ -456,7 +456,7 @@ function TimetablePage() {
     const needle = employeePickerSearch.trim().toLowerCase();
     if (!needle) return allEmployeesSorted;
     return allEmployeesSorted.filter((e) => {
-      const u = userMap.get(e.userId);
+      const u = userMap.get(e.userId ?? "");
       const fullName = employeeName(e);
       return (
         fullName.toLowerCase().includes(needle) ||
@@ -663,7 +663,7 @@ function TimetablePage() {
             const meta = getEmployeeScheduleMeta(emp, schedules, clinicHours);
             const upcomingLeave = findUpcomingOrActiveLeave(
               leaves,
-              emp.userId,
+              emp.userId ?? "",
               today,
               leaveHorizon,
             );
@@ -692,7 +692,7 @@ function TimetablePage() {
               entries,
               week.dates,
               leaves,
-              emp.userId,
+              emp.userId ?? "",
             );
             return {
               meta,
@@ -813,7 +813,7 @@ function TimetablePage() {
                                 );
                                 const date = week.dates.get(dayIdx);
                                 const leave = date
-                                  ? findLeaveForDate(leaves, emp.userId, date)
+                                  ? findLeaveForDate(leaves, emp.userId ?? "", date)
                                   : undefined;
                                 const dateLabel = formatShortDate(
                                   date,
@@ -984,7 +984,7 @@ function TimetablePage() {
                               );
                               const date = week.dates.get(dayIdx);
                               const leave = date
-                                ? findLeaveForDate(leaves, emp.userId, date)
+                                ? findLeaveForDate(leaves, emp.userId ?? "", date)
                                 : undefined;
                               const dateLabel = formatShortDate(
                                 date,

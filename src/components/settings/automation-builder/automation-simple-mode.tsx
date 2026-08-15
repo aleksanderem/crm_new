@@ -450,10 +450,9 @@ function getActionSummary(
       });
     case "update_field":
       return t("settings.automationPlayground.summary.updateField", {
-        entity: getTargetEntityLabel(action.targetEntityType, t),
+        entity: getTargetEntityLabel(action.targetEntityType, t) ?? "",
         field: action.fieldKey,
         value: action.valueTemplate,
-        defaultValue: `It updates ${action.fieldKey} on ${getTargetEntityLabel(action.targetEntityType, t)} to ${action.valueTemplate}.`,
       });
   }
 }
@@ -473,8 +472,7 @@ function getTriggerSummary(
   if (form.eventType === "gabinet.appointment.sms_reply_received" && form.replyIntent) {
     return t("settings.automationPlayground.summary.triggerWithReplyIntent", {
       event: eventLabel,
-      replyIntent: getReplyIntentLabel(form.replyIntent, t),
-      defaultValue: `This runs when ${eventLabel} and the reply matches ${getReplyIntentLabel(form.replyIntent, t)}.`,
+      replyIntent: getReplyIntentLabel(form.replyIntent, t) ?? "",
     });
   }
 
@@ -1939,8 +1937,7 @@ export function AutomationSimpleMode({
               <p key={action.id}>
                 {t("settings.automationPlayground.summary.actionLine", {
                   index: index + 1,
-                  summary: getActionSummary(action, emailTemplates, t),
-                  defaultValue: `${index + 1}. ${getActionSummary(action, emailTemplates, t)}`,
+                  summary: getActionSummary(action, emailTemplates, t) ?? "",
                 })}
               </p>
             ))}

@@ -290,17 +290,17 @@ export function AppointmentDetailsTab({
                 </span>
               </div>
             )}
-            {treatment?.description && (
+            {Boolean(treatment?.description) && (
               <div className="pt-2">
                 <span className="text-sm text-muted-foreground">
                   {t("common.description")}
                 </span>
                 <p className="text-sm mt-1">
-                  {plateJsonToText(treatment.description as string)}
+                  {plateJsonToText(treatment!.description as string)}
                 </p>
               </div>
             )}
-            {treatment?.contraindications && (
+            {Boolean(treatment?.contraindications) && (
               <div className="pt-2 p-3 bg-destructive/10 rounded-lg">
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <div className="flex items-center gap-2 text-destructive">
@@ -334,7 +334,7 @@ export function AppointmentDetailsTab({
                   ) : null}
                 </div>
                 <p className="text-sm">
-                  {plateJsonToText(treatment.contraindications as string)}
+                  {plateJsonToText(treatment!.contraindications as string)}
                 </p>
               </div>
             )}

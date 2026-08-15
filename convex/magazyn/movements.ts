@@ -1,9 +1,10 @@
-// Dedicated internal actions for appointment-driven stock movements.
+// Dedicated actions for appointment-driven and standalone stock movements.
 // Consolidates FEFO lot selection + multi-movement deduction so callers
 // (e.g. gabinet/appointments.ts updateStatus) delegate the full inventory
 // write sequence rather than reimplementing it inline.
 
-import { internalAction } from "../_generated/server";
+import { action, internalAction } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { applyMovementInternal, selectFefoLotsForProduct } from "../inventory";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
@@ -128,5 +129,86 @@ export const returnStockForAppointment = internalAction({
         );
       }
     }
+  },
+});
+
+// Sell a product directly without an appointment.
+// Applies FEFO lot selection exactly like consumeForAppointment: if tracked
+// lots exist they are drained in ascending expiry order; any remainder is
+// written as an untracked movement. Returns { negativeStock: true } when the
+// deduction pushes the balance below zero — callers should surface this as a
+// warning, not a hard block (warn-and-allow, consistent with #1700 policy).
+//
+// clientId (optional) — stored as sourceId for later client-history queries.
+// paymentMethod (optional) — stored in note; accepted only when provided
+//   since the productStockMovements table has no dedicated payment column yet.
+//   No undefined-client placeholder is created: absence of clientId is valid.
+export const sellProductStandalone = action({
+  args: {
+    organizationId: v.id("organizations"),
+    productId: v.string(),
+    quantity: v.number(),
+    salePrice: v.number(),
+    locationId: v.union(v.string(), v.null()),
+    clientId: v.optional(v.string()),
+    paymentMethod: v.optional(v.string()),
+  },
+  handler: async (ctx, args): Promise<{ negativeStock: boolean }> => {
+    const auth = await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_inventory", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    if (args.quantity <= 0) throw new Error("Quantity must be positive");
+    if (args.salePrice < 0) throw new Error("Sale price must be non-negative");
+
+    const baseMovement = {
+      organizationId: String(args.organizationId),
+      productId: args.productId,
+      locationId: args.locationId,
+      reason: "direct_sale" as const,
+      sourceType: "direct_sale",
+      sourceId: args.clientId ?? null,
+      unitPrice: args.salePrice,
+      note: args.paymentMethod ?? null,
+      performedBy: String(auth.userId),
+    };
+
+    let negativeStock = false;
+
+    const lots = await selectFefoLotsForProduct(
+      args.productId,
+      String(args.organizationId),
+      args.locationId,
+    );
+
+    if (lots.length === 0) {
+      const result = await applyMovementInternal({ ...baseMovement, delta: -args.quantity });
+      if (result.warning === "negative_stock") negativeStock = true;
+    } else {
+      let remaining = args.quantity;
+      for (const lot of lots) {
+        if (remaining <= 0) break;
+        const consume = Math.min(lot.quantity, remaining);
+        const result = await applyMovementInternal({
+          ...baseMovement,
+          delta: -consume,
+          lotNumber: lot.lotNumber,
+          expiryDate: lot.expiryDate ?? undefined,
+        });
+        if (result.warning === "negative_stock") negativeStock = true;
+        remaining -= consume;
+      }
+      if (remaining > 0) {
+        const result = await applyMovementInternal({ ...baseMovement, delta: -remaining });
+        if (result.warning === "negative_stock") negativeStock = true;
+      }
+    }
+
+    return { negativeStock };
   },
 });

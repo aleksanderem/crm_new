@@ -82,7 +82,7 @@ describe("contacts.gdprExport — GDPR data export", () => {
       updatedAt: now,
     });
 
-    const result = await t.withIdentity(identity).action(api.contacts.gdprExport, {
+    const result = await t.withIdentity(identity).action(api.crm.contacts.gdprExport, {
       organizationId,
       contactId,
     });
@@ -136,7 +136,7 @@ describe("contacts.gdprExport — GDPR data export", () => {
       updatedAt: now,
     });
 
-    const result = await t.withIdentity(identity).action(api.contacts.gdprExport, {
+    const result = await t.withIdentity(identity).action(api.crm.contacts.gdprExport, {
       organizationId,
       contactId,
     });
@@ -180,7 +180,7 @@ describe("contacts.gdprExport — GDPR data export", () => {
       createdAt: now,
     });
 
-    const result = await t.withIdentity(identity).action(api.contacts.gdprExport, {
+    const result = await t.withIdentity(identity).action(api.crm.contacts.gdprExport, {
       organizationId,
       contactId,
     });
@@ -227,7 +227,7 @@ describe("contacts.gdprExport — GDPR data export", () => {
       createdAt: now,
     });
 
-    const result = await t.withIdentity(identity).action(api.contacts.gdprExport, {
+    const result = await t.withIdentity(identity).action(api.crm.contacts.gdprExport, {
       organizationId,
       contactId,
     });
@@ -244,7 +244,7 @@ describe("contacts.gdprExport — GDPR data export", () => {
     const userStr = String(userId);
     const contactId = await seedContact(orgStr, userStr);
 
-    const result = await t.withIdentity(identity).action(api.contacts.gdprExport, {
+    const result = await t.withIdentity(identity).action(api.crm.contacts.gdprExport, {
       organizationId,
       contactId,
     });
@@ -266,7 +266,7 @@ describe("contacts.gdprExport — GDPR data export", () => {
     };
 
     await expect(
-      t.withIdentity(memberIdentity).action(api.contacts.gdprExport, {
+      t.withIdentity(memberIdentity).action(api.crm.contacts.gdprExport, {
         organizationId,
         contactId,
       })

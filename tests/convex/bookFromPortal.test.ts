@@ -17,19 +17,18 @@ async function seedActivePortalSession(
   organizationId: string,
 ) {
   const token = "portal-test-token";
-  const tokenHash = sha256Sync(token);
   const db = createSupabaseDb();
   const now = Date.now();
   await db.insert("gabinetPortalSessions", {
     patientId,
     organizationId,
     isActive: true,
-    tokenHash,
+    tokenHash: sha256Sync(token),
     lastAccessedAt: now,
     createdAt: now,
     expiresAt: now + 30 * 24 * 60 * 60 * 1000,
   });
-  return { tokenHash };
+  return { token };
 }
 
 describe("bookFromPortal null userId guard (issue #4583)", () => {
@@ -41,7 +40,7 @@ describe("bookFromPortal null userId guard (issue #4583)", () => {
       organizationId,
       userId,
     );
-    const { tokenHash } = await seedActivePortalSession(
+    const { token: tokenHash } = await seedActivePortalSession(
       String(patientId),
       String(organizationId),
     );
@@ -82,7 +81,7 @@ describe("bookFromPortal past-time guard (issue #1415)", () => {
       organizationId,
       userId,
     );
-    const { tokenHash } = await seedActivePortalSession(
+    const { token: tokenHash } = await seedActivePortalSession(
       String(patientId),
       String(organizationId),
     );

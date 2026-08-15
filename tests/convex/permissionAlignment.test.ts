@@ -63,7 +63,6 @@ const KNOWN_GAPS = new Set<string>([
   "contacts:view", // dynamic
   "companies:create", // dynamic
   "companies:delete", // backend-only
-  "companies:view", // dynamic
 
   // Calls — the calls log has no explicit usePermission gate in the UI yet.
   "calls:view", // backend-only

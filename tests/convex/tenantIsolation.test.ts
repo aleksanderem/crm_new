@@ -128,7 +128,7 @@ describe("tenant isolation — contacts", () => {
 
     // Org A user with Org A's orgId but Org B's contactId
     await expect(
-      t.withIdentity(identityA).query(api.contacts.getById, {
+      t.withIdentity(identityA).query(api.crm.contacts.getById, {
         organizationId: orgAId,
         contactId: contactBId,
       }),
@@ -155,7 +155,7 @@ describe("tenant isolation — companies", () => {
     });
 
     await expect(
-      t.withIdentity(identityA).query(api.companies.getById, {
+      t.withIdentity(identityA).query(api.crm.companies.getById, {
         organizationId: orgAId,
         companyId: companyBId,
       }),
@@ -172,7 +172,7 @@ describe("tenant isolation — leads", () => {
     const { organizationId: orgBId } = await seedOrgB(t);
 
     await expect(
-      t.withIdentity(identityA).action(api.leads.list, {
+      t.withIdentity(identityA).action(api.crm.leads.list, {
         organizationId: orgBId,
         paginationOpts: PAGINATION,
       }),
@@ -196,7 +196,7 @@ describe("tenant isolation — leads", () => {
     });
 
     await expect(
-      t.withIdentity(identityA).query(api.leads.getById, {
+      t.withIdentity(identityA).query(api.crm.leads.getById, {
         organizationId: orgAId,
         leadId: leadBId,
       }),
@@ -213,7 +213,7 @@ describe("tenant isolation — notes", () => {
     const { organizationId: orgBId } = await seedOrgB(t);
 
     await expect(
-      t.withIdentity(identityA).query(api.notes.listByEntity, {
+      t.withIdentity(identityA).query(api.crm.notes.listByEntity, {
         organizationId: orgBId,
         entityType: "contact",
         entityId: "some-id",
@@ -241,7 +241,7 @@ describe("tenant isolation — notes", () => {
       });
     });
 
-    const results = await t.withIdentity(identityA).query(api.notes.listByEntity, {
+    const results = await t.withIdentity(identityA).query(api.crm.notes.listByEntity, {
       organizationId: orgAId,
       entityType: "contact",
       entityId: sharedEntityId,
@@ -269,7 +269,7 @@ describe("tenant isolation — notes", () => {
     });
 
     await expect(
-      t.withIdentity(identityA).query(api.notes.getById, {
+      t.withIdentity(identityA).query(api.crm.notes.getById, {
         organizationId: orgAId,
         noteId: noteBId,
       }),
@@ -338,7 +338,7 @@ describe("tenant isolation — pipelines (actions)", () => {
     const { organizationId: orgBId } = await seedOrgB(t);
 
     await expect(
-      t.withIdentity(identityA).action(api.pipelines.list, {
+      t.withIdentity(identityA).action(api.crm.pipelines.list, {
         organizationId: orgBId,
       }),
     ).rejects.toThrow("Not a member of this organization");
@@ -350,7 +350,7 @@ describe("tenant isolation — pipelines (actions)", () => {
     const { organizationId: orgBId } = await seedOrgB(t);
 
     await expect(
-      t.withIdentity(identityA).action(api.pipelines.getById, {
+      t.withIdentity(identityA).action(api.crm.pipelines.getById, {
         organizationId: orgBId,
         pipelineId: "some-pipeline-id",
       }),
@@ -375,7 +375,7 @@ describe("tenant isolation — pipelines (actions)", () => {
     // verifyOrgAccess passes (user is in Org A), but the pipeline ownership
     // check (pipeline.organizationId !== orgAId) must throw.
     await expect(
-      t.withIdentity(identityA).action(api.pipelines.getById, {
+      t.withIdentity(identityA).action(api.crm.pipelines.getById, {
         organizationId: orgAId,
         pipelineId: pipelineBId,
       }),
@@ -388,7 +388,7 @@ describe("tenant isolation — pipelines (actions)", () => {
     const { organizationId: orgBId } = await seedOrgB(t);
 
     await expect(
-      t.withIdentity(identityA).action(api.pipelines.getStages, {
+      t.withIdentity(identityA).action(api.crm.pipelines.getStages, {
         organizationId: orgBId,
         pipelineId: "some-pipeline-id",
       }),
@@ -401,7 +401,7 @@ describe("tenant isolation — pipelines (actions)", () => {
     const { organizationId: orgBId } = await seedOrgB(t);
 
     await expect(
-      t.withIdentity(identityA).action(api.pipelines.getAllStages, {
+      t.withIdentity(identityA).action(api.crm.pipelines.getAllStages, {
         organizationId: orgBId,
       }),
     ).rejects.toThrow("Not a member of this organization");
@@ -716,7 +716,7 @@ describe("tenant isolation — savedViews (actions)", () => {
     const { organizationId: orgBId } = await seedOrgB(t);
 
     await expect(
-      t.withIdentity(identityA).action(api.savedViews.listByEntityType, {
+      t.withIdentity(identityA).action(api.crm.savedViews.listByEntityType, {
         organizationId: orgBId,
         entityType: "contact",
       }),
@@ -729,7 +729,7 @@ describe("tenant isolation — savedViews (actions)", () => {
     const { organizationId: orgBId } = await seedOrgB(t);
 
     await expect(
-      t.withIdentity(identityA).action(api.savedViews.getById, {
+      t.withIdentity(identityA).action(api.crm.savedViews.getById, {
         organizationId: orgBId,
         viewId: "some-view-id",
       }),
@@ -755,7 +755,7 @@ describe("tenant isolation — savedViews (actions)", () => {
     });
 
     await expect(
-      t.withIdentity(identityA).action(api.savedViews.getById, {
+      t.withIdentity(identityA).action(api.crm.savedViews.getById, {
         organizationId: orgAId,
         viewId: viewBId,
       }),

@@ -151,7 +151,7 @@ export const backfillProductSubscriptions = internalAction({
       }
 
       if (!dryRun) {
-        await ctx.runMutation(internal.stripe.PREAUTH_upsertProductSubscription, {
+        await ctx.runAction(internal.stripe.PREAUTH_upsertProductSubscription, {
           organizationId: org._id,
           productId: plan.productKey,
           stripeSubscriptionId: sub.stripeId,

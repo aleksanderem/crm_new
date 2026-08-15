@@ -201,7 +201,7 @@ const handleCheckoutSessionCompleted = async (
   // the newly purchased module without requiring manual backfill.
   if (organizationId && productKey) {
     const normalizedStatus = toProductSubscriptionStatus(subscription.status);
-    await ctx.runMutation(internal.stripe.PREAUTH_upsertProductSubscription, {
+    await ctx.runAction(internal.stripe.PREAUTH_upsertProductSubscription, {
       organizationId: organizationId as Id<"organizations">,
       productId: productKey,
       stripeSubscriptionId: subscription.id,
@@ -280,7 +280,7 @@ const handleCustomerSubscriptionUpdated = async (
   const organizationId = subscription.metadata?.organizationId;
   if (organizationId && productKey) {
     const normalizedStatus = toProductSubscriptionStatus(subscription.status);
-    await ctx.runMutation(internal.stripe.PREAUTH_upsertProductSubscription, {
+    await ctx.runAction(internal.stripe.PREAUTH_upsertProductSubscription, {
       organizationId: organizationId as Id<"organizations">,
       productId: productKey,
       stripeSubscriptionId: subscription.id,
@@ -337,7 +337,7 @@ const handleCustomerSubscriptionCreated = async (
   const organizationId = subscription.metadata?.organizationId;
   if (organizationId && productKey) {
     const normalizedStatus = toProductSubscriptionStatus(subscription.status);
-    await ctx.runMutation(internal.stripe.PREAUTH_upsertProductSubscription, {
+    await ctx.runAction(internal.stripe.PREAUTH_upsertProductSubscription, {
       organizationId: organizationId as Id<"organizations">,
       productId: productKey,
       stripeSubscriptionId: subscription.id,
@@ -364,7 +364,7 @@ const handleCustomerSubscriptionDeleted = async (
   const productKey = subscription.metadata?.productKey;
   const organizationId = subscription.metadata?.organizationId;
   if (organizationId && productKey) {
-    await ctx.runMutation(internal.stripe.PREAUTH_upsertProductSubscription, {
+    await ctx.runAction(internal.stripe.PREAUTH_upsertProductSubscription, {
       organizationId: organizationId as Id<"organizations">,
       productId: productKey,
       stripeSubscriptionId: subscription.id,

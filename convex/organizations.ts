@@ -20,19 +20,20 @@ export const create = action({
   },
   handler: async (ctx, args): Promise<string> => {
     // Create org in Convex (Convex-side mutation; also mirrored to Supabase below)
-    const orgId: string = await ctx.runMutation(internal.organizations._createOrgInternal, {
+    const result = await ctx.runMutation(internal.organizations._createOrgInternal, {
       name: args.name,
       slug: args.slug,
       logo: args.logo,
       website: args.website,
     });
 
-    // Also write to Supabase
+    const db = createSupabaseDb();
+
+    // Write org to Supabase
     try {
-      const db = createSupabaseDb();
       await db.insert("organizations", {
-        _id: orgId,
-        organizationId: orgId,
+        _id: result.orgId,
+        organizationId: result.orgId,
         name: args.name,
         slug: args.slug,
         logo: args.logo ?? null,
@@ -44,7 +45,20 @@ export const create = action({
       // Supabase write is best-effort
     }
 
-    return orgId;
+    // Write owner teamMembership directly to Supabase (same pattern as invitations.accept).
+    try {
+      await db.insert("teamMemberships", {
+        _id: result.ownerMembershipId,
+        userId: result.ownerUserId,
+        organizationId: result.orgId,
+        role: "owner",
+        joinedAt: result.ownerJoinedAt,
+      });
+    } catch (e) {
+      console.error("[organizations.create] Supabase teamMembership write failed:", e);
+    }
+
+    return result.orgId;
   },
 });
 
@@ -81,22 +95,6 @@ export const _createOrgInternal = internalMutation({
       role: "owner",
       joinedAt: now,
     });
-
-    // Mirror owner membership to Supabase — same reason as in
-    // invitations._acceptInternal: the UI reads team_memberships from
-    // Supabase, not Convex, so without this the org creator has zero
-    // permissions in their own org.
-    await ctx.scheduler.runAfter(
-      0,
-      internal.supabase.organizations.writeTeamMembershipToSupabase,
-      {
-        membershipId: String(ownerMembershipId),
-        userId: String(user._id),
-        organizationId: String(orgId),
-        role: "owner",
-        joinedAt: now,
-      },
-    );
 
     await logActivity(ctx, {
       organizationId: orgId,
@@ -145,7 +143,12 @@ export const _createOrgInternal = internalMutation({
       { organizationId: orgId, userId: user._id },
     );
 
-    return String(orgId);
+    return {
+      orgId: String(orgId),
+      ownerMembershipId: String(ownerMembershipId),
+      ownerUserId: String(user._id),
+      ownerJoinedAt: now,
+    };
   },
 });
 

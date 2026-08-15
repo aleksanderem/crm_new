@@ -1,4 +1,4 @@
-import { action, internalAction, internalMutation } from "../_generated/server";
+import { action, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
@@ -313,7 +313,7 @@ export const duplicate = action({
     // Auto-relink: when copying a system component to org, update templates
     if (source.scope === "system") {
       try {
-        await ctx.runMutation(internal.documents.components._relinkTemplateComponents, {
+        await ctx.runAction(internal.documents.components._relinkTemplateComponents, {
           organizationId: args.organizationId,
           oldComponentId: args.componentId,
           newComponentId: newId,
@@ -327,26 +327,27 @@ export const duplicate = action({
   },
 });
 
-export const _relinkTemplateComponents = internalMutation({
+export const _relinkTemplateComponents = internalAction({
   args: {
     organizationId: v.id("organizations"),
     oldComponentId: v.string(),
     newComponentId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const templates = await ctx.db
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    const templates = await db
       .query("formTemplates")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", String(args.organizationId))
       .collect();
 
     const oldIdStr = args.oldComponentId;
     const newIdStr = args.newComponentId;
 
     for (const tmpl of templates) {
-      if (!tmpl.contentJson || !tmpl.contentJson.includes(oldIdStr)) continue;
+      if (!tmpl.contentJson || !(tmpl.contentJson as string).includes(oldIdStr)) continue;
 
       try {
-        const doc = JSON.parse(tmpl.contentJson);
+        const doc = JSON.parse(tmpl.contentJson as string);
         let changed = false;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -365,7 +366,7 @@ export const _relinkTemplateComponents = internalMutation({
         walkAndReplace(doc);
 
         if (changed) {
-          await ctx.db.patch(tmpl._id, {
+          await db.patch("formTemplates", String(tmpl._id), {
             contentJson: JSON.stringify(doc),
             updatedAt: Date.now(),
           });

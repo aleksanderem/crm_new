@@ -1,5 +1,13 @@
 import { QueryCtx, MutationCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
+// verifyOrgAccess is intentionally imported from auth.ts (Convex ctx.db path)
+// rather than authAction.ts (Supabase internalAction path). This MUST NOT be
+// changed as part of the Supabase migration. Reason: checkPermission and
+// getEffectivePermissions below accept QueryCtx | MutationCtx so they can be
+// called from both queries and mutations. Convex queries cannot invoke
+// internalActions, making the authAction.ts version unusable in this context.
+// teamMemberships is dual-written to Convex (TABLE_MAP primary → Supabase,
+// mirror → Convex ctx.db), so ctx.db reads here remain correct. (#3893, #3896)
 import { verifyOrgAccess } from "./auth";
 import { OrgRole } from "../schema";
 import {

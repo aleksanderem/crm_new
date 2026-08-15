@@ -290,7 +290,7 @@ export function SellTreatmentPanel({
         onOpenChange(o);
         if (!o) reset();
       }}
-      title={t("sidebar.gabinet.sellProduct", "Sprzedaj produkt")}
+      title={t("sidebar.gabinet.sellTreatment", "Sprzedaj usługę")}
     >
       <div className="space-y-4">
         <div className="space-y-1.5">

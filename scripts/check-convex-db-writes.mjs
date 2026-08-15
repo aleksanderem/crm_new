@@ -96,6 +96,13 @@ const WHITELIST_PATHS = new Set([
   // read them. QueryCtx cannot make HTTP calls, so this dual-write is a
   // permanent architectural necessity. See convex/permissions.ts for rationale.
   "permissions",
+
+  // organizations — dual-writes organizations and teamMemberships to ctx.db so
+  // that verifyOrgAccess / requireOrgAdmin in _helpers/auth.ts (QueryCtx |
+  // MutationCtx) can read them. QueryCtx cannot make HTTP calls, so these
+  // Convex writes are a permanent architectural necessity alongside the
+  // Supabase writes already present in every calling action. See issue #4952.
+  "organizations",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -125,10 +132,6 @@ const INSERT_PENDING = new Set([
   // invitations.ts — ctx.db.insert("invitations", ...) and
   // ("teamMemberships", ...) during invitation acceptance.
   "invitations",
-
-  // organizations.ts — ctx.db.insert("organizations", ...),
-  // ("teamMemberships", ...), and ("productSubscriptions", ...).
-  "organizations",
 
   // stripe.ts — ctx.db.insert("productSubscriptions", ...) during Stripe
   // webhook handling; should use createSupabaseDb().insert().
@@ -185,10 +188,6 @@ const PATCH_DELETE_PENDING = new Set([
   // invitations.ts — ctx.db.patch(args.invitationId, ...) and
   // patch(user._id, ...) where types are invitations and users.
   "invitations",
-
-  // organizations.ts — ctx.db.patch(organizationId, ...) and
-  // patch(args.membershipId, ...) on TABLE_MAP tables.
-  "organizations",
 ]);
 
 // ---------------------------------------------------------------------------

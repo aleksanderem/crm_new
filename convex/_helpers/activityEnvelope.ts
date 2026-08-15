@@ -9,7 +9,7 @@ export type ActivityEnvelopeTarget = {
 
 export type ActivityEnvelopeActor = {
   type: string;
-  userId?: Id<"users">;
+  userId?: string;
   label?: string;
 };
 
@@ -122,7 +122,7 @@ export function createActivityEnvelope(args: BuildActivityEnvelopeArgs): Activit
 export async function publishActivityEnvelope(args: {
     organizationId: Id<"organizations">;
     action: ActivityAction;
-    performedBy: Id<"users">;
+    performedBy: string;
     module: string;
     summary: string;
     occurredAt: number;
@@ -154,7 +154,7 @@ export async function publishActivityEnvelope(args: {
       action: args.action,
       description: envelope.summary,
       metadata,
-      performedBy: args.performedBy as string,
+      performedBy: args.performedBy,
       createdAt: args.occurredAt,
     });
   }

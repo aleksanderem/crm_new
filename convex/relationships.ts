@@ -3,7 +3,6 @@ import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { logActivity } from "./_helpers/activities";
-import { Id } from "./_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for relationship writes
 
@@ -179,7 +178,7 @@ export const _createSideEffects = internalMutation({
       action: "relationship_added",
       description: `Added relationship to ${args.targetType} entity`,
       metadata: { targetType: args.targetType, targetId: args.targetId },
-      performedBy: args.createdBy as Id<"users">,
+      performedBy: args.createdBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -242,7 +241,7 @@ export const _removeSideEffects = internalMutation({
       action: "relationship_removed",
       description: `Removed relationship to ${args.targetType} entity`,
       metadata: { targetType: args.targetType, targetId: args.targetId },
-      performedBy: args.deletedBy as Id<"users">,
+      performedBy: args.deletedBy,
       actorLabel: args.actorLabel,
     });
   },

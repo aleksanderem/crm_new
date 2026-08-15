@@ -984,7 +984,7 @@ export function createGabinetTables({
 
   gabinetRooms: defineTable({
     organizationId: v.string(),
-    locationId: v.id("gabinetLocations"),
+    locationId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     floor: v.optional(v.string()),
@@ -999,7 +999,7 @@ export function createGabinetTables({
     name: v.string(),
     description: v.optional(v.string()),
     serialNumber: v.optional(v.string()),
-    currentLocationId: v.optional(v.id("gabinetLocations")),
+    currentLocationId: v.optional(v.string()),
     currentRoomId: v.optional(v.id("gabinetRooms")),
     status: v.union(
       v.literal("available"),
@@ -1022,8 +1022,8 @@ export function createGabinetTables({
   gabinetEquipmentTransfers: defineTable({
     organizationId: v.string(),
     equipmentId: v.id("gabinetEquipment"),
-    fromLocationId: v.optional(v.id("gabinetLocations")),
-    toLocationId: v.id("gabinetLocations"),
+    fromLocationId: v.optional(v.string()),
+    toLocationId: v.string(),
     toRoomId: v.optional(v.id("gabinetRooms")),
     transferredBy: v.id("users"),
     transferredAt: v.number(),

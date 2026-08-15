@@ -68,12 +68,15 @@ export const list = query({
   },
 });
 
-export const getById = query({
-  args: { id: v.id("documentInstances") },
+export const getById = action({
+  args: { id: v.string() },
   handler: async (ctx, args) => {
-    const instance = await ctx.db.get(args.id);
+    const db = createSupabaseDb();
+    const instance = await db.get("documentInstances", args.id);
     if (!instance) return null;
-    await verifyOrgAccess(ctx, instance.organizationId);
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: instance.organizationId as string,
+    });
     return instance;
   },
 });

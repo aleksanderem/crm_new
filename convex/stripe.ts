@@ -61,7 +61,26 @@ export const PREAUTH_updateCustomerId = internalMutation({
     customerId: v.string(),
   },
   handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
     await ctx.db.patch(args.userId, { customerId: args.customerId });
+    if (user) {
+      await ctx.scheduler.runAfter(0, internal.supabase.users.writeUserToSupabase, {
+        userId: String(args.userId),
+        email: user.email,
+        name: user.name,
+        username: user.username,
+        image: user.image,
+        imageStorageId: user.imageId ? String(user.imageId) : undefined,
+        phone: user.phone,
+        isAnonymous: user.isAnonymous,
+        customerId: args.customerId,
+        language: user.language,
+        theme: user.theme,
+        timezone: user.timezone,
+        createdAt: Math.floor(user._creationTime),
+        updatedAt: Date.now(),
+      });
+    }
   },
 });
 

@@ -95,7 +95,7 @@ export const insertOutboundGmail = internalAction({
     contactId: v.optional(v.string()),
     companyId: v.optional(v.string()),
     leadId: v.optional(v.string()),
-    sentBy: v.id("users"),
+    sentBy: v.string(),
   },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();

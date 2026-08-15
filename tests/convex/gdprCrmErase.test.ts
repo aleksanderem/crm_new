@@ -65,16 +65,16 @@ describe("contacts.gdprErase — CRM GDPR erasure", () => {
     const { organizationId, userId, identity } = await seedTestUser(t);
     const contactId = await seedContact(t, String(organizationId), String(userId));
 
-    await t.run(async (ctx) => {
-      await ctx.db.insert("activities", {
-        organizationId,
-        entityType: "contact",
-        entityId: contactId,
-        action: "created",
-        description: "Utworzono kontakt Jan Kowalski",
-        performedBy: userId,
-        createdAt: Date.now(),
-      });
+    const db = createSupabaseDb();
+    await db.insert("activities", {
+      _id: `activity-contact-${Date.now()}`,
+      organizationId: String(organizationId),
+      entityType: "contact",
+      entityId: contactId,
+      action: "created",
+      description: "Utworzono kontakt Jan Kowalski",
+      performedBy: String(userId),
+      createdAt: Date.now(),
     });
 
     await t.withIdentity(identity).action(api.crm.contacts.gdprErase, {
@@ -82,14 +82,11 @@ describe("contacts.gdprErase — CRM GDPR erasure", () => {
       contactId,
     });
 
-    const activities = await t.run(async (ctx) =>
-      ctx.db
-        .query("activities")
-        .withIndex("by_entity", (q) =>
-          q.eq("entityType", "contact").eq("entityId", contactId)
-        )
-        .collect()
-    );
+    const activities = await createSupabaseDb()
+      .query("activities")
+      .eq("entityType", "contact")
+      .eq("entityId", contactId)
+      .collect();
 
     for (const activity of activities) {
       expect(activity.description).not.toContain("Kowalski");
@@ -104,16 +101,16 @@ describe("contacts.gdprErase — CRM GDPR erasure", () => {
     const contactId = await seedContact(t, String(organizationId), String(userId));
     const now = Date.now();
 
-    await t.run(async (ctx) => {
-      await ctx.db.insert("notes", {
-        organizationId,
-        entityType: "contact",
-        entityId: contactId,
-        content: "Jan Kowalski prosił o ofertę na Q4.",
-        createdBy: userId,
-        createdAt: now,
-        updatedAt: now,
-      });
+    const db = createSupabaseDb();
+    await db.insert("notes", {
+      _id: `note-contact-${now}`,
+      organizationId: String(organizationId),
+      entityType: "contact",
+      entityId: contactId,
+      content: "Jan Kowalski prosił o ofertę na Q4.",
+      createdBy: String(userId),
+      createdAt: now,
+      updatedAt: now,
     });
 
     await t.withIdentity(identity).action(api.crm.contacts.gdprErase, {
@@ -121,14 +118,11 @@ describe("contacts.gdprErase — CRM GDPR erasure", () => {
       contactId,
     });
 
-    const notes = await t.run(async (ctx) =>
-      ctx.db
-        .query("notes")
-        .withIndex("by_entity", (q) =>
-          q.eq("entityType", "contact").eq("entityId", contactId)
-        )
-        .collect()
-    );
+    const notes = await createSupabaseDb()
+      .query("notes")
+      .eq("entityType", "contact")
+      .eq("entityId", contactId)
+      .collect();
 
     expect(notes).toHaveLength(1);
     expect(notes[0].content).toBe("[RODO: dane usunięte]");
@@ -144,12 +138,10 @@ describe("contacts.gdprErase — CRM GDPR erasure", () => {
       contactId,
     });
 
-    const auditEntries = await t.run(async (ctx) =>
-      ctx.db
-        .query("auditLog")
-        .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
-        .collect()
-    );
+    const auditEntries = await createSupabaseDb()
+      .query("auditLog")
+      .eq("organizationId", String(organizationId))
+      .collect();
 
     const erasureEntry = auditEntries.find(
       (e) => e.action === "gdpr_contact_erased"

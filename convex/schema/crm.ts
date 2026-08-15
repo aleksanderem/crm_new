@@ -351,7 +351,7 @@ export function createCrmTables({
   productStockLevels: defineTable({
     organizationId: v.string(),
     productId: v.id("products"),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
     quantity: v.number(),
     avgCost: v.optional(v.number()),
     updatedAt: v.number(),
@@ -368,7 +368,7 @@ export function createCrmTables({
   productStockMovements: defineTable({
     organizationId: v.string(),
     productId: v.id("products"),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
     delta: v.number(),
     balanceAfter: v.optional(v.number()),
     reason: v.union(
@@ -410,7 +410,7 @@ export function createCrmTables({
     supplierName: v.optional(v.string()),
     invoiceNumber: v.optional(v.string()),
     deliveryDate: v.optional(v.string()),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
     notes: v.optional(v.string()),
     status: v.union(v.literal("draft"), v.literal("posted")),
     // Denormalized SUM(quantity × unit_price) across all items (#2968).

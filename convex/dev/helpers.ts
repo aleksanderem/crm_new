@@ -1,13 +1,14 @@
-import { query, action } from "../_generated/server";
+import { action } from "../_generated/server";
 import { v } from "convex/values";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 /** Get first org + user IDs for dev/seed scripts */
-export const getDevIds = query({
+export const getDevIds = action({
   args: {},
-  handler: async (ctx) => {
-    const org = await ctx.db.query("organizations").first();
-    const user = await ctx.db.query("users").first();
+  handler: async (_ctx) => {
+    const db = createSupabaseDb();
+    const org = await db.query("organizations").first();
+    const user = await db.query("users").first();
     return {
       organizationId: org?._id ?? null,
       userId: user?._id ?? null,

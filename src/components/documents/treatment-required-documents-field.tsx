@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { TFunction } from "i18next";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
@@ -157,7 +158,7 @@ export function TreatmentRequiredDocumentsField({
                       onTimingChange={(newTiming) =>
                         handleTimingChange(req.templateId, newTiming)
                       }
-                      t={t as (key: string, fallback?: string) => string}
+                      t={t}
                     />
                     <Button
                       type="button"
@@ -350,7 +351,7 @@ const TIMING_STYLES: Record<RequiredFormTemplateTiming, string> = {
 
 function timingLabel(
   timing: RequiredFormTemplateTiming,
-  t: (key: string, fallback?: string) => string,
+  t: TFunction,
 ): string {
   switch (timing) {
     case "before_start":
@@ -369,7 +370,7 @@ function TimingBadge({
 }: {
   timing: RequiredFormTemplateTiming;
   onTimingChange: (newTiming: RequiredFormTemplateTiming) => void;
-  t: (key: string, fallback?: string) => string;
+  t: TFunction;
 }) {
   const nextTiming = (current: RequiredFormTemplateTiming) => {
     const idx = TIMING_ORDER.indexOf(current);

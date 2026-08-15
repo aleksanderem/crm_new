@@ -1,5 +1,4 @@
 import { QueryCtx, MutationCtx } from "../_generated/server";
-import { Id } from "../_generated/dataModel";
 // verifyOrgAccess is intentionally imported from auth.ts (Convex ctx.db path)
 // rather than authAction.ts (Supabase internalAction path). This MUST NOT be
 // changed as part of the Supabase migration. Reason: checkPermission and
@@ -211,7 +210,7 @@ DEFAULT_PERMISSIONS.viewer.categoryDefinitions = {
 // architecture for the query read path. See #3893 and #3896.
 export async function checkPermission(
   ctx: QueryCtx | MutationCtx,
-  orgId: Id<"organizations">,
+  orgId: string,
   feature: Feature,
   action: Action,
   locationId?: string,
@@ -309,7 +308,7 @@ export async function checkPermission(
 // for query callers. (#3893 / #3896)
 export async function getEffectivePermissions(
   ctx: QueryCtx | MutationCtx,
-  orgId: Id<"organizations">,
+  orgId: string,
   locationId?: string,
 ): Promise<FeaturePermissions> {
   const { membership, user } = await verifyOrgAccess(ctx, orgId);

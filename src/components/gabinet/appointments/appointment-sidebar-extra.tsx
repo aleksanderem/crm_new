@@ -280,7 +280,7 @@ export function AppointmentSidebarExtra({
           )}
         </div>
         <TagsPicker
-          tags={tagDefinitions}
+          tags={(tagDefinitions ?? []).map((tag) => ({ ...tag, color: tag.color ?? "" }))}
           selectedIds={tagIds}
           onChange={canEdit ? onTagsChange : () => {}}
         />

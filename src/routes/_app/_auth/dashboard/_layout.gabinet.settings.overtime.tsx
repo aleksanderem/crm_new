@@ -227,7 +227,7 @@ function OvertimePage() {
                             {(employees ?? []).map((emp) => {
                               const member = teamMembers?.find((m: any) => m.userId === emp.userId);
                               return (
-                                <SelectItem key={emp._id} value={emp.userId}>
+                                <SelectItem key={emp._id} value={emp.userId ?? ""}>
                                   {member?.user?.name ?? emp.userId} — {t(`gabinet.employees.roles.${emp.role}`)}
                                 </SelectItem>
                               );

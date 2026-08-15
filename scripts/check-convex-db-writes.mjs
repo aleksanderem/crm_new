@@ -151,11 +151,6 @@ const WHITELIST_PATHS = new Set([
 // Tracked: issue #4943.
 // ---------------------------------------------------------------------------
 const INSERT_PENDING = new Set([
-  // documents/components.ts — ctx.db.insert("documentComponents", ...) in
-  // seedSystemComponents (internalMutation). Needs Supabase mirror or migration
-  // to an action that uses createSupabaseDb().insert().
-  "documents/components",
-
   // gabinet/appointments.ts — ctx.db.insert("appointmentReminders", ...).
   // The Convex ID returned by insert is passed to ctx.scheduler.runAfter so the
   // scheduler function can look it up via ctx.db.get. Evaluate whether to migrate

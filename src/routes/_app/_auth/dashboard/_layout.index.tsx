@@ -392,7 +392,7 @@ function DashboardIndex() {
             title={t("dashboard.wonRevenue")}
             description="Total won"
             value={fmtCurrency(stats?.wonValue ?? 0)}
-            changePercentage={`${stats?.wonLeads ?? 0} ${t("dashboard.wonDeals").toLowerCase()}`}
+            changePercentage={`${stats?.wonLeads ?? 0} ${(t("dashboard.wonDeals") as string).toLowerCase()}`}
             blurred
           />
           <StatisticsImpressionCard

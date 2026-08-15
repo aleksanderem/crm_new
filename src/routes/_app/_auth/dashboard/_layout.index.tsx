@@ -214,7 +214,7 @@ function DashboardIndex() {
       },
       {
         icons: <CreditCardIcon className="text-chart-1 size-6 stroke-[1.5]" />,
-        title: t("dashboard.wonRevenue"),
+        title: t("dashboard.wonRevenue") as string,
         amount: fmtCurrency(stats?.wonValue ?? 0),
         change: fmtCurrency(stats?.wonValue ?? 0),
       },
@@ -239,7 +239,7 @@ function DashboardIndex() {
     () => [
       {
         icon: <Trophy className="size-5" />,
-        title: t("dashboard.wonDeals"),
+        title: t("dashboard.wonDeals") as string,
         department: "Total closed",
         value: wonCount.toLocaleString(),
         trend: "up",
@@ -255,7 +255,7 @@ function DashboardIndex() {
       },
       {
         icon: <CheckCircle className="size-5" />,
-        title: t("dashboard.wonRevenue"),
+        title: t("dashboard.wonRevenue") as string,
         department: "Total value",
         value: fmtCurrency(wonRevenue),
         trend: wonRevenue > 0 ? "up" : "down",
@@ -291,7 +291,7 @@ function DashboardIndex() {
   const conversionData = useMemo(
     () => [
       {
-        title: t("dashboard.wonDeals"),
+        title: t("dashboard.wonDeals") as string,
         stat: `${stats?.wonLeads ?? 0} deals closed successfully`,
         trend: "up",
         percentageChange:
@@ -317,7 +317,7 @@ function DashboardIndex() {
     () =>
       buildDonutProps(
         contactsSourceData ?? [],
-        t("dashboard.contactsBySource"),
+        t("dashboard.contactsBySource") as string,
         "total contacts",
         "Total contacts"
       ),
@@ -329,7 +329,7 @@ function DashboardIndex() {
     () =>
       buildDonutProps(
         callOutcomesData ?? [],
-        t("dashboard.callOutcomes"),
+        t("dashboard.callOutcomes") as string,
         "total calls",
         "Total calls"
       ),
@@ -339,8 +339,8 @@ function DashboardIndex() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={t("dashboard.title")}
-        description={t("dashboard.subtitle")}
+        title={t("dashboard.title") as string}
+        description={t("dashboard.subtitle") as string}
       />
 
       {/* Mobile-only toggle: collapse KPI cards by default on small screens */}
@@ -352,7 +352,7 @@ function DashboardIndex() {
         aria-expanded={showStatsMobile}
         className="md:hidden w-full justify-between"
       >
-        {showStatsMobile ? t("common.hideStats") : t("common.showStats")}
+        {showStatsMobile ? (t("common.hideStats") as string) : (t("common.showStats") as string)}
         {showStatsMobile ? (
           <ChevronUp className="size-4" />
         ) : (
@@ -374,14 +374,14 @@ function DashboardIndex() {
           className={`${showStatsMobile ? "grid" : "hidden md:grid"} gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5`}
         >
           <StatisticsOrderCard
-            title={t("dashboard.totalContacts")}
+            title={t("dashboard.totalContacts") as string}
             description="Total"
             value={fmtNumber(stats?.totalContacts ?? 0)}
             changePercentage={`${stats?.totalContacts ?? 0}`}
             blurred
           />
           <StatisticsSalesGrowthCard
-            title={t("dashboard.pipelineValue")}
+            title={t("dashboard.pipelineValue") as string}
             description="Total pipeline"
             value={fmtCurrency(stats?.pipelineValue ?? 0)}
             changePercentage={fmtCurrency(stats?.pipelineValue ?? 0)}
@@ -389,14 +389,14 @@ function DashboardIndex() {
             blurred
           />
           <StatisticsProfitCard
-            title={t("dashboard.wonRevenue")}
+            title={t("dashboard.wonRevenue") as string}
             description="Total won"
             value={fmtCurrency(stats?.wonValue ?? 0)}
             changePercentage={`${stats?.wonLeads ?? 0} ${(t("dashboard.wonDeals") as string).toLowerCase()}`}
             blurred
           />
           <StatisticsImpressionCard
-            title={t("dashboard.openDeals")}
+            title={t("dashboard.openDeals") as string}
             description="Active"
             value={fmtNumber(stats?.openLeads ?? 0)}
             changePercentage={`${stats?.openLeads ?? 0} open`}
@@ -404,7 +404,7 @@ function DashboardIndex() {
           />
           <StatisticsUserReachCard
             title="Win Rate"
-            description={t("dashboard.winRate", { rate: Math.round((stats?.winRate ?? 0) * 100) })}
+            description={t("dashboard.winRate", { rate: Math.round((stats?.winRate ?? 0) * 100) }) as string}
             value={`${Math.round((stats?.winRate ?? 0) * 100)}%`}
             changePercentage={`${Math.round((stats?.winRate ?? 0) * 100)}%`}
             centerValue={Math.round((stats?.winRate ?? 0) * 100)}
@@ -416,7 +416,7 @@ function DashboardIndex() {
 
       {/* Revenue Overview – TotalIncomeCard 1:1 */}
       <TotalIncomeCard
-        title={t("dashboard.revenueByMonth")}
+        title={t("dashboard.revenueByMonth") as string}
         subtitle="Revenue overview"
         reportTitle="Summary"
         reportSubtitle="Key metrics"
@@ -434,7 +434,7 @@ function DashboardIndex() {
       {/* Won Deals + Win Rate */}
       <div className="grid gap-6 md:grid-cols-2">
         <EarningReportCard
-          title={t("dashboard.wonDealsByDay")}
+          title={t("dashboard.wonDealsByDay") as string}
           subTitle="Deals overview"
           statData={dealsStatData}
           chartData={dealsChartData.length >= 5 ? dealsChartData : undefined}

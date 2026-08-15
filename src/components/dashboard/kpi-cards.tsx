@@ -29,12 +29,14 @@ export function KpiCards({
         value: totalContacts.toLocaleString(),
         icon: Users,
         href: "/dashboard/contacts" as const,
+        subtitle: undefined as string | undefined,
       },
       {
         title: t("dashboard.companies"),
         value: totalCompanies.toLocaleString(),
         icon: Building2,
         href: "/dashboard/companies" as const,
+        subtitle: undefined as string | undefined,
       },
       {
         title: t("dashboard.openDeals"),
@@ -48,6 +50,7 @@ export function KpiCards({
         value: formatCurrencyPLN(pipelineValue, "PLN", { fractionDigits: 0 }),
         icon: DollarSign,
         href: "/dashboard/pipelines" as const,
+        subtitle: undefined as string | undefined,
       },
     ],
     [t, totalContacts, totalCompanies, openDeals, pipelineValue, winRate]

@@ -1,4 +1,4 @@
-type TFn = (key: string, opts?: Record<string, unknown> | string) => string;
+type TFn = (key: string, opts?: Record<string, unknown>) => string;
 
 // Snake_case Postgres column name → Polish form label. Used to turn raw
 // backend errors like `null value in column "duration"` into something the

@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import type { TFunction } from "i18next";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { toast } from "sonner";
@@ -236,7 +237,7 @@ export function AppointmentDocumentChecklist({
             documents={beforeDocs}
             organizationId={organizationId}
             onDocumentClick={handleDocClick}
-            t={t as (key: string, fallback?: string) => string}
+            t={t}
           />
         )}
 
@@ -247,7 +248,7 @@ export function AppointmentDocumentChecklist({
             documents={duringDocs}
             organizationId={organizationId}
             onDocumentClick={handleDocClick}
-            t={t as (key: string, fallback?: string) => string}
+            t={t}
           />
         )}
 
@@ -258,7 +259,7 @@ export function AppointmentDocumentChecklist({
             documents={afterDocs}
             organizationId={organizationId}
             onDocumentClick={handleDocClick}
-            t={t as (key: string, fallback?: string) => string}
+            t={t}
           />
         )}
 
@@ -269,7 +270,7 @@ export function AppointmentDocumentChecklist({
             documents={untimed}
             organizationId={organizationId}
             onDocumentClick={handleDocClick}
-            t={t as (key: string, fallback?: string) => string}
+            t={t}
           />
         )}
 
@@ -408,7 +409,7 @@ function DocumentSection({
   documents: FormDocument[];
   organizationId: Id<"organizations">;
   onDocumentClick: (docId: string) => void;
-  t: (key: string, fallback?: string) => string;
+  t: TFunction;
 }) {
   const resendSigningEmail = useAction(api.documents.documents.resendSigningEmail);
   const [resendingDocId, setResendingDocId] = useState<string | null>(null);

@@ -58,6 +58,24 @@ export const create = action({
       console.error("[organizations.create] Supabase teamMembership write failed:", e);
     }
 
+    // Write productSubscription directly to Supabase — avoids scheduler race
+    // where the UI can read Supabase before the fire-and-forget runAfter(0) fires.
+    try {
+      await ctx.runAction(internal.supabase.organizations.writeProductSubscriptionToSupabase, {
+        subscriptionId: result.subscriptionId,
+        organizationId: result.orgId,
+        productId: "crm",
+        status: "active",
+        cancelAtPeriodEnd: false,
+        source: "manual",
+        grantedByUserId: result.ownerUserId,
+        createdAt: result.subscriptionCreatedAt,
+        updatedAt: result.subscriptionCreatedAt,
+      });
+    } catch (e) {
+      console.error("[organizations.create] Supabase productSubscription write failed:", e);
+    }
+
     return result.orgId;
   },
 });
@@ -120,22 +138,6 @@ export const _createOrgInternal = internalMutation({
       updatedAt: now,
     });
 
-    await ctx.scheduler.runAfter(
-      0,
-      internal.supabase.organizations.writeProductSubscriptionToSupabase,
-      {
-        subscriptionId: String(subscriptionId),
-        organizationId: String(orgId),
-        productId: "crm",
-        status: "active",
-        cancelAtPeriodEnd: false,
-        source: "manual",
-        grantedByUserId: String(user._id),
-        createdAt: now,
-        updatedAt: now,
-      },
-    );
-
     // Seed default reference data
     await ctx.scheduler.runAfter(
       0,
@@ -148,6 +150,8 @@ export const _createOrgInternal = internalMutation({
       ownerMembershipId: String(ownerMembershipId),
       ownerUserId: String(user._id),
       ownerJoinedAt: now,
+      subscriptionId: String(subscriptionId),
+      subscriptionCreatedAt: now,
     };
   },
 });

@@ -111,7 +111,7 @@ export const _createOrgInternal = internalMutation({
     // verifyProductAccess read productSubscriptions; without this a new org
     // would have no modules once enforcement is on. Direct insert (create path,
     // no pre-existing row); mirrors _upsertEntitlement's shape.
-    await ctx.db.insert("productSubscriptions", {
+    const subscriptionId = await ctx.db.insert("productSubscriptions", {
       organizationId: orgId,
       productId: "crm",
       status: "active",
@@ -121,6 +121,22 @@ export const _createOrgInternal = internalMutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    await ctx.scheduler.runAfter(
+      0,
+      internal.supabase.organizations.writeProductSubscriptionToSupabase,
+      {
+        subscriptionId: String(subscriptionId),
+        organizationId: String(orgId),
+        productId: "crm",
+        status: "active",
+        cancelAtPeriodEnd: false,
+        source: "manual",
+        grantedByUserId: String(user._id),
+        createdAt: now,
+        updatedAt: now,
+      },
+    );
 
     // Seed default reference data
     await ctx.scheduler.runAfter(

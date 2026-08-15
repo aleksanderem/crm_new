@@ -1067,7 +1067,13 @@ function ProductsPage() {
     d.add("salePriceNet");
     return d;
   }, [autoDefaultHidden]);
-  const { hiddenColumnIds, toggleColumn, setHiddenColumns: _setHiddenColumns } = useColumnVisibility(defaultHidden, "products");
+  const { hiddenColumnIds: rawHiddenColumnIds, toggleColumn, setHiddenColumns: _setHiddenColumns } = useColumnVisibility(defaultHidden, "products");
+  const hiddenColumnIds = useMemo(() => {
+    if (!rawHiddenColumnIds.has("name")) return rawHiddenColumnIds;
+    const next = new Set(rawHiddenColumnIds);
+    next.delete("name");
+    return next;
+  }, [rawHiddenColumnIds]);
 
   const rowActions = (row: Product) => {
     const actions = [];
@@ -1409,15 +1415,21 @@ function ProductsPage() {
               </p>
               {sectionCols.map((col) => {
                 const isVisible = !hiddenColumnIds.has(col.id);
+                const isLocked = col.id === "name";
                 return (
                   <button
                     key={col.id}
                     type="button"
-                    className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left hover:bg-muted/50 transition-colors"
-                    onClick={() => toggleColumn(col.id)}
+                    disabled={isLocked}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors",
+                      isLocked ? "cursor-default opacity-60" : "hover:bg-muted/50",
+                    )}
+                    onClick={() => !isLocked && toggleColumn(col.id)}
                   >
                     <Checkbox
                       checked={isVisible}
+                      disabled={isLocked}
                       className="pointer-events-none"
                       aria-hidden
                     />

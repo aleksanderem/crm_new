@@ -196,7 +196,7 @@ export function createGabinetTables({
     isOpen: v.boolean(),
     breakStart: v.optional(v.string()),
     breakEnd: v.optional(v.string()),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -216,7 +216,7 @@ export function createGabinetTables({
     breakEnd: v.optional(v.string()),
     effectiveFrom: v.optional(v.string()),
     effectiveTo: v.optional(v.string()),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -367,7 +367,7 @@ export function createGabinetTables({
   gabinetEmployeeLocations: defineTable({
     organizationId: v.string(),
     employeeId: v.id("gabinetEmployees"),
-    locationId: v.id("gabinetLocations"),
+    locationId: v.string(),
     isPrimary: v.boolean(),
     role: v.optional(gabinetEmployeeRoleValidator),
     createdAt: v.number(),
@@ -494,7 +494,7 @@ export function createGabinetTables({
     cancellationReason: v.optional(v.string()),
     bookedFromPortal: v.optional(v.boolean()),
     bookedByPatientId: v.optional(v.id("gabinetPatients")),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
     roomId: v.optional(v.id("gabinetRooms")),
     tagIds: v.optional(v.array(v.id("tagDefinitions"))),
     categoryId: v.optional(v.id("categoryDefinitions")),
@@ -1040,7 +1040,7 @@ export function createGabinetTables({
     paymentId: v.string(),
     appointmentId: v.optional(v.string()),
     patientId: v.optional(v.string()),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
     receiptNumber: v.string(), // e.g. 2026/001/LOC
     issuedAt: v.number(),
     // Receipt lifecycle: issued (default) | void
@@ -1080,7 +1080,7 @@ export function createGabinetTables({
   // OCC) so no two receipts can get the same number within an org+location+year.
   gabinetReceiptSequences: defineTable({
     organizationId: v.string(),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
     year: v.number(),
     lastNumber: v.number(),
     updatedAt: v.number(),
@@ -1094,7 +1094,7 @@ export function createGabinetTables({
   // end-of-day close.
   gabinetCashTransactions: defineTable({
     organizationId: v.string(),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
     date: v.string(), // YYYY-MM-DD
     type: v.union(v.literal("deposit"), v.literal("withdrawal")),
     amount: v.float64(),
@@ -1111,7 +1111,7 @@ export function createGabinetTables({
   // date). Immutable once created — corrections must open the next day.
   gabinetDayCloses: defineTable({
     organizationId: v.string(),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
     date: v.string(), // YYYY-MM-DD
     paymentSummary: v.string(), // JSON: { method: totalAmount }
     totalCollected: v.float64(),

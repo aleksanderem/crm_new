@@ -737,8 +737,9 @@ export const _recordAutomationEmailResult = internalMutation({
       return;
     }
 
-    const emailId = await ctx.db.insert("emails", {
-      organizationId: args.organizationId,
+    const db = createSupabaseDb();
+    const emailId = await db.insert("emails", {
+      organizationId: String(args.organizationId),
       threadId: `<${crypto.randomUUID()}@crm.app>`,
       messageId: `<${crypto.randomUUID()}@crm.app>`,
       direction: "outbound",
@@ -750,7 +751,7 @@ export const _recordAutomationEmailResult = internalMutation({
       snippet: args.bodyText.slice(0, 200),
       isRead: true,
       isStarred: false,
-      sentBy: args.sentBy,
+      sentBy: args.sentBy ? String(args.sentBy) : null,
       sentAt: now,
       createdAt: now,
       updatedAt: now,

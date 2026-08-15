@@ -23,6 +23,7 @@ const REASON_VALIDATOR = v.union(
   v.literal("inventory_adjustment"),
   v.literal("appointment_use"),
   v.literal("appointment_return"),
+  v.literal("direct_sale"),
   v.literal("deal_close"),
   v.literal("deal_reopen"),
   v.literal("transfer_in"),

@@ -114,19 +114,15 @@ describe("email activities", () => {
       snippet: "Could you clarify my invoice?",
     });
 
-    const [email, rows] = await Promise.all([
-      t.run(async (ctx) =>
-        ctx.db
-          .query("emails")
-          .withIndex("by_messageId", (q) => q.eq("messageId", messageId))
-          .unique(),
-      ),
+    const [emailRow, rows] = await Promise.all([
+      createSupabaseDb().query("emails").eq("messageId", messageId).first() as Promise<(Record<string, unknown> & { _id: string }) | null>,
       listActivitiesForOrg(organizationId),
     ]);
 
-    expect(email).toBeTruthy();
+    expect(emailRow).toBeTruthy();
     expect(rows).toHaveLength(1);
 
+    const email = emailRow;
     const [row] = rows;
     expect(row.action).toBe("email_received");
     expect(row.entityType).toBe("email");
@@ -171,6 +167,9 @@ describe("email activities", () => {
     await t.run(async (ctx) => {
       await ctx.db.delete(organizationId);
     });
+    // insertInbound reads the org via createSupabaseDb() — delete from
+    // the Supabase mock too so the "organization missing" branch is exercised.
+    await createSupabaseDb().delete("organizations", String(organizationId));
 
     await t.action(internal.crm.emails_internal.insertInbound, {
       organizationId,
@@ -184,17 +183,12 @@ describe("email activities", () => {
     });
 
     const [email, rows] = await Promise.all([
-      t.run(async (ctx) =>
-        ctx.db
-          .query("emails")
-          .withIndex("by_messageId", (q) => q.eq("messageId", messageId))
-          .unique(),
-      ),
+      createSupabaseDb().query("emails").eq("messageId", messageId).first() as Promise<(Record<string, unknown> & { organizationId?: unknown }) | null>,
       listActivitiesForOrg(organizationId),
     ]);
 
     expect(email).toBeTruthy();
-    expect(email?.organizationId).toBe(organizationId);
+    expect(String(email?.organizationId ?? "")).toBe(String(organizationId));
     expect(rows).toHaveLength(0);
   });
 });

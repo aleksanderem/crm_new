@@ -164,22 +164,22 @@ async function createLead(
 }
 
 async function seedSmsConfig(
-  t: ReturnType<typeof import("convex-test").convexTest>,
+  _t: ReturnType<typeof import("convex-test").convexTest>,
   organizationId: any,
 ) {
   const fromNumber = "+48111222333";
 
-  await t.run(async (ctx) => {
-    await ctx.db.insert("orgSmsConfig", {
-      organizationId,
-      provider: "twilio",
-      apiToken: "test-account-sid",
-      apiSecret: "test-auth-token",
-      fromNumber,
-      isActive: true,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
+  // queueConfirmationRequest reads orgSmsConfig via createSupabaseDb()
+  await createSupabaseDb().insert("orgSmsConfig", {
+    _id: `sms-config-${String(organizationId)}`,
+    organizationId: String(organizationId),
+    provider: "twilio",
+    apiToken: "test-account-sid",
+    apiSecret: "test-auth-token",
+    fromNumber,
+    isActive: true,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
   });
 
   return { fromNumber };
@@ -338,6 +338,7 @@ describe("appointment SMS flow", () => {
     const firstResult = await t.mutation(
       internal.gabinet.appointmentSms.processIncomingMessage,
       {
+        organizationId: String(organizationId),
         provider: "twilio",
         to: "+48 111 222 333",
         from: "500 600 700",
@@ -351,6 +352,7 @@ describe("appointment SMS flow", () => {
     const secondResult = await t.mutation(
       internal.gabinet.appointmentSms.processIncomingMessage,
       {
+        organizationId: String(organizationId),
         provider: "twilio",
         to: fromNumber,
         from: "+48 500 600 700",
@@ -450,6 +452,7 @@ describe("appointment SMS flow", () => {
     const result = await t.mutation(
       internal.gabinet.appointmentSms.processIncomingMessage,
       {
+        organizationId: String(organizationId),
         provider: "twilio",
         to: fromNumber,
         from: "500600700",
@@ -462,7 +465,7 @@ describe("appointment SMS flow", () => {
 
     const appointment = await getAppointment(appointmentId);
     const inboundEvent = await (result.eventId ? createSupabaseDb().get("appointmentSmsEvents", result.eventId) : null);
-    const auditEntries = await t.run(async (ctx) => ctx.db.query("auditLog").collect());
+    const auditEntries = await createSupabaseDb().query("auditLog").collect();
     const notifications = await t.run(async (ctx) =>
       ctx.db.query("notifications").collect(),
     );
@@ -528,6 +531,7 @@ describe("appointment SMS flow", () => {
     const result = await t.mutation(
       internal.gabinet.appointmentSms.processIncomingMessage,
       {
+        organizationId: String(organizationId),
         provider: "twilio",
         to: fromNumber,
         from: "500600700",

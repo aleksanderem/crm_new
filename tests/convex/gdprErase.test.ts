@@ -5,6 +5,7 @@ import {
   seedTestUser,
   seedGabinetPrereqs,
 } from "../../convex/_test_helpers";
+import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
 
 afterEach(async () => {
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -170,12 +171,10 @@ describe("gabinet/patients.gdprErase — activity and note anonymization", () =>
       patientId: patientIdStr,
     });
 
-    const auditEntries = await t.run(async (ctx) =>
-      ctx.db
-        .query("auditLog")
-        .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
-        .collect(),
-    );
+    const auditEntries = await createSupabaseDb()
+      .query("auditLog")
+      .eq("organizationId", String(organizationId))
+      .collect();
 
     const erasureEntry = auditEntries.find(
       (e) => e.action === "gdpr_patient_erased",

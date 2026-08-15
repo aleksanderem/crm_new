@@ -63,7 +63,7 @@ const automationEventArgsValidator = {
   entityType: v.optional(v.string()),
   entityId: v.optional(v.string()),
   payload: v.string(),
-  actorUserId: v.optional(v.id("users")),
+  actorUserId: v.optional(v.string()),
   occurredAt: v.optional(v.number()),
   eventIdempotencyKey: v.string(),
   correlationKey: v.optional(v.string()),
@@ -164,7 +164,7 @@ type AutomationUpdateFieldDescriptor = {
     | undefined;
   canEditOwn: (
     entity: Record<string, unknown>,
-    actorUserId: Id<"users"> | undefined,
+    actorUserId: string | undefined,
   ) => boolean;
 };
 
@@ -336,7 +336,7 @@ function resolveAutomationTargetId(
 async function getAutomationEditPermission(
   ctx: ActionCtx,
   organizationId: Id<"organizations">,
-  actorUserId: Id<"users"> | undefined,
+  actorUserId: string | undefined,
   feature: Feature,
   options?: { requireAdmin?: boolean },
 ): Promise<{ allowed: boolean; scope: Scope; reason?: string }> {
@@ -436,7 +436,7 @@ async function getAutomationEditPermission(
 export const _getAutomationPermission = internalAction({
   args: {
     organizationId: v.id("organizations"),
-    actorUserId: v.optional(v.id("users")),
+    actorUserId: v.optional(v.string()),
     feature: v.string(),
     requireAdmin: v.optional(v.boolean()),
   },
@@ -454,7 +454,7 @@ export const _getAutomationPermission = internalAction({
 export const _createNotificationForRun = internalMutation({
   args: {
     organizationId: v.id("organizations"),
-    userId: v.id("users"),
+    userId: v.string(),
     type: v.string(),
     title: v.string(),
     message: v.string(),
@@ -475,7 +475,7 @@ export const _logActivityForRun = internalMutation({
     automationRunId: v.string(),
     automationRuleId: v.string(),
     sourceEventType: v.string(),
-    performedBy: v.id("users"),
+    performedBy: v.string(),
   },
   handler: async (ctx, args) => {
     await logActivity(ctx, {
@@ -808,7 +808,7 @@ export const _applyUpdateFieldAction = internalAction({
     organizationId: v.id("organizations"),
     runId: v.string(),
     stepId: v.string(),
-    actorUserId: v.optional(v.id("users")),
+    actorUserId: v.optional(v.string()),
     targetEntityType: v.union(
       v.literal("gabinetPatient"),
       v.literal("gabinetAppointment"),
@@ -894,7 +894,7 @@ export const _recordUpdateFieldResult = internalMutation({
     organizationId: v.id("organizations"),
     runId: v.optional(v.string()),
     stepId: v.string(),
-    actorUserId: v.optional(v.id("users")),
+    actorUserId: v.optional(v.string()),
     success: v.boolean(),
     errorMessage: v.optional(v.string()),
     targetEntityType: v.optional(v.union(
@@ -1436,7 +1436,7 @@ export const processRun = internalAction({
     eventIdempotencyKey: v.string(),
     correlationKey: v.optional(v.string()),
     payloadSnapshot: v.string(),
-    actorUserId: v.optional(v.id("users")),
+    actorUserId: v.optional(v.string()),
     occurredAt: v.number(),
     createdAt: v.number(),
   },

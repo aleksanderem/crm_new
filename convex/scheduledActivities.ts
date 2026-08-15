@@ -19,7 +19,7 @@ import { activityTypeValidator } from "@cvx/schema";
 
 export const _createSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityId: v.string(),
     activityType: v.string(),
     title: v.string(),
@@ -60,7 +60,7 @@ export const _createSideEffects = internalMutation({
 
 export const _updateSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityId: v.string(),
     activityType: v.string(),
     title: v.string(),
@@ -105,7 +105,7 @@ export const _updateSideEffects = internalMutation({
 
 export const _deleteSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityId: v.string(),
     activityType: v.string(),
     title: v.string(),
@@ -138,7 +138,7 @@ export const _deleteSideEffects = internalMutation({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     title: v.string(),
     activityType: activityTypeValidator,
     dueDate: v.number(),
@@ -216,7 +216,7 @@ export const create = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityId: v.string(),
     title: v.optional(v.string()),
     activityType: v.optional(activityTypeValidator),
@@ -289,7 +289,7 @@ export const update = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -334,7 +334,7 @@ export const remove = action({
 
 export const markComplete = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -385,7 +385,7 @@ export const markComplete = action({
 
 export const markIncomplete = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityId: v.string(),
   },
   handler: async (ctx, args) => {

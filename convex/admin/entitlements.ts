@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery } from "../_generated/server";
+import { action, internalAction, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { logAudit } from "../auditLog";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
@@ -80,17 +80,16 @@ const orgEntitlementRowValidator = v.object({
   gabinet: entStatusValidator,
 });
 
-export const _listEntitlementsInternal = internalQuery({
+export const _listEntitlementsInternal = internalAction({
   args: {},
   returns: v.array(entitlementRowValidator),
-  handler: async (
-    ctx,
-  ): Promise<Array<{ organizationId: string; productId: string; status: string }>> => {
-    const rows = await ctx.db.query("productSubscriptions").collect();
+  handler: async (): Promise<Array<{ organizationId: string; productId: string; status: string }>> => {
+    const db = createSupabaseDb();
+    const rows = await db.query("productSubscriptions").collect();
     return rows.map((r) => ({
       organizationId: String(r.organizationId),
-      productId: r.productId,
-      status: r.status,
+      productId: String(r.productId),
+      status: String(r.status),
     }));
   },
 });

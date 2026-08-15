@@ -856,7 +856,7 @@ export const _markPaidSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetAppointment",
       entityId: (args.appointmentId ?? args.paymentId) as any,

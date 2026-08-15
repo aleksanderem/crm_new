@@ -136,7 +136,7 @@ export const _sideEffects = internalMutation({
     const userId = args.userId as any;
 
     if (args.type === "pipeline_created" && args.pipelineId) {
-      await logActivity(ctx, {
+      await logActivity({
         organizationId: args.organizationId,
         entityType: "pipeline",
         entityId: args.pipelineId as any,
@@ -146,7 +146,7 @@ export const _sideEffects = internalMutation({
         actorLabel: args.actorLabel,
       });
     } else if (args.type === "pipeline_updated" && args.pipelineId) {
-      await logActivity(ctx, {
+      await logActivity({
         organizationId: args.organizationId,
         entityType: "pipeline",
         entityId: args.pipelineId as any,
@@ -168,7 +168,7 @@ export const _sideEffects = internalMutation({
           } catch { /* lead may not exist */ }
         }
       }
-      await logActivity(ctx, {
+      await logActivity({
         organizationId: args.organizationId,
         entityType: "pipeline",
         entityId: args.pipelineId as any,
@@ -178,7 +178,7 @@ export const _sideEffects = internalMutation({
         actorLabel: args.actorLabel,
       });
     } else if (args.type === "stage_added" && args.pipelineId) {
-      await logActivity(ctx, {
+      await logActivity({
         organizationId: args.organizationId,
         entityType: "pipeline",
         entityId: args.pipelineId as any,
@@ -188,7 +188,7 @@ export const _sideEffects = internalMutation({
         actorLabel: args.actorLabel,
       });
     } else if (args.type === "stage_updated" && args.pipelineId) {
-      await logActivity(ctx, {
+      await logActivity({
         organizationId: args.organizationId,
         entityType: "pipeline",
         entityId: args.pipelineId as any,
@@ -217,7 +217,7 @@ export const _sideEffects = internalMutation({
           } catch { /* lead may not exist */ }
         }
       }
-      await logActivity(ctx, {
+      await logActivity({
         organizationId: args.organizationId,
         entityType: "pipeline",
         entityId: args.pipelineId as any,
@@ -227,7 +227,7 @@ export const _sideEffects = internalMutation({
         actorLabel: args.actorLabel,
       });
     } else if (args.type === "stages_reordered" && args.pipelineId) {
-      await logActivity(ctx, {
+      await logActivity({
         organizationId: args.organizationId,
         entityType: "pipeline",
         entityId: args.pipelineId as any,

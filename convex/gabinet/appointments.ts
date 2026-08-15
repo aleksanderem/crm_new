@@ -245,7 +245,7 @@ async function applyAppointmentStatusChange(
     }
   }
 
-  await logActivity(ctx, {
+  await logActivity({
     organizationId: args.organizationId,
     entityType: "gabinetAppointment",
     entityId: args.appointment._id,
@@ -902,7 +902,7 @@ export const _createSideEffects = internalMutation({
     const recurActivityIds = args.recurActivityIds;
 
     // --- 5. Log activity ---
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetAppointment",
       entityId: args.appointmentId,
@@ -2022,7 +2022,7 @@ export const _updateSideEffects = internalMutation({
       description = `Rescheduled appointment from ${args.previousDate} ${prevStart} to ${args.newDate} ${nextStart}`;
     }
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetAppointment",
       entityId: args.appointmentId,
@@ -2860,7 +2860,7 @@ export const _cancelSideEffects = internalMutation({
       { appointmentId: appointmentId },
     );
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetAppointment",
       entityId: args.appointmentId,

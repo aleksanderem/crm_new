@@ -29,7 +29,7 @@ export const _createSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "scheduledActivity",
       entityId: args.activityId as any,
@@ -72,7 +72,7 @@ export const _updateSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "scheduledActivity",
       entityId: args.activityId as any,
@@ -122,7 +122,7 @@ export const _deleteSideEffects = internalMutation({
       });
     }
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "scheduledActivity",
       entityId: args.activityId as any,

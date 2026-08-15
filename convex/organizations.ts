@@ -96,7 +96,7 @@ export const _createOrgInternal = internalMutation({
       joinedAt: now,
     });
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: orgId,
       entityType: "organization",
       entityId: orgId,
@@ -244,7 +244,7 @@ export const _updateOrgInternal = internalMutation({
 
     await ctx.db.patch(organizationId, { ...updates, updatedAt: Date.now() });
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId,
       entityType: "organization",
       entityId: organizationId,
@@ -347,7 +347,7 @@ export const _inviteMemberInternal = internalMutation({
       joinedAt,
     });
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "organization",
       entityId: args.organizationId,
@@ -412,7 +412,7 @@ export const _updateMemberRoleInternal = internalMutation({
 
     await ctx.db.patch(args.membershipId, { role: args.role });
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "organization",
       entityId: args.organizationId,
@@ -466,7 +466,7 @@ export const _removeMemberInternal = internalMutation({
 
     await ctx.db.delete(args.membershipId);
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "organization",
       entityId: args.organizationId,

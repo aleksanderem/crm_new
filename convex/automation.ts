@@ -478,7 +478,7 @@ export const _logActivityForRun = internalMutation({
     performedBy: v.string(),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: args.entityType,
       entityId: args.entityId,
@@ -760,7 +760,7 @@ export const _recordAutomationEmailResult = internalMutation({
     });
 
     if (args.sentBy) {
-      await logActivity(ctx, {
+      await logActivity({
         organizationId: args.organizationId,
         entityType: "email",
         entityId: emailId,
@@ -940,7 +940,7 @@ export const _recordUpdateFieldResult = internalMutation({
       const entityLabel = args.targetEntityType
         ? (activityLabelByEntity[args.targetEntityType] ?? args.targetEntityType)
         : args.linkedEntityType;
-      await logActivity(ctx, {
+      await logActivity({
         organizationId: args.organizationId,
         entityType: args.linkedEntityType,
         entityId: args.targetId,

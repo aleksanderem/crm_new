@@ -8,7 +8,7 @@ import { upsertFromGoogleImportSupabase } from "./calendarSyncHelpers_supabase";
 
 export const createEvent = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -62,7 +62,7 @@ export const createEvent = internalAction({
 
 export const updateEvent = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -103,7 +103,7 @@ export const updateEvent = internalAction({
 
 export const deleteEvent = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -161,8 +161,8 @@ function parseGoogleDateTime(dt?: { dateTime?: string; date?: string }): number 
 
 export const importFromGoogle = action({
   args: {
-    organizationId: v.id("organizations"),
-    ownerId: v.id("users"),
+    organizationId: v.string(),
+    ownerId: v.string(),
     daysBack: v.optional(v.number()),
     daysForward: v.optional(v.number()),
   },
@@ -276,7 +276,7 @@ export const importFromGoogle = action({
 });
 
 export const listUserCalendars = action({
-  args: { organizationId: v.id("organizations"), connectionId: v.id("oauthConnections") },
+  args: { organizationId: v.string(), connectionId: v.id("oauthConnections") },
   handler: async (ctx, args) => {
     const userId = await authModule.getUserId(ctx);
     if (!userId) throw new Error("Not authenticated");

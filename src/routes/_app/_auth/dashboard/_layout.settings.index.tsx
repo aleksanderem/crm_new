@@ -3,7 +3,7 @@ import { useDoubleCheck } from "@/ui/use-double-check";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/ui/button";
-import { convexQuery, useConvexAction, useConvexMutation } from "@convex-dev/react-query";
+import { convexQuery, useConvexAction } from "@convex-dev/react-query";
 import { api } from "~/convex/_generated/api";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "@tanstack/react-form";
@@ -28,7 +28,7 @@ export default function DashboardSettings() {
   const { data: user } = useQuery(convexQuery(api.app.getCurrentUser, {}));
   const signOut = useSignOut();
   const { mutateAsync: updateUsername } = useMutation({
-    mutationFn: useConvexMutation(api.app.updateUsername),
+    mutationFn: useConvexAction(api.app.updateUsername),
   });
   const { mutateAsync: deleteCurrentUserAccount } = useMutation({
     mutationFn: useConvexAction(api.app.deleteCurrentUserAccount),

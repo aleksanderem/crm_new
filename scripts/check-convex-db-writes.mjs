@@ -131,7 +131,7 @@ const WHITELIST_PATHS = new Set([
   //   _upsertProductSubscriptionInternal (internalMutation) → Convex write;
   //   PREAUTH_upsertProductSubscription (internalAction) → Supabase mirror.
   //   PREAUTH_updateCustomerId (internalMutation) → Convex write;
-  //   mirrors to Supabase via ctx.scheduler → writeUserToSupabase.
+  //   mirrors to Supabase via ctx.runAction → writeUserToSupabase (in parent action).
   // Migrated in issues #4964, #4967. See convex/stripe.ts for inline rationale.
   "stripe",
 

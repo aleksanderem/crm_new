@@ -56,8 +56,12 @@ export const markAsRead = action({
 export const _markAsReadInternal = internalMutation({
   args: { notificationId: v.id("notifications") },
   handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
     const notification = await ctx.db.get(args.notificationId);
     if (!notification) return;
+    if (notification.userId !== user._id) {
+      throw new Error("Not authorized");
+    }
     await ctx.db.patch(args.notificationId, { isRead: true });
   },
 });

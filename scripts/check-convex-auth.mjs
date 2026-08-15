@@ -146,6 +146,25 @@ const WHITELIST = new Set([
   //   types. No org data; hard-coded list used by the template builder UI.
   "documentDataSources:listAvailableSources",
 
+  // ── Application health & public marketing endpoints ──────────────────────
+  // getPublicStatus: returns { ts: Date.now() } proving Convex is alive.
+  //   Used by the /status page to verify backend health. No user or org data.
+  "app:getPublicStatus",
+
+  // getPublicPricingPlans: returns PLN monthly/yearly prices for CRM Pro and
+  //   Gabinet Pro plans so the public pricing page can display live prices.
+  //   Only exposes price amounts (numbers). Returns null when plans are not
+  //   seeded (Stripe not configured). No user or org data exposed.
+  "app:getPublicPricingPlans",
+
+  // ── Signing link stub resolution ──────────────────────────────────────────
+  // resolveStub: browser receives an opaque stubId via SMS URL and calls this
+  //   to exchange it for the real signing token. The stubId IS the auth — it
+  //   is single-use, time-limited (≤48 h), and burned on first use by
+  //   _consumeStub. This is the same token-as-auth pattern as
+  //   signatureRequests:getByToken.
+  "signingStubs:resolveStub",
+
   // ── Dev / seed utilities ──────────────────────────────────────────────────
   // These are only deployed in non-production environments (dev namespace).
   // They never run in production; no RLS required.

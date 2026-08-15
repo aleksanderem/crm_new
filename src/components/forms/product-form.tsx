@@ -451,6 +451,19 @@ export function ProductForm({
         <p className="text-xs text-muted-foreground sm:col-span-2">
           {t("products.form.salePriceHelp", { defaultValue: "Cena brutto w złotych, po której sprzedajesz produkt. Opcjonalna." })}
         </p>
+        {(() => {
+          const parsedSale = parseFloat(salePrice.replace(",", "."));
+          const parsedPurchase = parseFloat(purchasePrice.replace(",", "."));
+          return Number.isFinite(parsedSale) && parsedSale > 0 &&
+            Number.isFinite(parsedPurchase) && parsedPurchase > 0 &&
+            parsedSale < parsedPurchase ? (
+            <p className="text-sm text-amber-600 dark:text-amber-400 sm:col-span-2">
+              {t("products.form.saleBelowPurchaseWarning", {
+                defaultValue: "Uwaga: cena sprzedaży brutto jest niższa niż cena zakupu brutto. Sprzedajesz poniżej kosztów.",
+              })}
+            </p>
+          ) : null;
+        })()}
         <div className="flex items-center gap-2 self-end">
           <Switch checked={isActive} onCheckedChange={setIsActive} />
           <Label>{t("products.form.isActive")}</Label>

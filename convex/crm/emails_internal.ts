@@ -15,18 +15,15 @@ type EmailAccountRow = SupabaseRow<"emailAccounts">;
 export const findEmailAccountByAddress = internalAction({
   args: { addresses: v.array(v.string()) },
   handler: async (_ctx, args): Promise<EmailAccountRow | null> => {
+    if (args.addresses.length === 0) return null;
     const db = createSupabaseDb();
-    // No `fromEmail` index in Supabase either, so scan all accounts once
-    // and match in memory. Pulled out of the address loop since each
-    // iteration would otherwise re-fetch the same set.
-    const allAccounts = (await db
+    const normalizedAddresses = args.addresses.map((a) => a.toLowerCase().trim());
+    const matches = (await db
       .query("emailAccounts")
+      .in("fromEmail", normalizedAddresses)
       .collect()) as EmailAccountRow[];
-    for (const address of args.addresses) {
-      const normalizedAddress = address.toLowerCase().trim();
-      const match = allAccounts.find(
-        (a) => a.fromEmail.toLowerCase() === normalizedAddress,
-      );
+    for (const address of normalizedAddresses) {
+      const match = matches.find((a) => a.fromEmail.toLowerCase() === address);
       if (match) return match;
     }
     return null;

@@ -1,9 +1,8 @@
-import { query, action, internalMutation } from "./_generated/server";
+import { action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
-import { verifyOrgAccess } from "./_helpers/auth";
 
 // Dual-write refs removed — Supabase is now primary for document template writes
 
@@ -56,7 +55,7 @@ const accessControlValidator = v.object({
 // Queries
 // ---------------------------------------------------------------------------
 
-export const list = query({
+export const list = action({
   args: {
     organizationId: v.string(),
     status: v.optional(statusValidator),
@@ -64,22 +63,25 @@ export const list = query({
     module: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    let results = await ctx.db
-      .query("documentTemplates")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
+    const db = createSupabaseDb();
+    let q = db.query("documentTemplates").eq("organizationId", args.organizationId);
+    if (args.status) q = q.eq("status", args.status);
+    if (args.category) q = q.eq("category", args.category);
 
-    if (args.status) results = results.filter((t) => t.status === args.status);
-    if (args.category) results = results.filter((t) => t.category === args.category);
-    if (args.module) results = results.filter((t) => t.module === args.module || t.module === "platform");
+    let results = await q.collect();
+
+    if (args.module) {
+      results = results.filter((t) => t.module === args.module || t.module === "platform");
+    }
 
     const withFieldCounts = await Promise.all(
       results.map(async (t) => {
-        const fields = await ctx.db
-          .query("documentTemplateFields")
-          .withIndex("by_template", (q) => q.eq("templateId", t._id))
+        const fields = await db.query("documentTemplateFields")
+          .eq("templateId", t._id as string)
           .collect();
         return { ...t, fieldCount: fields.length };
       }),
@@ -102,19 +104,20 @@ export const getById = action({
   },
 });
 
-export const listActive = query({
+export const listActive = action({
   args: {
     organizationId: v.string(),
     module: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { user, membership } = await verifyOrgAccess(ctx, args.organizationId);
+    const authResult = await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    let results = await ctx.db
-      .query("documentTemplates")
-      .withIndex("by_orgAndStatus", (q) =>
-        q.eq("organizationId", args.organizationId).eq("status", "active"),
-      )
+    const db = createSupabaseDb();
+    let results = await db.query("documentTemplates")
+      .eq("organizationId", args.organizationId)
+      .eq("status", "active")
       .collect();
 
     if (args.module) {
@@ -122,17 +125,22 @@ export const listActive = query({
     }
 
     results = results.filter((t) => {
-      if (t.accessControl.mode === "all") return true;
-      if (t.accessControl.mode === "roles") return t.accessControl.roles.includes(membership.role);
-      if (t.accessControl.mode === "users") return t.accessControl.userIds.some((id) => id === user._id);
+      const raw = t.accessControl;
+      const ac = (typeof raw === "string" ? JSON.parse(raw) : raw) as {
+        mode: string;
+        roles: string[];
+        userIds: string[];
+      };
+      if (ac.mode === "all") return true;
+      if (ac.mode === "roles") return ac.roles.includes(authResult.role);
+      if (ac.mode === "users") return ac.userIds.some((id) => id === String(authResult.userId));
       return false;
     });
 
     const withFieldCounts = await Promise.all(
       results.map(async (t) => {
-        const fields = await ctx.db
-          .query("documentTemplateFields")
-          .withIndex("by_template", (q) => q.eq("templateId", t._id))
+        const fields = await db.query("documentTemplateFields")
+          .eq("templateId", t._id as string)
           .collect();
         return { ...t, fieldCount: fields.length };
       }),
@@ -310,7 +318,6 @@ export const duplicate = action({
       updatedAt: now,
     });
 
-    // Copy fields via side effect (needs Convex db reads)
     try {
       await ctx.runMutation(internal.documentTemplates._duplicateFields, {
         sourceTemplateId: args.id,
@@ -329,14 +336,15 @@ export const _duplicateFields = internalMutation({
     sourceTemplateId: v.string(),
     targetTemplateId: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     const db = createSupabaseDb();
-    const fields = await ctx.db
-      .query("documentTemplateFields")
-      .withIndex("by_template", (q) => q.eq("templateId", args.sourceTemplateId as any))
+    const fields = await db.query("documentTemplateFields")
+      .eq("templateId", args.sourceTemplateId)
       .collect();
 
     for (const field of fields) {
+      const serialize = (v: unknown) =>
+        v == null ? null : typeof v === "string" ? v : JSON.stringify(v);
       await db.insert("documentTemplateFields", {
         templateId: args.targetTemplateId,
         fieldKey: field.fieldKey,
@@ -344,10 +352,10 @@ export const _duplicateFields = internalMutation({
         type: field.type,
         sortOrder: field.sortOrder,
         group: field.group ?? null,
-        options: field.options ? JSON.stringify(field.options) : null,
+        options: serialize(field.options),
         defaultValue: field.defaultValue ?? null,
-        binding: field.binding ? JSON.stringify(field.binding) : null,
-        validation: field.validation ? JSON.stringify(field.validation) : null,
+        binding: serialize(field.binding),
+        validation: serialize(field.validation),
         placeholder: field.placeholder ?? null,
         helpText: field.helpText ?? null,
         width: field.width,

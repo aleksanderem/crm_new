@@ -279,7 +279,7 @@ export const queueConfirmationRequest = internalMutation({
   args: {
     organizationId: v.string(),
     appointmentId: v.string(),
-    reminderId: v.optional(v.id("appointmentReminders")),
+    reminderId: v.optional(v.string()),
     trigger: v.optional(v.union(v.literal("reminder"), v.literal("manual"), v.literal("booking"))),
   },
   handler: async (ctx, args) => {

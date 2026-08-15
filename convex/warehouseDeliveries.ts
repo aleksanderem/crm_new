@@ -83,7 +83,7 @@ export const listDeliveries = action({
   args: {
     organizationId: v.string(),
     status: v.optional(v.union(v.literal("draft"), v.literal("posted"))),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args): Promise<DeliveryRow[]> => {
@@ -163,7 +163,7 @@ export const createDelivery = action({
     supplierName: v.optional(v.string()),
     invoiceNumber: v.optional(v.string()),
     deliveryDate: v.optional(v.string()),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
     notes: v.optional(v.string()),
     items: v.array(v.object({
       productId: v.string(),
@@ -246,7 +246,7 @@ export const updateDelivery = action({
     supplierName: v.optional(v.string()),
     invoiceNumber: v.optional(v.string()),
     deliveryDate: v.optional(v.string()),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
     notes: v.optional(v.string()),
     items: v.optional(v.array(v.object({
       productId: v.string(),
@@ -404,7 +404,7 @@ export const createDeliveryFromInvoice = action({
     supplierName: v.optional(v.string()),
     invoiceNumber: v.optional(v.string()),
     deliveryDate: v.optional(v.string()),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{ deliveryId: string }> => {
     const auth = await ctx.runAction(

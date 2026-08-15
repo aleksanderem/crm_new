@@ -101,7 +101,7 @@ export const adjustStock = action({
   args: {
     organizationId: v.string(),
     productId: v.string(),
-    locationId: v.optional(v.union(v.id("gabinetLocations"), v.null())),
+    locationId: v.optional(v.union(v.string(), v.null())),
     delta: v.optional(v.number()),
     setTo: v.optional(v.number()),
     reason: v.optional(REASON_VALIDATOR),

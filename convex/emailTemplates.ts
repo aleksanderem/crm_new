@@ -98,9 +98,9 @@ export const renderTemplate = query({
     organizationId: v.string(),
     templateId: v.string(),
     // CRM entities
-    contactId: v.optional(v.id("contacts")),
-    companyId: v.optional(v.id("companies")),
-    leadId: v.optional(v.id("leads")),
+    contactId: v.optional(v.string()),
+    companyId: v.optional(v.string()),
+    leadId: v.optional(v.string()),
     // Gabinet entities (Supabase-primary — strings, not Convex Ids)
     patientId: v.optional(v.string()),
     employeeId: v.optional(v.string()),

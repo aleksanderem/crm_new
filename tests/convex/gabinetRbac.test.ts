@@ -12,6 +12,7 @@ import { api } from "../../convex/_generated/api";
 import {
   createTestCtx,
   seedGabinetPrereqs,
+  seedGabinetRole,
   seedSecondUser,
   seedTestUser,
 } from "../../convex/_test_helpers";
@@ -101,10 +102,10 @@ describe("gabinet_appointments RBAC", () => {
     ).rejects.toThrow("Permission denied");
   });
 
-  test("member can create an appointment (create:all by default)", async () => {
+  test("receptionist gabinet role can create an appointment", async () => {
     const t = createTestCtx();
     const { organizationId, userId } = await seedTestUser(t);
-    const { identity: memberIdentity } = await seedSecondUser(
+    const { userId: memberId, identity: memberIdentity } = await seedSecondUser(
       t,
       organizationId,
       { role: "member" },
@@ -114,6 +115,7 @@ describe("gabinet_appointments RBAC", () => {
       organizationId,
       userId,
     );
+    await seedGabinetRole(t, memberId, organizationId, "receptionist");
 
     const apptId = await t
       .withIdentity(memberIdentity)
@@ -190,15 +192,16 @@ describe("gabinet_patients RBAC", () => {
     ).rejects.toThrow("Permission denied");
   });
 
-  test("member can create a patient (create:all by default)", async () => {
+  test("receptionist gabinet role can create a patient", async () => {
     const t = createTestCtx();
     const { organizationId, userId } = await seedTestUser(t);
-    const { identity: memberIdentity } = await seedSecondUser(
+    const { userId: memberId, identity: memberIdentity } = await seedSecondUser(
       t,
       organizationId,
       { role: "member" },
     );
     await seedGabinetPrereqs(t, organizationId, userId);
+    await seedGabinetRole(t, memberId, organizationId, "receptionist");
 
     const newPatientId = await t
       .withIdentity(memberIdentity)
@@ -316,21 +319,22 @@ describe("gabinet_packages RBAC", () => {
     ).rejects.toThrow("Permission denied");
   });
 
-  test("member can create a package (create:all by default)", async () => {
+  test("manager gabinet role can create a package", async () => {
     const t = createTestCtx();
     const { organizationId, userId } = await seedTestUser(t);
-    const { identity: memberIdentity } = await seedSecondUser(
+    const { userId: memberId, identity: memberIdentity } = await seedSecondUser(
       t,
       organizationId,
       { role: "member" },
     );
     const { treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
+    await seedGabinetRole(t, memberId, organizationId, "manager");
 
     const packageId = await t
       .withIdentity(memberIdentity)
       .action(api.gabinet.packages.create, {
         organizationId,
-        name: "Member Package",
+        name: "Manager Package",
         treatments: [{ treatmentId: String(treatmentId), quantity: 2 }],
         totalPrice: 200,
       });

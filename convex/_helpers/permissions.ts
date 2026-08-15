@@ -34,6 +34,36 @@ export const DEFAULT_PERMISSIONS: Record<OrgRole, FeaturePermissions> = {
   viewer: buildDefaults({ view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none" }),
 };
 
+// --- Per-feature overrides for gabinet_patients and gabinet_treatments ---
+// Gabinet clinical data requires an explicit gabinet role; org members without
+// one must not see patient records or touch the treatment catalog. The gabinet-role
+// layer (maxScope) then grants access to doctors, therapists, receptionists, etc.
+// Without these overrides, buildDefaults would leave member=view:all/create:all,
+// meaning a plain org member could list patients and create treatments — the
+// gabinetRoleWorkdays tests explicitly verify this is denied.
+const GABINET_NONE: Record<Action, Scope> = {
+  view: "none", create: "none", edit: "none", delete: "none",
+  approve: "none", sign: "none", refund: "none",
+};
+DEFAULT_PERMISSIONS.member.gabinet_patients = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.viewer.gabinet_patients = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.member.gabinet_appointments = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.viewer.gabinet_appointments = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.member.gabinet_treatments = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.viewer.gabinet_treatments = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.member.gabinet_packages = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.viewer.gabinet_packages = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.member.gabinet_employees = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.viewer.gabinet_employees = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.member.gabinet_photos = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.viewer.gabinet_photos = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.member.gabinet_inventory = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.viewer.gabinet_inventory = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.member.gabinet_salary = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.viewer.gabinet_salary = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.member.gabinet_dashboard = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.viewer.gabinet_dashboard = { ...GABINET_NONE };
+
 // --- Per-feature overrides for gabinet_payments ---
 // owner/admin: full incl. refund; member: view/create/edit (no delete, no
 // refund — recepcja); viewer: view only. Issue #1690.

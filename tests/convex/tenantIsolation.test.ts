@@ -82,7 +82,7 @@ describe("tenant isolation — organizations", () => {
     const { organizationId: orgBId } = await seedOrgB(t);
 
     await expect(
-      t.withIdentity(identityA).query(api.organizations.getMembers, {
+      t.withIdentity(identityA).action(api.organizations.getMembers, {
         organizationId: orgBId,
       }),
     ).rejects.toThrow("Not a member of this organization");
@@ -108,7 +108,9 @@ describe("tenant isolation — permissions", () => {
 // ─── Contacts ─────────────────────────────────────────────────────────────────
 
 describe("tenant isolation — contacts", () => {
-  test("getById: org A user cannot fetch an org B contact by ID", async () => {
+  // crm/contacts reads moved to Supabase (RLS-enforced). No Convex getById query exists.
+  // Tenant isolation for reads is validated by RLS coverage audit (#3709).
+  test.skip("getById: org A user cannot fetch an org B contact by ID", async () => {
     const t = createTestCtx();
     const { organizationId: orgAId, identity: identityA } = await seedTestUser(t);
     const { organizationId: orgBId, userId: userBId } = await seedOrgB(t);
@@ -139,7 +141,9 @@ describe("tenant isolation — contacts", () => {
 // ─── Companies ────────────────────────────────────────────────────────────────
 
 describe("tenant isolation — companies", () => {
-  test("getById: org A user cannot fetch an org B company by ID", async () => {
+  // crm/companies reads moved to Supabase (RLS-enforced). No Convex getById query exists.
+  // Tenant isolation for reads is validated by RLS coverage audit (#3709).
+  test.skip("getById: org A user cannot fetch an org B company by ID", async () => {
     const t = createTestCtx();
     const { organizationId: orgAId, identity: identityA } = await seedTestUser(t);
     const { organizationId: orgBId, userId: userBId } = await seedOrgB(t);
@@ -179,7 +183,9 @@ describe("tenant isolation — leads", () => {
     ).rejects.toThrow("Not a member of this organization");
   });
 
-  test("getById: org A user cannot fetch an org B lead by ID", async () => {
+  // crm/leads reads moved to Supabase (RLS-enforced). No Convex getById query exists.
+  // Tenant isolation for reads is validated by RLS coverage audit (#3709).
+  test.skip("getById: org A user cannot fetch an org B lead by ID", async () => {
     const t = createTestCtx();
     const { organizationId: orgAId, identity: identityA } = await seedTestUser(t);
     const { organizationId: orgBId, userId: userBId } = await seedOrgB(t);
@@ -207,7 +213,9 @@ describe("tenant isolation — leads", () => {
 // ─── Notes ────────────────────────────────────────────────────────────────────
 
 describe("tenant isolation — notes", () => {
-  test("listByEntity: org A user cannot query using org B's organizationId", async () => {
+  // crm/notes reads moved to Supabase (RLS-enforced). No Convex listByEntity/getById queries exist.
+  // Tenant isolation for reads is validated by RLS coverage audit (#3709).
+  test.skip("listByEntity: org A user cannot query using org B's organizationId", async () => {
     const t = createTestCtx();
     const { identity: identityA } = await seedTestUser(t);
     const { organizationId: orgBId } = await seedOrgB(t);
@@ -221,7 +229,7 @@ describe("tenant isolation — notes", () => {
     ).rejects.toThrow("Not a member of this organization");
   });
 
-  test("listByEntity: org A user cannot read org B notes sharing the same entityId", async () => {
+  test.skip("listByEntity: org A user cannot read org B notes sharing the same entityId", async () => {
     const t = createTestCtx();
     const { organizationId: orgAId, userId: userAId, identity: identityA } = await seedTestUser(t);
     const { organizationId: orgBId, userId: userBId } = await seedOrgB(t);
@@ -250,7 +258,7 @@ describe("tenant isolation — notes", () => {
     expect(results).toHaveLength(0);
   });
 
-  test("getById: org A user cannot fetch an org B note by ID", async () => {
+  test.skip("getById: org A user cannot fetch an org B note by ID", async () => {
     const t = createTestCtx();
     const { organizationId: orgAId, identity: identityA } = await seedTestUser(t);
     const { organizationId: orgBId, userId: userBId } = await seedOrgB(t);
@@ -311,7 +319,9 @@ describe("tenant isolation — activities", () => {
 // ─── Audit log ────────────────────────────────────────────────────────────────
 
 describe("tenant isolation — auditLog", () => {
-  test("list: org A admin cannot read org B audit log", async () => {
+  // auditLog reads moved to Supabase (use-supabase-audit-log.ts, RLS-enforced).
+  // No Convex auditLog.list query exists. Tenant isolation validated by RLS audit (#3709).
+  test.skip("list: org A admin cannot read org B audit log", async () => {
     const t = createTestCtx();
     // seedTestUser creates owner role which is also admin
     const { identity: identityA } = await seedTestUser(t);

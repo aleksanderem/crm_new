@@ -71,6 +71,9 @@ export const markAllRead = action({
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args): Promise<number> => {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
     return await ctx.runMutation(internal.notifications._markAllReadInternal, {
       organizationId: args.organizationId,
     });

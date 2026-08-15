@@ -43,7 +43,7 @@ const ALL_FIELDS: Record<EntityType, string[]> = {
   contacts: ["firstName", "lastName", "email", "phone", "title", "source", "tags", "notes"],
   companies: ["name", "domain", "industry", "size", "website", "phone", "street", "city", "state", "zip", "country", "notes"],
   leads: ["title", "value", "currency", "status", "priority", "source", "notes", "tags"],
-  products: ["name", "sku", "unitPrice", "taxRate", "isActive", "description"],
+  products: ["name", "sku", "unitPrice", "taxRate", "isActive", "description", "purchasePrice", "salePrice", "trackStock", "stockUnit", "minStock", "productSection"],
 };
 
 function downloadTemplate(entityType: EntityType) {
@@ -150,10 +150,10 @@ export function CsvImportDialog({
         mapped[crmField] = value.split(";").map((t: string) => t.trim()).filter(Boolean);
       } else if (crmField === "taxRate" && value.trim().toUpperCase() === "ZW") {
         mapped.taxExempt = true;
-      } else if (crmField === "value" || crmField === "unitPrice" || crmField === "taxRate") {
+      } else if (crmField === "value" || crmField === "unitPrice" || crmField === "taxRate" || crmField === "purchasePrice" || crmField === "salePrice" || crmField === "minStock") {
         const num = parseFloat(value);
         if (!isNaN(num)) mapped[crmField] = num;
-      } else if (crmField === "isActive") {
+      } else if (crmField === "isActive" || crmField === "trackStock") {
         mapped[crmField] = value.toLowerCase() === "yes" || value.toLowerCase() === "true";
       } else {
         mapped[crmField] = value;

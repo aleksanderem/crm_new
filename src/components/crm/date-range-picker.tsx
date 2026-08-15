@@ -38,7 +38,7 @@ export function DateRangePicker() {
 
   const activePreset = PRESETS.find((p) => p.value === timeRange);
   const label = activePreset
-    ? t(activePreset.labelKey)
+    ? (t(activePreset.labelKey) as string)
     : formatRange(dateRange, t("dateRange.all"));
 
   return (

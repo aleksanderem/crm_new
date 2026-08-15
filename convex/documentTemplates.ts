@@ -217,7 +217,7 @@ export const update = action({
 
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: template.organizationId as Id<"organizations"> },
+      { organizationId: String(template.organizationId) },
     );
 
     const { id, ...patch } = args;
@@ -246,7 +246,7 @@ export const publish = action({
 
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: template.organizationId as Id<"organizations"> },
+      { organizationId: String(template.organizationId) },
     );
 
     if (template.status === "active") {
@@ -277,7 +277,7 @@ export const archive = action({
 
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: template.organizationId as Id<"organizations"> },
+      { organizationId: String(template.organizationId) },
     );
 
     await db.patch("documentTemplates", args.id, {
@@ -296,7 +296,7 @@ export const duplicate = action({
 
     const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: template.organizationId as Id<"organizations"> },
+      { organizationId: String(template.organizationId) },
     );
     const now = Date.now();
 
@@ -374,7 +374,7 @@ export const createNewVersion = action({
 
     const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: template.organizationId as Id<"organizations"> },
+      { organizationId: String(template.organizationId) },
     );
     const now = Date.now();
 

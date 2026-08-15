@@ -233,7 +233,7 @@ export const sendReminder = internalMutation({
 
     // Send in-app notification to the employee assigned to the appointment
     await createNotificationDirect(ctx, {
-      organizationId: reminder.organizationId as Id<"organizations">,
+      organizationId: String(reminder.organizationId),
       userId: appointment.employeeId as Id<"users">,
       type: "appointment_reminder",
       title: "Przypomnienie o wizycie",
@@ -244,7 +244,7 @@ export const sendReminder = internalMutation({
     // Also notify the appointment creator if different from employee
     if (appointment.createdBy !== appointment.employeeId) {
       await createNotificationDirect(ctx, {
-        organizationId: reminder.organizationId as Id<"organizations">,
+        organizationId: String(reminder.organizationId),
         userId: appointment.createdBy as Id<"users">,
         type: "appointment_reminder",
         title: "Przypomnienie o wizycie",
@@ -284,7 +284,7 @@ export const sendReminder = internalMutation({
               : "gabinet.appointment.reminder_custom";
 
       await ctx.scheduler.runAfter(0, internal.emailEventTrigger.triggerEmailEvent, {
-        organizationId: reminder.organizationId as Id<"organizations">,
+        organizationId: String(reminder.organizationId),
         eventType: reminderEventType,
         recipientEmail: patient.email as string,
         recipientName: patientName,
@@ -299,7 +299,7 @@ export const sendReminder = internalMutation({
       });
 
       await logAudit(ctx, {
-        organizationId: reminder.organizationId as Id<"organizations">,
+        organizationId: String(reminder.organizationId),
         userId: appointment.employeeId as Id<"users">,
         action: "gabinet:email:sent",
         entityType: "gabinetAppointment",
@@ -330,7 +330,7 @@ export const sendReminder = internalMutation({
     };
 
     await ctx.scheduler.runAfter(0, internal.automation.emitEvent, {
-      organizationId: reminder.organizationId as Id<"organizations">,
+      organizationId: String(reminder.organizationId),
       module: "gabinet",
       eventType: "gabinet.appointment.reminder_due",
       entityType: "gabinetAppointment",
@@ -345,7 +345,7 @@ export const sendReminder = internalMutation({
     // Queue appointment confirmation SMS if enabled for this timing and patient has phone
     if (sendSms && patient?.phone) {
       await ctx.runMutation(internal.gabinet.appointmentSms.queueConfirmationRequest, {
-        organizationId: reminder.organizationId as Id<"organizations">,
+        organizationId: String(reminder.organizationId),
         appointmentId: appointment._id as Id<"gabinetAppointments">,
         reminderId: args.reminderId as Id<"appointmentReminders">,
         trigger: "reminder",

@@ -505,7 +505,7 @@ export const _acceptInternal = internalMutation({
       throw new Error("This invitation was sent to a different email address");
     }
 
-    const orgId = args.invitationOrgId as Id<"organizations">;
+    const orgId = args.invitationOrgId;
     const invitedById = args.invitationInvitedBy as Id<"users">;
 
     const joinedAt = Date.now();
@@ -850,7 +850,7 @@ export const _adminResendAndSend = internalAction({
       email: String(inv.email),
       role: String(inv.role),
       token: String(inv.token),
-      organizationId: inv.organizationId as Id<"organizations">,
+      organizationId: String(inv.organizationId),
       inviterUserId: String(inv.invitedBy),
     });
 
@@ -860,7 +860,7 @@ export const _adminResendAndSend = internalAction({
       email: String(inv.email),
       role: String(inv.role),
       token: String(inv.token),
-      organizationId: inv.organizationId as Id<"organizations">,
+      organizationId: String(inv.organizationId),
       invitedBy: String(inv.invitedBy),
       expiresAt,
       updatedAt,

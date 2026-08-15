@@ -1,7 +1,6 @@
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
-import type { Id } from "../_generated/dataModel";
 import { createSupabaseDb, type SupabaseDb } from "../_helpers/supabaseDb";
 import { createLogger } from "../_helpers/logger";
 import { getJunctionTreatmentIds } from "../gabinet/_helpers/junctionTreatments";
@@ -167,7 +166,7 @@ export const sendSigningEmailInternal = internalAction({
     // in email provider logs (Resend, Gmail) or browser history / Referer headers.
     const stubId = await ctx.runMutation(internal.signingStubs.createStub, {
       token: data.signingToken,
-      organizationId: data.organizationId as Id<"organizations">,
+      organizationId: String(data.organizationId),
       signingTokenExpiresAt: newExpiry,
       destination: "sign_form",
     });
@@ -225,7 +224,7 @@ export const sendSigningEmailInternal = internalAction({
     `;
 
     const logBase = {
-      organizationId: data.organizationId as Id<"organizations">,
+      organizationId: String(data.organizationId),
       source: "signing" as const,
       recipientEmail: args.recipientEmail,
       recipientName: args.recipientName,
@@ -284,7 +283,7 @@ export const sendSigningEmailInternal = internalAction({
       status: string;
     } | null = await ctx.runAction(
       internal.mailProviders._getActiveDefaultForOrg,
-      { organizationId: data.organizationId as Id<"organizations"> },
+      { organizationId: String(data.organizationId) },
     );
 
     if (defaultProvider && (defaultProvider.providerType === "resend" || defaultProvider.providerType === "mailgun")) {

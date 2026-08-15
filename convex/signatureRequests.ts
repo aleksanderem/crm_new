@@ -1,7 +1,6 @@
 import { action, internalAction, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 // Dual-write refs removed — Supabase is now primary for signature request writes
@@ -92,7 +91,7 @@ export const listByInstance = action({
     const instance = await db.get("documentInstances", args.instanceId);
     if (!instance) return [];
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
-      organizationId: instance.organizationId as Id<"organizations">,
+      organizationId: String(instance.organizationId),
     });
 
     return await db.query("signatureRequests")
@@ -132,7 +131,7 @@ export const sendForSigning = action({
 
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: instance.organizationId as Id<"organizations"> },
+      { organizationId: String(instance.organizationId) },
     );
 
     const now = Date.now();
@@ -280,12 +279,12 @@ export const _sendSigningEmails = internalMutation({
           organizationName: orgName,
           token: ct.token,
           expiresAt: args.expiresAt,
-          organizationId: args.organizationId as Id<"organizations">,
+          organizationId: args.organizationId,
         });
       }
       if (sig?.signerPhone && sig?.verificationMethod === "sms") {
         await ctx.scheduler.runAfter(0, internal.sms.sendSigningLinkSms, {
-          organizationId: args.organizationId as Id<"organizations">,
+          organizationId: args.organizationId,
           phone: sig.signerPhone,
           signerName: sig.signerName ?? sig.signerPhone,
           documentTitle: args.instanceTitle,
@@ -516,7 +515,7 @@ export const resend = action({
 
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: request.organizationId as Id<"organizations"> },
+      { organizationId: String(request.organizationId) },
     );
 
     const now = Date.now();

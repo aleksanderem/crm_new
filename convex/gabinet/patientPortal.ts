@@ -427,7 +427,7 @@ export const bookFromPortal = action({
     const db = createSupabaseDb();
     const { patientId, organizationId: orgIdStr } =
       await validatePortalSessionSupabase(db, args.tokenHash);
-    const organizationId = orgIdStr as Id<"organizations">;
+    const organizationId = orgIdStr;
 
     // Past-time guard (issue #1415). The portal slot picker already hides
     // past slots client-side, but a crafted request could send any
@@ -658,7 +658,7 @@ export const requestReschedule = action({
     const db = createSupabaseDb();
     const { patientId, organizationId: orgIdStr } =
       await validatePortalSessionSupabase(db, args.tokenHash);
-    const organizationId = orgIdStr as Id<"organizations">;
+    const organizationId = orgIdStr;
 
     // Read appointment from Supabase
     const appt = await db.get("gabinetAppointments", args.appointmentId);

@@ -47,7 +47,7 @@ export const listByTemplate = action({
 
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: orgId as Id<"organizations"> },
+      { organizationId: orgId },
     );
 
     const db = createSupabaseDb();
@@ -86,7 +86,7 @@ export const create = action({
 
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: orgId as Id<"organizations"> },
+      { organizationId: orgId },
     );
 
     const db = createSupabaseDb();
@@ -156,7 +156,7 @@ export const update = action({
 
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: orgId as Id<"organizations"> },
+      { organizationId: orgId },
     );
 
     // Check fieldKey uniqueness if changing
@@ -198,7 +198,7 @@ export const remove = action({
 
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: orgId as Id<"organizations"> },
+      { organizationId: orgId },
     );
 
     await db.delete("documentTemplateFields", args.id);
@@ -218,7 +218,7 @@ export const reorder = action({
 
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: orgId as Id<"organizations"> },
+      { organizationId: orgId },
     );
 
     const db = createSupabaseDb();

@@ -271,7 +271,7 @@ export const _publishInboundActivity = internalMutation({
     now: v.number(),
   },
   handler: async (ctx, args) => {
-    await publishActivityEnvelope(ctx, {
+    await publishActivityEnvelope({
       organizationId: args.organizationId as any,
       action: "email_received",
       performedBy: args.performedBy as any,

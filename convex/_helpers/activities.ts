@@ -18,7 +18,7 @@ export async function logActivity(
 ) {
   const occurredAt = Date.now();
 
-  await publishActivityEnvelope(ctx, {
+  await publishActivityEnvelope({
     organizationId: args.organizationId,
     action: args.action,
     performedBy: args.performedBy,

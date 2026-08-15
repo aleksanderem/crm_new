@@ -119,7 +119,7 @@ async function logSmsSharedActivities(
     ? `gabinet:sms:${semanticEventId}:${args.action}`
     : `gabinet:sms:${args.organizationId}:${occurredAt}:${args.action}`;
 
-  await publishActivityEnvelope(ctx, {
+  await publishActivityEnvelope({
     organizationId: args.organizationId,
     action: args.action,
     performedBy: args.performedBy,

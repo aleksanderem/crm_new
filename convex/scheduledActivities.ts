@@ -43,7 +43,7 @@ export const _createSideEffects = internalMutation({
     if (args.ownerId !== args.userId) {
       await createNotificationDirect(ctx, {
         organizationId: args.organizationId,
-        userId: args.ownerId as any,
+        userId: args.ownerId,
         type: "assigned",
         title: "Activity assigned",
         message: `You have been assigned to ${args.activityType} "${args.title}"`,
@@ -86,7 +86,7 @@ export const _updateSideEffects = internalMutation({
     if (args.newOwnerId && args.newOwnerId !== args.oldOwnerId && args.newOwnerId !== args.userId) {
       await createNotificationDirect(ctx, {
         organizationId: args.organizationId,
-        userId: args.newOwnerId as any,
+        userId: args.newOwnerId,
         type: "assigned",
         title: "Activity assigned",
         message: `You have been assigned to ${args.activityType} "${args.title}"`,

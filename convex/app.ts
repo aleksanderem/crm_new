@@ -59,21 +59,15 @@ export const getIsPlatformAdmin = action({
   },
 });
 
-// users table is auth — ctx.db.patch is the Convex-side dual-write (needed for
-// auth helpers that read from QueryCtx). The scheduler mirrors to Supabase.
-export const updateUsername = mutation({
-  args: {
-    username: v.string(),
-  },
+export const _updateUsernameInternal = internalMutation({
+  args: { username: v.string() },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
-    if (!userId) {
-      return;
-    }
+    if (!userId) return null;
     const user = await ctx.db.get(userId);
-    if (!user) return;
+    if (!user) return null;
     await ctx.db.patch(userId, { username: args.username });
-    await ctx.scheduler.runAfter(0, internal.supabase.users.writeUserToSupabase, {
+    return {
       userId: String(userId),
       email: user.email,
       name: user.name,
@@ -87,8 +81,27 @@ export const updateUsername = mutation({
       theme: user.theme,
       timezone: user.timezone,
       createdAt: Math.floor(user._creationTime),
-      updatedAt: Date.now(),
+    };
+  },
+});
+
+// users table is auth — Convex write happens in _updateUsernameInternal (needed for
+// auth helpers that read from QueryCtx). The action then mirrors to Supabase directly.
+export const updateUsername = action({
+  args: { username: v.string() },
+  handler: async (ctx, args) => {
+    const userData = await ctx.runMutation(internal.app._updateUsernameInternal, {
+      username: args.username,
     });
+    if (!userData) return;
+    try {
+      await ctx.runAction(internal.supabase.users.writeUserToSupabase, {
+        ...userData,
+        updatedAt: Date.now(),
+      });
+    } catch (e) {
+      console.error("[app.updateUsername] Supabase user write failed:", e);
+    }
   },
 });
 
@@ -277,25 +290,16 @@ export const getStorageUrl = mutation({
   },
 });
 
-// users table is auth — ctx.db.patch is the Convex-side dual-write.
-// Scheduler mirrors to Supabase.
-export const updateUserImage = mutation({
-  args: {
-    imageId: v.id("_storage"),
-  },
+export const _updateUserImageInternal = internalMutation({
+  args: { imageId: v.id("_storage") },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
-    if (!userId) {
-      return;
-    }
+    if (!userId) return null;
     const user = await ctx.db.get(userId);
-    if (!user) return;
+    if (!user) return null;
     const url = await ctx.storage.getUrl(args.imageId);
-    await ctx.db.patch(userId, {
-      imageId: args.imageId,
-      image: url ?? undefined,
-    });
-    await ctx.scheduler.runAfter(0, internal.supabase.users.writeUserToSupabase, {
+    await ctx.db.patch(userId, { imageId: args.imageId, image: url ?? undefined });
+    return {
       userId: String(userId),
       email: user.email,
       name: user.name,
@@ -309,24 +313,39 @@ export const updateUserImage = mutation({
       theme: user.theme,
       timezone: user.timezone,
       createdAt: Math.floor(user._creationTime),
-      updatedAt: Date.now(),
-    });
+    };
   },
 });
 
-// users table is auth — ctx.db.patch is the Convex-side dual-write.
-// Scheduler mirrors to Supabase.
-export const removeUserImage = mutation({
+// users table is auth — Convex write in _updateUserImageInternal (QueryCtx compat).
+// Action mirrors to Supabase directly.
+export const updateUserImage = action({
+  args: { imageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    const userData = await ctx.runMutation(internal.app._updateUserImageInternal, {
+      imageId: args.imageId,
+    });
+    if (!userData) return;
+    try {
+      await ctx.runAction(internal.supabase.users.writeUserToSupabase, {
+        ...userData,
+        updatedAt: Date.now(),
+      });
+    } catch (e) {
+      console.error("[app.updateUserImage] Supabase user write failed:", e);
+    }
+  },
+});
+
+export const _removeUserImageInternal = internalMutation({
   args: {},
   handler: async (ctx) => {
     const userId = await auth.getUserId(ctx);
-    if (!userId) {
-      return;
-    }
+    if (!userId) return null;
     const user = await ctx.db.get(userId);
-    if (!user) return;
+    if (!user) return null;
     await ctx.db.patch(userId, { imageId: undefined, image: undefined });
-    await ctx.scheduler.runAfter(0, internal.supabase.users.writeUserToSupabase, {
+    return {
       userId: String(userId),
       email: user.email,
       name: user.name,
@@ -340,8 +359,25 @@ export const removeUserImage = mutation({
       theme: user.theme,
       timezone: user.timezone,
       createdAt: Math.floor(user._creationTime),
-      updatedAt: Date.now(),
-    });
+    };
+  },
+});
+
+// users table is auth — Convex write in _removeUserImageInternal (QueryCtx compat).
+// Action mirrors to Supabase directly.
+export const removeUserImage = action({
+  args: {},
+  handler: async (ctx) => {
+    const userData = await ctx.runMutation(internal.app._removeUserImageInternal, {});
+    if (!userData) return;
+    try {
+      await ctx.runAction(internal.supabase.users.writeUserToSupabase, {
+        ...userData,
+        updatedAt: Date.now(),
+      });
+    } catch (e) {
+      console.error("[app.removeUserImage] Supabase user write failed:", e);
+    }
   },
 });
 
@@ -412,9 +448,7 @@ export const getActivePlans = query({
   },
 });
 
-// users table is auth — ctx.db.patch is the Convex-side dual-write.
-// Scheduler mirrors to Supabase.
-export const updateProfile = mutation({
+export const _updateProfileInternal = internalMutation({
   args: {
     name: v.optional(v.string()),
     language: v.optional(v.string()),
@@ -426,9 +460,7 @@ export const updateProfile = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    if (!userId) throw new Error("Not authenticated");
     const user = await ctx.db.get(userId);
     if (!user) throw new Error("User not found");
     const updates: Record<string, unknown> = {};
@@ -448,7 +480,7 @@ export const updateProfile = mutation({
       newImageStorageId = String(args.imageId);
     }
     await ctx.db.patch(userId, updates);
-    await ctx.scheduler.runAfter(0, internal.supabase.users.writeUserToSupabase, {
+    return {
       userId: String(userId),
       email: user.email,
       name: args.name ?? user.name,
@@ -462,9 +494,33 @@ export const updateProfile = mutation({
       theme: args.theme ?? user.theme,
       timezone: args.timezone ?? user.timezone,
       createdAt: Math.floor(user._creationTime),
-      updatedAt: Date.now(),
-    });
-    return userId;
+    };
+  },
+});
+
+// users table is auth — Convex write in _updateProfileInternal (QueryCtx compat).
+// Action mirrors to Supabase directly.
+export const updateProfile = action({
+  args: {
+    name: v.optional(v.string()),
+    language: v.optional(v.string()),
+    theme: v.optional(
+      v.union(v.literal("light"), v.literal("dark"), v.literal("system"))
+    ),
+    timezone: v.optional(v.string()),
+    imageId: v.optional(v.id("_storage")),
+  },
+  handler: async (ctx, args) => {
+    const userData = await ctx.runMutation(internal.app._updateProfileInternal, args);
+    try {
+      await ctx.runAction(internal.supabase.users.writeUserToSupabase, {
+        ...userData,
+        updatedAt: Date.now(),
+      });
+    } catch (e) {
+      console.error("[app.updateProfile] Supabase user write failed:", e);
+    }
+    return userData.userId;
   },
 });
 

@@ -63,24 +63,22 @@ export const PREAUTH_updateCustomerId = internalMutation({
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
     await ctx.db.patch(args.userId, { customerId: args.customerId });
-    if (user) {
-      await ctx.scheduler.runAfter(0, internal.supabase.users.writeUserToSupabase, {
-        userId: String(args.userId),
-        email: user.email,
-        name: user.name,
-        username: user.username,
-        image: user.image,
-        imageStorageId: user.imageId ? String(user.imageId) : undefined,
-        phone: user.phone,
-        isAnonymous: user.isAnonymous,
-        customerId: args.customerId,
-        language: user.language,
-        theme: user.theme,
-        timezone: user.timezone,
-        createdAt: Math.floor(user._creationTime),
-        updatedAt: Date.now(),
-      });
-    }
+    if (!user) return null;
+    return {
+      userId: String(args.userId),
+      email: user.email,
+      name: user.name,
+      username: user.username,
+      image: user.image,
+      imageStorageId: user.imageId ? String(user.imageId) : undefined,
+      phone: user.phone,
+      isAnonymous: user.isAnonymous,
+      customerId: args.customerId,
+      language: user.language,
+      theme: user.theme,
+      timezone: user.timezone,
+      createdAt: Math.floor(user._creationTime),
+    };
   },
 });
 
@@ -470,10 +468,20 @@ export const PREAUTH_createFreeStripeSubscription = internalAction({
       cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
     });
 
-    await ctx.runMutation(internal.stripe.PREAUTH_updateCustomerId, {
+    const userData = await ctx.runMutation(internal.stripe.PREAUTH_updateCustomerId, {
       userId: args.userId,
       customerId: args.customerId,
     });
+    if (userData) {
+      try {
+        await ctx.runAction(internal.supabase.users.writeUserToSupabase, {
+          ...userData,
+          updatedAt: Date.now(),
+        });
+      } catch (e) {
+        console.error("[stripe] Supabase user write failed:", e);
+      }
+    }
   },
 });
 

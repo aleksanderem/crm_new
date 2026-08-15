@@ -403,6 +403,18 @@ export const accept = action({
       membershipId: string;
       membershipUserId: string;
       membershipJoinedAt: number;
+      userEmail: string | undefined;
+      userName: string | undefined;
+      userUsername: string | undefined;
+      userImage: string | undefined;
+      userImageId: string | undefined;
+      userPhone: string | undefined;
+      userIsAnonymous: boolean | undefined;
+      userCustomerId: string | undefined;
+      userLanguage: string | undefined;
+      userTheme: string | undefined;
+      userTimezone: string | undefined;
+      userCreatedAt: number;
     } = await ctx.runMutation(
       internal.invitations._acceptInternal,
       {
@@ -441,6 +453,29 @@ export const accept = action({
       });
     } catch (e) {
       console.error("[invitations.accept] Supabase teamMembership write failed:", e);
+    }
+
+    // Mirror the invitee's user row to Supabase. Without this, downstream FK
+    // references (gabinet_employees.user_id, team_memberships, etc.) hit code=23503.
+    try {
+      await ctx.runAction(internal.supabase.users.writeUserToSupabase, {
+        userId: result.membershipUserId,
+        email: result.userEmail,
+        name: result.userName,
+        username: result.userUsername,
+        image: result.userImage,
+        imageStorageId: result.userImageId,
+        phone: result.userPhone,
+        isAnonymous: result.userIsAnonymous,
+        customerId: result.userCustomerId,
+        language: result.userLanguage,
+        theme: result.userTheme,
+        timezone: result.userTimezone,
+        createdAt: result.userCreatedAt,
+        updatedAt: Date.now(),
+      });
+    } catch (e) {
+      console.error("[invitations.accept] Supabase user write failed:", e);
     }
 
     return result.organizationId;
@@ -503,26 +538,8 @@ export const _acceptInternal = internalMutation({
       effectiveUsername = candidate;
     }
 
-    // Mirror the invitee's user row to Supabase. Without this, any
-    // downstream FK reference (gabinet_employees.user_id, team_memberships
-    // mirror that happens just above, etc.) hits `code=23503` on the first
-    // assignment after signup.
-    await ctx.scheduler.runAfter(0, internal.supabase.users.writeUserToSupabase, {
-      userId: String(user._id),
-      email: user.email,
-      name: user.name,
-      username: effectiveUsername,
-      image: user.image,
-      imageStorageId: user.imageId ? String(user.imageId) : undefined,
-      phone: user.phone,
-      isAnonymous: user.isAnonymous,
-      customerId: user.customerId,
-      language: user.language,
-      theme: user.theme,
-      timezone: user.timezone,
-      createdAt: Math.floor(user._creationTime),
-      updatedAt: Date.now(),
-    });
+    // User row is mirrored to Supabase by the parent accept action after this
+    // mutation returns, so downstream FKs (gabinet_employees.user_id, etc.) resolve.
 
     // Module provisioning: if the invite carried a module="gabinet" payload,
     // auto-create the gabinet_employees row using the data captured at invite
@@ -586,6 +603,18 @@ export const _acceptInternal = internalMutation({
       membershipId: String(membershipId),
       membershipUserId: String(user._id),
       membershipJoinedAt: joinedAt,
+      userEmail: user.email,
+      userName: user.name,
+      userUsername: effectiveUsername,
+      userImage: user.image,
+      userImageId: user.imageId ? String(user.imageId) : undefined,
+      userPhone: user.phone,
+      userIsAnonymous: user.isAnonymous,
+      userCustomerId: user.customerId,
+      userLanguage: user.language,
+      userTheme: user.theme,
+      userTimezone: user.timezone,
+      userCreatedAt: Math.floor(user._creationTime),
     };
   },
 });

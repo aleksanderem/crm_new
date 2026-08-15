@@ -8,7 +8,9 @@
  *
  * Mirrored on:
  *   - app.completeOnboarding (first time a user signs up + picks a username)
- *   - invitations._acceptInternal (invitee gets a row before any side effects)
+ *   - app.updateUsername, updateUserImage, removeUserImage, updateProfile (profile edits)
+ *   - invitations.accept (invitee gets a row after _acceptInternal mutation settles)
+ *   - stripe.PREAUTH_createFreeStripeSubscription (after PREAUTH_updateCustomerId mutation)
  *   - Plus the backfill helper below for one-shot recovery.
  *
  * IMPORTANT: this module talks to Supabase via raw fetch to PostgREST instead

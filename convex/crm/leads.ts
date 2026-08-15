@@ -181,7 +181,7 @@ export const _createSideEffects = internalMutation({
     if (args.assignedTo && args.assignedTo !== args.createdBy) {
       await createNotificationDirect(ctx, {
         organizationId: args.organizationId,
-        userId: args.assignedTo as Id<"users">,
+        userId: args.assignedTo,
         type: "assigned",
         title: "Lead assigned",
         message: `You have been assigned to lead "${args.title}"`,
@@ -432,7 +432,7 @@ export const _updateSideEffects = internalMutation({
     ) {
       await createNotificationDirect(ctx, {
         organizationId: args.organizationId,
-        userId: args.newAssignedTo as Id<"users">,
+        userId: args.newAssignedTo,
         type: "assigned",
         title: "Lead assigned",
         message: `You have been assigned to lead "${args.title}"`,
@@ -998,7 +998,7 @@ export const _moveToStageSideEffects = internalMutation({
       if (created.ownerId !== String(args.userId)) {
         await createNotificationDirect(ctx, {
           organizationId: args.organizationId,
-          userId: created.ownerId as Id<"users">,
+          userId: created.ownerId,
           type: "assigned",
           title: "New task from pipeline",
           message: `Task "${created.title}" created for lead "${args.leadTitle}"`,

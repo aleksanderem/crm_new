@@ -1,4 +1,4 @@
-import { query, action, internalMutation } from "../_generated/server";
+import { query, action, internalMutation, internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
@@ -417,43 +417,47 @@ export const listTransfers = query({
   },
 });
 
-export const migrateEquipmentStrings = internalMutation({
+export const migrateEquipmentStrings = internalAction({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .first();
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+
+    const user = await db.query("users").first();
     if (!user) throw new Error("No users found");
 
-    const treatments = await ctx.db
+    const treatments = await db
       .query("gabinetTreatments")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", orgIdStr)
       .collect();
 
-    const nameToId = new Map<string, Id<"gabinetEquipment">>();
+    const nameToId = new Map<string, string>();
     const now = Date.now();
 
     // Idempotency: pre-load existing equipment by name to avoid duplicates on re-run
-    const existingEquipment = await ctx.db
+    const existingEquipment = await db
       .query("gabinetEquipment")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", orgIdStr)
       .collect();
     for (const eq of existingEquipment) {
-      nameToId.set(eq.name, eq._id);
+      nameToId.set(eq.name, String(eq._id));
     }
 
+    let updatedTreatments = 0;
     for (const t of treatments) {
-      if (!t.requiredEquipment?.length) continue;
-      if (t.requiredEquipmentIds?.length) continue; // Already migrated
-      const equipmentIds: Id<"gabinetEquipment">[] = [];
+      const requiredEquipment = t.requiredEquipment as string[] | undefined | null;
+      const requiredEquipmentIds = t.requiredEquipmentIds as string[] | undefined | null;
+      if (!requiredEquipment?.length) continue;
+      if (requiredEquipmentIds?.length) continue; // Already migrated
+      const equipmentIds: string[] = [];
 
-      for (const name of t.requiredEquipment) {
+      for (const name of requiredEquipment) {
         if (!nameToId.has(name)) {
-          const id = await ctx.db.insert("gabinetEquipment", {
-            organizationId: args.organizationId,
+          const id = await db.insert("gabinetEquipment", {
+            organizationId: orgIdStr,
             name,
-            status: "available" as const,
-            createdBy: user._id,
+            status: "available",
+            createdBy: String(user._id),
             createdAt: now,
             updatedAt: now,
           });
@@ -462,9 +466,10 @@ export const migrateEquipmentStrings = internalMutation({
         equipmentIds.push(nameToId.get(name)!);
       }
 
-      await ctx.db.patch(t._id, { requiredEquipmentIds: equipmentIds });
+      await db.patch("gabinetTreatments", String(t._id), { requiredEquipmentIds: equipmentIds });
+      updatedTreatments++;
     }
 
-    return { migratedEquipment: nameToId.size, updatedTreatments: treatments.filter(t => t.requiredEquipment?.length && !t.requiredEquipmentIds?.length).length };
+    return { migratedEquipment: nameToId.size, updatedTreatments };
   },
 });

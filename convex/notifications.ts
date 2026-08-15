@@ -98,8 +98,8 @@ export const _markAllReadInternal = internalMutation({
 
 export const _createNotification = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
-    userId: v.id("users"),
+    organizationId: v.string(),
+    userId: v.string(),
     type: v.string(),
     title: v.string(),
     message: v.string(),

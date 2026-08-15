@@ -168,7 +168,7 @@ const AudienceCard = ({ className }: { className?: string }) => {
         </div>
         <Separator />
       </CardContent>
-      <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!}>
+      <APIProvider apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}>
         <Map
           style={{ width: '340px', minHeight: '205px' }}
           defaultCenter={{ lat: 22.7, lng: 78.7 }}

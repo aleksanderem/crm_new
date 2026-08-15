@@ -678,7 +678,7 @@ http.route({
         : `${provider}:${to}:${from}:${body.trim()}`;
 
       await ctx.runMutation(internal.gabinet.appointmentSms.processIncomingMessage, {
-        organizationId: config.organizationId as string,
+        organizationId: config.organizationId,
         provider,
         to,
         from,

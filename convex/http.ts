@@ -13,7 +13,7 @@ import {
   sendTrialWillEndEmail,
 } from "@cvx/email/templates/subscriptionEmail";
 import Stripe from "stripe";
-import { Doc, Id } from "@cvx/_generated/dataModel";
+import { Doc } from "@cvx/_generated/dataModel";
 import { createLogger } from "@cvx/_helpers/logger";
 
 function normalizeWebhookValue(value: FormDataEntryValue | unknown): string | undefined {
@@ -202,7 +202,7 @@ const handleCheckoutSessionCompleted = async (
   if (organizationId && productKey) {
     const normalizedStatus = toProductSubscriptionStatus(subscription.status);
     await ctx.runAction(internal.stripe.PREAUTH_upsertProductSubscription, {
-      organizationId: organizationId as Id<"organizations">,
+      organizationId: organizationId,
       productId: productKey,
       stripeSubscriptionId: subscription.id,
       status: normalizedStatus,
@@ -281,7 +281,7 @@ const handleCustomerSubscriptionUpdated = async (
   if (organizationId && productKey) {
     const normalizedStatus = toProductSubscriptionStatus(subscription.status);
     await ctx.runAction(internal.stripe.PREAUTH_upsertProductSubscription, {
-      organizationId: organizationId as Id<"organizations">,
+      organizationId: organizationId,
       productId: productKey,
       stripeSubscriptionId: subscription.id,
       status: normalizedStatus,
@@ -338,7 +338,7 @@ const handleCustomerSubscriptionCreated = async (
   if (organizationId && productKey) {
     const normalizedStatus = toProductSubscriptionStatus(subscription.status);
     await ctx.runAction(internal.stripe.PREAUTH_upsertProductSubscription, {
-      organizationId: organizationId as Id<"organizations">,
+      organizationId: organizationId,
       productId: productKey,
       stripeSubscriptionId: subscription.id,
       status: normalizedStatus,
@@ -365,7 +365,7 @@ const handleCustomerSubscriptionDeleted = async (
   const organizationId = subscription.metadata?.organizationId;
   if (organizationId && productKey) {
     await ctx.runAction(internal.stripe.PREAUTH_upsertProductSubscription, {
-      organizationId: organizationId as Id<"organizations">,
+      organizationId: organizationId,
       productId: productKey,
       stripeSubscriptionId: subscription.id,
       status: "canceled",

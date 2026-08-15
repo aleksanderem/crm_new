@@ -1349,7 +1349,7 @@ export const _purgeExpiredPatients = internalAction({
         try {
           await ctx.runMutation(internal.gabinet.patients._gdprEraseSideEffects, {
             patientId: patient.id,
-            organizationId: orgId as Id<"organizations">,
+            organizationId: orgId,
             originalName,
             erasedBy: performedBy,
           });

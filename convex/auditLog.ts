@@ -4,7 +4,7 @@ import { createSupabaseDb } from "./_helpers/supabaseDb";
 export async function logAudit(
   _ctx: unknown,
   data: {
-    organizationId: Id<"organizations">;
+    organizationId: string;
     userId: Id<"users">;
     action: string;
     entityType?: string;

@@ -47,7 +47,7 @@ export const run = internalAction({
         crmGranted++;
         if (!dryRun) {
           await ctx.runMutation(internal.admin.entitlements._upsertEntitlement, {
-            organizationId: orgId as unknown as Id<"organizations">,
+            organizationId: orgId,
             productId: "crm",
             grant: true,
             grantedByUserId: grantedBy as unknown as Id<"users">,
@@ -58,7 +58,7 @@ export const run = internalAction({
         gabinetGranted++;
         if (!dryRun) {
           await ctx.runMutation(internal.admin.entitlements._upsertEntitlement, {
-            organizationId: orgId as unknown as Id<"organizations">,
+            organizationId: orgId,
             productId: "gabinet",
             grant: true,
             grantedByUserId: grantedBy as unknown as Id<"users">,

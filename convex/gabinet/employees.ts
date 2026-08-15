@@ -626,7 +626,7 @@ export const _backfillMemberships = internalAction({
       }
       try {
         await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
-          organizationId: e.organizationId as Id<"organizations">,
+          organizationId: String(e.organizationId),
           userId: e.userId,
           gabinetRole: e.role as GabinetEmployeeRole,
           isActive: Boolean(e.isActive),

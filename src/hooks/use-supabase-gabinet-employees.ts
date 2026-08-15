@@ -5,6 +5,7 @@
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { useSupabase } from "@/components/supabase-provider";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
+import type { GabinetEmployeeRow } from "@/lib/supabase/database.types";
 import {
   mapGabinetEmployeeFromSupabase,
   type MappedGabinetEmployee,
@@ -66,7 +67,7 @@ export function useSupabaseGabinetEmployeesList(
         .limit(limit);
 
       if (error) throw error;
-      return (data ?? []).map(mapGabinetEmployeeFromSupabase);
+      return (data ?? []).map((row) => mapGabinetEmployeeFromSupabase(row as GabinetEmployeeRow));
     },
     enabled: enabled && isReady && !!organizationId,
   } satisfies UseQueryOptions<MappedGabinetEmployee[], Error>);

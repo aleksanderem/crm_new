@@ -298,7 +298,7 @@ function LeavesPage() {
                           <SelectValue placeholder={t("gabinet.appointments.selectEmployee")} />
                         </SelectTrigger>
                         <SelectContent>
-                          {(employees ?? []).map((emp) => {
+                          {(employees ?? []).filter((emp): emp is typeof emp & { userId: string } => emp.userId !== undefined).map((emp) => {
                             const member = teamMembers?.find((m: any) => m.userId === emp.userId);
                             return (
                               <SelectItem key={emp._id} value={emp.userId}>

@@ -65,6 +65,7 @@ import {
   useSupabaseGabinetAppointmentPaymentTotals,
 } from "@/hooks/use-supabase-gabinet-appointments";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
+import type { MappedGabinetEmployee } from "@/lib/supabase/mappers/gabinet/employees";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseGabinetTreatmentsList, useSupabaseGabinetAllTreatmentVariants } from "@/hooks/use-supabase-gabinet-treatments";
@@ -443,7 +444,7 @@ function GabinetCalendarPage() {
   const employeeColorMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const emp of employees ?? []) {
-      if (emp.color) map.set(emp.userId, emp.color);
+      if (emp.color && emp.userId) map.set(emp.userId, emp.color);
     }
     return map;
   }, [employees]);
@@ -1303,7 +1304,7 @@ function GabinetCalendarPage() {
   function getEmployeeName(emp: {
     firstName?: string;
     lastName?: string;
-    userId: string;
+    userId?: string;
     specialization?: string;
     role: string;
   }) {
@@ -1333,7 +1334,10 @@ function GabinetCalendarPage() {
     // Hide employees flagged as not visible in the calendar (issue #1859).
     // Older rows without the column default to true at the DB level, so
     // anything strictly === false is the only thing to exclude.
-    const list = (employees ?? []).filter((e) => e.showInCalendar !== false && e.userId);
+    const list = (employees ?? []).filter(
+      (e): e is MappedGabinetEmployee & { userId: string } =>
+        e.showInCalendar !== false && e.userId !== undefined,
+    );
     return list.map((emp) => {
       const name = getEmployeeName(emp);
       const initials = getEmployeeInitials(name);
@@ -1594,7 +1598,7 @@ function GabinetCalendarPage() {
                             <Check className="h-3.5 w-3.5 shrink-0" variant="stroke" />
                           )}
                         </button>
-                        {(employees ?? []).map((emp) => {
+                        {(employees ?? []).filter((e): e is MappedGabinetEmployee & { userId: string } => e.userId !== undefined).map((emp) => {
                           const name = getEmployeeName(emp);
                           const initials = getEmployeeInitials(name);
                           const selected = employeeFilter === emp.userId;
@@ -1649,7 +1653,7 @@ function GabinetCalendarPage() {
                     <Users className="h-3.5 w-3.5" variant="stroke" />
                     {t("gabinet.calendar.allEmployees", "Wszyscy pracownicy")}
                   </button>
-                  {(employees ?? []).map((emp) => {
+                  {(employees ?? []).filter((e): e is MappedGabinetEmployee & { userId: string } => e.userId !== undefined).map((emp) => {
                     const name = getEmployeeName(emp);
                     const initials = getEmployeeInitials(name);
                     const selected = employeeFilter === emp.userId;
@@ -1739,7 +1743,7 @@ function GabinetCalendarPage() {
                       <SelectItem value="all">
                         {t("gabinet.calendar.allEmployees", "Wszyscy pracownicy")}
                       </SelectItem>
-                      {(employees ?? []).map((emp) => (
+                      {(employees ?? []).filter((e): e is MappedGabinetEmployee & { userId: string } => e.userId !== undefined).map((emp) => (
                         <SelectItem key={emp._id} value={emp.userId}>
                           {getEmployeeName(emp)}
                         </SelectItem>

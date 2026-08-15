@@ -1,12 +1,11 @@
 import { MutationCtx } from "../_generated/server";
-import { Id } from "../_generated/dataModel";
 import { ActivityAction } from "@cvx/schema";
 import { publishActivityEnvelope } from "./activityEnvelope";
 
 export async function logActivity(
   ctx: MutationCtx,
   args: {
-    organizationId: Id<"organizations">;
+    organizationId: string;
     entityType: string;
     entityId: string;
     action: ActivityAction;

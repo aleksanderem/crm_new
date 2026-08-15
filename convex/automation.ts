@@ -511,7 +511,8 @@ export const _sendAutomationEmail = internalAction({
     subject: v.string(),
     bodyHtml: v.string(),
     bodyText: v.string(),
-    sentBy: v.optional(v.id("users")),
+    // Supabase UUID; users moved off Convex ids (same migration as appointmentId in #353).
+    sentBy: v.optional(v.string()),
     // Supabase UUID; gabinet appointments moved off Convex ids in #353.
     appointmentId: v.optional(v.string()),
     actionType: v.string(),
@@ -537,7 +538,7 @@ export const _sendAutomationEmail = internalAction({
         relatedEntityType: args.appointmentId ? "gabinetAppointment" : undefined,
         relatedEntityId: args.appointmentId,
         idempotencyKey: args.idempotencyKey,
-        triggeredBy: args.sentBy,
+        triggeredBy: args.sentBy as Id<"users"> | undefined,
       });
       await ctx.runMutation(internal.automation._recordAutomationEmailResult, {
         organizationId: args.organizationId,
@@ -571,7 +572,7 @@ export const _sendAutomationEmail = internalAction({
       relatedEntityType: args.appointmentId ? "gabinetAppointment" : undefined,
       relatedEntityId: args.appointmentId,
       idempotencyKey: args.idempotencyKey,
-      triggeredBy: args.sentBy,
+      triggeredBy: args.sentBy as Id<"users"> | undefined,
     };
     try {
       const response = await fetch("https://api.resend.com/emails", {
@@ -697,7 +698,8 @@ export const _recordAutomationEmailResult = internalMutation({
     subject: v.string(),
     bodyHtml: v.string(),
     bodyText: v.string(),
-    sentBy: v.optional(v.id("users")),
+    // Supabase UUID; users moved off Convex ids (same migration as appointmentId in #353).
+    sentBy: v.optional(v.string()),
     // Supabase UUID; gabinet appointments moved off Convex ids in #353.
     appointmentId: v.optional(v.string()),
     actionType: v.string(),
@@ -764,7 +766,7 @@ export const _recordAutomationEmailResult = internalMutation({
         entityId: emailId,
         action: "email_sent",
         description: `Sent email \"${args.subject}\" to ${args.recipient}`,
-        performedBy: args.sentBy,
+        performedBy: args.sentBy as Id<"users">,
       });
     }
 

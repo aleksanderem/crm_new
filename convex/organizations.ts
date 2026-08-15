@@ -501,7 +501,7 @@ export const getSeatLimit = query({
       .first();
     if (!ownerMembership) throw new Error("Organization not found");
 
-    const subscription = await ctx.db
+    const subscriptions = await ctx.db
       .query("subscriptions")
       .withIndex("userId", (q) => q.eq("userId", ownerMembership.userId))
       .filter((q) =>
@@ -510,11 +510,18 @@ export const getSeatLimit = query({
           q.eq(q.field("status"), "trialing"),
         ),
       )
-      .first();
+      .collect();
 
-    if (!subscription) return { seatLimit: 20 };
+    if (subscriptions.length === 0) return { seatLimit: 20 };
 
-    const plan = await ctx.db.get(subscription.planId);
-    return { seatLimit: plan?.seatLimit ?? 20 };
+    let maxSeatLimit: number | null = null;
+    for (const sub of subscriptions) {
+      const plan = await ctx.db.get(sub.planId);
+      if (!plan) continue;
+      if (maxSeatLimit === null || plan.seatLimit > maxSeatLimit) {
+        maxSeatLimit = plan.seatLimit;
+      }
+    }
+    return { seatLimit: maxSeatLimit ?? 20 };
   },
 });

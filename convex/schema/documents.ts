@@ -55,7 +55,7 @@ export const componentCategoryValidator = v.union(
 
 export const documentTables = {
   documentComponents: defineTable({
-    organizationId: v.optional(v.id("organizations")),
+    organizationId: v.optional(v.string()),
     scope: componentScopeValidator,
     createdBy: v.id("users"),
     name: v.string(),
@@ -74,7 +74,7 @@ export const documentTables = {
     .index("by_orgAndCategory", ["organizationId", "category"]),
 
   formTemplates: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     category: formCategoryValidator,
@@ -116,7 +116,7 @@ export const documentTables = {
     .index("by_orgAndCategory", ["organizationId", "category"]),
 
   formDocuments: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.id("formTemplates"),
     title: v.string(),
     // SurveyJS response data — all filled field values as JSON string
@@ -171,7 +171,7 @@ export const documentTables = {
   // request for kinds that have no natural host row (e.g. a template that does
   // not exist yet). Deliveries keep their own inline analysis fields.
   documentAnalysisJobs: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     kind: v.string(), // registry id: "form_template" | ...
     pages: v.array(v.object({
       storageId: v.string(),

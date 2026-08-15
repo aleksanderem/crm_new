@@ -18,7 +18,7 @@ export function createAutomationTables({
 }: AutomationSchemaDeps) {
   return {
   automationRules: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     module: automationModuleValidator,

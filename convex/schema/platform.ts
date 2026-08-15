@@ -91,7 +91,7 @@ export function createPlatformTables({
     .index("by_stripeProductId", ["stripeProductId"]),
 
   productSubscriptions: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     productId: v.string(),
     stripeSubscriptionId: v.optional(v.string()),
     status: v.union(
@@ -118,7 +118,7 @@ export function createPlatformTables({
   // --- Platform: Email Event Bus ---
 
   emailEventTypes: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     eventType: v.string(),
     module: v.union(
       v.literal("crm"),
@@ -137,7 +137,7 @@ export function createPlatformTables({
     .index("by_orgAndType", ["organizationId", "eventType"]),
 
   emailEventBindings: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     eventType: v.string(),
     templateId: v.id("emailTemplates"),
     enabled: v.boolean(),
@@ -156,7 +156,7 @@ export function createPlatformTables({
   // ---------------------------------------------------------------------------
 
   emailSequences: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     /** Event type that triggers this sequence, e.g. "appointment.created" */
     triggerEventType: v.string(),
@@ -167,7 +167,7 @@ export function createPlatformTables({
 
   emailSequenceSteps: defineTable({
     sequenceId: v.id("emailSequences"),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     /** Step order (0-indexed) */
     order: v.number(),
     /** Delay in milliseconds after enrollment (or after previous step) */
@@ -182,7 +182,7 @@ export function createPlatformTables({
 
   emailSequenceEnrollments: defineTable({
     sequenceId: v.id("emailSequences"),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     recipientEmail: v.string(),
     recipientName: v.optional(v.string()),
     /** JSON string payload passed from trigger event */
@@ -206,7 +206,7 @@ export function createPlatformTables({
   // ---------------------------------------------------------------------------
 
   emailBrandConfig: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     logoStorageId: v.optional(v.id("_storage")),
     logoUrl: v.optional(v.string()),
     companyName: v.optional(v.string()),
@@ -245,7 +245,7 @@ export function createPlatformTables({
     url: v.optional(v.string()),         // frontend: window.location
     userAgent: v.optional(v.string()),   // frontend
     userId: v.optional(v.id("users")),
-    organizationId: v.optional(v.id("organizations")),
+    organizationId: v.optional(v.string()),
     argsJson: v.optional(v.string()),    // sanitized JSON of inputs (truncated)
     requestId: v.optional(v.string()),   // optional correlation id
   })
@@ -264,7 +264,7 @@ export function createPlatformTables({
   // Covers non-templated sends (signing emails, ad-hoc compose, OTP, system
   // invitations). See `/dashboard/settings/mail` → "Logs" tab.
   emailSendLog: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     source: v.union(
       v.literal("signing"),
       v.literal("automation"),

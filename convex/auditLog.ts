@@ -1,9 +1,8 @@
-import { MutationCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 export async function logAudit(
-  _ctx: MutationCtx,
+  _ctx: unknown,
   data: {
     organizationId: Id<"organizations">;
     userId: Id<"users">;

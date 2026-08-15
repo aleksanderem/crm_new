@@ -297,7 +297,7 @@ export function createPlatformTables({
     relatedEntityType: v.optional(v.string()),
     relatedEntityId: v.optional(v.string()),
     idempotencyKey: v.optional(v.string()),
-    triggeredBy: v.optional(v.id("users")),
+    triggeredBy: v.optional(v.string()),
     sentAt: v.number(),
   })
     .index("by_org_sentAt", ["organizationId", "sentAt"])

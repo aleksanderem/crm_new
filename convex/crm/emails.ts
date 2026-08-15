@@ -103,7 +103,7 @@ export const send = action({
         ctx,
         organizationId: args.organizationId,
         source: "manual_compose",
-        triggeredBy: authResult.userId as Id<"users">,
+        triggeredBy: authResult.userId,
         relatedEntityType: args.contactId
           ? "contact"
           : args.companyId

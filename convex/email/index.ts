@@ -36,7 +36,7 @@ export type EmailSendLogContext = {
   relatedEntityType?: string;
   relatedEntityId?: string;
   idempotencyKey?: string;
-  triggeredBy?: Id<"users">;
+  triggeredBy?: string;
   recipientName?: string;
 };
 

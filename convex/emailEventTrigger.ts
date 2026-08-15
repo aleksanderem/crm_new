@@ -45,7 +45,7 @@ export const triggerEmailEvent = internalAction({
     relatedEntityType: v.optional(v.string()),
     relatedEntityId: v.optional(v.string()),
     idempotencyKey: v.optional(v.string()),
-    triggeredBy: v.optional(v.id("users")),
+    triggeredBy: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
@@ -72,7 +72,7 @@ export const triggerEmailEvent = internalAction({
       idempotencyKey: args.idempotencyKey ?? null,
       recipientEmail: args.recipientEmail,
       recipientName: args.recipientName ?? null,
-      triggeredBy: args.triggeredBy ? String(args.triggeredBy) : null,
+      triggeredBy: args.triggeredBy ?? null,
       createdAt: Date.now(),
     });
 

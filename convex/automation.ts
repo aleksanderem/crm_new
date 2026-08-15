@@ -538,7 +538,7 @@ export const _sendAutomationEmail = internalAction({
         relatedEntityType: args.appointmentId ? "gabinetAppointment" : undefined,
         relatedEntityId: args.appointmentId,
         idempotencyKey: args.idempotencyKey,
-        triggeredBy: args.sentBy as Id<"users"> | undefined,
+        triggeredBy: args.sentBy,
       });
       await ctx.runMutation(internal.automation._recordAutomationEmailResult, {
         organizationId: args.organizationId,
@@ -572,7 +572,7 @@ export const _sendAutomationEmail = internalAction({
       relatedEntityType: args.appointmentId ? "gabinetAppointment" : undefined,
       relatedEntityId: args.appointmentId,
       idempotencyKey: args.idempotencyKey,
-      triggeredBy: args.sentBy as Id<"users"> | undefined,
+      triggeredBy: args.sentBy,
     };
     try {
       const response = await fetch("https://api.resend.com/emails", {

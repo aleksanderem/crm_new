@@ -1,4 +1,4 @@
-import { action, internalMutation } from "../_generated/server";
+import { action, internalAction, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
@@ -188,8 +188,8 @@ export const remove = action({
       throw new Error("Note not found");
     }
 
-    // Delete child notes (replies) via internalMutation
-    await ctx.runMutation(internal.crm.notes._removeChildNotes, {
+    // Delete child notes (replies) via internalAction (Supabase read path)
+    await ctx.runAction(internal.crm.notes._removeChildNotes, {
       organizationId: args.organizationId,
       parentNoteId: args.noteId,
     });
@@ -213,19 +213,20 @@ export const remove = action({
   },
 });
 
-export const _removeChildNotes = internalMutation({
+export const _removeChildNotes = internalAction({
   args: {
     organizationId: v.id("organizations"),
     parentNoteId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const children = await ctx.db
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    const childNotes = await db
       .query("notes")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", String(args.organizationId))
+      .eq("parentNoteId", args.parentNoteId)
       .collect();
-    const childNotes = children.filter((n) => n.parentNoteId === args.parentNoteId as any);
     for (const child of childNotes) {
-      await ctx.db.delete(child._id);
+      await db.delete("notes", String(child._id));
     }
   },
 });

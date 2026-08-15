@@ -1147,13 +1147,10 @@ export const blockEmployee = action({
       });
     }
 
-    await logAudit(ctx, {
+    await ctx.runMutation(internal.gabinet.employees._blockSideEffects, {
       organizationId: args.organizationId,
       userId: authResult.userId as Id<"users">,
-      action: "employee_blocked",
-      entityType: "gabinetEmployee",
-      entityId: args.employeeId,
-      details: `Blocked employee account`,
+      employeeId: args.employeeId,
     });
   },
 });
@@ -1196,9 +1193,42 @@ export const unblockEmployee = action({
       });
     }
 
-    await logAudit(ctx, {
+    await ctx.runMutation(internal.gabinet.employees._unblockSideEffects, {
       organizationId: args.organizationId,
       userId: authResult.userId as Id<"users">,
+      employeeId: args.employeeId,
+    });
+  },
+});
+
+export const _blockSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    employeeId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.userId,
+      action: "employee_blocked",
+      entityType: "gabinetEmployee",
+      entityId: args.employeeId,
+      details: `Blocked employee account`,
+    });
+  },
+});
+
+export const _unblockSideEffects = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    employeeId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.userId,
       action: "employee_unblocked",
       entityType: "gabinetEmployee",
       entityId: args.employeeId,

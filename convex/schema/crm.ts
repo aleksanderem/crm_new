@@ -913,7 +913,7 @@ export function createCrmTables({
     mailProviderId: v.optional(v.id("mailProviders")),
     gmailMessageId: v.optional(v.string()),
     gmailThreadId: v.optional(v.string()),
-    sentBy: v.optional(v.id("users")),
+    sentBy: v.optional(v.string()),
     templateId: v.optional(v.id("emailTemplates")),
     patientId: v.optional(v.id("gabinetPatients")),
     appointmentId: v.optional(v.id("gabinetAppointments")),

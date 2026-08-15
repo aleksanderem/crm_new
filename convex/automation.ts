@@ -1732,7 +1732,7 @@ export const processRun = internalAction({
           }
 
           if (action.type === "create_notification") {
-            const userId = getPathValue(payload, action.userIdPath) as Id<"users"> | undefined;
+            const userId = getPathValue(payload, action.userIdPath) as string | undefined;
             const title = applyTemplate(action.titleTemplate, payload);
             const message = applyTemplate(action.messageTemplate, payload);
             const link = action.linkTemplate

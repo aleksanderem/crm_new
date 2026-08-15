@@ -522,6 +522,8 @@ Key backend patterns:
 - `createNotificationDirect(ctx, data)` — creates in-app notifications
 - `logAudit(ctx, data)` — writes to audit log
 
+**PERMANENT dual-write constraint — do NOT remove.** `teamMemberships` (and `users`, `organizations`) are written to both Convex `ctx.db` AND Supabase. This is architecturally permanent, not a migration shim. Reason: `verifyOrgAccess` and `checkPermission` accept `QueryCtx | MutationCtx` so they can be called from Convex queries as well as mutations. Convex queries **cannot** invoke `internalAction`, which means they cannot reach the Supabase path via `convex/_helpers/authAction.ts`. Therefore `ctx.db` reads on `teamMemberships` inside `convex/_helpers/auth.ts` and `convex/_helpers/permissions.ts` must remain valid indefinitely. Removing the Convex-side write for `teamMemberships` would silently break all permission checks in query handlers. See issues #3893, #3896 and the file header in `convex/_helpers/permissions.ts:2-9` for details.
+
 Routing structure: `src/routes/_app/_auth/dashboard/_layout.*.tsx` — all dashboard pages are nested under authenticated layout. Settings pages under `_layout.settings.*.tsx`. Gabinet module under `_layout.gabinet.*.tsx`. Patient portal at `src/routes/_app/patient/`.
 
 ## CRM Module

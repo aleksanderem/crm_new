@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import type { TFunction } from "i18next";
 import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
 import { Loader2 } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
@@ -21,7 +22,7 @@ interface RescheduleAppointmentDialogProps {
   currentEndTime: string; // HH:MM
   isSaving: boolean;
   onSave: (date: string, startTime: string, endTime: string) => void;
-  t: (key: string, fallback?: string) => string;
+  t: TFunction;
 }
 
 export function RescheduleAppointmentDialog({

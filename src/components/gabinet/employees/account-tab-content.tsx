@@ -7,6 +7,7 @@ import { ChangePasswordDialog } from "./change-password-dialog";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
 import { usePermission } from "@/hooks/use-permission";
+import type { TFunction } from "i18next";
 import { computeEmployeeAccountStatus } from "@/lib/gabinet/employee-account-status";
 
 export function AccountTabContent({
@@ -32,7 +33,7 @@ export function AccountTabContent({
   pendingInvitation?: MappedInvitation | null;
   onResendInvitation?: () => Promise<void>;
   onCancelInvitation?: () => Promise<void>;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   const { allowed: canEdit } = usePermission("gabinet_employees", "edit");
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);

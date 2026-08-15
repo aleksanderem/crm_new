@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar } from "@/lib/ez-icons";
+import type { TFunction } from "i18next";
 import type { MappedGabinetAppointment } from "@/lib/supabase/mappers/gabinet/appointments";
 import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
 
@@ -15,7 +16,7 @@ export function UpcomingAgenda({
   appointments: MappedGabinetAppointment[] | undefined;
   treatmentMap: Map<string, string>;
   navigate: (opts: { to: string }) => void;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
   i18nLanguage: string;
 }) {
   const today = new Date().toISOString().split("T")[0];

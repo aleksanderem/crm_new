@@ -1,4 +1,5 @@
 import type { Id } from "@cvx/_generated/dataModel";
+import type { TFunction } from "i18next";
 import type {
   AutomationBuilderEventCatalogEntry,
   AutomationBuilderSubmitPayload,
@@ -433,7 +434,7 @@ function canUseSupportedNotificationLink(
 
 export function createAutomationPlaygroundActionDraft(
   actionType: AutomationPlaygroundActionType,
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TFunction,
   eventType?: AutomationPlaygroundEventType,
 ): AutomationPlaygroundActionDraft {
   switch (actionType) {

@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { SettlementForm } from "@/components/gabinet/appointment-shared/settlement-form";
+import type { TFunction } from "i18next";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 
 type JunctionTreatment = {
@@ -84,7 +85,7 @@ export function PaymentAppointmentDialog({
   onMarkCompleted: () => Promise<void>;
   onSuccess: () => void;
   onCancel: () => void;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

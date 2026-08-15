@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { TFunction } from "i18next";
 
 export function GdprEraseDialog({
   open,
@@ -25,7 +26,7 @@ export function GdprEraseDialog({
   isGdprSubmitting: boolean;
   onClose: () => void;
   onSubmit: () => Promise<void>;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   return (
     <Dialog

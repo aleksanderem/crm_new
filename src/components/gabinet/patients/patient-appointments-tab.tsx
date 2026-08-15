@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Calendar, Plus } from "@/lib/ez-icons";
+import type { TFunction } from "i18next";
 import type { MappedGabinetAppointment } from "@/lib/supabase/mappers/gabinet/appointments";
 import { AppointmentRow } from "./appointment-row";
 
@@ -14,7 +15,7 @@ export function PatientAppointmentsTab({
   getApptTreatmentDisplay: (apt?: MappedGabinetAppointment | null) => string | undefined;
   getVisitCountLabel: (apt: MappedGabinetAppointment) => { label: string; title: string } | null;
   navigate: (opts: { to: string; params?: Record<string, string> }) => void;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   const today = new Date().toISOString().split("T")[0];
 

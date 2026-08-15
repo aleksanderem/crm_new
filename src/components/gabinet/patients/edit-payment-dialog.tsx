@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { TFunction } from "i18next";
 import type { MappedGabinetAppointment } from "@/lib/supabase/mappers/gabinet/appointments";
 
 export function EditPaymentDialog({
@@ -55,7 +56,7 @@ export function EditPaymentDialog({
   onSubmit: () => Promise<void>;
   patientAppointments: MappedGabinetAppointment[] | undefined;
   getApptPrice: (apt?: MappedGabinetAppointment | null) => number;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   return (
     <Dialog

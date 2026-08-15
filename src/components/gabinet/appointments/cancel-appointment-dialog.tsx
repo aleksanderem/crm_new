@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import type { TFunction } from "i18next";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 
 type CancelScope = "single" | "series";
@@ -34,7 +35,7 @@ export function CancelAppointmentDialog({
   isRecurring?: boolean;
   cancelScope?: CancelScope;
   onCancelScopeChange?: (scope: CancelScope) => void;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   const title =
     isRecurring && cancelScope === "series"

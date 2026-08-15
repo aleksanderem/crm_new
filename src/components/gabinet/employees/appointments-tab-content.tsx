@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Plus,
 } from "@/lib/ez-icons";
+import type { TFunction } from "i18next";
 import type { MappedGabinetAppointment } from "@/lib/supabase/mappers/gabinet/appointments";
 import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
 
@@ -34,7 +35,7 @@ export function AppointmentsTabContent({
   treatmentMap: Map<string, string>;
   employeeUserId?: string;
   navigate: (opts: { to: string; search?: Record<string, unknown> }) => void;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
   i18nLanguage: string;
 }) {
   return (

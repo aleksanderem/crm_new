@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Trophy, ArrowUpRight, ArrowDownRight, Star, Plus, Minus } from "@/lib/ez-icons";
+import type { TFunction } from "i18next";
 
 type LoyaltyBalance = {
   balance: number;
@@ -23,7 +24,7 @@ export function PatientLoyaltyTab({
 }: {
   loyaltyBalance: LoyaltyBalance;
   loyaltyTransactions: LoyaltyTransaction[] | undefined;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   return (
     <div className="space-y-6">

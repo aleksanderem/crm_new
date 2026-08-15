@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, Heart, Star, ChevronDown } from "@/lib/ez-icons";
+import type { TFunction } from "i18next";
 import { cn } from "@/lib/utils";
 import { formatPhoneNumber } from "@/lib/phone";
 import { displayReferralSource } from "@/lib/options";
@@ -39,7 +40,7 @@ export function PatientOverviewTab({
   getApptTreatmentDisplay: (apt?: MappedGabinetAppointment | null) => string | undefined;
   getVisitCountLabel: (apt: MappedGabinetAppointment) => { label: string; title: string } | null;
   navigate: (opts: { to: string; params?: Record<string, string> }) => void;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   return (
     <div className="flex flex-col space-y-6">

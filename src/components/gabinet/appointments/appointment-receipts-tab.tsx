@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { FileText } from "@/lib/ez-icons";
+import type { TFunction } from "i18next";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { EmptyState } from "@/components/layout/empty-state";
 
@@ -29,7 +30,7 @@ export function AppointmentReceiptsTab({
 }: {
   appointmentReceipts: Receipt[];
   language: string;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   return (
     <div className="space-y-4">

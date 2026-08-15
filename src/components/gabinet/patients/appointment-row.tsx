@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/lib/ez-icons";
+import type { TFunction } from "i18next";
 import type { MappedGabinetAppointment } from "@/lib/supabase/mappers/gabinet/appointments";
 import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
 
@@ -16,7 +17,7 @@ export function AppointmentRow({
   treatmentDisplayName: string | undefined;
   onClick: () => void;
   isPast?: boolean;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   return (
     <div

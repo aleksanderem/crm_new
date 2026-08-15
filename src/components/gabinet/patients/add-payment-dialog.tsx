@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { TFunction } from "i18next";
 import type { MappedGabinetAppointment } from "@/lib/supabase/mappers/gabinet/appointments";
 
 type Payment = {
@@ -68,7 +69,7 @@ export function AddPaymentDialog({
   patientPayments: Payment[] | undefined;
   getApptTreatmentDisplay: (apt?: MappedGabinetAppointment | null) => string | undefined;
   getApptPrice: (apt?: MappedGabinetAppointment | null) => number;
-  t: (key: string, opts?: Record<string, unknown> | string) => string;
+  t: TFunction;
 }) {
   return (
     <Dialog

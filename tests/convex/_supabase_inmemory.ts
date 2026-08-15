@@ -189,6 +189,53 @@ function createInMemoryRawClient() {
         const formatted = `${prefix}/${year}/${String(next).padStart(5, "0")}`;
         return { data: formatted, error: null };
       }
+      // Atomic receipt insert used by insertReceiptWithAtomicNumber (issue #3793).
+      // Mirrors the production Postgres function: increments the sequence counter,
+      // inserts a gabinet_receipts row, and returns { receipt_id, receipt_number }.
+      if (fn === "insert_gabinet_receipt_with_number") {
+        const orgId = String(params.p_org_id ?? "");
+        const year = Number(params.p_year ?? new Date().getFullYear());
+        const prefix = String(params.p_prefix ?? "REC");
+        const locationId = params.p_location_id ? String(params.p_location_id) : "";
+        const key = `${orgId}:${locationId}:${year}:${prefix}`;
+        const next = (receiptSequenceCounters.get(key) ?? 0) + 1;
+        receiptSequenceCounters.set(key, next);
+        const receiptNumber = `${prefix}/${year}/${String(next).padStart(5, "0")}`;
+        const receiptId = randomId();
+        const now = Number(params.p_now ?? Date.now());
+        // Store with camelCase keys — InMemoryRawQuery.eq() converts snake_case
+        // field names to camelCase before filtering against the in-memory rows.
+        getTable("gabinetReceipts").set(receiptId, {
+          id: receiptId,
+          organizationId: orgId,
+          paymentId: String(params.p_payment_id ?? ""),
+          appointmentId: params.p_appointment_id ?? null,
+          patientId: params.p_patient_id ?? null,
+          issuedAt: Number(params.p_issued_at ?? now),
+          organizationName: String(params.p_organization_name ?? ""),
+          organizationNip: params.p_organization_nip ?? null,
+          organizationAddress: params.p_organization_address ?? null,
+          totalNet: Number(params.p_total_net ?? 0),
+          totalVat: Number(params.p_total_vat ?? 0),
+          totalGross: Number(params.p_total_gross ?? 0),
+          paymentMethod: String(params.p_payment_method ?? ""),
+          itemsJson: String(params.p_items_json ?? "[]"),
+          fiscalReceiptId: params.p_fiscal_receipt_id ?? null,
+          receiptType: String(params.p_receipt_type ?? "original"),
+          pdfStorageId: params.p_pdf_storage_id ?? null,
+          pdfUrl: params.p_pdf_url ?? null,
+          createdBy: String(params.p_created_by ?? ""),
+          locationId: params.p_location_id ?? null,
+          receiptNumber,
+          status: "issued",
+          createdAt: now,
+          updatedAt: now,
+        });
+        return {
+          data: { receipt_id: receiptId, receipt_number: receiptNumber },
+          error: null,
+        };
+      }
       return { data: null, error: { message: `rpc stub: unknown function ${fn}` } };
     },
   };

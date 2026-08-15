@@ -20,7 +20,7 @@ const moduleValidator = v.union(
 
 export const registerEventType = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     eventType: v.string(),
     module: moduleValidator,
     displayName: v.string(),
@@ -73,7 +73,7 @@ export const registerEventType = action({
  */
 export const emitEvent = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     eventType: v.string(),
     payload: v.optional(v.string()), // JSON string
     recipientEmail: v.string(),

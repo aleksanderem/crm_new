@@ -53,7 +53,7 @@ describe("activity envelope helper", () => {
       };
     }) => {
       await t.run(async (ctx) => {
-        await publishActivityEnvelope(ctx, {
+        await publishActivityEnvelope({
           organizationId,
           action: "sms_sent",
           performedBy: userId,
@@ -102,7 +102,7 @@ describe("activity envelope helper", () => {
       targets?: ActivityEnvelopeTarget[];
     }) => {
       await t.run(async (ctx) => {
-        await publishActivityEnvelope(ctx, {
+        await publishActivityEnvelope({
           organizationId,
           action: "sms_sent",
           performedBy: userId,
@@ -204,7 +204,7 @@ describe("activity envelope helper", () => {
 
     await expect(
       t.run(async (ctx) => {
-        await publishActivityEnvelope(ctx, {
+        await publishActivityEnvelope({
           organizationId,
           action: "sms_sent",
           performedBy: userId,
@@ -257,7 +257,7 @@ describe("activity envelope helper", () => {
     ];
 
     await t.run(async (ctx) => {
-      await publishActivityEnvelope(ctx, {
+      await publishActivityEnvelope({
         organizationId,
         action: "sms_sent",
         performedBy: userId,
@@ -316,7 +316,7 @@ describe("activity envelope helper", () => {
     ];
 
     await t.run(async (ctx) => {
-      await publishActivityEnvelope(ctx, {
+      await publishActivityEnvelope({
         organizationId,
         action: "sms_sent",
         performedBy: userId,
@@ -385,7 +385,7 @@ describe("activity envelope helper", () => {
     ];
 
     await t.run(async (ctx) => {
-      await publishActivityEnvelope(ctx, {
+      await publishActivityEnvelope({
         organizationId,
         action: "sms_sent",
         performedBy: userId,

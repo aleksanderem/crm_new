@@ -64,7 +64,7 @@ export const _createSideEffects = internalMutation({
     createdAt: v.number(),
   },
   handler: async (ctx, args) => {
-    await publishActivityEnvelope(ctx, {
+    await publishActivityEnvelope({
       organizationId: args.organizationId,
       action: "note_added",
       performedBy: args.createdBy as Id<"users">,
@@ -144,7 +144,7 @@ export const _updateSideEffects = internalMutation({
     updatedAt: v.number(),
   },
   handler: async (ctx, args) => {
-    await publishActivityEnvelope(ctx, {
+    await publishActivityEnvelope({
       organizationId: args.organizationId,
       action: "updated",
       performedBy: args.updatedBy as Id<"users">,
@@ -240,7 +240,7 @@ export const _removeSideEffects = internalMutation({
     deletedBy: v.string(),
   },
   handler: async (ctx, args) => {
-    await publishActivityEnvelope(ctx, {
+    await publishActivityEnvelope({
       organizationId: args.organizationId,
       action: "deleted",
       performedBy: args.deletedBy as Id<"users">,

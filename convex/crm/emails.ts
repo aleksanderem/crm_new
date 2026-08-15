@@ -172,7 +172,7 @@ export const _sendSideEffects = internalMutation({
   handler: async (ctx, args) => {
     const sentByUserId = args.sentBy as Id<"users">;
 
-    await publishActivityEnvelope(ctx, {
+    await publishActivityEnvelope({
       organizationId: args.organizationId,
       action: "email_sent",
       performedBy: sentByUserId,

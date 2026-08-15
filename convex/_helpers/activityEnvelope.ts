@@ -1,5 +1,4 @@
 import type { Id } from "../_generated/dataModel";
-import type { MutationCtx } from "../_generated/server";
 import type { ActivityAction } from "@cvx/schema";
 import { createSupabaseDb } from "./supabaseDb";
 
@@ -120,9 +119,7 @@ export function createActivityEnvelope(args: BuildActivityEnvelopeArgs): Activit
   };
 }
 
-export async function publishActivityEnvelope(
-  _ctx: MutationCtx,
-  args: {
+export async function publishActivityEnvelope(args: {
     organizationId: Id<"organizations">;
     action: ActivityAction;
     performedBy: Id<"users">;

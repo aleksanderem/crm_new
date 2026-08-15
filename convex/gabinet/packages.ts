@@ -609,7 +609,7 @@ export const _purchaseTreatmentSideEffects = internalMutation({
     createdAt: v.number(),
   },
   handler: async (ctx, args) => {
-    await publishActivityEnvelope(ctx, {
+    await publishActivityEnvelope({
       organizationId: args.organizationId,
       action: "package_assigned",
       performedBy: args.createdBy as Id<"users">,
@@ -863,7 +863,7 @@ export const _purchaseSideEffects = internalMutation({
       targets.push({ entityType: "gabinetPatient", entityId: args.patientId });
     }
 
-    await publishActivityEnvelope(ctx, {
+    await publishActivityEnvelope({
       organizationId: args.organizationId,
       action: "package_assigned",
       performedBy: args.createdBy as Id<"users">,

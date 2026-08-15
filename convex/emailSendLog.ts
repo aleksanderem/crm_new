@@ -48,7 +48,7 @@ export const record = internalMutation({
     relatedEntityType: v.optional(v.string()),
     relatedEntityId: v.optional(v.string()),
     idempotencyKey: v.optional(v.string()),
-    triggeredBy: v.optional(v.id("users")),
+    triggeredBy: v.optional(v.string()),
     sentAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {

@@ -5,7 +5,7 @@ import { getValidAccessToken } from "./_helpers";
 
 export const sendViaGmail = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     to: v.array(v.string()),
     cc: v.optional(v.array(v.string())),
     bcc: v.optional(v.array(v.string())),
@@ -93,7 +93,7 @@ export const sendViaGmail = action({
 
 export const syncInbox = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     const token = await getValidAccessToken(ctx, args.organizationId);

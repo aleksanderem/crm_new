@@ -930,20 +930,6 @@ export const _recordUpdateFieldResult = internalMutation({
       return;
     }
 
-    // Mirror to Convex if a doc with this id still exists there (gabinet
-    // entities seeded by tests, or legacy data not yet migrated). For
-    // Supabase-only ids, normalizeId returns null and we silently skip.
-    if (args.targetEntityType && args.targetId && args.updates) {
-      const descriptor = AUTOMATION_UPDATE_FIELD_DESCRIPTORS[args.targetEntityType];
-      const convexId = ctx.db.normalizeId(descriptor.table, args.targetId);
-      if (convexId) {
-        const convexDoc = await ctx.db.get(convexId);
-        if (convexDoc) {
-          await ctx.db.patch(convexId, args.updates as never);
-        }
-      }
-    }
-
     if (args.actorUserId && args.linkedEntityType && args.targetId && args.fieldKey) {
       const activityLabelByEntity: Record<AutomationTargetEntityType, string> = {
         gabinetPatient: "patient",

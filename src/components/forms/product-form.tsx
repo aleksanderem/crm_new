@@ -85,6 +85,21 @@ function getTaxMultiplier(taxRateStr: string): number {
   return Number.isFinite(rate) ? 1 + rate / 100 : 1;
 }
 
+function computeMarginMetrics(
+  salePriceStr: string,
+  purchasePriceStr: string,
+): { margin: string; markup: string } {
+  const s = parseFloat(salePriceStr.replace(",", "."));
+  const p = parseFloat(purchasePriceStr.replace(",", "."));
+  if (!Number.isFinite(s) || !Number.isFinite(p)) return { margin: "", markup: "" };
+  const margin = s !== 0 ? ((s - p) / s) * 100 : null;
+  const markup = p !== 0 ? ((s - p) / p) * 100 : null;
+  return {
+    margin: margin !== null && Number.isFinite(margin) ? String(Math.round(margin * 100) / 100) : "",
+    markup: markup !== null && Number.isFinite(markup) ? String(Math.round(markup * 100) / 100) : "",
+  };
+}
+
 interface TagDef {
   _id: Id<"tagDefinitions">;
   name: string;
@@ -185,6 +200,18 @@ export function ProductForm({
     }
     return "";
   });
+  const [margin, setMargin] = useState(() =>
+    computeMarginMetrics(
+      initialData?.salePrice != null ? String(initialData.salePrice) : "",
+      initialData?.purchasePrice != null ? String(initialData.purchasePrice) : "",
+    ).margin,
+  );
+  const [markup, setMarkup] = useState(() =>
+    computeMarginMetrics(
+      initialData?.salePrice != null ? String(initialData.salePrice) : "",
+      initialData?.purchasePrice != null ? String(initialData.purchasePrice) : "",
+    ).markup,
+  );
 
   const handleTaxRateChange = (newRate: string) => {
     setTaxRate(newRate);
@@ -196,9 +223,14 @@ export function ProductForm({
     }
     // Purchase: keep net (unitPrice), update gross (purchasePrice)
     const parsedPurchaseNet = parseFloat(unitPrice.replace(",", "."));
+    let newPurchasePrice = purchasePrice;
     if (Number.isFinite(parsedPurchaseNet) && parsedPurchaseNet >= 0) {
-      setPurchasePrice(String(Math.round(parsedPurchaseNet * multiplier * 100) / 100));
+      newPurchasePrice = String(Math.round(parsedPurchaseNet * multiplier * 100) / 100);
+      setPurchasePrice(newPurchasePrice);
     }
+    const { margin: newMargin, markup: newMarkup } = computeMarginMetrics(salePrice, newPurchasePrice);
+    setMargin(newMargin);
+    setMarkup(newMarkup);
   };
 
   const handleUnitPriceChange = (v: string) => {
@@ -207,9 +239,15 @@ export function ProductForm({
     const parsed = parseFloat(v.replace(",", "."));
     if (Number.isFinite(parsed) && parsed >= 0) {
       const multiplier = getTaxMultiplier(taxRate);
-      setPurchasePrice(String(Math.round(parsed * multiplier * 100) / 100));
+      const newPurchasePrice = String(Math.round(parsed * multiplier * 100) / 100);
+      setPurchasePrice(newPurchasePrice);
+      const { margin: newMargin, markup: newMarkup } = computeMarginMetrics(salePrice, newPurchasePrice);
+      setMargin(newMargin);
+      setMarkup(newMarkup);
     } else {
       setPurchasePrice("");
+      setMargin("");
+      setMarkup("");
     }
   };
 
@@ -221,6 +259,9 @@ export function ProductForm({
       const multiplier = getTaxMultiplier(taxRate);
       setUnitPrice(String(Math.round((parsed / multiplier) * 100) / 100));
     }
+    const { margin: newMargin, markup: newMarkup } = computeMarginMetrics(salePrice, v);
+    setMargin(newMargin);
+    setMarkup(newMarkup);
   };
 
   const handleSalePriceGrossChange = (v: string) => {
@@ -233,6 +274,9 @@ export function ProductForm({
     } else {
       setSalePriceNet("");
     }
+    const { margin: newMargin, markup: newMarkup } = computeMarginMetrics(v, purchasePrice);
+    setMargin(newMargin);
+    setMarkup(newMarkup);
   };
 
   const handleSalePriceNetChange = (v: string) => {
@@ -241,9 +285,44 @@ export function ProductForm({
     const parsed = parseFloat(v.replace(",", "."));
     if (Number.isFinite(parsed) && parsed >= 0) {
       const multiplier = getTaxMultiplier(taxRate);
-      setSalePrice(String(Math.round(parsed * multiplier * 100) / 100));
+      const newGross = String(Math.round(parsed * multiplier * 100) / 100);
+      setSalePrice(newGross);
+      const { margin: newMargin, markup: newMarkup } = computeMarginMetrics(newGross, purchasePrice);
+      setMargin(newMargin);
+      setMarkup(newMarkup);
     } else {
       setSalePrice("");
+      setMargin("");
+      setMarkup("");
+    }
+  };
+
+  const handleMarginChange = (v: string) => {
+    if (v !== "" && !/^-?[0-9]*[.,]?[0-9]*$/.test(v)) return;
+    setMargin(v);
+    const m = parseFloat(v.replace(",", "."));
+    const p = parseFloat(purchasePrice.replace(",", "."));
+    if (Number.isFinite(m) && m < 100 && Number.isFinite(p) && p > 0) {
+      const newSale = Math.round((p / (1 - m / 100)) * 100) / 100;
+      setSalePrice(String(newSale));
+      const multiplier = getTaxMultiplier(taxRate);
+      setSalePriceNet(String(Math.round((newSale / multiplier) * 100) / 100));
+      setMarkup(String(Math.round(((newSale - p) / p) * 100 * 100) / 100));
+    }
+  };
+
+  const handleMarkupChange = (v: string) => {
+    if (v !== "" && !/^-?[0-9]*[.,]?[0-9]*$/.test(v)) return;
+    setMarkup(v);
+    const n = parseFloat(v.replace(",", "."));
+    const p = parseFloat(purchasePrice.replace(",", "."));
+    if (Number.isFinite(n) && Number.isFinite(p) && p > 0) {
+      const newSale = Math.round(p * (1 + n / 100) * 100) / 100;
+      setSalePrice(String(newSale));
+      const multiplier = getTaxMultiplier(taxRate);
+      setSalePriceNet(String(Math.round((newSale / multiplier) * 100) / 100));
+      const newMarginVal = newSale !== 0 ? ((newSale - p) / newSale) * 100 : 0;
+      setMargin(Number.isFinite(newMarginVal) ? String(Math.round(newMarginVal * 100) / 100) : "");
     }
   };
 
@@ -464,6 +543,52 @@ export function ProductForm({
             </p>
           ) : null;
         })()}
+        {/* ─── Kalkulator marży ─── */}
+        <div className="sm:col-span-2 space-y-2 rounded-md border bg-muted/30 px-3 py-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            {t("products.form.sections.calculator", { defaultValue: "Kalkulator marży" })}
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <Label>{t("products.form.margin", { defaultValue: "Marża %" })}</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={margin}
+                onChange={(e) => handleMarginChange(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t("products.form.markup", { defaultValue: "Narzut %" })}</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={markup}
+                onChange={(e) => handleMarkupChange(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t("products.form.priceDiff", { defaultValue: "Różnica (brutto)" })}</Label>
+              {(() => {
+                const s = parseFloat(salePrice.replace(",", "."));
+                const p = parseFloat(purchasePrice.replace(",", "."));
+                const diff = Number.isFinite(s) && Number.isFinite(p)
+                  ? Math.round((s - p) * 100) / 100
+                  : null;
+                return (
+                  <div className="flex h-9 items-center rounded-md border border-input bg-muted/50 px-3 text-sm">
+                    {diff !== null ? `${diff >= 0 ? "+" : ""}${diff.toFixed(2)} zł` : "—"}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {t("products.form.calculatorHelp", { defaultValue: "Wpisz marżę lub narzut, aby automatycznie wyliczyć cenę sprzedaży." })}
+          </p>
+        </div>
         <div className="flex items-center gap-2 self-end">
           <Switch checked={isActive} onCheckedChange={setIsActive} />
           <Label>{t("products.form.isActive")}</Label>

@@ -563,7 +563,7 @@ const automationTables = createAutomationTables({
 
 const tagAndCategoryTables = {
   tagDefinitions: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     color: v.string(),
     sortOrder: v.number(),
@@ -575,7 +575,7 @@ const tagAndCategoryTables = {
     .index("by_orgAndName", ["organizationId", "name"]),
 
   categoryDefinitions: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: entityTypeValidator,
     name: v.string(),
     parentId: v.optional(v.id("categoryDefinitions")),
@@ -613,7 +613,7 @@ const signingStubTables = {
   signingLinkStubs: defineTable({
     stubId: v.string(),
     token: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     expiresAt: v.number(),
     usedAt: v.optional(v.number()),
     destination: v.optional(v.string()),

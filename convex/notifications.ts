@@ -128,11 +128,9 @@ export async function createNotificationDirect(
   }
 ) {
   // Notifications live in Convex for real-time push (live queries on the bell).
-  // Cast as any: callers post-Supabase-migration pass string IDs; Convex
-  // accepts them at runtime since the values are still valid ID strings.
   await ctx.db.insert("notifications", {
     ...data,
     isRead: false,
     createdAt: Date.now(),
-  } as any);
+  });
 }

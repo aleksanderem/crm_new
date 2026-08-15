@@ -48,7 +48,7 @@ function renderTemplate(
 
 export const list = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     status: v.optional(statusValidator),
     module: v.optional(v.string()),
   },
@@ -80,7 +80,7 @@ export const getById = query({
 
 export const listBySource = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     sourceKey: v.string(),
     sourceInstanceId: v.string(),
   },
@@ -106,7 +106,7 @@ export const listBySource = query({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.string(),
     title: v.string(),
     sources: v.any(),
@@ -135,7 +135,7 @@ export const create = action({
 
 export const _createResolveAndInsert = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.string(),
     title: v.string(),
     sources: v.any(),
@@ -395,7 +395,7 @@ export const sign = action({
 
 export const createFromFile = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     title: v.string(),
     fileId: v.string(),
     fileName: v.string(),
@@ -446,7 +446,7 @@ export const createFromFile = action({
 });
 
 export const generateUploadUrl = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<string> => {
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
@@ -460,7 +460,7 @@ export const generateUploadUrl = action({
 });
 
 export const _generateUploadUrl = internalMutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, _args) => {
     return await ctx.storage.generateUploadUrl();
   },

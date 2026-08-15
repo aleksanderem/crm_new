@@ -11,7 +11,7 @@ import { Id } from "../_generated/dataModel";
 
 export const list = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paginationOpts: paginationOptsValidator,
     outcome: v.optional(callOutcomeValidator),
     dateFrom: v.optional(v.number()),
@@ -48,7 +48,7 @@ export const list = action({
 
 export const getById = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     callId: v.string(),
   },
   handler: async (ctx, args): Promise<Record<string, unknown>> => {
@@ -86,7 +86,7 @@ export const getById = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     outcome: callOutcomeValidator,
     callDate: v.number(),
     note: v.optional(v.string()),
@@ -138,7 +138,7 @@ export const create = action({
 export const _createSideEffects = internalMutation({
   args: {
     callId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     outcome: v.string(),
     createdBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -158,7 +158,7 @@ export const _createSideEffects = internalMutation({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     callId: v.string(),
     outcome: v.optional(callOutcomeValidator),
     callDate: v.optional(v.number()),
@@ -208,7 +208,7 @@ export const update = action({
 export const _updateSideEffects = internalMutation({
   args: {
     callId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     updatedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
@@ -227,7 +227,7 @@ export const _updateSideEffects = internalMutation({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     callId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -282,7 +282,7 @@ export const remove = action({
 export const _removeSideEffects = internalMutation({
   args: {
     callId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     deletedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },

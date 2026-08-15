@@ -144,7 +144,7 @@ export const _getSubscriptionAndPlanData = internalQuery({
 // this check to the outer action layer instead.
 export const checkSeatLimitAction = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     skipPendingInvitations: v.optional(v.boolean()),
   },
   handler: async (

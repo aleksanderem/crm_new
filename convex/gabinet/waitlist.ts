@@ -8,7 +8,7 @@ import type { GabinetWaitlistRow } from "../_helpers/supabaseRows";
 
 export const addToWaitlist = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
     treatmentId: v.optional(v.string()),
     employeeId: v.optional(v.string()),
@@ -72,7 +72,7 @@ export const addToWaitlist = action({
 
 export const removeFromWaitlist = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     waitlistId: v.string(),
   },
   handler: async (ctx, args): Promise<void> => {
@@ -123,7 +123,7 @@ export const removeFromWaitlist = action({
 
 export const markNotified = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     waitlistId: v.string(),
   },
   handler: async (ctx, args): Promise<void> => {
@@ -176,7 +176,7 @@ export const markNotified = action({
 
 export const getWaitlistByOrg = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     status: v.optional(gabinetWaitlistStatusValidator),
   },
   handler: async (ctx, args): Promise<GabinetWaitlistRow[]> => {
@@ -210,7 +210,7 @@ export const getWaitlistByOrg = action({
 
 export const getWaitlistForPatient = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetWaitlistRow[]> => {
@@ -249,7 +249,7 @@ export const getWaitlistForPatient = action({
  */
 export const notifyWaitlistOnSlotOpen = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.optional(v.string()),
     employeeUserId: v.optional(v.string()),
     date: v.string(),

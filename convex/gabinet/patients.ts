@@ -15,7 +15,7 @@ import type { GabinetLoyaltyTier } from "../schema";
 
 export const list = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paginationOpts: paginationOptsValidator,
     search: v.optional(v.string()),
   },
@@ -94,7 +94,7 @@ const PREDEFINED_REFERRAL_SOURCES = new Set([
 
 export const listCustomReferralSources = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args): Promise<string[]> => {
     const authResult = await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
@@ -153,7 +153,7 @@ export const listCustomReferralSources = action({
 
 export const getById = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetPatientRow> => {
@@ -190,7 +190,7 @@ export const getById = action({
 
 export const searchUnlinkedContacts = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     search: v.string(),
   },
   handler: async (ctx, args): Promise<Array<{
@@ -260,7 +260,7 @@ function normalizePhone(phone: string | null | undefined): string | null {
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     contactId: v.optional(v.union(v.string(), v.null())),
     firstName: v.string(),
     lastName: v.string(),
@@ -455,7 +455,7 @@ export const create = action({
 export const _createSideEffects = internalMutation({
   args: {
     patientId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     contactId: v.optional(v.string()),
     firstName: v.string(),
     lastName: v.string(),
@@ -516,7 +516,7 @@ export const _createSideEffects = internalMutation({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
     contactId: v.optional(v.union(v.string(), v.null())),
     firstName: v.optional(v.string()),
@@ -624,7 +624,7 @@ export const update = action({
 export const _updateSideEffects = internalMutation({
   args: {
     patientId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     firstName: v.string(),
     lastName: v.string(),
     updatedBy: v.string(),
@@ -656,7 +656,7 @@ export const _updateSideEffects = internalMutation({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -720,7 +720,7 @@ export const remove = action({
 export const _removeSideEffects = internalMutation({
   args: {
     patientId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     firstName: v.string(),
     lastName: v.string(),
     deletedBy: v.string(),
@@ -752,7 +752,7 @@ export const _removeSideEffects = internalMutation({
 
 export const merge = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     targetPatientId: v.string(),
     sourcePatientId: v.string(),
     // Per-field overrides to apply to the target patient before deactivating
@@ -1065,7 +1065,7 @@ export const merge = action({
 
 export const _mergeSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     targetPatientId: v.string(),
     sourcePatientId: v.string(),
     targetName: v.string(),
@@ -1106,7 +1106,7 @@ export const _mergeSideEffects = internalMutation({
 
 export const gdprErase = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -1211,7 +1211,7 @@ export const gdprErase = action({
 export const _gdprEraseSideEffects = internalMutation({
   args: {
     patientId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     originalName: v.string(),
     erasedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -1368,7 +1368,7 @@ export const _purgeExpiredPatients = internalAction({
 
 export const getByContact = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     contactId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetPatientRow[]> => {

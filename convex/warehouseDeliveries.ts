@@ -81,7 +81,7 @@ export interface DeliveryWithUrls {
 
 export const listDeliveries = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     status: v.optional(v.union(v.literal("draft"), v.literal("posted"))),
     locationId: v.optional(v.id("gabinetLocations")),
     limit: v.optional(v.number()),
@@ -113,7 +113,7 @@ export const listDeliveries = action({
 
 export const getDelivery = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     deliveryId: v.string(),
   },
   handler: async (ctx, args): Promise<DeliveryWithUrls> => {
@@ -159,7 +159,7 @@ export const getDelivery = action({
 
 export const createDelivery = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     supplierName: v.optional(v.string()),
     invoiceNumber: v.optional(v.string()),
     deliveryDate: v.optional(v.string()),
@@ -241,7 +241,7 @@ export const createDelivery = action({
 
 export const updateDelivery = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     deliveryId: v.string(),
     supplierName: v.optional(v.string()),
     invoiceNumber: v.optional(v.string()),
@@ -332,7 +332,7 @@ export const updateDelivery = action({
 
 export const cancelDelivery = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     deliveryId: v.string(),
   },
   handler: async (ctx, args): Promise<{ warnings: string[] }> => {
@@ -395,7 +395,7 @@ export const cancelDelivery = action({
 // filled in manually or via OCR in a subsequent step.
 export const createDeliveryFromInvoice = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     pages: v.array(v.object({
       storageId: v.string(),
       mimeType: v.string(),
@@ -457,7 +457,7 @@ export type StoredAnalysisResult = Omit<ParsedInvoice, "rawText">;
 // result; a failure preserves the last successful result if one exists.
 export const analyzeDeliveryInvoice = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     deliveryId: v.string(),
   },
   handler: async (
@@ -592,7 +592,7 @@ export const analyzeDeliveryInvoice = action({
 // touches analysisResult or posted deliveries.
 export const matchDeliveryItems = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     deliveryId: v.string(),
   },
   handler: async (ctx, args): Promise<MatchingProposals> => {
@@ -694,7 +694,7 @@ export const matchDeliveryItems = action({
 
 export const saveItemDecisions = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     deliveryId: v.string(),
     decisions: v.any(),
   },
@@ -751,7 +751,7 @@ interface ItemDecisionsData {
 
 export const postDeliveryFromDecisions = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     deliveryId: v.string(),
   },
   handler: async (ctx, args): Promise<{
@@ -972,7 +972,7 @@ export const postDeliveryFromDecisions = action({
 
 export const postDelivery = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     deliveryId: v.string(),
     note: v.optional(v.string()),
   },

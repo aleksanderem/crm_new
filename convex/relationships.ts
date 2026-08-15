@@ -8,7 +8,7 @@ import { logActivity } from "./_helpers/activities";
 
 export const getForSources = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     sourceType: v.string(),
     sourceIds: v.array(v.string()),
   },
@@ -95,7 +95,7 @@ export const getForSources = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     sourceType: v.string(),
     sourceId: v.string(),
     targetType: v.string(),
@@ -162,7 +162,7 @@ export const create = action({
 
 export const _createSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     sourceType: v.string(),
     sourceId: v.string(),
     targetType: v.string(),
@@ -186,7 +186,7 @@ export const _createSideEffects = internalMutation({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     relationshipId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -225,7 +225,7 @@ export const remove = action({
 
 export const _removeSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     sourceType: v.string(),
     sourceId: v.string(),
     targetType: v.string(),

@@ -13,7 +13,7 @@ import { Id } from "../_generated/dataModel";
 
 export const list = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paginationOpts: paginationOptsValidator,
     status: v.optional(leadStatusValidator),
   },
@@ -55,7 +55,7 @@ export const list = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     title: v.string(),
     value: v.optional(v.union(v.number(), v.null())),
     currency: v.optional(v.union(v.string(), v.null())),
@@ -157,7 +157,7 @@ export const create = action({
 export const _createSideEffects = internalMutation({
   args: {
     leadId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     title: v.string(),
     assignedTo: v.optional(v.string()),
     createdBy: v.string(),
@@ -193,7 +193,7 @@ export const _createSideEffects = internalMutation({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leadId: v.string(),
     title: v.optional(v.string()),
     value: v.optional(v.union(v.number(), v.null())),
@@ -326,7 +326,7 @@ export const update = action({
 export const _updateSideEffects = internalMutation({
   args: {
     leadId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     title: v.string(),
     oldStatus: v.string(),
     newStatus: v.optional(v.string()),
@@ -444,7 +444,7 @@ export const _updateSideEffects = internalMutation({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leadId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -525,7 +525,7 @@ export const remove = action({
 export const _removeSideEffects = internalMutation({
   args: {
     leadId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     title: v.string(),
     deletedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -556,7 +556,7 @@ export const _removeSideEffects = internalMutation({
 
 export const getByPipeline = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     pipelineId: v.id("pipelines"),
   },
   handler: async (ctx, args): Promise<Array<Record<string, unknown> & { leads: Array<Record<string, unknown>> }>> => {
@@ -618,7 +618,7 @@ export const getByPipeline = action({
 // moveToStage — Supabase-primary for lead patch, side effects via internalMutation
 export const moveToStage = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leadId: v.string(),
     pipelineStageId: v.string(),
     stageOrder: v.number(),
@@ -769,7 +769,7 @@ export const moveToStage = action({
 
 export const gdprErase = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leadId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -838,7 +838,7 @@ export const gdprErase = action({
 export const _gdprEraseSideEffects = internalMutation({
   args: {
     leadId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     originalTitle: v.string(),
     erasedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -890,7 +890,7 @@ export const _gdprEraseSideEffects = internalMutation({
 
 export const gdprExport = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leadId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -958,7 +958,7 @@ export const gdprExport = action({
 
 export const _moveToStageSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leadId: v.id("leads"),
     pipelineStageId: v.id("pipelineStages"),
     userId: v.id("users"),

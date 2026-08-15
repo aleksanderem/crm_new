@@ -31,7 +31,7 @@ import { createSupabaseDb } from "./_helpers/supabaseDb";
  */
 export const triggerEmailEvent = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     /** Event type key, e.g. "appointment.created", "lead.status_changed" */
     eventType: v.string(),
     recipientEmail: v.string(),

@@ -323,7 +323,7 @@ export const PREAUTH_deleteSubscription = internalMutation({
 });
 
 const upsertProductSubscriptionArgs = {
-  organizationId: v.id("organizations"),
+  organizationId: v.string(),
   productId: v.string(),
   stripeSubscriptionId: v.string(),
   status: v.union(
@@ -526,7 +526,7 @@ export const getCurrentUserSubscription = internalQuery({
 export const createSubscriptionCheckout = action({
   args: {
     userId: v.id("users"),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     planId: v.id("plans"),
     planInterval: intervalValidator,
     currency: currencyValidator,

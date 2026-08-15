@@ -23,7 +23,7 @@ import type {
 // --- Working Hours (clinic-level defaults) ---
 
 export const getWorkingHours = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<GabinetWorkingHoursRow[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
@@ -39,7 +39,7 @@ export const getWorkingHours = action({
 
 export const setWorkingHours = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     dayOfWeek: v.number(),
     startTime: v.string(),
     endTime: v.string(),
@@ -119,7 +119,7 @@ export const setWorkingHours = action({
 
 export const bulkSetWorkingHours = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     hours: v.array(v.object({
       dayOfWeek: v.number(),
       startTime: v.string(),
@@ -198,7 +198,7 @@ export const bulkSetWorkingHours = action({
 
 export const getEmployeeSchedule = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetEmployeeScheduleRow[]> => {
@@ -217,7 +217,7 @@ export const getEmployeeSchedule = action({
 
 export const setEmployeeSchedule = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     dayOfWeek: v.number(),
     startTime: v.string(),
@@ -301,7 +301,7 @@ export const setEmployeeSchedule = action({
 
 export const bulkSetEmployeeSchedule = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     hours: v.array(v.object({
       dayOfWeek: v.number(),
@@ -388,7 +388,7 @@ export const bulkSetEmployeeSchedule = action({
  */
 export const saveSchedulePeriod = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     effectiveFrom: v.optional(v.string()),
     effectiveTo: v.optional(v.string()),
@@ -476,7 +476,7 @@ export const saveSchedulePeriod = action({
  */
 export const removeSchedulePeriod = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     effectiveFrom: v.optional(v.string()),
   },
@@ -521,7 +521,7 @@ export const removeSchedulePeriod = action({
 });
 
 export const listEmployeeSchedules = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<GabinetEmployeeScheduleRow[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
@@ -539,7 +539,7 @@ export const listEmployeeSchedules = action({
 
 export const listLeaves = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     status: v.optional(gabinetLeaveStatusValidator),
   },
   handler: async (ctx, args): Promise<GabinetLeaveRow[]> => {
@@ -590,7 +590,7 @@ async function autoApproveLeaveIfNeeded(
 
 export const createLeave = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     type: gabinetLeaveTypeValidator,
     leaveTypeId: v.optional(v.string()),
@@ -669,7 +669,7 @@ export const createLeave = action({
 // userId is derived from the authenticated session — not accepted from the client.
 export const requestLeave = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     type: gabinetLeaveTypeValidator,
     leaveTypeId: v.optional(v.string()),
     startDate: v.string(),
@@ -755,7 +755,7 @@ export const requestLeave = action({
 // skips balance rollback (v_prev_status != 'approved'), so no migration is needed.
 export const withdrawLeave = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -816,7 +816,7 @@ export const withdrawLeave = action({
 // manager-scoped leave approval. Convex-only tables — must run in a query ctx.
 export const _leaveApprovalData = internalQuery({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     approverUserId: v.id("users"),
     employeeUserId: v.id("users"),
   },
@@ -897,7 +897,7 @@ async function canApproveOrRejectLeave(
 
 export const approveLeave = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -952,7 +952,7 @@ export const approveLeave = action({
 
 export const rejectLeave = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -1007,7 +1007,7 @@ export const rejectLeave = action({
 
 export const deleteLeave = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -1056,7 +1056,7 @@ export const deleteLeave = action({
 
 export const getLeavesByDateRange = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     startDate: v.string(),
     endDate: v.string(),
   },
@@ -1086,7 +1086,7 @@ export const getLeavesByDateRange = action({
 
 export const removeEmployeeSchedule = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     scheduleId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -1127,7 +1127,7 @@ export const removeEmployeeSchedule = action({
 
 export const findNextAvailableSlot = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
     durationMinutes: v.number(),
     fromDate: v.optional(v.string()), // YYYY-MM-DD, defaults to today
@@ -1188,7 +1188,7 @@ export const findNextAvailableSlot = action({
 
 export const _workingHoursSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     workingHoursId: v.string(),
     dayOfWeek: v.number(),
     performedBy: v.string(),
@@ -1211,7 +1211,7 @@ export const _workingHoursSideEffects = internalMutation({
 
 export const _bulkWorkingHoursSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
@@ -1230,7 +1230,7 @@ export const _bulkWorkingHoursSideEffects = internalMutation({
 
 export const _employeeScheduleSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     scheduleId: v.string(),
     userId: v.string(),
     performedBy: v.string(),
@@ -1252,7 +1252,7 @@ export const _employeeScheduleSideEffects = internalMutation({
 
 export const _bulkEmployeeScheduleSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -1273,7 +1273,7 @@ export const _bulkEmployeeScheduleSideEffects = internalMutation({
 
 export const _saveSchedulePeriodSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     effectiveFrom: v.optional(v.string()),
     performedBy: v.string(),
@@ -1297,7 +1297,7 @@ export const _saveSchedulePeriodSideEffects = internalMutation({
 
 export const _removeSchedulePeriodSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     effectiveFrom: v.optional(v.string()),
     performedBy: v.string(),
@@ -1321,7 +1321,7 @@ export const _removeSchedulePeriodSideEffects = internalMutation({
 
 export const _createLeaveSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveId: v.string(),
     userId: v.string(),
     type: v.string(),
@@ -1420,7 +1420,7 @@ export const _createLeaveSideEffects = internalMutation({
 
 export const _leaveSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveId: v.string(),
     userId: v.string(),
     action: v.union(v.literal("status_changed"), v.literal("deleted")),

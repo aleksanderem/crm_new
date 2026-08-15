@@ -10,7 +10,7 @@ const statusValidator = v.union(v.literal("active"), v.literal("canceled"));
 
 export const _upsertEntitlement = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     productId: productIdValidator,
     grant: v.boolean(),
     grantedByUserId: v.id("users"),
@@ -149,7 +149,7 @@ export const listOrgEntitlements = action({
 // Platform-admin: grant or revoke a module for an org.
 export const setEntitlement = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     productId: productIdValidator,
     grant: v.boolean(),
   },

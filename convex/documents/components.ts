@@ -16,7 +16,7 @@ import {
  * system-scope + org-scope + user-scope (filtered by createdBy).
  */
 export const list = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
     const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
@@ -46,7 +46,7 @@ export const list = action({
 
 export const getById = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     componentId: v.string(),
   },
   handler: async (ctx, args): Promise<Record<string, unknown>> => {
@@ -73,7 +73,7 @@ export const getById = action({
  */
 export const getContent = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     componentId: v.string(),
   },
   handler: async (ctx, args): Promise<{
@@ -119,7 +119,7 @@ export const getContent = action({
  */
 export const resolveContentJson = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     contentJson: v.string(),
   },
   handler: async (ctx, args): Promise<string> => {
@@ -137,7 +137,7 @@ export const resolveContentJson = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     scope: v.union(v.literal("org"), v.literal("user")),
     name: v.string(),
     description: v.optional(v.string()),
@@ -184,7 +184,7 @@ export const create = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     componentId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
@@ -235,7 +235,7 @@ export const update = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     componentId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -272,7 +272,7 @@ export const remove = action({
 
 export const duplicate = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     componentId: v.string(),
     scope: v.optional(v.union(v.literal("org"), v.literal("user"))),
   },
@@ -329,7 +329,7 @@ export const duplicate = action({
 
 export const _relinkTemplateComponents = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     oldComponentId: v.string(),
     newComponentId: v.string(),
   },

@@ -5,7 +5,7 @@ import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     label: v.string(),
   },
   handler: async (ctx, args) => {
@@ -46,7 +46,7 @@ export const create = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     reasonId: v.string(),
     label: v.optional(v.string()),
     isActive: v.optional(v.boolean()),
@@ -73,7 +73,7 @@ export const update = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     reasonId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -94,7 +94,7 @@ export const remove = action({
 
 export const seed = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runAction(
@@ -142,7 +142,7 @@ export const seed = action({
 
 export const reorder = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     reasonIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {

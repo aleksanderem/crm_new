@@ -28,7 +28,7 @@ import type { FeaturePermissions } from "./_helpers/permissionTypes";
 // --- Definitions ---
 
 export const listDefinitions = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
 
@@ -65,7 +65,7 @@ export const listDefinitions = query({
 
 export const createDefinition = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     key: v.string(),
     labelPl: v.string(),
     labelEn: v.string(),
@@ -79,7 +79,7 @@ export const createDefinition = action({
 
 export const _createDefinitionInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     key: v.string(),
     labelPl: v.string(),
     labelEn: v.string(),
@@ -122,7 +122,7 @@ export const _createDefinitionInternal = internalMutation({
 
 export const updateDefinition = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     definitionId: v.id("gabinetRoleDefinitions"),
     labelPl: v.optional(v.string()),
     labelEn: v.optional(v.string()),
@@ -136,7 +136,7 @@ export const updateDefinition = action({
 
 export const _updateDefinitionInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     definitionId: v.id("gabinetRoleDefinitions"),
     labelPl: v.optional(v.string()),
     labelEn: v.optional(v.string()),
@@ -160,7 +160,7 @@ export const _updateDefinitionInternal = internalMutation({
 
 export const deleteDefinition = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     definitionId: v.id("gabinetRoleDefinitions"),
   },
   handler: async (ctx, args): Promise<void> => {
@@ -170,7 +170,7 @@ export const deleteDefinition = action({
 
 export const _deleteDefinitionInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     definitionId: v.id("gabinetRoleDefinitions"),
   },
   handler: async (ctx, args) => {
@@ -205,7 +205,7 @@ export const _deleteDefinitionInternal = internalMutation({
 /** Returns the effective (post-default-merge) FeaturePermissions for a given
  *  gabinet role. Used by the matrix UI. */
 export const getPermissions = query({
-  args: { organizationId: v.id("organizations"), gabinetRole: v.string() },
+  args: { organizationId: v.string(), gabinetRole: v.string() },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
     const override = await ctx.db
@@ -224,7 +224,7 @@ export const getPermissions = query({
 
 export const setPermissions = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     gabinetRole: v.string(),
     permissions: v.any(),
   },
@@ -235,7 +235,7 @@ export const setPermissions = action({
 
 export const _setPermissionsInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     gabinetRole: v.string(),
     permissions: v.any(),
   },
@@ -269,14 +269,14 @@ export const _setPermissionsInternal = internalMutation({
 /** Reset to baked-in defaults for a system role; for custom roles this deletes
  *  the override row (effective permissions revert to "none" everywhere). */
 export const resetPermissionsToDefault = action({
-  args: { organizationId: v.id("organizations"), gabinetRole: v.string() },
+  args: { organizationId: v.string(), gabinetRole: v.string() },
   handler: async (ctx, args): Promise<void> => {
     await ctx.runMutation(internal.gabinetRoles._resetPermissionsInternal, args);
   },
 });
 
 export const _resetPermissionsInternal = internalMutation({
-  args: { organizationId: v.id("organizations"), gabinetRole: v.string() },
+  args: { organizationId: v.string(), gabinetRole: v.string() },
   handler: async (ctx, args) => {
     await requireOrgAdmin(ctx, args.organizationId);
     const existing = await ctx.db
@@ -295,7 +295,7 @@ export const _resetPermissionsInternal = internalMutation({
  *  if no override exists (i.e. role-level permissions apply). */
 export const getEmployeePermissions = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
@@ -315,7 +315,7 @@ export const getEmployeePermissions = query({
  *  both elevation and restriction). Missing entries inherit from the role. */
 export const setEmployeePermissions = mutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     permissions: v.any(),
   },
@@ -350,7 +350,7 @@ export const setEmployeePermissions = mutation({
  *  role-level permissions. */
 export const resetEmployeePermissions = mutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {

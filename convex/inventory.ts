@@ -44,7 +44,7 @@ export interface ProductStockSummary {
 
 export const getStockSummary = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     productId: v.string(),
   },
   handler: async (ctx, args): Promise<ProductStockSummary> => {
@@ -63,7 +63,7 @@ export const getStockSummary = action({
 
 export const listMovements = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     productId: v.optional(v.string()),
     reason: v.optional(REASON_VALIDATOR),
     limit: v.optional(v.number()),
@@ -99,7 +99,7 @@ export const listMovements = action({
 
 export const adjustStock = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     productId: v.string(),
     locationId: v.optional(v.union(v.id("gabinetLocations"), v.null())),
     delta: v.optional(v.number()),

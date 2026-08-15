@@ -8,7 +8,7 @@ import type { GabinetOvertimeRow } from "../_helpers/supabaseRows";
 
 export const listOvertime = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     status: v.optional(gabinetLeaveStatusValidator),
     userId: v.optional(v.string()),
   },
@@ -36,7 +36,7 @@ export const listOvertime = action({
 
 export const createOvertime = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     date: v.string(),
     hours: v.number(),
@@ -84,7 +84,7 @@ export const createOvertime = action({
 
 export const approveOvertime = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     overtimeId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -117,7 +117,7 @@ export const approveOvertime = action({
 
 export const rejectOvertime = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     overtimeId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -150,7 +150,7 @@ export const rejectOvertime = action({
 
 export const deleteOvertime = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     overtimeId: v.string(),
   },
   handler: async (ctx, args) => {

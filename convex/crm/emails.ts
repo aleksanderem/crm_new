@@ -11,7 +11,7 @@ import type { EmailRow } from "../_helpers/supabaseRows";
 
 export const listByEntity = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
   },
@@ -49,7 +49,7 @@ export const listByEntity = action({
 
 export const send = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     to: v.array(v.string()),
     cc: v.optional(v.array(v.string())),
     bcc: v.optional(v.array(v.string())),
@@ -162,7 +162,7 @@ export const send = action({
 export const _sendSideEffects = internalMutation({
   args: {
     emailId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     to: v.array(v.string()),
     subject: v.string(),
     sentBy: v.string(),
@@ -199,7 +199,7 @@ export const _sendSideEffects = internalMutation({
 
 export const markRead = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     emailId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -226,7 +226,7 @@ export const markRead = action({
 
 export const markUnread = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     emailId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -253,7 +253,7 @@ export const markUnread = action({
 
 export const toggleStar = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     emailId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -280,7 +280,7 @@ export const toggleStar = action({
 
 export const listByPatient = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
   },
   handler: async (ctx, args): Promise<EmailRow[]> => {
@@ -300,7 +300,7 @@ export const listByPatient = action({
 
 export const listByAppointment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
   },
   handler: async (ctx, args): Promise<EmailRow[]> => {
@@ -320,7 +320,7 @@ export const listByAppointment = action({
 
 export const listByEmployee = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
   },
   handler: async (ctx, args): Promise<EmailRow[]> => {
@@ -340,7 +340,7 @@ export const listByEmployee = action({
 
 export const linkToEntity = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     emailId: v.string(),
     contactId: v.optional(v.string()),
     companyId: v.optional(v.string()),

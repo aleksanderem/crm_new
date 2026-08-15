@@ -194,7 +194,7 @@ export const listAvailableSources = query({
  */
 export const resolveSourceValues = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     sources: v.any(), // Record<string, string | null>
   },
   handler: async (ctx, args) => {

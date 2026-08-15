@@ -47,7 +47,7 @@ function normalize(s: string): string {
 
 export const backfillTreatmentCategories = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     dryRun: v.optional(v.boolean()),
   },
   handler: async (_ctx, args) => {

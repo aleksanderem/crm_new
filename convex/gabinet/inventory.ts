@@ -40,7 +40,7 @@ export interface ShortagePreviewItem {
 
 export const getPlannedUsage = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args): Promise<PlannedUsageItem[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
@@ -226,7 +226,7 @@ export const getPlannedUsage = action({
 // appointment booking flow.
 export const checkAppointmentShortage = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.string(),
     locationId: v.optional(v.string()),
   },

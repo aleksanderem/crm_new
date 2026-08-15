@@ -4,7 +4,7 @@ import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 
 export const list = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
@@ -22,7 +22,7 @@ export const list = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     color: v.string(),
   },
@@ -69,7 +69,7 @@ export const create = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     tagId: v.string(),
     name: v.optional(v.string()),
     color: v.optional(v.string()),
@@ -114,7 +114,7 @@ export const update = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     tagId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -142,7 +142,7 @@ export const remove = action({
 
 export const reorder = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     tagIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {

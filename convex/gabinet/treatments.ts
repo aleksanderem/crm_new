@@ -18,7 +18,7 @@ import type {
 
 export const list = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paginationOpts: paginationOptsValidator,
     search: v.optional(v.string()),
   },
@@ -60,7 +60,7 @@ export const list = action({
 
 export const getById = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetTreatmentRow> => {
@@ -91,7 +91,7 @@ export const getById = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.union(v.string(), v.null())),
     duration: v.number(),
@@ -305,7 +305,7 @@ export const create = action({
 export const _createSideEffects = internalMutation({
   args: {
     treatmentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     createdBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -336,7 +336,7 @@ export const _createSideEffects = internalMutation({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.string(),
     name: v.optional(v.string()),
     isActive: v.optional(v.boolean()),
@@ -468,7 +468,7 @@ export const update = action({
 export const _updateSideEffects = internalMutation({
   args: {
     treatmentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentName: v.string(),
     updatedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -499,7 +499,7 @@ export const _updateSideEffects = internalMutation({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -557,7 +557,7 @@ export const remove = action({
 export const _removeSideEffects = internalMutation({
   args: {
     treatmentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentName: v.string(),
     deletedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -698,7 +698,7 @@ async function saveTreatmentProductLinks(
 /** Returns the products (ingredients) assigned to a treatment definition. */
 export const getTreatmentProducts = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.string(),
   },
   handler: async (ctx, args): Promise<Array<{
@@ -753,7 +753,7 @@ export const getTreatmentProducts = action({
 /** Replaces all product associations for a treatment (standalone action). */
 export const setTreatmentProducts = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.string(),
     products: v.array(v.object({
       productId: v.string(),
@@ -822,7 +822,7 @@ export const setTreatmentProducts = action({
 
 export const listActive = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetTreatmentRow[]> => {
     const authResult = await ctx.runAction(
@@ -856,7 +856,7 @@ export const listActive = action({
 
 export const getTreatmentStats = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.string(),
   },
   handler: async (ctx, args): Promise<{
@@ -937,7 +937,7 @@ export interface TreatmentDetailedStats {
 
 export const getTreatmentDetailedStats = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.string(),
   },
   handler: async (ctx, args): Promise<TreatmentDetailedStats> => {
@@ -1150,7 +1150,7 @@ export const getTreatmentDetailedStats = action({
 
 export const listTreatmentAppointments = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.string(),
     status: v.optional(v.string()),
     employeeId: v.optional(v.string()),
@@ -1230,7 +1230,7 @@ export type TreatmentEmployeeSummary = Pick<
 
 export const getTreatmentEmployees = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.string(),
   },
   handler: async (ctx, args): Promise<TreatmentEmployeeSummary[]> => {
@@ -1279,7 +1279,7 @@ export const getTreatmentEmployees = action({
 
 export const getRequiredFormTemplates = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.string(),
   },
   handler: async (ctx, args): Promise<Array<{
@@ -1342,7 +1342,7 @@ export const getRequiredFormTemplates = action({
 
 export const setRequiredFormTemplates = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.string(),
     requiredFormTemplates: v.array(v.object({
       templateId: v.string(),
@@ -1402,7 +1402,7 @@ export const setRequiredFormTemplates = action({
 
 export const saveTreatmentParameters = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.string(),
     parameters: v.array(
       v.object({
@@ -1484,7 +1484,7 @@ export const saveTreatmentParameters = action({
 // --- Migration: convert old parameters to typed format ---
 
 export const migrateParametersToTyped = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
@@ -1564,7 +1564,7 @@ function resolveVariantFields(
 
 export const listVariants = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.string(),
   },
   handler: async (ctx, args): Promise<ResolvedTreatmentVariant[]> => {
@@ -1605,7 +1605,7 @@ export const listVariants = action({
 
 export const getVariant = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     variantId: v.string(),
   },
   handler: async (ctx, args): Promise<ResolvedTreatmentVariant> => {
@@ -1636,7 +1636,7 @@ export const getVariant = action({
 
 export const createVariant = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.string(),
     name: v.string(),
     price: v.optional(v.number()),
@@ -1720,7 +1720,7 @@ export const createVariant = action({
 
 export const updateVariant = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     variantId: v.string(),
     name: v.optional(v.string()),
     price: v.optional(v.number()),
@@ -1820,7 +1820,7 @@ export const updateVariant = action({
 
 export const deleteVariant = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     variantId: v.string(),
   },
   handler: async (ctx, args) => {

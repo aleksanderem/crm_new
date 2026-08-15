@@ -18,7 +18,7 @@ import {
 
 export const listAll = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     status: v.optional(formDocumentStatusValidator),
   },
   handler: async (ctx, args): Promise<FormDocumentRow[]> => {
@@ -40,7 +40,7 @@ export const listAll = action({
 
 export const listByEntity = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
   },
@@ -72,7 +72,7 @@ export const listByEntity = action({
 // desired display order. Writes are scoped to the caller's organization.
 export const reorderByEntity = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
     documentIds: v.array(v.string()),
@@ -106,7 +106,7 @@ export const reorderByEntity = action({
 
 export const getById = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     documentId: v.string(),
   },
   handler: async (ctx, args): Promise<FormDocumentRow> => {
@@ -160,7 +160,7 @@ export const getBySigningToken = action({
 
 export const listByTemplate = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.id("formTemplates"),
   },
   handler: async (ctx, args): Promise<FormDocumentRow[]> => {
@@ -178,7 +178,7 @@ export const listByTemplate = action({
 
 export const listByStatus = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     status: formDocumentStatusValidator,
   },
   handler: async (ctx, args): Promise<FormDocumentRow[]> => {
@@ -205,7 +205,7 @@ export const listByStatus = action({
  */
 export const getLatestSignedIntakeByPatient = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
   },
   handler: async (ctx, args): Promise<{
@@ -314,7 +314,7 @@ export const getLatestSignedIntakeByPatient = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.string(),
     title: v.string(),
     responseData: v.string(),
@@ -356,7 +356,7 @@ export const create = action({
 
 export const updateStatus = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     documentId: v.string(),
     status: formDocumentStatusValidator,
   },
@@ -381,7 +381,7 @@ export const updateStatus = action({
 
 export const updateResponseData = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     documentId: v.string(),
     responseData: v.string(),
   },
@@ -468,7 +468,7 @@ export const submitDocumentFormFields = action({
 
 export const submitEmployeeFormFields = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     documentId: v.string(),
     renderedHtml: v.string(),
     formFieldValues: v.string(),
@@ -697,7 +697,7 @@ export const recordSignature = action({
 
 export const resendSigningEmail = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     documentId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -760,7 +760,7 @@ export const resendSigningEmail = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     documentId: v.string(),
   },
   handler: async (ctx, args) => {

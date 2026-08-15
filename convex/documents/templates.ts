@@ -9,7 +9,7 @@ import { formCategoryValidator } from "../schema/documents";
 // Dual-write refs removed — Supabase is now primary for template writes
 
 export const list = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<FormTemplateRow[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
@@ -24,7 +24,7 @@ export const list = action({
 
 export const getById = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.string(),
   },
   handler: async (ctx, args): Promise<FormTemplateRow> => {
@@ -41,7 +41,7 @@ export const getById = action({
 
 export const listByCategory = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     category: formCategoryValidator,
   },
   handler: async (ctx, args) => {
@@ -59,7 +59,7 @@ export const listByCategory = query({
 
 export const listByEntityType = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
   },
   handler: async (ctx, args): Promise<FormTemplateRow[]> => {
@@ -79,7 +79,7 @@ export const listByEntityType = action({
 
 export const listDocumentTemplates = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
@@ -93,7 +93,7 @@ export const listDocumentTemplates = query({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     category: formCategoryValidator,
@@ -166,7 +166,7 @@ export const create = action({
 
 export const duplicate = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -213,7 +213,7 @@ export const duplicate = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
@@ -282,7 +282,7 @@ export const update = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.string(),
   },
   handler: async (ctx, args) => {

@@ -13,7 +13,7 @@ const configValidator = v.object({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     stageId: v.string(),
     config: configValidator,
   },
@@ -52,7 +52,7 @@ export const create = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     actionId: v.string(),
     config: configValidator,
   },
@@ -85,7 +85,7 @@ export const update = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     actionId: v.string(),
   },
   handler: async (ctx, args) => {

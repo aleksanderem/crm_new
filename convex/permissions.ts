@@ -8,7 +8,7 @@ import { logAudit } from "./auditLog";
 
 export const getMyPermissions = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     locationId: v.optional(v.id("gabinetLocations")),
   },
   handler: async (ctx, args) => {
@@ -17,7 +17,7 @@ export const getMyPermissions = query({
 });
 
 export const getMyRole = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     const { membership } = await verifyOrgAccess(ctx, args.organizationId);
     return { role: membership.role };
@@ -25,7 +25,7 @@ export const getMyRole = query({
 });
 
 export const getMyGabinetRole = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     const membership = await ctx.db
@@ -40,7 +40,7 @@ export const getMyGabinetRole = query({
 });
 
 export const getMyGabinetContext = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     const membership = await ctx.db
@@ -70,7 +70,7 @@ export const getMyGabinetContext = query({
 });
 
 export const getOrgPermissionOverrides = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     const { role } = await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
@@ -106,7 +106,7 @@ export const getOrgPermissionOverrides = action({
 // temporary migration shim; it is a permanent necessity for the query path.
 export const _writeOrgPermissionsToConvex = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     role: v.union(v.literal("member"), v.literal("viewer")),
     permissions: v.any(),
     userId: v.id("users"),
@@ -147,7 +147,7 @@ export const _writeOrgPermissionsToConvex = internalMutation({
 
 export const updateOrgPermissions = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     role: v.union(v.literal("member"), v.literal("viewer")),
     permissions: v.any(),
   },
@@ -194,7 +194,7 @@ export const updateOrgPermissions = action({
 });
 
 export const getResourceSharingEnabled = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
@@ -212,7 +212,7 @@ export const getResourceSharingEnabled = action({
 
 export const setResourceSharingEnabled = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     enabled: v.boolean(),
   },
   handler: async (ctx, args) => {

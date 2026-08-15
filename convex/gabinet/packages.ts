@@ -19,7 +19,7 @@ import type {
 
 export const list = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paginationOpts: paginationOptsValidator,
   },
   handler: async (
@@ -60,7 +60,7 @@ export const list = action({
 });
 
 export const listActive = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<GabinetTreatmentPackageRow[]> => {
     const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
@@ -97,7 +97,7 @@ export const listActive = action({
 
 export const getById = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     packageId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetTreatmentPackageRow> => {
@@ -136,7 +136,7 @@ export const getById = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.union(v.string(), v.null())),
     treatments: v.array(
@@ -271,7 +271,7 @@ export const create = action({
 export const _createSideEffects = internalMutation({
   args: {
     packageId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     createdBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -291,7 +291,7 @@ export const _createSideEffects = internalMutation({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     packageId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.union(v.string(), v.null())),
@@ -373,7 +373,7 @@ export const update = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     packageId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -424,7 +424,7 @@ export const remove = action({
 
 export const updatePackageUsage = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     usageId: v.string(),
     expiresAt: v.optional(v.union(v.number(), v.null())),
     status: v.optional(
@@ -477,7 +477,7 @@ export const updatePackageUsage = action({
 
 export const purchaseTreatment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
     treatmentId: v.string(),
     sessionCount: v.number(),
@@ -599,7 +599,7 @@ export const purchaseTreatment = action({
 export const _purchaseTreatmentSideEffects = internalMutation({
   args: {
     usageId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.string(),
     treatmentName: v.string(),
     patientId: v.string(),
@@ -668,7 +668,7 @@ function generateVoucherCode(): string {
 
 export const purchasePackage = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.optional(v.string()),
     packageId: v.string(),
     paidAmount: v.number(),
@@ -845,7 +845,7 @@ export const purchasePackage = action({
 export const _purchaseSideEffects = internalMutation({
   args: {
     usageId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     packageId: v.string(),
     packageName: v.string(),
     patientId: v.optional(v.string()),
@@ -925,7 +925,7 @@ export const _purchaseSideEffects = internalMutation({
 
 export const usePackageTreatment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     usageId: v.string(),
     treatmentId: v.string(),
     variantId: v.optional(v.string()),
@@ -1015,7 +1015,7 @@ export const usePackageTreatment = action({
 
 export const _usePackageTreatmentSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     usageId: v.string(),
     treatmentId: v.string(),
     variantId: v.optional(v.string()),
@@ -1044,7 +1044,7 @@ export const _usePackageTreatmentSideEffects = internalMutation({
 
 export const usePackageTreatmentsBatch = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     usageId: v.string(),
     items: v.array(
       v.object({
@@ -1163,7 +1163,7 @@ export const usePackageTreatmentsBatch = action({
 
 export const _batchUsageSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     packageId: v.string(),
     totalUsed: v.number(),
     createdBy: v.string(),
@@ -1185,7 +1185,7 @@ export const _batchUsageSideEffects = internalMutation({
 });
 
 export const getActiveUsageCounts = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<Record<string, number>> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
@@ -1222,7 +1222,7 @@ export const getActiveUsageCounts = action({
 
 export const getPatientPackages = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetPackageUsageRow[]> => {
@@ -1255,7 +1255,7 @@ export const getPatientPackages = action({
 
 export const getPatientPackagesEnriched = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -1330,7 +1330,7 @@ export const getPatientPackagesEnriched = action({
 
 export const assignGiftPackage = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     usageId: v.string(),
     patientId: v.string(),
   },
@@ -1449,7 +1449,7 @@ export const assignGiftPackage = action({
 export const _assignGiftSideEffects = internalMutation({
   args: {
     usageId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
     packageName: v.string(),
     loyaltyPointsAwarded: v.number(),
@@ -1473,7 +1473,7 @@ export const _assignGiftSideEffects = internalMutation({
 });
 
 export const getActiveUsageDetails = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (
     ctx,
     args,

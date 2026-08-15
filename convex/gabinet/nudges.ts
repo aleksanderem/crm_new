@@ -21,7 +21,7 @@ async function verify(ctx: any, organizationId: string) {
 
 // --- Appointment nudges ---
 export const getAppointmentNudges = action({
-  args: { organizationId: v.id("organizations"), locationId: v.optional(v.id("gabinetLocations")) },
+  args: { organizationId: v.string(), locationId: v.optional(v.id("gabinetLocations")) },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -49,7 +49,7 @@ export const getAppointmentNudges = action({
 
 // --- Leave nudges ---
 export const getLeaveNudges = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -76,7 +76,7 @@ export const getLeaveNudges = action({
 
 // --- Package nudges ---
 export const getPackageNudges = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -128,7 +128,7 @@ export const getPackageNudges = action({
 
 // --- Patient nudges ---
 export const getPatientNudges = action({
-  args: { organizationId: v.id("organizations"), locationId: v.optional(v.id("gabinetLocations")) },
+  args: { organizationId: v.string(), locationId: v.optional(v.id("gabinetLocations")) },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -206,7 +206,7 @@ export const getPatientNudges = action({
 
 // --- Treatment nudges ---
 export const getTreatmentNudges = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -235,7 +235,7 @@ export const getTreatmentNudges = action({
 
 // --- Get all Gabinet nudges ---
 export const getAll = action({
-  args: { organizationId: v.id("organizations"), locationId: v.optional(v.id("gabinetLocations")) },
+  args: { organizationId: v.string(), locationId: v.optional(v.id("gabinetLocations")) },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const nudges: NudgeData[] = [];

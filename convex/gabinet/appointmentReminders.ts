@@ -19,7 +19,7 @@ const DEFAULT_REMINDER_HOURS = 24;
  */
 export const scheduleReminder = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -96,7 +96,7 @@ export const scheduleReminder = action({
 export const _scheduleReminderSideEffects = internalMutation({
   args: {
     reminderId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
     delayMs: v.number(),
   },
@@ -371,7 +371,7 @@ export const sendReminder = internalMutation({
  */
 export const cancelReminders = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -432,7 +432,7 @@ export const _cancelScheduledFunction = internalMutation({
  */
 export const scheduleReminderInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -489,7 +489,7 @@ export const scheduleReminderInternal = internalMutation({
  */
 export const sendReminderNow = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
   },
   handler: async (ctx, args) => {

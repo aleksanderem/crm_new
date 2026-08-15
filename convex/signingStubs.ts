@@ -28,7 +28,7 @@ function generateStubId(): string {
 export const createStub = internalMutation({
   args: {
     token: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     signingTokenExpiresAt: v.number(),
     destination: v.optional(v.string()),
   },

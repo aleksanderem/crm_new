@@ -6,7 +6,7 @@ import { internal } from "@cvx/_generated/api";
 import { SUPABASE_JWT_SECRET } from "@cvx/env";
 
 export const mintSupabaseToken = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   returns: v.object({ token: v.string(), expiresAt: v.number() }),
   handler: async (ctx, args): Promise<{ token: string; expiresAt: number }> => {
     // Verify auth + org membership via Supabase (authoritative post-migration).

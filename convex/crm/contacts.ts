@@ -11,7 +11,7 @@ import { Id } from "../_generated/dataModel";
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     firstName: v.string(),
     lastName: v.optional(v.union(v.string(), v.null())),
     email: v.optional(v.union(v.string(), v.null())),
@@ -100,7 +100,7 @@ export const create = action({
 export const _createSideEffects = internalMutation({
   args: {
     contactId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     firstName: v.string(),
     lastName: v.optional(v.string()),
     createdBy: v.string(),
@@ -123,7 +123,7 @@ export const _createSideEffects = internalMutation({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     contactId: v.string(),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.union(v.string(), v.null())),
@@ -218,7 +218,7 @@ export const update = action({
 export const _updateSideEffects = internalMutation({
   args: {
     contactId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     firstName: v.string(),
     updatedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -240,7 +240,7 @@ export const _updateSideEffects = internalMutation({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     contactId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -315,7 +315,7 @@ export const remove = action({
 export const _removeSideEffects = internalMutation({
   args: {
     contactId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     firstName: v.string(),
     deletedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -337,7 +337,7 @@ export const _removeSideEffects = internalMutation({
 
 export const gdprErase = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     contactId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -415,7 +415,7 @@ export const gdprErase = action({
 export const _gdprEraseSideEffects = internalMutation({
   args: {
     contactId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     originalName: v.string(),
     erasedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -467,7 +467,7 @@ export const _gdprEraseSideEffects = internalMutation({
 
 export const gdprExport = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     contactId: v.string(),
   },
   handler: async (ctx, args) => {

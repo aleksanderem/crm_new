@@ -15,7 +15,7 @@ const ALLOWED_EMPLOYEE_ROLES = gabinetEmployeeRoleValidator.members.map(
  */
 export const batchImportPatients = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     records: v.array(
       v.object({
         firstName: v.string(),
@@ -125,7 +125,7 @@ export const batchImportPatients = action({
  */
 export const batchImportTreatments = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     records: v.array(
       v.object({
         name: v.string(),
@@ -252,7 +252,7 @@ export const batchImportTreatments = action({
  */
 export const batchImportEmployees = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     records: v.array(
       v.object({
         firstName: v.string(),
@@ -416,7 +416,7 @@ export const batchImportEmployees = action({
  */
 export const batchImportPackageBalances = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     records: v.array(
       v.object({
         treatmentName: v.string(),

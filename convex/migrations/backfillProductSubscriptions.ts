@@ -27,7 +27,7 @@ export const getOrgByOwner = internalQuery({
 });
 
 export const getExistingProductSub = internalQuery({
-  args: { organizationId: v.id("organizations"), productId: v.string() },
+  args: { organizationId: v.string(), productId: v.string() },
   handler: async (ctx, args) =>
     ctx.db
       .query("productSubscriptions")

@@ -18,7 +18,7 @@ export const getDevIds = action({
 
 /** Count templates + components for a given org (no auth required) */
 export const countDocs = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const templates = await db

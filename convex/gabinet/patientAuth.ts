@@ -45,7 +45,7 @@ const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 min
 export const sendPortalOtp = action({
   args: {
     email: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
@@ -142,7 +142,7 @@ export const sendPortalOtp = action({
 export const _sendOtpEmail = internalAction({
   args: {
     email: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     otp: v.string(),
     patientId: v.string(),
     patientName: v.string(),
@@ -195,7 +195,7 @@ export const _sendOtpEmail = internalAction({
 export const verifyPortalOtp = action({
   args: {
     email: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     otp: v.string(),
   },
   handler: async (ctx, args) => {

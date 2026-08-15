@@ -16,7 +16,7 @@ import { Id } from "../_generated/dataModel";
  */
 export const resolveEntityScope = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
   },
@@ -39,7 +39,7 @@ export const resolveEntityScope = action({
  */
 export const previewDocumentData = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
@@ -100,7 +100,7 @@ export const previewDocumentData = action({
 
 export const generateDocument = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
@@ -201,7 +201,7 @@ export const generateDocument = action({
  */
 export const getPriorResponseData = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
@@ -293,7 +293,7 @@ export const getPriorResponseData = action({
 export const _generateSideEffects = internalAction({
   args: {
     documentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
   },

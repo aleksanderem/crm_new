@@ -10,7 +10,7 @@ import type { GabinetLocationRow } from "../_helpers/supabaseRows";
 // Dual-write refs removed — Supabase is now primary for location/room writes
 
 export const listLocations = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<GabinetLocationRow[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
@@ -28,7 +28,7 @@ export const listLocations = action({
 
 export const createLocation = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     address: v.optional(v.union(
       v.object({
@@ -138,7 +138,7 @@ export const createLocation = action({
 
 export const updateLocation = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     locationId: v.string(),
     name: v.optional(v.string()),
     address: v.optional(v.union(
@@ -212,7 +212,7 @@ export const updateLocation = action({
 
 export const deleteLocation = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     locationId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -270,7 +270,7 @@ export const deleteLocation = action({
 
 export const createRoom = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     locationId: v.string(),
     name: v.string(),
     description: v.optional(v.union(v.string(), v.null())),
@@ -372,7 +372,7 @@ export const createRoom = action({
 
 export const updateRoom = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     roomId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.union(v.string(), v.null())),
@@ -434,7 +434,7 @@ export const updateRoom = action({
 
 export const deleteRoom = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     roomId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -489,7 +489,7 @@ export const deleteRoom = action({
 
 export const _createLocationSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     locationId: v.string(),
     name: v.string(),
     performedBy: v.string(),
@@ -510,7 +510,7 @@ export const _createLocationSideEffects = internalMutation({
 
 export const _updateLocationSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     locationId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -530,7 +530,7 @@ export const _updateLocationSideEffects = internalMutation({
 
 export const _deleteLocationSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     locationId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -550,7 +550,7 @@ export const _deleteLocationSideEffects = internalMutation({
 
 export const _createRoomSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     roomId: v.string(),
     name: v.string(),
     locationId: v.string(),
@@ -573,7 +573,7 @@ export const _createRoomSideEffects = internalMutation({
 
 export const _updateRoomSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     roomId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -593,7 +593,7 @@ export const _updateRoomSideEffects = internalMutation({
 
 export const _deleteRoomSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     roomId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),

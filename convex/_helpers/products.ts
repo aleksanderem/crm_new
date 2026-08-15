@@ -50,7 +50,7 @@ export async function checkModuleAccess(
  * cannot call verifyProductAccess directly.
  */
 export const verifyGabinetAccess = internalQuery({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   returns: v.null(),
   handler: async (ctx, args) => {
     await verifyProductAccess(ctx, args.organizationId, GABINET_PRODUCT_ID);

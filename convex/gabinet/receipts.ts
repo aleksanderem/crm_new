@@ -348,7 +348,7 @@ async function buildReceiptPdf(params: {
 // ---------------------------------------------------------------------------
 
 export const _getOrgName = internalQuery({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     const org = await ctx.db.get(args.organizationId);
     return (org as Record<string, unknown> | null)?.name as string | undefined;
@@ -363,7 +363,7 @@ export const _getOrgName = internalQuery({
 
 export const _storePdfAndCreateReceipt = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paymentId: v.string(),
     appointmentId: v.optional(v.string()),
     patientId: v.optional(v.string()),
@@ -483,7 +483,7 @@ export const _storePdfAndCreateReceipt = internalAction({
 
 export const _auditReceiptGenerated = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     receiptId: v.string(),
     paymentId: v.string(),
@@ -520,7 +520,7 @@ export const _auditReceiptGenerated = internalMutation({
  */
 export const generatePdfReceipt = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paymentId: v.string(),
     /** NIP (tax ID) of the issuing organisation. Printed on the PDF. */
     organizationNip: v.optional(v.string()),
@@ -794,7 +794,7 @@ export const _backfillOrphanedPdfReceipts = internalAction({
 export const _createReceiptRowForPayment = internalMutation({
   args: {
     paymentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     createdBy: v.id("users"),
     // When true: void the existing issued receipt and create a KOR correction.
     isRefund: v.optional(v.boolean()),
@@ -964,7 +964,7 @@ export const _createReceiptRowForPayment = internalMutation({
 export const _createSplitReceiptRow = internalMutation({
   args: {
     primaryPaymentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     createdBy: v.id("users"),
     firstMethod: v.string(),
     firstAmount: v.number(),

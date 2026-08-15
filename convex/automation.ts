@@ -766,7 +766,7 @@ export const _recordAutomationEmailResult = internalMutation({
         entityId: emailId,
         action: "email_sent",
         description: `Sent email \"${args.subject}\" to ${args.recipient}`,
-        performedBy: args.sentBy as Id<"users">,
+        performedBy: args.sentBy,
       });
     }
 

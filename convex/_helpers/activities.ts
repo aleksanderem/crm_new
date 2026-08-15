@@ -12,7 +12,7 @@ export async function logActivity(
     action: ActivityAction;
     description: string;
     metadata?: any;
-    performedBy: Id<"users">;
+    performedBy: string;
     actorLabel?: string;
   }
 ) {

@@ -4,7 +4,6 @@ import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
 import { sendEmail } from "@cvx/email";
-import { Id } from "../_generated/dataModel";
 import type { EmailRow } from "../_helpers/supabaseRows";
 
 // Dual-write refs removed — Supabase is now primary for email writes
@@ -170,18 +169,16 @@ export const _sendSideEffects = internalMutation({
     sentAt: v.number(),
   },
   handler: async (_ctx, args) => {
-    const sentByUserId = args.sentBy as Id<"users">;
-
     await publishActivityEnvelope({
       organizationId: args.organizationId,
       action: "email_sent",
-      performedBy: sentByUserId,
+      performedBy: args.sentBy,
       module: "crm",
       summary: `Sent email "${args.subject}" to ${args.to.join(", ")}`,
       occurredAt: args.sentAt,
       actor: {
         type: "user",
-        userId: sentByUserId,
+        userId: args.sentBy,
       },
       payload: {
         emailId: args.emailId,

@@ -35,7 +35,7 @@ export const _createSideEffects = internalMutation({
       entityId: args.activityId as any,
       action: "created",
       description: `Created ${args.activityType} "${args.title}"`,
-      performedBy: args.userId as any,
+      performedBy: args.userId,
       actorLabel: args.actorLabel,
     });
 
@@ -78,7 +78,7 @@ export const _updateSideEffects = internalMutation({
       entityId: args.activityId as any,
       action: "updated",
       description: args.description ?? `Updated ${args.activityType} "${args.title}"`,
-      performedBy: args.userId as any,
+      performedBy: args.userId,
       actorLabel: args.actorLabel,
     });
 
@@ -128,7 +128,7 @@ export const _deleteSideEffects = internalMutation({
       entityId: args.activityId as any,
       action: "deleted",
       description: `Deleted ${args.activityType} "${args.title}"`,
-      performedBy: args.userId as any,
+      performedBy: args.userId,
       actorLabel: args.actorLabel,
     });
   },

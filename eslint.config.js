@@ -29,7 +29,8 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     languageOptions: {
-      globals: { ...browserGlobals },
+      // process is included because Vite statically replaces process.env.NODE_ENV at build time
+      globals: { ...browserGlobals, process: "readonly" },
     },
     plugins: {
       "react-refresh": reactRefresh,
@@ -73,6 +74,19 @@ export default tseslint.config(
   // Convex backend files need Node.js globals
   {
     files: ["convex/**/*.ts"],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+  },
+  // Non-Convex Node.js scripts and config files need Node.js globals
+  {
+    files: [
+      "automation/**/*.{mjs,js,cjs}",
+      "vite.config.ts",
+      "vitest.config.ts",
+      "vitest.frontend.config.ts",
+      "playwright.config.ts",
+    ],
     languageOptions: {
       globals: { ...globals.node },
     },

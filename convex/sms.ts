@@ -1,11 +1,12 @@
 import { action, internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 type OrgSmsConfigRow = {
   _id: string;
-  organizationId: string;
+  organizationId: Id<"organizations">;
   provider: "smsapi" | "twilio";
   apiToken: string;
   apiSecret?: string | null;

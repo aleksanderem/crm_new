@@ -429,7 +429,7 @@ export const markEventFailed = internalMutation({
 
 export const processIncomingMessage = internalMutation({
   args: {
-    organizationId: v.string(),
+    organizationId: v.id("organizations"),
     provider: v.union(v.literal("twilio"), v.literal("smsapi")),
     to: v.string(),
     from: v.string(),
@@ -531,7 +531,7 @@ export const processIncomingMessage = internalMutation({
       (matchingAppointmentId || matchingPatientId)
     ) {
       await logSmsSharedActivities(ctx, {
-        organizationId: args.organizationId as Id<"organizations">,
+        organizationId: args.organizationId,
         appointmentId: matchingAppointmentId,
         patientId: matchingPatientId,
         action: "sms_received",
@@ -552,7 +552,7 @@ export const processIncomingMessage = internalMutation({
     }
 
     await ctx.scheduler.runAfter(0, internal.automation.emitEvent, {
-      organizationId: args.organizationId as Id<"organizations">,
+      organizationId: args.organizationId,
       module: "gabinet",
       eventType: "gabinet.appointment.sms_reply_received",
       entityType: matchingOutbound?.appointmentId ? "gabinetAppointment" : undefined,
@@ -605,7 +605,7 @@ export const processIncomingMessage = internalMutation({
       processingStatus: "processed" | "ignored";
       reason?: string;
     } = await ctx.runMutation(internal.gabinet.appointments.applySmsReplyTransition, {
-      organizationId: args.organizationId as Id<"organizations">,
+      organizationId: args.organizationId,
       appointmentId: String(matchingOutbound.appointmentId),
       intent: parsedIntent,
       smsEventId: eventId,

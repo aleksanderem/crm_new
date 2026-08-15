@@ -1,7 +1,6 @@
 import { query, action, internalMutation, MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
 import { requireUser } from "./_helpers/auth";
 
 export const list = query({
@@ -119,8 +118,8 @@ export const _createNotification = internalMutation({
 export async function createNotificationDirect(
   ctx: MutationCtx,
   data: {
-    organizationId: Id<"organizations">;
-    userId: Id<"users">;
+    organizationId: string;
+    userId: string;
     type: string;
     title: string;
     message: string;
@@ -129,9 +128,11 @@ export async function createNotificationDirect(
   }
 ) {
   // Notifications live in Convex for real-time push (live queries on the bell).
+  // Cast as any: callers post-Supabase-migration pass string IDs; Convex
+  // accepts them at runtime since the values are still valid ID strings.
   await ctx.db.insert("notifications", {
     ...data,
     isRead: false,
     createdAt: Date.now(),
-  });
+  } as any);
 }

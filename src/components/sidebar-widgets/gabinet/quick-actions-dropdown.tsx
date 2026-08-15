@@ -88,7 +88,7 @@ export function GabinetQuickActionsDropdown() {
             onSelect={() => setSellTreatmentOpen(true)}
           >
             <ShoppingCart className="text-foreground size-5 shrink-0" />
-            {t("sidebar.gabinet.sellProduct", "Sprzedaj produkt")}
+            {t("sidebar.gabinet.sellTreatment", "Sprzedaj usługę")}
           </DropdownMenuItem>
         )}
         {can("gabinet_payments") && (

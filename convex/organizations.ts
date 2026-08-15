@@ -301,7 +301,7 @@ export const inviteMember = action({
       );
     }
 
-    const membershipId: string = await ctx.runMutation(
+    const membership = await ctx.runMutation(
       internal.organizations._inviteMemberInternal,
       {
         organizationId: args.organizationId,
@@ -309,7 +309,15 @@ export const inviteMember = action({
         role: args.role,
       },
     );
-    return membershipId;
+    await ctx.runAction(internal.supabase.organizations.writeTeamMembershipToSupabase, {
+      membershipId: membership.membershipId,
+      userId: membership.userId,
+      organizationId: membership.organizationId,
+      role: membership.role,
+      invitedBy: membership.invitedBy,
+      joinedAt: membership.joinedAt,
+    });
+    return membership.membershipId;
   },
 });
 
@@ -339,20 +347,6 @@ export const _inviteMemberInternal = internalMutation({
       joinedAt,
     });
 
-    // Mirror to Supabase — UI reads team_memberships from there.
-    await ctx.scheduler.runAfter(
-      0,
-      internal.supabase.organizations.writeTeamMembershipToSupabase,
-      {
-        membershipId: String(membershipId),
-        userId: String(args.userId),
-        organizationId: String(args.organizationId),
-        role: args.role,
-        invitedBy: String(user._id),
-        joinedAt,
-      },
-    );
-
     await logActivity(ctx, {
       organizationId: args.organizationId,
       entityType: "organization",
@@ -362,7 +356,14 @@ export const _inviteMemberInternal = internalMutation({
       performedBy: user._id,
     });
 
-    return String(membershipId);
+    return {
+      membershipId: String(membershipId),
+      userId: String(args.userId),
+      organizationId: String(args.organizationId),
+      role: args.role,
+      invitedBy: String(user._id),
+      joinedAt,
+    };
   },
 });
 

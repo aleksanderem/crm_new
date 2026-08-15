@@ -274,11 +274,9 @@ export const writeTeamMembershipToSupabase = internalAction({
   handler: async (ctx, args) => {
     const client = createServiceRoleClient();
 
-    // Self-heal: writeUserToSupabase, writeOrganizationToSupabase, and
-    // writeTeamMembershipToSupabase are all scheduled with runAfter(0) from
-    // org.create / completeOnboarding / invitations._acceptInternal. If this
-    // action fires first, either FK may not exist yet. Ensure both parent rows
-    // are present before attempting the team_memberships upsert.
+    // Self-heal: the user and organization rows may not yet exist in Supabase
+    // (e.g. if org creation and membership creation race, or during backfill).
+    // Ensure both FK parent rows are present before the team_memberships upsert.
     const { data: existingUser } = await client
       .from("users")
       .select("id")

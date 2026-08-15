@@ -122,6 +122,26 @@ const WHITELIST_PATHS = new Set([
   // writeUserToSupabase; deleteCurrentUserAccount (action) deletes from
   // Supabase. See issue #4954.
   "app",
+
+  // stripe — dual-writes productSubscriptions and users to ctx.db so that
+  // verifyProductAccess (ctx.db.query("productSubscriptions") in QueryCtx) and
+  // verifyOrgAccess (ctx.db.get(userId) in QueryCtx) can read them — QueryCtx
+  // cannot make HTTP calls, so these Convex writes are a permanent architectural
+  // necessity alongside the Supabase mirrors already present in the same file:
+  //   _upsertProductSubscriptionInternal (internalMutation) → Convex write;
+  //   PREAUTH_upsertProductSubscription (internalAction) → Supabase mirror.
+  //   PREAUTH_updateCustomerId (internalMutation) → Convex write;
+  //   mirrors to Supabase via ctx.scheduler → writeUserToSupabase.
+  // Migrated in issues #4964, #4967. See convex/stripe.ts for inline rationale.
+  "stripe",
+
+  // admin/entitlements — dual-writes productSubscriptions to ctx.db so that
+  // verifyProductAccess (QueryCtx, no HTTP) can read them alongside the Supabase
+  // mirror in the parent setEntitlement action:
+  //   _upsertEntitlement (internalMutation) → Convex write (insert + patch);
+  //   setEntitlement (action) → Supabase mirror.
+  // Migrated in issue #4963. See convex/admin/entitlements.ts for rationale.
+  "admin/entitlements",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -131,22 +151,21 @@ const WHITELIST_PATHS = new Set([
 // Tracked: issue #4943.
 // ---------------------------------------------------------------------------
 const INSERT_PENDING = new Set([
-  // admin/entitlements.ts — ctx.db.insert("productSubscriptions", ...) for
-  // inserting subscription records; should use createSupabaseDb().insert().
-  "admin/entitlements",
-
-  // documents/components.ts — ctx.db.insert("documentComponents", ...).
+  // documents/components.ts — ctx.db.insert("documentComponents", ...) in
+  // seedSystemComponents (internalMutation). Needs Supabase mirror or migration
+  // to an action that uses createSupabaseDb().insert().
   "documents/components",
 
   // gabinet/appointments.ts — ctx.db.insert("appointmentReminders", ...).
+  // The Convex ID returned by insert is passed to ctx.scheduler.runAfter so the
+  // scheduler function can look it up via ctx.db.get. Evaluate whether to migrate
+  // appointmentReminders to Supabase-primary (UUIDs) or keep Convex-native.
   "gabinet/appointments",
 
-  // gabinet/equipment.ts — ctx.db.insert("gabinetEquipment", ...).
+  // gabinet/equipment.ts — ctx.db.insert("gabinetEquipment", ...) in
+  // migrateEquipmentStrings (internalMutation). One-time migration helper that
+  // creates equipment entries from legacy string fields; needs Supabase mirror.
   "gabinet/equipment",
-
-  // stripe.ts — ctx.db.insert("productSubscriptions", ...) during Stripe
-  // webhook handling; should use createSupabaseDb().insert().
-  "stripe",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -157,9 +176,6 @@ const INSERT_PENDING = new Set([
 // Tracked: issue #4943.
 // ---------------------------------------------------------------------------
 const PATCH_DELETE_PENDING = new Set([
-  // admin/entitlements.ts — ctx.db.patch on productSubscriptions records.
-  "admin/entitlements",
-
   // automation.ts — ctx.db.patch(convexId, ...) where convexId may be a
   // TABLE_MAP table (gabinet entities). Intentional migration-compat mirror:
   // only patches if a legacy Convex doc still exists (see comment in source).
@@ -192,12 +208,6 @@ const PATCH_DELETE_PENDING = new Set([
   // gabinet/patients.ts — ctx.db.patch on activities, notes, and
   // gabinetAppointments records during GDPR erasure.
   "gabinet/patients",
-
-  // stripe.ts — ctx.db.patch(args.userId, { customerId }) in
-  // PREAUTH_updateCustomerId where userId: Id<"users">. Should also write
-  // customerId to Supabase users table.
-  "stripe",
-
 ]);
 
 // ---------------------------------------------------------------------------

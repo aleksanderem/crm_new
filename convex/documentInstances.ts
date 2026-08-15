@@ -1,9 +1,8 @@
-import { query, action, internalMutation } from "./_generated/server";
+import { action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
-import { verifyOrgAccess } from "./_helpers/auth";
 import { resolveSource } from "./documentDataSources";
 import { escapeHtml } from "./_helpers/html";
 
@@ -46,25 +45,26 @@ function renderTemplate(
 // Queries
 // ---------------------------------------------------------------------------
 
-export const list = query({
+export const list = action({
   args: {
     organizationId: v.string(),
     status: v.optional(statusValidator),
     module: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    let results = await ctx.db
-      .query("documentInstances")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .order("desc")
-      .collect();
+    const db = createSupabaseDb();
+    let q = db.query("documentInstances")
+      .eq("organizationId", args.organizationId)
+      .order("createdAt", false);
 
-    if (args.status) results = results.filter((d) => d.status === args.status);
-    if (args.module) results = results.filter((d) => d.module === args.module);
+    if (args.status) q = q.eq("status", args.status);
+    if (args.module) q = q.eq("module", args.module);
 
-    return results;
+    return await q.collect();
   },
 });
 
@@ -81,23 +81,28 @@ export const getById = action({
   },
 });
 
-export const listBySource = query({
+export const listBySource = action({
   args: {
     organizationId: v.string(),
     sourceKey: v.string(),
     sourceInstanceId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
 
-    const all = await ctx.db
-      .query("documentInstances")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .order("desc")
+    const db = createSupabaseDb();
+    const all = await db.query("documentInstances")
+      .eq("organizationId", args.organizationId)
+      .order("createdAt", false)
       .collect();
 
     return all.filter((d) => {
-      const sources = d.resolvedSources as Record<string, string> | undefined;
+      const raw = d.resolvedSources;
+      const sources = (typeof raw === "string"
+        ? JSON.parse(raw)
+        : raw) as Record<string, string> | undefined;
       return sources?.[args.sourceKey] === args.sourceInstanceId;
     });
   },

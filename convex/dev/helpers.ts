@@ -1,5 +1,6 @@
-import { query } from "../_generated/server";
+import { query, action } from "../_generated/server";
 import { v } from "convex/values";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 /** Get first org + user IDs for dev/seed scripts */
 export const getDevIds = query({
@@ -15,16 +16,17 @@ export const getDevIds = query({
 });
 
 /** Count templates + components for a given org (no auth required) */
-export const countDocs = query({
+export const countDocs = action({
   args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    const templates = await ctx.db
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    const templates = await db
       .query("formTemplates")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", String(args.organizationId))
       .collect();
-    const components = await ctx.db
+    const components = await db
       .query("documentComponents")
-      .withIndex("by_scope", (q) => q.eq("scope", "system"))
+      .eq("scope", "system")
       .collect();
     return {
       templateCount: templates.length,

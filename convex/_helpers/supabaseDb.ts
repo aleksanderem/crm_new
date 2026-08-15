@@ -94,6 +94,7 @@ const TABLE_MAP: Record<string, string> = {
   automationRunSteps: "automation_run_steps",
   organizations: "organizations",
   teamMemberships: "team_memberships",
+  productSubscriptions: "product_subscriptions",
   gabinetReceipts: "gabinet_receipts",
   gabinetReceiptSequences: "gabinet_receipt_sequences",
   gabinetCashTransactions: "gabinet_cash_transactions",

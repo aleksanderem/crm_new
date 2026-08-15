@@ -149,7 +149,7 @@ describe("activity envelope helper", () => {
     const { organizationId, userId } = await seedTestUser(t);
 
     await t.run(async (ctx) => {
-      await logActivity(ctx, {
+      await logActivity({
         organizationId,
         entityType: "contact",
         entityId: "contact-1",

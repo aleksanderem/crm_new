@@ -496,7 +496,7 @@ export const _createLocationSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetLocation",
       entityId: args.locationId,
@@ -516,7 +516,7 @@ export const _updateLocationSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetLocation",
       entityId: args.locationId,
@@ -536,7 +536,7 @@ export const _deleteLocationSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetLocation",
       entityId: args.locationId,
@@ -558,7 +558,7 @@ export const _createRoomSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetRoom",
       entityId: args.roomId,
@@ -579,7 +579,7 @@ export const _updateRoomSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetRoom",
       entityId: args.roomId,
@@ -599,7 +599,7 @@ export const _deleteRoomSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetRoom",
       entityId: args.roomId,

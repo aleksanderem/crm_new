@@ -313,7 +313,7 @@ export const _createInternal = internalMutation({
     const now = Date.now();
     const expiresAt = now + 7 * 24 * 60 * 60 * 1000;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "organization",
       entityId: args.organizationId,
@@ -566,7 +566,7 @@ export const _acceptInternal = internalMutation({
     // Invitation status is patched in Supabase by the parent accept action.
     // No ctx.db.patch needed — invitation is no longer stored in Convex.
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: orgId,
       entityType: "organization",
       entityId: String(orgId),

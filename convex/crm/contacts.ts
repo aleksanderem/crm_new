@@ -109,7 +109,7 @@ export const _createSideEffects = internalMutation({
   handler: async (ctx, args) => {
     const createdByUserId = args.createdBy as Id<"users">;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "contact",
       entityId: args.contactId as Id<"contacts">,
@@ -226,7 +226,7 @@ export const _updateSideEffects = internalMutation({
   handler: async (ctx, args) => {
     const updatedByUserId = args.updatedBy as Id<"users">;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "contact",
       entityId: args.contactId as Id<"contacts">,
@@ -323,7 +323,7 @@ export const _removeSideEffects = internalMutation({
   handler: async (ctx, args) => {
     const deletedByUserId = args.deletedBy as Id<"users">;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "contact",
       entityId: args.contactId as Id<"contacts">,
@@ -453,7 +453,7 @@ export const _gdprEraseSideEffects = internalMutation({
       details: `GDPR erasure performed on contact "${args.originalName}" (ID: ${args.contactId})`,
     });
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "contact",
       entityId: args.contactId as Id<"contacts">,

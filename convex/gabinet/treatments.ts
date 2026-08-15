@@ -313,7 +313,7 @@ export const _createSideEffects = internalMutation({
   handler: async (ctx, args) => {
     const createdByUserId = args.createdBy as Id<"users">;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetTreatment",
       entityId: args.treatmentId as Id<"gabinetTreatments">,
@@ -476,7 +476,7 @@ export const _updateSideEffects = internalMutation({
   handler: async (ctx, args) => {
     const updatedByUserId = args.updatedBy as Id<"users">;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetTreatment",
       entityId: args.treatmentId as Id<"gabinetTreatments">,
@@ -565,7 +565,7 @@ export const _removeSideEffects = internalMutation({
   handler: async (ctx, args) => {
     const deletedByUserId = args.deletedBy as Id<"users">;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetTreatment",
       entityId: args.treatmentId as Id<"gabinetTreatments">,

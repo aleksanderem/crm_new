@@ -345,7 +345,7 @@ export const _createEquipmentSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetEquipment",
       entityId: args.equipmentId,
@@ -365,7 +365,7 @@ export const _updateEquipmentSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetEquipment",
       entityId: args.equipmentId,
@@ -386,7 +386,7 @@ export const _transferEquipmentSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetEquipment",
       entityId: args.equipmentId,

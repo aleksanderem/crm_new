@@ -469,7 +469,7 @@ export const _createSideEffects = internalMutation({
   handler: async (ctx, args) => {
     const createdByUserId = args.createdBy as Id<"users">;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetPatient",
       entityId: args.patientId as Id<"gabinetPatients">,
@@ -633,7 +633,7 @@ export const _updateSideEffects = internalMutation({
   handler: async (ctx, args) => {
     const updatedByUserId = args.updatedBy as Id<"users">;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetPatient",
       entityId: args.patientId as Id<"gabinetPatients">,
@@ -729,7 +729,7 @@ export const _removeSideEffects = internalMutation({
   handler: async (ctx, args) => {
     const deletedByUserId = args.deletedBy as Id<"users">;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetPatient",
       entityId: args.patientId as Id<"gabinetPatients">,
@@ -1076,7 +1076,7 @@ export const _mergeSideEffects = internalMutation({
   handler: async (ctx, args) => {
     const performedByUserId = args.performedBy as Id<"users">;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetPatient",
       entityId: args.targetPatientId as Id<"gabinetPatients">,
@@ -1089,7 +1089,7 @@ export const _mergeSideEffects = internalMutation({
       actorLabel: args.actorLabel,
     });
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetPatient",
       entityId: args.sourcePatientId as Id<"gabinetPatients">,
@@ -1234,7 +1234,7 @@ export const _gdprEraseSideEffects = internalMutation({
     });
 
     // Activity entry without PII marks the erasure in the patient timeline
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetPatient",
       entityId: args.patientId as Id<"gabinetPatients">,

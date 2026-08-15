@@ -167,7 +167,7 @@ export const _createSideEffects = internalMutation({
   handler: async (ctx, args) => {
     const createdByUserId = args.createdBy as Id<"users">;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "lead",
       entityId: args.leadId as Id<"leads">,
@@ -342,7 +342,7 @@ export const _updateSideEffects = internalMutation({
     const now = args.updatedAt;
 
     if (args.newStatus && args.newStatus !== args.oldStatus) {
-      await logActivity(ctx, {
+      await logActivity({
         organizationId: args.organizationId,
         entityType: "lead",
         entityId: args.leadId as Id<"leads">,
@@ -413,7 +413,7 @@ export const _updateSideEffects = internalMutation({
         occurredAt: now,
       });
     } else {
-      await logActivity(ctx, {
+      await logActivity({
         organizationId: args.organizationId,
         entityType: "lead",
         entityId: args.leadId as Id<"leads">,
@@ -533,7 +533,7 @@ export const _removeSideEffects = internalMutation({
   handler: async (ctx, args) => {
     const deletedByUserId = args.deletedBy as Id<"users">;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "lead",
       entityId: args.leadId as Id<"leads">,
@@ -876,7 +876,7 @@ export const _gdprEraseSideEffects = internalMutation({
       details: `GDPR erasure performed on lead "${args.originalTitle}" (ID: ${args.leadId})`,
     });
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "lead",
       entityId: args.leadId as Id<"leads">,
@@ -977,7 +977,7 @@ export const _moveToStageSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "lead",
       entityId: args.leadId,

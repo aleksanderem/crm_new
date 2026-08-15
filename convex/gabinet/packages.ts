@@ -277,7 +277,7 @@ export const _createSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetPackage",
       entityId: args.packageId as Id<"gabinetTreatmentPackages">,
@@ -1172,7 +1172,7 @@ export const _batchUsageSideEffects = internalMutation({
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
     const pkg = await db.get("gabinetTreatmentPackages", args.packageId);
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetPackage",
       entityId: args.packageId as Id<"gabinetTreatmentPackages">,

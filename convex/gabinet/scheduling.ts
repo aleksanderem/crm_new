@@ -1196,7 +1196,7 @@ export const _workingHoursSideEffects = internalMutation({
   },
   handler: async (ctx, args) => {
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetWorkingHours",
       entityId: args.workingHoursId,
@@ -1216,7 +1216,7 @@ export const _bulkWorkingHoursSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetWorkingHours",
       entityId: String(args.organizationId),
@@ -1237,7 +1237,7 @@ export const _employeeScheduleSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetEmployeeSchedule",
       entityId: args.scheduleId,
@@ -1258,7 +1258,7 @@ export const _bulkEmployeeScheduleSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetEmployeeSchedule",
       entityId: args.userId,
@@ -1280,7 +1280,7 @@ export const _saveSchedulePeriodSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetEmployeeSchedule",
       entityId: args.userId,
@@ -1304,7 +1304,7 @@ export const _removeSchedulePeriodSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetEmployeeSchedule",
       entityId: args.userId,
@@ -1331,7 +1331,7 @@ export const _createLeaveSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetLeave",
       entityId: args.userId,
@@ -1430,7 +1430,7 @@ export const _leaveSideEffects = internalMutation({
     auditAction: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetLeave",
       entityId: args.userId,

@@ -399,20 +399,25 @@ export const _transferEquipmentSideEffects = internalMutation({
   },
 });
 
-export const listTransfers = query({
+export const listTransfers = action({
   args: {
     organizationId: v.id("organizations"),
-    equipmentId: v.id("gabinetEquipment"),
+    equipmentId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    await checkModuleAccess(ctx, args.organizationId, "equipment");
-    const equipment = await ctx.db.get(args.equipmentId);
-    if (!equipment || equipment.organizationId !== args.organizationId) return [];
-    return await ctx.db
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    const equipment = await db.get("gabinetEquipment", args.equipmentId);
+    if (!equipment || String(equipment.organizationId) !== String(args.organizationId)) return [];
+    return await db
       .query("gabinetEquipmentTransfers")
-      .withIndex("by_equipment", (q) => q.eq("equipmentId", args.equipmentId))
-      .order("desc")
+      .eq("equipmentId", args.equipmentId)
+      .order("transferredAt", false)
       .collect();
   },
 });

@@ -459,7 +459,7 @@ describe("activity envelope helper", () => {
     const t = createTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
 
-    const noteId = await t.withIdentity(identity).action(api.notes.create, {
+    const noteId = await t.withIdentity(identity).action(api.crm.notes.create, {
       organizationId,
       entityType: "contact",
       entityId: "contact-123",

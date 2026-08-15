@@ -1068,7 +1068,7 @@ describe("automation lifecycle", () => {
     const t = createManagedTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    const leadId = await t.withIdentity(identity).action(api.leads.create, {
+    const leadId = await t.withIdentity(identity).action(api.crm.leads.create, {
       organizationId,
       title: "Automation Lead",
       status: "open",
@@ -1094,7 +1094,7 @@ describe("automation lifecycle", () => {
       enabled: true,
     });
 
-    await t.withIdentity(identity).action(api.leads.update, {
+    await t.withIdentity(identity).action(api.crm.leads.update, {
       organizationId,
       leadId,
       status: "won",
@@ -1132,7 +1132,7 @@ describe("automation lifecycle", () => {
     const t = createManagedTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    const leadId = await t.withIdentity(identity).action(api.leads.create, {
+    const leadId = await t.withIdentity(identity).action(api.crm.leads.create, {
       organizationId,
       title: "Unsupported lead update",
       status: "open",
@@ -1158,7 +1158,7 @@ describe("automation lifecycle", () => {
       enabled: true,
     });
 
-    await t.withIdentity(identity).action(api.leads.update, {
+    await t.withIdentity(identity).action(api.crm.leads.update, {
       organizationId,
       leadId,
       status: "lost",
@@ -1197,7 +1197,7 @@ describe("automation lifecycle", () => {
 
     await setMemberLeadEditScope(t, admin.identity, admin.organizationId, "none");
 
-    const leadId = await t.withIdentity(admin.identity).action(api.leads.create, {
+    const leadId = await t.withIdentity(admin.identity).action(api.crm.leads.create, {
       organizationId: admin.organizationId,
       title: "RBAC deny lead",
       status: "open",
@@ -1224,7 +1224,7 @@ describe("automation lifecycle", () => {
       enabled: true,
     });
 
-    await t.withIdentity(admin.identity).mutation(internal.automation.emitEvent, {
+    await t.withIdentity(admin.identity).action(internal.automation.emitEvent, {
       organizationId: admin.organizationId,
       module: "crm",
       eventType: "crm.lead.status_changed",
@@ -1265,7 +1265,7 @@ describe("automation lifecycle", () => {
 
     await setMemberLeadEditScope(t, admin.identity, admin.organizationId, "own");
 
-    const leadId = await t.withIdentity(admin.identity).action(api.leads.create, {
+    const leadId = await t.withIdentity(admin.identity).action(api.crm.leads.create, {
       organizationId: admin.organizationId,
       title: "RBAC own-scope lead",
       status: "open",
@@ -1291,7 +1291,7 @@ describe("automation lifecycle", () => {
       enabled: true,
     });
 
-    await t.withIdentity(admin.identity).mutation(internal.automation.emitEvent, {
+    await t.withIdentity(admin.identity).action(internal.automation.emitEvent, {
       organizationId: admin.organizationId,
       module: "crm",
       eventType: "crm.lead.status_changed",
@@ -1332,7 +1332,7 @@ describe("automation lifecycle", () => {
 
     await setMemberLeadEditScope(t, admin.identity, admin.organizationId, "all");
 
-    const leadId = await t.withIdentity(admin.identity).action(api.leads.create, {
+    const leadId = await t.withIdentity(admin.identity).action(api.crm.leads.create, {
       organizationId: admin.organizationId,
       title: "RBAC allow lead",
       status: "open",
@@ -1358,7 +1358,7 @@ describe("automation lifecycle", () => {
       enabled: true,
     });
 
-    await t.withIdentity(admin.identity).mutation(internal.automation.emitEvent, {
+    await t.withIdentity(admin.identity).action(internal.automation.emitEvent, {
       organizationId: admin.organizationId,
       module: "crm",
       eventType: "crm.lead.status_changed",

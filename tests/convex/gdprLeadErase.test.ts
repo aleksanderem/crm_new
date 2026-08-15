@@ -54,7 +54,7 @@ describe("leads.gdprErase — GDPR erasure for leads", () => {
     const db = createSupabaseDb();
     const leadId = await seedLead(String(organizationId), String(userId));
 
-    await t.withIdentity(identity).action(api.leads.gdprErase, {
+    await t.withIdentity(identity).action(api.crm.leads.gdprErase, {
       organizationId,
       leadId,
     });
@@ -82,7 +82,7 @@ describe("leads.gdprErase — GDPR erasure for leads", () => {
       updatedAt: now,
     });
 
-    await t.withIdentity(identity).action(api.leads.gdprErase, {
+    await t.withIdentity(identity).action(api.crm.leads.gdprErase, {
       organizationId,
       leadId,
     });
@@ -112,7 +112,7 @@ describe("leads.gdprErase — GDPR erasure for leads", () => {
       });
     });
 
-    await t.withIdentity(identity).action(api.leads.gdprErase, {
+    await t.withIdentity(identity).action(api.crm.leads.gdprErase, {
       organizationId,
       leadId,
     });
@@ -151,7 +151,7 @@ describe("leads.gdprErase — GDPR erasure for leads", () => {
       });
     });
 
-    await t.withIdentity(identity).action(api.leads.gdprErase, {
+    await t.withIdentity(identity).action(api.crm.leads.gdprErase, {
       organizationId,
       leadId,
     });
@@ -174,7 +174,7 @@ describe("leads.gdprErase — GDPR erasure for leads", () => {
     const { organizationId, userId, identity } = await seedTestUser(t);
     const leadId = await seedLead(String(organizationId), String(userId));
 
-    await t.withIdentity(identity).action(api.leads.gdprErase, {
+    await t.withIdentity(identity).action(api.crm.leads.gdprErase, {
       organizationId,
       leadId,
     });
@@ -205,7 +205,7 @@ describe("leads.gdprErase — GDPR erasure for leads", () => {
     };
 
     await expect(
-      t.withIdentity(memberIdentity).action(api.leads.gdprErase, {
+      t.withIdentity(memberIdentity).action(api.crm.leads.gdprErase, {
         organizationId,
         leadId,
       })
@@ -219,7 +219,7 @@ describe("leads.gdprExport — GDPR data export for leads", () => {
     const { organizationId, userId, identity } = await seedTestUser(t);
     const leadId = await seedLead(String(organizationId), String(userId));
 
-    const result = await t.withIdentity(identity).action(api.leads.gdprExport, {
+    const result = await t.withIdentity(identity).action(api.crm.leads.gdprExport, {
       organizationId,
       leadId,
     });
@@ -249,7 +249,7 @@ describe("leads.gdprExport — GDPR data export for leads", () => {
       updatedAt: now,
     });
 
-    const result = await t.withIdentity(identity).action(api.leads.gdprExport, {
+    const result = await t.withIdentity(identity).action(api.crm.leads.gdprExport, {
       organizationId,
       leadId,
     });
@@ -264,7 +264,7 @@ describe("leads.gdprExport — GDPR data export for leads", () => {
     const { organizationId, userId, identity } = await seedTestUser(t);
     const leadId = await seedLead(String(organizationId), String(userId));
 
-    const result = await t.withIdentity(identity).action(api.leads.gdprExport, {
+    const result = await t.withIdentity(identity).action(api.crm.leads.gdprExport, {
       organizationId,
       leadId,
     });
@@ -285,7 +285,7 @@ describe("leads.gdprExport — GDPR data export for leads", () => {
     };
 
     await expect(
-      t.withIdentity(memberIdentity).action(api.leads.gdprExport, {
+      t.withIdentity(memberIdentity).action(api.crm.leads.gdprExport, {
         organizationId,
         leadId,
       })

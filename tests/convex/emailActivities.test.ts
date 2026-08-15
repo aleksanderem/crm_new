@@ -42,7 +42,7 @@ describe("email activities", () => {
       updatedAt: now,
     });
 
-    const emailId = await t.withIdentity(identity).action(api.emails.send, {
+    const emailId = await t.withIdentity(identity).action(api.crm.emails.send, {
       organizationId,
       to: ["client@example.com"],
       subject: "Welcome aboard",
@@ -103,7 +103,7 @@ describe("email activities", () => {
     const now = Date.now();
     const messageId = "inbound-message-42@example.com";
 
-    await t.mutation(internal.emails_internal.insertInbound, {
+    await t.action(internal.crm.emails_internal.insertInbound, {
       organizationId,
       threadId: "thread-42",
       messageId,
@@ -172,7 +172,7 @@ describe("email activities", () => {
       await ctx.db.delete(organizationId);
     });
 
-    await t.mutation(internal.emails_internal.insertInbound, {
+    await t.action(internal.crm.emails_internal.insertInbound, {
       organizationId,
       threadId: "orphan-thread",
       messageId,

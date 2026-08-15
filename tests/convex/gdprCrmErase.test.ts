@@ -46,7 +46,7 @@ describe("contacts.gdprErase — CRM GDPR erasure", () => {
     const db = createSupabaseDb();
     const contactId = await seedContact(t, String(organizationId), String(userId));
 
-    await t.withIdentity(identity).action(api.contacts.gdprErase, {
+    await t.withIdentity(identity).action(api.crm.contacts.gdprErase, {
       organizationId,
       contactId,
     });
@@ -77,7 +77,7 @@ describe("contacts.gdprErase — CRM GDPR erasure", () => {
       });
     });
 
-    await t.withIdentity(identity).action(api.contacts.gdprErase, {
+    await t.withIdentity(identity).action(api.crm.contacts.gdprErase, {
       organizationId,
       contactId,
     });
@@ -116,7 +116,7 @@ describe("contacts.gdprErase — CRM GDPR erasure", () => {
       });
     });
 
-    await t.withIdentity(identity).action(api.contacts.gdprErase, {
+    await t.withIdentity(identity).action(api.crm.contacts.gdprErase, {
       organizationId,
       contactId,
     });
@@ -139,7 +139,7 @@ describe("contacts.gdprErase — CRM GDPR erasure", () => {
     const { organizationId, userId, identity } = await seedTestUser(t);
     const contactId = await seedContact(t, String(organizationId), String(userId));
 
-    await t.withIdentity(identity).action(api.contacts.gdprErase, {
+    await t.withIdentity(identity).action(api.crm.contacts.gdprErase, {
       organizationId,
       contactId,
     });
@@ -178,7 +178,7 @@ describe("contacts.gdprErase — CRM GDPR erasure", () => {
       updatedAt: now,
     });
 
-    await t.withIdentity(identity).action(api.contacts.gdprErase, {
+    await t.withIdentity(identity).action(api.crm.contacts.gdprErase, {
       organizationId,
       contactId,
     });
@@ -202,7 +202,7 @@ describe("contacts.gdprErase — CRM GDPR erasure", () => {
     };
 
     await expect(
-      t.withIdentity(memberIdentity).action(api.contacts.gdprErase, {
+      t.withIdentity(memberIdentity).action(api.crm.contacts.gdprErase, {
         organizationId,
         contactId,
       })

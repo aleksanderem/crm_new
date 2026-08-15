@@ -11,6 +11,7 @@
  */
 
 import { afterEach, describe, expect, test } from "vitest";
+import { createHash } from "crypto";
 import { api } from "../../convex/_generated/api";
 import {
   createTestCtx,
@@ -18,6 +19,10 @@ import {
   seedGabinetPrereqs,
 } from "../../convex/_test_helpers";
 import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
+
+function sha256Sync(input: string): string {
+  return createHash("sha256").update(input).digest("hex");
+}
 
 afterEach(async () => {
   // Let any scheduler-spawned callbacks settle before the next test resets
@@ -40,7 +45,7 @@ async function seedActiveSession(
   await db.insert("gabinetPortalSessions", {
     patientId,
     organizationId,
-    tokenHash: token,
+    tokenHash: sha256Sync(token),
     isActive: true,
     lastAccessedAt: now,
     createdAt: now,

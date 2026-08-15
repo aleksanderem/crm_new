@@ -261,3 +261,25 @@ export async function seedGabinetPrereqs(
 
   return ids;
 }
+
+/**
+ * Insert a gabinetMemberships row so the user has the given gabinet role.
+ * Required after the gabinet access model changed to require an explicit role
+ * for all gabinet_* features (org member defaults are now "none").
+ */
+export async function seedGabinetRole(
+  t: ReturnType<typeof convexTest>,
+  userId: Id<"users">,
+  organizationId: Id<"organizations">,
+  gabinetRole: string,
+) {
+  await t.run(async (ctx) => {
+    await ctx.db.insert("gabinetMemberships", {
+      organizationId,
+      userId,
+      gabinetRole,
+      isActive: true,
+      updatedAt: Date.now(),
+    });
+  });
+}

@@ -176,7 +176,7 @@ describe("verifyProductAccess", () => {
       t.run(async (ctx) => {
         await verifyProductAccess(ctx, organizationId, "gabinet");
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toBeDefined(); // resolves (not throws) = access granted
   });
 
   test("allows access for trialing subscription", async () => {
@@ -198,7 +198,7 @@ describe("verifyProductAccess", () => {
       t.run(async (ctx) => {
         await verifyProductAccess(ctx, organizationId, "gabinet");
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toBeDefined(); // resolves (not throws) = access granted
   });
 
   test("throws for canceled subscription", async () => {

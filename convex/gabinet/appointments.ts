@@ -971,19 +971,22 @@ export const _createSideEffects = internalMutation({
           const appointmentMs = new Date(`${apptDate}T${apptStartTime}:00`).getTime();
           const reminderMs = appointmentMs - hoursAhead * 60 * 60 * 1000;
           if (reminderMs <= Date.now()) return false;
-          const reminderId = await ctx.db.insert("appointmentReminders", {
-            organizationId: args.organizationId,
-            appointmentId: apptId as any,
+          const reminderId = await remDb.insert("appointmentReminders", {
+            organizationId: String(args.organizationId),
+            appointmentId: apptId,
             type: "notification",
             scheduledFor: reminderMs,
             status: "pending",
             createdAt: now,
           });
-          await ctx.scheduler.runAfter(
+          const scheduledId = await ctx.scheduler.runAfter(
             reminderMs - Date.now(),
             internal.gabinet.appointmentReminders.sendReminder,
             { reminderId },
           );
+          await remDb.patch("appointmentReminders", reminderId, {
+            scheduledFunctionId: scheduledId as unknown as string,
+          });
           return true;
         };
 

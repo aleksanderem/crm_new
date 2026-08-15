@@ -157,7 +157,7 @@ export const revokeAndDeactivate = action({
 // --- Internal functions for backend use ---
 
 export const getActiveGoogle = internalQuery({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("oauthConnections")

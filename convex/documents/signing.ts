@@ -349,7 +349,7 @@ export const sendSigningEmailInternal = internalAction({
     // Try sending via Gmail OAuth (tenant's configured connection)
     const googleToken = await getValidAccessToken(
       ctx,
-      data.organizationId as Id<"organizations">,
+      data.organizationId as string,
     );
 
     let gmailError: string | null = null;

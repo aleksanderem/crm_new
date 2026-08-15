@@ -57,7 +57,7 @@ const automationConditionValidator = v.object({
 
 
 const automationEventArgsValidator = {
-  organizationId: v.id("organizations"),
+  organizationId: v.string(),
   module: automationModuleValidator,
   eventType: v.string(),
   entityType: v.optional(v.string()),
@@ -435,7 +435,7 @@ async function getAutomationEditPermission(
 
 export const _getAutomationPermission = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     actorUserId: v.optional(v.string()),
     feature: v.string(),
     requireAdmin: v.optional(v.boolean()),
@@ -453,7 +453,7 @@ export const _getAutomationPermission = internalAction({
 
 export const _createNotificationForRun = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     type: v.string(),
     title: v.string(),
@@ -467,7 +467,7 @@ export const _createNotificationForRun = internalMutation({
 
 export const _logActivityForRun = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
     activityAction: v.string(),
@@ -503,7 +503,7 @@ export const _logActivityForRun = internalMutation({
 // "No default email account configured".
 export const _sendAutomationEmail = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     runId: v.optional(v.string()),
     stepId: v.string(),
     recipient: v.string(),
@@ -687,7 +687,7 @@ export const _patchAutomationRunStep = internalAction({
 
 export const _recordAutomationEmailResult = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     runId: v.optional(v.string()),
     stepId: v.string(),
     success: v.boolean(),
@@ -805,7 +805,7 @@ export const _recordAutomationEmailResult = internalMutation({
 // which does the Convex mirror write, activity log, and step status patch.
 export const _applyUpdateFieldAction = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     runId: v.string(),
     stepId: v.string(),
     actorUserId: v.optional(v.string()),
@@ -891,7 +891,7 @@ export const _applyUpdateFieldAction = internalAction({
 
 export const _recordUpdateFieldResult = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     runId: v.optional(v.string()),
     stepId: v.string(),
     actorUserId: v.optional(v.string()),
@@ -1062,7 +1062,7 @@ async function patchLegacyAppointmentWorkflowHistory(args: {
 // createSupabaseDb() makes HTTP calls which are forbidden inside mutations.
 export const _patchLegacyAppointmentWorkflowHistory = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.optional(v.string()),
     actionType: v.string(),
     recipient: v.optional(v.string()),
@@ -1089,7 +1089,7 @@ export const _patchLegacyAppointmentWorkflowHistory = internalAction({
 // hooks directly; these actions serve the test suite and e2e tests.
 export const listRules = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     module: v.optional(automationModuleValidator),
   },
   handler: async (ctx, args) => {
@@ -1137,7 +1137,7 @@ export const listRules = action({
 
 export const listRuns = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     module: v.optional(automationModuleValidator),
     entityType: v.optional(v.string()),
     entityId: v.optional(v.string()),
@@ -1164,7 +1164,7 @@ export const listRuns = action({
 
 export const getRunSteps = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     runId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -1180,7 +1180,7 @@ export const getRunSteps = action({
 
 export const createRule = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     module: automationModuleValidator,
@@ -1231,7 +1231,7 @@ export const createRule = action({
 
 export const updateRule = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     ruleId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
@@ -1278,7 +1278,7 @@ export const updateRule = action({
 
 export const deleteRule = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     ruleId: v.string(),
   },
   handler: async (ctx, args): Promise<string> => {
@@ -1300,7 +1300,7 @@ export const deleteRule = action({
 
 export const listEventCatalog = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
@@ -1317,7 +1317,7 @@ export const listEventCatalog = query({
 // from Supabase, so these are exposed as actions instead.
 export const listActionCapabilities = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
@@ -1342,7 +1342,7 @@ export const listActionCapabilities = action({
 
 export const listActionTypes = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args): Promise<string[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
@@ -1428,7 +1428,7 @@ export const emitEvent = internalAction({
 export const processRun = internalAction({
   args: {
     runId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     module: automationModuleValidator,
     eventType: v.string(),
     entityType: v.optional(v.string()),

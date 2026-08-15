@@ -86,6 +86,29 @@ const WHITELIST_PATHS = new Set([
   "_helpers/permissions",
   "_helpers/seatLimits",
 
+  // _helpers/products — verifyProductAccess (QueryCtx) and checkModuleAccess
+  // read productSubscriptions via ctx.db. QueryCtx cannot make HTTP calls, so
+  // createSupabaseDb() is unavailable here. productSubscriptions is dual-written
+  // to Convex by stripe.ts, admin/entitlements.ts, and organizations.ts so that
+  // these QueryCtx helpers always see fresh data. Permanent architectural
+  // necessity, same pattern as _helpers/auth / _helpers/permissions.
+  "_helpers/products",
+
+  // productSubscriptions — getActiveProducts is a Convex query (QueryCtx,
+  // live-update subscriptions for the sidebar module nav) that reads
+  // productSubscriptions via ctx.db. QueryCtx cannot make HTTP calls.
+  // productSubscriptions is dual-written to Convex (see stripe, organizations,
+  // admin/entitlements in the writes gate WHITELIST) so ctx.db reads are fresh.
+  "productSubscriptions",
+
+  // admin/entitlements — _upsertEntitlement (internalMutation) reads
+  // productSubscriptions via ctx.db to check for an existing record before
+  // inserting or patching (check-then-write). MutationCtx cannot make HTTP
+  // calls, so createSupabaseDb() is unavailable. The read is safe because
+  // productSubscriptions is dual-written to Convex (see dual-write comment in
+  // the writes gate WHITELIST). See issue #4963.
+  "admin/entitlements",
+
   // notifications — Convex is the authoritative real-time store for in-app
   // notifications. Writes go through ctx.db so that the notification bell
   // receives live-query push updates without polling. The Supabase table
@@ -219,6 +242,7 @@ const MULTILINE_PENDING = new Set([
   "activities",
   "app",
   "calls",
+  "crm/notes",
   "customFields",
   "documentInstances",
   "documentTemplateFields",

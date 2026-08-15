@@ -388,6 +388,7 @@ export function createCrmTables({
     sourceType: v.optional(v.string()),
     sourceId: v.optional(v.string()),
     note: v.optional(v.string()),
+    paymentMethod: v.optional(v.string()),
     unitPrice: v.optional(v.number()),
     avgCostAfter: v.optional(v.number()),
     lotNumber: v.optional(v.string()),        // LOT/batch number (#2989)

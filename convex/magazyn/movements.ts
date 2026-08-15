@@ -140,8 +140,7 @@ export const returnStockForAppointment = internalAction({
 // warning, not a hard block (warn-and-allow, consistent with #1700 policy).
 //
 // clientId (optional) — stored as sourceId for later client-history queries.
-// paymentMethod (optional) — stored in note; accepted only when provided
-//   since the productStockMovements table has no dedicated payment column yet.
+// paymentMethod (optional) — stored in the dedicated payment_method column.
 //   No undefined-client placeholder is created: absence of clientId is valid.
 export const sellProductStandalone = action({
   args: {
@@ -174,7 +173,7 @@ export const sellProductStandalone = action({
       sourceType: "direct_sale",
       sourceId: args.clientId ?? null,
       unitPrice: args.salePrice,
-      note: args.paymentMethod ?? null,
+      paymentMethod: args.paymentMethod ?? null,
       performedBy: String(auth.userId),
     };
 

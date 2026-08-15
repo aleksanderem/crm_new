@@ -1218,47 +1218,10 @@ export const _gdprEraseSideEffects = internalMutation({
   },
   handler: async (ctx, args) => {
     const erasedByUserId = args.erasedBy as Id<"users">;
-    const GDPR_REDACTED = "[RODO: dane usunięte]";
 
-    // Anonymize all existing Convex activity descriptions for this patient
-    const existingActivities = await ctx.db
-      .query("activities")
-      .withIndex("by_entity", (q) =>
-        q.eq("entityType", "gabinetPatient").eq("entityId", args.patientId)
-      )
-      .collect();
-    for (const activity of existingActivities) {
-      await ctx.db.patch(activity._id, { description: GDPR_REDACTED });
-    }
-
-    // Anonymize all existing Convex note contents for this patient
-    const existingNotes = await ctx.db
-      .query("notes")
-      .withIndex("by_entity", (q) =>
-        q.eq("entityType", "gabinetPatient").eq("entityId", args.patientId)
-      )
-      .collect();
-    for (const note of existingNotes) {
-      await ctx.db.patch(note._id, { content: GDPR_REDACTED, updatedAt: Date.now() });
-    }
-
-    // Null out free-text clinical fields on all appointments linked to this patient
-    const existingAppointments = await ctx.db
-      .query("gabinetAppointments")
-      .withIndex("by_orgAndPatient", (q) =>
-        q.eq("organizationId", args.organizationId).eq("patientId", args.patientId as Id<"gabinetPatients">)
-      )
-      .collect();
-    for (const appointment of existingAppointments) {
-      await ctx.db.patch(appointment._id, {
-        interviewNotes: undefined,
-        notes: undefined,
-        internalNotes: undefined,
-        clinicalRemarks: undefined,
-        bodyChartData: undefined,
-        treatmentParameterValues: undefined,
-      });
-    }
+    // Supabase-side erasure of activities, notes, and appointment clinical
+    // fields is handled by the caller (gdprErase action / _purgeExpiredPatients)
+    // via createSupabaseDb() / db.raw() before this side-effect mutation runs.
 
     // Audit log retains original name as compliance record
     await logAudit(ctx, {

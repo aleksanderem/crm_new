@@ -793,7 +793,7 @@ export function createCrmTables({
   gabinetLocationMemberships: defineTable({
     organizationId: v.string(),
     userId: v.id("users"),
-    locationId: v.id("gabinetLocations"),
+    locationId: v.string(),
     role: v.optional(gabinetEmployeeRoleValidator),
     updatedAt: v.number(),
   })

@@ -206,7 +206,7 @@ export async function checkPermission(
   orgId: Id<"organizations">,
   feature: Feature,
   action: Action,
-  locationId?: Id<"gabinetLocations">,
+  locationId?: string,
 ): Promise<PermissionResult> {
   const { user, membership } = await verifyOrgAccess(ctx, orgId);
   const role = membership.role as OrgRole;
@@ -302,7 +302,7 @@ export async function checkPermission(
 export async function getEffectivePermissions(
   ctx: QueryCtx | MutationCtx,
   orgId: Id<"organizations">,
-  locationId?: Id<"gabinetLocations">,
+  locationId?: string,
 ): Promise<FeaturePermissions> {
   const { membership, user } = await verifyOrgAccess(ctx, orgId);
   const role = membership.role as OrgRole;

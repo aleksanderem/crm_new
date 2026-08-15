@@ -492,12 +492,18 @@ export const getSeatLimit = query({
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
 
-    const org = await ctx.db.get(args.organizationId);
-    if (!org) throw new Error("Organization not found");
+    const ownerMembership = await ctx.db
+      .query("teamMemberships")
+      .withIndex("by_organizationId", (q) =>
+        q.eq("organizationId", args.organizationId)
+      )
+      .filter((q) => q.eq(q.field("role"), "owner"))
+      .first();
+    if (!ownerMembership) throw new Error("Organization not found");
 
     const subscription = await ctx.db
       .query("subscriptions")
-      .withIndex("userId", (q) => q.eq("userId", org.ownerId))
+      .withIndex("userId", (q) => q.eq("userId", ownerMembership.userId))
       .filter((q) =>
         q.or(
           q.eq(q.field("status"), "active"),

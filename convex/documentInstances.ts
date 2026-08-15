@@ -152,14 +152,14 @@ export const _createResolveAndInsert = internalMutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
-    const templateId = args.templateId as Id<"documentTemplates">;
-    const template = await ctx.db.get(templateId);
+    const db = createSupabaseDb();
+
+    const template = await db.get("documentTemplates", args.templateId);
     if (!template) throw new Error("Template not found");
     if (template.status !== "active") throw new Error("Template is not active");
 
-    const fields = await ctx.db
-      .query("documentTemplateFields")
-      .withIndex("by_template", (q) => q.eq("templateId", templateId))
+    const fields = await db.query("documentTemplateFields")
+      .eq("templateId", args.templateId)
       .collect();
 
     const sources: Record<string, string> = args.sources ?? {};
@@ -177,28 +177,36 @@ export const _createResolveAndInsert = internalMutation({
     const fieldValues: Record<string, unknown> = {};
 
     for (const field of fields) {
-      if (overrides[field.fieldKey] !== undefined) {
-        fieldValues[field.fieldKey] = overrides[field.fieldKey];
-      } else if (field.binding) {
-        const sourceData = resolvedData[field.binding.source];
-        fieldValues[field.fieldKey] = sourceData?.[field.binding.field] ?? "";
+      const fieldKey = field.fieldKey as string;
+      const binding = field.binding
+        ? (typeof field.binding === "string"
+          ? JSON.parse(field.binding) as { source: string; field: string }
+          : field.binding as { source: string; field: string })
+        : null;
+      if (overrides[fieldKey] !== undefined) {
+        fieldValues[fieldKey] = overrides[fieldKey];
+      } else if (binding) {
+        const sourceData = resolvedData[binding.source];
+        fieldValues[fieldKey] = sourceData?.[binding.field] ?? "";
       } else if (field.defaultValue != null) {
-        fieldValues[field.fieldKey] = field.defaultValue;
+        fieldValues[fieldKey] = field.defaultValue;
       } else {
-        fieldValues[field.fieldKey] = "";
+        fieldValues[fieldKey] = "";
       }
     }
 
-    const renderedContent = renderTemplate(template.content, fieldValues);
+    const signatureSlots = typeof template.signatureSlots === "string"
+      ? JSON.parse(template.signatureSlots) as Array<{ id: string; label: string; verificationMethod: string; signerType: string }>
+      : template.signatureSlots as Array<{ id: string; label: string; verificationMethod: string; signerType: string }>;
 
-    const signatures = template.signatureSlots.map((slot) => ({
+    const renderedContent = renderTemplate(template.content as string, fieldValues);
+
+    const signatures = signatureSlots.map((slot) => ({
       slotId: slot.id,
       slotLabel: slot.label,
       verificationMethod: slot.verificationMethod,
       signerType: slot.signerType,
     }));
-
-    const db = createSupabaseDb();
 
     const instanceId = await db.insert("documentInstances", {
       organizationId: String(args.organizationId),

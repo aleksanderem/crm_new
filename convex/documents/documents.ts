@@ -161,7 +161,7 @@ export const getBySigningToken = action({
 export const listByTemplate = action({
   args: {
     organizationId: v.string(),
-    templateId: v.id("formTemplates"),
+    templateId: v.string(),
   },
   handler: async (ctx, args): Promise<FormDocumentRow[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {

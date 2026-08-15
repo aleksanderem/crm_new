@@ -9,7 +9,7 @@ import { logAudit } from "./auditLog";
 export const getMyPermissions = query({
   args: {
     organizationId: v.string(),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return await getEffectivePermissions(ctx, args.organizationId, args.locationId);

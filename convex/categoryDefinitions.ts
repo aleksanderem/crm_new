@@ -248,9 +248,9 @@ export const reorder = action({
 export const cleanupCategoryReferences = internalMutation({
   args: {
     organizationId: v.string(),
-    categoryId: v.id("categoryDefinitions"),
+    categoryId: v.string(),
     entityType: v.string(),
-    childIds: v.array(v.id("categoryDefinitions")),
+    childIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {
     const idsToClean = [args.categoryId, ...args.childIds];

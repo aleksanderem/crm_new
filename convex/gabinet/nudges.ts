@@ -21,7 +21,7 @@ async function verify(ctx: any, organizationId: string) {
 
 // --- Appointment nudges ---
 export const getAppointmentNudges = action({
-  args: { organizationId: v.string(), locationId: v.optional(v.id("gabinetLocations")) },
+  args: { organizationId: v.string(), locationId: v.optional(v.string()) },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -128,7 +128,7 @@ export const getPackageNudges = action({
 
 // --- Patient nudges ---
 export const getPatientNudges = action({
-  args: { organizationId: v.string(), locationId: v.optional(v.id("gabinetLocations")) },
+  args: { organizationId: v.string(), locationId: v.optional(v.string()) },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -235,7 +235,7 @@ export const getTreatmentNudges = action({
 
 // --- Get all Gabinet nudges ---
 export const getAll = action({
-  args: { organizationId: v.string(), locationId: v.optional(v.id("gabinetLocations")) },
+  args: { organizationId: v.string(), locationId: v.optional(v.string()) },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const nudges: NudgeData[] = [];

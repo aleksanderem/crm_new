@@ -31,7 +31,7 @@ export const _getGabinetPermissionData = internalQuery({
   args: {
     organizationId: v.string(),
     userId: v.id("users"),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const gabinetMembership = await ctx.db
@@ -141,7 +141,7 @@ export const checkPermission = internalAction({
     organizationId: v.string(),
     feature: v.string(),
     action: v.string(),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<PermissionResult> => {
     const userId = await auth.getUserId(ctx);

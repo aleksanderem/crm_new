@@ -557,7 +557,7 @@ export const _removeSideEffects = internalMutation({
 export const getByPipeline = action({
   args: {
     organizationId: v.string(),
-    pipelineId: v.id("pipelines"),
+    pipelineId: v.string(),
   },
   handler: async (ctx, args): Promise<Array<Record<string, unknown> & { leads: Array<Record<string, unknown>> }>> => {
     const authResult = await ctx.runAction(
@@ -959,8 +959,8 @@ export const gdprExport = action({
 export const _moveToStageSideEffects = internalMutation({
   args: {
     organizationId: v.string(),
-    leadId: v.id("leads"),
-    pipelineStageId: v.id("pipelineStages"),
+    leadId: v.string(),
+    pipelineStageId: v.string(),
     userId: v.id("users"),
     leadTitle: v.string(),
     stageName: v.string(),

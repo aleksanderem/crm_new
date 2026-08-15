@@ -124,6 +124,12 @@
  *   • 00117_gabinet_employees_performs_services.sql
  *   • 00118_gabinet_employees_work_scope.sql
  *   • 00119_gabinet_employees_is_blocked.sql
+ *   • 00120_gabinet_employees_org_email_idx.sql
+ *   • 00121_approve_gabinet_leave_atomic_fn.sql
+ *   • 00122_approve_gabinet_leave_partial_day.sql
+ *   • 00123_reject_gabinet_leave_atomic_fn.sql
+ *   • 00124_delete_gabinet_leave_atomic_fn.sql
+ *   • 00125_product_stock_movements_payment_method.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -4121,10 +4127,10 @@ export interface Database {
           created_at: number;
           updated_at: number;
           show_in_calendar: boolean;
-          performs_services: boolean;
           assigned_items: unknown | null;
           bio: string | null;
           avatar_url: string | null;
+          performs_services: boolean;
           work_scope: string | null;
           is_blocked: boolean;
         };
@@ -4140,7 +4146,6 @@ export interface Database {
           license_number?: string | null;
           hire_date?: string | null;
           is_active: boolean;
-          is_blocked?: boolean;
           color?: string | null;
           notes?: string | null;
           phone?: string | null;
@@ -4164,11 +4169,12 @@ export interface Database {
           created_at: number;
           updated_at: number;
           show_in_calendar?: boolean;
-          performs_services?: boolean;
           assigned_items?: unknown | null;
           bio?: string | null;
           avatar_url?: string | null;
+          performs_services?: boolean;
           work_scope?: string | null;
+          is_blocked?: boolean;
         };
         Update: {
           id?: string;
@@ -4182,7 +4188,6 @@ export interface Database {
           license_number?: string | null;
           hire_date?: string | null;
           is_active?: boolean;
-          is_blocked?: boolean;
           color?: string | null;
           notes?: string | null;
           phone?: string | null;
@@ -4206,11 +4211,12 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
           show_in_calendar?: boolean;
-          performs_services?: boolean;
           assigned_items?: unknown | null;
           bio?: string | null;
           avatar_url?: string | null;
+          performs_services?: boolean;
           work_scope?: string | null;
+          is_blocked?: boolean;
         };
         Relationships: [
           {
@@ -6771,13 +6777,13 @@ export interface Database {
           source_type: string | null;
           source_id: string | null;
           note: string | null;
-          payment_method: string | null;
           performed_by: string;
           created_at: number;
           unit_price: number | null;
           avg_cost_after: number | null;
           lot_number: string | null;
           expiry_date: string | null;
+          payment_method: string | null;
         };
         Insert: {
           id?: string;
@@ -6790,13 +6796,13 @@ export interface Database {
           source_type?: string | null;
           source_id?: string | null;
           note?: string | null;
-          payment_method?: string | null;
           performed_by: string;
           created_at: number;
           unit_price?: number | null;
           avg_cost_after?: number | null;
           lot_number?: string | null;
           expiry_date?: string | null;
+          payment_method?: string | null;
         };
         Update: {
           id?: string;
@@ -6809,13 +6815,13 @@ export interface Database {
           source_type?: string | null;
           source_id?: string | null;
           note?: string | null;
-          payment_method?: string | null;
           performed_by?: string;
           created_at?: number;
           unit_price?: number | null;
           avg_cost_after?: number | null;
           lot_number?: string | null;
           expiry_date?: string | null;
+          payment_method?: string | null;
         };
         Relationships: [
           {

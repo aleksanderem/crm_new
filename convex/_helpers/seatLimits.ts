@@ -18,7 +18,7 @@ import { createSupabaseDb } from "./supabaseDb";
 export async function checkSeatLimit(
   ctx: QueryCtx,
   args: {
-    organizationId: Id<"organizations">;
+    organizationId: string;
     skipPendingInvitations?: boolean;
   }
 ): Promise<{
@@ -44,7 +44,7 @@ export async function checkSeatLimit(
 
   const currentSeats = members.length + pendingCount;
 
-  const org = await ctx.db.get(args.organizationId);
+  const org = await ctx.db.get(args.organizationId as Id<"organizations">);
   if (!org) throw new Error("Organization not found");
 
   // Find all active or trialing subscriptions for org owner and take the

@@ -1,6 +1,5 @@
 import { QueryCtx, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import { Id } from "../_generated/dataModel";
 import { GABINET_MODULES, GABINET_PRODUCT_ID, type GabinetModule } from "../gabinet/_registry";
 
 /**
@@ -9,7 +8,7 @@ import { GABINET_MODULES, GABINET_PRODUCT_ID, type GabinetModule } from "../gabi
  */
 export async function verifyProductAccess(
   ctx: QueryCtx,
-  organizationId: Id<"organizations">,
+  organizationId: string,
   productId: string,
 ): Promise<void> {
   const subscription = await ctx.db
@@ -38,7 +37,7 @@ export async function verifyProductAccess(
  */
 export async function checkModuleAccess(
   ctx: QueryCtx,
-  organizationId: Id<"organizations">,
+  organizationId: string,
   module: GabinetModule,
 ): Promise<void> {
   await verifyProductAccess(ctx, organizationId, GABINET_MODULES[module]);

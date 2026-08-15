@@ -103,7 +103,7 @@ export const verifyOrgAccess = internalAction({
     userId: Id<"users">;
     userName: string | undefined;
     userEmail: string | undefined;
-    membershipId: Id<"teamMemberships">;
+    membershipId: string;
     role: string;
   }> => {
     const userId = await auth.getUserId(ctx);
@@ -125,7 +125,7 @@ export const verifyOrgAccess = internalAction({
       userId: userId as Id<"users">,
       userName: user.name as string | undefined,
       userEmail: user.email as string | undefined,
-      membershipId: membership._id as Id<"teamMemberships">,
+      membershipId: membership._id,
       role: membership.role as string,
     };
   },

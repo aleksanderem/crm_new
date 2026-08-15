@@ -1,5 +1,4 @@
 import { QueryCtx, MutationCtx } from "../_generated/server";
-import { Id } from "../_generated/dataModel";
 import { auth } from "@cvx/auth";
 
 export async function getCurrentUser(ctx: QueryCtx | MutationCtx) {
@@ -17,7 +16,7 @@ export async function requireUser(ctx: QueryCtx | MutationCtx) {
 
 export async function verifyOrgAccess(
   ctx: QueryCtx | MutationCtx,
-  organizationId: Id<"organizations">
+  organizationId: string
 ) {
   const user = await requireUser(ctx);
 
@@ -35,7 +34,7 @@ export async function verifyOrgAccess(
 
 export async function requireOrgAdmin(
   ctx: QueryCtx | MutationCtx,
-  organizationId: Id<"organizations">
+  organizationId: string
 ) {
   const { user, membership } = await verifyOrgAccess(ctx, organizationId);
   if (membership.role !== "owner" && membership.role !== "admin") {

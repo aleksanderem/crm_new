@@ -114,9 +114,20 @@ export const syncInbox = action({
     const listData = await listResponse.json();
     const messages = (listData.messages ?? []) as { id: string; threadId: string }[];
 
+    // Batch pre-check: fetch all already-synced IDs in one query so we don't
+    // fire 50 individual Supabase dedup queries inside insertInboundGmail.
+    const existingIds = new Set(
+      await ctx.runAction(internal.crm.emails_internal.findExistingGmailMessageIds, {
+        organizationId: args.organizationId,
+        gmailMessageIds: messages.map((m) => m.id),
+      })
+    );
+
     let synced = 0;
 
     for (const msg of messages) {
+      if (existingIds.has(msg.id)) continue;
+
       // Fetch full message
       const msgResponse = await fetch(
         `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date`,

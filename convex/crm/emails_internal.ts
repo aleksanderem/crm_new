@@ -44,6 +44,25 @@ export const findByMessageId = internalAction({
   },
 });
 
+export const findExistingGmailMessageIds = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    gmailMessageIds: v.array(v.string()),
+  },
+  handler: async (_ctx, args): Promise<string[]> => {
+    if (args.gmailMessageIds.length === 0) return [];
+    const db = createSupabaseDb();
+    const rows = await db
+      .query("emails")
+      .eq("organizationId", String(args.organizationId))
+      .in("gmailMessageId", args.gmailMessageIds)
+      .collect();
+    return rows
+      .map((r) => r.gmailMessageId)
+      .filter((id): id is string => id != null);
+  },
+});
+
 export const findContactByEmail = internalAction({
   args: {
     organizationId: v.id("organizations"),

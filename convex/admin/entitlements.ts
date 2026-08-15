@@ -6,7 +6,6 @@ import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 const productIdValidator = v.union(v.literal("crm"), v.literal("gabinet"));
 
-// Convex-side upsert of a per-org product entitlement. Convex-only table.
 const statusValidator = v.union(v.literal("active"), v.literal("canceled"));
 
 export const _upsertEntitlement = internalMutation({
@@ -112,12 +111,16 @@ export const listOrgEntitlements = action({
   > => {
     await ctx.runAction(internal._helpers.authAction.verifyPlatformAdmin, {});
     const db = createSupabaseDb();
-    const orgs = await db.query("organizations").collect();
-    const memberships = await db.query("teamMemberships").collect();
-    const ents = await ctx.runQuery(
-      internal.admin.entitlements._listEntitlementsInternal,
-      {},
-    );
+    const [orgs, memberships, entRows] = await Promise.all([
+      db.query("organizations").collect(),
+      db.query("teamMemberships").collect(),
+      db.query("productSubscriptions").collect(),
+    ]);
+    const ents = entRows.map((r) => ({
+      organizationId: String(r.organizationId),
+      productId: String(r.productId),
+      status: String(r.status),
+    }));
 
     const statusFor = (orgId: string, productId: string): EntStatus => {
       const e = ents.find(
@@ -157,11 +160,49 @@ export const setEntitlement = action({
       internal._helpers.authAction.verifyPlatformAdmin,
       {},
     );
-    return await ctx.runMutation(internal.admin.entitlements._upsertEntitlement, {
+    const result = await ctx.runMutation(internal.admin.entitlements._upsertEntitlement, {
       organizationId: args.organizationId,
       productId: args.productId,
       grant: args.grant,
       grantedByUserId: userId,
     });
+
+    // Mirror to Supabase (primary store for reads).
+    const db = createSupabaseDb();
+    try {
+      const now = Date.now();
+      const status = args.grant ? "active" : "canceled";
+      const orgIdStr = String(args.organizationId);
+
+      const existing = await db
+        .query("productSubscriptions")
+        .eq("organizationId", orgIdStr)
+        .eq("productId", args.productId)
+        .unique();
+
+      if (existing) {
+        await db.patch("productSubscriptions", String(existing._id), {
+          status,
+          source: "manual",
+          grantedByUserId: String(userId),
+          updatedAt: now,
+        });
+      } else {
+        await db.insert("productSubscriptions", {
+          organizationId: orgIdStr,
+          productId: args.productId,
+          status,
+          cancelAtPeriodEnd: false,
+          source: "manual",
+          grantedByUserId: String(userId),
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    } catch (e) {
+      console.error("[entitlements.setEntitlement] Supabase write failed:", e);
+    }
+
+    return result;
   },
 });

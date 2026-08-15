@@ -17,7 +17,7 @@ export const sendViaGmail = action({
     leadId: v.optional(v.string()),
     inReplyTo: v.optional(v.string()),
     threadId: v.optional(v.string()),
-    sentBy: v.id("users"),
+    sentBy: v.string(),
     fromEmail: v.string(),
   },
   handler: async (ctx, args) => {

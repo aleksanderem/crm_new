@@ -6,7 +6,7 @@ import { entityTypeValidator } from "./schema";
 
 export const list = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: entityTypeValidator,
   },
   handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
@@ -27,7 +27,7 @@ export const list = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: entityTypeValidator,
     name: v.string(),
     parentId: v.optional(v.string()),
@@ -114,7 +114,7 @@ export const create = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     categoryId: v.string(),
     name: v.optional(v.string()),
     color: v.optional(v.string()),
@@ -168,7 +168,7 @@ export const update = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     categoryId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -221,7 +221,7 @@ export const remove = action({
 
 export const reorder = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: entityTypeValidator,
     categoryIds: v.array(v.string()),
   },
@@ -247,7 +247,7 @@ export const reorder = action({
 
 export const cleanupCategoryReferences = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     categoryId: v.id("categoryDefinitions"),
     entityType: v.string(),
     childIds: v.array(v.id("categoryDefinitions")),

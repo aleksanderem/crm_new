@@ -10,7 +10,7 @@ import { Id } from "../_generated/dataModel";
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     domain: v.optional(v.union(v.string(), v.null())),
     industry: v.optional(v.union(v.string(), v.null())),
@@ -104,7 +104,7 @@ export const create = action({
 export const _createSideEffects = internalMutation({
   args: {
     companyId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     createdBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -126,7 +126,7 @@ export const _createSideEffects = internalMutation({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     companyId: v.string(),
     name: v.optional(v.string()),
     domain: v.optional(v.union(v.string(), v.null())),
@@ -227,7 +227,7 @@ export const update = action({
 export const _updateSideEffects = internalMutation({
   args: {
     companyId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     updatedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -249,7 +249,7 @@ export const _updateSideEffects = internalMutation({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     companyId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -324,7 +324,7 @@ export const remove = action({
 export const _removeSideEffects = internalMutation({
   args: {
     companyId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     deletedBy: v.string(),
     actorLabel: v.optional(v.string()),

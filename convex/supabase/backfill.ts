@@ -327,7 +327,7 @@ export const _listUsers = internalQuery({
 });
 
 export const _listPatients = internalQuery({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     return ctx.db
       .query("gabinetPatients")
@@ -337,7 +337,7 @@ export const _listPatients = internalQuery({
 });
 
 export const _listAppointments = internalQuery({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     return ctx.db
       .query("gabinetAppointments")
@@ -347,7 +347,7 @@ export const _listAppointments = internalQuery({
 });
 
 export const _listTreatments = internalQuery({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     return ctx.db
       .query("gabinetTreatments")
@@ -357,7 +357,7 @@ export const _listTreatments = internalQuery({
 });
 
 export const _listEmployees = internalQuery({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     return ctx.db
       .query("gabinetEmployees")
@@ -367,7 +367,7 @@ export const _listEmployees = internalQuery({
 });
 
 export const _listInvitations = internalQuery({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     return ctx.db
       .query("invitations")
@@ -381,7 +381,7 @@ export const _listInvitations = internalQuery({
 // ---------------------------------------------------------------------------
 
 export const backfillPatients = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{ synced: number; errors: string[] }> => {
     const patients = await ctx.runQuery(
       internal.supabase.backfill._listPatients,
@@ -427,7 +427,7 @@ export const backfillPatients = internalAction({
 });
 
 export const backfillAppointments = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{ synced: number; errors: string[] }> => {
     const appointments = await ctx.runQuery(
       internal.supabase.backfill._listAppointments,
@@ -490,7 +490,7 @@ export const backfillAppointments = internalAction({
 });
 
 export const backfillTreatments = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{ synced: number; errors: string[] }> => {
     const treatments = await ctx.runQuery(
       internal.supabase.backfill._listTreatments,
@@ -540,7 +540,7 @@ export const backfillTreatments = internalAction({
 });
 
 export const backfillInvitations = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{ synced: number; errors: string[] }> => {
     const invitations = await ctx.runQuery(
       internal.supabase.backfill._listInvitations,
@@ -571,7 +571,7 @@ export const backfillInvitations = internalAction({
 });
 
 export const backfillEmployees = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{ synced: number; errors: string[] }> => {
     const employees = await ctx.runQuery(
       internal.supabase.backfill._listEmployees,
@@ -636,7 +636,7 @@ export const backfillEmployees = internalAction({
 // ---------------------------------------------------------------------------
 
 export const backfillLocationMemberships = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (
     ctx,
     args,
@@ -752,7 +752,7 @@ type MovementForBackfill = {
 };
 
 export const backfillStockMovementAvgCost = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (
     _ctx,
     args,
@@ -979,7 +979,7 @@ export const backfillTrialEndDates = internalAction({
 });
 
 export const backfillAll = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (
     ctx,
     args,

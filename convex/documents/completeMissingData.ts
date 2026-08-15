@@ -15,7 +15,7 @@ import { createSupabaseDb } from "../_helpers/supabaseDb";
  */
 export const completeMissingData = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
     data: v.record(v.string(), v.string()),

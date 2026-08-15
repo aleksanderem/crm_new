@@ -12,7 +12,7 @@ import type { Id } from "../_generated/dataModel";
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     fileId: v.optional(v.string()),
@@ -77,7 +77,7 @@ export const create = action({
 
 export const _createSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     documentId: v.string(),
     name: v.string(),
     performedBy: v.string(),
@@ -98,7 +98,7 @@ export const _createSideEffects = internalMutation({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     documentId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
@@ -158,7 +158,7 @@ export const update = action({
 
 export const _updateSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     documentId: v.string(),
     name: v.string(),
     performedBy: v.string(),
@@ -179,7 +179,7 @@ export const _updateSideEffects = internalMutation({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     documentId: v.string(),
   },
   handler: async (ctx, args): Promise<string> => {
@@ -232,7 +232,7 @@ export const remove = action({
 
 export const _removeSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     documentId: v.string(),
     name: v.string(),
     performedBy: v.string(),
@@ -253,7 +253,7 @@ export const _removeSideEffects = internalMutation({
 
 export const updateStatus = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     documentId: v.string(),
     status: documentStatusValidator,
   },
@@ -311,7 +311,7 @@ export const updateStatus = action({
 
 export const _updateStatusSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     documentId: v.string(),
     name: v.string(),
     oldStatus: v.union(v.string(), v.null()),
@@ -335,7 +335,7 @@ export const _updateStatusSideEffects = internalMutation({
 
 // Storage upload URL generation — stays as mutation (needs ctx.storage)
 export const generateUploadUrl = mutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
     return await ctx.storage.generateUploadUrl();
@@ -344,7 +344,7 @@ export const generateUploadUrl = mutation({
 
 export const getFileUrl = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     storageId: v.id("_storage"),
   },
   handler: async (ctx, args) => {

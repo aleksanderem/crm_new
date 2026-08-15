@@ -30,7 +30,7 @@ function normalizeUnits(units: string[] | undefined): string[] | null {
 
 export const listEquipment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     locationId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<GabinetEquipmentRow[]> => {
@@ -49,7 +49,7 @@ export const listEquipment = action({
 
 export const getEquipment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     equipmentId: v.string(),
   },
   handler: async (
@@ -96,7 +96,7 @@ const equipmentStatusValidator = v.union(
 
 export const createEquipment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.union(v.string(), v.null())),
     serialNumber: v.optional(v.union(v.string(), v.null())),
@@ -201,7 +201,7 @@ export const createEquipment = action({
 
 export const updateEquipment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     equipmentId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.union(v.string(), v.null())),
@@ -269,7 +269,7 @@ export const updateEquipment = action({
 
 export const transferEquipment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     equipmentId: v.string(),
     toLocationId: v.string(),
     toRoomId: v.optional(v.string()),
@@ -338,7 +338,7 @@ export const transferEquipment = action({
 
 export const _createEquipmentSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     equipmentId: v.string(),
     name: v.string(),
     performedBy: v.string(),
@@ -359,7 +359,7 @@ export const _createEquipmentSideEffects = internalMutation({
 
 export const _updateEquipmentSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     equipmentId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -379,7 +379,7 @@ export const _updateEquipmentSideEffects = internalMutation({
 
 export const _transferEquipmentSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     equipmentId: v.string(),
     toLocationId: v.string(),
     performedBy: v.string(),
@@ -401,7 +401,7 @@ export const _transferEquipmentSideEffects = internalMutation({
 
 export const listTransfers = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     equipmentId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -423,7 +423,7 @@ export const listTransfers = action({
 });
 
 export const migrateEquipmentStrings = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const orgIdStr = String(args.organizationId);

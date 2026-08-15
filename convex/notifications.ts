@@ -5,7 +5,7 @@ import { requireUser } from "./_helpers/auth";
 
 export const list = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -24,7 +24,7 @@ export const list = query({
 
 export const getUnreadCount = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, _args) => {
     const user = await requireUser(ctx);
@@ -67,7 +67,7 @@ export const _markAsReadInternal = internalMutation({
 
 export const markAllRead = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args): Promise<number> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
@@ -80,7 +80,7 @@ export const markAllRead = action({
 });
 
 export const _markAllReadInternal = internalMutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, _args) => {
     const user = await requireUser(ctx);
     const unread = await ctx.db

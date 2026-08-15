@@ -5,7 +5,7 @@ import { v } from "convex/values";
 
 export const track = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
     entityLabel: v.string(),
@@ -71,7 +71,7 @@ type RecentlyViewedItem = {
 
 export const list = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     limit: v.optional(v.number()),
   },

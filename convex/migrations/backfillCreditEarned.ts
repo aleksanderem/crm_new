@@ -52,7 +52,7 @@ const EPSILON = 0.005;
 
 export const backfillCreditEarned = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     dryRun: v.optional(v.boolean()),
   },
   handler: async (_ctx, args) => {

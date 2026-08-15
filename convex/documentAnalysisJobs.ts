@@ -27,7 +27,7 @@ const pagesValidator = v.array(
 
 export const createJob = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     kind: v.string(),
     pages: pagesValidator,
     context: v.optional(v.string()),
@@ -70,7 +70,7 @@ export const createJob = action({
 
 export const runJob = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     jobId: v.string(),
   },
   handler: async (
@@ -157,7 +157,7 @@ export const runJob = action({
 
 export const getJob = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     jobId: v.string(),
   },
   handler: async (ctx, args) => {

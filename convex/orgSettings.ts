@@ -4,7 +4,7 @@ import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 
 export const _getSettings = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     return await db.query("orgSettings")
@@ -15,7 +15,7 @@ export const _getSettings = internalAction({
 
 export const get = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
@@ -32,7 +32,7 @@ export const get = action({
 
 export const upsert = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     allowCustomLostReason: v.optional(v.boolean()),
     lostReasonRequired: v.optional(v.boolean()),
     defaultCurrency: v.optional(v.string()),

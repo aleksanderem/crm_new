@@ -144,7 +144,7 @@ export const returnStockForAppointment = internalAction({
 //   No undefined-client placeholder is created: absence of clientId is valid.
 export const sellProductStandalone = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     productId: v.string(),
     quantity: v.number(),
     salePrice: v.number(),

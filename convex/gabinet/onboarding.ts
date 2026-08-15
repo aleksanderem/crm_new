@@ -14,7 +14,7 @@ import { createSupabaseDb } from "../_helpers/supabaseDb";
  */
 export const _getOnboardingFlag = internalQuery({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args): Promise<boolean> => {
     const org = await ctx.db.get(args.organizationId);
@@ -33,7 +33,7 @@ export const _getOnboardingFlag = internalQuery({
  */
 export const getSetupStatus = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (
     ctx,
@@ -91,7 +91,7 @@ export const getSetupStatus = action({
  */
 export const completeSetup = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     organizationName: v.optional(v.string()),
     currency: v.optional(v.string()),
     treatments: v.optional(v.array(v.object({
@@ -230,7 +230,7 @@ export const completeSetup = action({
  */
 export const _completeSetupSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.organizationId, {

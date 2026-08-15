@@ -15,7 +15,7 @@ const DEFAULT_TIERS = [
 
 export const list = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetLoyaltyTierRow[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
@@ -40,7 +40,7 @@ export const list = action({
 
 export const upsert = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     tier: gabinetLoyaltyTierValidator,
     name: v.string(),
     threshold: v.number(),
@@ -104,7 +104,7 @@ export const upsert = action({
 
 export const seedDefaults = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     try {

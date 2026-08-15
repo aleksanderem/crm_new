@@ -9,7 +9,7 @@ import { Id } from "../_generated/dataModel";
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
     content: v.string(),
@@ -56,7 +56,7 @@ export const create = action({
 export const _createSideEffects = internalMutation({
   args: {
     noteId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
     content: v.string(),
@@ -92,7 +92,7 @@ export const _createSideEffects = internalMutation({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     noteId: v.string(),
     content: v.string(),
   },
@@ -136,7 +136,7 @@ export const update = action({
 export const _updateSideEffects = internalMutation({
   args: {
     noteId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
     content: v.string(),
@@ -172,7 +172,7 @@ export const _updateSideEffects = internalMutation({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     noteId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -215,7 +215,7 @@ export const remove = action({
 
 export const _removeChildNotes = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     parentNoteId: v.string(),
   },
   handler: async (_ctx, args) => {
@@ -234,7 +234,7 @@ export const _removeChildNotes = internalAction({
 export const _removeSideEffects = internalMutation({
   args: {
     noteId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
     deletedBy: v.string(),
@@ -267,7 +267,7 @@ export const _removeSideEffects = internalMutation({
 
 export const togglePin = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     noteId: v.string(),
   },
   handler: async (ctx, args) => {

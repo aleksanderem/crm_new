@@ -5,7 +5,7 @@ import { verifyOrgAccess } from "./_helpers/auth";
 
 export const getForEntity = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
     paginationOpts: paginationOptsValidator,
@@ -25,7 +25,7 @@ export const getForEntity = query({
 
 export const getRecentForOrg = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {

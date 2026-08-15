@@ -18,7 +18,7 @@ export const sendSigningRequestEmail = internalAction({
     organizationName: v.string(),
     token: v.string(),
     expiresAt: v.number(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args): Promise<{ sent: boolean }> => {
     if (!RESEND_API_KEY) {

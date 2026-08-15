@@ -21,7 +21,7 @@ import { nanoid } from "nanoid";
 
 export const createCashTransaction = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     locationId: v.optional(v.string()),
     date: v.string(), // YYYY-MM-DD
     type: v.union(v.literal("deposit"), v.literal("withdrawal")),
@@ -73,7 +73,7 @@ export const createCashTransaction = action({
 
 export const deleteCashTransaction = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     transactionId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -112,7 +112,7 @@ export const deleteCashTransaction = action({
 
 export const createDayClose = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     locationId: v.optional(v.string()),
     date: v.string(), // YYYY-MM-DD
     cashOpeningBalance: v.float64(),

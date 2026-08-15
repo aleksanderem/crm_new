@@ -11,7 +11,7 @@ import type { GabinetLeaveBalanceRow, GabinetLeaveTypeRow } from "../_helpers/su
 
 export const list = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activeOnly: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<GabinetLeaveTypeRow[]> => {
@@ -35,7 +35,7 @@ export const list = action({
 
 export const getById = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveTypeId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetLeaveTypeRow> => {
@@ -61,7 +61,7 @@ export const getById = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     color: v.optional(v.string()),
     isPaid: v.boolean(),
@@ -154,7 +154,7 @@ export const create = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveTypeId: v.string(),
     name: v.optional(v.string()),
     color: v.optional(v.string()),
@@ -222,7 +222,7 @@ export const update = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveTypeId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -266,7 +266,7 @@ export const remove = action({
 
 export const getBalances = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
     year: v.number(),
   },
@@ -293,7 +293,7 @@ export const getBalances = action({
 
 export const getAllBalances = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     year: v.number(),
   },
   handler: async (ctx, args): Promise<GabinetLeaveBalanceRow[]> => {
@@ -318,7 +318,7 @@ export const getAllBalances = action({
 
 export const initializeBalance = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
     leaveTypeId: v.string(),
     year: v.number(),
@@ -403,7 +403,7 @@ export const initializeBalance = action({
 
 export const adjustBalance = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     balanceId: v.string(),
     totalDays: v.optional(v.number()),
     usedDays: v.optional(v.number()),
@@ -448,7 +448,7 @@ export const adjustBalance = action({
 
 export const _createSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveTypeId: v.string(),
     name: v.string(),
     performedBy: v.string(),
@@ -469,7 +469,7 @@ export const _createSideEffects = internalMutation({
 
 export const _updateSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveTypeId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -489,7 +489,7 @@ export const _updateSideEffects = internalMutation({
 
 export const _removeSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveTypeId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -509,7 +509,7 @@ export const _removeSideEffects = internalMutation({
 
 export const _adjustBalanceSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     balanceId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -529,7 +529,7 @@ export const _adjustBalanceSideEffects = internalMutation({
 
 export const _initializeBalanceSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     balanceId: v.string(),
     year: v.number(),
     action: v.union(v.literal("created"), v.literal("updated")),
@@ -554,7 +554,7 @@ export const _initializeBalanceSideEffects = internalMutation({
 /** Initialize balances for all active employees for a given year */
 export const initializeAllBalances = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     year: v.number(),
   },
   handler: async (ctx, args) => {

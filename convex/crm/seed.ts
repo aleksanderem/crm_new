@@ -34,7 +34,7 @@ export const listOrgs = query({
 // ---------------------------------------------------------------------------
 
 export const seedAll = mutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     const { user } = await requireOrgAdmin(ctx, args.organizationId);
     return await doSeed(ctx, args.organizationId, user._id);
@@ -42,14 +42,14 @@ export const seedAll = mutation({
 });
 
 export const seedAllInternal = internalMutation({
-  args: { organizationId: v.id("organizations"), userId: v.id("users") },
+  args: { organizationId: v.string(), userId: v.id("users") },
   handler: async (ctx, args) => {
     return await doSeed(ctx, args.organizationId, args.userId);
   },
 });
 
 export const clearAll = mutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await requireOrgAdmin(ctx, args.organizationId);
     return await doClear(ctx, args.organizationId);
@@ -57,7 +57,7 @@ export const clearAll = mutation({
 });
 
 export const clearAllInternal = internalMutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     return await doClear(ctx, args.organizationId);
   },

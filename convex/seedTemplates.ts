@@ -9,7 +9,7 @@ import { verifyOrgAccess } from "./_helpers/auth";
 /** Internal version — callable from CLI via `convex run` */
 export const seedExampleTemplatesInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
@@ -25,7 +25,7 @@ export const seedExampleTemplatesInternal = internalMutation({
 
 /** Authenticated version — callable from frontend */
 export const seedExampleTemplates = mutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     try {

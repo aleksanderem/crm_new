@@ -402,7 +402,7 @@ export const syncAll = internalAction({
 });
 
 export const syncMyCalendars = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{ calendarName: string | null; scheduled: boolean }[]> => {
     const userId = await auth.getUserId(ctx);
     if (!userId) throw new Error("Not authenticated");

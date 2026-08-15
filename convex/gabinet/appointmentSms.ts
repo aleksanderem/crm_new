@@ -163,7 +163,7 @@ async function logSmsSharedActivities(
 
 export const listByAppointment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -189,7 +189,7 @@ export const listByAppointment = action({
 
 export const queueAutomationSms = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
     phone: v.string(),
     message: v.string(),
@@ -277,7 +277,7 @@ export const queueAutomationSms = internalMutation({
 
 export const queueConfirmationRequest = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
     reminderId: v.optional(v.id("appointmentReminders")),
     trigger: v.optional(v.union(v.literal("reminder"), v.literal("manual"), v.literal("booking"))),
@@ -429,7 +429,7 @@ export const markEventFailed = internalMutation({
 
 export const processIncomingMessage = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     provider: v.union(v.literal("twilio"), v.literal("smsapi")),
     to: v.string(),
     from: v.string(),

@@ -63,7 +63,7 @@ export const _countConvexTable = internalQuery({
 });
 
 export const auditAll = internalAction({
-  args: { organizationId: v.optional(v.id("organizations")) },
+  args: { organizationId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const client = createServiceRoleClient();
     const results: TableAuditResult[] = [];

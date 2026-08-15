@@ -5,7 +5,7 @@ import { v } from "convex/values";
 
 export const batchCreateContacts = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     records: v.array(
       v.object({
         firstName: v.string(),
@@ -68,7 +68,7 @@ export const batchCreateContacts = action({
 
 export const batchCreateCompanies = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     records: v.array(
       v.object({
         name: v.string(),
@@ -145,7 +145,7 @@ export const batchCreateCompanies = action({
 
 export const batchCreateLeads = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     records: v.array(
       v.object({
         title: v.string(),
@@ -217,7 +217,7 @@ export const batchCreateLeads = action({
 
 export const batchCreateProducts = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     records: v.array(
       v.object({
         name: v.string(),

@@ -7,7 +7,7 @@ import { logAudit } from "./auditLog";
 
 export const listByResource = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     resourceType: v.string(),
     resourceId: v.string(),
   },
@@ -30,7 +30,7 @@ export const listByResource = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     email: v.string(),
     resourceType: v.string(),
     resourceId: v.string(),
@@ -118,7 +118,7 @@ export const acceptByToken = action({
 
 export const revoke = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     inviteId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -159,7 +159,7 @@ export const revoke = action({
 
 export const _createSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     userName: v.string(),
     email: v.string(),
@@ -193,7 +193,7 @@ export const _createSideEffects = internalMutation({
 
 export const _revokeSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     email: v.string(),
     resourceType: v.string(),

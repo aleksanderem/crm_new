@@ -11,7 +11,7 @@ import { logActivity } from "../_helpers/activities";
 // ── Reads (Supabase-primary) ────────────────────────────────────────────────
 
 export const list = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<Record<string, unknown>[]> => {
     const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
@@ -37,7 +37,7 @@ export const list = action({
 
 export const getById = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     pipelineId: v.string(),
   },
   handler: async (ctx, args): Promise<Record<string, unknown>> => {
@@ -68,7 +68,7 @@ export const getById = action({
 
 export const getStages = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     pipelineId: v.string(),
   },
   handler: async (ctx, args): Promise<Record<string, unknown>[]> => {
@@ -90,7 +90,7 @@ export const getStages = action({
 });
 
 export const getAllStages = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<Record<string, unknown>[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
@@ -122,7 +122,7 @@ export const _sideEffects = internalMutation({
       v.literal("stage_removed"),
       v.literal("stages_reordered"),
     ),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     pipelineId: v.optional(v.string()),
     pipelineName: v.optional(v.string()),
@@ -244,7 +244,7 @@ export const _sideEffects = internalMutation({
 
 export const seed = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runAction(
@@ -305,7 +305,7 @@ export const seed = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     type: v.optional(v.string()),
@@ -379,7 +379,7 @@ export const create = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     pipelineId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
@@ -434,7 +434,7 @@ export const update = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     pipelineId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -500,7 +500,7 @@ export const remove = action({
 
 export const addStage = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     pipelineId: v.string(),
     name: v.string(),
     color: v.optional(v.string()),
@@ -560,7 +560,7 @@ export const addStage = action({
 
 export const updateStage = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     stageId: v.string(),
     name: v.optional(v.string()),
     color: v.optional(v.string()),
@@ -614,7 +614,7 @@ export const updateStage = action({
 
 export const removeStage = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     stageId: v.string(),
     migrateToStageId: v.optional(v.string()),
   },
@@ -680,7 +680,7 @@ export const removeStage = action({
 
 export const reorderStages = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     pipelineId: v.string(),
     stageIds: v.array(v.string()),
   },

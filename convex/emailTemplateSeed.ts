@@ -1657,7 +1657,7 @@ const BATCH_SIZE = 15;
 
 export const seedBatch = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     createdBy: v.id("users"),
     startIndex: v.number(),
     batchSize: v.number(),
@@ -1711,7 +1711,7 @@ export const seedBatch = internalMutation({
 
 export const seedAllSystemTemplates = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     createdBy: v.id("users"),
   },
   handler: async (ctx, args) => {

@@ -58,7 +58,7 @@ const accessControlValidator = v.object({
 
 export const list = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     status: v.optional(statusValidator),
     category: v.optional(categoryValidator),
     module: v.optional(v.string()),
@@ -101,7 +101,7 @@ export const getById = query({
 
 export const listActive = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     module: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -145,7 +145,7 @@ export const listActive = query({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     category: categoryValidator,

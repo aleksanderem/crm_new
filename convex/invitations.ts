@@ -16,7 +16,7 @@ import {
 import { sendViaResend, sendViaMailgun } from "./email/providers";
 
 export const listPending = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
@@ -79,7 +79,7 @@ export const getByToken = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     email: v.string(),
     role: orgRoleValidator,
     // Optional module provisioning. module="gabinet" + moduleData triggers
@@ -190,7 +190,7 @@ export const _sendInvitationEmail = internalAction({
     email: v.string(),
     role: v.string(),
     token: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     inviterUserId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -294,7 +294,7 @@ export const _sendInvitationEmail = internalAction({
 
 export const _createInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     email: v.string(),
     role: orgRoleValidator,
     module: v.optional(v.string()),
@@ -630,7 +630,7 @@ export const _declineInternal = internalMutation({
 
 export const cancel = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     invitationId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -664,7 +664,7 @@ export const cancel = action({
 
 export const _cancelInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     await requireOrgAdmin(ctx, args.organizationId);
@@ -675,7 +675,7 @@ export const _cancelInternal = internalMutation({
 
 export const resend = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     invitationId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -722,7 +722,7 @@ export const resend = action({
 
 export const _resendInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     await requireOrgAdmin(ctx, args.organizationId);
@@ -740,7 +740,7 @@ export const _resendInternal = internalMutation({
 // re-send (which would invalidate the link the invitee already received).
 export const updatePendingRole = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     invitationId: v.string(),
     role: orgRoleValidator,
   },
@@ -783,7 +783,7 @@ export const updatePendingRole = action({
 
 export const _updatePendingRoleInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     await requireOrgAdmin(ctx, args.organizationId);

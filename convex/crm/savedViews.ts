@@ -5,7 +5,7 @@ import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 export const listByEntityType = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
   },
   handler: async (ctx, args) => {
@@ -27,7 +27,7 @@ export const listByEntityType = action({
 
 export const getById = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     viewId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -47,7 +47,7 @@ export const getById = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     name: v.string(),
     filters: v.any(),
@@ -112,7 +112,7 @@ export const create = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     viewId: v.string(),
     name: v.optional(v.string()),
     filters: v.optional(v.any()),
@@ -156,7 +156,7 @@ export const update = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     viewId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -184,7 +184,7 @@ export const remove = action({
 
 export const reorder = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     viewIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {

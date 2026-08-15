@@ -13,7 +13,7 @@ import { v } from "convex/values";
 
 export const upsert = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     fromName: v.string(),
     fromEmail: v.string(),
     isDefault: v.boolean(),
@@ -77,7 +77,7 @@ export const upsert = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     accountId: v.string(),
   },
   handler: async (ctx, args) => {

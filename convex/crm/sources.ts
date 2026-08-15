@@ -5,7 +5,7 @@ import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 export const list = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
@@ -25,7 +25,7 @@ export const list = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
   },
   handler: async (ctx, args) => {
@@ -59,7 +59,7 @@ export const create = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     sourceId: v.string(),
     name: v.optional(v.string()),
     isActive: v.optional(v.boolean()),
@@ -86,7 +86,7 @@ export const update = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     sourceId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -107,7 +107,7 @@ export const remove = action({
 
 export const reorder = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     sourceIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {
@@ -131,7 +131,7 @@ export const reorder = action({
 
 export const seed = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runAction(

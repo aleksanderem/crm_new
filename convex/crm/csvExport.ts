@@ -17,7 +17,7 @@ async function requireOrgAdminAction(
 }
 
 export const exportContacts = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await requireOrgAdminAction(ctx, args.organizationId);
 
@@ -42,7 +42,7 @@ export const exportContacts = action({
 });
 
 export const exportCompanies = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await requireOrgAdminAction(ctx, args.organizationId);
 
@@ -72,7 +72,7 @@ export const exportCompanies = action({
 });
 
 export const exportLeads = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await requireOrgAdminAction(ctx, args.organizationId);
 
@@ -100,7 +100,7 @@ export const exportLeads = action({
 });
 
 export const exportPatients = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await requireOrgAdminAction(ctx, args.organizationId);
 
@@ -128,7 +128,7 @@ export const exportPatients = action({
 });
 
 export const exportProducts = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,

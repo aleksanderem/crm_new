@@ -20,7 +20,7 @@ export interface DealProductWithProduct extends DealProductRow {
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     sku: v.string(),
     unitPrice: v.number(),
@@ -129,7 +129,7 @@ export const create = action({
 export const _createSideEffects = internalMutation({
   args: {
     productId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     createdBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -149,7 +149,7 @@ export const _createSideEffects = internalMutation({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     productId: v.string(),
     name: v.optional(v.string()),
     sku: v.optional(v.string()),
@@ -239,7 +239,7 @@ export const update = action({
 export const _updateSideEffects = internalMutation({
   args: {
     productId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     updatedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -259,7 +259,7 @@ export const _updateSideEffects = internalMutation({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     productId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -312,7 +312,7 @@ export const remove = action({
 export const _removeSideEffects = internalMutation({
   args: {
     productId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     deletedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -332,7 +332,7 @@ export const _removeSideEffects = internalMutation({
 
 export const toggleActive = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     productId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -382,7 +382,7 @@ export const toggleActive = action({
 export const _toggleActiveSideEffects = internalMutation({
   args: {
     productId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     wasActive: v.boolean(),
     updatedBy: v.string(),
@@ -403,7 +403,7 @@ export const _toggleActiveSideEffects = internalMutation({
 
 export const listByDeal = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     dealId: v.string(),
   },
   handler: async (ctx, args): Promise<DealProductWithProduct[]> => {
@@ -438,7 +438,7 @@ export const listByDeal = action({
 
 export const addToDeal = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     dealId: v.string(),
     productId: v.string(),
     quantity: v.number(),
@@ -498,7 +498,7 @@ export const addToDeal = action({
 
 export const _addToDealSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     dealId: v.string(),
     productName: v.string(),
     addedBy: v.string(),
@@ -519,7 +519,7 @@ export const _addToDealSideEffects = internalMutation({
 
 export const removeFromDeal = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     dealProductId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -563,7 +563,7 @@ export const removeFromDeal = action({
 
 export const _removeFromDealSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     dealId: v.string(),
     productName: v.string(),
     removedBy: v.string(),

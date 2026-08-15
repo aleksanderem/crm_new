@@ -372,7 +372,7 @@ function generateRecurringDates(
 
 export const list = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paginationOpts: paginationOptsValidator,
     locationId: v.optional(v.string()),
   },
@@ -409,7 +409,7 @@ export const list = action({
 
 export const getById = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -439,7 +439,7 @@ export const getById = action({
 
 export const listByDate = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     date: v.string(),
     locationId: v.optional(v.string()),
   },
@@ -474,7 +474,7 @@ export const listByDate = action({
 
 export const listByDateRange = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     startDate: v.string(),
     endDate: v.string(),
     employeeId: v.optional(v.string()),
@@ -515,7 +515,7 @@ export const listByDateRange = action({
 
 export const listByPatient = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetAppointmentRow[]> => {
@@ -546,7 +546,7 @@ export const listByPatient = action({
 
 export const listByEmployee = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetAppointmentRow[]> => {
@@ -577,7 +577,7 @@ export const listByEmployee = action({
 
 export const listPatientsForEmployee = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetPatientRow[]> => {
@@ -629,7 +629,7 @@ export type EmployeePatientStats = GabinetPatientRow & {
  */
 export const listPatientsWithStatsForEmployee = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
   },
   handler: async (ctx, args): Promise<EmployeePatientStats[]> => {
@@ -702,7 +702,7 @@ export const listPatientsWithStatsForEmployee = action({
 
 export const getAvailableSlotsQuery = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     date: v.string(),
     duration: v.number(),
@@ -737,7 +737,7 @@ export const getAvailableSlotsQuery = action({
 
 export const checkQualification = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     treatmentId: v.string(),
   },
@@ -767,7 +767,7 @@ export const checkQualification = action({
 // ---------------------------------------------------------------------------
 
 export const _getOrgSettings = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     return await db.query("orgSettings")
@@ -798,7 +798,7 @@ export const _createSideEffects = internalMutation({
   args: {
     // Appointment data (already written to Supabase)
     appointmentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
     treatmentId: v.string(),
     employeeId: v.string(),
@@ -1037,7 +1037,7 @@ export const _createSideEffects = internalMutation({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
     // Multi-treatment model (#3356): pass `treatments` array for multiple treatments.
     // The scalar `treatmentId`/`variantId` args are kept for API backward compat —
@@ -1550,7 +1550,7 @@ export const create = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
     date: v.optional(v.string()),
     startTime: v.optional(v.string()),
@@ -1981,7 +1981,7 @@ export const update = action({
 export const _updateSideEffects = internalMutation({
   args: {
     appointmentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     actorUserId: v.string(),
     previousStatus: v.string(),
     previousDate: v.string(),
@@ -2131,7 +2131,7 @@ export const _updateSideEffects = internalMutation({
 export const _sendRescheduleNotification = internalMutation({
   args: {
     appointmentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     updatedAt: v.number(),
     actorUserId: v.string(),
     patientId: v.string(),
@@ -2184,7 +2184,7 @@ export const _sendRescheduleNotification = internalMutation({
 
 export const updateStatus = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
     status: gabinetAppointmentStatusValidator,
     forceSkipDocumentGate: v.optional(v.boolean()),
@@ -2534,7 +2534,7 @@ export const updateStatus = action({
 export const _updateStatusSideEffects = internalMutation({
   args: {
     appointmentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     actorUserId: v.string(),
     previousStatus: v.string(),
     nextStatus: v.string(),
@@ -2616,7 +2616,7 @@ export const _updateStatusSideEffects = internalMutation({
 
 export const getDocumentGateStatus = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
     timing: v.union(
       v.literal("before_start"),
@@ -2637,7 +2637,7 @@ export const getDocumentGateStatus = query({
 
 export const applySmsReplyTransition = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
     intent: v.union(v.literal("confirm"), v.literal("cancel")),
     smsEventId: v.string(),
@@ -2738,7 +2738,7 @@ export const applySmsReplyTransition = internalMutation({
 
 export const cancel = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
     reason: v.optional(v.string()),
   },
@@ -2833,7 +2833,7 @@ export const cancel = action({
 export const _cancelSideEffects = internalMutation({
   args: {
     appointmentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     actorUserId: v.string(),
     reason: v.optional(v.string()),
     scheduledActivityId: v.optional(v.string()),
@@ -3207,7 +3207,7 @@ async function handleAppointmentCompletion(
 
 export const cancelRecurringSeries = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     recurringGroupId: v.string(),
     fromDate: v.optional(v.string()),
   },
@@ -3348,7 +3348,7 @@ export interface AppointmentFullDetail {
 
 export const getFullDetail = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
   },
   handler: async (ctx, args): Promise<AppointmentFullDetail> => {
@@ -3644,7 +3644,7 @@ export type AppointmentWarningCode =
 
 export const getWarnings = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
   },
   handler: async (
@@ -3842,7 +3842,7 @@ export const getWarnings = action({
 
 export const getPhotoUrls = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     storageIds: v.array(v.id("_storage")),
   },
   handler: async (ctx, args) => {

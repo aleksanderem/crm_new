@@ -538,7 +538,7 @@ const ALL_EVENT_TYPES: EventTypeDef[] = [
  */
 export const seedDefaultEventTypes = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     createdBy: v.id("users"),
     batchIndex: v.optional(v.number()),
   },

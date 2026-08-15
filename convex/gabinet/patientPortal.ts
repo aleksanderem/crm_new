@@ -576,7 +576,7 @@ export const bookFromPortal = action({
  * Internal: find org owner user ID.
  */
 export const _findOrgOwner = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const ownerMembership = await db
@@ -598,7 +598,7 @@ export const _findOrgOwner = internalAction({
  */
 export const _bookingNotifications = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
     patientName: v.string(),
     treatmentName: v.string(),
@@ -732,7 +732,7 @@ export const requestReschedule = action({
  */
 export const _rescheduleNotifications = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
     patientName: v.string(),
     treatmentName: v.string(),

@@ -17,7 +17,7 @@ import { createAccount, modifyAccountCredentials } from "@convex-dev/auth/server
 
 export const list = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paginationOpts: paginationOptsValidator,
     role: v.optional(gabinetEmployeeRoleValidator),
     activeOnly: v.optional(v.boolean()),
@@ -73,7 +73,7 @@ export const list = action({
 
 export const listAll = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activeOnly: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<GabinetEmployeeRow[]> => {
@@ -106,7 +106,7 @@ export const listAll = action({
 
 export const getById = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetEmployeeRow> => {
@@ -136,7 +136,7 @@ export const getById = action({
 
 export const getByUserId = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetEmployeeRow | null> => {
@@ -165,7 +165,7 @@ export const getByUserId = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.optional(v.string()),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
@@ -349,7 +349,7 @@ export const create = action({
  */
 export const _createFromInvitation = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     invitedBy: v.string(),
     data: v.any(),
@@ -648,7 +648,7 @@ export const _backfillMemberships = internalAction({
  */
 export const _upsertMembership = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     gabinetRole: gabinetEmployeeRoleValidator,
     isActive: v.boolean(),
@@ -685,7 +685,7 @@ export const _upsertMembership = internalMutation({
 // no Supabase access) can resolve both location assignments and optional role overrides.
 export const _upsertLocationMembership = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     locationId: v.string(),
     role: v.optional(gabinetEmployeeRoleValidator),
@@ -716,7 +716,7 @@ export const _upsertLocationMembership = internalMutation({
 
 export const _deleteLocationMembership = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     locationId: v.string(),
   },
@@ -738,7 +738,7 @@ export const _deleteLocationMembership = internalMutation({
 export const _createSideEffects = internalMutation({
   args: {
     employeeId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     createdBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
@@ -768,7 +768,7 @@ export const _createSideEffects = internalMutation({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
     userId: v.optional(v.string()),
     firstName: v.optional(v.string()),
@@ -1018,7 +1018,7 @@ export const update = action({
 export const _updateSideEffects = internalMutation({
   args: {
     employeeId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     updatedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
@@ -1048,7 +1048,7 @@ export const _updateSideEffects = internalMutation({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -1111,7 +1111,7 @@ export const remove = action({
 
 export const blockEmployee = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -1157,7 +1157,7 @@ export const blockEmployee = action({
 
 export const unblockEmployee = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -1203,7 +1203,7 @@ export const unblockEmployee = action({
 
 export const _blockSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     employeeId: v.string(),
   },
@@ -1221,7 +1221,7 @@ export const _blockSideEffects = internalMutation({
 
 export const _unblockSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     employeeId: v.string(),
   },
@@ -1240,7 +1240,7 @@ export const _unblockSideEffects = internalMutation({
 export const _removeSideEffects = internalMutation({
   args: {
     employeeId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     deletedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
@@ -1271,7 +1271,7 @@ export const _removeSideEffects = internalMutation({
 /** Get employees qualified for a specific treatment */
 export const getQualifiedForTreatment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetEmployeeRow[]> => {
@@ -1300,7 +1300,7 @@ export const getQualifiedForTreatment = action({
 /** Update treatment qualifications for an employee */
 export const setQualifiedTreatments = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
     treatmentIds: v.array(v.string()),
   },
@@ -1351,7 +1351,7 @@ export const setQualifiedTreatments = action({
 export const _setQualifiedSideEffects = internalMutation({
   args: {
     employeeId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentCount: v.number(),
     updatedBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -1412,7 +1412,7 @@ export const _finalisePasswordUser = internalAction({
     userId: v.string(),
     email: v.string(),
     name: v.optional(v.string()),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     teamRole: v.union(v.literal("admin"), v.literal("member"), v.literal("viewer")),
     invitedBy: v.string(),
     // Set to true when the user row already exists in Supabase (existing-user
@@ -1505,7 +1505,7 @@ export const _finalisePasswordUser = internalAction({
  */
 export const createWithPassword = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     email: v.string(),
     password: v.string(),
     teamRole: v.union(v.literal("admin"), v.literal("member"), v.literal("viewer")),
@@ -1744,7 +1744,7 @@ export const createWithPassword = action({
 
 export const changeEmployeePassword = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
     newPassword: v.string(),
   },
@@ -1787,7 +1787,7 @@ export const changeEmployeePassword = action({
 export const _changePasswordSideEffects = internalMutation({
   args: {
     employeeId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     changedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
@@ -1813,7 +1813,7 @@ export const _changePasswordSideEffects = internalMutation({
 // fall back to createInvitation for genuinely new users.
 export const createForExistingMember = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     email: v.string(),
     teamRole: v.optional(v.union(v.literal("admin"), v.literal("member"), v.literal("viewer"))),
     firstName: v.optional(v.string()),

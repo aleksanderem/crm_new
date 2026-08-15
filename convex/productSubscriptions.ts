@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { verifyOrgAccess } from "./_helpers/auth";
 
 export const getActiveProducts = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   returns: v.array(v.string()),
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);

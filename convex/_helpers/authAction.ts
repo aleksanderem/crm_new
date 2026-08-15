@@ -29,7 +29,7 @@ export const _getAuthUser = internalQuery({
 // TABLE_MAP and must be read via ctx.db.
 export const _getGabinetPermissionData = internalQuery({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     locationId: v.optional(v.id("gabinetLocations")),
   },
@@ -95,7 +95,7 @@ export const _getGabinetPermissionData = internalQuery({
 // Callers must use ctx.runAction (not ctx.runQuery).
 // ---------------------------------------------------------------------------
 export const verifyOrgAccess = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (
     ctx,
     args,
@@ -138,7 +138,7 @@ export const verifyOrgAccess = internalAction({
 // ---------------------------------------------------------------------------
 export const checkPermission = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     feature: v.string(),
     action: v.string(),
     locationId: v.optional(v.id("gabinetLocations")),

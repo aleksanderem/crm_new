@@ -175,7 +175,7 @@ export const getMyOrganizations = query({
 });
 
 export const getById = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
     return await ctx.db.get(args.organizationId);
@@ -184,7 +184,7 @@ export const getById = query({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.optional(v.string()),
     slug: v.optional(v.string()),
     logo: v.optional(v.string()),
@@ -219,7 +219,7 @@ export const update = action({
 
 export const _updateOrgInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.optional(v.string()),
     slug: v.optional(v.string()),
     logo: v.optional(v.string()),
@@ -253,7 +253,7 @@ export const _updateOrgInternal = internalMutation({
 });
 
 export const getMembers = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
@@ -283,7 +283,7 @@ export const getMembers = action({
 
 export const inviteMember = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     role: orgRoleValidator,
   },
@@ -312,7 +312,7 @@ export const inviteMember = action({
 
 export const _inviteMemberInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     role: orgRoleValidator,
   },
@@ -365,7 +365,7 @@ export const _inviteMemberInternal = internalMutation({
 
 export const updateMemberRole = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     membershipId: v.string(),
     role: orgRoleValidator,
   },
@@ -391,7 +391,7 @@ export const updateMemberRole = action({
 
 export const _updateMemberRoleInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     membershipId: v.id("teamMemberships"),
     role: orgRoleValidator,
   },
@@ -427,7 +427,7 @@ export const _updateMemberRoleInternal = internalMutation({
 
 export const removeMember = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     membershipId: v.string(),
   },
   handler: async (ctx, args): Promise<string> => {
@@ -446,7 +446,7 @@ export const removeMember = action({
 
 export const _removeMemberInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     membershipId: v.id("teamMemberships"),
   },
   handler: async (ctx, args) => {
@@ -474,7 +474,7 @@ export const _removeMemberInternal = internalMutation({
 });
 
 export const getSeatUsage = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
     return await checkSeatLimit(ctx, args);
@@ -484,7 +484,7 @@ export const getSeatUsage = query({
 // Returns only the seat limit (from subscriptions/plans, which are Convex-only tables).
 // Seat counts (team_memberships + invitations) are read from Supabase by the frontend hook.
 export const getSeatLimit = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
 

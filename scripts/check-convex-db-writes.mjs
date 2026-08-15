@@ -112,6 +112,16 @@ const WHITELIST_PATHS = new Set([
   // teamMemberships (Convex auth compat) and users (username derivation for
   // new invitees). See issue #4953.
   "invitations",
+
+  // app — dual-writes users, organizations, and teamMemberships to ctx.db so
+  // that verifyOrgAccess / requireUser in _helpers/auth.ts (QueryCtx |
+  // MutationCtx) can read them. MutationCtx cannot make HTTP calls, so these
+  // Convex writes are a permanent architectural necessity. Every ctx.db write
+  // in app.ts has a corresponding Supabase write: completeOnboarding (action)
+  // writes user/org/membership directly; profile mutations schedule
+  // writeUserToSupabase; deleteCurrentUserAccount (action) deletes from
+  // Supabase. See issue #4954.
+  "app",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -124,10 +134,6 @@ const INSERT_PENDING = new Set([
   // admin/entitlements.ts — ctx.db.insert("productSubscriptions", ...) for
   // inserting subscription records; should use createSupabaseDb().insert().
   "admin/entitlements",
-
-  // app.ts — ctx.db.insert("organizations", ...) and ("teamMemberships", ...)
-  // during org creation; should use createSupabaseDb().insert().
-  "app",
 
   // documents/components.ts — ctx.db.insert("documentComponents", ...).
   "documents/components",
@@ -153,9 +159,6 @@ const INSERT_PENDING = new Set([
 const PATCH_DELETE_PENDING = new Set([
   // admin/entitlements.ts — ctx.db.patch on productSubscriptions records.
   "admin/entitlements",
-
-  // app.ts — ctx.db.delete(userId) where userId: Id<"users">.
-  "app",
 
   // automation.ts — ctx.db.patch(convexId, ...) where convexId may be a
   // TABLE_MAP table (gabinet entities). Intentional migration-compat mirror:
@@ -189,6 +192,11 @@ const PATCH_DELETE_PENDING = new Set([
   // gabinet/patients.ts — ctx.db.patch on activities, notes, and
   // gabinetAppointments records during GDPR erasure.
   "gabinet/patients",
+
+  // stripe.ts — ctx.db.patch(args.userId, { customerId }) in
+  // PREAUTH_updateCustomerId where userId: Id<"users">. Should also write
+  // customerId to Supabase users table.
+  "stripe",
 
 ]);
 

@@ -1,97 +1,14 @@
-import { query, action, internalMutation } from "../_generated/server";
+import { action, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
-import { verifyOrgAccess } from "../_helpers/auth";
 import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
-import { emailDirectionValidator } from "@cvx/schema";
 import { sendEmail } from "@cvx/email";
 import { Id } from "../_generated/dataModel";
 import type { EmailRow } from "../_helpers/supabaseRows";
 
 // Dual-write refs removed — Supabase is now primary for email writes
-
-export const listInbox = query({
-  args: {
-    organizationId: v.id("organizations"),
-    paginationOpts: paginationOptsValidator,
-    direction: v.optional(emailDirectionValidator),
-    isRead: v.optional(v.boolean()),
-    mailProviderId: v.optional(v.id("mailProviders")),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    const baseQuery = args.mailProviderId
-      ? ctx.db
-          .query("emails")
-          .withIndex("by_org_provider", (q) =>
-            q
-              .eq("organizationId", args.organizationId)
-              .eq("mailProviderId", args.mailProviderId)
-          )
-          .order("desc")
-      : ctx.db
-          .query("emails")
-          .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-          .order("desc");
-
-    if (args.direction || args.isRead !== undefined) {
-      const all = await baseQuery.collect();
-      const filtered = all.filter((e) => {
-        if (args.direction && e.direction !== args.direction) return false;
-        if (args.isRead !== undefined && e.isRead !== args.isRead) return false;
-        return true;
-      });
-      const numItems = args.paginationOpts.numItems;
-      const page = filtered.slice(0, numItems);
-      return {
-        page,
-        isDone: filtered.length <= numItems,
-        continueCursor: "",
-      };
-    }
-
-    return await baseQuery.paginate(args.paginationOpts);
-  },
-});
-
-export const getThread = query({
-  args: {
-    organizationId: v.id("organizations"),
-    threadId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    const emails = await ctx.db
-      .query("emails")
-      .withIndex("by_thread", (q) =>
-        q.eq("organizationId", args.organizationId).eq("threadId", args.threadId)
-      )
-      .collect();
-
-    return emails.sort((a, b) => a.sentAt - b.sentAt);
-  },
-});
-
-export const getById = query({
-  args: {
-    organizationId: v.id("organizations"),
-    emailId: v.id("emails"),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    const email = await ctx.db.get(args.emailId);
-    if (!email || email.organizationId !== args.organizationId) {
-      throw new Error("Email not found");
-    }
-
-    return email;
-  },
-});
+// listInbox, getThread, getById, getUnreadCount removed — frontend reads from Supabase via use-supabase-emails.ts
 
 export const listByEntity = action({
   args: {
@@ -128,22 +45,6 @@ export const listByEntity = action({
     }
 
     return emails.sort((a, b) => (b.sentAt ?? 0) - (a.sentAt ?? 0));
-  },
-});
-
-export const getUnreadCount = query({
-  args: {
-    organizationId: v.id("organizations"),
-  },
-  handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-
-    const emails = await ctx.db
-      .query("emails")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
-      .collect();
-
-    return emails.filter((e) => e.isRead === false).length;
   },
 });
 

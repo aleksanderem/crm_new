@@ -581,17 +581,17 @@ http.route({
       const inReplyTo = headers?.["In-Reply-To"] ?? headers?.["in-reply-to"];
       let threadId: string | undefined;
       if (inReplyTo) {
-        const existingEmail = await ctx.runQuery(
+        const existingEmail = await ctx.runAction(
           internal.crm.emails_internal.findByMessageId,
           { messageId: inReplyTo }
         );
         if (existingEmail) {
-          threadId = existingEmail.threadId;
+          threadId = existingEmail.threadId as string | undefined;
         }
       }
 
       // Auto-link to contact by from email
-      const contact = await ctx.runQuery(
+      const contact = await ctx.runAction(
         internal.crm.emails_internal.findContactByEmail,
         { organizationId, email: fromEmail }
       );
@@ -604,7 +604,7 @@ http.route({
 
       const snippet = text ? text.slice(0, 200) : html ? html.replace(/<[^>]*>/g, "").slice(0, 200) : undefined;
 
-      await ctx.runMutation(internal.crm.emails_internal.insertInbound, {
+      await ctx.runAction(internal.crm.emails_internal.insertInbound, {
         organizationId,
         threadId: finalThreadId,
         messageId,
@@ -615,7 +615,7 @@ http.route({
         bodyHtml: html,
         bodyText: text,
         snippet,
-        contactId: contact?._id,
+        contactId: contact?._id ? String(contact._id) : undefined,
       });
 
       return new Response("OK", { status: 200 });

@@ -1,12 +1,9 @@
-import { internalQuery, internalMutation, internalAction } from "../_generated/server";
+import { internalMutation, internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import type { SupabaseRow } from "../_helpers/supabaseRows";
-
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeEmailRef = internal.supabase.emails.writeEmailToSupabase;
 
 type EmailAccountRow = SupabaseRow<"emailAccounts">;
 
@@ -36,32 +33,33 @@ export const findEmailAccountByAddress = internalAction({
   },
 });
 
-export const findByMessageId = internalQuery({
+export const findByMessageId = internalAction({
   args: { messageId: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    return await db
       .query("emails")
-      .withIndex("by_messageId", (q) => q.eq("messageId", args.messageId))
-      .unique();
-  },
-});
-
-export const findContactByEmail = internalQuery({
-  args: {
-    organizationId: v.id("organizations"),
-    email: v.string(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("contacts")
-      .withIndex("by_orgAndEmail", (q) =>
-        q.eq("organizationId", args.organizationId).eq("email", args.email)
-      )
+      .eq("messageId", args.messageId)
       .first();
   },
 });
 
-export const insertOutboundGmail = internalMutation({
+export const findContactByEmail = internalAction({
+  args: {
+    organizationId: v.id("organizations"),
+    email: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    return await db
+      .query("contacts")
+      .eq("organizationId", String(args.organizationId))
+      .eq("email", args.email)
+      .first();
+  },
+});
+
+export const insertOutboundGmail = internalAction({
   args: {
     organizationId: v.id("organizations"),
     to: v.array(v.string()),
@@ -80,7 +78,8 @@ export const insertOutboundGmail = internalMutation({
     leadId: v.optional(v.id("leads")),
     sentBy: v.id("users"),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
     const now = Date.now();
     const messageId = `<${args.gmailMessageId}@gmail>`;
     const threadId = args.threadId ?? messageId;
@@ -92,59 +91,29 @@ export const insertOutboundGmail = internalMutation({
       snippet = args.bodyHtml.replace(/<[^>]*>/g, "").slice(0, 200);
     }
 
-    const emailId = await ctx.db.insert("emails", {
-      organizationId: args.organizationId,
+    await db.insert("emails", {
+      organizationId: String(args.organizationId),
       threadId,
       messageId,
-      inReplyTo: args.inReplyTo,
+      inReplyTo: args.inReplyTo ?? null,
       direction: "outbound",
       from: args.fromEmail,
       to: args.to,
-      cc: args.cc,
-      bcc: args.bcc,
+      cc: args.cc ?? null,
+      bcc: args.bcc ?? null,
       subject: args.subject,
-      bodyHtml: args.bodyHtml,
-      bodyText: args.bodyText,
-      snippet,
+      bodyHtml: args.bodyHtml ?? null,
+      bodyText: args.bodyText ?? null,
+      snippet: snippet ?? null,
       isRead: true,
       isStarred: false,
       provider: "google",
       gmailMessageId: args.gmailMessageId,
-      gmailThreadId: args.gmailThreadId,
-      contactId: args.contactId,
-      companyId: args.companyId,
-      leadId: args.leadId,
-      sentBy: args.sentBy,
-      sentAt: now,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // Dual-write: replicate new email to Supabase
-    await ctx.scheduler.runAfter(0, writeEmailRef, {
-      emailId: emailId as string,
-      organizationId: args.organizationId as string,
-      threadId,
-      messageId,
-      inReplyTo: args.inReplyTo,
-      direction: "outbound",
-      from: args.fromEmail,
-      to: args.to,
-      cc: args.cc,
-      bcc: args.bcc,
-      subject: args.subject,
-      bodyHtml: args.bodyHtml,
-      bodyText: args.bodyText,
-      snippet,
-      isRead: true,
-      isStarred: false,
-      provider: "google",
-      gmailMessageId: args.gmailMessageId,
-      gmailThreadId: args.gmailThreadId,
-      contactId: args.contactId as string | undefined,
-      companyId: args.companyId as string | undefined,
-      leadId: args.leadId as string | undefined,
-      sentBy: args.sentBy as string,
+      gmailThreadId: args.gmailThreadId ?? null,
+      contactId: args.contactId ? String(args.contactId) : null,
+      companyId: args.companyId ? String(args.companyId) : null,
+      leadId: args.leadId ? String(args.leadId) : null,
+      sentBy: String(args.sentBy),
       sentAt: now,
       createdAt: now,
       updatedAt: now,
@@ -152,7 +121,7 @@ export const insertOutboundGmail = internalMutation({
   },
 });
 
-export const insertInboundGmail = internalMutation({
+export const insertInboundGmail = internalAction({
   args: {
     organizationId: v.id("organizations"),
     gmailMessageId: v.string(),
@@ -163,102 +132,62 @@ export const insertInboundGmail = internalMutation({
     snippet: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const db = createSupabaseDb();
+
     // Check for duplicates by gmailMessageId
-    const existing = await ctx.db
+    const existing = await db
       .query("emails")
-      .withIndex("by_gmailMessageId", (q) =>
-        q.eq("gmailMessageId", args.gmailMessageId)
-      )
+      .eq("gmailMessageId", args.gmailMessageId)
       .first();
     if (existing) return; // Already synced
 
     const now = Date.now();
     const messageId = `<${args.gmailMessageId}@gmail>`;
 
-    const organization = await ctx.db.get(args.organizationId);
+    const organization = await db.get("organizations", String(args.organizationId));
 
     // Auto-link to contact by from email
-    const contact = await ctx.db
+    const contact = await db
       .query("contacts")
-      .withIndex("by_orgAndEmail", (q) =>
-        q.eq("organizationId", args.organizationId).eq("email", args.from)
-      )
+      .eq("organizationId", String(args.organizationId))
+      .eq("email", args.from)
       .first();
 
-    const emailId = await ctx.db.insert("emails", {
-      organizationId: args.organizationId,
+    const emailId = await db.insert("emails", {
+      organizationId: String(args.organizationId),
       threadId: args.gmailThreadId,
       messageId,
       direction: "inbound",
       from: args.from,
       to: args.to,
       subject: args.subject,
-      snippet: args.snippet,
+      snippet: args.snippet ?? null,
       isRead: false,
       isStarred: false,
       provider: "google",
       gmailMessageId: args.gmailMessageId,
       gmailThreadId: args.gmailThreadId,
-      contactId: contact?._id,
-      sentAt: now,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // Dual-write: replicate new email to Supabase
-    await ctx.scheduler.runAfter(0, writeEmailRef, {
-      emailId: emailId as string,
-      organizationId: args.organizationId as string,
-      threadId: args.gmailThreadId,
-      messageId,
-      direction: "inbound",
-      from: args.from,
-      to: args.to,
-      subject: args.subject,
-      snippet: args.snippet,
-      isRead: false,
-      isStarred: false,
-      provider: "google",
-      gmailMessageId: args.gmailMessageId,
-      gmailThreadId: args.gmailThreadId,
-      contactId: contact?._id as string | undefined,
+      contactId: contact?._id ? String(contact._id) : null,
       sentAt: now,
       createdAt: now,
       updatedAt: now,
     });
 
     if (organization) {
-      await publishActivityEnvelope(ctx, {
+      await ctx.runMutation(internal.crm.emails_internal._publishInboundActivity, {
+        emailId,
         organizationId: args.organizationId,
-        action: "email_received",
-        performedBy: organization.ownerId,
-        module: "crm",
-        summary: `Received email "${args.subject}" from ${args.from}`,
-        occurredAt: now,
-        actor: {
-          type: "external",
-          label: args.from,
-        },
-        payload: {
-          emailId,
-          direction: "inbound",
-          from: args.from,
-          to: args.to,
-          subject: args.subject,
-        },
-        eventKey: `crm:email:${emailId}:email_received`,
-        targets: [
-          {
-            entityType: "email",
-            entityId: emailId,
-          },
-        ],
+        performedBy: String(organization.ownerId),
+        subject: args.subject,
+        from: args.from,
+        to: args.to,
+        now,
       });
     }
   },
 });
 
-export const insertInbound = internalMutation({
+export const insertInbound = internalAction({
   args: {
     organizationId: v.id("organizations"),
     threadId: v.string(),
@@ -270,81 +199,84 @@ export const insertInbound = internalMutation({
     bodyHtml: v.optional(v.string()),
     bodyText: v.optional(v.string()),
     snippet: v.optional(v.string()),
-    contactId: v.optional(v.id("contacts")),
+    contactId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const db = createSupabaseDb();
     const now = Date.now();
-    const organization = await ctx.db.get(args.organizationId);
 
-    const emailId = await ctx.db.insert("emails", {
-      organizationId: args.organizationId,
+    const organization = await db.get("organizations", String(args.organizationId));
+
+    const emailId = await db.insert("emails", {
+      organizationId: String(args.organizationId),
       threadId: args.threadId,
       messageId: args.messageId,
-      inReplyTo: args.inReplyTo,
+      inReplyTo: args.inReplyTo ?? null,
       direction: "inbound",
       from: args.from,
       to: args.to,
       subject: args.subject,
-      bodyHtml: args.bodyHtml,
-      bodyText: args.bodyText,
-      snippet: args.snippet,
+      bodyHtml: args.bodyHtml ?? null,
+      bodyText: args.bodyText ?? null,
+      snippet: args.snippet ?? null,
       isRead: false,
       isStarred: false,
-      contactId: args.contactId,
-      sentAt: now,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // Dual-write: replicate new email to Supabase
-    await ctx.scheduler.runAfter(0, writeEmailRef, {
-      emailId: emailId as string,
-      organizationId: args.organizationId as string,
-      threadId: args.threadId,
-      messageId: args.messageId,
-      inReplyTo: args.inReplyTo,
-      direction: "inbound",
-      from: args.from,
-      to: args.to,
-      subject: args.subject,
-      bodyHtml: args.bodyHtml,
-      bodyText: args.bodyText,
-      snippet: args.snippet,
-      isRead: false,
-      isStarred: false,
-      contactId: args.contactId as string | undefined,
+      contactId: args.contactId ?? null,
       sentAt: now,
       createdAt: now,
       updatedAt: now,
     });
 
     if (organization) {
-      await publishActivityEnvelope(ctx, {
+      await ctx.runMutation(internal.crm.emails_internal._publishInboundActivity, {
+        emailId,
         organizationId: args.organizationId,
-        action: "email_received",
-        performedBy: organization.ownerId,
-        module: "crm",
-        summary: `Received email "${args.subject}" from ${args.from}`,
-        occurredAt: now,
-        actor: {
-          type: "external",
-          label: args.from,
-        },
-        payload: {
-          emailId,
-          direction: "inbound",
-          from: args.from,
-          to: args.to,
-          subject: args.subject,
-        },
-        eventKey: `crm:email:${emailId}:email_received`,
-        targets: [
-          {
-            entityType: "email",
-            entityId: emailId,
-          },
-        ],
+        performedBy: String(organization.ownerId),
+        subject: args.subject,
+        from: args.from,
+        to: args.to,
+        now,
       });
     }
+  },
+});
+
+export const _publishInboundActivity = internalMutation({
+  args: {
+    emailId: v.string(),
+    organizationId: v.id("organizations"),
+    performedBy: v.string(),
+    subject: v.string(),
+    from: v.string(),
+    to: v.array(v.string()),
+    now: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await publishActivityEnvelope(ctx, {
+      organizationId: args.organizationId,
+      action: "email_received",
+      performedBy: args.performedBy as any,
+      module: "crm",
+      summary: `Received email "${args.subject}" from ${args.from}`,
+      occurredAt: args.now,
+      actor: {
+        type: "external",
+        label: args.from,
+      },
+      payload: {
+        emailId: args.emailId,
+        direction: "inbound",
+        from: args.from,
+        to: args.to,
+        subject: args.subject,
+      },
+      eventKey: `crm:email:${args.emailId}:email_received`,
+      targets: [
+        {
+          entityType: "email",
+          entityId: args.emailId,
+        },
+      ],
+    });
   },
 });

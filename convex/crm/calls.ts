@@ -1,4 +1,4 @@
-import { action, internalMutation, internalQuery } from "../_generated/server";
+import { action, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
@@ -46,18 +46,6 @@ export const list = action({
   },
 });
 
-export const _getRelationshipsBySource = internalQuery({
-  args: { callId: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("objectRelationships")
-      .withIndex("by_source", (q) =>
-        q.eq("sourceType", "call").eq("sourceId", args.callId)
-      )
-      .collect();
-  },
-});
-
 export const getById = action({
   args: {
     organizationId: v.id("organizations"),
@@ -86,10 +74,11 @@ export const getById = action({
       throw new Error("Permission denied");
     }
 
-    const relationships = await ctx.runQuery(
-      internal.crm.calls._getRelationshipsBySource,
-      { callId: args.callId },
-    );
+    const relationships = await db
+      .query("objectRelationships")
+      .eq("sourceType", "call")
+      .eq("sourceId", args.callId)
+      .collect();
 
     return { ...call, relationships };
   },
@@ -262,10 +251,15 @@ export const remove = action({
       throw new Error("Permission denied: you can only delete your own records");
     }
 
-    // Clean up relationships via internalMutation (needs ctx.db)
-    await ctx.runMutation(internal.crm.calls._removeRelationships, {
-      callId: args.callId,
-    });
+    // Clean up relationships from Supabase before deleting the call
+    const sourceRels = await db
+      .query("objectRelationships")
+      .eq("sourceType", "call")
+      .eq("sourceId", args.callId)
+      .collect();
+    for (const rel of sourceRels) {
+      await db.delete("objectRelationships", String(rel._id));
+    }
 
     // Delete from Supabase
     await db.delete("calls", args.callId);
@@ -282,21 +276,6 @@ export const remove = action({
     }
 
     return args.callId;
-  },
-});
-
-export const _removeRelationships = internalMutation({
-  args: { callId: v.string() },
-  handler: async (ctx, args) => {
-    const sourceRels = await ctx.db
-      .query("objectRelationships")
-      .withIndex("by_source", (q) =>
-        q.eq("sourceType", "call").eq("sourceId", args.callId)
-      )
-      .collect();
-    for (const rel of sourceRels) {
-      await ctx.db.delete(rel._id);
-    }
   },
 });
 

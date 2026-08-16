@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Loader2 } from "@/lib/ez-icons";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -74,7 +74,21 @@ export function SidePanel({
 }: SidePanelProps) {
   const { t } = useTranslation();
   const keyboardSafeStyle = useKeyboardSafeSheetStyle(open);
+  const contentRef = useRef<HTMLDivElement>(null);
   const resolvedSubmitLabel = submitLabel ?? t('common.create');
+
+  // When the keyboard-safe style changes height (keyboard opens/closes on mobile),
+  // the overflow-y-auto scroll container may reset its scrollTop. Re-scroll the
+  // focused element into view so the user doesn't lose their position in the form.
+  const styleHeight = keyboardSafeStyle?.height;
+  useLayoutEffect(() => {
+    if (!contentRef.current) return;
+    const active = document.activeElement as HTMLElement | null;
+    if (active && active !== document.body && contentRef.current.contains(active)) {
+      active.scrollIntoView({ block: "nearest" });
+    }
+  }, [styleHeight]);
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -90,7 +104,7 @@ export function SidePanel({
           {description && <SheetDescription>{description}</SheetDescription>}
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto overscroll-contain py-4">{children}</div>
+        <div ref={contentRef} className="flex-1 overflow-y-auto overscroll-contain py-4">{children}</div>
 
         {onSubmit && (
           <SheetFooter className="border-t pt-4">

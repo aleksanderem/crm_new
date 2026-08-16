@@ -909,7 +909,7 @@ export function DeliveriesPage() {
               </Button>
             </div>
 
-            <div className="rounded-md border overflow-x-auto">
+            <div className="rounded-md border overflow-x-auto overscroll-y-contain">
               <div className="min-w-[490px]">
               {/* column headers */}
               <div className="grid grid-cols-[1fr_65px_85px_82px_82px_28px] gap-1 border-b bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">

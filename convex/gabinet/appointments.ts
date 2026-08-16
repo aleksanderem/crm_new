@@ -3036,45 +3036,31 @@ async function deductPackageEntry(
   db: ReturnType<typeof createSupabaseDb>,
   args: { packageUsageId: string; treatmentId: string; variantId?: string },
 ) {
-  const now = Date.now();
-  const usage = await db.get("gabinetPackageUsage", args.packageUsageId);
-  if (!usage || usage.status !== "active") return;
-  const matchesTreatment = (t: any) =>
-    t.treatmentId === args.treatmentId &&
-    (args.variantId == null || t.variantId === args.variantId);
-  const entry = (usage.treatmentsUsed as any[]).find(matchesTreatment);
-  if (!entry || entry.usedCount >= entry.totalCount) return;
-  const updatedTreatments = (usage.treatmentsUsed as any[]).map((t) =>
-    matchesTreatment(t) ? { ...t, usedCount: t.usedCount + 1 } : t,
-  );
-  const allUsed = updatedTreatments.every((t: any) => t.usedCount >= t.totalCount);
-  await db.patch("gabinetPackageUsage", args.packageUsageId, {
-    treatmentsUsed: updatedTreatments,
-    status: allUsed ? "completed" : "active",
-    updatedAt: now,
+  // Atomic increment via Postgres SELECT FOR UPDATE — eliminates the
+  // read-modify-write race when two concurrent appointment completions share
+  // the same packageUsageId (closes #5208).
+  const { error } = await db.raw().rpc("deduct_package_entry", {
+    p_usage_id:     args.packageUsageId,
+    p_treatment_id: args.treatmentId,
+    p_variant_id:   args.variantId ?? null,
+    p_now:          Date.now(),
   });
+  if (error) throw new Error(`deduct_package_entry RPC: ${error.message}`);
 }
 
 async function returnPackageEntry(
   db: ReturnType<typeof createSupabaseDb>,
   args: { packageUsageId: string; treatmentId: string; variantId?: string },
 ) {
-  const now = Date.now();
-  const usage = await db.get("gabinetPackageUsage", args.packageUsageId);
-  if (!usage) return;
-  const matchesTreatment = (t: any) =>
-    t.treatmentId === args.treatmentId &&
-    (args.variantId == null || t.variantId === args.variantId);
-  const entry = (usage.treatmentsUsed as any[]).find(matchesTreatment);
-  if (!entry || entry.usedCount <= 0) return;
-  const updatedTreatments = (usage.treatmentsUsed as any[]).map((t) =>
-    matchesTreatment(t) ? { ...t, usedCount: Math.max(0, t.usedCount - 1) } : t,
-  );
-  await db.patch("gabinetPackageUsage", args.packageUsageId, {
-    treatmentsUsed: updatedTreatments,
-    status: usage.status === "completed" ? "active" : (usage.status as string),
-    updatedAt: now,
+  // Atomic decrement via Postgres SELECT FOR UPDATE — same race fix as
+  // deductPackageEntry (closes #5208).
+  const { error } = await db.raw().rpc("return_package_entry", {
+    p_usage_id:     args.packageUsageId,
+    p_treatment_id: args.treatmentId,
+    p_variant_id:   args.variantId ?? null,
+    p_now:          Date.now(),
   });
+  if (error) throw new Error(`return_package_entry RPC: ${error.message}`);
 }
 
 /**

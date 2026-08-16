@@ -7,8 +7,6 @@ import { logActivity } from "../_helpers/activities";
 import { leadStatusValidator, leadPriorityValidator } from "@cvx/schema";
 import { logAudit } from "../auditLog";
 import { createNotificationDirect } from "../notifications";
-import { Id } from "../_generated/dataModel";
-
 // Dual-write refs removed — Supabase is now primary for lead writes
 
 export const list = action({
@@ -165,12 +163,12 @@ export const _createSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const createdByUserId = args.createdBy as Id<"users">;
+    const createdByUserId = args.createdBy;
 
     await logActivity({
       organizationId: args.organizationId,
       entityType: "lead",
-      entityId: args.leadId as Id<"leads">,
+      entityId: args.leadId,
       action: "created",
       description: `Created lead "${args.title}"`,
       performedBy: createdByUserId,
@@ -338,14 +336,14 @@ export const _updateSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const updatedByUserId = args.updatedBy as Id<"users">;
+    const updatedByUserId = args.updatedBy;
     const now = args.updatedAt;
 
     if (args.newStatus && args.newStatus !== args.oldStatus) {
       await logActivity({
         organizationId: args.organizationId,
         entityType: "lead",
-        entityId: args.leadId as Id<"leads">,
+        entityId: args.leadId,
         action: "status_changed",
         description: `Changed lead status from "${args.oldStatus}" to "${args.newStatus}"`,
         metadata: { oldStatus: args.oldStatus, newStatus: args.newStatus },
@@ -360,7 +358,7 @@ export const _updateSideEffects = internalMutation({
           userId: updatedByUserId,
           action: "status_changed",
           entityType: "lead",
-          entityId: args.leadId as Id<"leads">,
+          entityId: args.leadId,
           details: JSON.stringify({
             oldStatus: args.oldStatus,
             newStatus: args.newStatus,
@@ -369,7 +367,7 @@ export const _updateSideEffects = internalMutation({
       }
 
       // Notify lead owner on won/lost
-      const leadOwner = args.leadOwnerId as Id<"users">;
+      const leadOwner = args.leadOwnerId;
       if (args.newStatus === "won" && leadOwner !== updatedByUserId) {
         await createNotificationDirect(ctx, {
           organizationId: args.organizationId,
@@ -416,7 +414,7 @@ export const _updateSideEffects = internalMutation({
       await logActivity({
         organizationId: args.organizationId,
         entityType: "lead",
-        entityId: args.leadId as Id<"leads">,
+        entityId: args.leadId,
         action: "updated",
         description: `Updated lead "${args.title}"`,
         performedBy: updatedByUserId,
@@ -531,12 +529,12 @@ export const _removeSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const deletedByUserId = args.deletedBy as Id<"users">;
+    const deletedByUserId = args.deletedBy;
 
     await logActivity({
       organizationId: args.organizationId,
       entityType: "lead",
-      entityId: args.leadId as Id<"leads">,
+      entityId: args.leadId,
       action: "deleted",
       description: `Deleted lead "${args.title}"`,
       performedBy: deletedByUserId,
@@ -548,7 +546,7 @@ export const _removeSideEffects = internalMutation({
       userId: deletedByUserId,
       action: "entity_deleted",
       entityType: "lead",
-      entityId: args.leadId as Id<"leads">,
+      entityId: args.leadId,
       details: JSON.stringify({ title: args.title }),
     });
   },
@@ -844,7 +842,7 @@ export const _gdprEraseSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const erasedByUserId = args.erasedBy as Id<"users">;
+    const erasedByUserId = args.erasedBy;
     const GDPR_REDACTED = "[RODO: dane usunięte]";
 
     const db = createSupabaseDb();
@@ -879,7 +877,7 @@ export const _gdprEraseSideEffects = internalMutation({
     await logActivity({
       organizationId: args.organizationId,
       entityType: "lead",
-      entityId: args.leadId as Id<"leads">,
+      entityId: args.leadId,
       action: "deleted",
       description: "RODO: dane leadu zostały usunięte",
       performedBy: erasedByUserId,
@@ -1022,7 +1020,7 @@ export const _moveToStageSideEffects = internalMutation({
           }),
         });
 
-        const leadOwner = (args.leadAssignedTo ?? args.leadCreatedBy) as unknown as Id<"users">;
+        const leadOwner = args.leadAssignedTo ?? args.leadCreatedBy;
         if (args.newStatus === "won" && leadOwner !== args.userId) {
           await createNotificationDirect(ctx, {
             organizationId: args.organizationId,

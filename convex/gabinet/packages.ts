@@ -744,6 +744,20 @@ export const purchasePackage = action({
         throw new Error("Could not generate unique voucher code");
     }
 
+    // Idempotency guard for regular (non-gift) purchases: if an active usage
+    // already exists for this patient × package, return it instead of creating
+    // a duplicate. Guards against double-click / network-retry scenarios.
+    if (!isGift && args.patientId) {
+      const existing = await db
+        .query("gabinetPackageUsage")
+        .eq("organizationId", String(args.organizationId))
+        .eq("patientId", args.patientId)
+        .eq("packageId", args.packageId)
+        .in("status", ["active", "unassigned"])
+        .first();
+      if (existing) return String(existing._id);
+    }
+
     const usageId = await db.insert("gabinetPackageUsage", {
       organizationId: String(args.organizationId),
       patientId: args.patientId ?? null,

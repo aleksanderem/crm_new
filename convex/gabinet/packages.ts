@@ -283,7 +283,7 @@ export const _createSideEffects = internalMutation({
       entityId: args.packageId as Id<"gabinetTreatmentPackages">,
       action: "created",
       description: `Created package ${args.name}`,
-      performedBy: args.createdBy as Id<"users">,
+      performedBy: args.createdBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -612,13 +612,13 @@ export const _purchaseTreatmentSideEffects = internalMutation({
     await publishActivityEnvelope({
       organizationId: args.organizationId,
       action: "package_assigned",
-      performedBy: args.createdBy as Id<"users">,
+      performedBy: args.createdBy,
       module: "gabinet",
       summary: `Sold treatment ${args.treatmentName} to patient`,
       occurredAt: args.createdAt,
       actor: {
         type: "user",
-        userId: args.createdBy as Id<"users">,
+        userId: args.createdBy,
       },
       payload: {
         usageId: args.usageId,
@@ -642,7 +642,7 @@ export const _purchaseTreatmentSideEffects = internalMutation({
 
     await logAudit(ctx, {
       organizationId: args.organizationId,
-      userId: args.createdBy as Id<"users">,
+      userId: args.createdBy,
       action: "package_treatment_sold",
       entityType: "gabinetPatient",
       entityId: args.patientId,
@@ -866,7 +866,7 @@ export const _purchaseSideEffects = internalMutation({
     await publishActivityEnvelope({
       organizationId: args.organizationId,
       action: "package_assigned",
-      performedBy: args.createdBy as Id<"users">,
+      performedBy: args.createdBy,
       module: "gabinet",
       summary: args.patientId
         ? `Assigned package ${args.packageName} to patient`
@@ -874,7 +874,7 @@ export const _purchaseSideEffects = internalMutation({
       occurredAt: args.createdAt,
       actor: {
         type: "user",
-        userId: args.createdBy as Id<"users">,
+        userId: args.createdBy,
       },
       payload: {
         usageId: args.usageId,
@@ -889,7 +889,7 @@ export const _purchaseSideEffects = internalMutation({
 
     await logAudit(ctx, {
       organizationId: args.organizationId,
-      userId: args.createdBy as Id<"users">,
+      userId: args.createdBy,
       action: "package_purchased",
       entityType: args.patientId ? "gabinetPatient" : "gabinetPackage",
       entityId: args.patientId ?? args.packageId,
@@ -908,7 +908,7 @@ export const _purchaseSideEffects = internalMutation({
     if (args.loyaltyPointsAwarded > 0 && args.patientId) {
       await logAudit(ctx, {
         organizationId: args.organizationId,
-        userId: args.createdBy as Id<"users">,
+        userId: args.createdBy,
         action: "loyalty_points_earned",
         entityType: "gabinetPatient",
         entityId: args.patientId,
@@ -1026,7 +1026,7 @@ export const _usePackageTreatmentSideEffects = internalMutation({
   handler: async (ctx, args) => {
     await logAudit(ctx, {
       organizationId: args.organizationId,
-      userId: args.performedBy as Id<"users">,
+      userId: args.performedBy,
       action: "package_treatment_used",
       entityType: "gabinetPatient",
       entityId: args.patientId,
@@ -1178,7 +1178,7 @@ export const _batchUsageSideEffects = internalMutation({
       entityId: args.packageId as Id<"gabinetTreatmentPackages">,
       action: "updated",
       description: `Used ${args.totalUsed} treatment(s) from package ${pkg?.name ?? ""}`,
-      performedBy: args.createdBy as Id<"users">,
+      performedBy: args.createdBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -1458,7 +1458,7 @@ export const _assignGiftSideEffects = internalMutation({
   handler: async (ctx, args) => {
     await logAudit(ctx, {
       organizationId: args.organizationId,
-      userId: args.performedBy as Id<"users">,
+      userId: args.performedBy,
       action: "loyalty_points_earned",
       entityType: "gabinetPatient",
       entityId: args.patientId,

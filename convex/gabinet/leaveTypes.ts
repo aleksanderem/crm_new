@@ -461,7 +461,7 @@ export const _createSideEffects = internalMutation({
       entityId: args.leaveTypeId,
       action: "created",
       description: `Created leave type "${args.name}"`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -481,7 +481,7 @@ export const _updateSideEffects = internalMutation({
       entityId: args.leaveTypeId,
       action: "updated",
       description: `Updated leave type`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -501,7 +501,7 @@ export const _removeSideEffects = internalMutation({
       entityId: args.leaveTypeId,
       action: "deleted",
       description: `Deactivated leave type`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -521,7 +521,7 @@ export const _adjustBalanceSideEffects = internalMutation({
       entityId: args.balanceId,
       action: "updated",
       description: `Adjusted leave balance`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -545,7 +545,7 @@ export const _initializeBalanceSideEffects = internalMutation({
       description: args.action === "created"
         ? `Initialized leave balance for year ${args.year}`
         : `Updated leave balance for year ${args.year}`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },

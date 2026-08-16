@@ -1074,7 +1074,7 @@ export const _mergeSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const performedByUserId = args.performedBy as Id<"users">;
+    const performedByUserId = args.performedBy;
 
     await logActivity({
       organizationId: args.organizationId,

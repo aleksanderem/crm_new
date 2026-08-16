@@ -1203,7 +1203,7 @@ export const _workingHoursSideEffects = internalMutation({
       action: "updated",
       description: `Updated working hours for ${days[args.dayOfWeek] ?? `day ${args.dayOfWeek}`}`,
       metadata: { dayOfWeek: args.dayOfWeek },
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -1222,7 +1222,7 @@ export const _bulkWorkingHoursSideEffects = internalMutation({
       entityId: String(args.organizationId),
       action: "updated",
       description: `Updated organization working hours`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -1244,7 +1244,7 @@ export const _employeeScheduleSideEffects = internalMutation({
       action: "updated",
       description: `Updated employee schedule`,
       metadata: { userId: args.userId },
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -1265,7 +1265,7 @@ export const _bulkEmployeeScheduleSideEffects = internalMutation({
       action: "updated",
       description: `Updated employee weekly schedule`,
       metadata: { userId: args.userId },
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -1289,7 +1289,7 @@ export const _saveSchedulePeriodSideEffects = internalMutation({
         ? `Saved schedule period from ${args.effectiveFrom}`
         : `Saved default schedule period`,
       metadata: { userId: args.userId, effectiveFrom: args.effectiveFrom },
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -1313,7 +1313,7 @@ export const _removeSchedulePeriodSideEffects = internalMutation({
         ? `Removed schedule period from ${args.effectiveFrom}`
         : `Removed default schedule period`,
       metadata: { userId: args.userId, effectiveFrom: args.effectiveFrom },
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -1338,7 +1338,7 @@ export const _createLeaveSideEffects = internalMutation({
       action: "created",
       description: `Leave request created (${args.type}: ${args.startDate} – ${args.endDate})`,
       metadata: { leaveId: args.leaveId, type: args.type, startDate: args.startDate, endDate: args.endDate },
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
 

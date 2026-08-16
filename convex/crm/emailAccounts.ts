@@ -35,15 +35,14 @@ export const upsert = action({
     if (args.isDefault) {
       const existing = await db.query("emailAccounts")
         .eq("organizationId", String(args.organizationId))
+        .eq("isDefault", true)
         .collect();
 
       for (const account of existing) {
-        if (account.isDefault) {
-          await db.patch("emailAccounts", account._id as string, {
-            isDefault: false,
-            updatedAt: now,
-          });
-        }
+        await db.patch("emailAccounts", account._id as string, {
+          isDefault: false,
+          updatedAt: now,
+        });
       }
     }
 

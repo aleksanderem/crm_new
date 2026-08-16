@@ -108,7 +108,7 @@ export function DeliveriesPage() {
   const { action: actionParam } = useSearch({ from: "/_app/_auth/dashboard/_layout/gabinet/deliveries" });
   const { activeLocationId, setActiveLocationId } = useActiveLocation();
   const locationIdParam = (activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined;
-  const { allowed: canCreate } = usePermission("gabinet_inventory", "create", locationIdParam);
+  const { allowed: canCreate, loading: canCreateLoading } = usePermission("gabinet_inventory", "create", locationIdParam);
   const { allowed: canEdit } = usePermission("gabinet_inventory", "edit", locationIdParam);
   const { allowed: canDelete } = usePermission("gabinet_inventory", "delete", locationIdParam);
 
@@ -188,13 +188,12 @@ export function DeliveriesPage() {
   // Create/edit panel state
   const [panelOpen, setPanelOpen] = useState(false);
 
-  // ?action=create navigates here from the sidebar quick-action and auto-opens
-  // the new-delivery panel (issue #3153, #5139). Clear the param after consuming so a
-  // refresh doesn't reopen it. Opens the panel directly (same as the "Nowa dostawa"
-  // button) to keep both paths consistent — the page header already provides the
-  // separate "Z faktury" button for invoice-based entry.
+  // ?action=create navigates here from the sidebar quick-action (issues #3153, #5139,
+  // #5141). Guard on !canCreateLoading so we wait for permissions before consuming
+  // the param — otherwise the URL is cleared while canCreate is still false and the
+  // panel never opens when permissions resolve later.
   useEffect(() => {
-    if (actionParam === "create") {
+    if (actionParam === "create" && !canCreateLoading) {
       if (canCreate) setPanelOpen(true);
       void routeNavigate({
         to: "/dashboard/gabinet/deliveries",
@@ -202,7 +201,7 @@ export function DeliveriesPage() {
         replace: true,
       });
     }
-  }, [actionParam, routeNavigate, canCreate]);
+  }, [actionParam, routeNavigate, canCreate, canCreateLoading]);
 
   const [editDeliveryId, setEditDeliveryId] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);

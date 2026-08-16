@@ -1195,12 +1195,10 @@ function ProductsPage() {
           value={inventoryStats.belowMin}
           highlight={inventoryStats.belowMin > 0}
           active={nudgeFilter === "low_stock"}
-          onClick={inventoryStats.belowMin > 0
-            ? () => {
-                onViewChange("all");
-                navigate({ to: "/dashboard/products", search: { nudge: "low_stock" } });
-              }
-            : undefined}
+          onClick={() => {
+            onViewChange("all");
+            navigate({ to: "/dashboard/products", search: { nudge: "low_stock" } });
+          }}
         />
       </div>
 

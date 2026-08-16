@@ -841,7 +841,7 @@ export const _createSideEffects = internalMutation({
   },
   handler: async (ctx, args) => {
     const now = args.createdAt;
-    const createdByUserId = args.createdBy as Id<"users">;
+    const createdByUserId = args.createdBy;
 
     const scheduledActivityId = args.scheduledActivityId;
 

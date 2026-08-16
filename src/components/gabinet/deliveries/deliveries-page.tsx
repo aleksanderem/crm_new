@@ -1230,6 +1230,7 @@ export function DeliveriesPage() {
           )}
 
           <Button
+            type="button"
             className="w-full"
             disabled={!canSubmit}
             onClick={handleSave}

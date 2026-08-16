@@ -44,6 +44,7 @@ import { useSupabase } from "@/components/supabase-provider";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { mapProductFromSupabase, type MappedProduct } from "@/lib/supabase/mappers";
 import type { Database } from "@/lib/supabase/database.types";
+import { getExpiryStatus } from "@/lib/expiry-utils";
 
 // ---------------------------------------------------------------------------
 // Products List
@@ -375,4 +376,72 @@ export function useSupabaseProductsLastDeliveryInfo(
   }, [query.data]);
 
   return { ...query, lastDeliveryByProductId };
+}
+
+// ---------------------------------------------------------------------------
+// Org-wide Expiring LOT Batches (#5183)
+//
+// Fetches all product_stock_movements with a lot_number and expiry_date for the
+// entire org, aggregates by (product_id, location_id, lot_number, expiry_date),
+// and returns the Set of product IDs that have at least one active batch (qty>0)
+// expiring within the next 30 days. Used by the "Wygasa w 30 dni" stat tile.
+// ---------------------------------------------------------------------------
+
+export function useSupabaseOrgExpiringLotBatches(
+  organizationId: string,
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  return useQuery<Set<string>, Error>({
+    queryKey: ["supabase", "orgExpiringLotBatches", organizationId],
+    queryFn: async (): Promise<Set<string>> => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      const { data, error } = await client
+        .from("product_stock_movements")
+        .select("product_id, location_id, lot_number, expiry_date, delta")
+        .eq("organization_id", organizationId)
+        .not("lot_number", "is", null)
+        .not("expiry_date", "is", null);
+
+      if (error) throw error;
+
+      type Row = {
+        product_id: string;
+        location_id: string | null;
+        lot_number: string;
+        expiry_date: string;
+        delta: number;
+      };
+      const rows = (data ?? []) as Row[];
+
+      const batchMap = new Map<string, { productId: string; expiryDate: string; quantity: number }>();
+      for (const row of rows) {
+        const key = `${row.product_id}::${row.location_id ?? ""}::${row.lot_number}::${row.expiry_date}`;
+        const existing = batchMap.get(key);
+        if (existing) {
+          existing.quantity += Number(row.delta);
+        } else {
+          batchMap.set(key, {
+            productId: row.product_id,
+            expiryDate: row.expiry_date,
+            quantity: Number(row.delta),
+          });
+        }
+      }
+
+      const expiringProductIds = new Set<string>();
+      for (const batch of batchMap.values()) {
+        if (batch.quantity <= 0) continue;
+        if (getExpiryStatus(batch.expiryDate) === "expiring_soon") {
+          expiringProductIds.add(batch.productId);
+        }
+      }
+
+      return expiringProductIds;
+    },
+    enabled: enabled && isReady && !!organizationId,
+  });
 }

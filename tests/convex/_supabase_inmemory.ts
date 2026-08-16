@@ -350,6 +350,109 @@ function createInMemoryRawClient() {
         }
         return { data: null, error: null };
       }
+      // Atomic CAS + package deduction in one transaction (closes #5239).
+      // Mirrors cas_deduct_package_entry: flips package_deducted false→true on
+      // the junction row, then increments usedCount if the flip succeeded.
+      if (fn === "cas_deduct_package_entry") {
+        const appointmentId = String(params.p_appointment_id ?? "");
+        const treatmentId   = String(params.p_treatment_id ?? "");
+        const usageId       = String(params.p_usage_id ?? "");
+        const variantId     = params.p_variant_id != null ? String(params.p_variant_id) : null;
+        const now           = Number(params.p_now ?? Date.now());
+
+        // Step 1: CAS flip on junction row.
+        const junctionTable = getTable("gabinetAppointmentTreatments");
+        let casWon = false;
+        for (const [id, row] of junctionTable.entries()) {
+          if (
+            row.appointmentId === appointmentId &&
+            row.treatmentId === treatmentId &&
+            row.packageDeducted === false
+          ) {
+            junctionTable.set(id, { ...row, packageDeducted: true, updatedAt: now });
+            casWon = true;
+            break;
+          }
+        }
+        if (!casWon) return { data: false, error: null };
+
+        // Step 2: Deduct from package usage.
+        const t = getTable("gabinetPackageUsage");
+        const usageRow = t.get(usageId);
+        if (!usageRow || usageRow.status !== "active") return { data: true, error: null };
+        const treatments = (usageRow.treatmentsUsed ?? []) as Array<Record<string, unknown>>;
+        const matchesTreatment = (e: Record<string, unknown>) =>
+          e.treatmentId === treatmentId &&
+          (variantId === null || e.variantId === variantId);
+        const entry = treatments.find(
+          (e) => matchesTreatment(e) && (e.usedCount as number) < (e.totalCount as number),
+        );
+        if (!entry) return { data: true, error: null };
+        const updated = treatments.map((e) =>
+          matchesTreatment(e)
+            ? { ...e, usedCount: (e.usedCount as number) + 1 }
+            : e,
+        );
+        const allUsed = updated.every((e) => (e.usedCount as number) >= (e.totalCount as number));
+        t.set(usageId, {
+          ...usageRow,
+          treatmentsUsed: updated,
+          status: allUsed ? "completed" : "active",
+          updatedAt: now,
+        });
+        return { data: true, error: null };
+      }
+      // Atomic CAS + package return in one transaction (closes #5239).
+      // Mirrors cas_return_package_entry: flips package_deducted true→false on
+      // the junction row, then decrements usedCount if the flip succeeded.
+      if (fn === "cas_return_package_entry") {
+        const appointmentId = String(params.p_appointment_id ?? "");
+        const treatmentId   = String(params.p_treatment_id ?? "");
+        const usageId       = String(params.p_usage_id ?? "");
+        const variantId     = params.p_variant_id != null ? String(params.p_variant_id) : null;
+        const now           = Number(params.p_now ?? Date.now());
+
+        // Step 1: CAS flip on junction row.
+        const junctionTable = getTable("gabinetAppointmentTreatments");
+        let casWon = false;
+        for (const [id, row] of junctionTable.entries()) {
+          if (
+            row.appointmentId === appointmentId &&
+            row.treatmentId === treatmentId &&
+            row.packageDeducted === true
+          ) {
+            junctionTable.set(id, { ...row, packageDeducted: false, updatedAt: now });
+            casWon = true;
+            break;
+          }
+        }
+        if (!casWon) return { data: false, error: null };
+
+        // Step 2: Return to package usage.
+        const t = getTable("gabinetPackageUsage");
+        const usageRow = t.get(usageId);
+        if (!usageRow) return { data: true, error: null };
+        const treatments = (usageRow.treatmentsUsed ?? []) as Array<Record<string, unknown>>;
+        const matchesTreatment = (e: Record<string, unknown>) =>
+          e.treatmentId === treatmentId &&
+          (variantId === null || e.variantId === variantId);
+        const entry = treatments.find(
+          (e) => matchesTreatment(e) && (e.usedCount as number) > 0,
+        );
+        if (!entry) return { data: true, error: null };
+        const updated = treatments.map((e) =>
+          matchesTreatment(e)
+            ? { ...e, usedCount: Math.max(0, (e.usedCount as number) - 1) }
+            : e,
+        );
+        t.set(usageId, {
+          ...usageRow,
+          treatmentsUsed: updated,
+          status: usageRow.status === "completed" ? "active" : usageRow.status,
+          updatedAt: now,
+        });
+        return { data: true, error: null };
+      }
       return { data: null, error: { message: `rpc stub: unknown function ${fn}` } };
     },
   };

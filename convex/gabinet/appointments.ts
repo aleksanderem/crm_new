@@ -2401,8 +2401,9 @@ export const updateStatus = action({
     }
 
     // Package return: when reverting from completed, restore one package entry
-    // per junction treatment. CAS lives on
-    // gabinet_appointment_treatments.package_deducted per junction row (#3367).
+    // per junction treatment. cas_return_package_entry atomically flips the CAS
+    // flag and decrements usedCount in a single Postgres transaction, preventing
+    // partial failure between the two operations (#5239).
     // If packageTreatmentId is set, only the covered treatment is returned (#3590).
     // no_show does not deduct, so reverting from no_show has nothing to restore.
     if (
@@ -2413,29 +2414,20 @@ export const updateStatus = action({
         ? statusJunctionRows.filter((jt) => jt.treatmentId === String(appt.packageTreatmentId))
         : statusJunctionRows;
       for (const jt of pkgReturnRows) {
-        const { data: pkgReturnCasRows } = await db.raw()
-          .from("gabinet_appointment_treatments")
-          .update({ package_deducted: false })
-          .eq("appointment_id", args.appointmentId)
-          .eq("treatment_id", jt.treatmentId)
-          .eq("package_deducted", true)
-          .select("id");
-        const wonPkgReturnRace = Array.isArray(pkgReturnCasRows) && pkgReturnCasRows.length > 0;
-        if (wonPkgReturnRace) {
-          try {
-            await returnPackageEntry(db, {
-              packageUsageId: String(appt.packageUsageId),
-              treatmentId: jt.treatmentId,
-              variantId: jt.variantId ?? undefined,
-            });
-          } catch (e) {
-            console.error(
-              "[updateStatus] package entry return FAILED for appointment",
-              args.appointmentId,
-              ":",
-              e,
-            );
-          }
+        const { error: pkgReturnError } = await db.raw().rpc("cas_return_package_entry", {
+          p_appointment_id: args.appointmentId,
+          p_treatment_id:   jt.treatmentId,
+          p_usage_id:       String(appt.packageUsageId),
+          p_variant_id:     jt.variantId ?? null,
+          p_now:            Date.now(),
+        });
+        if (pkgReturnError) {
+          console.error(
+            "[updateStatus] package entry return FAILED for appointment",
+            args.appointmentId,
+            ":",
+            pkgReturnError,
+          );
         }
       }
     }
@@ -2511,8 +2503,10 @@ export const updateStatus = action({
 
     // Package deduction: only completed consumes one entry per junction treatment.
     // no_show must NOT deduct — patient did not attend, session should be preserved.
-    // CAS lives on gabinet_appointment_treatments.package_deducted per junction row
-    // (#3367), replacing the old appointment-level flag. Closes #3206, #5207.
+    // cas_deduct_package_entry atomically flips package_deducted and increments
+    // usedCount in a single Postgres transaction, eliminating the partial-failure
+    // window between the two operations (#5239). Replaces the old two-step CAS +
+    // RPC approach. Closes #3206, #5207.
     // If packageTreatmentId is set, only the covered treatment is deducted (#3590).
     if (
       args.status === "completed" &&
@@ -2522,29 +2516,20 @@ export const updateStatus = action({
         ? statusJunctionRows.filter((jt) => jt.treatmentId === String(appt.packageTreatmentId))
         : statusJunctionRows;
       for (const jt of pkgDeductRows) {
-        const { data: pkgCasRows } = await db.raw()
-          .from("gabinet_appointment_treatments")
-          .update({ package_deducted: true })
-          .eq("appointment_id", args.appointmentId)
-          .eq("treatment_id", jt.treatmentId)
-          .eq("package_deducted", false)
-          .select("id");
-        const wonPkgRace = Array.isArray(pkgCasRows) && pkgCasRows.length > 0;
-        if (wonPkgRace) {
-          try {
-            await deductPackageEntry(db, {
-              packageUsageId: String(appt.packageUsageId),
-              treatmentId: jt.treatmentId,
-              variantId: jt.variantId ?? undefined,
-            });
-          } catch (e) {
-            console.error(
-              "[updateStatus] package entry deduction FAILED for appointment",
-              args.appointmentId,
-              ":",
-              e,
-            );
-          }
+        const { error: pkgDeductError } = await db.raw().rpc("cas_deduct_package_entry", {
+          p_appointment_id: args.appointmentId,
+          p_treatment_id:   jt.treatmentId,
+          p_usage_id:       String(appt.packageUsageId),
+          p_variant_id:     jt.variantId ?? null,
+          p_now:            Date.now(),
+        });
+        if (pkgDeductError) {
+          console.error(
+            "[updateStatus] package entry deduction FAILED for appointment",
+            args.appointmentId,
+            ":",
+            pkgDeductError,
+          );
         }
       }
     }
@@ -3065,36 +3050,6 @@ async function resolveAutoPackageUsageSupabase(
   return usageId;
 }
 
-async function deductPackageEntry(
-  db: ReturnType<typeof createSupabaseDb>,
-  args: { packageUsageId: string; treatmentId: string; variantId?: string },
-) {
-  // Atomic increment via Postgres SELECT FOR UPDATE — eliminates the
-  // read-modify-write race when two concurrent appointment completions share
-  // the same packageUsageId (closes #5208).
-  const { error } = await db.raw().rpc("deduct_package_entry", {
-    p_usage_id:     args.packageUsageId,
-    p_treatment_id: args.treatmentId,
-    p_variant_id:   args.variantId ?? null,
-    p_now:          Date.now(),
-  });
-  if (error) throw new Error(`deduct_package_entry RPC: ${error.message}`);
-}
-
-async function returnPackageEntry(
-  db: ReturnType<typeof createSupabaseDb>,
-  args: { packageUsageId: string; treatmentId: string; variantId?: string },
-) {
-  // Atomic decrement via Postgres SELECT FOR UPDATE — same race fix as
-  // deductPackageEntry (closes #5208).
-  const { error } = await db.raw().rpc("return_package_entry", {
-    p_usage_id:     args.packageUsageId,
-    p_treatment_id: args.treatmentId,
-    p_variant_id:   args.variantId ?? null,
-    p_now:          Date.now(),
-  });
-  if (error) throw new Error(`return_package_entry RPC: ${error.message}`);
-}
 
 /**
  * When an appointment is completed, award loyalty points based on

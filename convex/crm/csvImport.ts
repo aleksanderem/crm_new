@@ -236,6 +236,7 @@ export const batchCreateProducts = action({
         manufacturer: v.optional(v.string()),
         catalogNumber: v.optional(v.string()),
         stockNote: v.optional(v.string()),
+        tags: v.optional(v.array(v.string())),
       })
     ),
   },
@@ -255,6 +256,17 @@ export const batchCreateProducts = action({
 
     const VALID_TAX_RATES = [0, 5, 8, 23];
 
+    // Build a name→id map from existing tagDefinitions for this org
+    const allTagDefs = (await db
+      .query("tagDefinitions")
+      .eq("organizationId", String(args.organizationId))
+      .collect()) as Array<Record<string, any>>;
+    const tagNameToId = new Map<string, string>(
+      allTagDefs
+        .filter((t) => !t.isDeleted)
+        .map((t) => [t.name as string, t._id as string])
+    );
+
     for (let i = 0; i < args.records.length; i++) {
       const record = args.records[i];
       try {
@@ -266,6 +278,22 @@ export const batchCreateProducts = action({
           errors.push({ row: i, error: `Invalid taxRate ${record.taxRate}: must be one of ${VALID_TAX_RATES.join(", ")}` });
           continue;
         }
+
+        let tagIds: string[] | null = null;
+        if (record.tags && record.tags.length > 0) {
+          const resolved: string[] = [];
+          for (const name of record.tags) {
+            const id = tagNameToId.get(name);
+            if (!id) {
+              errors.push({ row: i, error: `Unknown tag: "${name}"` });
+              break;
+            }
+            resolved.push(id);
+          }
+          if (resolved.length !== record.tags.length) continue;
+          tagIds = resolved;
+        }
+
         await db.insert("products", {
           organizationId: String(args.organizationId),
           name: record.name.trim(),
@@ -275,6 +303,7 @@ export const batchCreateProducts = action({
           taxExempt: record.taxExempt ?? null,
           isActive: record.isActive ?? true,
           description: record.description?.trim() ?? null,
+          tagIds,
           purchasePrice: record.purchasePrice ?? null,
           salePrice: record.salePrice ?? null,
           trackStock: record.trackStock ?? null,

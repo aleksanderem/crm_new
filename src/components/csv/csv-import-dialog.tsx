@@ -43,7 +43,7 @@ const ALL_FIELDS: Record<EntityType, string[]> = {
   contacts: ["firstName", "lastName", "email", "phone", "title", "source", "tags", "notes"],
   companies: ["name", "domain", "industry", "size", "website", "phone", "street", "city", "state", "zip", "country", "notes"],
   leads: ["title", "value", "currency", "status", "priority", "source", "notes", "tags"],
-  products: ["name", "sku", "unitPrice", "taxRate", "isActive", "description", "purchasePrice", "salePrice", "trackStock", "stockUnit", "minStock", "productSection", "manufacturer", "catalogNumber", "stockNote"],
+  products: ["name", "sku", "unitPrice", "taxRate", "isActive", "description", "purchasePrice", "salePrice", "trackStock", "stockUnit", "minStock", "productSection", "manufacturer", "catalogNumber", "stockNote", "tags"],
 };
 
 function downloadTemplate(entityType: EntityType) {

@@ -192,6 +192,11 @@ export const exportProducts = action({
       catalogNumber: p.catalogNumber ?? "",
       purchasePrice: p.purchasePrice != null ? p.purchasePrice.toString() : "",
       salePrice: p.salePrice != null ? p.salePrice.toString() : "",
+      salePriceNet: (() => {
+        if (p.salePrice == null) return "";
+        if (p.taxExempt || p.taxRate == null) return p.salePrice.toString();
+        return (Math.round((p.salePrice / (1 + (p.taxRate as number) / 100)) * 100) / 100).toString();
+      })(),
       trackStock: p.trackStock ? "Yes" : "No",
       stockUnit: p.stockUnit ?? "",
       minStock: p.minStock != null ? p.minStock.toString() : "",

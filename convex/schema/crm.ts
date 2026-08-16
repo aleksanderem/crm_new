@@ -308,6 +308,10 @@ export function createCrmTables({
     organizationId: v.string(),
     name: v.string(),
     sku: v.string(),
+    // Net purchase price per unit. In the product form this is the primary
+    // price input ("Cena zakupu netto"). The gross purchase price is stored
+    // separately in purchasePrice and is derived via unitPrice × (1 + taxRate/100).
+    // For the selling price, see salePrice below.
     unitPrice: v.number(),
     taxRate: v.optional(v.number()),
     // True when the product is VAT-exempt ("zwolniony" / ZW). When set, the
@@ -332,7 +336,7 @@ export function createCrmTables({
     catalogNumber: v.optional(v.string()),
     stockNote: v.optional(v.string()),
     // Gross purchase price per unit (#2956, migration 00050). Used to calculate
-    // warehouse value. Distinct from unitPrice (the selling price).
+    // warehouse value. Derived from unitPrice (net purchase price) × (1 + taxRate/100).
     purchasePrice: v.optional(v.number()),
     // Optional retail sale price per unit (#3201/#3203, migration 00066).
     // Data-layer only for now — form/columns/validation wiring is a follow-up

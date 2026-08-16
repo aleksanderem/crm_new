@@ -1217,7 +1217,13 @@ function ProductsPage() {
               const unitStr = item.unit?.trim() ? ` ${item.unit.trim()}` : "";
               return (
                 <li key={item.productId} className="text-sm text-amber-900 dark:text-amber-100">
-                  <span className="font-medium">{item.productName}</span>
+                  <button
+                    type="button"
+                    className="font-medium underline underline-offset-2 hover:opacity-75"
+                    onClick={() => setSearchValue(item.productName)}
+                  >
+                    {item.productName}
+                  </button>
                   <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-amber-800 dark:text-amber-200">
                     <span>{t("products.actionRequired.stock", { defaultValue: "Stan:" })} {item.currentStock}{unitStr}</span>
                     <span>{t("products.actionRequired.planned", { defaultValue: "Planowane:" })} {item.plannedUsage}{unitStr}</span>

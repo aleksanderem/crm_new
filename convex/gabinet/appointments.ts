@@ -2396,6 +2396,13 @@ export const updateStatus = action({
             ":",
             e,
           );
+          // Reset the CAS guard so a retry can re-enter the return path.
+          // returnStockForAppointment's idempotency guard prevents double-return
+          // for movements that already succeeded (#5244).
+          await db.raw()
+            .from("gabinet_appointment_treatments")
+            .update({ stock_deducted: true })
+            .in("id", (returnCasRows as Array<{ id: string }>).map((r) => r.id));
         }
       }
     }

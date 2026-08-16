@@ -4,7 +4,6 @@ import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { logActivity } from "../_helpers/activities";
 import { logAudit } from "../auditLog";
-import { Id } from "../_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for contact writes
 // list query removed — browser reads contacts directly from Supabase via use-supabase-contacts.ts
@@ -107,15 +106,13 @@ export const _createSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const createdByUserId = args.createdBy as Id<"users">;
-
     await logActivity({
       organizationId: args.organizationId,
       entityType: "contact",
-      entityId: args.contactId as Id<"contacts">,
+      entityId: args.contactId,
       action: "created",
       description: `Created contact "${args.firstName}${args.lastName ? ` ${args.lastName}` : ""}"`,
-      performedBy: createdByUserId,
+      performedBy: args.createdBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -224,15 +221,13 @@ export const _updateSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const updatedByUserId = args.updatedBy as Id<"users">;
-
     await logActivity({
       organizationId: args.organizationId,
       entityType: "contact",
-      entityId: args.contactId as Id<"contacts">,
+      entityId: args.contactId,
       action: "updated",
       description: `Updated contact "${args.firstName}"`,
-      performedBy: updatedByUserId,
+      performedBy: args.updatedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -321,15 +316,13 @@ export const _removeSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const deletedByUserId = args.deletedBy as Id<"users">;
-
     await logActivity({
       organizationId: args.organizationId,
       entityType: "contact",
-      entityId: args.contactId as Id<"contacts">,
+      entityId: args.contactId,
       action: "deleted",
       description: `Deleted contact "${args.firstName}"`,
-      performedBy: deletedByUserId,
+      performedBy: args.deletedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -421,7 +414,6 @@ export const _gdprEraseSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const erasedByUserId = args.erasedBy as Id<"users">;
     const GDPR_REDACTED = "[RODO: dane usunięte]";
 
     const db = createSupabaseDb();
@@ -446,7 +438,7 @@ export const _gdprEraseSideEffects = internalMutation({
 
     await logAudit(ctx, {
       organizationId: args.organizationId,
-      userId: erasedByUserId,
+      userId: args.erasedBy,
       action: "gdpr_contact_erased",
       entityType: "contact",
       entityId: args.contactId,
@@ -456,10 +448,10 @@ export const _gdprEraseSideEffects = internalMutation({
     await logActivity({
       organizationId: args.organizationId,
       entityType: "contact",
-      entityId: args.contactId as Id<"contacts">,
+      entityId: args.contactId,
       action: "deleted",
       description: "RODO: dane kontaktu zostały usunięte",
-      performedBy: erasedByUserId,
+      performedBy: args.erasedBy,
       actorLabel: args.actorLabel,
     });
   },

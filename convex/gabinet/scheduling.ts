@@ -1437,14 +1437,14 @@ export const _leaveSideEffects = internalMutation({
       action: args.action,
       description: args.description,
       metadata: { leaveId: args.leaveId },
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
 
     if (args.auditAction) {
       await logAudit(ctx, {
         organizationId: args.organizationId,
-        userId: args.performedBy as Id<"users">,
+        userId: args.performedBy,
         action: args.auditAction,
         entityType: "gabinetLeave",
         entityId: args.leaveId,
@@ -1456,7 +1456,7 @@ export const _leaveSideEffects = internalMutation({
       const actorSuffix = args.actorLabel ? ` by ${args.actorLabel}` : "";
       await createNotificationDirect(ctx, {
         organizationId: args.organizationId,
-        userId: args.userId as Id<"users">,
+        userId: args.userId,
         type: "leave_decision",
         title: args.description,
         message: `${args.description}${actorSuffix}.`,

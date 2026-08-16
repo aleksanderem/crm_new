@@ -2004,7 +2004,7 @@ export const _updateSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const actorUserId = args.actorUserId as Id<"users">;
+    const actorUserId = args.actorUserId;
 
     // scheduledActivity patches moved to the parent action (Supabase-primary).
 
@@ -2848,7 +2848,7 @@ export const _cancelSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const actorUserId = args.actorUserId as Id<"users">;
+    const actorUserId = args.actorUserId;
     const appointmentId = args.appointmentId as Id<"gabinetAppointments">;
 
     // scheduledActivity patched in Supabase by the parent action.
@@ -2879,8 +2879,8 @@ export const _cancelSideEffects = internalMutation({
     });
 
     // Notify appointment creator and employee about cancellation
-    const createdBy = args.createdBy as Id<"users">;
-    const employeeId = args.employeeId as Id<"users">;
+    const createdBy = args.createdBy;
+    const employeeId = args.employeeId;
 
     if (createdBy !== actorUserId) {
       await createNotificationDirect(ctx, {

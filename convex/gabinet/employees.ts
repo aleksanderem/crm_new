@@ -743,7 +743,7 @@ export const _createSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const createdByUserId = args.createdBy as Id<"users">;
+    const createdByUserId = args.createdBy;
 
     await logActivity({
       organizationId: args.organizationId,
@@ -1023,7 +1023,7 @@ export const _updateSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const updatedByUserId = args.updatedBy as Id<"users">;
+    const updatedByUserId = args.updatedBy;
 
     await logActivity({
       organizationId: args.organizationId,
@@ -1245,7 +1245,7 @@ export const _removeSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const deletedByUserId = args.deletedBy as Id<"users">;
+    const deletedByUserId = args.deletedBy;
 
     await logActivity({
       organizationId: args.organizationId,
@@ -1357,7 +1357,7 @@ export const _setQualifiedSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const updatedByUserId = args.updatedBy as Id<"users">;
+    const updatedByUserId = args.updatedBy;
 
     await logActivity({
       organizationId: args.organizationId,
@@ -1792,7 +1792,7 @@ export const _changePasswordSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const changedByUserId = args.changedBy as Id<"users">;
+    const changedByUserId = args.changedBy;
 
     await logAudit(ctx, {
       organizationId: args.organizationId,

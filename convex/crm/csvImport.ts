@@ -250,11 +250,17 @@ export const batchCreateProducts = action({
     let created = 0;
     const errors: { row: number; error: string }[] = [];
 
+    const VALID_TAX_RATES = [0, 5, 8, 23];
+
     for (let i = 0; i < args.records.length; i++) {
       const record = args.records[i];
       try {
         if (!record.name?.trim() || !record.sku?.trim()) {
           errors.push({ row: i, error: "name and sku are required" });
+          continue;
+        }
+        if (record.taxRate !== undefined && !record.taxExempt && !VALID_TAX_RATES.includes(record.taxRate)) {
+          errors.push({ row: i, error: `Invalid taxRate ${record.taxRate}: must be one of ${VALID_TAX_RATES.join(", ")}` });
           continue;
         }
         await db.insert("products", {

@@ -189,11 +189,13 @@ export function DeliveriesPage() {
   const [panelOpen, setPanelOpen] = useState(false);
 
   // ?action=create navigates here from the sidebar quick-action and auto-opens
-  // the new-delivery panel (issue #3153). Clear the param after consuming so a
-  // refresh doesn't reopen it.
+  // the new-delivery panel (issue #3153, #5139). Clear the param after consuming so a
+  // refresh doesn't reopen it. Opens the panel directly (same as the "Nowa dostawa"
+  // button) to keep both paths consistent — the page header already provides the
+  // separate "Z faktury" button for invoice-based entry.
   useEffect(() => {
     if (actionParam === "create") {
-      if (canCreate) setChoiceDialogOpen(true);
+      if (canCreate) setPanelOpen(true);
       void routeNavigate({
         to: "/dashboard/gabinet/deliveries",
         search: { action: undefined },

@@ -300,7 +300,7 @@ function createInMemoryRawClient() {
         });
         return { data: null, error: null };
       }
-      // Overbooking guard for package-linked appointments (closes #5227).
+      // Overbooking guard for package-linked appointments (closes #5227, #5232).
       // Mirrors the PL/pgSQL SELECT FOR UPDATE logic in the production function.
       if (fn === "check_package_overbooking") {
         const usageId     = String(params.p_usage_id ?? "");
@@ -310,6 +310,7 @@ function createInMemoryRawClient() {
           params.p_appointment_package_treatment_id != null
             ? String(params.p_appointment_package_treatment_id)
             : null;
+        const newCount = typeof params.p_new_count === "number" ? params.p_new_count : 1;
 
         const t = getTable("gabinetPackageUsage");
         const row = t.get(usageId);
@@ -339,11 +340,11 @@ function createInMemoryRawClient() {
           }
         }
 
-        if (usedCount + pendingCount >= totalCount) {
+        if (usedCount + pendingCount + newCount > totalCount) {
           return {
             data: null,
             error: {
-              message: `package_overbooking: ${usedCount + pendingCount} sessions used/pending out of ${totalCount} total`,
+              message: `package_overbooking: ${usedCount + pendingCount} sessions used/pending + ${newCount} new out of ${totalCount} total`,
             },
           };
         }

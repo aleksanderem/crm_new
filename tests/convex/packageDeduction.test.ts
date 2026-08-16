@@ -446,4 +446,40 @@ describe("appointment overbooking guard", () => {
       }),
     ).rejects.toThrow("Brak dostępnych sesji w pakiecie dla tego zabiegu.");
   });
+
+  test("recurring series that exceeds package capacity is rejected before any insertion", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(
+      t,
+      organizationId,
+      userId,
+    );
+
+    // Package with only 2 sessions.
+    const { usageId } = await setupPackage(t, identity, {
+      organizationId,
+      patientId,
+      treatmentId,
+      quantity: 2,
+    });
+
+    // A weekly series of 3 occurrences (base + 2 recurrences = 3 total) must be
+    // rejected because the package only has 2 sessions.
+    await expect(
+      t.withIdentity(identity).action(api.gabinet.appointments.create, {
+        organizationId,
+        patientId: String(patientId),
+        treatmentId: String(treatmentId),
+        employeeId: String(userId),
+        date: "2026-09-01",
+        startTime: "09:00",
+        endTime: "09:30",
+        packageUsageId: usageId,
+        isRecurring: true,
+        recurringRule: { frequency: "weekly", count: 3 },
+        allowPast: true,
+      }),
+    ).rejects.toThrow("Brak dostępnych sesji w pakiecie dla tego zabiegu.");
+  });
 });

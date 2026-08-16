@@ -1266,20 +1266,30 @@ export const create = action({
       }
     }
 
-    // --- Package overbooking guard (closes #5227) ---
+    // --- Package overbooking guard (closes #5227, #5232) ---
     // Lock the package usage row and count non-terminal appointments already
-    // booked against the same slot. Rejects the booking if usedCount +
-    // pending_count would reach or exceed totalCount.
+    // booked against the same slot. For a recurring series of N appointments
+    // we pass p_new_count=N so the guard rejects the entire series when there
+    // is not enough capacity — not just the first occurrence.
     if (resolvedPackageUsageId) {
       const treatmentIdForCheck = args.packageTreatmentId ?? primaryTreatmentId;
       const variantIdForCheck = args.packageTreatmentId
         ? (treatmentsList.find((t) => t.treatmentId === args.packageTreatmentId)?.variantId ?? null)
         : (args.variantId ?? null);
+      // Base appointment always counts as 1; add recurring occurrences if any.
+      const seriesLength =
+        isRecurring && args.recurringRule
+          ? 1 +
+            (args.recurringOverrides && args.recurringOverrides.length > 0
+              ? args.recurringOverrides.length
+              : generateRecurringDates(args.date, args.recurringRule).length)
+          : 1;
       const { error: overbookError } = await db.raw().rpc("check_package_overbooking", {
         p_usage_id:                         resolvedPackageUsageId,
         p_treatment_id:                     treatmentIdForCheck,
         p_variant_id:                       variantIdForCheck ?? null,
         p_appointment_package_treatment_id: args.packageTreatmentId ?? null,
+        p_new_count:                        seriesLength,
       });
       if (overbookError) {
         if (overbookError.message?.includes("package_overbooking")) {

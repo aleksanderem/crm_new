@@ -39,7 +39,7 @@ export async function autoGenerateAppointmentDocuments(
     appointmentId: Id<"gabinetAppointments">;
     treatmentId: Id<"gabinetTreatments">;
     patientId: Id<"gabinetPatients">;
-    createdBy: Id<"users">;
+    createdBy: string;
     /** When set, only generate documents matching this timing. */
     timing?: "before_start" | "during_visit" | "after_completion";
     /** When true, skip sending signing emails (employee fills first). */

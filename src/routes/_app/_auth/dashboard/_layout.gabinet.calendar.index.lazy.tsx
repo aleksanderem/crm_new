@@ -776,8 +776,9 @@ function GabinetCalendarPage() {
             kind: "count",
             label: `${pkgPos.position}/${pkgPos.total}`,
             title: t(
-              "gabinet.calendar.indicators.packageVisit",
-              "Wizyta pakietowa",
+              "gabinet.calendar.indicators.packageVisitPosition",
+              "Numer wizyty w pakiecie: {{position}} z {{total}}",
+              { position: pkgPos.position, total: pkgPos.total },
             ),
           });
         } else if (a.isRecurring && a.recurringRule) {

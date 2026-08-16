@@ -979,7 +979,7 @@ export function DeliveriesPage() {
                         <SelectTrigger className="h-8 text-xs">
                           <SelectValue placeholder="VAT" />
                         </SelectTrigger>
-                        <SelectContent position="item-aligned">
+                        <SelectContent>
                           {VAT_OPTIONS.map((o) => (
                             <SelectItem key={o.code} value={o.code}>
                               {o.label}

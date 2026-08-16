@@ -234,7 +234,7 @@ export const sendReminder = internalMutation({
     // Send in-app notification to the employee assigned to the appointment
     await createNotificationDirect(ctx, {
       organizationId: String(reminder.organizationId),
-      userId: appointment.employeeId as Id<"users">,
+      userId: String(appointment.employeeId),
       type: "appointment_reminder",
       title: "Przypomnienie o wizycie",
       message: `${patientName} — ${treatmentName}, ${appointment.date} o ${appointment.startTime}`,
@@ -245,7 +245,7 @@ export const sendReminder = internalMutation({
     if (appointment.createdBy !== appointment.employeeId) {
       await createNotificationDirect(ctx, {
         organizationId: String(reminder.organizationId),
-        userId: appointment.createdBy as Id<"users">,
+        userId: String(appointment.createdBy),
         type: "appointment_reminder",
         title: "Przypomnienie o wizycie",
         message: `${patientName} — ${treatmentName}, ${appointment.date} o ${appointment.startTime}`,
@@ -300,7 +300,7 @@ export const sendReminder = internalMutation({
 
       await logAudit(ctx, {
         organizationId: String(reminder.organizationId),
-        userId: appointment.employeeId as Id<"users">,
+        userId: String(appointment.employeeId),
         action: "gabinet:email:sent",
         entityType: "gabinetAppointment",
         entityId: String(appointment._id),
@@ -335,7 +335,7 @@ export const sendReminder = internalMutation({
       eventType: "gabinet.appointment.reminder_due",
       entityType: "gabinetAppointment",
       entityId: String(appointment._id),
-      actorUserId: appointment.createdBy as Id<"users">,
+      actorUserId: String(appointment.createdBy),
       correlationKey: `appointment:${appointment._id}`,
       eventIdempotencyKey: `automation-event:${reminder.organizationId}:${appointment._id}:reminder:${args.reminderId}`,
       payload: JSON.stringify(reminderPayload),

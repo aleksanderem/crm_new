@@ -1,11 +1,10 @@
-import { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 export async function logAudit(
   _ctx: unknown,
   data: {
     organizationId: string;
-    userId: Id<"users">;
+    userId: string;
     action: string;
     entityType?: string;
     entityId?: string;

@@ -1457,24 +1457,22 @@ export const assignGiftPackage = action({
       });
     }
 
-    if (loyaltyPointsAwarded > 0) {
-      try {
-        await ctx.runMutation(internal.gabinet.packages._assignGiftSideEffects, {
-          usageId: args.usageId,
-          organizationId: args.organizationId,
-          patientId: args.patientId,
-          packageName: (pkg?.name as string) ?? "",
-          loyaltyPointsAwarded,
-          performedBy: String(authResult.userId),
-        });
-      } catch (e) {
-        console.error(
-          "[packages.assignGiftPackage] Side effects FAILED for usage",
-          args.usageId,
-          ":",
-          e,
-        );
-      }
+    try {
+      await ctx.runMutation(internal.gabinet.packages._assignGiftSideEffects, {
+        usageId: args.usageId,
+        organizationId: args.organizationId,
+        patientId: args.patientId,
+        packageName: (pkg?.name as string) ?? "",
+        loyaltyPointsAwarded,
+        performedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error(
+        "[packages.assignGiftPackage] Side effects FAILED for usage",
+        args.usageId,
+        ":",
+        e,
+      );
     }
   },
 });
@@ -1492,16 +1490,30 @@ export const _assignGiftSideEffects = internalMutation({
     await logAudit(ctx, {
       organizationId: args.organizationId,
       userId: args.performedBy,
-      action: "loyalty_points_earned",
+      action: "gift_package_assigned",
       entityType: "gabinetPatient",
       entityId: args.patientId,
       details: JSON.stringify({
-        points: args.loyaltyPointsAwarded,
-        reason: `Gift package assigned: ${args.packageName}`,
+        packageName: args.packageName,
         referenceType: "packageUsage",
         referenceId: args.usageId,
       }),
     });
+    if (args.loyaltyPointsAwarded > 0) {
+      await logAudit(ctx, {
+        organizationId: args.organizationId,
+        userId: args.performedBy,
+        action: "loyalty_points_earned",
+        entityType: "gabinetPatient",
+        entityId: args.patientId,
+        details: JSON.stringify({
+          points: args.loyaltyPointsAwarded,
+          reason: `Gift package assigned: ${args.packageName}`,
+          referenceType: "packageUsage",
+          referenceId: args.usageId,
+        }),
+      });
+    }
   },
 });
 

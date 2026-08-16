@@ -422,7 +422,7 @@ export function useSupabaseGabinetAppointmentPackagePositions(
           .select("id, package_usage_id, date, start_time")
           .eq("organization_id", organizationId)
           .in("package_usage_id", stableIds)
-          .not("status", "eq", "cancelled")
+          .not("status", "in", '("cancelled","no_show")')
           .order("date", { ascending: true })
           .order("start_time", { ascending: true }),
       ]);

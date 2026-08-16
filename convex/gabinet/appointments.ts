@@ -3258,14 +3258,21 @@ export const cancelRecurringSeries = action({
       .eq("recurringGroupId", args.recurringGroupId)
       .collect();
 
+    // Batch-fetch junction treatment IDs for all appointments in the series
+    const allApptIds = appointments.map((a) => String(a._id));
+    const junctionMap = await getJunctionTreatmentIds(db, allApptIds);
+
     const now = Date.now();
     let count = 0;
     for (const appt of appointments) {
       if (appt.status === "cancelled" || appt.status === "completed") continue;
       if (args.fromDate && (appt.date as string) < args.fromDate) continue;
 
+      const appointmentId = appt._id as string;
+      const previousStatus = appt.status as string;
+
       // Cancel directly in Supabase
-      await db.patch("gabinetAppointments", appt._id as string, {
+      await db.patch("gabinetAppointments", appointmentId, {
         status: "cancelled",
         cancelledAt: now,
         cancelledBy: String(authResult.userId),
@@ -3285,6 +3292,32 @@ export const cancelRecurringSeries = action({
         } catch (e) {
           console.warn("[cancelRecurringSeries] scheduledActivity patch failed (non-fatal):", e);
         }
+      }
+
+      // Side effects: audit log, notifications, reminder cancellation, automation
+      const primaryTreatmentId = (junctionMap.get(appointmentId) ?? [])[0]?.treatmentId;
+      try {
+        await ctx.runMutation(
+          internal.gabinet.appointments._cancelSideEffects,
+          {
+            appointmentId,
+            organizationId: args.organizationId,
+            actorUserId: authResult.userId,
+            reason: "Series cancelled",
+            scheduledActivityId: recurScheduledActivityId,
+            createdBy: appt.createdBy as string,
+            employeeId: appt.employeeId as string,
+            patientId: appt.patientId as string,
+            treatmentId: primaryTreatmentId,
+            date: appt.date as string,
+            startTime: appt.startTime as string,
+            previousStatus,
+            packageUsageId: (appt.packageUsageId as string) ?? undefined,
+            actorLabel: authResult.userName ?? authResult.userEmail,
+          },
+        );
+      } catch (e) {
+        console.error("[cancelRecurringSeries] Side effects FAILED for appointment", appointmentId, ":", e);
       }
 
       count++;

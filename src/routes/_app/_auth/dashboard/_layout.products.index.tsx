@@ -601,9 +601,7 @@ function ProductsPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
 
   const { data: allProducts = [], isLoading } = useSupabaseProductsList(organizationId);
-  const { data: usedProductIds } = useSupabaseUsedProductIds(organizationId, {
-    enabled: nudgeFilter === "unused",
-  });
+  const { data: usedProductIds } = useSupabaseUsedProductIds(organizationId);
   const { totalsByProductId } = useSupabaseProductStockTotals(organizationId);
   const { data: locations = [] } = useSupabaseGabinetLocationsList(String(organizationId), { activeOnly: false });
   const { data: lotBatches = [], isLoading: lotBatchesLoading } = useSupabaseProductLotBatches(
@@ -640,6 +638,11 @@ function ProductsPage() {
     }).length;
     return { total, bySale, byTreatment, byDisposable, belowMin };
   }, [allProducts, productStockStatus]);
+
+  const unusedCount = useMemo(
+    () => (usedProductIds ? allProducts.filter((p) => !usedProductIds.has(p._id)).length : 0),
+    [allProducts, usedProductIds],
+  );
 
   const products = useMemo(() => {
     let data = allProducts;
@@ -1153,7 +1156,7 @@ function ProductsPage() {
       />
 
       {/* Inventory stats widget */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard
           label={t("products.stats.total", { defaultValue: "Wszystkie pozycje" })}
           value={inventoryStats.total}
@@ -1198,6 +1201,15 @@ function ProductsPage() {
           onClick={() => {
             onViewChange("all");
             navigate({ to: "/dashboard/products", search: { nudge: "low_stock" } });
+          }}
+        />
+        <StatCard
+          label={t("products.stats.unused", { defaultValue: "Nieużywane" })}
+          value={unusedCount}
+          active={nudgeFilter === "unused"}
+          onClick={() => {
+            onViewChange("all");
+            navigate({ to: "/dashboard/products", search: { nudge: "unused" } });
           }}
         />
       </div>

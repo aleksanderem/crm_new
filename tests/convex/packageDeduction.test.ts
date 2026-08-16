@@ -276,6 +276,46 @@ describe("package session deduction guards", () => {
     ).rejects.toThrow("Package is not active");
   });
 
+  test("purchasePackage is idempotent: returns existing usageId when active usage already exists", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(
+      t,
+      organizationId,
+      userId,
+    );
+
+    const { packageId, usageId: firstUsageId } = await setupPackage(t, identity, {
+      organizationId,
+      patientId,
+      treatmentId,
+      quantity: 4,
+    });
+
+    const secondUsageId = await t.withIdentity(identity).action(
+      api.gabinet.packages.purchasePackage,
+      {
+        organizationId,
+        patientId: String(patientId),
+        packageId,
+        paidAmount: 200,
+        paymentMethod: "cash",
+      },
+    );
+
+    expect(secondUsageId).toBe(firstUsageId);
+
+    const db = createSupabaseDb();
+    const rows = await db
+      .query("gabinetPackageUsage")
+      .eq("organizationId", organizationId)
+      .eq("patientId", String(patientId))
+      .eq("packageId", packageId)
+      .collect();
+
+    expect(rows).toHaveLength(1);
+  });
+
   test("cannot delete a package that has been purchased by a patient", async () => {
     const t = createTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);

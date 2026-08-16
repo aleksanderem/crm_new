@@ -2367,12 +2367,13 @@ export const updateStatus = action({
       }
     }
 
-    // Package return: when reverting from completed or no_show, restore one
-    // package entry per junction treatment. CAS lives on
+    // Package return: when reverting from completed, restore one package entry
+    // per junction treatment. CAS lives on
     // gabinet_appointment_treatments.package_deducted per junction row (#3367).
     // If packageTreatmentId is set, only the covered treatment is returned (#3590).
+    // no_show does not deduct, so reverting from no_show has nothing to restore.
     if (
-      (appt.status === "completed" || appt.status === "no_show") &&
+      appt.status === "completed" &&
       appt.packageUsageId
     ) {
       const pkgReturnRows = appt.packageTreatmentId
@@ -2475,12 +2476,13 @@ export const updateStatus = action({
       }
     }
 
-    // Package deduction: completed and no_show both consume one entry per junction
-    // treatment. CAS lives on gabinet_appointment_treatments.package_deducted per
-    // junction row (#3367), replacing the old appointment-level flag. Closes #3206.
+    // Package deduction: only completed consumes one entry per junction treatment.
+    // no_show must NOT deduct — patient did not attend, session should be preserved.
+    // CAS lives on gabinet_appointment_treatments.package_deducted per junction row
+    // (#3367), replacing the old appointment-level flag. Closes #3206, #5207.
     // If packageTreatmentId is set, only the covered treatment is deducted (#3590).
     if (
-      (args.status === "completed" || args.status === "no_show") &&
+      args.status === "completed" &&
       appt.packageUsageId
     ) {
       const pkgDeductRows = appt.packageTreatmentId

@@ -467,7 +467,7 @@ export const _createSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const createdByUserId = args.createdBy as Id<"users">;
+    const createdByUserId = args.createdBy;
 
     await logActivity({
       organizationId: args.organizationId,
@@ -631,7 +631,7 @@ export const _updateSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const updatedByUserId = args.updatedBy as Id<"users">;
+    const updatedByUserId = args.updatedBy;
 
     await logActivity({
       organizationId: args.organizationId,
@@ -727,7 +727,7 @@ export const _removeSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const deletedByUserId = args.deletedBy as Id<"users">;
+    const deletedByUserId = args.deletedBy;
 
     await logActivity({
       organizationId: args.organizationId,
@@ -1217,7 +1217,7 @@ export const _gdprEraseSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const erasedByUserId = args.erasedBy as Id<"users">;
+    const erasedByUserId = args.erasedBy;
 
     // Supabase-side erasure of activities, notes, and appointment clinical
     // fields is handled by the caller (gdprErase action / _purgeExpiredPatients)

@@ -1884,7 +1884,7 @@ export const _resolveRefundAuthSideEffects = internalMutation({
 
     // Tell the requester what happened so they don't keep refreshing the
     // patient page wondering whether their request landed.
-    const requesterUserId = args.requesterId as Id<"users">;
+    const requesterUserId = args.requesterId;
     const amountLabel = formatCurrencyPLN(args.amount, "zł");
     const title =
       args.decision === "approved"

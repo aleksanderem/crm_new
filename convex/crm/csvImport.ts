@@ -237,6 +237,7 @@ export const batchCreateProducts = action({
         catalogNumber: v.optional(v.string()),
         stockNote: v.optional(v.string()),
         tags: v.optional(v.array(v.string())),
+        category: v.optional(v.string()),
       })
     ),
   },
@@ -267,6 +268,17 @@ export const batchCreateProducts = action({
         .map((t) => [t.name as string, t._id as string])
     );
 
+    // Build a name→id map from existing categoryDefinitions (entityType="product") for this org
+    const allCategoryDefs = (await db
+      .query("categoryDefinitions")
+      .eq("organizationId", String(args.organizationId))
+      .collect()) as Array<Record<string, any>>;
+    const categoryNameToId = new Map<string, string>(
+      allCategoryDefs
+        .filter((c) => !c.isDeleted && c.entityType === "product")
+        .map((c) => [c.name as string, c._id as string])
+    );
+
     for (let i = 0; i < args.records.length; i++) {
       const record = args.records[i];
       try {
@@ -294,6 +306,17 @@ export const batchCreateProducts = action({
           tagIds = resolved;
         }
 
+        let categoryId: string | null = null;
+        const categoryName = record.category?.trim();
+        if (categoryName) {
+          const resolvedCategoryId = categoryNameToId.get(categoryName);
+          if (!resolvedCategoryId) {
+            errors.push({ row: i, error: `Unknown category: "${categoryName}"` });
+            continue;
+          }
+          categoryId = resolvedCategoryId;
+        }
+
         await db.insert("products", {
           organizationId: String(args.organizationId),
           name: record.name.trim(),
@@ -304,6 +327,7 @@ export const batchCreateProducts = action({
           isActive: record.isActive ?? true,
           description: record.description?.trim() ?? null,
           tagIds,
+          categoryId,
           purchasePrice: record.purchasePrice ?? null,
           salePrice: record.salePrice ?? null,
           trackStock: record.trackStock ?? null,

@@ -1173,7 +1173,11 @@ export const usePackageTreatmentsBatch = action({
     try {
       await ctx.runMutation(internal.gabinet.packages._batchUsageSideEffects, {
         organizationId: args.organizationId,
+        usageId: args.usageId,
         packageId: String(usage.packageId),
+        patientId: String(usage.patientId ?? ""),
+        items: args.items,
+        appointmentId: args.appointmentId,
         totalUsed: args.items.reduce((sum, i) => sum + i.quantity, 0),
         createdBy: String(authResult.userId),
         actorLabel: authResult.userName ?? authResult.userEmail,
@@ -1190,7 +1194,17 @@ export const usePackageTreatmentsBatch = action({
 export const _batchUsageSideEffects = internalMutation({
   args: {
     organizationId: v.string(),
+    usageId: v.string(),
     packageId: v.string(),
+    patientId: v.string(),
+    items: v.array(
+      v.object({
+        treatmentId: v.string(),
+        variantId: v.optional(v.string()),
+        quantity: v.number(),
+      }),
+    ),
+    appointmentId: v.optional(v.string()),
     totalUsed: v.number(),
     createdBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -1206,6 +1220,20 @@ export const _batchUsageSideEffects = internalMutation({
       description: `Used ${args.totalUsed} treatment(s) from package ${pkg?.name ?? ""}`,
       performedBy: args.createdBy,
       actorLabel: args.actorLabel,
+    });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.createdBy,
+      action: "package_treatment_used",
+      entityType: "gabinetPatient",
+      entityId: args.patientId,
+      details: JSON.stringify({
+        usageId: args.usageId,
+        packageId: args.packageId,
+        appointmentId: args.appointmentId ?? null,
+        items: args.items,
+      }),
     });
   },
 });

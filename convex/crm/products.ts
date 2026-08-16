@@ -101,7 +101,7 @@ export const create = action({
           locationId: null,
           delta: initial,
           reason: "initial",
-          unitPrice: args.purchasePrice ?? undefined,
+          unitPrice: args.unitPrice ?? undefined,
           performedBy: String(authResult.userId),
         });
       } catch (e) {

@@ -532,7 +532,7 @@ export function WarehouseInventoryDialog({
                     const unit = product.stockUnit?.trim() ?? "";
                     const u = unit ? ` ${unit}` : "";
                     const rawAvgCost = historicalStockQuery.data?.avgCostMap.get(product._id) ?? avgCostByProductId.get(product._id) ?? null;
-                    const avgCost = rawAvgCost ?? (product.purchasePrice != null && product.purchasePrice > 0 ? product.purchasePrice : null);
+                    const avgCost = rawAvgCost ?? (product.unitPrice != null && product.unitPrice > 0 ? product.unitPrice : null);
                     const isEstimatedCost = rawAvgCost == null && avgCost != null;
                     const valueNet = avgCost != null ? qty * avgCost : null;
                     return (
@@ -641,7 +641,7 @@ export function WarehouseInventoryDialog({
                   const unit = product.stockUnit?.trim() ?? "";
                   const u = unit ? ` ${unit}` : "";
                   const rawAvgCost = avgCostByProductId.get(product._id) ?? null;
-                  const avgCost = rawAvgCost ?? (product.purchasePrice != null && product.purchasePrice > 0 ? product.purchasePrice : null);
+                  const avgCost = rawAvgCost ?? (product.unitPrice != null && product.unitPrice > 0 ? product.unitPrice : null);
                   const isEstimatedCost = rawAvgCost == null && avgCost != null;
                   const valueNet = avgCost != null ? systemStock * avgCost : null;
                   return (
@@ -784,13 +784,13 @@ export function WarehouseInventoryDialog({
           ? new Map(
               trackedProducts.map((p) => [
                 p._id,
-                historicalStockQuery.data!.avgCostMap.get(p._id) ?? avgCostByProductId.get(p._id) ?? (p.purchasePrice != null && p.purchasePrice > 0 ? p.purchasePrice : null),
+                historicalStockQuery.data!.avgCostMap.get(p._id) ?? avgCostByProductId.get(p._id) ?? (p.unitPrice != null && p.unitPrice > 0 ? p.unitPrice : null),
               ]),
             )
           : new Map(
               trackedProducts.map((p) => [
                 p._id,
-                avgCostByProductId.get(p._id) ?? (p.purchasePrice != null && p.purchasePrice > 0 ? p.purchasePrice : null),
+                avgCostByProductId.get(p._id) ?? (p.unitPrice != null && p.unitPrice > 0 ? p.unitPrice : null),
               ]),
             )
       }

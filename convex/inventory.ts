@@ -241,10 +241,7 @@ export async function applyMovementInternal(
     }
   }
 
-  const snapshotPrice =
-    params.unitPrice != null
-      ? params.unitPrice
-      : product.purchasePrice ?? null;
+  const snapshotPrice = params.unitPrice ?? null;
 
   const movementId = await db.insert("productStockMovements", {
     organizationId: params.organizationId,

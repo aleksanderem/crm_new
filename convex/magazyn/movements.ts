@@ -26,6 +26,35 @@ export const consumeForAppointment = internalAction({
     performedBy: v.string(),
   },
   handler: async (_ctx, args): Promise<{ negativeStock: boolean }> => {
+    const db = createSupabaseDb();
+
+    // Idempotency guard: skip if a net deduction already exists for this
+    // appointment+product (countUse > countReturn). This prevents double-deduction
+    // when the CAS guard in updateStatus is reset after an action failure (#5241)
+    // and allows safe retries. Comparing counts (not just checking for uses)
+    // handles the complete→revert→complete cycle: after a successful stock return,
+    // countUse === countReturn so the guard does not fire and re-completion proceeds.
+    const { data: useMovements } = await db.raw()
+      .from("product_stock_movements")
+      .select("id")
+      .eq("source_type", "appointment")
+      .eq("source_id", args.appointmentId)
+      .eq("reason", "appointment_use")
+      .eq("product_id", args.productId);
+    const { data: returnMovements } = await db.raw()
+      .from("product_stock_movements")
+      .select("id")
+      .eq("source_type", "appointment")
+      .eq("source_id", args.appointmentId)
+      .eq("reason", "appointment_return")
+      .eq("product_id", args.productId);
+    const netUse =
+      (Array.isArray(useMovements) ? useMovements.length : 0) -
+      (Array.isArray(returnMovements) ? returnMovements.length : 0);
+    if (netUse > 0) {
+      return { negativeStock: false };
+    }
+
     const baseMovement = {
       organizationId: args.organizationId,
       productId: args.productId,

@@ -2453,6 +2453,11 @@ export const updateStatus = action({
           .select("id");
         const wonRace = Array.isArray(casRows) && casRows.length === 1;
         if (!wonRace) continue;
+        // Track whether any product action failed so we can reset the CAS.
+        // consumeForAppointment is idempotent (skips if net deduction already
+        // exists), so resetting the CAS allows a safe retry without
+        // double-deducting products that did succeed (#5241).
+        let anyProductFailed = false;
         try {
           const links = await db
             .query("gabinetTreatmentProducts")
@@ -2482,6 +2487,7 @@ export const updateStatus = action({
               );
               if (negativeStock) stockWarnings.push(productId);
             } catch (e) {
+              anyProductFailed = true;
               console.warn(
                 "[updateStatus] stock deduction failed for product",
                 link.productId,
@@ -2491,12 +2497,22 @@ export const updateStatus = action({
             }
           }
         } catch (e) {
+          anyProductFailed = true;
           console.error(
             "[updateStatus] warehouse auto-deduction FAILED for appointment",
             args.appointmentId,
             ":",
             e,
           );
+        }
+        // Reset the CAS guard so a retry can re-enter the deduction path.
+        // consumeForAppointment's idempotency guard prevents double-deduction
+        // for products that already succeeded (#5241).
+        if (anyProductFailed) {
+          await db.raw()
+            .from("gabinet_appointment_treatments")
+            .update({ stock_deducted: false })
+            .eq("id", jt.id);
         }
       }
     }

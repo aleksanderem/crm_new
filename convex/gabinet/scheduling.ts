@@ -641,7 +641,7 @@ export const createLeave = action({
       await ctx.runMutation(internal.gabinet.scheduling._createLeaveSideEffects, {
         organizationId: args.organizationId,
         leaveId,
-        userId: args.userId,
+        userId: args.userId as Id<"users">,
         type: args.type,
         startDate: args.startDate,
         endDate: args.endDate,
@@ -685,7 +685,7 @@ export const requestLeave = action({
         { organizationId: args.organizationId },
       );
       await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-      const userId = String(authResult.userId);
+      const userId = authResult.userId;
       const now = Date.now();
       const db = createSupabaseDb();
 
@@ -855,7 +855,7 @@ export const _leaveApprovalData = internalQuery({
 //   4. everything else → denied
 async function canApproveOrRejectLeave(
   ctx: ActionCtx,
-  organizationId: Id<"organizations">,
+  organizationId: string,
   orgRole: string,
   approverUserId: Id<"users">,
   employeeUserId: Id<"users">,
@@ -1323,7 +1323,7 @@ export const _createLeaveSideEffects = internalMutation({
   args: {
     organizationId: v.string(),
     leaveId: v.string(),
-    userId: v.string(),
+    userId: v.id("users"),
     type: v.string(),
     startDate: v.string(),
     endDate: v.string(),
@@ -1348,7 +1348,7 @@ export const _createLeaveSideEffects = internalMutation({
         ctx.db
           .query("gabinetLocationMemberships")
           .withIndex("by_orgAndUser", (q) =>
-            q.eq("organizationId", args.organizationId).eq("userId", args.userId as Id<"users">)
+            q.eq("organizationId", args.organizationId).eq("userId", args.userId)
           )
           .collect(),
         ctx.db

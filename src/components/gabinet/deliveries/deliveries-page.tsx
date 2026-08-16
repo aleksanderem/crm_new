@@ -823,6 +823,7 @@ export function DeliveriesPage() {
           "gabinet.deliveries.newDeliveryDesc",
           "Wypełnij dane dostawy. Po zapisaniu możesz ją zaksięgować, co zaktualizuje stany magazynowe.",
         )}
+        className="sm:max-w-[560px]"
       >
         <div className="space-y-5">
           {/* Header fields */}

@@ -3,7 +3,6 @@ import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { logActivity } from "../_helpers/activities";
-import { Id } from "../_generated/dataModel";
 import type { SupabaseRow } from "../_helpers/supabaseRows";
 import { applyMovementInternal } from "../inventory";
 
@@ -141,7 +140,7 @@ export const _createSideEffects = internalMutation({
       entityId: args.productId,
       action: "created",
       description: `Created product "${args.name}"`,
-      performedBy: args.createdBy as Id<"users">,
+      performedBy: args.createdBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -251,7 +250,7 @@ export const _updateSideEffects = internalMutation({
       entityId: args.productId,
       action: "updated",
       description: `Updated product "${args.name}"`,
-      performedBy: args.updatedBy as Id<"users">,
+      performedBy: args.updatedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -324,7 +323,7 @@ export const _removeSideEffects = internalMutation({
       entityId: args.productId,
       action: "deleted",
       description: `Deleted product "${args.name}"`,
-      performedBy: args.deletedBy as Id<"users">,
+      performedBy: args.deletedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -395,7 +394,7 @@ export const _toggleActiveSideEffects = internalMutation({
       entityId: args.productId,
       action: "updated",
       description: `${args.wasActive ? "Deactivated" : "Activated"} product "${args.name}"`,
-      performedBy: args.updatedBy as Id<"users">,
+      performedBy: args.updatedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -511,7 +510,7 @@ export const _addToDealSideEffects = internalMutation({
       entityId: args.dealId,
       action: "updated",
       description: `Added product "${args.productName}" to deal`,
-      performedBy: args.addedBy as Id<"users">,
+      performedBy: args.addedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -576,7 +575,7 @@ export const _removeFromDealSideEffects = internalMutation({
       entityId: args.dealId,
       action: "updated",
       description: `Removed product "${args.productName}" from deal`,
-      performedBy: args.removedBy as Id<"users">,
+      performedBy: args.removedBy,
       actorLabel: args.actorLabel,
     });
   },

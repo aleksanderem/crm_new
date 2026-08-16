@@ -236,6 +236,70 @@ function createInMemoryRawClient() {
           error: null,
         };
       }
+      // Atomic package entry deduction (closes #5208).
+      // Mirrors the PL/pgSQL SELECT FOR UPDATE logic in the production function.
+      if (fn === "deduct_package_entry") {
+        const usageId     = String(params.p_usage_id ?? "");
+        const treatmentId = String(params.p_treatment_id ?? "");
+        const variantId   = params.p_variant_id != null ? String(params.p_variant_id) : null;
+        const now         = Number(params.p_now ?? Date.now());
+        const t = getTable("gabinetPackageUsage");
+        const row = t.get(usageId);
+        if (!row || row.status !== "active") {
+          return { data: null, error: null };
+        }
+        const treatments = (row.treatmentsUsed ?? []) as Array<Record<string, unknown>>;
+        const matchesTreatment = (e: Record<string, unknown>) =>
+          e.treatmentId === treatmentId &&
+          (variantId === null || e.variantId === variantId);
+        const entry = treatments.find(
+          (e) => matchesTreatment(e) && (e.usedCount as number) < (e.totalCount as number),
+        );
+        if (!entry) return { data: null, error: null };
+        const updated = treatments.map((e) =>
+          matchesTreatment(e)
+            ? { ...e, usedCount: (e.usedCount as number) + 1 }
+            : e,
+        );
+        const allUsed = updated.every((e) => (e.usedCount as number) >= (e.totalCount as number));
+        t.set(usageId, {
+          ...row,
+          treatmentsUsed: updated,
+          status: allUsed ? "completed" : "active",
+          updatedAt: now,
+        });
+        return { data: null, error: null };
+      }
+      // Atomic package entry return (closes #5208).
+      if (fn === "return_package_entry") {
+        const usageId     = String(params.p_usage_id ?? "");
+        const treatmentId = String(params.p_treatment_id ?? "");
+        const variantId   = params.p_variant_id != null ? String(params.p_variant_id) : null;
+        const now         = Number(params.p_now ?? Date.now());
+        const t = getTable("gabinetPackageUsage");
+        const row = t.get(usageId);
+        if (!row) return { data: null, error: null };
+        const treatments = (row.treatmentsUsed ?? []) as Array<Record<string, unknown>>;
+        const matchesTreatment = (e: Record<string, unknown>) =>
+          e.treatmentId === treatmentId &&
+          (variantId === null || e.variantId === variantId);
+        const entry = treatments.find(
+          (e) => matchesTreatment(e) && (e.usedCount as number) > 0,
+        );
+        if (!entry) return { data: null, error: null };
+        const updated = treatments.map((e) =>
+          matchesTreatment(e)
+            ? { ...e, usedCount: Math.max(0, (e.usedCount as number) - 1) }
+            : e,
+        );
+        t.set(usageId, {
+          ...row,
+          treatmentsUsed: updated,
+          status: row.status === "completed" ? "active" : row.status,
+          updatedAt: now,
+        });
+        return { data: null, error: null };
+      }
       return { data: null, error: { message: `rpc stub: unknown function ${fn}` } };
     },
   };

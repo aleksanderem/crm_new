@@ -1074,8 +1074,6 @@ export const _mergeSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const performedByUserId = args.performedBy;
-
     await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetPatient",
@@ -1085,7 +1083,7 @@ export const _mergeSideEffects = internalMutation({
       metadata: {
         merge: { sourcePatientId: args.sourcePatientId },
       },
-      performedBy: performedByUserId,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
 
@@ -1098,7 +1096,7 @@ export const _mergeSideEffects = internalMutation({
       metadata: {
         merge: { targetPatientId: args.targetPatientId },
       },
-      performedBy: performedByUserId,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },

@@ -547,6 +547,18 @@ export const purchaseTreatment = action({
       if (!autoPackage) throw new Error("Failed to create treatment package");
     }
 
+    // Idempotency guard: if an active usage already exists for this patient ×
+    // auto-package (same treatmentId), return it rather than creating a
+    // duplicate on double-click / network retry.
+    const existingUsage = await db
+      .query("gabinetPackageUsage")
+      .eq("organizationId", orgIdStr)
+      .eq("patientId", args.patientId)
+      .eq("packageId", String(autoPackage._id))
+      .eq("status", "active")
+      .first();
+    if (existingUsage) return String(existingUsage._id);
+
     const usageId = await db.insert("gabinetPackageUsage", {
       organizationId: orgIdStr,
       patientId: args.patientId,

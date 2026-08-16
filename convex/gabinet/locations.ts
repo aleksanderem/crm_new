@@ -1,6 +1,5 @@
 import { action, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
-import { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { logError } from "../_helpers/logged";
@@ -502,7 +501,7 @@ export const _createLocationSideEffects = internalMutation({
       entityId: args.locationId,
       action: "created",
       description: `Created location "${args.name}"`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -522,7 +521,7 @@ export const _updateLocationSideEffects = internalMutation({
       entityId: args.locationId,
       action: "updated",
       description: `Updated location`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -542,7 +541,7 @@ export const _deleteLocationSideEffects = internalMutation({
       entityId: args.locationId,
       action: "deleted",
       description: `Deactivated location`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -565,7 +564,7 @@ export const _createRoomSideEffects = internalMutation({
       action: "created",
       description: `Created room "${args.name}"`,
       metadata: { locationId: args.locationId },
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -585,7 +584,7 @@ export const _updateRoomSideEffects = internalMutation({
       entityId: args.roomId,
       action: "updated",
       description: `Updated room`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -605,7 +604,7 @@ export const _deleteRoomSideEffects = internalMutation({
       entityId: args.roomId,
       action: "deleted",
       description: `Deactivated room`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },

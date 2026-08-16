@@ -1,6 +1,5 @@
 import { query, action, internalMutation, internalAction } from "../_generated/server";
 import { v } from "convex/values";
-import { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { verifyOrgAccess } from "../_helpers/auth";
@@ -351,7 +350,7 @@ export const _createEquipmentSideEffects = internalMutation({
       entityId: args.equipmentId,
       action: "created",
       description: `Created equipment "${args.name}"`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -371,7 +370,7 @@ export const _updateEquipmentSideEffects = internalMutation({
       entityId: args.equipmentId,
       action: "updated",
       description: `Updated equipment`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -393,7 +392,7 @@ export const _transferEquipmentSideEffects = internalMutation({
       action: "updated",
       description: `Transferred equipment to location`,
       metadata: { toLocationId: args.toLocationId },
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },

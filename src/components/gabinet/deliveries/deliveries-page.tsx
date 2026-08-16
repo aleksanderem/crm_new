@@ -825,7 +825,7 @@ export function DeliveriesPage() {
       >
         <div className="space-y-5">
           {/* Header fields */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="delivery-supplier">
                 {t("gabinet.deliveries.supplierName", "Dostawca")}
@@ -850,7 +850,7 @@ export function DeliveriesPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="delivery-date">
                 {t("gabinet.deliveries.deliveryDate", "Data dostawy")}
@@ -909,7 +909,8 @@ export function DeliveriesPage() {
               </Button>
             </div>
 
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
+              <div className="min-w-[490px]">
               {/* column headers */}
               <div className="grid grid-cols-[1fr_65px_85px_82px_82px_28px] gap-1 border-b bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">
                 <span>{t("gabinet.deliveries.colProduct", "Produkt")}</span>
@@ -1062,6 +1063,7 @@ export function DeliveriesPage() {
                   )}
                 </div>
               )}
+              </div>
             </div>
 
             {stockableProducts.length === 0 && (

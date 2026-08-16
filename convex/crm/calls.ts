@@ -5,8 +5,6 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { logActivity } from "../_helpers/activities";
 import { callOutcomeValidator } from "@cvx/schema";
-import { Id } from "../_generated/dataModel";
-
 // Dual-write refs removed — Supabase is now primary for call writes
 
 export const list = action({
@@ -150,7 +148,7 @@ export const _createSideEffects = internalMutation({
       entityId: args.callId,
       action: "created",
       description: `Logged a call with outcome "${args.outcome}"`,
-      performedBy: args.createdBy as Id<"users">,
+      performedBy: args.createdBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -219,7 +217,7 @@ export const _updateSideEffects = internalMutation({
       entityId: args.callId,
       action: "updated",
       description: `Updated call`,
-      performedBy: args.updatedBy as Id<"users">,
+      performedBy: args.updatedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -293,7 +291,7 @@ export const _removeSideEffects = internalMutation({
       entityId: args.callId,
       action: "deleted",
       description: `Deleted call`,
-      performedBy: args.deletedBy as Id<"users">,
+      performedBy: args.deletedBy,
       actorLabel: args.actorLabel,
     });
   },

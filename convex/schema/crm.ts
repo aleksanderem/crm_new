@@ -331,7 +331,7 @@ export function createCrmTables({
     manufacturer: v.optional(v.string()),
     catalogNumber: v.optional(v.string()),
     stockNote: v.optional(v.string()),
-    // Net purchase price per unit (#2956, migration 00050). Used to calculate
+    // Gross purchase price per unit (#2956, migration 00050). Used to calculate
     // warehouse value. Distinct from unitPrice (the selling price).
     purchasePrice: v.optional(v.number()),
     // Optional retail sale price per unit (#3201/#3203, migration 00066).

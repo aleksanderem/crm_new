@@ -80,14 +80,39 @@ export function SidePanel({
   // When the keyboard-safe style changes height (keyboard opens/closes on mobile),
   // the overflow-y-auto scroll container may reset its scrollTop. Re-scroll the
   // focused element into view so the user doesn't lose their position in the form.
+  // rAF defers until after the browser has settled its own post-paint scroll reset,
+  // which happens on iOS when a fixed-position container's height changes.
   const styleHeight = keyboardSafeStyle?.height;
   useLayoutEffect(() => {
     if (!contentRef.current) return;
     const active = document.activeElement as HTMLElement | null;
     if (active && active !== document.body && contentRef.current.contains(active)) {
-      active.scrollIntoView({ block: "nearest" });
+      requestAnimationFrame(() => {
+        active.scrollIntoView({ block: "nearest", behavior: "instant" });
+      });
     }
   }, [styleHeight]);
+
+  // When the keyboard is already open and the user taps a different field,
+  // styleHeight doesn't change so the above effect never fires. Listen for
+  // focusin on inputs/textareas inside the panel and scroll them into view.
+  useEffect(() => {
+    if (!open) return;
+    const el = contentRef.current;
+    if (!el) return;
+    const handleFocusin = (e: FocusEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target || !el.contains(target)) return;
+      const tag = target.tagName.toLowerCase();
+      if (tag === "input" || tag === "textarea") {
+        requestAnimationFrame(() => {
+          target.scrollIntoView({ block: "nearest", behavior: "instant" });
+        });
+      }
+    };
+    el.addEventListener("focusin", handleFocusin);
+    return () => el.removeEventListener("focusin", handleFocusin);
+  }, [open]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

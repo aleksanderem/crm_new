@@ -2161,7 +2161,7 @@ export const _sendRescheduleNotification = internalMutation({
       eventType: "gabinet.appointment.rescheduled",
       entityType: "gabinetAppointment",
       entityId: args.appointmentId,
-      actorUserId: args.actorUserId as Id<"users">,
+      actorUserId: args.actorUserId,
       correlationKey: `appointment:${args.appointmentId}`,
       eventIdempotencyKey: `automation-event:${args.organizationId}:${args.appointmentId}:${args.updatedAt}:rescheduled`,
       payload: {

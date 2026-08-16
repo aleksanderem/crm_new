@@ -8,7 +8,7 @@
  * auto-complete transition when the last session is used.
  */
 
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
 import {
   createTestCtx,
@@ -339,5 +339,111 @@ describe("package session deduction guards", () => {
     ).rejects.toThrow(
       "Cannot delete a package that has been purchased by patients",
     );
+  });
+});
+
+describe("appointment overbooking guard", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        text: async () => JSON.stringify({ sid: "SM_TEST_123" }),
+      })) as unknown as typeof fetch,
+    );
+  });
+
+  afterEach(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.unstubAllGlobals();
+  });
+
+  test("booking within package capacity succeeds", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(
+      t,
+      organizationId,
+      userId,
+    );
+
+    const { usageId } = await setupPackage(t, identity, {
+      organizationId,
+      patientId,
+      treatmentId,
+      quantity: 2,
+    });
+
+    const apptId = await t.withIdentity(identity).action(
+      api.gabinet.appointments.create,
+      {
+        organizationId,
+        patientId: String(patientId),
+        treatmentId: String(treatmentId),
+        employeeId: String(userId),
+        date: "2026-09-01",
+        startTime: "09:00",
+        endTime: "09:30",
+        packageUsageId: usageId,
+        allowPast: true,
+      },
+    );
+    expect(apptId).toBeTruthy();
+  });
+
+  test("booking beyond package capacity is rejected", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    const { patientId, treatmentId } = await seedGabinetPrereqs(
+      t,
+      organizationId,
+      userId,
+    );
+
+    const { usageId } = await setupPackage(t, identity, {
+      organizationId,
+      patientId,
+      treatmentId,
+      quantity: 2,
+    });
+
+    // Book both sessions — these should succeed.
+    await t.withIdentity(identity).action(api.gabinet.appointments.create, {
+      organizationId,
+      patientId: String(patientId),
+      treatmentId: String(treatmentId),
+      employeeId: String(userId),
+      date: "2026-09-01",
+      startTime: "09:00",
+      endTime: "09:30",
+      packageUsageId: usageId,
+      allowPast: true,
+    });
+    await t.withIdentity(identity).action(api.gabinet.appointments.create, {
+      organizationId,
+      patientId: String(patientId),
+      treatmentId: String(treatmentId),
+      employeeId: String(userId),
+      date: "2026-09-02",
+      startTime: "09:00",
+      endTime: "09:30",
+      packageUsageId: usageId,
+      allowPast: true,
+    });
+
+    // Third booking exceeds the 2-session limit.
+    await expect(
+      t.withIdentity(identity).action(api.gabinet.appointments.create, {
+        organizationId,
+        patientId: String(patientId),
+        treatmentId: String(treatmentId),
+        employeeId: String(userId),
+        date: "2026-09-03",
+        startTime: "09:00",
+        endTime: "09:30",
+        packageUsageId: usageId,
+        allowPast: true,
+      }),
+    ).rejects.toThrow("Brak dostępnych sesji w pakiecie dla tego zabiegu.");
   });
 });

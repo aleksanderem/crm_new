@@ -1266,6 +1266,29 @@ export const create = action({
       }
     }
 
+    // --- Package overbooking guard (closes #5227) ---
+    // Lock the package usage row and count non-terminal appointments already
+    // booked against the same slot. Rejects the booking if usedCount +
+    // pending_count would reach or exceed totalCount.
+    if (resolvedPackageUsageId) {
+      const treatmentIdForCheck = args.packageTreatmentId ?? primaryTreatmentId;
+      const variantIdForCheck = args.packageTreatmentId
+        ? (treatmentsList.find((t) => t.treatmentId === args.packageTreatmentId)?.variantId ?? null)
+        : (args.variantId ?? null);
+      const { error: overbookError } = await db.raw().rpc("check_package_overbooking", {
+        p_usage_id:                         resolvedPackageUsageId,
+        p_treatment_id:                     treatmentIdForCheck,
+        p_variant_id:                       variantIdForCheck ?? null,
+        p_appointment_package_treatment_id: args.packageTreatmentId ?? null,
+      });
+      if (overbookError) {
+        if (overbookError.message?.includes("package_overbooking")) {
+          throw new Error("Brak dostępnych sesji w pakiecie dla tego zabiegu.");
+        }
+        throw new Error(`check_package_overbooking: ${overbookError.message}`);
+      }
+    }
+
     // --- Resolve location (Supabase-primary) ---
     let resolvedLocationId = args.locationId ?? null;
     if (!resolvedLocationId) {

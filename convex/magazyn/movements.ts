@@ -22,6 +22,7 @@ export const consumeForAppointment = internalAction({
     locationId: v.union(v.string(), v.null()),
     totalNeeded: v.number(),
     appointmentId: v.string(),
+    treatmentId: v.optional(v.string()),
     performedBy: v.string(),
   },
   handler: async (_ctx, args): Promise<{ negativeStock: boolean }> => {
@@ -32,6 +33,7 @@ export const consumeForAppointment = internalAction({
       reason: "appointment_use" as const,
       sourceType: "appointment",
       sourceId: args.appointmentId,
+      treatmentId: args.treatmentId ?? null,
       performedBy: args.performedBy,
     };
 
@@ -94,7 +96,7 @@ export const returnStockForAppointment = internalAction({
 
     const { data: useMovements } = await db.raw()
       .from("product_stock_movements")
-      .select("product_id, delta, lot_number, expiry_date, location_id")
+      .select("product_id, delta, lot_number, expiry_date, location_id, treatment_id")
       .eq("source_type", "appointment")
       .eq("source_id", args.appointmentId)
       .eq("reason", "appointment_use");
@@ -104,6 +106,7 @@ export const returnStockForAppointment = internalAction({
       lot_number: string | null;
       expiry_date: string | null;
       location_id: string | null;
+      treatment_id: string | null;
     }>;
 
     for (const mv of movements) {
@@ -118,6 +121,7 @@ export const returnStockForAppointment = internalAction({
           sourceId: args.appointmentId,
           lotNumber: mv.lot_number ?? undefined,
           expiryDate: mv.expiry_date ?? undefined,
+          treatmentId: mv.treatment_id ?? undefined,
           performedBy: args.performedBy,
         });
       } catch (e) {

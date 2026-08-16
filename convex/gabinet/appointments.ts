@@ -2450,6 +2450,7 @@ export const updateStatus = action({
                   locationId: (appt.locationId ?? null) as string | null,
                   totalNeeded,
                   appointmentId: args.appointmentId,
+                  treatmentId: jt.treatment_id ?? undefined,
                   performedBy: authResult.userId,
                 },
               );

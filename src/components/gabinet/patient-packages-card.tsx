@@ -44,9 +44,9 @@ import { PlateText } from "@/components/plate-text";
 import { useSupabaseGabinetAppointmentsByPatient } from "@/hooks/use-supabase-gabinet-appointments";
 
 // Appointment statuses that still consume a package slot — they haven't been
-// deducted from `usedCount` yet (deduction happens on transition to "completed"
-// or "no_show") but they aren't terminal failures (cancelled) either, so
-// front-desk needs to see them when planning capacity.
+// deducted from `usedCount` yet (deduction happens on transition to "completed")
+// but they aren't terminal failures (cancelled) either, so front-desk needs to
+// see them when planning capacity.
 const PENDING_USAGE_STATUSES = new Set([
   "pending_confirmation",
   "scheduled",

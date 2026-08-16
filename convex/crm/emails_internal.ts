@@ -219,6 +219,13 @@ export const insertInbound = internalAction({
   },
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
+
+    const existing = await db
+      .query("emails")
+      .eq("messageId", args.messageId)
+      .first();
+    if (existing) return;
+
     const now = Date.now();
 
     const organization = await db.get("organizations", args.organizationId);

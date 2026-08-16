@@ -3,7 +3,6 @@ import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { logActivity } from "../_helpers/activities";
-import { Id } from "../_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for company writes
 // list query removed — browser reads companies directly from Supabase via use-supabase-companies.ts
@@ -110,15 +109,13 @@ export const _createSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const createdByUserId = args.createdBy as Id<"users">;
-
     await logActivity({
       organizationId: args.organizationId,
       entityType: "company",
-      entityId: args.companyId as Id<"companies">,
+      entityId: args.companyId,
       action: "created",
       description: `Created company "${args.name}"`,
-      performedBy: createdByUserId,
+      performedBy: args.createdBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -233,15 +230,13 @@ export const _updateSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const updatedByUserId = args.updatedBy as Id<"users">;
-
     await logActivity({
       organizationId: args.organizationId,
       entityType: "company",
-      entityId: args.companyId as Id<"companies">,
+      entityId: args.companyId,
       action: "updated",
       description: `Updated company "${args.name}"`,
-      performedBy: updatedByUserId,
+      performedBy: args.updatedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -330,15 +325,13 @@ export const _removeSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const deletedByUserId = args.deletedBy as Id<"users">;
-
     await logActivity({
       organizationId: args.organizationId,
       entityType: "company",
-      entityId: args.companyId as Id<"companies">,
+      entityId: args.companyId,
       action: "deleted",
       description: `Deleted company "${args.name}"`,
-      performedBy: deletedByUserId,
+      performedBy: args.deletedBy,
       actorLabel: args.actorLabel,
     });
   },

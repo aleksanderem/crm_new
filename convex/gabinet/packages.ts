@@ -1391,17 +1391,24 @@ export const assignGiftPackage = action({
       throw new Error("Package is already assigned");
 
     const now = Date.now();
-    await db.patch("gabinetPackageUsage", args.usageId, {
-      patientId: args.patientId,
-      status: "active",
-      updatedAt: now,
-    });
 
     // Award loyalty points that were deferred at purchase time
     const pkg = await db.get(
       "gabinetTreatmentPackages",
       String(usage.packageId),
     );
+
+    const pkgValidityDays = pkg?.validityDays as number | null | undefined;
+    const expiresAt = pkgValidityDays
+      ? now + pkgValidityDays * 24 * 60 * 60 * 1000
+      : null;
+
+    await db.patch("gabinetPackageUsage", args.usageId, {
+      patientId: args.patientId,
+      status: "active",
+      expiresAt,
+      updatedAt: now,
+    });
     const loyaltyPointsAwarded =
       (pkg?.loyaltyPointsAwarded as number | undefined) ?? 0;
     if (loyaltyPointsAwarded > 0) {

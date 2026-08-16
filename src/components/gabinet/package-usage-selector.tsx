@@ -54,14 +54,15 @@ export function PackageUsageSelector({
     return tuVariantId === variantId;
   };
 
-  // Find active usages that have remaining uses for this treatment and variant
+  // Find active usages that have remaining uses for this treatment and variant.
+  // Effective remaining = totalCount - usedCount - scheduledCount (non-terminal appointments).
   const eligibleUsages = usages.filter((u) => {
     if (u.status !== "active") return false;
     if (u.expiresAt && u.expiresAt < Date.now()) return false;
     const entry = u.treatmentsUsed.find(
       (tu) => tu.treatmentId === treatmentId && matchesVariant(tu.variantId),
     );
-    return entry && entry.usedCount < entry.totalCount;
+    return entry && entry.usedCount + (entry.scheduledCount ?? 0) < entry.totalCount;
   });
 
   if (eligibleUsages.length === 0) return null;
@@ -73,7 +74,7 @@ export function PackageUsageSelector({
           (tu) => tu.treatmentId === treatmentId && matchesVariant(tu.variantId),
         )!;
         const pkgName = packageMap.get(usage.packageId) ?? t("common.unknown");
-        const remaining = entry.totalCount - entry.usedCount;
+        const remaining = entry.totalCount - entry.usedCount - (entry.scheduledCount ?? 0);
         const isChecked = selectedUsageId === usage._id;
 
         return (

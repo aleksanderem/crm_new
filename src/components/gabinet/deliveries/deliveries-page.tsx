@@ -946,6 +946,8 @@ export function DeliveriesPage() {
                         className="h-8 text-right text-xs tabular-nums"
                         placeholder="0"
                         inputMode="decimal"
+                        name={`line-qty-${line.id}`}
+                        autoComplete="off"
                         value={line.quantity}
                         onChange={(e) => {
                           const v = e.target.value;
@@ -958,6 +960,8 @@ export function DeliveriesPage() {
                         className="h-8 text-right text-xs tabular-nums"
                         placeholder="—"
                         inputMode="decimal"
+                        name={`line-price-${line.id}`}
+                        autoComplete="off"
                         value={line.unitPrice}
                         onChange={(e) => {
                           const v = e.target.value;
@@ -986,6 +990,8 @@ export function DeliveriesPage() {
                         className="h-8 text-right text-xs tabular-nums"
                         placeholder="—"
                         inputMode="decimal"
+                        name={`line-gross-${line.id}`}
+                        autoComplete="off"
                         value={line.unitPriceGross}
                         onChange={(e) => {
                           const v = e.target.value;
@@ -1025,6 +1031,8 @@ export function DeliveriesPage() {
                       <Input
                         className="h-7 text-xs"
                         placeholder={t("gabinet.deliveries.lotNumber", "Nr LOT (opcjonalnie)")}
+                        name={`line-lot-${line.id}`}
+                        autoComplete="off"
                         value={line.lotNumber}
                         onChange={(e) => updateLine(line.id, "lotNumber", e.target.value)}
                       />
@@ -1032,6 +1040,8 @@ export function DeliveriesPage() {
                         className="h-7 text-xs"
                         type="date"
                         title={t("gabinet.deliveries.expiryDate", "Termin ważności")}
+                        name={`line-exp-${line.id}`}
+                        autoComplete="off"
                         value={line.expiryDate}
                         onChange={(e) => updateLine(line.id, "expiryDate", e.target.value)}
                       />

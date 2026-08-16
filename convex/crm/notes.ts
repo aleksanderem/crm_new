@@ -3,8 +3,6 @@ import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { v } from "convex/values";
 import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
-import { Id } from "../_generated/dataModel";
-
 // Dual-write refs removed — Supabase is now primary for note writes
 
 export const create = action({
@@ -67,13 +65,13 @@ export const _createSideEffects = internalMutation({
     await publishActivityEnvelope({
       organizationId: args.organizationId,
       action: "note_added",
-      performedBy: args.createdBy as Id<"users">,
+      performedBy: args.createdBy,
       module: "crm",
       summary: "Added a note",
       occurredAt: args.createdAt,
       actor: {
         type: "user",
-        userId: args.createdBy as Id<"users">,
+        userId: args.createdBy,
       },
       payload: {
         noteId: args.noteId,
@@ -147,13 +145,13 @@ export const _updateSideEffects = internalMutation({
     await publishActivityEnvelope({
       organizationId: args.organizationId,
       action: "updated",
-      performedBy: args.updatedBy as Id<"users">,
+      performedBy: args.updatedBy,
       module: "crm",
       summary: "Updated a note",
       occurredAt: args.updatedAt,
       actor: {
         type: "user",
-        userId: args.updatedBy as Id<"users">,
+        userId: args.updatedBy,
       },
       payload: {
         noteId: args.noteId,
@@ -243,13 +241,13 @@ export const _removeSideEffects = internalMutation({
     await publishActivityEnvelope({
       organizationId: args.organizationId,
       action: "deleted",
-      performedBy: args.deletedBy as Id<"users">,
+      performedBy: args.deletedBy,
       module: "crm",
       summary: "Deleted a note",
       occurredAt: Date.now(),
       actor: {
         type: "user",
-        userId: args.deletedBy as Id<"users">,
+        userId: args.deletedBy,
       },
       payload: {
         noteId: args.noteId,

@@ -300,6 +300,55 @@ function createInMemoryRawClient() {
         });
         return { data: null, error: null };
       }
+      // Overbooking guard for package-linked appointments (closes #5227).
+      // Mirrors the PL/pgSQL SELECT FOR UPDATE logic in the production function.
+      if (fn === "check_package_overbooking") {
+        const usageId     = String(params.p_usage_id ?? "");
+        const treatmentId = String(params.p_treatment_id ?? "");
+        const variantId   = params.p_variant_id != null ? String(params.p_variant_id) : null;
+        const appointmentPkgTreatmentId =
+          params.p_appointment_package_treatment_id != null
+            ? String(params.p_appointment_package_treatment_id)
+            : null;
+
+        const t = getTable("gabinetPackageUsage");
+        const row = t.get(usageId);
+        if (!row || row.status !== "active") return { data: null, error: null };
+
+        const treatments = (row.treatmentsUsed ?? []) as Array<Record<string, unknown>>;
+        const entry = treatments.find(
+          (e) =>
+            e.treatmentId === treatmentId &&
+            (variantId === null || e.variantId === variantId),
+        );
+        if (!entry) return { data: null, error: null };
+
+        const usedCount  = entry.usedCount as number;
+        const totalCount = entry.totalCount as number;
+
+        // Count non-terminal appointments for this package+slot.
+        const apptTable = getTable("gabinetAppointments");
+        let pendingCount = 0;
+        for (const appt of apptTable.values()) {
+          if (
+            appt.packageUsageId === usageId &&
+            (appt.status === "scheduled" || appt.status === "confirmed" || appt.status === "in_progress") &&
+            (appt.packageTreatmentId ?? null) === appointmentPkgTreatmentId
+          ) {
+            pendingCount++;
+          }
+        }
+
+        if (usedCount + pendingCount >= totalCount) {
+          return {
+            data: null,
+            error: {
+              message: `package_overbooking: ${usedCount + pendingCount} sessions used/pending out of ${totalCount} total`,
+            },
+          };
+        }
+        return { data: null, error: null };
+      }
       return { data: null, error: { message: `rpc stub: unknown function ${fn}` } };
     },
   };

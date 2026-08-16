@@ -856,7 +856,7 @@ export function createCrmTables({
 
   auditLog: defineTable({
     organizationId: v.string(),
-    userId: v.id("users"),
+    userId: v.string(),
     action: v.string(),
     entityType: v.optional(v.string()),
     entityId: v.optional(v.string()),

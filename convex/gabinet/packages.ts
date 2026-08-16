@@ -1246,12 +1246,24 @@ export const getActiveUsageCounts = action({
   },
 });
 
+type TreatmentEntryWithScheduled = {
+  treatmentId: string;
+  variantId?: string;
+  usedCount: number;
+  totalCount: number;
+  scheduledCount: number;
+};
+
+export type PatientPackageUsage = Omit<GabinetPackageUsageRow, "treatmentsUsed"> & {
+  treatmentsUsed: TreatmentEntryWithScheduled[];
+};
+
 export const getPatientPackages = action({
   args: {
     organizationId: v.string(),
     patientId: v.string(),
   },
-  handler: async (ctx, args): Promise<GabinetPackageUsageRow[]> => {
+  handler: async (ctx, args): Promise<PatientPackageUsage[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -1269,11 +1281,53 @@ export const getPatientPackages = action({
     if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
-    return (await db
+    const usages = (await db
       .query("gabinetPackageUsage")
       .eq("organizationId", String(args.organizationId))
       .eq("patientId", args.patientId)
       .collect()) as GabinetPackageUsageRow[];
+
+    // Count non-terminal appointments per (package_usage_id, treatment_id, variant_id)
+    // so the selector can display effective remaining = totalCount - usedCount - scheduledCount.
+    const scheduledCountMap: Record<string, number> = {};
+    const usageIds = usages.map(u => String(u._id));
+    if (usageIds.length > 0) {
+      const client = db.raw();
+      const { data: scheduledAppts } = await client
+        .from("gabinet_appointments")
+        .select("package_usage_id, gabinet_appointment_treatments(treatment_id, variant_id)")
+        .in("package_usage_id", usageIds)
+        .in("status", ["scheduled", "confirmed", "in_progress"]);
+
+      for (const appt of (scheduledAppts ?? [])) {
+        const usageId = (appt as { package_usage_id: string }).package_usage_id;
+        const treatments = (appt as {
+          gabinet_appointment_treatments?: Array<{ treatment_id: string | null; variant_id: string | null }>;
+        }).gabinet_appointment_treatments ?? [];
+        for (const at of treatments) {
+          if (!at.treatment_id) continue;
+          const key = `${usageId}|${at.treatment_id}|${at.variant_id ?? ""}`;
+          scheduledCountMap[key] = (scheduledCountMap[key] ?? 0) + 1;
+        }
+      }
+    }
+
+    return usages.map(u => {
+      const usageId = String(u._id);
+      const entries = ((u.treatmentsUsed ?? []) as Array<{
+        treatmentId: string;
+        variantId?: string;
+        usedCount: number;
+        totalCount: number;
+      }>);
+      return {
+        ...u,
+        treatmentsUsed: entries.map(e => ({
+          ...e,
+          scheduledCount: scheduledCountMap[`${usageId}|${e.treatmentId}|${e.variantId ?? ""}`] ?? 0,
+        })),
+      };
+    });
   },
 });
 

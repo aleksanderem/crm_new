@@ -16,16 +16,54 @@ async function requireOrgAdminAction(
   }
 }
 
+async function loadLookups(organizationId: string) {
+  const db = createSupabaseDb();
+  const [tagRows, categoryRows] = await Promise.all([
+    db.query("tagDefinitions").eq("organizationId", organizationId).collect(),
+    db.query("categoryDefinitions").eq("organizationId", organizationId).collect(),
+  ]);
+  const tagMap = new Map<string, string>(
+    (tagRows as Array<{ _id: string; name: string; isDeleted?: boolean }>)
+      .filter((t) => !t.isDeleted)
+      .map((t) => [t._id, t.name]),
+  );
+  const categoryMap = new Map<string, string>(
+    (categoryRows as Array<{ _id: string; name: string; isDeleted?: boolean }>)
+      .filter((c) => !c.isDeleted)
+      .map((c) => [c._id, c.name]),
+  );
+  return { tagMap, categoryMap };
+}
+
+function resolveTagIds(
+  tagIds: string[] | null | undefined,
+  legacyTags: string[] | null | undefined,
+  tagMap: Map<string, string>,
+): string {
+  if (tagIds && tagIds.length > 0) {
+    return tagIds.map((id) => tagMap.get(id) ?? id).join("; ");
+  }
+  return ((legacyTags as string[] | null) ?? []).join("; ");
+}
+
+function resolveCategoryId(
+  categoryId: string | null | undefined,
+  categoryMap: Map<string, string>,
+): string {
+  if (!categoryId) return "";
+  return categoryMap.get(categoryId) ?? categoryId;
+}
+
 export const exportContacts = action({
   args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await requireOrgAdminAction(ctx, args.organizationId);
 
     const db = createSupabaseDb();
-    const contacts = await db
-      .query("contacts")
-      .eq("organizationId", args.organizationId)
-      .collect();
+    const [contacts, { tagMap, categoryMap }] = await Promise.all([
+      db.query("contacts").eq("organizationId", args.organizationId).collect(),
+      loadLookups(args.organizationId),
+    ]);
 
     return contacts.map((c) => ({
       firstName: c.firstName,
@@ -34,7 +72,8 @@ export const exportContacts = action({
       phone: c.phone ?? "",
       title: c.title ?? "",
       source: c.source ?? "",
-      tags: ((c.tags as string[] | null) ?? []).join("; "),
+      tags: resolveTagIds(c.tagIds as string[] | null, c.tags as string[] | null, tagMap),
+      category: resolveCategoryId(c.categoryId as string | null, categoryMap),
       notes: c.notes ?? "",
       createdAt: new Date(c.createdAt as number).toISOString(),
     }));
@@ -47,10 +86,10 @@ export const exportCompanies = action({
     await requireOrgAdminAction(ctx, args.organizationId);
 
     const db = createSupabaseDb();
-    const companies = await db
-      .query("companies")
-      .eq("organizationId", args.organizationId)
-      .collect();
+    const [companies, { tagMap, categoryMap }] = await Promise.all([
+      db.query("companies").eq("organizationId", args.organizationId).collect(),
+      loadLookups(args.organizationId),
+    ]);
 
     return companies.map((c) => ({
       name: c.name,
@@ -64,7 +103,8 @@ export const exportCompanies = action({
       state: (c.address as { state?: string } | null)?.state ?? "",
       zip: (c.address as { zip?: string } | null)?.zip ?? "",
       country: (c.address as { country?: string } | null)?.country ?? "",
-      tags: ((c.tags as string[] | null) ?? []).join("; "),
+      tags: resolveTagIds(c.tagIds as string[] | null, c.tags as string[] | null, tagMap),
+      category: resolveCategoryId(c.categoryId as string | null, categoryMap),
       notes: c.notes ?? "",
       createdAt: new Date(c.createdAt as number).toISOString(),
     }));
@@ -77,10 +117,10 @@ export const exportLeads = action({
     await requireOrgAdminAction(ctx, args.organizationId);
 
     const db = createSupabaseDb();
-    const leads = await db
-      .query("leads")
-      .eq("organizationId", args.organizationId)
-      .collect();
+    const [leads, { tagMap, categoryMap }] = await Promise.all([
+      db.query("leads").eq("organizationId", args.organizationId).collect(),
+      loadLookups(args.organizationId),
+    ]);
 
     return leads.map((l) => ({
       title: l.title,
@@ -93,7 +133,8 @@ export const exportLeads = action({
         : "",
       source: l.source ?? "",
       notes: l.notes ?? "",
-      tags: ((l.tags as string[] | null) ?? []).join("; "),
+      tags: resolveTagIds(l.tagIds as string[] | null, l.tags as string[] | null, tagMap),
+      category: resolveCategoryId(l.categoryId as string | null, categoryMap),
       createdAt: new Date(l.createdAt as number).toISOString(),
     }));
   },
@@ -135,10 +176,10 @@ export const exportProducts = action({
     });
 
     const db = createSupabaseDb();
-    const products = await db
-      .query("products")
-      .eq("organizationId", args.organizationId)
-      .collect();
+    const [products, { tagMap, categoryMap }] = await Promise.all([
+      db.query("products").eq("organizationId", args.organizationId).collect(),
+      loadLookups(args.organizationId),
+    ]);
 
     return products.map((p) => ({
       name: p.name,
@@ -156,6 +197,8 @@ export const exportProducts = action({
       minStock: p.minStock != null ? p.minStock.toString() : "",
       stockNote: p.stockNote ?? "",
       productSection: p.productSection ?? "",
+      tags: resolveTagIds(p.tagIds as string[] | null, null, tagMap),
+      category: resolveCategoryId(p.categoryId as string | null, categoryMap),
       createdAt: new Date(p.createdAt).toISOString(),
     }));
   },

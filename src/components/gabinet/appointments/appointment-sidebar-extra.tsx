@@ -249,7 +249,14 @@ export function AppointmentSidebarExtra({
                       <span className="text-muted-foreground truncate">
                         {tu.treatmentName ?? "-"}
                       </span>
-                      <span className="tabular-nums text-muted-foreground shrink-0">
+                      <span
+                        className="tabular-nums text-muted-foreground shrink-0"
+                        title={t(
+                          "gabinet.packages.sidebarProgressTooltip",
+                          "Ukończone sesje: {{used}} z {{total}}",
+                          { used, total },
+                        )}
+                      >
                         {used} / {total}
                       </span>
                     </div>

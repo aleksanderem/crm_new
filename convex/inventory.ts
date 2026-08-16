@@ -158,6 +158,7 @@ interface ApplyMovementParams {
   unitPrice?: number | null;
   lotNumber?: string | null;
   expiryDate?: string | null;
+  treatmentId?: string | null;
   performedBy: string;
 }
 
@@ -258,6 +259,7 @@ export async function applyMovementInternal(
     ...(newAvgCost !== null ? { avgCostAfter: newAvgCost } : {}),
     ...(params.lotNumber ? { lotNumber: params.lotNumber } : {}),
     ...(params.expiryDate ? { expiryDate: params.expiryDate } : {}),
+    ...(params.treatmentId ? { treatmentId: params.treatmentId } : {}),
     performedBy: params.performedBy,
     createdAt: now,
   });

@@ -48,10 +48,10 @@ export const upsert = action({
     }
 
     // Check if account with same fromEmail already exists for this org
-    const accounts = await db.query("emailAccounts")
+    const existingAccount = await db.query("emailAccounts")
       .eq("organizationId", String(args.organizationId))
-      .collect();
-    const existingAccount = accounts.find((a: any) => a.fromEmail === args.fromEmail);
+      .eq("fromEmail", args.fromEmail)
+      .first();
 
     if (existingAccount) {
       await db.patch("emailAccounts", existingAccount._id as string, {

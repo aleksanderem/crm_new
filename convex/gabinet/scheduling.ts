@@ -1,7 +1,7 @@
 import { action, internalMutation, internalQuery } from "../_generated/server";
 import type { ActionCtx } from "../_generated/server";
 import { v } from "convex/values";
-import { Id } from "../_generated/dataModel";
+import { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import type { SupabaseDb } from "../_helpers/supabaseDb";
@@ -876,14 +876,14 @@ async function canApproveOrRejectLeave(
   if (globalRole === "admin") return true;
 
   // Not a manager in any capacity → deny immediately
-  if (globalRole !== "manager" && !approverLocations.some((lm) => lm.role === "manager")) {
+  if (globalRole !== "manager" && !approverLocations.some((lm: Doc<"gabinetLocationMemberships">) => lm.role === "manager")) {
     return false;
   }
 
   // Employee must have at least one location assignment for shared-location check
   if (employeeLocations.length === 0) return false;
 
-  const employeeLocationIds = new Set(employeeLocations.map((lm) => String(lm.locationId)));
+  const employeeLocationIds = new Set(employeeLocations.map((lm: Doc<"gabinetLocationMemberships">) => String(lm.locationId)));
 
   for (const approverLoc of approverLocations) {
     const effectiveRole = (approverLoc.role as string | undefined) ?? globalRole;

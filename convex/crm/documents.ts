@@ -6,8 +6,6 @@ import { verifyOrgAccess } from "../_helpers/auth";
 import { logActivity } from "../_helpers/activities";
 
 import { documentCategoryValidator, documentStatusValidator } from "@cvx/schema";
-import type { Id } from "../_generated/dataModel";
-
 // Dual-write refs removed — Supabase is primary for document writes
 
 export const create = action({
@@ -90,7 +88,7 @@ export const _createSideEffects = internalMutation({
       entityId: args.documentId,
       action: "document_uploaded",
       description: `Uploaded document "${args.name}"`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -171,7 +169,7 @@ export const _updateSideEffects = internalMutation({
       entityId: args.documentId,
       action: "updated",
       description: `Updated document "${args.name}"`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -245,7 +243,7 @@ export const _removeSideEffects = internalMutation({
       entityId: args.documentId,
       action: "deleted",
       description: `Deleted document "${args.name}"`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -327,7 +325,7 @@ export const _updateStatusSideEffects = internalMutation({
       action: "status_changed",
       description: `Changed document "${args.name}" status to "${args.newStatus}"`,
       metadata: { oldStatus: args.oldStatus, newStatus: args.newStatus },
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },

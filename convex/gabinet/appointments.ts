@@ -107,7 +107,7 @@ async function emitAutomationEvent(
     eventType: string;
     entityType?: string;
     entityId?: string;
-    actorUserId?: Id<"users">;
+    actorUserId?: string;
     correlationKey?: string;
     eventIdempotencyKey: string;
     payload: Record<string, unknown>;
@@ -134,7 +134,7 @@ async function applyAppointmentStatusChange(
     appointment: Doc<"gabinetAppointments">;
     organizationId: Id<"organizations">;
     nextStatus: Doc<"gabinetAppointments">["status"];
-    actorUserId: Id<"users">;
+    actorUserId: string;
     auditAction: string;
     auditDetails: string;
     activityDescription: string;
@@ -2553,7 +2553,7 @@ export const _updateStatusSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const actorUserId = args.actorUserId as Id<"users">;
+    const actorUserId = args.actorUserId;
 
     // Build a pseudo-appointment Doc for applyAppointmentStatusChange helper
     // We need to read the Convex appointment record for the side-effect helpers
@@ -2701,7 +2701,7 @@ export const applySmsReplyTransition = internalMutation({
       appointment: appointmentProxy,
       organizationId: args.organizationId,
       nextStatus: targetStatus,
-      actorUserId: appointment.employeeId as Id<"users">,
+      actorUserId: String(appointment.employeeId),
       auditAction: "status_changed_via_sms",
       auditDetails: JSON.stringify({
         oldStatus: appointment.status,
@@ -3088,7 +3088,7 @@ async function handleAppointmentCompletion(
     variantId?: Id<"gabinetTreatmentVariants">;
     packageUsageId?: Id<"gabinetPackageUsage">;
     priceAtBooking?: number;
-    userId: Id<"users">;
+    userId: string;
   },
 ) {
   const now = Date.now();

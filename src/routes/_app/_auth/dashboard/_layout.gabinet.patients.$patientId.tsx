@@ -523,6 +523,7 @@ function PatientDetail() {
     referralSource?: string | null;
     referredByPatientId?: string | null;
     preferredLocationId?: string | null;
+    smsConsent?: boolean | null;
     tagIds?: Id<"tagDefinitions">[];
     categoryId?: Id<"categoryDefinitions">;
   }) => {
@@ -1153,6 +1154,7 @@ function PatientDetail() {
               referralSource: patient.referralSource ?? undefined,
               referredByPatientId: patient.referredByPatientId ?? undefined,
               preferredLocationId: patient.preferredLocationId ?? undefined,
+              smsConsent: patient.smsConsent ?? undefined,
               tagIds: patient.tagIds as Id<"tagDefinitions">[] | undefined,
               categoryId: patient.categoryId as
                 | Id<"categoryDefinitions">

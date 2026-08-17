@@ -25,6 +25,7 @@ export interface MappedGabinetPatient {
   emergencyContactPhone?: string;
   referralSource?: string;
   referredByPatientId?: string;
+  smsConsent?: boolean;
   isActive: boolean;
   preferredLocationId?: string;
   tags?: string[];

@@ -2669,7 +2669,9 @@
           "referralSource": "Referral source"
         }
       },
-      "preferredLocation": "Preferred location"
+      "preferredLocation": "Preferred location",
+      "smsConsent": "SMS consent",
+      "smsConsentHint": "The patient has consented to receive appointment reminders and information via SMS to the provided phone number."
     },
     "treatments": {
       "title": "Treatments",

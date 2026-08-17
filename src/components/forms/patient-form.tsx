@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -57,6 +58,7 @@ interface PatientFormData {
   emergencyContactPhone?: string | null;
   referralSource?: string | null;
   preferredLocationId?: string | null;
+  smsConsent?: boolean | null;
   tagIds?: Id<"tagDefinitions">[];
   categoryId?: Id<"categoryDefinitions">;
 }
@@ -122,6 +124,7 @@ export function PatientForm({
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
   const [preferredLocationId, setPreferredLocationId] = useState<string>(initialData?.preferredLocationId ?? "");
+  const [smsConsent, setSmsConsent] = useState<boolean>(initialData?.smsConsent ?? false);
 
   const listCustomReferralSources = useAction(api.gabinet.patients.listCustomReferralSources);
 
@@ -196,6 +199,7 @@ export function PatientForm({
       emergencyContactPhone: emergencyContactPhone || null,
       referralSource,
       preferredLocationId: preferredLocationId || null,
+      smsConsent,
       tagIds: tagIds.length > 0 ? tagIds : undefined,
       categoryId: categoryId || undefined,
     });
@@ -423,6 +427,24 @@ export function PatientForm({
             minHeight="80px"
           />
         </div>
+      </div>
+
+      <div className="border-t pt-4">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <Checkbox
+            className="mt-0.5 h-5 w-5"
+            checked={smsConsent}
+            onCheckedChange={(checked) => setSmsConsent(checked === true)}
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium leading-none">
+              {t("gabinet.patients.smsConsent")}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {t("gabinet.patients.smsConsentHint")}
+            </span>
+          </span>
+        </label>
       </div>
 
       {tagDefinitions.length > 0 && (

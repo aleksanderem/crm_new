@@ -472,15 +472,13 @@ export function PatientForm({
             </SelectContent>
           </Select>
         </div>
-        {isEditMode && (
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.patients.bloodType")}</Label>
-            <Input
-              value={bloodType}
-              onChange={(e) => setBloodType(e.target.value)}
-            />
-          </div>
-        )}
+        <div className="space-y-1.5">
+          <Label>{t("gabinet.patients.bloodType")}</Label>
+          <Input
+            value={bloodType}
+            onChange={(e) => setBloodType(e.target.value)}
+          />
+        </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("gabinet.patients.allergies")}</Label>
           <Input

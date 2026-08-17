@@ -178,6 +178,17 @@ export async function autoGenerateAppointmentDocuments(
       const documentHasFormFields =
         isDocumentType && hasFormFields(JSON.parse(contentJson!));
 
+      // Fetch the patient before determining status — we need their email to
+      // decide whether we can create a deliverable pending_signature document.
+      const patient = await supabaseDb.get(
+        "gabinetPatients",
+        String(args.patientId),
+      );
+      const patientEmail = patient?.email as string | undefined;
+      const patientName = patient
+        ? `${patient.firstName as string}${patient.lastName ? " " + (patient.lastName as string) : ""}`
+        : undefined;
+
       let status: "draft" | "pending_signature";
       if (args.deferEmails) {
         // When deferring emails (after_completion flow), always start as "draft"
@@ -187,20 +198,29 @@ export async function autoGenerateAppointmentDocuments(
         // Two-step: patient fills form fields → then signs
         status = "draft";
       } else if (template.requiresSignature) {
-        status = "pending_signature";
+        // Without an email address we cannot deliver the signing link. Keep the
+        // document as draft so it stays visible without expiring and staff can
+        // resend once the patient's email is on file.
+        status = patientEmail ? "pending_signature" : "draft";
       } else {
         status = "draft";
       }
 
       // Generate signing token for any document that requires signature
-      // (including draft document-type templates — patient accesses via token to fill + sign)
+      // (including draft document-type templates — patient accesses via token to fill + sign).
+      // When the patient has no email, omit the expiry timestamp so the hourly
+      // expiry job does not mark this document as expired before the patient can
+      // be reached via an alternative channel and staff can resend.
       let signingToken: string | undefined;
       let signingTokenExpiresAt: number | undefined;
       if (template.requiresSignature) {
         const tokenBytes = new Uint8Array(32);
         crypto.getRandomValues(tokenBytes);
         signingToken = Array.from(tokenBytes).map(b => b.toString(16).padStart(2, "0")).join("");
-        signingTokenExpiresAt = now + 48 * 60 * 60 * 1000; // 48 hours
+        if (patientEmail) {
+          signingTokenExpiresAt = now + 48 * 60 * 60 * 1000; // 48 hours
+        }
+        // No expiry when there is no email — expiry starts when the first email is sent.
       }
 
       const insertPayload = {
@@ -250,32 +270,28 @@ export async function autoGenerateAppointmentDocuments(
       // Send signing email to patient if document requires signature
       // (skip when deferEmails is set — employee fills first, email sent after)
       if (template.requiresSignature && signingToken && !args.deferEmails) {
-        const patient = await supabaseDb.get(
-          "gabinetPatients",
-          String(args.patientId),
-        );
-        if (patient?.email) {
-          const patientName = `${patient.firstName}${patient.lastName ? " " + patient.lastName : ""}`;
+        if (patientEmail) {
           await ctx.scheduler.runAfter(
             0,
             internal.documents.signing.sendSigningEmailInternal,
             {
               documentId: docId as Id<"formDocuments">,
-              recipientEmail: patient.email,
+              recipientEmail: patientEmail,
               recipientName: patientName,
             },
           );
         } else {
-          // The signing action never runs (no recipient), so log the skip
-          // here via the scheduler so operators see the entry in
-          // /settings/mail → Logs. ctx.scheduler avoids the TS2589 depth
-          // blow-up that direct ctx.db.insert against the new table causes
-          // in this mutation.
+          // No email address — document was created as draft (not pending_signature)
+          // and the signing token has no expiry. Log the skip so operators see it in
+          // /settings/mail → Logs. Staff can resend once the patient's email is added.
+          // ctx.scheduler avoids the TS2589 depth blow-up that direct ctx.db.insert
+          // against the new table causes in this mutation.
           await ctx.scheduler.runAfter(0, internal.emailSendLog.record, {
             organizationId: args.organizationId,
             source: "auto_generate",
             status: "skipped",
-            errorMessage: "Patient has no email address on file",
+            errorMessage:
+              "Patient has no email address — document created as draft, token preserved for future delivery",
             recipientEmail: "",
             subject: `Signing email for "${template.name}"`,
             relatedEntityType: "formDocument",

@@ -71,6 +71,16 @@ import { AddPaymentDialog } from "@/components/gabinet/patients/add-payment-dial
 import { GdprEraseDialog } from "@/components/gabinet/patients/gdpr-erase-dialog";
 import { CancelPaymentDialog } from "@/components/gabinet/patients/cancel-payment-dialog";
 import { MergePatientsDialog } from "@/components/gabinet/merge-patients-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 function PatientDetailSkeleton() {
   return (
@@ -141,6 +151,7 @@ function PatientDetail() {
   const [gdprConfirmText, setGdprConfirmText] = useState("");
   const [isGdprSubmitting, setIsGdprSubmitting] = useState(false);
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   // Issue #1928: collapse the "Last appointments" overview card by default on
   // mobile so other sections (medical info, status tiles) aren't pushed below
   // the fold. On desktop (md+) the section stays expanded.
@@ -690,14 +701,16 @@ function PatientDetail() {
     }
   };
 
-  const handleDelete = async () => {
-    if (window.confirm(t("gabinet.patients.confirmDelete"))) {
-      await removePatient({ organizationId, patientId });
-      void queryClient.invalidateQueries({
-        queryKey: supabaseKeys.gabinetPatients.list(organizationId),
-      });
-      navigate({ to: "/dashboard/gabinet/patients" });
-    }
+  const handleDelete = () => {
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    await removePatient({ organizationId, patientId });
+    void queryClient.invalidateQueries({
+      queryKey: supabaseKeys.gabinetPatients.list(organizationId),
+    });
+    navigate({ to: "/dashboard/gabinet/patients" });
   };
 
   const handleGdprErase = async () => {
@@ -1279,6 +1292,26 @@ function PatientDetail() {
           }}
         />
       )}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("common.confirmDelete")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("gabinet.patients.confirmDelete")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

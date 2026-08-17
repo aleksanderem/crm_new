@@ -337,7 +337,7 @@ function GabinetCalendarPage() {
   // Fetch patients from Supabase (flat list, replaces paginated Convex query)
   const { data: patients } = useSupabaseGabinetPatientsList(
     organizationId,
-    { limit: 200 },
+    { limit: 200, activeOnly: true },
   );
   // Fetch treatments from Supabase (flat list, replaces paginated Convex query)
   const { data: treatments } = useSupabaseGabinetTreatmentsList(

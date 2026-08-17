@@ -104,7 +104,7 @@ function AddWaitlistDialog({
 
   const addToWaitlist = useAction(api.gabinet.waitlist.addToWaitlist);
 
-  const { data: patients } = useSupabaseGabinetPatientsList(organizationId);
+  const { data: patients } = useSupabaseGabinetPatientsList(organizationId, { activeOnly: true });
   const { data: treatments } = useSupabaseGabinetTreatmentsList(organizationId);
   const { data: employees } = useSupabaseGabinetEmployeesList(organizationId, { activeOnly: true });
 
@@ -430,7 +430,7 @@ export function WaitlistView({ organizationId }: WaitlistViewProps) {
     organizationId,
     { status: statusFilter === "all" ? undefined : statusFilter },
   );
-  const { data: patients = [] } = useSupabaseGabinetPatientsList(organizationId);
+  const { data: patients = [] } = useSupabaseGabinetPatientsList(organizationId, { activeOnly: true });
   const { data: treatments = [] } = useSupabaseGabinetTreatmentsList(organizationId);
   const { data: employees = [] } = useSupabaseGabinetEmployeesList(organizationId, { activeOnly: true });
 

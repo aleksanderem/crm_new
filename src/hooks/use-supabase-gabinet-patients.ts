@@ -19,6 +19,7 @@ interface UseSupabaseGabinetPatientsListOptions {
   limit?: number;
   search?: string;
   sortOrder?: "asc" | "desc";
+  activeOnly?: boolean;
 }
 
 export function useSupabaseGabinetPatientsList(
@@ -26,12 +27,13 @@ export function useSupabaseGabinetPatientsList(
   options: UseSupabaseGabinetPatientsListOptions = {},
 ) {
   const { client, isReady } = useSupabase();
-  const { enabled = true, limit, search, sortOrder = "desc" } = options;
+  const { enabled = true, limit, search, sortOrder = "desc", activeOnly = false } = options;
 
   return useQuery<MappedGabinetPatient[], Error>({
     queryKey: [
       ...supabaseKeys.gabinetPatients.list(organizationId),
       search ?? "",
+      activeOnly,
     ],
     queryFn: async (): Promise<MappedGabinetPatient[]> => {
       if (!client) throw new Error("Supabase client not ready");
@@ -40,6 +42,10 @@ export function useSupabaseGabinetPatientsList(
         .from("gabinet_patients")
         .select("*")
         .eq("organization_id", organizationId);
+
+      if (activeOnly) {
+        query = query.eq("is_active", true);
+      }
 
       if (search?.trim()) {
         // Each whitespace-separated token must match either first_name or

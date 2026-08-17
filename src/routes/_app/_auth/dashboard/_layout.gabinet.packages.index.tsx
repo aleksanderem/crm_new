@@ -264,7 +264,7 @@ function PackagesIndex() {
     organizationId,
     { isActive: true },
   );
-  const { data: patientsData } = useSupabaseGabinetPatientsList(organizationId);
+  const { data: patientsData } = useSupabaseGabinetPatientsList(organizationId, { activeOnly: true });
   const { data: unassignedUsagesData } =
     useSupabaseGabinetPackageUsageUnassigned(organizationId);
   const { data: activeUsagesData } =

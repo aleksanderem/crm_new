@@ -2668,7 +2668,9 @@
           "referralSource": "Źródło polecenia"
         }
       },
-      "preferredLocation": "Preferowana lokalizacja"
+      "preferredLocation": "Preferowana lokalizacja",
+      "smsConsent": "Zgoda na kontakt SMS",
+      "smsConsentHint": "Klient wyraził zgodę na wysyłanie przypomnień i informacji przez SMS na podany numer telefonu."
     },
     "treatments": {
       "title": "Zabiegi",

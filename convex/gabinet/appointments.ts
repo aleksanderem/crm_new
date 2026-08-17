@@ -214,6 +214,28 @@ async function applyAppointmentStatusChange(
     );
   }
 
+  if (args.nextStatus === "cancelled" || args.nextStatus === "no_show") {
+    try {
+      const voidDb = createSupabaseDb();
+      const linkedDocs = await voidDb
+        .query("formDocuments")
+        .eq("entityType", "appointment")
+        .eq("entityId", String(args.appointment._id))
+        .collect();
+      for (const doc of linkedDocs) {
+        const docRow = doc as Record<string, unknown>;
+        if (docRow.status === "pending_signature") {
+          await voidDb.patch("formDocuments", docRow._id as string, {
+            status: "voided",
+            updatedAt: now,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("[applyAppointmentStatusChange] formDocuments void failed (non-fatal):", e);
+    }
+  }
+
   if (args.nextStatus === "cancelled") {
     await ctx.scheduler.runAfter(
       0,
@@ -2894,6 +2916,28 @@ export const _cancelSideEffects = internalMutation({
     const appointmentId = args.appointmentId as Id<"gabinetAppointments">;
 
     // scheduledActivity patched in Supabase by the parent action.
+
+    // Void pending_signature formDocuments so patients can no longer sign via the link
+    try {
+      const voidDb = createSupabaseDb();
+      const linkedDocs = await voidDb
+        .query("formDocuments")
+        .eq("entityType", "appointment")
+        .eq("entityId", args.appointmentId)
+        .collect();
+      const nowMs = Date.now();
+      for (const doc of linkedDocs) {
+        const docRow = doc as Record<string, unknown>;
+        if (docRow.status === "pending_signature") {
+          await voidDb.patch("formDocuments", docRow._id as string, {
+            status: "voided",
+            updatedAt: nowMs,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("[_cancelSideEffects] formDocuments void failed (non-fatal):", e);
+    }
 
     // Cancel pending reminders
     await ctx.scheduler.runAfter(

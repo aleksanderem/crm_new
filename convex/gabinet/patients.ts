@@ -1067,6 +1067,16 @@ export const merge = action({
       });
     }
 
+    // Transfer the CRM contact link from source to target when the target has
+    // no linked contact. contactId is not a user-selectable override field, so
+    // this implicit fallback is the only place it gets propagated.
+    if (!target.contactId && source.contactId) {
+      await db.patch("gabinetPatients", args.targetPatientId, {
+        contactId: String(source.contactId),
+        updatedAt: Date.now(),
+      });
+    }
+
     // Soft-delete the source patient and annotate why it was deactivated.
     const now = Date.now();
     const sourceNotesPrefix = `[Merged into patient ${args.targetPatientId} at ${new Date(now).toISOString()}]`;

@@ -1596,6 +1596,8 @@
       "requiresSignature": "Requires Signature",
       "signatureMethodLabel": "Signature Method",
       "signerRoleLabel": "Signer Role",
+      "isOrgRequired": "Required for entire organization",
+      "isOrgRequiredHint": "The document will be automatically required for every client regardless of the selected treatment. Once signed, it will not be required again.",
       "variableBindingsTitle": "Variable Bindings",
       "variableBindingsDescription": "Map form variables to entity fields for auto-fill.",
       "colName": "Name",

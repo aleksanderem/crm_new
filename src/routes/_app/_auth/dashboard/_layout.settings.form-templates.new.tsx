@@ -116,6 +116,7 @@ function NewFormTemplatePage() {
   const [signatureMethod, setSignatureMethod] =
     useState<SignatureMethod>("click");
   const [signerRole, setSignerRole] = useState<SignerRole>("client");
+  const [isOrgRequired, setIsOrgRequired] = useState(false);
   const [contentJson, setContentJson] = useState("{}");
 
   const createTemplate = useAction(api.documents.templates.create);
@@ -198,6 +199,7 @@ function NewFormTemplatePage() {
         modules,
         entityTypes,
         requiresSignature,
+        isOrgRequired,
         ...(requiresSignature
           ? {
               signatureConfig: {
@@ -360,7 +362,7 @@ function NewFormTemplatePage() {
                 ))}
               </div>
 
-              {/* Signature */}
+              {/* Signature & org-required */}
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <Switch
@@ -424,6 +426,22 @@ function NewFormTemplatePage() {
                     </div>
                   </div>
                 )}
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      id="is-org-required"
+                      checked={isOrgRequired}
+                      onCheckedChange={setIsOrgRequired}
+                    />
+                    <Label htmlFor="is-org-required" className="font-normal">
+                      {t("settings.formTemplates.isOrgRequired")}
+                    </Label>
+                  </div>
+                  <p className="pl-10 text-xs text-muted-foreground">
+                    {t("settings.formTemplates.isOrgRequiredHint")}
+                  </p>
+                </div>
               </div>
             </div>
 

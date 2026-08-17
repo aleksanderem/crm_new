@@ -124,6 +124,7 @@ export const create = action({
       }),
     ),
     accessRoles: v.optional(v.array(v.string())),
+    isOrgRequired: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     // requireOrgAdmin via authAction
@@ -153,6 +154,7 @@ export const create = action({
       requiresSignature: args.requiresSignature,
       signatureConfig: args.signatureConfig ? JSON.stringify(args.signatureConfig) : null,
       accessRoles: args.accessRoles ?? null,
+      isOrgRequired: args.isOrgRequired ?? false,
       version: 1,
       isActive: true,
       createdBy: String(authResult.userId),
@@ -200,6 +202,7 @@ export const duplicate = action({
       requiresSignature: source.requiresSignature ?? false,
       signatureConfig: source.signatureConfig ? (typeof source.signatureConfig === "string" ? source.signatureConfig : JSON.stringify(source.signatureConfig)) : null,
       accessRoles: source.accessRoles ?? null,
+      isOrgRequired: false,
       version: 1,
       isActive: true,
       createdBy: String(authResult.userId),
@@ -246,6 +249,7 @@ export const update = action({
     ),
     isActive: v.optional(v.boolean()),
     accessRoles: v.optional(v.array(v.string())),
+    isOrgRequired: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runAction(

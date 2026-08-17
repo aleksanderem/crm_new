@@ -105,6 +105,8 @@ export const documentTables = {
     })),
     // Access control — which roles can use this template
     accessRoles: v.optional(v.array(v.string())),
+    // Organization-level required flag — template is mandatory for all appointments in this org
+    isOrgRequired: v.optional(v.boolean()),
     // Versioning
     version: v.number(),
     isActive: v.boolean(),

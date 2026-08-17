@@ -3483,7 +3483,7 @@ export const getFullDetail = action({
         .first(),
       db.get("users", employeeUserId).catch(() => null),
       db.query("formDocuments")
-        .eq("entityType", "gabinetAppointment")
+        .eq("entityType", "appointment")
         .eq("entityId", args.appointmentId)
         .collect(),
       db.query("payments")

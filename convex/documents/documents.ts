@@ -453,10 +453,12 @@ export const submitDocumentFormFields = action({
       responseObj.scopeData = scopeData;
     }
 
+    const now = Date.now();
     await db.patch("formDocuments", doc._id as string, {
       responseData: JSON.stringify(responseObj),
       status: "pending_signature",
-      updatedAt: Date.now(),
+      signingTokenExpiresAt: now + 48 * 60 * 60 * 1000,
+      updatedAt: now,
     });
     return doc._id as string;
   },

@@ -125,6 +125,81 @@ describe("documents.generate.generateDocument — scopeEntities", () => {
     expect(doc!.scopeEntities).toBeNull();
   });
 
+  test("downgrades status from pending_signature to draft when patient has no email", async () => {
+    const { t, organizationId, userId, identity, db, now, appointmentId } = await setup();
+
+    // Template that requires signature
+    const sigTemplateId = "tmpl-sig-uuid-001";
+    await db.insert("formTemplates", {
+      _id: sigTemplateId,
+      organizationId: String(organizationId),
+      name: "Signature Required Template",
+      category: "consent",
+      formJson: "{}",
+      modules: ["gabinet"],
+      entityTypes: ["appointment"],
+      requiresSignature: true,
+      version: 1,
+      isActive: true,
+      createdBy: String(userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Patient with no email
+    const patientId = "patient-no-email-001";
+    await db.insert("gabinetPatients", {
+      _id: patientId,
+      organizationId: String(organizationId),
+      firstName: "Jan",
+      lastName: "Kowalski",
+      // email intentionally omitted
+      createdBy: String(userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const noEmailApptId = "appt-no-email-001";
+    await db.insert("gabinetAppointments", {
+      _id: noEmailApptId,
+      organizationId: String(organizationId),
+      patientId,
+      treatmentId: null,
+      employeeId: String(userId),
+      date: "2026-07-09",
+      startTime: "11:00",
+      endTime: "11:30",
+      status: "scheduled",
+      isRecurring: false,
+      createdBy: String(userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const result = await t.withIdentity(identity).action(
+      api.documents.generate.generateDocument,
+      {
+        organizationId,
+        templateId: sigTemplateId,
+        entityType: "appointment",
+        entityId: noEmailApptId,
+        responseData: JSON.stringify({ formFieldValues: {} }),
+      },
+    );
+
+    // Status must be "draft", not "pending_signature", because there is no
+    // email to deliver the signing link.
+    expect(result.status).toBe("draft");
+
+    const doc = await db.get("formDocuments", result.documentId);
+    expect(doc).not.toBeNull();
+    expect(doc!.status).toBe("draft");
+    // Signing token is still generated so staff can resend once email is added
+    expect(doc!.signingToken).toBeTruthy();
+    // No expiry when there is no email
+    expect(doc!.signingTokenExpiresAt).toBeNull();
+  });
+
   test("leaves scopeEntities null for non-appointment entityType", async () => {
     const { t, organizationId, identity, db, templateId, patientId } = await setup();
 

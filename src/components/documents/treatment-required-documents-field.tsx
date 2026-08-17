@@ -23,6 +23,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FileText, Plus, X, Search } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
@@ -48,6 +49,7 @@ export type RequiredFormTemplateTiming =
 export interface RequiredFormTemplateValue {
   templateId: Id<"formTemplates">;
   timing: RequiredFormTemplateTiming;
+  isOneTime?: boolean;
 }
 
 interface FormTemplate {
@@ -75,6 +77,7 @@ export function TreatmentRequiredDocumentsField({
     useState<Id<"formTemplates"> | null>(null);
   const [selectedTiming, setSelectedTiming] =
     useState<RequiredFormTemplateTiming>("before_start");
+  const [selectedIsOneTime, setSelectedIsOneTime] = useState(false);
 
   const listTemplatesByEntityType = useAction(api.documents.templates.listByEntityType);
   const { data: allTemplatesRaw, isLoading: templatesLoading } = useQuery({
@@ -104,11 +107,16 @@ export function TreatmentRequiredDocumentsField({
     if (!selectedTemplateId) return;
     onChange([
       ...value,
-      { templateId: selectedTemplateId, timing: selectedTiming },
+      {
+        templateId: selectedTemplateId,
+        timing: selectedTiming,
+        isOneTime: selectedIsOneTime || undefined,
+      },
     ]);
     setAddDialogOpen(false);
     setSelectedTemplateId(null);
     setSearch("");
+    setSelectedIsOneTime(false);
   };
 
   const handleRemove = (templateId: Id<"formTemplates">) => {
@@ -160,6 +168,14 @@ export function TreatmentRequiredDocumentsField({
                       }
                       t={t}
                     />
+                    {req.isOneTime && (
+                      <Badge
+                        variant="outline"
+                        className="text-xs bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800"
+                      >
+                        {t("documents.requiredDocs.oneTime", "Jednorazowy")}
+                      </Badge>
+                    )}
                     <Button
                       type="button"
                       variant="ghost"
@@ -306,6 +322,20 @@ export function TreatmentRequiredDocumentsField({
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <Checkbox
+                id="isOneTime"
+                checked={selectedIsOneTime}
+                onCheckedChange={(checked) => setSelectedIsOneTime(!!checked)}
+              />
+              <label htmlFor="isOneTime" className="text-sm cursor-pointer">
+                {t(
+                  "documents.requiredDocs.isOneTime",
+                  "Jednorazowy — wypełniany tylko raz na pacjenta",
+                )}
+              </label>
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 mt-2">
@@ -316,6 +346,7 @@ export function TreatmentRequiredDocumentsField({
                 setAddDialogOpen(false);
                 setSelectedTemplateId(null);
                 setSearch("");
+                setSelectedIsOneTime(false);
               }}
             >
               {t("common.cancel", "Anuluj")}

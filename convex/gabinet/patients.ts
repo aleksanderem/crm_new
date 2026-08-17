@@ -252,6 +252,55 @@ export const searchUnlinkedContacts = action({
   },
 });
 
+export const searchPatients = action({
+  args: {
+    organizationId: v.string(),
+    search: v.string(),
+    excludePatientId: v.optional(v.string()),
+  },
+  handler: async (ctx, args): Promise<Array<{
+    _id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  }>> => {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+    const perm = await ctx.runAction(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_patients",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
+    if (!perm.allowed) return [];
+
+    if (!args.search.trim()) return [];
+    const term = args.search.trim();
+
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+    const pattern = `%${term}%`;
+
+    const matched = (await db
+      .query("gabinetPatients")
+      .eq("organizationId", orgIdStr)
+      .eq("isActive", true)
+      .or(`first_name.ilike.${pattern},last_name.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern}`)
+      .take(10)
+      .collect()) as Array<Record<string, unknown>>;
+
+    return matched
+      .filter((p) => !args.excludePatientId || String(p.id ?? p._id) !== args.excludePatientId)
+      .map((p) => ({
+        _id: String(p.id ?? p._id),
+        firstName: String(p.firstName ?? ""),
+        lastName: String(p.lastName ?? ""),
+        email: String(p.email ?? ""),
+      }));
+  },
+});
+
 function normalizePhone(phone: string | null | undefined): string | null {
   if (!phone) return null;
   const digits = phone.replace(/\D/g, "");

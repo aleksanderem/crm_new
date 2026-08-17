@@ -500,6 +500,7 @@ function PatientsIndex() {
       emergencyContactName?: string | null;
       emergencyContactPhone?: string | null;
       referralSource?: string | null;
+      referredByPatientId?: string | null;
       preferredLocationId?: string | null;
       smsConsent?: boolean | null;
       tagIds?: Id<"tagDefinitions">[];

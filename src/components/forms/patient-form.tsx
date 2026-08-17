@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAction } from "convex/react";
+import { useSupabaseGabinetPatient } from "@/hooks/use-supabase-gabinet-patients";
 import { api } from "@cvx/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -59,6 +60,7 @@ interface PatientFormData {
   emergencyContactName?: string | null;
   emergencyContactPhone?: string | null;
   referralSource?: string | null;
+  referredByPatientId?: string | null;
   preferredLocationId?: string | null;
   smsConsent?: boolean | null;
   tagIds?: Id<"tagDefinitions">[];
@@ -136,8 +138,23 @@ export function PatientForm({
   const [contactDropdownOpen, setContactDropdownOpen] = useState(false);
   const contactSearchRef = useRef<HTMLDivElement>(null);
 
+  const [referredByPatientId, setReferredByPatientId] = useState<string | null>(initialData?.referredByPatientId ?? null);
+  const [referredByPatientLabel, setReferredByPatientLabel] = useState<string | null>(null);
+  const [referralPatientQuery, setReferralPatientQuery] = useState("");
+  const [referralPatientResults, setReferralPatientResults] = useState<Array<{ _id: string; firstName: string; lastName: string; email: string }>>([]);
+  const [isSearchingReferralPatient, setIsSearchingReferralPatient] = useState(false);
+  const [referralPatientDropdownOpen, setReferralPatientDropdownOpen] = useState(false);
+  const referralPatientSearchRef = useRef<HTMLDivElement>(null);
+
   const searchUnlinkedContacts = useAction(api.gabinet.patients.searchUnlinkedContacts);
   const listCustomReferralSources = useAction(api.gabinet.patients.listCustomReferralSources);
+  const searchPatientsAction = useAction(api.gabinet.patients.searchPatients);
+
+  const orgIdString = organizationId ? String(organizationId) : "";
+  const { data: referredByPatientData } = useSupabaseGabinetPatient(
+    orgIdString,
+    referredByPatientId ?? undefined,
+  );
 
   useEffect(() => {
     if (!organizationId) return;
@@ -192,10 +209,49 @@ export function PatientForm({
       if (contactSearchRef.current && !contactSearchRef.current.contains(e.target as Node)) {
         setContactDropdownOpen(false);
       }
+      if (referralPatientSearchRef.current && !referralPatientSearchRef.current.contains(e.target as Node)) {
+        setReferralPatientDropdownOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (referredByPatientData) {
+      setReferredByPatientLabel(
+        `${referredByPatientData.firstName} ${referredByPatientData.lastName}${referredByPatientData.email ? ` (${referredByPatientData.email})` : ""}`,
+      );
+    }
+  }, [referredByPatientData]);
+
+  useEffect(() => {
+    if (!organizationId || !referralPatientQuery.trim()) {
+      setReferralPatientResults([]);
+      setReferralPatientDropdownOpen(false);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      setIsSearchingReferralPatient(true);
+      searchPatientsAction({ organizationId: String(organizationId), search: referralPatientQuery })
+        .then((results) => {
+          if (cancelled) return;
+          setReferralPatientResults(results);
+          setReferralPatientDropdownOpen(results.length > 0);
+        })
+        .catch(() => {
+          if (!cancelled) setReferralPatientResults([]);
+        })
+        .finally(() => {
+          if (!cancelled) setIsSearchingReferralPatient(false);
+        });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [organizationId, referralPatientQuery, searchPatientsAction]);
 
   const handleSelectContact = (contact: { _id: string; firstName: string; lastName: string; email: string; phone: string }) => {
     setSelectedContactId(contact._id);
@@ -214,6 +270,21 @@ export function PatientForm({
     setContactQuery("");
     setContactResults([]);
     setContactDropdownOpen(false);
+  };
+
+  const handleSelectReferralPatient = (patient: { _id: string; firstName: string; lastName: string; email: string }) => {
+    setReferredByPatientId(patient._id);
+    setReferredByPatientLabel(`${patient.firstName} ${patient.lastName}${patient.email ? ` (${patient.email})` : ""}`);
+    setReferralPatientQuery("");
+    setReferralPatientDropdownOpen(false);
+  };
+
+  const handleClearReferralPatient = () => {
+    setReferredByPatientId(null);
+    setReferredByPatientLabel(null);
+    setReferralPatientQuery("");
+    setReferralPatientResults([]);
+    setReferralPatientDropdownOpen(false);
   };
 
   const handleReferralSourceChange = (value: string) => {
@@ -267,6 +338,7 @@ export function PatientForm({
       emergencyContactName: emergencyContactName || null,
       emergencyContactPhone: emergencyContactPhone || null,
       referralSource,
+      referredByPatientId: referredByPatientId || null,
       preferredLocationId: preferredLocationId || null,
       smsConsent,
       tagIds: tagIds.length > 0 ? tagIds : undefined,
@@ -524,6 +596,53 @@ export function PatientForm({
               >
                 {t("common.cancel")}
               </Button>
+            </div>
+          )}
+        </div>
+        <div className="space-y-1.5" ref={referralPatientSearchRef}>
+          <Label>{t("gabinet.patients.referredByPatient", { defaultValue: "Polecony przez pacjenta" })}</Label>
+          {referredByPatientId && referredByPatientLabel ? (
+            <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 text-sm">
+              <span className="flex-1 truncate">{referredByPatientLabel}</span>
+              <button
+                type="button"
+                onClick={handleClearReferralPatient}
+                className="shrink-0 text-muted-foreground hover:text-foreground"
+                aria-label={t("common.clear", { defaultValue: "Wyczyść" })}
+              >
+                <X className="h-4 w-4" variant="stroke" />
+              </button>
+            </div>
+          ) : (
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" variant="stroke" />
+              <Input
+                value={referralPatientQuery}
+                onChange={(e) => setReferralPatientQuery(e.target.value)}
+                placeholder={t("gabinet.patients.referredByPatientPlaceholder", { defaultValue: "Szukaj pacjenta..." })}
+                className="pl-8"
+              />
+              {isSearchingReferralPatient && (
+                <span className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-foreground" />
+              )}
+              {referralPatientDropdownOpen && referralPatientResults.length > 0 && (
+                <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md">
+                  <ul className="max-h-48 overflow-y-auto py-1 text-sm">
+                    {referralPatientResults.map((patient) => (
+                      <li key={patient._id}>
+                        <button
+                          type="button"
+                          className="w-full px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground"
+                          onClick={() => handleSelectReferralPatient(patient)}
+                        >
+                          <span className="font-medium">{patient.firstName} {patient.lastName}</span>
+                          {patient.email && <span className="ml-2 text-muted-foreground">{patient.email}</span>}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </div>

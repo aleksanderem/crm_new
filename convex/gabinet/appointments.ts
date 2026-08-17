@@ -917,8 +917,30 @@ export const _createSideEffects = internalMutation({
       deferEmails: true,
     });
 
-    // --- 4. Calendar events for recurring appointments already written to Supabase by the action ---
+    // Generate documents for each recurring occurrence (same treatment/patient,
+    // per-occurrence appointmentId so the document gate can check them individually).
     const recurringAppointments = args.recurringAppointments ?? [];
+    for (const recur of recurringAppointments) {
+      await autoGenerateAppointmentDocuments(ctx, {
+        organizationId: args.organizationId,
+        appointmentId: recur.appointmentId as Id<"gabinetAppointments">,
+        treatmentId: args.treatmentId as Id<"gabinetTreatments">,
+        patientId: args.patientId as Id<"gabinetPatients">,
+        createdBy: createdByUserId,
+        timing: "before_start",
+      });
+      await autoGenerateAppointmentDocuments(ctx, {
+        organizationId: args.organizationId,
+        appointmentId: recur.appointmentId as Id<"gabinetAppointments">,
+        treatmentId: args.treatmentId as Id<"gabinetTreatments">,
+        patientId: args.patientId as Id<"gabinetPatients">,
+        createdBy: createdByUserId,
+        timing: "during_visit",
+        deferEmails: true,
+      });
+    }
+
+    // --- 4. Calendar events for recurring appointments already written to Supabase by the action ---
     const recurActivityIds = args.recurActivityIds;
 
     // --- 5. Log activity ---

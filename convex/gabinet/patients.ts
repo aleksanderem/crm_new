@@ -858,6 +858,7 @@ export const merge = action({
     movedSmsEvents: number;
     movedReferrals: number;
     movedBookedBy: number;
+    movedEmails: number;
     consolidatedLoyaltyBalance: number;
   }> => {
     if (args.targetPatientId === args.sourcePatientId) {
@@ -944,6 +945,7 @@ export const merge = action({
       "gabinet_patients",
       "referred_by_patient_id",
     );
+    const movedEmails = await reassignByColumn("emails", "patient_id");
 
     // Polymorphic reassignment: activities/notes/object_relationships scope by
     // entity_type so we filter on both the type discriminator and the patient id.
@@ -1122,6 +1124,7 @@ export const merge = action({
       movedSmsEvents,
       movedReferrals,
       movedBookedBy,
+      movedEmails,
       consolidatedLoyaltyBalance,
     };
   },

@@ -843,8 +843,6 @@ export const _createSideEffects = internalMutation({
     const now = args.createdAt;
     const createdByUserId = args.createdBy;
 
-    const scheduledActivityId = args.scheduledActivityId;
-
     // --- 2. Emit automation event ---
     await emitAutomationEvent(ctx, {
       organizationId: args.organizationId,
@@ -1027,7 +1025,7 @@ export const _createSideEffects = internalMutation({
       }
     }
 
-    return { scheduledActivityId, recurActivityIds };
+    return { scheduledActivityId: args.scheduledActivityId, recurActivityIds };
   },
 });
 

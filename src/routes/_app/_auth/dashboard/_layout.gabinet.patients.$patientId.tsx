@@ -496,6 +496,7 @@ function PatientDetail() {
     emergencyContactName?: string | null;
     emergencyContactPhone?: string | null;
     referralSource?: string | null;
+    referredByPatientId?: string | null;
     preferredLocationId?: string | null;
     tagIds?: Id<"tagDefinitions">[];
     categoryId?: Id<"categoryDefinitions">;
@@ -1125,6 +1126,7 @@ function PatientDetail() {
               emergencyContactName: patient.emergencyContactName ?? undefined,
               emergencyContactPhone: patient.emergencyContactPhone ?? undefined,
               referralSource: patient.referralSource ?? undefined,
+              referredByPatientId: patient.referredByPatientId ?? undefined,
               preferredLocationId: patient.preferredLocationId ?? undefined,
               tagIds: patient.tagIds as Id<"tagDefinitions">[] | undefined,
               categoryId: patient.categoryId as

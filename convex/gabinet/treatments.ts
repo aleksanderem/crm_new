@@ -1285,6 +1285,7 @@ export const getRequiredFormTemplates = action({
   handler: async (ctx, args): Promise<Array<{
     templateId: string;
     timing: "before_start" | "during_visit" | "after_completion";
+    isOneTime: boolean;
     templateName: string;
     templateCategory: string;
     requiresSignature: boolean;

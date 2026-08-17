@@ -512,17 +512,11 @@ export const submitEmployeeFormFields = action({
       responseObj.scopeData = scopeData;
     }
 
-    await db.patch("formDocuments", args.documentId, {
-      responseData: JSON.stringify(responseObj),
-      status: "pending_signature",
-      updatedAt: Date.now(),
-    });
-
-    // Send signing email to patient — resolve recipient via Supabase
-    // (entity IDs are Supabase UUIDs, not Convex IDs, so ctx.db.get won't work)
+    // Resolve the signing recipient before patching — we need to know whether
+    // we can deliver the email to decide the correct target status.
+    let recipientEmail: string | undefined;
+    let recipientName: string | undefined;
     if (doc.signingToken) {
-      let recipientEmail: string | undefined;
-      let recipientName: string | undefined;
       const entityType = doc.entityType as string | undefined;
       const entityId = doc.entityId as string | undefined;
 
@@ -547,18 +541,38 @@ export const submitEmployeeFormFields = action({
           recipientName = [p.firstName, p.lastName].filter(Boolean).join(" ") || undefined;
         }
       }
+    }
 
-      if (recipientEmail) {
-        await ctx.scheduler.runAfter(
-          0,
-          internal.documents.signing.sendSigningEmailInternal,
-          {
-            documentId: args.documentId as Id<"formDocuments">,
-            recipientEmail,
-            recipientName,
-          },
-        );
-      }
+    // Without an email address we cannot deliver the signing link. Keep the
+    // document as draft so it stays visible to staff without expiring, and
+    // clear signingTokenExpiresAt so the hourly expiry job doesn't fire before
+    // the patient can be reached. When staff later adds an email and clicks
+    // "Wyślij ponownie", resendSigningEmail sets the 48-hour window from that
+    // moment and the flow continues normally.
+    const nextStatus: "draft" | "pending_signature" =
+      doc.signingToken && !recipientEmail ? "draft" : "pending_signature";
+
+    const patchPayload: Record<string, unknown> = {
+      responseData: JSON.stringify(responseObj),
+      status: nextStatus,
+      updatedAt: Date.now(),
+    };
+    if (doc.signingToken && !recipientEmail) {
+      patchPayload.signingTokenExpiresAt = null;
+    }
+
+    await db.patch("formDocuments", args.documentId, patchPayload);
+
+    if (recipientEmail) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.documents.signing.sendSigningEmailInternal,
+        {
+          documentId: args.documentId as Id<"formDocuments">,
+          recipientEmail,
+          recipientName,
+        },
+      );
     }
 
     return args.documentId;

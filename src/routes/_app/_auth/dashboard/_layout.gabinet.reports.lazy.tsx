@@ -1405,7 +1405,7 @@ function GabinetReports() {
     useSupabaseGabinetTreatmentsList(organizationId);
 
   const { data: patients, isLoading: loadingPatients } =
-    useSupabaseGabinetPatientsList(organizationId, { limit: 500 });
+    useSupabaseGabinetPatientsList(organizationId, { limit: 500, activeOnly: true });
 
   const { data: employees, isLoading: loadingEmployees } =
     useSupabaseGabinetEmployeesList(organizationId, { activeOnly: true });

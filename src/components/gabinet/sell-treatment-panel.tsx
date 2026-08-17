@@ -45,7 +45,7 @@ export function SellTreatmentPanel({
   const purchaseTreatment = useAction(api.gabinet.packages.purchaseTreatment);
   const createPayment = useAction(api.payments.create);
 
-  const { data: patientsData } = useSupabaseGabinetPatientsList(organizationId);
+  const { data: patientsData } = useSupabaseGabinetPatientsList(organizationId, { activeOnly: true });
   const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId, { isActive: true });
   const { data: employeesData } = useSupabaseGabinetEmployeesList(String(organizationId), { activeOnly: true });
 

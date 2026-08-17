@@ -51,7 +51,7 @@ export function SellPackagePanel({
     queryFn: () => listActivePackages({ organizationId }),
     enabled: !!organizationId,
   });
-  const { data: patientsData } = useSupabaseGabinetPatientsList(organizationId);
+  const { data: patientsData } = useSupabaseGabinetPatientsList(organizationId, { activeOnly: true });
   const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId);
   const { data: employeesData } = useSupabaseGabinetEmployeesList(String(organizationId), { activeOnly: true });
 

@@ -223,7 +223,7 @@ function GabinetDocumentsPage() {
     return map;
   }, [members]);
 
-  const { data: patients } = useSupabaseGabinetPatientsList(organizationId);
+  const { data: patients } = useSupabaseGabinetPatientsList(organizationId, { activeOnly: true });
   const patientMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const p of patients ?? []) {

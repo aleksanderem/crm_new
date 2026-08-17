@@ -511,6 +511,9 @@ function PatientsIndex() {
           organizationId,
           ...formData,
         });
+        void queryClient.invalidateQueries({
+          queryKey: supabaseKeys.gabinetPatients.list(organizationId),
+        });
         setPanelOpen(false);
       } catch (e) {
         const inner = extractActionErrorMessage(e);
@@ -532,7 +535,7 @@ function PatientsIndex() {
         setIsCreating(false);
       }
     },
-    [createPatient, organizationId, t],
+    [createPatient, organizationId, queryClient, t],
   );
 
   const handleBulkAction = useCallback(

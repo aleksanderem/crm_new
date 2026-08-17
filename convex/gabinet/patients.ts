@@ -931,6 +931,7 @@ export const merge = action({
       "patient_id",
     );
     const movedPayments = await reassignByColumn("payments", "patient_id");
+    const movedReceipts = await reassignByColumn("gabinet_receipts", "patient_id");
     const movedPortalSessions = await reassignByColumn(
       "gabinet_portal_sessions",
       "patient_id",
@@ -1113,6 +1114,7 @@ export const merge = action({
       movedPackageUsage,
       movedLoyaltyTransactions,
       movedPayments,
+      movedReceipts,
       movedNotes,
       movedActivities,
       movedRelationships,

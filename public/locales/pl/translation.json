@@ -1596,6 +1596,8 @@
       "requiresSignature": "Wymaga podpisu",
       "signatureMethodLabel": "Metoda podpisu",
       "signerRoleLabel": "Rola podpisującego",
+      "isOrgRequired": "Wymagany dla całej organizacji",
+      "isOrgRequiredHint": "Dokument będzie automatycznie wymagany dla każdego klienta niezależnie od wybranego zabiegu. Po podpisaniu nie będzie wymagany ponownie.",
       "variableBindingsTitle": "Powiązania zmiennych",
       "variableBindingsDescription": "Przypisz zmienne formularza do pól podmiotu w celu automatycznego uzupełniania.",
       "colName": "Nazwa",

@@ -798,7 +798,7 @@ export const _getOrgSettings = internalAction({
   },
 });
 
-export const _checkDocumentGateQuery = internalQuery({
+export const _checkDocumentGateAction = internalAction({
   args: {
     appointmentId: v.string(),
     timing: v.union(
@@ -2301,8 +2301,8 @@ export const updateStatus = action({
     // Document gate: check required documents before status transitions
     if (!args.forceSkipDocumentGate) {
       if (args.status === "in_progress") {
-        const gate = await ctx.runQuery(
-          internal.gabinet.appointments._checkDocumentGateQuery,
+        const gate = await ctx.runAction(
+          internal.gabinet.appointments._checkDocumentGateAction,
           { appointmentId: args.appointmentId, timing: "before_start" },
         ) as { canProceed: boolean; missing: Array<{ title: string }> };
         if (!gate.canProceed) {
@@ -2312,8 +2312,8 @@ export const updateStatus = action({
           );
         }
       } else if (args.status === "completed") {
-        const gate = await ctx.runQuery(
-          internal.gabinet.appointments._checkDocumentGateQuery,
+        const gate = await ctx.runAction(
+          internal.gabinet.appointments._checkDocumentGateAction,
           { appointmentId: args.appointmentId, timing: "during_visit" },
         ) as { canProceed: boolean; missing: Array<{ title: string }> };
         if (!gate.canProceed) {

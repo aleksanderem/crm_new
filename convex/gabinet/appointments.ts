@@ -1990,7 +1990,9 @@ export const update = action({
           previousEmployeeId: appt.employeeId as string,
           scheduledActivityId: (appt.scheduledActivityId as string) ?? undefined,
           patientId: appt.patientId as string,
-          treatmentId: args.treatmentId ?? updateJunctionRows[0]?.treatmentId,
+          treatmentId: updatesTreatmentList !== null
+            ? updatesTreatmentList[0].treatmentId
+            : (args.treatmentId ?? updateJunctionRows[0]?.treatmentId),
           createdBy: appt.createdBy as string,
           // New values
           newDate: newDate,
@@ -2000,6 +2002,7 @@ export const update = action({
           newStatus: status ?? (appt.status as string),
           dateChanged: !!(args.date || args.startTime || args.endTime),
           employeeChanged: !!args.employeeId,
+          treatmentChanged: updatesTreatmentList !== null,
           updatedFields: Object.keys(updates),
           updatedAt: now,
           actorLabel: authResult.userName ?? authResult.userEmail,
@@ -2052,6 +2055,7 @@ export const _updateSideEffects = internalMutation({
     newStatus: v.string(),
     dateChanged: v.boolean(),
     employeeChanged: v.boolean(),
+    treatmentChanged: v.optional(v.boolean()),
     updatedFields: v.array(v.string()),
     updatedAt: v.number(),
     actorLabel: v.optional(v.string()),
@@ -2176,6 +2180,31 @@ export const _updateSideEffects = internalMutation({
           createdBy: args.createdBy,
           updatedFields: args.updatedFields,
         },
+      });
+    }
+
+    // When the treatment changes, generate documents for the new treatment's
+    // required form templates (mirrors the create flow's before_start +
+    // during_visit calls). The skip-if-exists guard inside
+    // autoGenerateAppointmentDocuments prevents duplicates for templates the
+    // appointment already has documents for.
+    if (args.treatmentChanged && args.treatmentId && args.patientId) {
+      await autoGenerateAppointmentDocuments(ctx, {
+        organizationId: args.organizationId as Id<"organizations">,
+        appointmentId: args.appointmentId as Id<"gabinetAppointments">,
+        treatmentId: args.treatmentId as Id<"gabinetTreatments">,
+        patientId: args.patientId as Id<"gabinetPatients">,
+        createdBy: actorUserId,
+        timing: "before_start",
+      });
+      await autoGenerateAppointmentDocuments(ctx, {
+        organizationId: args.organizationId as Id<"organizations">,
+        appointmentId: args.appointmentId as Id<"gabinetAppointments">,
+        treatmentId: args.treatmentId as Id<"gabinetTreatments">,
+        patientId: args.patientId as Id<"gabinetPatients">,
+        createdBy: actorUserId,
+        timing: "during_visit",
+        deferEmails: true,
       });
     }
   },

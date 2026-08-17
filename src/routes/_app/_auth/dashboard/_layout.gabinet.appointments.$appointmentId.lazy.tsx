@@ -632,7 +632,7 @@ function AppointmentDetail() {
     return endMinutes - startMinutes;
   };
 
-  const performStatusChange = async (newStatus: string) => {
+  const performStatusChange = async (newStatus: string, forceSkip = false) => {
     setIsUpdating(true);
     try {
       const result = await updateStatus({
@@ -646,6 +646,7 @@ function AppointmentDetail() {
           | "cancelled"
           | "no_show"
           | "pending_confirmation",
+        ...(forceSkip && { forceSkipDocumentGate: true }),
       });
       toast.success(t("gabinet.appointments.statusUpdated"));
       if (result?.warnings && result.warnings.length > 0) {
@@ -1357,7 +1358,7 @@ function AppointmentDetail() {
         organizationId={organizationId}
         timing={gateTiming}
         targetStatus={gateTargetStatus}
-        onProceed={() => performStatusChange(gateTargetStatus)}
+        onProceed={() => performStatusChange(gateTargetStatus, true)}
         onFillDocument={(_docId) => {
           // Navigate to the documents tab — the user can click the document there
           // For now, we just close the dialog so they can use the documents tab

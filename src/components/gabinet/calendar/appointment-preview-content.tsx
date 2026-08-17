@@ -581,7 +581,7 @@ export function AppointmentPreviewContent({
     }
   };
 
-  const performStatusChange = async (newStatus: AppointmentStatus) => {
+  const performStatusChange = async (newStatus: AppointmentStatus, forceSkip = false) => {
     if (savingStatus) return;
     const previous = status;
     setStatus(newStatus);
@@ -591,6 +591,7 @@ export function AppointmentPreviewContent({
         organizationId,
         appointmentId: appointment._id,
         status: newStatus,
+        ...(forceSkip && { forceSkipDocumentGate: true }),
       });
       await Promise.all([
         queryClient.invalidateQueries({
@@ -1713,7 +1714,7 @@ export function AppointmentPreviewContent({
         organizationId={organizationId}
         timing={gateTiming}
         targetStatus={gateTargetStatus}
-        onProceed={() => performStatusChange(gateTargetStatus)}
+        onProceed={() => performStatusChange(gateTargetStatus, true)}
         onFillDocument={() => setGateDialogOpen(false)}
       />
 

@@ -516,6 +516,7 @@ function PatientsIndex() {
           queryKey: supabaseKeys.gabinetPatients.list(organizationId),
         });
         setPanelOpen(false);
+        toast.success(t("gabinet.patients.created", { defaultValue: "Klient utworzony" }));
       } catch (e) {
         const inner = extractActionErrorMessage(e);
         if (/duplicate patient detected/i.test(inner)) {

@@ -142,7 +142,7 @@ export async function autoGenerateAppointmentDocuments(
             .eq("templateId", String(entry.templateId))
             .eq("organizationId", String(args.organizationId))
             .eq("entityType", "appointment")
-            .eq("status", "signed")
+            .in("status", ["signed", "completed"])
             .in("entityId", appointmentIds)
             .first();
           if (alreadySigned) continue;

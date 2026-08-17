@@ -551,7 +551,74 @@ export const bookFromPortal = action({
       updatedAt: now,
     });
 
-    // Delegate notifications to internalMutation
+    // Create calendar entry (scheduledActivity) so the appointment appears on
+    // the employee calendar and satisfies the scheduledActivityId arg in
+    // _createSideEffects.
+    const calendarTitle = `${treatment.name as string} — ${patientName}`;
+    const dueDateMs = new Date(`${args.preferredDate}T${args.preferredTime}:00`).getTime();
+    const endDateMs = new Date(`${args.preferredDate}T${endTime}:00`).getTime();
+    let scheduledActivityId = "";
+    try {
+      scheduledActivityId = await db.insert("scheduledActivities", {
+        organizationId: String(organizationId),
+        title: calendarTitle,
+        activityType: "gabinet:appointment",
+        dueDate: dueDateMs,
+        endDate: endDateMs,
+        isCompleted: false,
+        ownerId: ownerUserId,
+        description: `Rezerwacja online — ${patientName}`,
+        linkedEntityType: "gabinetAppointment",
+        linkedEntityId: appointmentId,
+        moduleRef: {
+          moduleId: "gabinet",
+          entityType: "gabinetAppointment",
+          entityId: appointmentId,
+        },
+        resourceId: employeeId,
+        createdBy: ownerUserId,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await db.patch("gabinetAppointments", appointmentId, { scheduledActivityId });
+    } catch (e) {
+      console.error("[bookFromPortal] scheduledActivity creation failed (non-fatal):", e);
+    }
+
+    // Run post-write side effects: automation event, document generation
+    // (RODO / org-required / treatment-required), audit log, and reminders.
+    try {
+      await ctx.runMutation(
+        internal.gabinet.appointments._createSideEffects,
+        {
+          appointmentId,
+          organizationId: String(organizationId),
+          patientId,
+          treatmentId: args.treatmentId,
+          employeeId,
+          date: args.preferredDate,
+          startTime: args.preferredTime,
+          endTime,
+          notes: `Rezerwacja online — ${patientName}`,
+          status: "pending_confirmation",
+          isRecurring: false,
+          sendReminder: true,
+          createdBy: ownerUserId,
+          createdAt: now,
+          patientName,
+          treatmentName: treatment.name as string,
+          patientEmail: (patient.email as string) ?? undefined,
+          patientPhone: (patient.phone as string) ?? undefined,
+          scheduledActivityId,
+          recurActivityIds: [],
+        },
+      );
+    } catch (e) {
+      console.error("[bookFromPortal] Side effects FAILED for appointment", appointmentId, ":", e);
+    }
+
+    // Notify staff (owners/admins) and the assigned employee about the new
+    // portal booking request — this is separate from the automation event above.
     try {
       await ctx.runMutation(
         internal.gabinet.patientPortal._bookingNotifications,

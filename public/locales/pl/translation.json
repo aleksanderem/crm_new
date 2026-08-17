@@ -2567,6 +2567,8 @@
       "referralSourceCustomGroup": "Własne źródła",
       "referredBy": "Skierowany przez",
       "linkedContact": "Powiązany kontakt CRM",
+      "contactSearchPlaceholder": "Szukaj kontaktu CRM...",
+      "contactSearchHint": "Opcjonalnie: powiąż nowego klienta z istniejącym kontaktem CRM.",
       "address": "Adres",
       "street": "Ulica",
       "city": "Miasto",

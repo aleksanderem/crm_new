@@ -286,6 +286,7 @@ export const create = action({
     customFields: v.optional(v.any()),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),
+    smsConsent: v.optional(v.union(v.boolean(), v.null())),
   },
   handler: async (ctx, args) => {
     try {
@@ -401,6 +402,7 @@ export const create = action({
       customFields: args.customFields ?? null,
       tagIds: args.tagIds ?? null,
       categoryId: args.categoryId ?? null,
+      smsConsent: args.smsConsent ?? null,
       createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
@@ -543,6 +545,7 @@ export const update = action({
     customFields: v.optional(v.any()),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),
+    smsConsent: v.optional(v.union(v.boolean(), v.null())),
   },
   handler: async (ctx, args) => {
     try {

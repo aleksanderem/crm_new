@@ -134,6 +134,16 @@ export function TreatmentRequiredDocumentsField({
     );
   };
 
+  const handleIsOneTimeToggle = (templateId: Id<"formTemplates">) => {
+    onChange(
+      value.map((r) =>
+        r.templateId === templateId
+          ? { ...r, isOneTime: r.isOneTime ? undefined : true }
+          : r,
+      ),
+    );
+  };
+
   return (
     <>
       <div className="space-y-2">
@@ -168,14 +178,11 @@ export function TreatmentRequiredDocumentsField({
                       }
                       t={t}
                     />
-                    {req.isOneTime && (
-                      <Badge
-                        variant="outline"
-                        className="text-xs bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800"
-                      >
-                        {t("documents.requiredDocs.oneTime", "Jednorazowy")}
-                      </Badge>
-                    )}
+                    <IsOneTimeBadge
+                      isOneTime={!!req.isOneTime}
+                      onToggle={() => handleIsOneTimeToggle(req.templateId)}
+                      t={t}
+                    />
                     <Button
                       type="button"
                       variant="ghost"
@@ -392,6 +399,42 @@ function timingLabel(
     case "after_completion":
       return t("documents.requiredDocs.afterCompletion", "Po wizycie");
   }
+}
+
+function IsOneTimeBadge({
+  isOneTime,
+  onToggle,
+  t,
+}: {
+  isOneTime: boolean;
+  onToggle: () => void;
+  t: TFunction;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="cursor-pointer"
+      title={t(
+        "documents.requiredDocs.toggleOneTime",
+        "Kliknij, aby zmienić typ jednorazowy",
+      )}
+    >
+      <Badge
+        className={cn(
+          "text-xs select-none",
+          isOneTime
+            ? "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800"
+            : "bg-muted text-muted-foreground border-border hover:bg-muted/80",
+        )}
+        variant="outline"
+      >
+        {isOneTime
+          ? t("documents.requiredDocs.oneTime", "Jednorazowy")
+          : t("documents.requiredDocs.recurring", "Wielokrotny")}
+      </Badge>
+    </button>
+  );
 }
 
 function TimingBadge({

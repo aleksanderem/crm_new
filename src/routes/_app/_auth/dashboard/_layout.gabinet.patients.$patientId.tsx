@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { useActiveLocation } from "@/contexts/gabinet-location-context";
 import { useSupabaseGabinetPatient } from "@/hooks/use-supabase-gabinet-patients";
+import { useSupabaseContact } from "@/hooks/use-supabase-contacts";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
 import {
   useSupabaseGabinetAppointmentsByPatient,
@@ -200,6 +201,12 @@ function PatientDetail() {
   const { data: patient, isLoading } = useSupabaseGabinetPatient(
     organizationId,
     patientId,
+  );
+
+  const { data: linkedContact } = useSupabaseContact(
+    organizationId,
+    patient?.contactId,
+    { enabled: !!patient?.contactId },
   );
 
   useEffect(() => {
@@ -474,6 +481,24 @@ function PatientDetail() {
       });
     if (patient.allergies)
       fields.push({ label: t("gabinet.patients.allergies"), value: patient.allergies, fieldKey: "allergies" });
+    if (patient.contactId && linkedContact) {
+      const contactName = [linkedContact.firstName, linkedContact.lastName]
+        .filter(Boolean)
+        .join(" ");
+      fields.push({
+        label: t("gabinet.patients.crmContact", "Kontakt CRM"),
+        value: (
+          <Link
+            to="/dashboard/contacts/$contactId"
+            params={{ contactId: patient.contactId }}
+            className="text-primary hover:underline"
+          >
+            {contactName}
+          </Link>
+        ),
+        fieldKey: "crmContact",
+      });
+    }
     return fields;
   })();
 

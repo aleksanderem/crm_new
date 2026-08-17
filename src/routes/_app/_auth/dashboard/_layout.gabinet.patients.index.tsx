@@ -485,6 +485,7 @@ function PatientsIndex() {
 
   const handleCreate = useCallback(
     async (formData: {
+      contactId?: string | null;
       firstName: string;
       lastName: string;
       email: string;
@@ -500,6 +501,7 @@ function PatientsIndex() {
       emergencyContactPhone?: string | null;
       referralSource?: string | null;
       preferredLocationId?: string | null;
+      smsConsent?: boolean | null;
       tagIds?: Id<"tagDefinitions">[];
       categoryId?: Id<"categoryDefinitions">;
     }) => {

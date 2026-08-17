@@ -12,7 +12,7 @@ import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useOrganization } from "@/components/org-context";
 import { useActiveLocation } from "@/contexts/gabinet-location-context";
-import { useSupabaseGabinetPatient } from "@/hooks/use-supabase-gabinet-patients";
+import { useSupabaseGabinetPatient, useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseContact } from "@/hooks/use-supabase-contacts";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
 import {
@@ -70,6 +70,7 @@ import { RefundCreditDialog } from "@/components/gabinet/patients/refund-credit-
 import { AddPaymentDialog } from "@/components/gabinet/patients/add-payment-dialog";
 import { GdprEraseDialog } from "@/components/gabinet/patients/gdpr-erase-dialog";
 import { CancelPaymentDialog } from "@/components/gabinet/patients/cancel-payment-dialog";
+import { MergePatientsDialog } from "@/components/gabinet/merge-patients-dialog";
 
 function PatientDetailSkeleton() {
   return (
@@ -139,6 +140,7 @@ function PatientDetail() {
   const [gdprDialogOpen, setGdprDialogOpen] = useState(false);
   const [gdprConfirmText, setGdprConfirmText] = useState("");
   const [isGdprSubmitting, setIsGdprSubmitting] = useState(false);
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   // Issue #1928: collapse the "Last appointments" overview card by default on
   // mobile so other sections (medical info, status tiles) aren't pushed below
   // the fold. On desktop (md+) the section stays expanded.
@@ -202,6 +204,10 @@ function PatientDetail() {
     organizationId,
     patientId,
   );
+
+  const { data: allPatients = [] } = useSupabaseGabinetPatientsList(organizationId, {
+    enabled: mergeDialogOpen,
+  });
 
   const { data: linkedContact } = useSupabaseContact(
     organizationId,
@@ -1087,6 +1093,10 @@ function PatientDetail() {
         }
         onEdit={canEdit ? () => setEditDrawerOpen(true) : undefined}
         secondaryActions={[
+          {
+            label: t("gabinet.patients.merge.action", { defaultValue: "Scal z..." }),
+            onClick: () => setMergeDialogOpen(true),
+          },
           ...(canDelete ? [{
             label: t("common.delete"),
             onClick: handleDelete,
@@ -1255,6 +1265,20 @@ function PatientDetail() {
         onSubmit={handleCancelPayment}
         t={t}
       />
+
+      {patient && (
+        <MergePatientsDialog
+          open={mergeDialogOpen}
+          onOpenChange={setMergeDialogOpen}
+          organizationId={organizationId}
+          sourcePatient={patient}
+          allPatients={allPatients}
+          onMerged={() => {
+            setMergeDialogOpen(false);
+            navigate({ to: "/dashboard/gabinet/patients" });
+          }}
+        />
+      )}
     </>
   );
 }

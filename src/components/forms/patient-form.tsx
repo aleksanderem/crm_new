@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { isPhoneNumberValid } from "@/lib/phone";
+import { Search, X } from "@/lib/ez-icons";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import {
   Select,
@@ -39,6 +40,7 @@ interface CategoryDef {
 }
 
 interface PatientFormData {
+  contactId?: string | null;
   firstName: string;
   lastName: string;
   email: string;
@@ -126,6 +128,15 @@ export function PatientForm({
   const [preferredLocationId, setPreferredLocationId] = useState<string>(initialData?.preferredLocationId ?? "");
   const [smsConsent, setSmsConsent] = useState<boolean>(initialData?.smsConsent ?? false);
 
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [selectedContactLabel, setSelectedContactLabel] = useState<string | null>(null);
+  const [contactQuery, setContactQuery] = useState("");
+  const [contactResults, setContactResults] = useState<Array<{ _id: string; firstName: string; lastName: string; email: string; phone: string }>>([]);
+  const [isSearchingContacts, setIsSearchingContacts] = useState(false);
+  const [contactDropdownOpen, setContactDropdownOpen] = useState(false);
+  const contactSearchRef = useRef<HTMLDivElement>(null);
+
+  const searchUnlinkedContacts = useAction(api.gabinet.patients.searchUnlinkedContacts);
   const listCustomReferralSources = useAction(api.gabinet.patients.listCustomReferralSources);
 
   useEffect(() => {
@@ -147,6 +158,63 @@ export function PatientForm({
       cancelled = true;
     };
   }, [organizationId, listCustomReferralSources]);
+
+  useEffect(() => {
+    if (!organizationId || isEditMode || !contactQuery.trim()) {
+      setContactResults([]);
+      setContactDropdownOpen(false);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      setIsSearchingContacts(true);
+      searchUnlinkedContacts({ organizationId, search: contactQuery })
+        .then((results) => {
+          if (cancelled) return;
+          setContactResults(results);
+          setContactDropdownOpen(results.length > 0);
+        })
+        .catch(() => {
+          if (!cancelled) setContactResults([]);
+        })
+        .finally(() => {
+          if (!cancelled) setIsSearchingContacts(false);
+        });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [organizationId, isEditMode, contactQuery, searchUnlinkedContacts]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (contactSearchRef.current && !contactSearchRef.current.contains(e.target as Node)) {
+        setContactDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelectContact = (contact: { _id: string; firstName: string; lastName: string; email: string; phone: string }) => {
+    setSelectedContactId(contact._id);
+    setSelectedContactLabel(`${contact.firstName} ${contact.lastName}${contact.email ? ` (${contact.email})` : ""}`);
+    setContactQuery("");
+    setContactDropdownOpen(false);
+    setFirstName(contact.firstName);
+    setLastName(contact.lastName);
+    setEmail(contact.email);
+    if (contact.phone) setPhone(contact.phone);
+  };
+
+  const handleClearContact = () => {
+    setSelectedContactId(null);
+    setSelectedContactLabel(null);
+    setContactQuery("");
+    setContactResults([]);
+    setContactDropdownOpen(false);
+  };
 
   const handleReferralSourceChange = (value: string) => {
     if (value === ADD_NEW_REFERRAL_SOURCE) {
@@ -184,6 +252,7 @@ export function PatientForm({
     const referralSource = referralSourceKey || null;
 
     onSubmit({
+      contactId: selectedContactId || null,
       firstName,
       lastName,
       email,
@@ -207,6 +276,60 @@ export function PatientForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {!isEditMode && (
+        <div className="space-y-1.5" ref={contactSearchRef}>
+          <Label>{t("gabinet.patients.linkedContact")}</Label>
+          {selectedContactId ? (
+            <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 text-sm">
+              <span className="flex-1 truncate">{selectedContactLabel}</span>
+              <button
+                type="button"
+                onClick={handleClearContact}
+                className="shrink-0 text-muted-foreground hover:text-foreground"
+                aria-label={t("common.clear", { defaultValue: "Wyczyść" })}
+              >
+                <X className="h-4 w-4" variant="stroke" />
+              </button>
+            </div>
+          ) : (
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" variant="stroke" />
+              <Input
+                value={contactQuery}
+                onChange={(e) => setContactQuery(e.target.value)}
+                placeholder={t("gabinet.patients.contactSearchPlaceholder", { defaultValue: "Szukaj kontaktu CRM..." })}
+                className="pl-8"
+              />
+              {isSearchingContacts && (
+                <span className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-foreground" />
+              )}
+              {contactDropdownOpen && contactResults.length > 0 && (
+                <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md">
+                  <ul className="max-h-48 overflow-y-auto py-1 text-sm">
+                    {contactResults.map((contact) => (
+                      <li key={contact._id}>
+                        <button
+                          type="button"
+                          className="w-full px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground"
+                          onClick={() => handleSelectContact(contact)}
+                        >
+                          <span className="font-medium">{contact.firstName} {contact.lastName}</span>
+                          {contact.email && <span className="ml-2 text-muted-foreground">{contact.email}</span>}
+                          {contact.phone && <span className="ml-2 text-muted-foreground">{contact.phone}</span>}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            {t("gabinet.patients.contactSearchHint", { defaultValue: "Opcjonalnie: powiąż nowego klienta z istniejącym kontaktem CRM." })}
+          </p>
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label>

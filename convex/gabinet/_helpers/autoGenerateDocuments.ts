@@ -63,6 +63,31 @@ export async function autoGenerateAppointmentDocuments(
         isOneTime?: boolean;
       }>
     | undefined) ?? [];
+
+  // Fetch org-level required templates and merge them in.
+  // Org-required templates apply to every appointment regardless of treatment,
+  // are always one-time for the patient, and default to "before_start" timing.
+  const orgRequiredRows = await supabaseDb
+    .query("formTemplates")
+    .eq("organizationId", String(args.organizationId))
+    .eq("isOrgRequired", true)
+    .eq("isActive", true)
+    .collect();
+
+  if (orgRequiredRows.length > 0) {
+    // templateIds already covered by the treatment list — no duplicates
+    const treatmentTemplateIds = new Set(requiredTemplates.map((t) => t.templateId));
+    for (const row of orgRequiredRows) {
+      const id = String(row._id);
+      if (!treatmentTemplateIds.has(id)) {
+        requiredTemplates = [
+          ...requiredTemplates,
+          { templateId: id, timing: "before_start", isOneTime: true },
+        ];
+      }
+    }
+  }
+
   if (requiredTemplates.length === 0) return [];
 
   // Filter by timing if requested

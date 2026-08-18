@@ -173,10 +173,6 @@ function relToModuleKey(relPath) {
 // Tracked: issue #4021 (type-checker extension), issue #3968 (original gate).
 // ---------------------------------------------------------------------------
 const GET_PENDING = new Set([
-  // documentInstances.ts — ctx.db.get(args.id) on documentInstances and
-  // ctx.db.get(templateId) on documentTemplates; args.id: Id<"documentInstances">.
-  "documentInstances",
-
   // gabinet/employees.ts — ctx.db.get(args.userId as Id<"users">) for employee
   // user lookup; one explicit-cast call remaining at line 971.
   "gabinet/employees",
@@ -195,9 +191,6 @@ const GET_PENDING = new Set([
 
   // app.ts — ctx.db.get(userId) where userId: Id<"users"> from auth.getUserId(ctx).
   "app",
-
-  // documentTemplates.ts — ctx.db.get(args.id) where id: v.id("documentTemplates").
-  "documentTemplates",
 
   // emails.ts — ctx.db.get(args.emailId) where emailId: v.id("emails").
   "emails",
@@ -244,9 +237,6 @@ const MULTILINE_PENDING = new Set([
   "calls",
   "crm/notes",
   "customFields",
-  "documentInstances",
-  "documentTemplateFields",
-  "documentTemplates",
   "documents/components",
   "documents/templates",
   "emailEventTrigger",

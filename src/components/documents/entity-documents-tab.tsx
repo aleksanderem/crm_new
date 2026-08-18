@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
 import { useAction } from "convex/react";
 import { toast } from "sonner";
 import {
@@ -94,6 +95,7 @@ interface FormDocument {
   signedByEmail?: string;
   signingToken?: string;
   signingEmailSentAt?: number;
+  createdBy?: string;
   sentByUserId?: string;
   voidedAt?: number;
   voidedByUserId?: string;
@@ -318,6 +320,26 @@ export function EntityDocumentsTab({
   });
   const viewingTemplate = viewingTemplateRaw as unknown as FormTemplate | undefined;
 
+  // --- User name resolution ---
+
+  const { data: members } = useSupabaseOrganizationMembers(organizationId);
+  const userMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (!members) return map;
+    for (const m of members) {
+      if (m.user) {
+        const display = m.user.name ?? m.user.email ?? undefined;
+        if (display) map.set(m.user._id as string, display);
+      }
+    }
+    return map;
+  }, [members]);
+
+  const resolveUserName = useCallback(
+    (userId: string | undefined) => (userId ? (userMap.get(userId) ?? undefined) : undefined),
+    [userMap],
+  );
+
   // Fetch scope data to merge with responseData for viewer pre-fill (Supabase)
   const resolveEntityScopeAction = useAction(api.documents.generate.resolveEntityScope);
   const { data: scopeData } = useQuery({
@@ -501,6 +523,7 @@ export function EntityDocumentsTab({
                     icon={<FileText className="h-3.5 w-3.5" />}
                     label={t("documents.audit.created", "Utworzono")}
                     ts={viewingDoc.createdAt}
+                    detail={resolveUserName(viewingDoc.createdBy)}
                     locale={i18n.language === "en" ? "en-US" : "pl-PL"}
                   />
                   {viewingDoc.signingEmailSentAt && (
@@ -508,6 +531,7 @@ export function EntityDocumentsTab({
                       icon={<Send className="h-3.5 w-3.5" />}
                       label={t("documents.audit.sent", "Wysłano do podpisu")}
                       ts={viewingDoc.signingEmailSentAt}
+                      detail={resolveUserName(viewingDoc.sentByUserId)}
                       locale={i18n.language === "en" ? "en-US" : "pl-PL"}
                     />
                   )}
@@ -525,6 +549,7 @@ export function EntityDocumentsTab({
                       icon={<OctagonX className="h-3.5 w-3.5 text-destructive" />}
                       label={t("documents.audit.voided", "Unieważniono")}
                       ts={viewingDoc.voidedAt}
+                      detail={resolveUserName(viewingDoc.voidedByUserId)}
                       locale={i18n.language === "en" ? "en-US" : "pl-PL"}
                     />
                   )}

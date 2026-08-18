@@ -38,6 +38,34 @@ export const run = internalAction({
     }
 
     // A system actor id for grantedByUserId: reuse the first org owner if present.
+    const upsertToSupabase = async (orgId: string, productId: "crm" | "gabinet", grantedBy: string) => {
+      const now = Date.now();
+      const existingRow = await db
+        .query("productSubscriptions")
+        .eq("organizationId", orgId)
+        .eq("productId", productId)
+        .unique();
+      if (existingRow) {
+        await db.patch("productSubscriptions", String(existingRow._id), {
+          status: "active",
+          source: "manual",
+          grantedByUserId: grantedBy,
+          updatedAt: now,
+        });
+      } else {
+        await db.insert("productSubscriptions", {
+          organizationId: orgId,
+          productId,
+          status: "active",
+          cancelAtPeriodEnd: false,
+          source: "manual",
+          grantedByUserId: grantedBy,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    };
+
     let crmGranted = 0;
     let gabinetGranted = 0;
     for (const o of orgs) {
@@ -52,6 +80,7 @@ export const run = internalAction({
             grant: true,
             grantedByUserId: grantedBy as unknown as Id<"users">,
           });
+          await upsertToSupabase(orgId, "crm", grantedBy);
         }
       }
       if (gabinetOrgIds.has(orgId) && !has(orgId, "gabinet")) {
@@ -63,6 +92,7 @@ export const run = internalAction({
             grant: true,
             grantedByUserId: grantedBy as unknown as Id<"users">,
           });
+          await upsertToSupabase(orgId, "gabinet", grantedBy);
         }
       }
     }

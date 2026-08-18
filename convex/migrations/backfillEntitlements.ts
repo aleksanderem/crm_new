@@ -21,8 +21,8 @@ export const run = internalAction({
     const dryRun = args.dryRun ?? false;
     const db = createSupabaseDb();
     const orgs = await db.query("organizations").collect();
-    const existing = await ctx.runAction(
-      internal.admin.entitlements._listEntitlementsInternal,
+    const existing = await ctx.runQuery(
+      internal.admin.entitlements._listEntitlementsFromConvex,
       {},
     );
     const has = (orgId: string, productId: string) =>

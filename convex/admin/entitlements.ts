@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { action, internalAction, internalMutation } from "../_generated/server";
+import { action, internalAction, internalMutation, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { logAudit } from "../auditLog";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
@@ -86,6 +86,21 @@ export const _listEntitlementsInternal = internalAction({
   handler: async (): Promise<Array<{ organizationId: string; productId: string; status: string }>> => {
     const db = createSupabaseDb();
     const rows = await db.query("productSubscriptions").collect();
+    return rows.map((r) => ({
+      organizationId: String(r.organizationId),
+      productId: String(r.productId),
+      status: String(r.status),
+    }));
+  },
+});
+
+// Reads productSubscriptions from Convex ctx.db — used by the backfill migration
+// for idempotency checks, since _upsertEntitlement writes to Convex, not Supabase.
+export const _listEntitlementsFromConvex = internalQuery({
+  args: {},
+  returns: v.array(entitlementRowValidator),
+  handler: async (ctx): Promise<Array<{ organizationId: string; productId: string; status: string }>> => {
+    const rows = await ctx.db.query("productSubscriptions").collect();
     return rows.map((r) => ({
       organizationId: String(r.organizationId),
       productId: String(r.productId),

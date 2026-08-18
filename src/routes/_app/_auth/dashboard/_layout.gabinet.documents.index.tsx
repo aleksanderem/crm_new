@@ -212,7 +212,7 @@ function GabinetDocumentsPage() {
   type TemplateDoc = NonNullable<typeof templates>[number];
   const templateMap = useMemo(() => {
     if (!templates) return new Map<string, TemplateDoc>();
-    return new Map(templates.map((tpl) => [tpl._id as string, tpl]));
+    return new Map(templates.map((tpl: TemplateDoc) => [tpl._id as string, tpl]));
   }, [templates]);
 
   // Build user lookup from org members
@@ -271,7 +271,7 @@ function GabinetDocumentsPage() {
   // Extract unique categories from loaded templates
   const availableCategories = useMemo(() => {
     if (!templates) return [] as string[];
-    const cats = new Set(templates.map((tpl) => tpl.category));
+    const cats = new Set(templates.map((tpl: TemplateDoc) => tpl.category));
     return Array.from(cats).sort();
   }, [templates]);
 
@@ -321,7 +321,7 @@ function GabinetDocumentsPage() {
       { label: t("gabinet.formDocuments.entityType.employee", "Pracownik"), value: "employee" },
       { label: t("gabinet.formDocuments.entityType.treatment", "Zabieg"), value: "treatment" },
     ]},
-    { id: "category", label: t("common.category", "Kategoria"), type: "select", options: availableCategories.map(cat => {
+    { id: "category", label: t("common.category", "Kategoria"), type: "select", options: availableCategories.map((cat: string) => {
       const labels = FORM_CATEGORY_LABELS[cat];
       return { label: labels ? labels[lang] : cat, value: cat };
     })},
@@ -333,7 +333,7 @@ function GabinetDocumentsPage() {
     if (!documents) return [];
 
     // Decorate rows with derived fields used by manual filters (e.g. category)
-    let data = documents.map((doc) => ({
+    let data = documents.map((doc: MappedFormDocument) => ({
       ...doc,
       category: templateMap.get(doc.templateId)?.category ?? null,
     }));
@@ -341,13 +341,13 @@ function GabinetDocumentsPage() {
     // Apply system-view (status-based) filtering
     switch (activeViewId) {
       case "draft":
-        data = data.filter((d) => d.status === "draft");
+        data = data.filter((d: DocumentRow) => d.status === "draft");
         break;
       case "pending_signature":
-        data = data.filter((d) => d.status === "pending_signature");
+        data = data.filter((d: DocumentRow) => d.status === "pending_signature");
         break;
       case "signed":
-        data = data.filter((d) => d.status === "signed");
+        data = data.filter((d: DocumentRow) => d.status === "signed");
         break;
       default:
         break;
@@ -362,7 +362,7 @@ function GabinetDocumentsPage() {
     // Apply free-text search on title
     if (searchValue.trim()) {
       const q = searchValue.trim().toLowerCase();
-      data = data.filter((d) => d.title.toLowerCase().includes(q));
+      data = data.filter((d: DocumentRow) => d.title.toLowerCase().includes(q));
     }
 
     return data;
@@ -371,7 +371,7 @@ function GabinetDocumentsPage() {
   // --- Selected document for viewer ---
   const selectedDoc = useMemo(() => {
     if (!selectedId || !documents) return null;
-    return documents.find((d) => d._id === selectedId) ?? null;
+    return documents.find((d: MappedFormDocument) => d._id === selectedId) ?? null;
   }, [selectedId, documents]);
 
   const selectedTemplate = useMemo(() => {
@@ -980,8 +980,8 @@ function GabinetDocumentsPage() {
         <div className="space-y-1 py-2">
           {/* TODO: entityType and category columns hidden per #2780 — restore here if needed */}
           {allColumns
-            .filter((col) => !["entityType", "category", "actions"].includes(col.id))
-            .map((col) => {
+            .filter((col: CrmColumn<DocumentRow>) => !["entityType", "category", "actions"].includes(col.id))
+            .map((col: CrmColumn<DocumentRow>) => {
               const isVisible = !hiddenColumnIds.has(col.id);
               return (
                 <button

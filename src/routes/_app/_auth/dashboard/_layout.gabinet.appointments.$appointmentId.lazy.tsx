@@ -189,6 +189,7 @@ function AppointmentDetail() {
   const { t, i18n } = useTranslation();
   const { allowed: canEdit } = usePermission("gabinet_appointments", "edit");
   const { allowed: canDelete } = usePermission("gabinet_appointments", "delete");
+  const { allowed: canViewDocuments } = usePermission("gabinet_documents", "view");
   const { allowed: canCreatePayment } = usePermission("gabinet_payments", "create");
   const { allowed: canEditPayment } = usePermission("gabinet_payments", "edit");
   const { allowed: canRefundPayment } = usePermission("gabinet_payments", "refund");
@@ -1228,7 +1229,7 @@ function AppointmentDetail() {
         />
       ),
     },
-    {
+    ...(canViewDocuments ? [{
       label: t("gabinet.appointments.tabs.documents", "Dokumenty"),
       content: (
         <AppointmentDocumentChecklist
@@ -1237,7 +1238,7 @@ function AppointmentDetail() {
           treatmentId={detail.treatments?.[0]?.treatmentId ?? undefined}
         />
       ),
-    },
+    }] : []),
     {
       label: t("gabinet.receipts.receiptHistory", "Paragony"),
       count: appointmentReceipts.length > 0 ? appointmentReceipts.length : undefined,

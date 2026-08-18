@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation, useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { usePermission } from "@/hooks/use-permission";
 import { useTranslation } from "react-i18next";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
@@ -280,6 +281,9 @@ function TemplateTree({
   onMoveTemplate,
   onRenameFolder,
   onDeleteFolder,
+  canEdit,
+  canDelete,
+  canCreate,
   t,
 }: {
   templates: FormTemplateRecord[];
@@ -295,6 +299,9 @@ function TemplateTree({
   ) => void;
   onRenameFolder: (oldPath: string, newName: string) => void;
   onDeleteFolder: (folderPath: string) => void;
+  canEdit: boolean;
+  canDelete: boolean;
+  canCreate: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   t: any;
 }) {
@@ -374,7 +381,7 @@ function TemplateTree({
                       </span>
                     </span>
                   </TreeItemLabel>
-                  {data.folderFullPath && (
+                  {(canEdit || canDelete) && data.folderFullPath && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         {/* Rendered as a <div> rather than <Button> because
@@ -391,36 +398,40 @@ function TemplateTree({
                         </div>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const currentName =
-                              data.folderFullPath!.split("/").pop() ?? "";
-                            const newName = window.prompt(
-                              t(
-                                "settings.formTemplates.renameFolderPrompt",
-                                "Nowa nazwa folderu:",
-                              ),
-                              currentName,
-                            );
-                            if (newName && newName !== currentName) {
-                              onRenameFolder(data.folderFullPath!, newName);
-                            }
-                          }}
-                        >
-                          <Pencil className="mr-2 h-4 w-4" />
-                          {t("settings.formTemplates.renameFolder", "Zmień nazwę")}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteFolder(data.folderFullPath!);
-                          }}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          {t("settings.formTemplates.deleteFolder", "Usuń folder")}
-                        </DropdownMenuItem>
+                        {canEdit && (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const currentName =
+                                data.folderFullPath!.split("/").pop() ?? "";
+                              const newName = window.prompt(
+                                t(
+                                  "settings.formTemplates.renameFolderPrompt",
+                                  "Nowa nazwa folderu:",
+                                ),
+                                currentName,
+                              );
+                              if (newName && newName !== currentName) {
+                                onRenameFolder(data.folderFullPath!, newName);
+                              }
+                            }}
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            {t("settings.formTemplates.renameFolder", "Zmień nazwę")}
+                          </DropdownMenuItem>
+                        )}
+                        {canDelete && (
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteFolder(data.folderFullPath!);
+                            }}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            {t("settings.formTemplates.deleteFolder", "Usuń folder")}
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}
@@ -453,13 +464,15 @@ function TemplateTree({
                     className="flex-1 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onEditTemplate(tpl._id);
+                      if (canEdit) onEditTemplate(tpl._id);
+                      else onPreviewTemplate(tpl._id);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
                         e.stopPropagation();
-                        onEditTemplate(tpl._id);
+                        if (canEdit) onEditTemplate(tpl._id);
+                        else onPreviewTemplate(tpl._id);
                       }
                     }}
                   >
@@ -497,30 +510,32 @@ function TemplateTree({
                     <button role="switch"> and the outer TreeItem wrapper is
                     already a <button>. Nested buttons are invalid HTML
                     (#1912, same pattern as #1907, #1910). */}
-                <div
-                  role="switch"
-                  tabIndex={0}
-                  aria-checked={tpl.isActive}
-                  aria-label={t("settings.formTemplates.toggleActive")}
-                  data-state={tpl.isActive ? "checked" : "unchecked"}
-                  className="peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleActive(tpl, !tpl.isActive);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === " " || e.key === "Enter") {
-                      e.preventDefault();
+                {canEdit && (
+                  <div
+                    role="switch"
+                    tabIndex={0}
+                    aria-checked={tpl.isActive}
+                    aria-label={t("settings.formTemplates.toggleActive")}
+                    data-state={tpl.isActive ? "checked" : "unchecked"}
+                    className="peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
+                    onClick={(e) => {
                       e.stopPropagation();
                       onToggleActive(tpl, !tpl.isActive);
-                    }
-                  }}
-                >
-                  <span
-                    data-state={tpl.isActive ? "checked" : "unchecked"}
-                    className="pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-4 data-[state=unchecked]:translate-x-0"
-                  />
-                </div>
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === " " || e.key === "Enter") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onToggleActive(tpl, !tpl.isActive);
+                      }
+                    }}
+                  >
+                    <span
+                      data-state={tpl.isActive ? "checked" : "unchecked"}
+                      className="pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-4 data-[state=unchecked]:translate-x-0"
+                    />
+                  </div>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     {/* Rendered as a <div> rather than <Button> because the
@@ -537,15 +552,17 @@ function TemplateTree({
                     </div>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditTemplate(tpl._id);
-                      }}
-                    >
-                      <Pencil className="mr-2 h-4 w-4" />
-                      {t("common.edit")}
-                    </DropdownMenuItem>
+                    {canEdit && (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditTemplate(tpl._id);
+                        }}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        {t("common.edit")}
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation();
@@ -555,15 +572,17 @@ function TemplateTree({
                       <Eye className="mr-2 h-4 w-4" />
                       {t("settings.formTemplates.preview", "Podgląd")}
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDuplicateTemplate(tpl);
-                      }}
-                    >
-                      <CopyIcon className="mr-2 h-4 w-4" />
-                      {t("settings.formTemplates.duplicate")}
-                    </DropdownMenuItem>
+                    {canCreate && (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDuplicateTemplate(tpl);
+                        }}
+                      >
+                        <CopyIcon className="mr-2 h-4 w-4" />
+                        {t("settings.formTemplates.duplicate")}
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
                     <TooltipProvider delayDuration={200}>
                       <Tooltip>
@@ -583,17 +602,19 @@ function TemplateTree({
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteTemplate(tpl);
-                      }}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      {t("common.delete")}
-                    </DropdownMenuItem>
+                    {canDelete && <DropdownMenuSeparator />}
+                    {canDelete && (
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteTemplate(tpl);
+                        }}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {t("common.delete")}
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -614,6 +635,10 @@ export function FormTemplatesListPage() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
+
+  const { allowed: canCreateTemplate } = usePermission("document_templates", "create");
+  const { allowed: canEditTemplate } = usePermission("document_templates", "edit");
+  const { allowed: canDeleteTemplate } = usePermission("document_templates", "delete");
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
@@ -950,15 +975,19 @@ export function FormTemplatesListPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button size="sm" variant="outline" onClick={() => setScanOpen(true)}>
-              {t("settings.formTemplates.scanNew", "Nowy ze skanu")}
-            </Button>
-            <Button size="sm" variant="outline" asChild>
-              <Link to="/dashboard/document-editor/new">
-                <Plus className="mr-2 h-4 w-4" variant="stroke" />
-                {t("settings.formTemplates.newTemplate")}
-              </Link>
-            </Button>
+            {canCreateTemplate && (
+              <Button size="sm" variant="outline" onClick={() => setScanOpen(true)}>
+                {t("settings.formTemplates.scanNew", "Nowy ze skanu")}
+              </Button>
+            )}
+            {canCreateTemplate && (
+              <Button size="sm" variant="outline" asChild>
+                <Link to="/dashboard/document-editor/new">
+                  <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                  {t("settings.formTemplates.newTemplate")}
+                </Link>
+              </Button>
+            )}
           </SectionHeader.Actions>
         </SectionHeader.Group>
         <UntitledAlert>{t("settings.formTemplates.description")}</UntitledAlert>
@@ -1015,12 +1044,14 @@ export function FormTemplatesListPage() {
           title={t("settings.formTemplates.emptyTitle")}
           description={t("settings.formTemplates.emptyDescription")}
           action={
-            <Button asChild>
-              <Link to="/dashboard/document-editor/new">
-                <Plus className="mr-2 h-4 w-4" variant="stroke" />
-                {t("settings.formTemplates.newTemplate")}
-              </Link>
-            </Button>
+            canCreateTemplate ? (
+              <Button asChild>
+                <Link to="/dashboard/document-editor/new">
+                  <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                  {t("settings.formTemplates.newTemplate")}
+                </Link>
+              </Button>
+            ) : undefined
           }
         />
       ) : (
@@ -1043,6 +1074,9 @@ export function FormTemplatesListPage() {
               onMoveTemplate={handleMoveTemplate}
               onRenameFolder={handleRenameFolder}
               onDeleteFolder={handleDeleteFolder}
+              canEdit={canEditTemplate}
+              canDelete={canDeleteTemplate}
+              canCreate={canCreateTemplate}
               t={t}
             />
           </div>

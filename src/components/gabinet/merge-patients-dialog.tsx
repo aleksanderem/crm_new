@@ -320,7 +320,6 @@ export function MergePatientsDialog({
       });
       const moved =
         result.movedAppointments +
-        result.movedDocuments +
         result.movedPackageUsage +
         result.movedLoyaltyTransactions +
         result.movedPayments +

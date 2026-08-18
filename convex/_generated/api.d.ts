@@ -68,7 +68,6 @@ import type * as dev_emails from "../dev/emails.js";
 import type * as dev_helpers from "../dev/helpers.js";
 import type * as documentAnalysisJobs from "../documentAnalysisJobs.js";
 import type * as documentDataSources from "../documentDataSources.js";
-import type * as documentInstances from "../documentInstances.js";
 import type * as documents__helpers_patientBindings from "../documents/_helpers/patientBindings.js";
 import type * as documents_completeMissingData from "../documents/completeMissingData.js";
 import type * as documents_components from "../documents/components.js";
@@ -268,7 +267,6 @@ declare const fullApi: ApiFromModules<{
   "dev/helpers": typeof dev_helpers;
   documentAnalysisJobs: typeof documentAnalysisJobs;
   documentDataSources: typeof documentDataSources;
-  documentInstances: typeof documentInstances;
   "documents/_helpers/patientBindings": typeof documents__helpers_patientBindings;
   "documents/completeMissingData": typeof documents_completeMissingData;
   "documents/components": typeof documents_components;

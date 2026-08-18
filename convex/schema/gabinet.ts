@@ -639,75 +639,11 @@ export function createGabinetTables({
     .index("by_org", ["organizationId"])
     .index("by_orgAndTier", ["organizationId", "tier"]),
 
-  documentInstances: defineTable({
-    organizationId: v.string(),
-    // Type discriminator
-    type: v.optional(v.union(v.literal("template"), v.literal("file"))),
-    // Template fields (optional for file type)
-    templateId: v.optional(v.string()),
-    templateVersion: v.optional(v.number()),
-    renderedContent: v.optional(v.string()),
-    fieldValues: v.optional(v.any()),
-    resolvedSources: v.optional(v.any()),
-    // File fields (optional for template type)
-    fileId: v.optional(v.id("_storage")),
-    fileUrl: v.optional(v.string()),
-    fileName: v.optional(v.string()),
-    mimeType: v.optional(v.string()),
-    fileSize: v.optional(v.number()),
-    category: v.optional(v.string()),
-    // Common fields
-    title: v.string(),
-    status: v.union(
-      v.literal("draft"),
-      v.literal("pending_review"),
-      v.literal("approved"),
-      v.literal("pending_signature"),
-      v.literal("signed"),
-      v.literal("archived"),
-    ),
-    module: v.optional(v.string()),
-    signatures: v.array(
-      v.object({
-        slotId: v.string(),
-        slotLabel: v.string(),
-        verificationMethod: v.optional(
-          v.union(v.literal("click"), v.literal("sms"), v.literal("email_otp")),
-        ),
-        signerType: v.optional(
-          v.union(v.literal("internal"), v.literal("external")),
-        ),
-        signerUserId: v.optional(v.id("users")),
-        signerEmail: v.optional(v.string()),
-        signerName: v.optional(v.string()),
-        signerPhone: v.optional(v.string()),
-        signatureData: v.optional(v.string()),
-        signedByUserId: v.optional(v.id("users")),
-        signedByName: v.optional(v.string()),
-        signedAt: v.optional(v.number()),
-      }),
-    ),
-    pdfFileId: v.optional(v.id("_storage")),
-    createdBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-    assignedReviewerId: v.optional(v.id("users")),
-    assignedReviewerName: v.optional(v.string()),
-    reviewedBy: v.optional(v.id("users")),
-    reviewedAt: v.optional(v.number()),
-    approvedBy: v.optional(v.id("users")),
-    approvedAt: v.optional(v.number()),
-  })
-    .index("by_org", ["organizationId"])
-    .index("by_orgAndStatus", ["organizationId", "status"])
-    .index("by_orgAndModule", ["organizationId", "module"])
-    .index("by_template", ["templateId"]),
-
   // --- Document Signing ---
 
   signatureRequests: defineTable({
     organizationId: v.string(),
-    instanceId: v.id("documentInstances"),
+    instanceId: v.string(),
     slotId: v.string(),
     token: v.string(),
     signerEmail: v.optional(v.string()),

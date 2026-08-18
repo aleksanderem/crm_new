@@ -1089,6 +1089,8 @@ function AppointmentDetail() {
       content: (
         <AppointmentDetailsTab
           appointment={appointment}
+          appointmentId={appointmentId}
+          organizationId={organizationId}
           treatment={treatment}
           employee={employee}
           junctionTreatments={junctionTreatments}

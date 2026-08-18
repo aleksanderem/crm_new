@@ -3492,6 +3492,23 @@
       "packageNotSelected": "Choose the package to deduct units from.",
       "packageQuantityMin": "Unit count must be at least 1.",
       "packageQuantityExceeds": "Unit count exceeds the remaining package usage.",
+      "documentStatus": {
+        "title": "Documentation status",
+        "complete": "Documentation complete",
+        "missingRequired": "Missing required documents",
+        "needsAttention": "Needs attention",
+        "progress": "{{satisfied}} / {{total}} satisfied",
+        "optional": "optional",
+        "showAll": "Show all",
+        "showLess": "Hide non-applicable",
+        "statuses": {
+          "satisfied": "Satisfied",
+          "expired": "Expired",
+          "pending": "Pending",
+          "missing": "Missing",
+          "notApplicable": "Not applicable"
+        }
+      },
       "markContraindicationAsDiscussed": "Mark as discussed",
       "contraindicationDiscussed": "Discussed",
       "contraindicationMarked": "Marked as discussed",

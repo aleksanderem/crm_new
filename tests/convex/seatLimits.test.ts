@@ -470,7 +470,7 @@ describe("getSeatLimit max-wins with multiple subscriptions", () => {
 
     await t.run(async (ctx) => {
       const planLow = await ctx.db.insert("plans", {
-        key: "crm",
+        key: "free",
         stripeId: "price_crm_multi",
         name: "CRM",
         description: "CRM module plan",
@@ -489,7 +489,7 @@ describe("getSeatLimit max-wins with multiple subscriptions", () => {
         },
       });
       const planHigh = await ctx.db.insert("plans", {
-        key: "gabinet",
+        key: "pro",
         stripeId: "price_gabinet_multi",
         name: "Gabinet",
         description: "Gabinet module plan",

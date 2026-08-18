@@ -61,6 +61,9 @@ export async function autoGenerateAppointmentDocuments(
     | Array<{
         templateId: string;
         timing?: "before_start" | "during_visit" | "after_completion";
+        isRequired?: boolean;
+        frequency?: "once" | "first_visit_only" | "before_each_visit" | "every_n_days" | "on_expiry";
+        validityDays?: number;
         isOneTime?: boolean;
       }>
     | undefined) ?? [];
@@ -83,7 +86,7 @@ export async function autoGenerateAppointmentDocuments(
       if (!treatmentTemplateIds.has(id)) {
         requiredTemplates = [
           ...requiredTemplates,
-          { templateId: id, timing: "before_start", isOneTime: true },
+          { templateId: id, timing: "before_start", frequency: "once", isOneTime: true },
         ];
       }
     }
@@ -125,12 +128,12 @@ export async function autoGenerateAppointmentDocuments(
 
   for (const entry of requiredTemplates) {
     try {
-      // Skip if this is a one-time document and the patient has already signed it.
-      // Uses a two-step query: fetch the patient's appointment IDs (indexed on
-      // organization_id, patient_id), then check form_documents by entity_id IN
-      // (those IDs). This avoids the previous O(N-org) scan + in-memory JSON parse
-      // that was needed because scope_entities is TEXT, not JSONB.
-      if (entry.isOneTime) {
+      // Derive effective frequency from the entry, falling back to legacy isOneTime.
+      const effectiveFrequency = entry.frequency ?? (entry.isOneTime ? "once" : "before_each_visit");
+
+      // Frequency-based skip logic.
+      if (effectiveFrequency === "once") {
+        // Skip if the patient has already signed this template for any appointment.
         const patientAppointments = await supabaseDb
           .query("gabinetAppointments")
           .eq("patientId", String(args.patientId))
@@ -148,7 +151,52 @@ export async function autoGenerateAppointmentDocuments(
             .first();
           if (alreadySigned) continue;
         }
+      } else if (effectiveFrequency === "first_visit_only") {
+        // Skip if the patient already has any completed/signed appointment for
+        // this treatment (i.e. this is not their first visit).
+        const priorAppointments = await supabaseDb
+          .query("gabinetAppointments")
+          .eq("patientId", String(args.patientId))
+          .eq("organizationId", String(args.organizationId))
+          .eq("treatmentId", String(args.treatmentId))
+          .in("status", ["completed"])
+          .collect();
+        // Exclude the current appointment from the count.
+        const priorCount = priorAppointments.filter(
+          (a) => String(a._id) !== String(args.appointmentId),
+        ).length;
+        if (priorCount > 0) continue;
+      } else if (effectiveFrequency === "every_n_days" || effectiveFrequency === "on_expiry") {
+        // Skip if the patient has a signed copy that is still valid (not expired).
+        const validityMs = (entry.validityDays ?? 0) * 24 * 60 * 60 * 1000;
+        if (validityMs > 0) {
+          const patientAppointments = await supabaseDb
+            .query("gabinetAppointments")
+            .eq("patientId", String(args.patientId))
+            .eq("organizationId", String(args.organizationId))
+            .collect();
+          if (patientAppointments.length > 0) {
+            const appointmentIds = patientAppointments.map((a) => String(a._id));
+            const recentlySigned = await supabaseDb
+              .query("formDocuments")
+              .eq("templateId", String(entry.templateId))
+              .eq("organizationId", String(args.organizationId))
+              .eq("entityType", "appointment")
+              .in("status", ["signed", "completed"])
+              .in("entityId", appointmentIds)
+              .first();
+            if (recentlySigned) {
+              // Check via expiresAt (set after migration 00142) or fallback to
+              // signedAt + validityMs for documents created before the migration.
+              const expiresAt = (recentlySigned as Record<string, unknown>).expiresAt as number | null | undefined;
+              const signedAt = (recentlySigned as Record<string, unknown>).signedAt as number | null | undefined;
+              const effectiveExpiry = expiresAt ?? (signedAt != null ? signedAt + validityMs : null);
+              if (effectiveExpiry != null && effectiveExpiry > now) continue;
+            }
+          }
+        }
       }
+      // effectiveFrequency === "before_each_visit": never skip — fall through
 
       // Skip if a document for this template+appointment already exists
       const existing = await supabaseDb
@@ -244,6 +292,12 @@ export async function autoGenerateAppointmentDocuments(
         // days away) — expiry starts when the first signing email is actually sent.
       }
 
+      // Snapshot validityDays from the rule so later config changes never
+      // retroactively alter the validity of already-issued documents (D27).
+      const documentValidityDays = (
+        effectiveFrequency === "every_n_days" || effectiveFrequency === "on_expiry"
+      ) ? (entry.validityDays ?? null) : null;
+
       const insertPayload = {
         organizationId: String(args.organizationId),
         templateId: String(entry.templateId),
@@ -261,6 +315,7 @@ export async function autoGenerateAppointmentDocuments(
         status,
         timing: entry.timing ?? null,
         autoGenerated: true,
+        documentValidityDays: documentValidityDays ?? null,
         signingToken: signingToken ?? null,
         signingTokenExpiresAt: signingTokenExpiresAt ?? null,
         createdBy: String(args.createdBy),

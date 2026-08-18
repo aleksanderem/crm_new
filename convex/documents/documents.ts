@@ -397,6 +397,12 @@ export const updateStatus = action({
     status: formDocumentStatusValidator,
   },
   handler: async (ctx, args) => {
+    if (args.status === "voided") {
+      throw new Error(
+        "Use voidDocument to void a document — updateStatus cannot set status to 'voided'",
+      );
+    }
+
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },

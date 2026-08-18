@@ -149,14 +149,3 @@ export function getDataSourcesForModule(module: string): DataSourceDefinition[] 
     (s) => s.module === "platform" || s.module === module,
   );
 }
-
-export async function resolveSource(
-  ctx: GenericQueryCtx<DataModel>,
-  sourceKey: string,
-  instanceId: string | null,
-  rctx: DataSourceResolverContext,
-): Promise<Record<string, string>> {
-  const src = sourceMap.get(sourceKey);
-  if (!src) return {};
-  return src.resolve(ctx, instanceId, rctx);
-}

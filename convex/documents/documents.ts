@@ -726,7 +726,11 @@ export const resendSigningEmail = action({
     const doc = await db.get("formDocuments", args.documentId);
     if (!doc || String(doc.organizationId) !== String(args.organizationId))
       throw new Error("Document not found");
-    if (doc.status !== "draft" && doc.status !== "pending_signature")
+    if (
+      doc.status !== "draft" &&
+      doc.status !== "pending_signature" &&
+      doc.status !== "expired"
+    )
       throw new Error("Document is not awaiting signature");
     if (!doc.signingToken)
       throw new Error("Document has no signing token");
@@ -760,6 +764,16 @@ export const resendSigningEmail = action({
 
     if (!recipientEmail) {
       throw new Error("Nie znaleziono adresu e-mail pacjenta");
+    }
+
+    // Expired documents must be reset to pending_signature so the document gate
+    // passes once the patient re-signs. sendSigningEmailInternal bumps the token
+    // expiry on its own, so we only need to fix the status here.
+    if (doc.status === "expired") {
+      await db.patch("formDocuments", args.documentId, {
+        status: "pending_signature",
+        updatedAt: Date.now(),
+      });
     }
 
     // Call the send action directly (not via scheduler) so failures

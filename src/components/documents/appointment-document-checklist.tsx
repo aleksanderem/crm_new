@@ -465,7 +465,6 @@ function DocumentSection({
         {documents.map((doc) => {
           const canResend =
             !isDocumentCompleted(doc.status) &&
-            doc.status !== "expired" &&
             doc.status !== "voided" &&
             !!doc.signingToken;
 

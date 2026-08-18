@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation, useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { usePermission } from "@/hooks/use-permission";
 import { useTranslation } from "react-i18next";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
@@ -615,6 +616,10 @@ export function FormTemplatesListPage() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
 
+  const { allowed: canCreateTemplate } = usePermission("document_templates", "create");
+  const { allowed: canEditTemplate } = usePermission("document_templates", "edit");
+  const { allowed: canDeleteTemplate } = usePermission("document_templates", "delete");
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -950,15 +955,19 @@ export function FormTemplatesListPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button size="sm" variant="outline" onClick={() => setScanOpen(true)}>
-              {t("settings.formTemplates.scanNew", "Nowy ze skanu")}
-            </Button>
-            <Button size="sm" variant="outline" asChild>
-              <Link to="/dashboard/document-editor/new">
-                <Plus className="mr-2 h-4 w-4" variant="stroke" />
-                {t("settings.formTemplates.newTemplate")}
-              </Link>
-            </Button>
+            {canCreateTemplate && (
+              <Button size="sm" variant="outline" onClick={() => setScanOpen(true)}>
+                {t("settings.formTemplates.scanNew", "Nowy ze skanu")}
+              </Button>
+            )}
+            {canCreateTemplate && (
+              <Button size="sm" variant="outline" asChild>
+                <Link to="/dashboard/document-editor/new">
+                  <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                  {t("settings.formTemplates.newTemplate")}
+                </Link>
+              </Button>
+            )}
           </SectionHeader.Actions>
         </SectionHeader.Group>
         <UntitledAlert>{t("settings.formTemplates.description")}</UntitledAlert>
@@ -1015,12 +1024,14 @@ export function FormTemplatesListPage() {
           title={t("settings.formTemplates.emptyTitle")}
           description={t("settings.formTemplates.emptyDescription")}
           action={
-            <Button asChild>
-              <Link to="/dashboard/document-editor/new">
-                <Plus className="mr-2 h-4 w-4" variant="stroke" />
-                {t("settings.formTemplates.newTemplate")}
-              </Link>
-            </Button>
+            canCreateTemplate ? (
+              <Button asChild>
+                <Link to="/dashboard/document-editor/new">
+                  <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                  {t("settings.formTemplates.newTemplate")}
+                </Link>
+              </Button>
+            ) : undefined
           }
         />
       ) : (

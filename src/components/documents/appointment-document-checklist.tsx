@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import type { TFunction } from "i18next";
+import { usePermission } from "@/hooks/use-permission";
 import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { toast } from "sonner";
@@ -102,6 +103,7 @@ export function AppointmentDocumentChecklist({
   onDocumentClick,
 }: AppointmentDocumentChecklistProps) {
   const { t, i18n } = useTranslation();
+  const { allowed: canCreateDocuments } = usePermission("gabinet_documents", "create");
 
   const [viewingDocId, setViewingDocId] =
     useState<Id<"formDocuments"> | null>(null);
@@ -209,10 +211,12 @@ export function AppointmentDocumentChecklist({
             "Zabieg nie ma przypisanych szablonow dokumentow. Mozesz wygenerowac dokument recznie.",
           )}
           action={
-            <Button onClick={() => setGenerateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" variant="stroke" />
-              {t("documents.generate", "Wygeneruj dokument")}
-            </Button>
+            canCreateDocuments ? (
+              <Button onClick={() => setGenerateOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                {t("documents.generate", "Wygeneruj dokument")}
+              </Button>
+            ) : undefined
           }
         />
 
@@ -276,16 +280,18 @@ export function AppointmentDocumentChecklist({
         )}
 
         {/* Generate additional document button */}
-        <div className="flex justify-end">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setGenerateOpen(true)}
-          >
-            <Plus className="mr-2 h-4 w-4" variant="stroke" />
-            {t("documents.generateAdditional", "Wygeneruj dodatkowy dokument")}
-          </Button>
-        </div>
+        {canCreateDocuments && (
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setGenerateOpen(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
+              {t("documents.generateAdditional", "Wygeneruj dodatkowy dokument")}
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Generate dialog */}
@@ -429,6 +435,7 @@ function DocumentSection({
   const resendSigningEmail = useAction(api.documents.documents.resendSigningEmail);
   const [resendingDocId, setResendingDocId] = useState<string | null>(null);
   const [resendSuccess, setResendSuccess] = useState<string | null>(null);
+  const { allowed: canEditDocuments } = usePermission("gabinet_documents", "edit");
 
   const handleResend = useCallback(
     async (e: React.MouseEvent, docId: Id<"formDocuments">) => {
@@ -517,7 +524,7 @@ function DocumentSection({
                   </Button>
                 ) : doc.status === "voided" || doc.status === "expired" ? null : (
                   <>
-                    {canResend && (
+                    {canResend && canEditDocuments && (
                       <Button
                         size="sm"
                         variant="ghost"

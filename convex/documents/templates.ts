@@ -142,14 +142,15 @@ export const create = action({
     isOrgRequired: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    // requireOrgAdmin via authAction
     const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const createPerm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "document_templates", action: "create" },
+    ) as { allowed: boolean; scope: string };
+    if (!createPerm.allowed) throw new Error("Permission denied");
 
     const now = Date.now();
     const db = createSupabaseDb();
@@ -191,9 +192,11 @@ export const duplicate = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const createPerm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "document_templates", action: "create" },
+    ) as { allowed: boolean; scope: string };
+    if (!createPerm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     const source = await db.get("formTemplates", args.templateId);
@@ -271,9 +274,11 @@ export const update = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const editPerm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "document_templates", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!editPerm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     const tmpl = await db.get("formTemplates", args.templateId);
@@ -305,13 +310,15 @@ export const remove = action({
     templateId: v.string(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runAction(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const deletePerm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "document_templates", action: "delete" },
+    ) as { allowed: boolean; scope: string };
+    if (!deletePerm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     const tmpl = await db.get("formTemplates", args.templateId);

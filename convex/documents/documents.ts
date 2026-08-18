@@ -25,6 +25,11 @@ export const listAll = action({
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "view" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
     let q = db
       .query("formDocuments")
@@ -48,6 +53,11 @@ export const listByEntity = action({
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "view" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
     const docs = (await db
       .query("formDocuments")
@@ -81,6 +91,11 @@ export const reorderByEntity = action({
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     const now = Date.now();
@@ -113,6 +128,11 @@ export const getById = action({
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "view" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
     const doc = await db.get("formDocuments", args.documentId);
     if (!doc || String(doc.organizationId) !== String(args.organizationId))
@@ -171,6 +191,11 @@ export const listByTemplate = action({
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "view" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
     return (await db
       .query("formDocuments")
@@ -189,6 +214,11 @@ export const listByStatus = action({
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "view" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
     return (await db
       .query("formDocuments")
@@ -224,6 +254,11 @@ export const getLatestSignedIntakeByPatient = action({
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "view" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     const orgIdStr = String(args.organizationId);
@@ -338,6 +373,11 @@ export const create = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "create" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const now = Date.now();
     const db = createSupabaseDb();
@@ -408,15 +448,22 @@ export const updateStatus = action({
       );
     }
 
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
-    );
+    ) as { userId: string };
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     const doc = await db.get("formDocuments", args.documentId);
     if (!doc || String(doc.organizationId) !== String(args.organizationId))
       throw new Error("Document not found");
+    if (perm.scope === "own" && String(doc.createdBy) !== String(authResult.userId))
+      throw new Error("Permission denied: you can only update your own documents");
 
     await db.patch("formDocuments", args.documentId, {
       status: args.status,
@@ -433,15 +480,22 @@ export const updateResponseData = action({
     responseData: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
-    );
+    ) as { userId: string };
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     const doc = await db.get("formDocuments", args.documentId);
     if (!doc || String(doc.organizationId) !== String(args.organizationId))
       throw new Error("Document not found");
+    if (perm.scope === "own" && String(doc.createdBy) !== String(authResult.userId))
+      throw new Error("Permission denied: you can only update your own documents");
     if (doc.status !== "draft")
       throw new Error("Can only update response data on draft documents");
 
@@ -528,11 +582,18 @@ export const submitEmployeeFormFields = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     ) as { userId: string };
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     const doc = await db.get("formDocuments", args.documentId);
     if (!doc || String(doc.organizationId) !== String(args.organizationId))
       throw new Error("Document not found");
+    if (perm.scope === "own" && String(doc.createdBy) !== String(authResult.userId))
+      throw new Error("Permission denied: you can only update your own documents");
     if (doc.status !== "draft")
       throw new Error("Document is not in draft status");
 

@@ -479,11 +479,25 @@ export function EntityDocumentsTab({
                     }
 
                     // Fallback for document-type templates generated via wrong path:
-                    // re-render from contentJson + scope data on the fly
+                    // re-render from contentJson + scope data on the fly.
+                    // Guard: signed/completed documents must show an immutable
+                    // snapshot. Re-rendering from the current (possibly edited)
+                    // template would violate that guarantee, so we show a
+                    // placeholder instead.
                     if (
                       viewingTemplate.templateType === "document" &&
                       viewingTemplate.contentJson
                     ) {
+                      if (viewingDoc.status === "signed" || viewingDoc.status === "completed") {
+                        return (
+                          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
+                            <FileText className="h-7 w-7" />
+                            <p className="text-sm text-center">
+                              {t("documents.snapshotUnavailable", "Treść dokumentu z czasu podpisania jest niedostępna.")}
+                            </p>
+                          </div>
+                        );
+                      }
                       const scopeFlat: Record<string, string> = {};
                       for (const [k, v] of Object.entries(
                         mergedResponseData,

@@ -19,6 +19,7 @@ export const FEATURES = [
   "gabinet_treatments",
   "gabinet_packages",
   "gabinet_employees",
+  "gabinet_documents",
   "gabinet_payments",
   "gabinet_receipts",
   "gabinet_reports",

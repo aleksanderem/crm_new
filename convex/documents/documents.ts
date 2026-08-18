@@ -819,7 +819,7 @@ export const remove = action({
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,
-        feature: "documents",
+        feature: "gabinet_documents",
         action: "delete",
       },
     ) as { allowed: boolean; scope: string };

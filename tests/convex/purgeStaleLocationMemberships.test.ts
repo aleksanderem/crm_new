@@ -81,8 +81,15 @@ describe("admin/cleanup.purgeStaleConvexIdLocationMemberships", () => {
 
   test("rejects non-platform-admin callers", async () => {
     const t = createTestCtx();
-    const { identity } = await seedTestUser(t);
-    // NOT calling makePlatformAdmin — user is a regular org member
+    const { userId, identity } = await seedTestUser(t);
+    // Insert user into Supabase without isPlatformAdmin so the guard reaches
+    // the isPlatformAdmin check (not the "User not found" early exit).
+    await createSupabaseDb().insert("users", {
+      _id: String(userId),
+      name: "Regular User",
+      email: `user-${String(userId)}@example.com`,
+      isPlatformAdmin: false,
+    });
 
     await expect(
       t

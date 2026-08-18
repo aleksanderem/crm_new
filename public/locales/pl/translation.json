@@ -3513,6 +3513,23 @@
           "workflowSms": "SMS workflow wizyty"
         }
       },
+      "documentStatus": {
+        "title": "Status dokumentacji",
+        "complete": "Dokumentacja kompletna",
+        "missingRequired": "Brakuje wymaganych dokumentów",
+        "needsAttention": "Wymaga uwagi",
+        "progress": "{{satisfied}} / {{total}} spełnionych",
+        "optional": "opcjonalny",
+        "showAll": "Pokaż wszystkie",
+        "showLess": "Ukryj niewymagane",
+        "statuses": {
+          "satisfied": "Spełniony",
+          "expired": "Wygasły",
+          "pending": "Oczekujący",
+          "missing": "Brakuje",
+          "notApplicable": "Nie dotyczy"
+        }
+      },
       "markContraindicationAsDiscussed": "Oznacz jako omówione",
       "contraindicationDiscussed": "Omówiono",
       "contraindicationMarked": "Oznaczono jako omówione",

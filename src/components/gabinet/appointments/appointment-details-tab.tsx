@@ -37,6 +37,7 @@ import {
 } from "@/components/gabinet/rich-text-editor";
 import { TreatmentPicker } from "@/components/gabinet/appointment-shared/treatment-picker";
 import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
+import { AppointmentDocumentStatus } from "./appointment-document-status";
 
 type TreatmentListItem = {
   _id: string;
@@ -70,6 +71,8 @@ type SmsEvent = Record<string, unknown>;
 
 export function AppointmentDetailsTab({
   appointment,
+  appointmentId,
+  organizationId,
   treatment,
   employee,
   junctionTreatments,
@@ -99,6 +102,8 @@ export function AppointmentDetailsTab({
   t,
 }: {
   appointment: Record<string, unknown>;
+  appointmentId: string;
+  organizationId: string;
   treatment: Record<string, unknown> | null | undefined;
   employee: Record<string, unknown> | null | undefined;
   junctionTreatments: JunctionTreatment[];
@@ -503,6 +508,12 @@ export function AppointmentDetailsTab({
           </CardContent>
         </Card>
       )}
+
+      {/* Document Completeness Status Card */}
+      <AppointmentDocumentStatus
+        appointmentId={appointmentId}
+        organizationId={organizationId}
+      />
 
       {/* Internal Notes Card */}
       <Card>

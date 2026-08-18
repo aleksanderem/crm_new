@@ -90,6 +90,7 @@ interface FormDocument {
   signedByName?: string;
   signingToken?: string;
   signingEmailSentAt?: number;
+  contentJsonSnapshot?: string | null;
 }
 
 interface FormTemplate {
@@ -484,9 +485,16 @@ export function EntityDocumentsTab({
                     // snapshot. Re-rendering from the current (possibly edited)
                     // template would violate that guarantee, so we show a
                     // placeholder instead.
+                    //
+                    // Prefer the document's own contentJsonSnapshot (captured at
+                    // creation time) over the live template so that viewing a
+                    // draft created from v1 still shows v1 content even after
+                    // the template is later updated to v2 or v3.
+                    const fallbackContentJson =
+                      viewingDoc.contentJsonSnapshot ?? viewingTemplate.contentJson;
                     if (
                       viewingTemplate.templateType === "document" &&
-                      viewingTemplate.contentJson
+                      fallbackContentJson
                     ) {
                       if (viewingDoc.status === "signed" || viewingDoc.status === "completed") {
                         return (
@@ -507,7 +515,7 @@ export function EntityDocumentsTab({
                       return (
                         <TemplateFallbackViewer
                           title={viewingDoc.title}
-                          contentJson={viewingTemplate.contentJson}
+                          contentJson={fallbackContentJson}
                           scopeData={scopeFlat}
                           signatureData={viewingDoc.signatureData}
                           signedByName={viewingDoc.signedByName}

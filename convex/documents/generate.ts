@@ -187,6 +187,7 @@ export const generateDocument = action({
       organizationId: String(args.organizationId),
       templateId: args.templateId,
       templateVersion: (template.version as number | null | undefined) ?? null,
+      contentJsonSnapshot: (template.contentJson as string | null | undefined) ?? null,
       title,
       responseData: args.responseData,
       entityType: args.entityType,

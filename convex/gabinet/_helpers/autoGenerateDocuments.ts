@@ -241,6 +241,7 @@ export async function autoGenerateAppointmentDocuments(
         organizationId: String(args.organizationId),
         templateId: String(entry.templateId),
         templateVersion: (template.version as number | null | undefined) ?? null,
+        contentJsonSnapshot: (template.contentJson as string | null | undefined) ?? null,
         title: template.name,
         responseData: JSON.stringify(prefilledData),
         entityType: "appointment",

@@ -5,7 +5,6 @@ import {
   CalendarCheck,
   UserPlus,
   Package,
-  FileText,
   Plus,
   ShoppingCart,
   TruckIcon,
@@ -125,15 +124,6 @@ export function GabinetQuickActionsDropdown() {
           >
             <TruckIcon className="text-foreground size-5 shrink-0" />
             {t("sidebar.gabinet.addDelivery", "Dodaj dostawę")}
-          </DropdownMenuItem>
-        )}
-        {can("document_instances") && (
-          <DropdownMenuItem
-            className="px-3 py-2.5 text-sm"
-            onSelect={() => navigate({ to: "/dashboard/gabinet/documents" })}
-          >
-            <FileText className="text-foreground size-5" />
-            {t("sidebar.gabinet.issueDocument", "Wystaw dokument")}
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

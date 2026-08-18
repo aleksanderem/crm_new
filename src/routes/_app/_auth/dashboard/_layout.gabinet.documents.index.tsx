@@ -80,7 +80,7 @@ export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/documents/",
 )({
   component: () => (
-    <PermissionGate feature="document_instances" action="view" loadingFallback={<GabinetDocumentsSkeleton />}>
+    <PermissionGate feature="documents" action="view" loadingFallback={<GabinetDocumentsSkeleton />}>
       <GabinetDocumentsPage />
     </PermissionGate>
   ),
@@ -179,8 +179,8 @@ function GabinetDocumentsPage() {
     api.documents.components.resolveContentJson,
   );
 
-  const { allowed: canDelete } = usePermission("document_instances", "delete");
-  const { allowed: canEdit } = usePermission("document_instances", "edit");
+  const { allowed: canDelete } = usePermission("documents", "delete");
+  const { allowed: canEdit } = usePermission("documents", "edit");
 
   // --- Edit mode state ---
   const [isEditing, setIsEditing] = useState(false);

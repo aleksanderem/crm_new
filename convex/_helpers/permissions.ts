@@ -163,23 +163,6 @@ DEFAULT_PERMISSIONS.member.document_templates = {
   view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
 };
 
-// --- Per-feature overrides for document_instances ---
-// owner/admin: all actions allowed
-DEFAULT_PERMISSIONS.owner.document_instances = {
-  view: "all", create: "all", edit: "all", delete: "all", approve: "all", sign: "all", refund: "none",
-};
-DEFAULT_PERMISSIONS.admin.document_instances = {
-  view: "all", create: "all", edit: "all", delete: "all", approve: "all", sign: "all", refund: "none",
-};
-// member: view, create, edit, sign; NO approve or delete
-DEFAULT_PERMISSIONS.member.document_instances = {
-  view: "all", create: "all", edit: "own", delete: "none", approve: "none", sign: "all", refund: "none",
-};
-// viewer: view only
-DEFAULT_PERMISSIONS.viewer.document_instances = {
-  view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
-};
-
 // --- Per-feature overrides for tagDefinitions ---
 // member: create only (no edit/delete)
 DEFAULT_PERMISSIONS.member.tagDefinitions = {

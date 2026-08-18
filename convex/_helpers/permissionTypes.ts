@@ -32,7 +32,6 @@ export const FEATURES = [
   "settings",
   "team",
   "document_templates",
-  "document_instances",
   "tagDefinitions",
   "categoryDefinitions",
 ] as const;

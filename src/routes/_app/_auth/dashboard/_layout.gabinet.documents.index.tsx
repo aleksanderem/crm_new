@@ -51,11 +51,16 @@ import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 import { useSupabaseFormDocumentsList } from "@/hooks/use-supabase-form-documents";
+import type { MappedFormDocument } from "@/lib/supabase/mappers/form-documents";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { useSupabaseGabinetAppointmentsByIds } from "@/hooks/use-supabase-gabinet-appointments";
 import { useSavedViews, applyFilterConditions } from "@/hooks/use-saved-views";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
+
+// Enriched document row — MappedFormDocument with the derived `category` field
+// added in filteredDocuments so filters can operate on it.
+type DocumentRow = MappedFormDocument & { category: string | null };
 
 // ---------------------------------------------------------------------------
 // Route
@@ -570,7 +575,7 @@ function GabinetDocumentsPage() {
 
   // --- Column definitions ---
   const columns = useMemo(() => {
-    const result: CrmColumn<any>[] = [
+    const result: CrmColumn<DocumentRow>[] = [
       {
         id: "title",
         label: t("gabinet.formDocuments.colTitle", "Tytuł"),

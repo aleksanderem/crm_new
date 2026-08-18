@@ -566,7 +566,8 @@ function GabinetDocumentsPage() {
                 {t("common.view", "Podgląd")}
               </DropdownMenuItem>
               {canEdit && (item.status === "draft" ||
-              item.status === "pending_signature") ? (
+              item.status === "pending_signature" ||
+              item.status === "expired") ? (
                 <DropdownMenuItem
                   onClick={() => handleResendSigningEmail(item._id)}
                 >

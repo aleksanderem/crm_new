@@ -1108,6 +1108,131 @@ export const _generateDocsOnSync = internalMutation({
 });
 
 // ---------------------------------------------------------------------------
+// Internal mutation: emit automation event and schedule reminders for
+// sync-imported appointments. Called by the Google Calendar sync action after
+// creating an appointment via the Supabase helper path (#5358).
+// Documents are handled separately by _generateDocsOnSync.
+// ---------------------------------------------------------------------------
+export const _syncCreatedSideEffects = internalMutation({
+  args: {
+    organizationId: v.string(),
+    appointmentId: v.string(),
+    patientId: v.string(),
+    treatmentId: v.optional(v.string()),
+    employeeId: v.string(),
+    date: v.string(),
+    startTime: v.string(),
+    endTime: v.string(),
+    createdBy: v.string(),
+    patientName: v.string(),
+    patientEmail: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const db = createSupabaseDb();
+    const now = Date.now();
+
+    const patient = await db.get("gabinetPatients", args.patientId) as Record<string, unknown> | null;
+    const patientPhone = patient?.phone as string | undefined;
+
+    let treatmentName = "";
+    if (args.treatmentId) {
+      const treatment = await db.get("gabinetTreatments", args.treatmentId) as Record<string, unknown> | null;
+      treatmentName = (treatment?.name as string) ?? "";
+    }
+
+    await emitAutomationEvent(ctx, {
+      organizationId: args.organizationId as Id<"organizations">,
+      module: "gabinet",
+      eventType: "gabinet.appointment.created",
+      entityType: "gabinetAppointment",
+      entityId: args.appointmentId,
+      actorUserId: args.createdBy,
+      correlationKey: `appointment:${args.appointmentId}`,
+      eventIdempotencyKey: `automation-event:${args.organizationId}:${args.appointmentId}:created`,
+      payload: {
+        organizationId: args.organizationId,
+        appointmentId: args.appointmentId,
+        patientId: args.patientId,
+        treatmentId: args.treatmentId,
+        employeeId: args.employeeId,
+        date: args.date,
+        startTime: args.startTime,
+        endTime: args.endTime,
+        status: "scheduled",
+        patientEmail: args.patientEmail,
+        patientPhone,
+        patientName: args.patientName,
+        treatmentName,
+        employeeName: args.employeeId,
+        createdBy: args.createdBy,
+      },
+    });
+
+    try {
+      const supaOrgSettings = await db
+        .query("orgSettings")
+        .eq("organizationId", args.organizationId)
+        .first() as Record<string, unknown> | null;
+
+      const has4ToggleConfig =
+        supaOrgSettings?.reminderSms48h !== null && supaOrgSettings?.reminderSms48h !== undefined ||
+        supaOrgSettings?.reminderSms24h !== null && supaOrgSettings?.reminderSms24h !== undefined ||
+        supaOrgSettings?.reminderEmail48h !== null && supaOrgSettings?.reminderEmail48h !== undefined ||
+        supaOrgSettings?.reminderEmail24h !== null && supaOrgSettings?.reminderEmail24h !== undefined;
+
+      let timingsHours: number[];
+      if (has4ToggleConfig) {
+        timingsHours = [];
+        if (Boolean(supaOrgSettings?.reminderSms48h) || Boolean(supaOrgSettings?.reminderEmail48h)) timingsHours.push(48);
+        if (Boolean(supaOrgSettings?.reminderSms24h) || Boolean(supaOrgSettings?.reminderEmail24h)) timingsHours.push(24);
+      } else {
+        timingsHours = [(supaOrgSettings?.reminderHoursBefore as number) ?? 24];
+      }
+
+      let baseApptScheduled = 0;
+      for (const hours of timingsHours) {
+        const appointmentMs = new Date(`${args.date}T${args.startTime}:00`).getTime();
+        const reminderMs = appointmentMs - hours * 60 * 60 * 1000;
+        if (reminderMs <= now) continue;
+
+        const reminderId = await db.insert("appointmentReminders", {
+          organizationId: args.organizationId,
+          appointmentId: args.appointmentId,
+          type: "notification",
+          scheduledFor: reminderMs,
+          status: "pending",
+          createdAt: now,
+        });
+        const scheduledId = await ctx.scheduler.runAfter(
+          reminderMs - now,
+          internal.gabinet.appointmentReminders.sendReminder,
+          { reminderId },
+        );
+        await db.patch("appointmentReminders", reminderId, {
+          scheduledFunctionId: scheduledId as unknown as string,
+        });
+        baseApptScheduled++;
+      }
+
+      if (timingsHours.length > 0 && baseApptScheduled === 0 && patientPhone) {
+        const needSms = has4ToggleConfig
+          ? Boolean(supaOrgSettings?.reminderSms48h || supaOrgSettings?.reminderSms24h)
+          : true;
+        if (needSms) {
+          await ctx.runMutation(internal.gabinet.appointmentSms.queueConfirmationRequest, {
+            organizationId: args.organizationId,
+            appointmentId: args.appointmentId,
+            trigger: "booking",
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("Sync reminder scheduling failed (non-fatal):", e);
+    }
+  },
+});
+
+// ---------------------------------------------------------------------------
 // PUBLIC create action — Supabase-primary write
 // ---------------------------------------------------------------------------
 

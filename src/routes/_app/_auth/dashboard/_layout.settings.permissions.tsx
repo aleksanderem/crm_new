@@ -49,6 +49,7 @@ const FEATURE_LABELS: Record<string, { labelKey: string; label: string }> = {
   gabinet_documents: { labelKey: "permissions.features.gabinet_documents", label: "Gabinet: Documents" },
   gabinet_payments: { labelKey: "permissions.features.gabinet_payments", label: "Gabinet: Payments" },
   gabinet_receipts: { labelKey: "permissions.features.gabinet_receipts", label: "Gabinet: Receipts" },
+  gabinet_salary: { labelKey: "permissions.features.gabinet_salary", label: "Gabinet: Salary" },
   gabinet_reports: { labelKey: "permissions.features.gabinet_reports", label: "Gabinet: Reports" },
   gabinet_financial_reports: { labelKey: "permissions.features.gabinet_financial_reports", label: "Gabinet: Financial Reports" },
   gabinet_purchase_prices: { labelKey: "permissions.features.gabinet_purchase_prices", label: "Gabinet: Purchase Prices" },

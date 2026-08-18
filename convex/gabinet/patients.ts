@@ -850,6 +850,7 @@ export const merge = action({
     movedPackageUsage: number;
     movedLoyaltyTransactions: number;
     movedPayments: number;
+    movedReceipts: number;
     movedNotes: number;
     movedActivities: number;
     movedRelationships: number;

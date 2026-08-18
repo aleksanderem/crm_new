@@ -854,12 +854,11 @@ describe("automation lifecycle", () => {
           runId: run._id,
         })
       : [];
-    const emails = await t.run(async (ctx) =>
-      ctx.db
-        .query("emails")
-        .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
-        .collect(),
-    );
+    // emails are Supabase-primary since #4914 — read via the in-memory mock.
+    const emails = (await createSupabaseDb()
+      .query("emails")
+      .eq("organizationId", String(organizationId))
+      .collect()) as Array<{ subject?: string; to?: string[]; bodyHtml?: string }>;
 
     expect(run?.status).toBe("processed");
     expect(steps).toHaveLength(1);
@@ -873,7 +872,7 @@ describe("automation lifecycle", () => {
       emails.some(
         (email) =>
           email.subject === "Wizyta dla Jan Kowalski" &&
-          email.to.includes("jan@example.com") &&
+          email.to?.includes("jan@example.com") &&
           email.bodyHtml?.includes("2026-03-17 o 10:00"),
       ),
     ).toBe(true);
@@ -975,12 +974,11 @@ describe("automation lifecycle", () => {
           runId: run._id,
         })
       : [];
-    const emails = await t.run(async (ctx) =>
-      ctx.db
-        .query("emails")
-        .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
-        .collect(),
-    );
+    // emails are Supabase-primary since #4914 — read via the in-memory mock.
+    const emails = (await createSupabaseDb()
+      .query("emails")
+      .eq("organizationId", String(organizationId))
+      .collect()) as Array<{ subject?: string; to?: string[]; bodyHtml?: string }>;
 
     expect(run?.status).toBe("processed");
     expect(steps).toHaveLength(1);
@@ -992,7 +990,7 @@ describe("automation lifecycle", () => {
       emails.some(
         (email) =>
           email.subject === "Szablon Jan Kowalski" &&
-          email.to.includes("jan@example.com") &&
+          email.to?.includes("jan@example.com") &&
           email.bodyHtml?.includes("jan@example.com"),
       ),
     ).toBe(true);
@@ -1050,7 +1048,12 @@ describe("automation lifecycle", () => {
           runId: run._id,
         })
       : [];
-    const patient = await t.run(async (ctx) => ctx.db.get(patientId));
+    // gabinetPatients are Supabase-primary; _applyUpdateFieldAction patches via
+    // createSupabaseDb() since #4956 removed the Convex mirror write.
+    const patient = await createSupabaseDb().get<{ customFields?: Record<string, unknown> }>(
+      "gabinetPatients",
+      String(patientId),
+    );
 
     expect(run?.status).toBe("processed");
     expect(steps).toHaveLength(1);
@@ -1059,9 +1062,7 @@ describe("automation lifecycle", () => {
     expect(steps[0]?.linkedEntityType).toBe("gabinetPatient");
     expect(steps[0]?.linkedEntityId).toBe(String(patientId));
     expect(steps[0]?.renderedBody).toBe("custom:automationTag=Jan Kowalski 2026-03-17");
-    expect((patient?.customFields as Record<string, unknown> | undefined)?.automationTag).toBe(
-      "Jan Kowalski 2026-03-17",
-    );
+    expect(patient?.customFields?.automationTag).toBe("Jan Kowalski 2026-03-17");
   });
 
   test("lead status changed event processes update_field action for supported lead field", async () => {

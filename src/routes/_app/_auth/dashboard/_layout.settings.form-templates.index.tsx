@@ -63,7 +63,21 @@ import {
   FolderPlus,
   GripVertical,
   ChevronDown,
+  Eye,
 } from "@/lib/ez-icons";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
 import { TemplateScanDialog } from "@/components/documents/template-scan-dialog";
@@ -87,7 +101,13 @@ type FormCategory =
   | "invoice"
   | "protocol"
   | "intake"
+  | "aftercare"
+  | "consent_photo"
+  | "consent_marketing"
+  | "declaration"
   | "custom";
+
+type StatusFilter = "all" | "active" | "inactive";
 
 interface FormTemplateRecord {
   _id: Id<"formTemplates">;
@@ -103,6 +123,7 @@ interface FormTemplateRecord {
   requiresSignature: boolean;
   createdAt: number;
   updatedAt: number;
+  updatedBy?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -249,6 +270,7 @@ function TemplateTree({
   templates,
   search,
   onEditTemplate,
+  onPreviewTemplate,
   onDeleteTemplate,
   onDuplicateTemplate,
   onToggleActive,
@@ -260,6 +282,7 @@ function TemplateTree({
   templates: FormTemplateRecord[];
   search: string;
   onEditTemplate: (id: Id<"formTemplates">) => void;
+  onPreviewTemplate: (id: Id<"formTemplates">) => void;
   onDeleteTemplate: (tpl: FormTemplateRecord) => void;
   onDuplicateTemplate: (tpl: FormTemplateRecord) => void;
   onToggleActive: (tpl: FormTemplateRecord, active: boolean) => void;
@@ -448,6 +471,13 @@ function TemplateTree({
                 <span className="text-[10px] text-muted-foreground shrink-0">
                   v{tpl.version}
                 </span>
+                <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:inline">
+                  {new Date(tpl.updatedAt).toLocaleDateString(undefined, {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "2-digit",
+                  })}
+                </span>
                 {/* Rendered as a <div role="switch"> rather than the Radix
                     Switch component because Switch renders as
                     <button role="switch"> and the outer TreeItem wrapper is
@@ -505,12 +535,40 @@ function TemplateTree({
                     <DropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation();
+                        onPreviewTemplate(tpl._id);
+                      }}
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      {t("settings.formTemplates.preview", "Podgląd")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
                         onDuplicateTemplate(tpl);
                       }}
                     >
                       <CopyIcon className="mr-2 h-4 w-4" />
                       {t("settings.formTemplates.duplicate")}
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div>
+                            <DropdownMenuItem
+                              disabled
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <FileText className="mr-2 h-4 w-4" />
+                              {t("settings.formTemplates.assignToTreatment", "Przypisz do zabiegu")}
+                            </DropdownMenuItem>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {t("settings.formTemplates.assignToTreatmentSoon", "Dostępne w D25")}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="text-destructive"
@@ -544,6 +602,8 @@ export function FormTemplatesListPage() {
   const navigate = useNavigate();
 
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [scanOpen, setScanOpen] = useState(false);
   const [deletingTemplate, setDeletingTemplate] =
     useState<FormTemplateRecord | null>(null);
@@ -580,6 +640,19 @@ export function FormTemplatesListPage() {
   const allTemplates = useMemo<FormTemplateRecord[]>(
     () => templates ?? [],
     [templates],
+  );
+
+  const filteredTemplates = useMemo<FormTemplateRecord[]>(() => {
+    let result = allTemplates;
+    if (statusFilter === "active") result = result.filter((t) => t.isActive);
+    else if (statusFilter === "inactive") result = result.filter((t) => !t.isActive);
+    if (categoryFilter !== "all") result = result.filter((t) => t.category === categoryFilter);
+    return result;
+  }, [allTemplates, statusFilter, categoryFilter]);
+
+  const uniqueCategories = useMemo(
+    () => Array.from(new Set(allTemplates.map((t) => t.category))).sort(),
+    [allTemplates],
   );
 
   const handleToggleActive = useCallback(
@@ -798,14 +871,14 @@ export function FormTemplatesListPage() {
   const templateTreeKey = useMemo(() => {
     const searchLower = search.toLowerCase().trim();
     const visible = searchLower
-      ? allTemplates.filter(
+      ? filteredTemplates.filter(
           (tpl) =>
             tpl.name.toLowerCase().includes(searchLower) ||
             (tpl.description ?? "").toLowerCase().includes(searchLower),
         )
-      : allTemplates;
+      : filteredTemplates;
     return visible.map((tpl) => tpl._id).join(",");
-  }, [allTemplates, search]);
+  }, [filteredTemplates, search]);
 
   return (
     <div className="flex h-full w-full flex-col gap-6">
@@ -879,8 +952,35 @@ export function FormTemplatesListPage() {
             className="pl-9"
           />
         </div>
+        {/* Status filter */}
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+          <SelectTrigger className="w-[130px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("settings.formTemplates.filterAll", "Wszystkie")}</SelectItem>
+            <SelectItem value="active">{t("settings.formTemplates.filterActive", "Aktywne")}</SelectItem>
+            <SelectItem value="inactive">{t("settings.formTemplates.filterInactive", "Nieaktywne")}</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Category filter */}
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder={t("settings.formTemplates.allCategories")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("settings.formTemplates.allCategories")}</SelectItem>
+            {uniqueCategories.map((cat) => (
+              <SelectItem key={cat} value={cat}>
+                {t(`settings.formTemplates.categories.${cat}`, cat)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <span className="text-sm text-muted-foreground">
-          {allTemplates.length}{" "}
+          {filteredTemplates.length}/{allTemplates.length}{" "}
           {t("settings.formTemplates.templateCount", "szablonów")}
         </span>
       </div>
@@ -905,9 +1005,12 @@ export function FormTemplatesListPage() {
           <div className="rounded-lg border bg-card p-4">
             <TemplateTree
               key={templateTreeKey}
-              templates={allTemplates}
+              templates={filteredTemplates}
               search={search}
               onEditTemplate={(id) => {
+                navigate({ to: "/dashboard/document-editor/$id", params: { id } });
+              }}
+              onPreviewTemplate={(id) => {
                 navigate({ to: "/dashboard/document-editor/$id", params: { id } });
               }}
               onDeleteTemplate={setDeletingTemplate}

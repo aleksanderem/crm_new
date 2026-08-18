@@ -1649,15 +1649,25 @@
       },
       "categories": {
         "intake": "Wywiad",
-        "consent": "Zgoda",
-        "protocol": "Protokół zabiegu",
+        "consent": "Zgoda na zabieg",
+        "protocol": "Karta wykonania zabiegu",
         "medical_record": "Karta medyczna",
         "prescription": "Recepta",
         "referral": "Skierowanie",
         "contract": "Umowa",
         "invoice": "Faktura",
-        "custom": "Własny"
+        "aftercare": "Zalecenia pozabiegowe",
+        "consent_photo": "Zgoda fotograficzna",
+        "consent_marketing": "Zgoda marketingowa",
+        "declaration": "Oświadczenie",
+        "custom": "Inny"
       },
+      "filterAll": "Wszystkie",
+      "filterActive": "Aktywne",
+      "filterInactive": "Nieaktywne",
+      "preview": "Podgląd",
+      "assignToTreatment": "Przypisz do zabiegu",
+      "assignToTreatmentSoon": "Dostępne w D25",
       "signatureMethods": {
         "click": "Kliknięcie",
         "sms": "Kod SMS",

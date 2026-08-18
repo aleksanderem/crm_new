@@ -272,7 +272,7 @@ export const update = action({
       (updates.contentJson && updates.contentJson !== tmpl.contentJson);
     const newVersion = contentChanged ? (tmpl.version as number ?? 1) + 1 : (tmpl.version as number ?? 1);
 
-    const patchData: Record<string, unknown> = { ...updates, version: newVersion, updatedAt: Date.now() };
+    const patchData: Record<string, unknown> = { ...updates, version: newVersion, updatedAt: Date.now(), updatedBy: String(authResult.userId) };
     // Serialize signatureConfig for Supabase
     if (patchData.signatureConfig && typeof patchData.signatureConfig !== "string") {
       patchData.signatureConfig = JSON.stringify(patchData.signatureConfig);

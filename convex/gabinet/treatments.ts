@@ -116,6 +116,15 @@ export const create = action({
         v.literal("during_visit"),
         v.literal("after_completion"),
       ),
+      isRequired: v.optional(v.boolean()),
+      frequency: v.optional(v.union(
+        v.literal("once"),
+        v.literal("first_visit_only"),
+        v.literal("before_each_visit"),
+        v.literal("every_n_days"),
+        v.literal("on_expiry"),
+      )),
+      validityDays: v.optional(v.number()),
       isOneTime: v.optional(v.boolean()),
     }))),
     tagIds: v.optional(v.array(v.string())),
@@ -363,6 +372,15 @@ export const update = action({
         v.literal("during_visit"),
         v.literal("after_completion"),
       ),
+      isRequired: v.optional(v.boolean()),
+      frequency: v.optional(v.union(
+        v.literal("once"),
+        v.literal("first_visit_only"),
+        v.literal("before_each_visit"),
+        v.literal("every_n_days"),
+        v.literal("on_expiry"),
+      )),
+      validityDays: v.optional(v.number()),
       isOneTime: v.optional(v.boolean()),
     }))),
     tagIds: v.optional(v.array(v.string())),
@@ -1285,6 +1303,9 @@ export const getRequiredFormTemplates = action({
   handler: async (ctx, args): Promise<Array<{
     templateId: string;
     timing: "before_start" | "during_visit" | "after_completion";
+    isRequired: boolean;
+    frequency: "once" | "first_visit_only" | "before_each_visit" | "every_n_days" | "on_expiry";
+    validityDays: number | null;
     isOneTime: boolean;
     templateName: string;
     templateCategory: string;
@@ -1312,6 +1333,9 @@ export const getRequiredFormTemplates = action({
     const entries = (treatment.requiredFormTemplates as Array<{
       templateId: string;
       timing: "before_start" | "during_visit" | "after_completion";
+      isRequired?: boolean;
+      frequency?: "once" | "first_visit_only" | "before_each_visit" | "every_n_days" | "on_expiry";
+      validityDays?: number;
       isOneTime?: boolean;
     }> | null) ?? [];
     if (entries.length === 0) return [];
@@ -1327,9 +1351,14 @@ export const getRequiredFormTemplates = action({
       .map((entry) => {
         const template = templateById.get(String(entry.templateId));
         if (!template) return null;
+        // Derive frequency from legacy isOneTime when explicit frequency is absent
+        const frequency = entry.frequency ?? (entry.isOneTime ? "once" : "before_each_visit");
         return {
           templateId: String(entry.templateId),
           timing: entry.timing,
+          isRequired: entry.isRequired ?? true,
+          frequency,
+          validityDays: entry.validityDays ?? null,
           isOneTime: entry.isOneTime ?? false,
           templateName: (template.name as string | null) ?? "",
           templateCategory: (template.category as string | null) ?? "",
@@ -1352,6 +1381,15 @@ export const setRequiredFormTemplates = action({
         v.literal("during_visit"),
         v.literal("after_completion"),
       ),
+      isRequired: v.optional(v.boolean()),
+      frequency: v.optional(v.union(
+        v.literal("once"),
+        v.literal("first_visit_only"),
+        v.literal("before_each_visit"),
+        v.literal("every_n_days"),
+        v.literal("on_expiry"),
+      )),
+      validityDays: v.optional(v.number()),
       isOneTime: v.optional(v.boolean()),
     })),
   },

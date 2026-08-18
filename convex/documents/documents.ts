@@ -647,6 +647,14 @@ export const recordSignature = action({
     }
 
     const now = Date.now();
+    // Compute expiresAt from the snapshotted validityDays (D27).
+    // documentValidityDays is set at document creation from the treatment rule;
+    // computing it here rather than at creation ensures the clock starts at signing.
+    const documentValidityDays = (doc as Record<string, unknown>).documentValidityDays as number | null | undefined;
+    const expiresAt = documentValidityDays != null
+      ? now + documentValidityDays * 24 * 60 * 60 * 1000
+      : null;
+
     const patchData: Record<string, unknown> = {
       status: "signed",
       signatureData: args.signatureData,
@@ -656,6 +664,7 @@ export const recordSignature = action({
       signedByIp: args.signedByIp ?? null,
       updatedAt: now,
     };
+    if (expiresAt != null) patchData.expiresAt = expiresAt;
 
     // For document-type templates without form fields: store the resolved HTML
     if (args.resolvedHtml) {

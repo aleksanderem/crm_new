@@ -23,7 +23,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { FileText, Plus, X, Search } from "@/lib/ez-icons";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
@@ -46,9 +47,20 @@ export type RequiredFormTemplateTiming =
   | "during_visit"
   | "after_completion";
 
+export type DocumentFrequency =
+  | "once"
+  | "first_visit_only"
+  | "before_each_visit"
+  | "every_n_days"
+  | "on_expiry";
+
 export interface RequiredFormTemplateValue {
   templateId: Id<"formTemplates">;
   timing: RequiredFormTemplateTiming;
+  isRequired?: boolean;
+  frequency?: DocumentFrequency;
+  validityDays?: number;
+  /** @deprecated use frequency="once" for new entries */
   isOneTime?: boolean;
 }
 
@@ -64,6 +76,8 @@ interface TreatmentRequiredDocumentsFieldProps {
   onChange: (value: RequiredFormTemplateValue[]) => void;
 }
 
+const VALIDITY_REQUIRED_FREQUENCIES: DocumentFrequency[] = ["every_n_days", "on_expiry"];
+
 export function TreatmentRequiredDocumentsField({
   organizationId,
   value,
@@ -77,7 +91,10 @@ export function TreatmentRequiredDocumentsField({
     useState<Id<"formTemplates"> | null>(null);
   const [selectedTiming, setSelectedTiming] =
     useState<RequiredFormTemplateTiming>("before_start");
-  const [selectedIsOneTime, setSelectedIsOneTime] = useState(false);
+  const [selectedFrequency, setSelectedFrequency] =
+    useState<DocumentFrequency>("before_each_visit");
+  const [selectedValidityDays, setSelectedValidityDays] = useState<string>("365");
+  const [selectedIsRequired, setSelectedIsRequired] = useState(true);
 
   const listTemplatesByEntityType = useAction(api.documents.templates.listByEntityType);
   const { data: allTemplatesRaw, isLoading: templatesLoading } = useQuery({
@@ -103,20 +120,31 @@ export function TreatmentRequiredDocumentsField({
       tpl.name.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const needsValidity = VALIDITY_REQUIRED_FREQUENCIES.includes(selectedFrequency);
+
+  const resetDialog = () => {
+    setSelectedTemplateId(null);
+    setSearch("");
+    setSelectedFrequency("before_each_visit");
+    setSelectedValidityDays("365");
+    setSelectedIsRequired(true);
+  };
+
   const handleAdd = () => {
     if (!selectedTemplateId) return;
+    const validityDays = needsValidity ? parseInt(selectedValidityDays, 10) || 365 : undefined;
     onChange([
       ...value,
       {
         templateId: selectedTemplateId,
         timing: selectedTiming,
-        isOneTime: selectedIsOneTime || undefined,
+        isRequired: selectedIsRequired,
+        frequency: selectedFrequency,
+        validityDays,
       },
     ]);
     setAddDialogOpen(false);
-    setSelectedTemplateId(null);
-    setSearch("");
-    setSelectedIsOneTime(false);
+    resetDialog();
   };
 
   const handleRemove = (templateId: Id<"formTemplates">) => {
@@ -134,11 +162,20 @@ export function TreatmentRequiredDocumentsField({
     );
   };
 
-  const handleIsOneTimeToggle = (templateId: Id<"formTemplates">) => {
+  const handleFrequencyChange = (
+    templateId: Id<"formTemplates">,
+    newFrequency: DocumentFrequency,
+  ) => {
     onChange(
       value.map((r) =>
         r.templateId === templateId
-          ? { ...r, isOneTime: r.isOneTime ? undefined : true }
+          ? {
+              ...r,
+              frequency: newFrequency,
+              validityDays: VALIDITY_REQUIRED_FREQUENCIES.includes(newFrequency)
+                ? (r.validityDays ?? 365)
+                : undefined,
+            }
           : r,
       ),
     );
@@ -158,6 +195,7 @@ export function TreatmentRequiredDocumentsField({
           <div className="rounded-lg border divide-y">
             {value.map((req) => {
               const tpl = templateMap.get(req.templateId);
+              const effectiveFrequency = req.frequency ?? (req.isOneTime ? "once" : "before_each_visit");
               return (
                 <div
                   key={req.templateId}
@@ -178,11 +216,18 @@ export function TreatmentRequiredDocumentsField({
                       }
                       t={t}
                     />
-                    <IsOneTimeBadge
-                      isOneTime={!!req.isOneTime}
-                      onToggle={() => handleIsOneTimeToggle(req.templateId)}
+                    <FrequencyBadge
+                      frequency={effectiveFrequency}
+                      onFrequencyChange={(newFrequency) =>
+                        handleFrequencyChange(req.templateId, newFrequency)
+                      }
                       t={t}
                     />
+                    {!(req.isRequired ?? true) && (
+                      <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border">
+                        {t("documents.requiredDocs.optional", "Opcjonalny")}
+                      </Badge>
+                    )}
                     <Button
                       type="button"
                       variant="ghost"
@@ -214,7 +259,7 @@ export function TreatmentRequiredDocumentsField({
         </Button>
       </div>
 
-      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+      <Dialog open={addDialogOpen} onOpenChange={(open) => { if (!open) resetDialog(); setAddDialogOpen(open); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -245,7 +290,7 @@ export function TreatmentRequiredDocumentsField({
               />
             </div>
 
-            <ScrollArea className="h-[240px]">
+            <ScrollArea className="h-[200px]">
               {templatesLoading ? (
                 <div className="space-y-2 p-1">
                   {Array.from({ length: 4 }).map((_, i) => (
@@ -293,10 +338,7 @@ export function TreatmentRequiredDocumentsField({
 
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                {t(
-                  "documents.requiredDocs.timing",
-                  "Moment wypełnienia",
-                )}
+                {t("documents.requiredDocs.timing", "Moment wypełnienia")}
               </label>
               <Select
                 value={selectedTiming}
@@ -309,39 +351,87 @@ export function TreatmentRequiredDocumentsField({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="before_start">
-                    {t(
-                      "documents.requiredDocs.beforeStart",
-                      "Przed wizytą",
-                    )}
+                    {t("documents.requiredDocs.beforeStart", "Przed wizytą")}
                   </SelectItem>
                   <SelectItem value="during_visit">
-                    {t(
-                      "documents.requiredDocs.duringVisit",
-                      "W trakcie wizyty",
-                    )}
+                    {t("documents.requiredDocs.duringVisit", "W trakcie wizyty")}
                   </SelectItem>
                   <SelectItem value="after_completion">
-                    {t(
-                      "documents.requiredDocs.afterCompletion",
-                      "Po wizycie",
-                    )}
+                    {t("documents.requiredDocs.afterCompletion", "Po wizycie")}
                   </SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="flex items-center gap-2 pt-1">
-              <Checkbox
-                id="isOneTime"
-                checked={selectedIsOneTime}
-                onCheckedChange={(checked) => setSelectedIsOneTime(!!checked)}
-              />
-              <label htmlFor="isOneTime" className="text-sm cursor-pointer">
-                {t(
-                  "documents.requiredDocs.isOneTime",
-                  "Jednorazowy — wypełniany tylko raz na pacjenta",
-                )}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                {t("documents.requiredDocs.frequency", "Częstotliwość")}
               </label>
+              <Select
+                value={selectedFrequency}
+                onValueChange={(v) => setSelectedFrequency(v as DocumentFrequency)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="before_each_visit">
+                    {t("documents.requiredDocs.freq.beforeEachVisit", "Przed każdą wizytą")}
+                  </SelectItem>
+                  <SelectItem value="once">
+                    {t("documents.requiredDocs.freq.once", "Jednorazowo (raz na pacjenta)")}
+                  </SelectItem>
+                  <SelectItem value="first_visit_only">
+                    {t("documents.requiredDocs.freq.firstVisitOnly", "Tylko przy pierwszej wizycie")}
+                  </SelectItem>
+                  <SelectItem value="every_n_days">
+                    {t("documents.requiredDocs.freq.everyNDays", "Raz na określony okres")}
+                  </SelectItem>
+                  <SelectItem value="on_expiry">
+                    {t("documents.requiredDocs.freq.onExpiry", "Ponownie po wygaśnięciu")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {needsValidity && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  {t("documents.requiredDocs.validityDays", "Ważność (dni)")}
+                </label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={selectedValidityDays}
+                  onChange={(e) => setSelectedValidityDays(e.target.value)}
+                  placeholder="365"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    "documents.requiredDocs.validityDaysHint",
+                    "Liczba dni, przez które podpisany dokument pozostaje ważny.",
+                  )}
+                </p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="is-required-toggle" className="text-sm font-medium cursor-pointer">
+                  {t("documents.requiredDocs.isRequired", "Wymagany")}
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    "documents.requiredDocs.isRequiredDescription",
+                    "Wymagane dokumenty blokują ukończenie wizyty. Opcjonalne są sugestią.",
+                  )}
+                </p>
+              </div>
+              <Switch
+                id="is-required-toggle"
+                checked={selectedIsRequired}
+                onCheckedChange={setSelectedIsRequired}
+              />
             </div>
           </div>
 
@@ -349,12 +439,7 @@ export function TreatmentRequiredDocumentsField({
             <Button
               type="button"
               variant="outline"
-              onClick={() => {
-                setAddDialogOpen(false);
-                setSelectedTemplateId(null);
-                setSearch("");
-                setSelectedIsOneTime(false);
-              }}
+              onClick={() => { setAddDialogOpen(false); resetDialog(); }}
             >
               {t("common.cancel", "Anuluj")}
             </Button>
@@ -387,51 +472,66 @@ const TIMING_STYLES: Record<RequiredFormTemplateTiming, string> = {
     "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800",
 };
 
-function timingLabel(
-  timing: RequiredFormTemplateTiming,
-  t: TFunction,
-): string {
-  switch (timing) {
-    case "before_start":
-      return t("documents.requiredDocs.beforeStart", "Przed wizytą");
-    case "during_visit":
-      return t("documents.requiredDocs.duringVisit", "W trakcie wizyty");
-    case "after_completion":
-      return t("documents.requiredDocs.afterCompletion", "Po wizycie");
+const FREQUENCY_ORDER: DocumentFrequency[] = [
+  "before_each_visit",
+  "once",
+  "first_visit_only",
+  "every_n_days",
+  "on_expiry",
+];
+
+const FREQUENCY_STYLES: Record<DocumentFrequency, string> = {
+  before_each_visit: "bg-muted text-muted-foreground border-border hover:bg-muted/80",
+  once: "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800",
+  first_visit_only: "bg-indigo-100 text-indigo-800 border-indigo-200 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800",
+  every_n_days: "bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800",
+  on_expiry: "bg-red-100 text-red-800 border-red-200 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
+};
+
+function frequencyLabel(freq: DocumentFrequency, t: TFunction): string {
+  switch (freq) {
+    case "before_each_visit": return t("documents.requiredDocs.freq.beforeEachVisit", "Przed każdą wizytą");
+    case "once": return t("documents.requiredDocs.freq.once", "Jednorazowo");
+    case "first_visit_only": return t("documents.requiredDocs.freq.firstVisitOnly", "Pierwsza wizyta");
+    case "every_n_days": return t("documents.requiredDocs.freq.everyNDays", "Raz na okres");
+    case "on_expiry": return t("documents.requiredDocs.freq.onExpiry", "Po wygaśnięciu");
   }
 }
 
-function IsOneTimeBadge({
-  isOneTime,
-  onToggle,
+function timingLabel(timing: RequiredFormTemplateTiming, t: TFunction): string {
+  switch (timing) {
+    case "before_start": return t("documents.requiredDocs.beforeStart", "Przed wizytą");
+    case "during_visit": return t("documents.requiredDocs.duringVisit", "W trakcie wizyty");
+    case "after_completion": return t("documents.requiredDocs.afterCompletion", "Po wizycie");
+  }
+}
+
+function FrequencyBadge({
+  frequency,
+  onFrequencyChange,
   t,
 }: {
-  isOneTime: boolean;
-  onToggle: () => void;
+  frequency: DocumentFrequency;
+  onFrequencyChange: (newFrequency: DocumentFrequency) => void;
   t: TFunction;
 }) {
+  const nextFrequency = (current: DocumentFrequency) => {
+    const idx = FREQUENCY_ORDER.indexOf(current);
+    return FREQUENCY_ORDER[(idx + 1) % FREQUENCY_ORDER.length];
+  };
+
   return (
     <button
       type="button"
-      onClick={onToggle}
+      onClick={() => onFrequencyChange(nextFrequency(frequency))}
       className="cursor-pointer"
-      title={t(
-        "documents.requiredDocs.toggleOneTime",
-        "Kliknij, aby zmienić typ jednorazowy",
-      )}
+      title={t("documents.requiredDocs.toggleFrequency", "Kliknij, aby zmienić częstotliwość")}
     >
       <Badge
-        className={cn(
-          "text-xs select-none",
-          isOneTime
-            ? "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800"
-            : "bg-muted text-muted-foreground border-border hover:bg-muted/80",
-        )}
+        className={cn("text-xs select-none", FREQUENCY_STYLES[frequency])}
         variant="outline"
       >
-        {isOneTime
-          ? t("documents.requiredDocs.oneTime", "Jednorazowy")
-          : t("documents.requiredDocs.recurring", "Wielokrotny")}
+        {frequencyLabel(frequency, t)}
       </Badge>
     </button>
   );
@@ -456,10 +556,7 @@ function TimingBadge({
       type="button"
       onClick={() => onTimingChange(nextTiming(timing))}
       className="cursor-pointer"
-      title={t(
-        "documents.requiredDocs.toggleTiming",
-        "Kliknij, aby zmienic moment",
-      )}
+      title={t("documents.requiredDocs.toggleTiming", "Kliknij, aby zmienic moment")}
     >
       <Badge
         className={cn("text-xs select-none", TIMING_STYLES[timing])}

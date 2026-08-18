@@ -129,7 +129,7 @@ export function createGabinetTables({
         }),
       ),
     ),
-    // Treatment detail: required form templates with timing
+    // Treatment detail: required form templates with timing and frequency rules (D27)
     requiredFormTemplates: v.optional(v.array(v.object({
       templateId: v.id("formTemplates"),
       timing: v.union(
@@ -137,8 +137,27 @@ export function createGabinetTables({
         v.literal("during_visit"),
         v.literal("after_completion"),
       ),
-      // When true, skip generation if the patient already has a signed copy of
-      // this template (e.g. RODO, terms — signed once per patient, not per visit)
+      // Whether the document is required (blocks completion) or optional.
+      // Defaults to true when absent (pre-D27 entries are all required).
+      isRequired: v.optional(v.boolean()),
+      // Frequency rule — replaces the legacy isOneTime boolean.
+      // "once"              — signed once per patient lifetime
+      // "first_visit_only"  — only at the patient's first appointment for this treatment
+      // "before_each_visit" — generated for every appointment (default)
+      // "every_n_days"      — generate if no valid signed copy within the last validityDays
+      // "on_expiry"         — generate when the last signed copy has expired
+      // Absent means "before_each_visit" (backward compat with isOneTime: false / undefined).
+      frequency: v.optional(v.union(
+        v.literal("once"),
+        v.literal("first_visit_only"),
+        v.literal("before_each_visit"),
+        v.literal("every_n_days"),
+        v.literal("on_expiry"),
+      )),
+      // Number of days a signed copy remains valid. Required when frequency is
+      // "every_n_days" or "on_expiry". Ignored for other frequencies.
+      validityDays: v.optional(v.number()),
+      // Legacy field — kept for backward compat. New entries use frequency="once".
       isOneTime: v.optional(v.boolean()),
     }))),
     shortDescription: v.optional(v.string()),

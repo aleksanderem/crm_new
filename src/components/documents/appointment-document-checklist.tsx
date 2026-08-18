@@ -466,6 +466,7 @@ function DocumentSection({
           const canResend =
             !isDocumentCompleted(doc.status) &&
             doc.status !== "voided" &&
+            doc.status !== "expired" &&
             !!doc.signingToken;
 
           return (
@@ -499,7 +500,7 @@ function DocumentSection({
                     <Eye className="h-3.5 w-3.5 mr-1" />
                     {t("documents.preview", "Podglad")}
                   </Button>
-                ) : (
+                ) : doc.status === "voided" || doc.status === "expired" ? null : (
                   <>
                     {canResend && (
                       <Button

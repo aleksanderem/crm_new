@@ -869,6 +869,19 @@
       "filled": "Document filled in and sent to the client for signing.",
       "sent": "Document sent to the client for signing.",
       "later": "Fill in later"
+    },
+    "void": "Void",
+    "voided": "Document voided",
+    "voidFailed": "Failed to void document",
+    "voidDialogTitle": "Void document",
+    "voidDialogDescription": "Are you sure you want to void this document? This cannot be undone.",
+    "resend": "Resend",
+    "view": "View",
+    "audit": {
+      "created": "Created",
+      "sent": "Sent for signing",
+      "signed": "Signed",
+      "voided": "Voided"
     }
   },
   "products": {

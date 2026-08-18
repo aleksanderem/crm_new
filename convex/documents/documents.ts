@@ -367,6 +367,25 @@ export const create = action({
       updatedAt: now,
     });
 
+    // Audit trail: record document creation with template version snapshot.
+    try {
+      await db.insert("auditLog", {
+        organizationId: String(args.organizationId),
+        userId: String(authResult.userId),
+        action: "document.created",
+        entityType: "formDocument",
+        entityId: String(docId),
+        details: JSON.stringify({
+          title: args.title,
+          templateVersion: (template?.version as number | null | undefined) ?? null,
+          status: args.status,
+        }),
+        createdAt: now,
+      });
+    } catch (err) {
+      console.error("[create] audit log write failed", err);
+    }
+
     return docId;
   },
 });
@@ -494,10 +513,10 @@ export const submitEmployeeFormFields = action({
     scopeData: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
-    );
+    ) as { userId: string };
 
     const db = createSupabaseDb();
     const doc = await db.get("formDocuments", args.documentId);
@@ -571,13 +590,17 @@ export const submitEmployeeFormFields = action({
     const nextStatus: "draft" | "pending_signature" =
       doc.signingToken && !recipientEmail ? "draft" : "pending_signature";
 
+    const nowMs = Date.now();
     const patchPayload: Record<string, unknown> = {
       responseData: JSON.stringify(responseObj),
       status: nextStatus,
-      updatedAt: Date.now(),
+      updatedAt: nowMs,
     };
     if (doc.signingToken && !recipientEmail) {
       patchPayload.signingTokenExpiresAt = null;
+    }
+    if (recipientEmail) {
+      patchPayload.sentByUserId = String(authResult.userId);
     }
 
     await db.patch("formDocuments", args.documentId, patchPayload);
@@ -592,6 +615,24 @@ export const submitEmployeeFormFields = action({
           recipientName,
         },
       );
+
+      // Audit trail: record that staff triggered the signing email.
+      try {
+        await db.insert("auditLog", {
+          organizationId: String(args.organizationId),
+          userId: String(authResult.userId),
+          action: "document.sent",
+          entityType: "formDocument",
+          entityId: args.documentId,
+          details: JSON.stringify({
+            recipientEmail,
+            recipientName: recipientName ?? undefined,
+          }),
+          createdAt: nowMs,
+        });
+      } catch (err) {
+        console.error("[submitEmployeeFormFields] audit log write failed", err);
+      }
     }
 
     return args.documentId;
@@ -743,10 +784,10 @@ export const resendSigningEmail = action({
     documentId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
-    );
+    ) as { userId: string };
     const perm = await ctx.runAction(
       internal._helpers.authAction.checkPermission,
       {
@@ -801,15 +842,19 @@ export const resendSigningEmail = action({
       throw new Error("Nie znaleziono adresu e-mail pacjenta");
     }
 
+    const now = Date.now();
+
     // Expired documents must be reset to pending_signature so the document gate
     // passes once the patient re-signs. sendSigningEmailInternal bumps the token
     // expiry on its own, so we only need to fix the status here.
+    const patchPayload: Record<string, unknown> = {
+      sentByUserId: String(authResult.userId),
+      updatedAt: now,
+    };
     if (doc.status === "expired") {
-      await db.patch("formDocuments", args.documentId, {
-        status: "pending_signature",
-        updatedAt: Date.now(),
-      });
+      patchPayload.status = "pending_signature";
     }
+    await db.patch("formDocuments", args.documentId, patchPayload);
 
     // Call the send action directly (not via scheduler) so failures
     // propagate back to the UI instead of being silently swallowed.
@@ -818,6 +863,24 @@ export const resendSigningEmail = action({
       recipientEmail,
       recipientName,
     });
+
+    // Audit trail: record send event after successful delivery.
+    try {
+      await db.insert("auditLog", {
+        organizationId: String(args.organizationId),
+        userId: String(authResult.userId),
+        action: "document.sent",
+        entityType: "formDocument",
+        entityId: args.documentId,
+        details: JSON.stringify({
+          recipientEmail,
+          recipientName: recipientName ?? undefined,
+        }),
+        createdAt: now,
+      });
+    } catch (err) {
+      console.error("[resendSigningEmail] audit log write failed", err);
+    }
 
     return { sent: true };
   },
@@ -853,6 +916,68 @@ export const remove = action({
     }
 
     await db.delete("formDocuments", args.documentId);
+    return args.documentId;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Void document (D31) — transitions a signed/completed document to "voided",
+// records who voided it and when, and writes a document.voided audit log entry.
+// Uses the gabinet_documents edit permission so the same staff who can edit
+// documents can void them; owner-scoped staff can only void their own.
+// ---------------------------------------------------------------------------
+
+export const voidDocument = action({
+  args: {
+    organizationId: v.string(),
+    documentId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    ) as { userId: string };
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_documents",
+        action: "edit",
+      },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+    const doc = await db.get("formDocuments", args.documentId);
+    if (!doc || String(doc.organizationId) !== String(args.organizationId))
+      throw new Error("Document not found");
+    if (perm.scope === "own" && String(doc.createdBy) !== String(authResult.userId))
+      throw new Error("Permission denied: you can only void your own documents");
+    if (doc.status === "voided")
+      throw new Error("Document is already voided");
+
+    const now = Date.now();
+    await db.patch("formDocuments", args.documentId, {
+      status: "voided",
+      voidedByUserId: String(authResult.userId),
+      voidedAt: now,
+      updatedAt: now,
+    });
+
+    try {
+      await db.insert("auditLog", {
+        organizationId: String(args.organizationId),
+        userId: String(authResult.userId),
+        action: "document.voided",
+        entityType: "formDocument",
+        entityId: args.documentId,
+        details: JSON.stringify({ previousStatus: doc.status }),
+        createdAt: now,
+      });
+    } catch (err) {
+      console.error("[voidDocument] audit log write failed", err);
+    }
+
     return args.documentId;
   },
 });

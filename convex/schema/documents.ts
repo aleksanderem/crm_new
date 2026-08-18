@@ -184,6 +184,11 @@ export const documentTables = {
     // Display order within an (entityType, entityId) scope — used for
     // drag-and-drop reordering on entity detail "Documents" tabs.
     sortOrder: v.optional(v.number()),
+    // D31 — Audit trail: who sent the signing email (last sender) and who voided.
+    // Every send/void event is also written to auditLog for full chronological history.
+    sentByUserId: v.optional(v.string()),
+    voidedByUserId: v.optional(v.string()),
+    voidedAt: v.optional(v.number()),
     // Metadata
     createdBy: v.id("users"),
     createdAt: v.number(),

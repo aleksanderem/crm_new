@@ -869,6 +869,19 @@
       "filled": "Dokument wypełniony i wysłany do klienta do podpisu.",
       "sent": "Dokument wysłany do klienta do podpisu.",
       "later": "Wypełnię później"
+    },
+    "void": "Unieważnij",
+    "voided": "Dokument unieważniony",
+    "voidFailed": "Nie udało się unieważnić dokumentu",
+    "voidDialogTitle": "Unieważnij dokument",
+    "voidDialogDescription": "Czy na pewno chcesz unieważnić ten dokument? Operacja jest nieodwracalna.",
+    "resend": "Wyślij ponownie",
+    "view": "Podgląd",
+    "audit": {
+      "created": "Utworzono",
+      "sent": "Wysłano do podpisu",
+      "signed": "Podpisano",
+      "voided": "Unieważniono"
     }
   },
   "products": {

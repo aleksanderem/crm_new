@@ -425,7 +425,7 @@ describe("D23 — document versioning, snapshot isolation, and read-path immutab
     });
 
     const docs = await t.action(api.documents.documents.listByPatientToken, {
-      tokenHash: rawToken,
+      token: rawToken,
     });
 
     expect(docs, "One document must be returned").toHaveLength(1);

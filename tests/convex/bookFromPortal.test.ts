@@ -40,7 +40,7 @@ describe("bookFromPortal null userId guard (issue #4583)", () => {
       organizationId,
       userId,
     );
-    const { token: tokenHash } = await seedActivePortalSession(
+    const { token } = await seedActivePortalSession(
       String(patientId),
       String(organizationId),
     );
@@ -63,7 +63,7 @@ describe("bookFromPortal null userId guard (issue #4583)", () => {
     // crash caused by passing "null" as a userId to getAvailableSlotsSupabase.
     await expect(
       t.action(api.gabinet.patientPortal.bookFromPortal, {
-        tokenHash,
+        token,
         treatmentId: String(treatmentId),
         preferredDate: "2020-01-01",
         preferredTime: "09:00",
@@ -81,7 +81,7 @@ describe("bookFromPortal past-time guard (issue #1415)", () => {
       organizationId,
       userId,
     );
-    const { token: tokenHash } = await seedActivePortalSession(
+    const { token } = await seedActivePortalSession(
       String(patientId),
       String(organizationId),
     );
@@ -89,7 +89,7 @@ describe("bookFromPortal past-time guard (issue #1415)", () => {
     // A clearly-past date (server clock will be later than this).
     await expect(
       t.action(api.gabinet.patientPortal.bookFromPortal, {
-        tokenHash,
+        token,
         treatmentId: String(treatmentId),
         preferredDate: "2020-01-01",
         preferredTime: "09:00",

@@ -40,7 +40,7 @@ interface Appointment {
 
 function PatientAppointments() {
   const { t } = useTranslation();
-  const tokenHash =
+  const token =
     typeof window !== "undefined"
       ? (localStorage.getItem("patientPortalToken") ?? "")
       : "";
@@ -49,9 +49,9 @@ function PatientAppointments() {
     api.gabinet.patientPortal.getMyAppointments,
   );
   const { data: appointments } = useQuery({
-    queryKey: ["gabinet.patientPortal.getMyAppointments", tokenHash],
-    queryFn: () => getMyAppointments({ tokenHash }),
-    enabled: !!tokenHash,
+    queryKey: ["gabinet.patientPortal.getMyAppointments", token],
+    queryFn: () => getMyAppointments({ token }),
+    enabled: !!token,
   });
 
   const requestReschedule = useAction(
@@ -108,7 +108,7 @@ function PatientAppointments() {
     setSubmitting(true);
     try {
       await requestReschedule({
-        tokenHash,
+        token,
         appointmentId: rescheduleAppt._id as string,
         requestedDate,
         requestedTime,

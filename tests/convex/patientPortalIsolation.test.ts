@@ -115,7 +115,7 @@ describe("patient portal isolation — cross-patient data access", () => {
 
     const result = await t.withIdentity(identity).action(
       api.gabinet.patientPortal.getMyAppointments,
-      { tokenHash: tokenA },
+      { token: tokenA },
     );
 
     expect(result).toHaveLength(0);
@@ -166,7 +166,7 @@ describe("patient portal isolation — cross-patient data access", () => {
 
     const result = await t.withIdentity(identity).action(
       api.gabinet.patientPortal.getMyPackages,
-      { tokenHash: tokenA },
+      { token: tokenA },
     );
 
     expect(result).toHaveLength(0);
@@ -205,7 +205,7 @@ describe("patient portal isolation — cross-patient data access", () => {
 
     const result = await t.withIdentity(identity).action(
       api.gabinet.patientPortal.getMyLoyaltyBalance,
-      { tokenHash: tokenA },
+      { token: tokenA },
     );
 
     // Patient A has no loyalty row — result must be null, not patient B's balance.
@@ -243,7 +243,7 @@ describe("patient portal isolation — cross-patient data access", () => {
 
     const result = await t.withIdentity(identity).action(
       api.gabinet.patientPortal.getMyLoyaltyTransactions,
-      { tokenHash: tokenA },
+      { token: tokenA },
     );
 
     expect(result).toHaveLength(0);
@@ -282,7 +282,7 @@ describe("patient portal isolation — cross-patient data access", () => {
 
     const result = await t.withIdentity(identity).action(
       api.documents.documents.listByPatientToken,
-      { tokenHash: tokenA },
+      { token: tokenA },
     );
 
     expect(result).toHaveLength(0);
@@ -305,7 +305,7 @@ describe("patient portal isolation — cross-patient data access", () => {
 
     const result = await t.withIdentity(identity).action(
       api.gabinet.patientPortal.getMyProfile,
-      { tokenHash: tokenA },
+      { token: tokenA },
     );
 
     // seedGabinetPrereqs seeds patient A with jan@example.com.
@@ -339,7 +339,7 @@ describe("patient portal isolation — cross-patient data access", () => {
     await expect(
       t.withIdentity(identity).action(
         api.gabinet.patientPortal.getMyAppointments,
-        { tokenHash: "expired-token-isolation" },
+        { token: "expired-token-isolation" },
       ),
     ).rejects.toThrow(/invalid|expired/i);
   });
@@ -370,7 +370,7 @@ describe("patient portal isolation — cross-patient data access", () => {
     await expect(
       t.withIdentity(identity).action(
         api.gabinet.patientPortal.getMyAppointments,
-        { tokenHash: "inactive-token-isolation" },
+        { token: "inactive-token-isolation" },
       ),
     ).rejects.toThrow(/invalid|expired/i);
   });

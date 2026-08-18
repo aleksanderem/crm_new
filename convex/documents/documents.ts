@@ -142,13 +142,17 @@ export const getBySigningToken = action({
     // Return document data for any active status — the frontend decides
     // what to render based on status (fill form, sign, or show success).
 
-    // Also fetch template for rendering, with components resolved
+    // Also fetch template for rendering (needed for signatureConfig, requiresSignature, etc.).
+    // For the TipTap contentJson, prefer the document's stored snapshot so that
+    // later template edits never change what a patient fills out or signs.
+    // Pre-migration documents (contentJsonSnapshot is null) fall back to the
+    // current template's contentJson.
     const template = await db.get("formTemplates", String(doc.templateId));
-    if (template?.contentJson) {
-      const resolved = await resolveComponentsInContent(
-        db,
-        template.contentJson,
-      );
+    const contentToRender =
+      (doc.contentJsonSnapshot as string | null | undefined) ??
+      template?.contentJson;
+    if (contentToRender) {
+      const resolved = await resolveComponentsInContent(db, contentToRender);
       return {
         document: doc,
         template: { ...template, contentJson: resolved },
@@ -340,6 +344,7 @@ export const create = action({
       organizationId: String(args.organizationId),
       templateId: args.templateId,
       templateVersion: (template?.version as number | null | undefined) ?? null,
+      contentJsonSnapshot: (template?.contentJson as string | null | undefined) ?? null,
       title: args.title,
       responseData: args.responseData,
       entityType: args.entityType,

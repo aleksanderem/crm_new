@@ -157,6 +157,19 @@ export async function autoGenerateAppointmentDocuments(
         .eq("entityId", args.appointmentId as string)
         .first();
       if (existing) {
+        // When the appointment is re-completed after a data change (date/time/
+        // employee/treatment), the draft document's responseData may contain
+        // stale values from the first completion. Refresh it now so the
+        // employee sees current appointment data when they open the form.
+        // Only draft documents are patched — signed, completed, voided, and
+        // expired documents are left unchanged.
+        if ((existing as Record<string, unknown>).status === "draft") {
+          await supabaseDb.patch(
+            "formDocuments",
+            String((existing as Record<string, unknown>)._id),
+            { responseData: JSON.stringify(prefilledData), updatedAt: Date.now() },
+          );
+        }
         createdDocIds.push(
           (existing as Record<string, unknown>)._id as Id<"formDocuments">,
         );

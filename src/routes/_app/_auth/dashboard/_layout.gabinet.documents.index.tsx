@@ -1072,6 +1072,51 @@ function GabinetDocumentsPage() {
                   </span>
                 </div>
                 {(() => {
+                  const patientName = getDocPatientName(selectedDoc);
+                  return patientName ? (
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <User size={12} variant="stroke" />
+                        {t("gabinet.formDocuments.colPatient", "Klient")}
+                      </span>
+                      <span className="text-xs font-semibold truncate max-w-[150px]">
+                        {patientName}
+                      </span>
+                    </div>
+                  ) : null;
+                })()}
+                {(() => {
+                  const appt = getDocAppointmentInfo(selectedDoc);
+                  return appt ? (
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Calendar size={12} variant="stroke" />
+                        {t("gabinet.formDocuments.colAppointment", "Wizyta")}
+                      </span>
+                      <span className="text-xs font-semibold tabular-nums">
+                        {new Date(appt.date).toLocaleDateString(
+                          lang === "en" ? "en-US" : "pl-PL",
+                          { year: "numeric", month: "short", day: "numeric" },
+                        )}
+                      </span>
+                    </div>
+                  ) : null;
+                })()}
+                {(() => {
+                  const treatmentName = getDocTreatmentName(selectedDoc);
+                  return treatmentName ? (
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Tag size={12} variant="stroke" />
+                        {t("gabinet.formDocuments.colTreatment", "Zabieg")}
+                      </span>
+                      <span className="text-xs font-semibold truncate max-w-[150px]">
+                        {treatmentName}
+                      </span>
+                    </div>
+                  ) : null;
+                })()}
+                {(() => {
                   let signerName = selectedDoc.signedByName;
                   if (!signerName) {
                     if (selectedDoc.entityType === "patient") {

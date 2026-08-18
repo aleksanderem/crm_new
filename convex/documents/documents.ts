@@ -293,14 +293,18 @@ export const getLatestSignedIntakeByPatient = action({
       // Non-JSON responseData: formFieldValues stays empty
     }
 
-    // Extract field definitions from the template's TipTap contentJson
-    const matchedTemplate = intakeTemplates.find(
-      (t) => String(t._id) === String(latest.templateId),
-    );
+    // Use the contentJsonSnapshot captured at signing time so that later edits
+    // to the template never change the field layout seen for historical documents.
+    // Fall back to the live template contentJson only for pre-migration documents
+    // that were created before the snapshot column existed.
+    const contentJsonSource =
+      (latest.contentJsonSnapshot as string | null | undefined) ??
+      intakeTemplates.find((t) => String(t._id) === String(latest.templateId))
+        ?.contentJson;
     let fieldDefinitions: IntakeFieldDefinition[] = [];
-    if (matchedTemplate?.contentJson) {
+    if (contentJsonSource) {
       fieldDefinitions = extractFieldDefinitions(
-        JSON.parse(matchedTemplate.contentJson as string),
+        JSON.parse(contentJsonSource as string),
       );
     }
 

@@ -37,6 +37,18 @@ describe("migrations/backfillEntitlements.run", () => {
     expect(crm?.status).toBe("active");
     expect(gab?.status).toBe("active");
 
+    // Verify Supabase rows are also written (listOrgEntitlements reads from Supabase).
+    const db = createSupabaseDb();
+    const supabaseRows = await db.query("productSubscriptions").collect();
+    const sbCrm = supabaseRows.find(
+      (r) => String(r.organizationId) === String(organizationId) && r.productId === "crm",
+    );
+    const sbGab = supabaseRows.find(
+      (r) => String(r.organizationId) === String(organizationId) && r.productId === "gabinet",
+    );
+    expect(sbCrm?.status).toBe("active");
+    expect(sbGab?.status).toBe("active");
+
     // Idempotent: second run grants nothing new.
     const res2 = await t.action(internal.migrations.backfillEntitlements.run, {
       dryRun: false,

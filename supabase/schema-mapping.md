@@ -118,8 +118,6 @@ This document maps every Convex table to its PostgreSQL equivalent and records t
 | `gabinetPackageUsage` | `gabinet_package_usage` | Per-patient package instances |
 | `gabinetLoyaltyPoints` | `gabinet_loyalty_points` | Loyalty balance per patient |
 | `gabinetLoyaltyTransactions` | `gabinet_loyalty_transactions` | Loyalty point ledger |
-| `gabinetDocumentTemplates` | `gabinet_document_templates` | Legacy consent templates |
-| `gabinetDocuments` | `gabinet_documents` | Generated patient documents |
 | `documentTemplates` | `document_templates` | Cross-module template engine |
 | `documentTemplateFields` | `document_template_fields` | Field definitions per template |
 | `documentInstances` | `document_instances` | Rendered/signed instances |

@@ -606,8 +606,6 @@ const entityAliases = [
   { table: "gabinet_appointments", singular: "GabinetAppointment" },
   { table: "gabinet_leaves", singular: "GabinetLeave" },
   { table: "gabinet_overtime", singular: "GabinetOvertime" },
-  { table: "gabinet_document_templates", singular: "GabinetDocumentTemplate" },
-  { table: "gabinet_documents", singular: "GabinetDocument" },
   { table: "gabinet_treatment_packages", singular: "GabinetTreatmentPackage" },
   { table: "gabinet_package_usage", singular: "GabinetPackageUsage" },
   { table: "gabinet_loyalty_points", singular: "GabinetLoyaltyPoints" },

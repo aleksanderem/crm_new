@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import {
   Activity,
+  Archive,
   Calendar,
   CreditCard,
   History,
@@ -16,6 +17,7 @@ import {
   Plus,
   Star,
 } from "@/lib/ez-icons";
+import type { AppointmentUsedProduct } from "@/hooks/use-supabase-products";
 import type { TFunction } from "i18next";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { EmptyState } from "@/components/layout/empty-state";
@@ -60,6 +62,7 @@ export function AppointmentHistoryTab({
   loyaltyTier,
   loyaltyTransactions,
   allPatientPayments,
+  appointmentUsedProducts,
   canEdit,
   onUseMultiple,
   formatDate,
@@ -74,6 +77,7 @@ export function AppointmentHistoryTab({
   loyaltyTier: string | null | undefined;
   loyaltyTransactions: Record<string, unknown>[] | null | undefined;
   allPatientPayments: Record<string, unknown>[] | null | undefined;
+  appointmentUsedProducts?: AppointmentUsedProduct[];
   canEdit: boolean;
   onUseMultiple: (pkg: PackageUsageEntry) => void;
   formatDate: (dateStr: string) => string;
@@ -103,6 +107,95 @@ export function AppointmentHistoryTab({
           />
         </CardContent>
       </Card>
+
+      {/* Used Products / LOT */}
+      {appointmentUsedProducts !== undefined && (
+        <Card>
+          <CardHeader className="px-6 py-3 border-b">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Archive className="h-4 w-4" variant="stroke" />
+              {t(
+                "gabinet.appointments.usedProducts",
+                "Zużyte produkty",
+              )}
+            </CardTitle>
+            <CardDescription className="text-xs">
+              {t(
+                "gabinet.appointments.usedProductsDesc",
+                "Produkty pobrane z magazynu podczas tej wizyty",
+              )}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-6 py-4">
+            {appointmentUsedProducts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {t(
+                  "gabinet.appointments.noUsedProducts",
+                  "Brak zarejestrowanych ruchów magazynowych dla tej wizyty.",
+                )}
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2 pr-4 font-medium text-muted-foreground">
+                        {t("gabinet.appointments.usedProductName", "Produkt")}
+                      </th>
+                      <th className="text-right py-2 pr-4 font-medium text-muted-foreground">
+                        {t("gabinet.appointments.usedProductQty", "Ilość")}
+                      </th>
+                      <th className="text-left py-2 pr-4 font-medium text-muted-foreground">
+                        {t("gabinet.appointments.usedProductLot", "Nr LOT")}
+                      </th>
+                      <th className="text-left py-2 font-medium text-muted-foreground">
+                        {t(
+                          "gabinet.appointments.usedProductExpiry",
+                          "Data ważności",
+                        )}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {appointmentUsedProducts.map((item) => (
+                      <tr
+                        key={item._id}
+                        className="border-b last:border-0"
+                      >
+                        <td className="py-2 pr-4 font-medium">
+                          {item.productName}
+                        </td>
+                        <td className="py-2 pr-4 text-right tabular-nums">
+                          {item.quantity}
+                          {item.stockUnit ? (
+                            <span className="ml-1 text-muted-foreground">
+                              {item.stockUnit}
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="py-2 pr-4">
+                          {item.lotNumber ?? (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                        <td className="py-2">
+                          {item.expiryDate ? (
+                            new Date(item.expiryDate).toLocaleDateString(
+                              language,
+                            )
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Past Appointments Timeline */}
       <Card>

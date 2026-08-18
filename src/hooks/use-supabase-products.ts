@@ -445,3 +445,79 @@ export function useSupabaseOrgExpiringLotBatches(
     enabled: enabled && isReady && !!organizationId,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Appointment Used Products (#5484)
+//
+// Fetches all appointment_use stock movements for a given appointment,
+// joining products to get the name and unit. Used in the appointment history
+// tab to show which products (and LOT batches) were actually consumed.
+// ---------------------------------------------------------------------------
+
+export interface AppointmentUsedProduct {
+  _id: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  stockUnit: string | null;
+  lotNumber: string | null;
+  expiryDate: string | null;
+  treatmentId: string | null;
+}
+
+export function useSupabaseAppointmentStockMovements(
+  organizationId: string,
+  appointmentId: string | null | undefined,
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  return useQuery<AppointmentUsedProduct[], Error>({
+    queryKey: [
+      "supabase",
+      "appointmentStockMovements",
+      organizationId,
+      appointmentId ?? "",
+    ],
+    queryFn: async (): Promise<AppointmentUsedProduct[]> => {
+      if (!client || !appointmentId) return [];
+
+      const { data, error } = await client
+        .from("product_stock_movements")
+        .select(
+          `id, product_id, delta, lot_number, expiry_date, treatment_id,
+           products!product_stock_movements_product_id_fkey(name, stock_unit)`,
+        )
+        .eq("organization_id", organizationId)
+        .eq("source_type", "appointment")
+        .eq("source_id", appointmentId)
+        .eq("reason", "appointment_use")
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+
+      type Row = {
+        id: string;
+        product_id: string;
+        delta: number;
+        lot_number: string | null;
+        expiry_date: string | null;
+        treatment_id: string | null;
+        products: { name: string; stock_unit: string | null } | null;
+      };
+
+      return ((data ?? []) as Row[]).map((row) => ({
+        _id: row.id,
+        productId: row.product_id,
+        productName: row.products?.name ?? row.product_id,
+        quantity: Math.abs(Number(row.delta)),
+        stockUnit: row.products?.stock_unit ?? null,
+        lotNumber: row.lot_number,
+        expiryDate: row.expiry_date,
+        treatmentId: row.treatment_id,
+      }));
+    },
+    enabled: enabled && isReady && !!organizationId && !!appointmentId,
+  });
+}

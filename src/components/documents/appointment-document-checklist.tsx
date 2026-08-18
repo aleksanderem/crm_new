@@ -571,13 +571,13 @@ export function useAppointmentDocumentCounts(
   const afterDocs = allDocs.filter((d) => d.timing === "after_completion");
 
   const missingBeforeDocs = beforeDocs.filter(
-    (d) => !isDocumentCompleted(d.status),
+    (d) => !isDocumentCompleted(d.status) && d.status !== "voided",
   );
   const missingDuringDocs = duringDocs.filter(
-    (d) => !isDocumentCompleted(d.status),
+    (d) => !isDocumentCompleted(d.status) && d.status !== "voided",
   );
   const missingAfterDocs = afterDocs.filter(
-    (d) => !isDocumentCompleted(d.status),
+    (d) => !isDocumentCompleted(d.status) && d.status !== "voided",
   );
 
   return {

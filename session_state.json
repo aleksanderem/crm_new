@@ -1,9 +1,9 @@
 {
-  "session_id": "S0128",
+  "session_id": "S0129",
   "started_at": "2026-08-18T00:00:00Z",
   "last_updated": "2026-08-18T00:00:00Z",
   "status": "completed",
-  "focus": "D23 — E2E verification tests for document versioning, snapshot isolation, and immutability (#5389)",
+  "focus": "Remove stale document_templates seeding from scripts/seed-from-convex.mts (#5435)",
   "tasks_snapshot": {
     "total": 1,
     "not_started": 0,
@@ -14,5 +14,5 @@
   },
   "active_task_ids": [],
   "blockers": [],
-  "notes": "Wrote comprehensive E2E test suite in tests/convex/documentVersioningE2E.test.ts covering: (1) full v1→v2→v3 lifecycle with getBySigningToken, getLatestSignedIntakeByPatient immutability checks; (2) legacy document (no snapshot) fallback; (3) signed document updateResponseData guard; (4) listByPatientToken doc-level formJson isolation. Dependencies not installed in this worktree so tests could not be executed — pattern mirrors existing tests exactly. Follow-up: database.columns.ts missing template_version and content_json_snapshot columns for form_documents."
+  "notes": "Removed seedTable('document_templates', 'documentTemplates', forOrg) from scripts/seed-from-convex.mts line 305. The tables were dropped in migration #139 (supabase/migrations/00139_drop_document_templates_and_fields.sql). One-line fix."
 }

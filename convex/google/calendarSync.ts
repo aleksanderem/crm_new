@@ -254,7 +254,7 @@ async function resolveCrmEvents(
 }
 
 async function resolveGabinetEvents(
-  _ctx: any,
+  ctx: any,
   config: Record<string, unknown>,
   events: GoogleCalendarEvent[]
 ): Promise<number> {
@@ -353,7 +353,7 @@ async function resolveGabinetEvents(
 
     const requiresCompletion = !treatmentId || patientIsNew;
 
-    await createAppointmentFromSyncSupabase(db, {
+    const syncResult = await createAppointmentFromSyncSupabase(db, {
       organizationId: orgId,
       patientId,
       treatmentId,
@@ -374,6 +374,22 @@ async function resolveGabinetEvents(
       syncConfigId: String(config._id),
       visibilityOverride: config.visibility,
     });
+
+    // Generate treatment documents for newly created appointments so the
+    // document gate isn't trivially bypassed on the sync path (#5353).
+    if (syncResult.type === "created" && treatmentId) {
+      await ctx.runMutation(
+        internal.gabinet.appointments._generateDocsOnSync,
+        {
+          organizationId: orgId,
+          appointmentId: syncResult.appointmentId,
+          treatmentId,
+          patientId,
+          createdBy: ownerId,
+        },
+      );
+    }
+
     synced++;
   }
 

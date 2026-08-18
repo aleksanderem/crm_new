@@ -10,6 +10,11 @@ export const formCategoryValidator = v.union(
   v.literal("invoice"),
   v.literal("protocol"),
   v.literal("intake"),
+  // D24 — Gabinet-specific types added in migration 00138
+  v.literal("aftercare"),
+  v.literal("consent_photo"),
+  v.literal("consent_marketing"),
+  v.literal("declaration"),
   v.literal("custom"),
 );
 
@@ -111,6 +116,9 @@ export const documentTables = {
     version: v.number(),
     isActive: v.boolean(),
     createdBy: v.id("users"),
+    // Tracks the user who last modified the template (content or metadata).
+    // Nullable for rows created before migration 00138.
+    updatedBy: v.optional(v.id("users")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

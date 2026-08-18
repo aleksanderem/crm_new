@@ -1649,15 +1649,25 @@
       },
       "categories": {
         "intake": "Health Questionnaire",
-        "consent": "Consent",
+        "consent": "Treatment Consent",
         "protocol": "Treatment Protocol",
         "medical_record": "Medical Record",
         "prescription": "Prescription",
         "referral": "Referral",
         "contract": "Contract",
         "invoice": "Invoice",
-        "custom": "Custom"
+        "aftercare": "Aftercare Instructions",
+        "consent_photo": "Photo Consent",
+        "consent_marketing": "Marketing Consent",
+        "declaration": "Declaration",
+        "custom": "Other"
       },
+      "filterAll": "All",
+      "filterActive": "Active",
+      "filterInactive": "Inactive",
+      "preview": "Preview",
+      "assignToTreatment": "Assign to Treatment",
+      "assignToTreatmentSoon": "Available in D25",
       "signatureMethods": {
         "click": "Click",
         "sms": "SMS Code",

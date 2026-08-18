@@ -130,6 +130,18 @@
  *   • 00123_reject_gabinet_leave_atomic_fn.sql
  *   • 00124_delete_gabinet_leave_atomic_fn.sql
  *   • 00125_product_stock_movements_payment_method.sql
+ *   • 00126_product_subscriptions_source_granted_by.sql
+ *   • 00127_email_accounts_from_email_idx.sql
+ *   • 00128_email_accounts_org_is_default_idx.sql
+ *   • 00129_product_stock_movements_treatment_id.sql
+ *   • 00130_gabinet_package_deduction_atomic_fns.sql
+ *   • 00131_gabinet_appointment_package_overbooking_guard.sql
+ *   • 00132_gabinet_overbooking_guard_series_count.sql
+ *   • 00133_gabinet_package_cas_atomic_fns.sql
+ *   • 00134_form_templates_is_org_required.sql
+ *   • 00135_form_documents_generated_for_treatment_id.sql
+ *   • 00136_form_documents_template_version.sql
+ *   • 00137_form_documents_content_json_snapshot.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  */
@@ -259,7 +271,7 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   subscriptions: new Set(["id", "user_id", "plan_id", "price_stripe_id", "stripe_id", "currency", "interval", "status", "current_period_start", "current_period_end", "cancel_at_period_end", "product_key", "trial_end_date"]),
   platform_products: new Set(["id", "product_id", "name", "description", "is_active", "prices", "stripe_product_id", "created_at", "updated_at"]),
   organizations: new Set(["id", "name", "slug", "owner_id", "logo", "website", "created_at", "updated_at", "onboarding_completed"]),
-  product_subscriptions: new Set(["id", "organization_id", "product_id", "stripe_subscription_id", "status", "current_period_start", "current_period_end", "cancel_at_period_end", "created_at", "updated_at", "trial_end_date"]),
+  product_subscriptions: new Set(["id", "organization_id", "product_id", "stripe_subscription_id", "status", "current_period_start", "current_period_end", "cancel_at_period_end", "created_at", "updated_at", "trial_end_date", "source", "granted_by_user_id"]),
   team_memberships: new Set(["id", "user_id", "organization_id", "role", "invited_by", "joined_at"]),
   org_settings: new Set(["id", "organization_id", "allow_custom_lost_reason", "lost_reason_required", "default_currency", "timezone", "resource_sharing_enabled", "reminder_enabled", "reminder_hours_before", "created_at", "updated_at", "reminder_sms_48h", "reminder_sms_24h", "reminder_email_48h", "reminder_email_24h", "patient_retention_months"]),
   org_permissions: new Set(["id", "organization_id", "role", "permissions", "updated_by", "updated_at"]),
@@ -335,14 +347,14 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   document_template_fields: new Set(["id", "template_id", "field_key", "label", "type", "sort_order", "group", "options", "default_value", "binding", "validation", "placeholder", "help_text", "width"]),
   document_instances: new Set(["id", "organization_id", "type", "template_id", "template_version", "rendered_content", "field_values", "resolved_sources", "file_id", "file_url", "file_name", "mime_type", "file_size", "category", "title", "status", "module", "signatures", "pdf_file_id", "created_by", "created_at", "updated_at", "assigned_reviewer_id", "assigned_reviewer_name", "reviewed_by", "reviewed_at", "approved_by", "approved_at"]),
   signature_requests: new Set(["id", "organization_id", "instance_id", "slot_id", "token", "signer_email", "signer_name", "signer_phone", "signer_user_id", "verification_method", "status", "otp_hash", "otp_sent_at", "otp_attempts", "expires_at", "signed_at", "created_at"]),
-  form_templates: new Set(["id", "organization_id", "name", "description", "category", "folder_path", "template_type", "form_json", "content_json", "theme_json", "modules", "entity_types", "variable_bindings", "requires_signature", "signature_config", "access_roles", "version", "is_active", "created_by", "created_at", "updated_at"]),
-  form_documents: new Set(["id", "organization_id", "template_id", "title", "response_data", "entity_type", "entity_id", "scope_entities", "status", "signature_data", "signed_at", "signed_by_name", "signed_by_email", "signed_by_ip", "signature_verification_method", "signing_token", "signing_token_expires_at", "signing_email_sent_at", "signing_reminder_count", "timing", "auto_generated", "pdf_storage_id", "pdf_generated_at", "created_by", "created_at", "updated_at", "sort_order"]),
+  form_templates: new Set(["id", "organization_id", "name", "description", "category", "folder_path", "template_type", "form_json", "content_json", "theme_json", "modules", "entity_types", "variable_bindings", "requires_signature", "signature_config", "access_roles", "version", "is_active", "is_org_required", "created_by", "created_at", "updated_at"]),
+  form_documents: new Set(["id", "organization_id", "template_id", "title", "response_data", "entity_type", "entity_id", "scope_entities", "status", "signature_data", "signed_at", "signed_by_name", "signed_by_email", "signed_by_ip", "signature_verification_method", "signing_token", "signing_token_expires_at", "signing_email_sent_at", "signing_reminder_count", "timing", "auto_generated", "pdf_storage_id", "pdf_generated_at", "created_by", "created_at", "updated_at", "sort_order", "generated_for_treatment_id", "template_version", "content_json_snapshot"]),
   automation_rules: new Set(["id", "organization_id", "name", "description", "module", "event_type", "entity_type", "trigger", "graph", "definition_version", "conditions", "actions", "enabled", "created_by", "created_at", "updated_at"]),
   automation_runs: new Set(["id", "organization_id", "rule_id", "module", "event_type", "entity_type", "entity_id", "event_idempotency_key", "correlation_key", "payload_snapshot", "actor_user_id", "status", "error_message", "occurred_at", "processed_at", "created_at", "updated_at"]),
   automation_run_steps: new Set(["id", "organization_id", "run_id", "rule_id", "action_index", "action_type", "idempotency_key", "status", "recipient", "recipient_name", "linked_entity_type", "linked_entity_id", "rendered_subject", "rendered_body", "metadata_snapshot", "error_message", "email_event_log_id", "appointment_sms_event_id", "processed_at", "created_at", "updated_at"]),
   document_components: new Set(["id", "organization_id", "scope", "created_by", "name", "description", "category", "content_json", "protected", "position_constraint", "version", "is_active", "created_at", "updated_at"]),
   product_stock_levels: new Set(["id", "organization_id", "product_id", "location_id", "quantity", "updated_at", "avg_cost"]),
-  product_stock_movements: new Set(["id", "organization_id", "product_id", "location_id", "delta", "balance_after", "reason", "source_type", "source_id", "note", "performed_by", "created_at", "unit_price", "avg_cost_after", "lot_number", "expiry_date", "payment_method"]),
+  product_stock_movements: new Set(["id", "organization_id", "product_id", "location_id", "delta", "balance_after", "reason", "source_type", "source_id", "note", "performed_by", "created_at", "unit_price", "avg_cost_after", "lot_number", "expiry_date", "payment_method", "treatment_id"]),
   gabinet_treatment_products: new Set(["id", "organization_id", "treatment_id", "product_id", "product_section", "quantity", "unit", "created_at", "updated_at"]),
   gabinet_payment_methods: new Set(["id", "organization_id", "key", "name", "is_system", "is_active", "order", "available_for_settlement", "available_for_sales", "available_for_refund", "locks_amount_to_treatment_price", "is_package_coverage", "created_by", "created_at", "updated_at"]),
   gabinet_employee_locations: new Set(["id", "organization_id", "employee_id", "location_id", "is_primary", "created_at", "role"]),

@@ -44,7 +44,7 @@ const ALL_PERMS_FEATURES = [
   "gabinet_treatments", "gabinet_packages", "gabinet_employees", "gabinet_payments",
   "gabinet_reports", "gabinet_financial_reports", "gabinet_purchase_prices", "gabinet_photos",
   "gabinet_online_booking", "gabinet_inventory", "gabinet_settings", "settings", "team",
-  "document_templates", "document_instances", "tagDefinitions", "categoryDefinitions",
+  "document_templates", "tagDefinitions", "categoryDefinitions",
 ] as const;
 
 const ALL_PERMS_ACTIONS = ["view", "create", "edit", "delete", "approve", "sign", "refund"] as const;

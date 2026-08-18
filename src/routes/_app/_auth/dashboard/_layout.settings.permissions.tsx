@@ -58,7 +58,6 @@ const FEATURE_LABELS: Record<string, { labelKey: string; label: string }> = {
   settings: { labelKey: "permissions.features.settings", label: "Settings" },
   team: { labelKey: "permissions.features.team", label: "Team" },
   document_templates: { labelKey: "permissions.features.document_templates", label: "Document Templates" },
-  document_instances: { labelKey: "permissions.features.document_instances", label: "Document Instances" },
   tagDefinitions: { labelKey: "permissions.features.tagDefinitions", label: "Tags" },
   categoryDefinitions: { labelKey: "permissions.features.categoryDefinitions", label: "Categories" },
 };

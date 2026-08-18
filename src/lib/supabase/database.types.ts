@@ -5789,147 +5789,11 @@ export interface Database {
           },
         ];
       };
-      document_instances: {
-        Row: {
-          id: string;
-          organization_id: string;
-          type: string | null;
-          template_id: string | null;
-          template_version: number | null;
-          rendered_content: string | null;
-          field_values: unknown | null;
-          resolved_sources: unknown | null;
-          file_id: string | null;
-          file_url: string | null;
-          file_name: string | null;
-          mime_type: string | null;
-          file_size: number | null;
-          category: string | null;
-          title: string;
-          status: string;
-          module: string | null;
-          signatures: unknown;
-          pdf_file_id: string | null;
-          created_by: string;
-          created_at: number;
-          updated_at: number;
-          assigned_reviewer_id: string | null;
-          assigned_reviewer_name: string | null;
-          reviewed_by: string | null;
-          reviewed_at: number | null;
-          approved_by: string | null;
-          approved_at: number | null;
-        };
-        Insert: {
-          id?: string;
-          organization_id: string;
-          type?: string | null;
-          template_id?: string | null;
-          template_version?: number | null;
-          rendered_content?: string | null;
-          field_values?: unknown | null;
-          resolved_sources?: unknown | null;
-          file_id?: string | null;
-          file_url?: string | null;
-          file_name?: string | null;
-          mime_type?: string | null;
-          file_size?: number | null;
-          category?: string | null;
-          title: string;
-          status: string;
-          module?: string | null;
-          signatures: unknown;
-          pdf_file_id?: string | null;
-          created_by: string;
-          created_at: number;
-          updated_at: number;
-          assigned_reviewer_id?: string | null;
-          assigned_reviewer_name?: string | null;
-          reviewed_by?: string | null;
-          reviewed_at?: number | null;
-          approved_by?: string | null;
-          approved_at?: number | null;
-        };
-        Update: {
-          id?: string;
-          organization_id?: string;
-          type?: string | null;
-          template_id?: string | null;
-          template_version?: number | null;
-          rendered_content?: string | null;
-          field_values?: unknown | null;
-          resolved_sources?: unknown | null;
-          file_id?: string | null;
-          file_url?: string | null;
-          file_name?: string | null;
-          mime_type?: string | null;
-          file_size?: number | null;
-          category?: string | null;
-          title?: string;
-          status?: string;
-          module?: string | null;
-          signatures?: unknown;
-          pdf_file_id?: string | null;
-          created_by?: string;
-          created_at?: number;
-          updated_at?: number;
-          assigned_reviewer_id?: string | null;
-          assigned_reviewer_name?: string | null;
-          reviewed_by?: string | null;
-          reviewed_at?: number | null;
-          approved_by?: string | null;
-          approved_at?: number | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "document_instances_organization_id_fkey";
-            columns: ["organization_id"];
-            isOneToOne: false;
-            referencedRelation: "organizations";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "document_instances_template_id_fkey";
-            columns: ["template_id"];
-            isOneToOne: false;
-            referencedRelation: "document_templates";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "document_instances_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "document_instances_assigned_reviewer_id_fkey";
-            columns: ["assigned_reviewer_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "document_instances_reviewed_by_fkey";
-            columns: ["reviewed_by"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "document_instances_approved_by_fkey";
-            columns: ["approved_by"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       signature_requests: {
         Row: {
           id: string;
           organization_id: string;
-          instance_id: string;
+          instance_id: string | null;
           slot_id: string;
           token: string;
           signer_email: string | null;
@@ -5944,11 +5808,16 @@ export interface Database {
           expires_at: number;
           signed_at: number | null;
           created_at: number;
+          document_title: string;
+          rendered_content: string | null;
+          document_created_by: string | null;
+          slot_label: string | null;
+          signature_data: string | null;
         };
         Insert: {
           id?: string;
           organization_id: string;
-          instance_id: string;
+          instance_id?: string | null;
           slot_id: string;
           token: string;
           signer_email?: string | null;
@@ -5963,11 +5832,16 @@ export interface Database {
           expires_at: number;
           signed_at?: number | null;
           created_at: number;
+          document_title?: string;
+          rendered_content?: string | null;
+          document_created_by?: string | null;
+          slot_label?: string | null;
+          signature_data?: string | null;
         };
         Update: {
           id?: string;
           organization_id?: string;
-          instance_id?: string;
+          instance_id?: string | null;
           slot_id?: string;
           token?: string;
           signer_email?: string | null;
@@ -5982,6 +5856,11 @@ export interface Database {
           expires_at?: number;
           signed_at?: number | null;
           created_at?: number;
+          document_title?: string;
+          rendered_content?: string | null;
+          document_created_by?: string | null;
+          slot_label?: string | null;
+          signature_data?: string | null;
         };
         Relationships: [
           {
@@ -5989,13 +5868,6 @@ export interface Database {
             columns: ["organization_id"];
             isOneToOne: false;
             referencedRelation: "organizations";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "signature_requests_instance_id_fkey";
-            columns: ["instance_id"];
-            isOneToOne: false;
-            referencedRelation: "document_instances";
             referencedColumns: ["id"];
           },
           {

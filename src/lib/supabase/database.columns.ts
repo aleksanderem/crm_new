@@ -229,7 +229,6 @@ export type TableName =
   | "appointment_sms_events"
   | "document_templates"
   | "document_template_fields"
-  | "document_instances"
   | "signature_requests"
   | "form_templates"
   | "form_documents"
@@ -341,8 +340,7 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   appointment_sms_events: new Set(["id", "organization_id", "appointment_id", "patient_id", "normalized_phone", "direction", "provider", "event_type", "provider_message_id", "correlation_key", "reply_to_event_id", "raw_body", "normalized_body", "parsed_intent", "processing_status", "processing_error", "webhook_signature_verified", "metadata", "idempotency_key", "processed_at", "created_at", "updated_at"]),
   document_templates: new Set(["id", "organization_id", "name", "description", "category", "content", "module", "required_sources", "requires_signature", "signature_slots", "access_control", "version", "parent_template_id", "status", "created_by", "created_at", "updated_at"]),
   document_template_fields: new Set(["id", "template_id", "field_key", "label", "type", "sort_order", "group", "options", "default_value", "binding", "validation", "placeholder", "help_text", "width"]),
-  document_instances: new Set(["id", "organization_id", "type", "template_id", "template_version", "rendered_content", "field_values", "resolved_sources", "file_id", "file_url", "file_name", "mime_type", "file_size", "category", "title", "status", "module", "signatures", "pdf_file_id", "created_by", "created_at", "updated_at", "assigned_reviewer_id", "assigned_reviewer_name", "reviewed_by", "reviewed_at", "approved_by", "approved_at"]),
-  signature_requests: new Set(["id", "organization_id", "instance_id", "slot_id", "token", "signer_email", "signer_name", "signer_phone", "signer_user_id", "verification_method", "status", "otp_hash", "otp_sent_at", "otp_attempts", "expires_at", "signed_at", "created_at"]),
+  signature_requests: new Set(["id", "organization_id", "instance_id", "slot_id", "token", "signer_email", "signer_name", "signer_phone", "signer_user_id", "verification_method", "status", "otp_hash", "otp_sent_at", "otp_attempts", "expires_at", "signed_at", "created_at", "document_title", "rendered_content", "document_created_by", "slot_label", "signature_data"]),
   form_templates: new Set(["id", "organization_id", "name", "description", "category", "folder_path", "template_type", "form_json", "content_json", "theme_json", "modules", "entity_types", "variable_bindings", "requires_signature", "signature_config", "access_roles", "version", "is_active", "is_org_required", "created_by", "updated_by", "created_at", "updated_at"]),
   form_documents: new Set(["id", "organization_id", "template_id", "title", "response_data", "entity_type", "entity_id", "scope_entities", "status", "signature_data", "signed_at", "signed_by_name", "signed_by_email", "signed_by_ip", "signature_verification_method", "signing_token", "signing_token_expires_at", "signing_email_sent_at", "signing_reminder_count", "timing", "auto_generated", "pdf_storage_id", "pdf_generated_at", "created_by", "created_at", "updated_at", "sort_order", "generated_for_treatment_id", "template_version", "content_json_snapshot"]),
   automation_rules: new Set(["id", "organization_id", "name", "description", "module", "event_type", "entity_type", "trigger", "graph", "definition_version", "conditions", "actions", "enabled", "created_by", "created_at", "updated_at"]),

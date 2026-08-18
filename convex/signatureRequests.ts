@@ -54,9 +54,6 @@ export const getByToken = action({
     if (request.status !== "pending") return { expired: true };
     if (Date.now() > (request.expiresAt as number)) return { expired: true };
 
-    const instance = await db.get("documentInstances", request.instanceId as string);
-    if (!instance) return null;
-
     const org = await db.get("organizations", request.organizationId as string);
 
     return {
@@ -73,10 +70,9 @@ export const getByToken = action({
         status: request.status as string,
       },
       document: {
-        _id: instance._id as string,
-        title: instance.title as string,
-        renderedContent: instance.renderedContent as string | undefined,
-        status: instance.status as string,
+        title: (request.documentTitle as string) ?? "",
+        renderedContent: request.renderedContent as string | undefined,
+        status: "pending_signature",
       },
       organization: org ? { name: org.name as string } : undefined,
     };
@@ -88,15 +84,18 @@ export const listByInstance = action({
   args: { instanceId: v.string() },
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
-    const instance = await db.get("documentInstances", args.instanceId);
-    if (!instance) return [];
-    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
-      organizationId: String(instance.organizationId),
-    });
 
-    return await db.query("signatureRequests")
+    const requests = await db.query("signatureRequests")
       .eq("instanceId", args.instanceId)
       .collect();
+
+    if (requests.length === 0) return [];
+
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: String(requests[0].organizationId),
+    });
+
+    return requests;
   },
 });
 
@@ -106,7 +105,11 @@ export const listByInstance = action({
 
 export const sendForSigning = action({
   args: {
-    instanceId: v.string(),
+    organizationId: v.string(),
+    documentTitle: v.string(),
+    renderedContent: v.optional(v.string()),
+    documentCreatedBy: v.optional(v.string()),
+    instanceId: v.optional(v.string()),
     signers: v.array(v.object({
       slotId: v.string(),
       signerType: v.union(v.literal("internal"), v.literal("external")),
@@ -122,28 +125,22 @@ export const sendForSigning = action({
     })),
   },
   handler: async (ctx, args) => {
-    const db = createSupabaseDb();
-    const instance = await db.get("documentInstances", args.instanceId);
-    if (!instance) throw new Error("Document not found");
-    if (instance.status !== "approved" && instance.status !== "draft") {
-      throw new Error("Document must be approved or draft to send for signing");
-    }
-
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
-      { organizationId: String(instance.organizationId) },
+      { organizationId: args.organizationId },
     );
 
+    const db = createSupabaseDb();
     const now = Date.now();
     const expiresAt = now + EXPIRY_DAYS * 24 * 60 * 60 * 1000;
     const createdTokens: Array<{ slotId: string; token: string; requestId: string }> = [];
-
-    let updatedSignatures: any[];
-    if (typeof instance.signatures === "string") {
-      updatedSignatures = JSON.parse(instance.signatures);
-    } else {
-      updatedSignatures = [...(instance.signatures as any[])];
-    }
+    const signersForEmail: Array<{
+      slotId: string;
+      signerEmail?: string;
+      signerName?: string;
+      signerPhone?: string;
+      verificationMethod: string;
+    }> = [];
 
     for (const signer of args.signers) {
       if (signer.signerType === "external" && !signer.signerEmail) {
@@ -160,7 +157,6 @@ export const sendForSigning = action({
 
       const token = generateToken();
 
-      // Resolve internal signer names via side effect
       let signerName = signer.signerName;
       let signerEmail = signer.signerEmail;
       if (signer.signerType === "internal" && signer.signerUserId) {
@@ -175,9 +171,15 @@ export const sendForSigning = action({
         }
       }
 
+      const slotLabel = signerName || signerEmail || "Sygnatariusz";
+
       const requestId = await db.insert("signatureRequests", {
-        organizationId: String(instance.organizationId),
-        instanceId: args.instanceId,
+        organizationId: args.organizationId,
+        instanceId: args.instanceId ?? null,
+        documentTitle: args.documentTitle,
+        renderedContent: args.renderedContent ?? null,
+        documentCreatedBy: args.documentCreatedBy ?? null,
+        slotLabel,
         slotId: signer.slotId,
         token,
         signerEmail: signerEmail ?? null,
@@ -191,48 +193,23 @@ export const sendForSigning = action({
       });
 
       createdTokens.push({ slotId: signer.slotId, token, requestId });
-
-      const slotIndex = updatedSignatures.findIndex((s: any) => s.slotId === signer.slotId);
-      if (slotIndex !== -1) {
-        updatedSignatures[slotIndex] = {
-          ...updatedSignatures[slotIndex],
-          signerType: signer.signerType,
-          signerUserId: signer.signerUserId,
-          signerEmail,
-          signerName,
-          signerPhone: signer.signerPhone,
-          verificationMethod: signer.verificationMethod,
-        };
-      } else {
-        updatedSignatures.push({
-          slotId: signer.slotId,
-          slotLabel: signerName || signerEmail || "Sygnatariusz",
-          signerType: signer.signerType,
-          signerUserId: signer.signerUserId,
-          signerEmail,
-          signerName,
-          signerPhone: signer.signerPhone,
-          verificationMethod: signer.verificationMethod,
-        });
-      }
+      signersForEmail.push({
+        slotId: signer.slotId,
+        signerEmail,
+        signerName,
+        signerPhone: signer.signerPhone,
+        verificationMethod: signer.verificationMethod,
+      });
     }
 
-    // Update instance
-    await db.patch("documentInstances", args.instanceId, {
-      signatures: JSON.stringify(updatedSignatures),
-      status: "pending_signature",
-      updatedAt: now,
-    });
-
-    // Schedule email notifications via side effects
     try {
-      const orgData = await db.get("organizations", instance.organizationId as string);
+      const orgData = await db.get("organizations", args.organizationId);
       await ctx.runMutation(internal.signatureRequests._sendSigningEmails, {
-        organizationId: instance.organizationId as string,
+        organizationId: args.organizationId,
         orgName: (orgData?.name as string) ?? "Organizacja",
-        instanceTitle: instance.title as string,
+        instanceTitle: args.documentTitle,
         createdTokens: JSON.stringify(createdTokens),
-        signatures: JSON.stringify(updatedSignatures),
+        signatures: JSON.stringify(signersForEmail),
         expiresAt,
       });
     } catch (e) {
@@ -325,55 +302,37 @@ export const signExternal = action({
     const updated = await db.patchConditional(
       "signatureRequests",
       request._id as string,
-      { status: "signed", signedAt: now },
+      { status: "signed", signedAt: now, signatureData: args.signatureData },
       { status: "pending" },
     );
     if (!updated) throw new Error("This signing request has already been used");
 
-    // Update document instance signature
-    const instance = await db.get("documentInstances", request.instanceId as string);
-    if (!instance) throw new Error("Document not found");
-
-    let signatures: any[];
-    if (typeof instance.signatures === "string") {
-      signatures = JSON.parse(instance.signatures);
-    } else {
-      signatures = [...(instance.signatures as any[])];
+    // Determine if all slots for this document are now signed by querying siblings.
+    let allSigned = true;
+    if (request.instanceId) {
+      const allRequests = await db.query("signatureRequests")
+        .eq("instanceId", String(request.instanceId))
+        .collect();
+      // The CAS update above committed before this query, so the current row shows "signed".
+      allSigned = allRequests.every((r: any) => r.status === "signed");
     }
-
-    const slotIndex = signatures.findIndex((s: any) => s.slotId === request.slotId);
-    if (slotIndex === -1) throw new Error("Signature slot not found");
-
-    signatures[slotIndex] = {
-      ...signatures[slotIndex],
-      signatureData: args.signatureData,
-      signedByName: (request.signerName as string) ?? "",
-      signedAt: now,
-    };
-
-    const allSigned = signatures.every((s: any) => s.signatureData);
-
-    await db.patch("documentInstances", request.instanceId as string, {
-      signatures: JSON.stringify(signatures),
-      status: allSigned ? "signed" : "pending_signature",
-      updatedAt: now,
-    });
 
     // Notify document author via side effects
     try {
       let authorEmail: string | undefined;
       let authorName: string | undefined;
-      if (instance.createdBy) {
-        const authorUser = await db.get("users", String(instance.createdBy));
+      const documentCreatedBy = request.documentCreatedBy ? String(request.documentCreatedBy) : null;
+      if (documentCreatedBy) {
+        const authorUser = await db.get("users", documentCreatedBy);
         authorEmail = authorUser?.email as string | undefined;
         authorName = (authorUser?.name as string) ?? authorEmail;
       }
       await ctx.runMutation(internal.signatureRequests._notifyAuthor, {
         authorEmail,
         authorName,
-        documentTitle: instance.title as string,
+        documentTitle: (request.documentTitle as string) ?? "",
         signerName: (request.signerName as string) ?? (request.signerEmail as string) ?? "Sygnatariusz",
-        slotLabel: signatures[slotIndex].slotLabel ?? "",
+        slotLabel: (request.slotLabel as string) ?? "",
         allSigned,
       });
     } catch (e) {
@@ -382,15 +341,15 @@ export const signExternal = action({
 
     // Audit log: record the signing event. Best-effort — a log failure must
     // never roll back a successfully completed signature.
-    const createdBy = instance.createdBy ? String(instance.createdBy) : null;
-    if (createdBy) {
+    const auditUserId = request.documentCreatedBy ? String(request.documentCreatedBy) : null;
+    if (auditUserId) {
       try {
         await db.insert("auditLog", {
           organizationId: String(request.organizationId),
-          userId: createdBy,
+          userId: auditUserId,
           action: "document.signed",
-          entityType: "documentInstance",
-          entityId: String(request.instanceId),
+          entityType: "signatureRequest",
+          entityId: String(request._id),
           details: JSON.stringify({
             requestId: String(request._id),
             slotId: String(request.slotId),
@@ -524,11 +483,15 @@ export const resend = action({
     // Expire old request
     await db.patch("signatureRequests", args.requestId, { status: "expired" });
 
-    // Create new one
+    // Create new one, copying all embedded document metadata from the original
     const token = generateToken();
     const newId = await db.insert("signatureRequests", {
       organizationId: String(request.organizationId),
-      instanceId: String(request.instanceId),
+      instanceId: request.instanceId ? String(request.instanceId) : null,
+      documentTitle: (request.documentTitle as string) ?? "",
+      renderedContent: request.renderedContent as string | null ?? null,
+      documentCreatedBy: request.documentCreatedBy as string | null ?? null,
+      slotLabel: request.slotLabel as string | null ?? null,
       slotId: request.slotId,
       token,
       signerEmail: request.signerEmail ?? null,
@@ -541,14 +504,12 @@ export const resend = action({
       createdAt: now,
     });
 
-    // Dispatch email/SMS notification with the new token
-    const instance = await db.get("documentInstances", String(request.instanceId));
     const orgData = await db.get("organizations", String(request.organizationId));
     try {
       await ctx.runMutation(internal.signatureRequests._sendSigningEmails, {
         organizationId: String(request.organizationId),
         orgName: (orgData?.name as string) ?? "Organizacja",
-        instanceTitle: String(instance?.title ?? ""),
+        instanceTitle: (request.documentTitle as string) ?? "",
         createdTokens: JSON.stringify([{ slotId: request.slotId, token, requestId: newId }]),
         signatures: JSON.stringify([{
           slotId: request.slotId,

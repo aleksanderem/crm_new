@@ -191,14 +191,18 @@ describe("gabinet/patients.gdprErase — activity and note anonymization", () =>
       patientId: patientIdStr,
     });
 
-    const activities = await t.run(async (ctx) =>
-      ctx.db
-        .query("activities")
-        .withIndex("by_entity", (q) =>
-          q.eq("entityType", "gabinetPatient").eq("entityId", patientIdStr),
-        )
-        .collect(),
-    );
+    // logActivity writes to Supabase (via publishActivityEnvelope → createSupabaseDb),
+    // so read from Supabase — not from Convex — to actually see the erasure entry.
+    const activities = await createSupabaseDb()
+      .query("activities")
+      .eq("organizationId", String(organizationId))
+      .eq("entityType", "gabinetPatient")
+      .eq("entityId", patientIdStr)
+      .collect();
+
+    // The erasure side-effect writes exactly one activity entry; guard against
+    // the loop running vacuously if that write is ever broken.
+    expect(activities.length).toBeGreaterThanOrEqual(1);
 
     // Every activity entry — including the new deletion event — must be PII-free
     for (const activity of activities) {

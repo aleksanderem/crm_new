@@ -89,7 +89,8 @@ export function DocumentGateDialog({
     (d) =>
       d.timing === timing &&
       d.status !== "signed" &&
-      d.status !== "completed",
+      d.status !== "completed" &&
+      d.status !== "voided",
   );
 
   // Count completed docs for progress

@@ -141,11 +141,6 @@ const WHITELIST = new Set([
   //   public so the template editor can be loaded before org selection.
   "emailTemplates:listVariableSources",
 
-  // ── Document data sources ─────────────────────────────────────────────────
-  // listAvailableSources: returns the static registry of document data-source
-  //   types. No org data; hard-coded list used by the template builder UI.
-  "documentDataSources:listAvailableSources",
-
   // ── Application health & public marketing endpoints ──────────────────────
   // getPublicStatus: returns { ts: Date.now() } proving Convex is alive.
   //   Used by the /status page to verify backend health. No user or org data.

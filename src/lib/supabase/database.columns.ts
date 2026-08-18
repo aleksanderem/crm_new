@@ -142,6 +142,12 @@
  *   • 00135_form_documents_generated_for_treatment_id.sql
  *   • 00136_form_documents_template_version.sql
  *   • 00137_form_documents_content_json_snapshot.sql
+ *   • 00138_form_templates_d24_categories_and_updated_by.sql
+ *   • 00139_drop_document_templates_and_fields.sql
+ *   • 00140_signature_requests_embed_document.sql
+ *   • 00141_drop_document_instances.sql
+ *   • 00142_form_documents_expires_at.sql
+ *   • 00143_form_documents_is_required.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  */
@@ -227,8 +233,6 @@ export type TableName =
   | "appointment_reminders"
   | "appointment_workflow_history"
   | "appointment_sms_events"
-  | "document_templates"
-  | "document_template_fields"
   | "signature_requests"
   | "form_templates"
   | "form_documents"
@@ -338,11 +342,9 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   appointment_reminders: new Set(["id", "organization_id", "appointment_id", "type", "scheduled_for", "sent_at", "status", "scheduled_function_id", "created_at"]),
   appointment_workflow_history: new Set(["id", "organization_id", "appointment_id", "workflow_event", "channel", "direction", "source", "recipient", "recipient_name", "status", "rendered_subject", "rendered_body", "email_event_log_id", "error_message", "idempotency_key", "processed_at", "created_at", "updated_at"]),
   appointment_sms_events: new Set(["id", "organization_id", "appointment_id", "patient_id", "normalized_phone", "direction", "provider", "event_type", "provider_message_id", "correlation_key", "reply_to_event_id", "raw_body", "normalized_body", "parsed_intent", "processing_status", "processing_error", "webhook_signature_verified", "metadata", "idempotency_key", "processed_at", "created_at", "updated_at"]),
-  document_templates: new Set(["id", "organization_id", "name", "description", "category", "content", "module", "required_sources", "requires_signature", "signature_slots", "access_control", "version", "parent_template_id", "status", "created_by", "created_at", "updated_at"]),
-  document_template_fields: new Set(["id", "template_id", "field_key", "label", "type", "sort_order", "group", "options", "default_value", "binding", "validation", "placeholder", "help_text", "width"]),
   signature_requests: new Set(["id", "organization_id", "instance_id", "slot_id", "token", "signer_email", "signer_name", "signer_phone", "signer_user_id", "verification_method", "status", "otp_hash", "otp_sent_at", "otp_attempts", "expires_at", "signed_at", "created_at", "document_title", "rendered_content", "document_created_by", "slot_label", "signature_data"]),
-  form_templates: new Set(["id", "organization_id", "name", "description", "category", "folder_path", "template_type", "form_json", "content_json", "theme_json", "modules", "entity_types", "variable_bindings", "requires_signature", "signature_config", "access_roles", "version", "is_active", "is_org_required", "created_by", "updated_by", "created_at", "updated_at"]),
-  form_documents: new Set(["id", "organization_id", "template_id", "title", "response_data", "entity_type", "entity_id", "scope_entities", "status", "signature_data", "signed_at", "signed_by_name", "signed_by_email", "signed_by_ip", "signature_verification_method", "signing_token", "signing_token_expires_at", "signing_email_sent_at", "signing_reminder_count", "timing", "auto_generated", "pdf_storage_id", "pdf_generated_at", "created_by", "created_at", "updated_at", "sort_order", "generated_for_treatment_id", "template_version", "content_json_snapshot"]),
+  form_templates: new Set(["id", "organization_id", "name", "description", "category", "folder_path", "template_type", "form_json", "content_json", "theme_json", "modules", "entity_types", "variable_bindings", "requires_signature", "signature_config", "access_roles", "version", "is_active", "created_by", "created_at", "updated_at", "is_org_required", "updated_by"]),
+  form_documents: new Set(["id", "organization_id", "template_id", "title", "response_data", "entity_type", "entity_id", "scope_entities", "status", "signature_data", "signed_at", "signed_by_name", "signed_by_email", "signed_by_ip", "signature_verification_method", "signing_token", "signing_token_expires_at", "signing_email_sent_at", "signing_reminder_count", "timing", "auto_generated", "pdf_storage_id", "pdf_generated_at", "created_by", "created_at", "updated_at", "sort_order", "generated_for_treatment_id", "template_version", "content_json_snapshot", "expires_at", "document_validity_days", "is_required"]),
   automation_rules: new Set(["id", "organization_id", "name", "description", "module", "event_type", "entity_type", "trigger", "graph", "definition_version", "conditions", "actions", "enabled", "created_by", "created_at", "updated_at"]),
   automation_runs: new Set(["id", "organization_id", "rule_id", "module", "event_type", "entity_type", "entity_id", "event_idempotency_key", "correlation_key", "payload_snapshot", "actor_user_id", "status", "error_message", "occurred_at", "processed_at", "created_at", "updated_at"]),
   automation_run_steps: new Set(["id", "organization_id", "run_id", "rule_id", "action_index", "action_type", "idempotency_key", "status", "recipient", "recipient_name", "linked_entity_type", "linked_entity_id", "rendered_subject", "rendered_body", "metadata_snapshot", "error_message", "email_event_log_id", "appointment_sms_event_id", "processed_at", "created_at", "updated_at"]),

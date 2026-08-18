@@ -130,6 +130,24 @@
  *   • 00123_reject_gabinet_leave_atomic_fn.sql
  *   • 00124_delete_gabinet_leave_atomic_fn.sql
  *   • 00125_product_stock_movements_payment_method.sql
+ *   • 00126_product_subscriptions_source_granted_by.sql
+ *   • 00127_email_accounts_from_email_idx.sql
+ *   • 00128_email_accounts_org_is_default_idx.sql
+ *   • 00129_product_stock_movements_treatment_id.sql
+ *   • 00130_gabinet_package_deduction_atomic_fns.sql
+ *   • 00131_gabinet_appointment_package_overbooking_guard.sql
+ *   • 00132_gabinet_overbooking_guard_series_count.sql
+ *   • 00133_gabinet_package_cas_atomic_fns.sql
+ *   • 00134_form_templates_is_org_required.sql
+ *   • 00135_form_documents_generated_for_treatment_id.sql
+ *   • 00136_form_documents_template_version.sql
+ *   • 00137_form_documents_content_json_snapshot.sql
+ *   • 00138_form_templates_d24_categories_and_updated_by.sql
+ *   • 00139_drop_document_templates_and_fields.sql
+ *   • 00140_signature_requests_embed_document.sql
+ *   • 00141_drop_document_instances.sql
+ *   • 00142_form_documents_expires_at.sql
+ *   • 00143_form_documents_is_required.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -536,6 +554,8 @@ export interface Database {
           created_at: number;
           updated_at: number;
           trial_end_date: number | null;
+          source: string | null;
+          granted_by_user_id: string | null;
         };
         Insert: {
           id?: string;
@@ -549,6 +569,8 @@ export interface Database {
           created_at: number;
           updated_at: number;
           trial_end_date?: number | null;
+          source?: string | null;
+          granted_by_user_id?: string | null;
         };
         Update: {
           id?: string;
@@ -562,6 +584,8 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
           trial_end_date?: number | null;
+          source?: string | null;
+          granted_by_user_id?: string | null;
         };
         Relationships: [
           {
@@ -569,6 +593,13 @@ export interface Database {
             columns: ["organization_id"];
             isOneToOne: false;
             referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "product_subscriptions_granted_by_user_id_fkey";
+            columns: ["granted_by_user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
             referencedColumns: ["id"];
           },
         ];
@@ -5648,147 +5679,6 @@ export interface Database {
           },
         ];
       };
-      document_templates: {
-        Row: {
-          id: string;
-          organization_id: string;
-          name: string;
-          description: string | null;
-          category: string;
-          content: string;
-          module: string;
-          required_sources: string[];
-          requires_signature: boolean;
-          signature_slots: unknown;
-          access_control: unknown;
-          version: number;
-          parent_template_id: string | null;
-          status: string;
-          created_by: string;
-          created_at: number;
-          updated_at: number;
-        };
-        Insert: {
-          id?: string;
-          organization_id: string;
-          name: string;
-          description?: string | null;
-          category: string;
-          content: string;
-          module: string;
-          required_sources: string[];
-          requires_signature: boolean;
-          signature_slots: unknown;
-          access_control: unknown;
-          version: number;
-          parent_template_id?: string | null;
-          status: string;
-          created_by: string;
-          created_at: number;
-          updated_at: number;
-        };
-        Update: {
-          id?: string;
-          organization_id?: string;
-          name?: string;
-          description?: string | null;
-          category?: string;
-          content?: string;
-          module?: string;
-          required_sources?: string[];
-          requires_signature?: boolean;
-          signature_slots?: unknown;
-          access_control?: unknown;
-          version?: number;
-          parent_template_id?: string | null;
-          status?: string;
-          created_by?: string;
-          created_at?: number;
-          updated_at?: number;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "document_templates_organization_id_fkey";
-            columns: ["organization_id"];
-            isOneToOne: false;
-            referencedRelation: "organizations";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "document_templates_parent_template_id_fkey";
-            columns: ["parent_template_id"];
-            isOneToOne: false;
-            referencedRelation: "document_templates";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "document_templates_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      document_template_fields: {
-        Row: {
-          id: string;
-          template_id: string;
-          field_key: string;
-          label: string;
-          type: string;
-          sort_order: number;
-          group: string | null;
-          options: unknown | null;
-          default_value: string | null;
-          binding: unknown | null;
-          validation: unknown | null;
-          placeholder: string | null;
-          help_text: string | null;
-          width: string;
-        };
-        Insert: {
-          id?: string;
-          template_id: string;
-          field_key: string;
-          label: string;
-          type: string;
-          sort_order: number;
-          group?: string | null;
-          options?: unknown | null;
-          default_value?: string | null;
-          binding?: unknown | null;
-          validation?: unknown | null;
-          placeholder?: string | null;
-          help_text?: string | null;
-          width: string;
-        };
-        Update: {
-          id?: string;
-          template_id?: string;
-          field_key?: string;
-          label?: string;
-          type?: string;
-          sort_order?: number;
-          group?: string | null;
-          options?: unknown | null;
-          default_value?: string | null;
-          binding?: unknown | null;
-          validation?: unknown | null;
-          placeholder?: string | null;
-          help_text?: string | null;
-          width?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "document_template_fields_template_id_fkey";
-            columns: ["template_id"];
-            isOneToOne: false;
-            referencedRelation: "document_templates";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       signature_requests: {
         Row: {
           id: string;
@@ -5871,6 +5761,13 @@ export interface Database {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "signature_requests_instance_id_fkey";
+            columns: ["instance_id"];
+            isOneToOne: false;
+            referencedRelation: "document_instances";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "signature_requests_signer_user_id_fkey";
             columns: ["signer_user_id"];
             isOneToOne: false;
@@ -5902,6 +5799,8 @@ export interface Database {
           created_by: string;
           created_at: number;
           updated_at: number;
+          is_org_required: boolean;
+          updated_by: string | null;
         };
         Insert: {
           id?: string;
@@ -5925,6 +5824,8 @@ export interface Database {
           created_by: string;
           created_at: number;
           updated_at: number;
+          is_org_required?: boolean;
+          updated_by?: string | null;
         };
         Update: {
           id?: string;
@@ -5948,6 +5849,8 @@ export interface Database {
           created_by?: string;
           created_at?: number;
           updated_at?: number;
+          is_org_required?: boolean;
+          updated_by?: string | null;
         };
         Relationships: [
           {
@@ -5960,6 +5863,13 @@ export interface Database {
           {
             foreignKeyName: "form_templates_created_by_fkey";
             columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "form_templates_updated_by_fkey";
+            columns: ["updated_by"];
             isOneToOne: false;
             referencedRelation: "users";
             referencedColumns: ["id"];
@@ -5995,9 +5905,12 @@ export interface Database {
           created_at: number;
           updated_at: number;
           sort_order: number | null;
+          generated_for_treatment_id: string | null;
           template_version: number | null;
+          content_json_snapshot: string | null;
           expires_at: number | null;
           document_validity_days: number | null;
+          is_required: boolean | null;
         };
         Insert: {
           id?: string;
@@ -6027,9 +5940,12 @@ export interface Database {
           created_at: number;
           updated_at: number;
           sort_order?: number | null;
+          generated_for_treatment_id?: string | null;
           template_version?: number | null;
+          content_json_snapshot?: string | null;
           expires_at?: number | null;
           document_validity_days?: number | null;
+          is_required?: boolean | null;
         };
         Update: {
           id?: string;
@@ -6059,9 +5975,12 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
           sort_order?: number | null;
+          generated_for_treatment_id?: string | null;
           template_version?: number | null;
+          content_json_snapshot?: string | null;
           expires_at?: number | null;
           document_validity_days?: number | null;
+          is_required?: boolean | null;
         };
         Relationships: [
           {
@@ -6083,6 +6002,13 @@ export interface Database {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "form_documents_generated_for_treatment_id_fkey";
+            columns: ["generated_for_treatment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatments";
             referencedColumns: ["id"];
           },
         ];
@@ -6486,6 +6412,7 @@ export interface Database {
           lot_number: string | null;
           expiry_date: string | null;
           payment_method: string | null;
+          treatment_id: string | null;
         };
         Insert: {
           id?: string;
@@ -6505,6 +6432,7 @@ export interface Database {
           lot_number?: string | null;
           expiry_date?: string | null;
           payment_method?: string | null;
+          treatment_id?: string | null;
         };
         Update: {
           id?: string;
@@ -6524,6 +6452,7 @@ export interface Database {
           lot_number?: string | null;
           expiry_date?: string | null;
           payment_method?: string | null;
+          treatment_id?: string | null;
         };
         Relationships: [
           {
@@ -6552,6 +6481,13 @@ export interface Database {
             columns: ["performed_by"];
             isOneToOne: false;
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "product_stock_movements_treatment_id_fkey";
+            columns: ["treatment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatments";
             referencedColumns: ["id"];
           },
         ];
@@ -7734,7 +7670,6 @@ export type GabinetLeaveUpdate = Database["public"]["Tables"]["gabinet_leaves"][
 export type GabinetOvertimeRow = Database["public"]["Tables"]["gabinet_overtime"]["Row"];
 export type GabinetOvertimeInsert = Database["public"]["Tables"]["gabinet_overtime"]["Insert"];
 export type GabinetOvertimeUpdate = Database["public"]["Tables"]["gabinet_overtime"]["Update"];
-
 export type GabinetTreatmentPackageRow = Database["public"]["Tables"]["gabinet_treatment_packages"]["Row"];
 export type GabinetTreatmentPackageInsert = Database["public"]["Tables"]["gabinet_treatment_packages"]["Insert"];
 export type GabinetTreatmentPackageUpdate = Database["public"]["Tables"]["gabinet_treatment_packages"]["Update"];

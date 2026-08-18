@@ -379,6 +379,17 @@ function applyMigration(sql) {
     }
   }
 
+  // ─── DROP TABLE [IF EXISTS] <name> [, <name> ...] ──
+  // Removes tables that were dropped by a migration so they don't appear in
+  // the generated types.  Handles both single-table and comma-separated forms.
+  const dropTableRe = /DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?([^\n;]+)/gi;
+  for (const m of sql.matchAll(dropTableRe)) {
+    for (const raw of m[1].split(",")) {
+      const tableName = raw.trim().replace(/^"|"$/g, "").split(/\s/)[0];
+      if (tableName) tables.delete(tableName);
+    }
+  }
+
   // ─── CREATE [OR REPLACE] FUNCTION public.<name>(<args>) RETURNS <type> ──
   // Only public-schema functions are exposed via PostgREST RPC; unqualified
   // helper functions (RLS helpers, triggers) are intentionally skipped.

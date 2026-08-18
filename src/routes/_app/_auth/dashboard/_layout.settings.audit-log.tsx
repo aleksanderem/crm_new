@@ -34,6 +34,9 @@ const ACTION_TYPES = [
   "payment_created",
   "payment_completed",
   "payment_refunded",
+  "document.created",
+  "document.sent",
+  "document.voided",
 ] as const;
 
 const ACTION_LABELS: Record<string, string> = {
@@ -46,6 +49,9 @@ const ACTION_LABELS: Record<string, string> = {
   payment_created: "Payment Created",
   payment_completed: "Payment Completed",
   payment_refunded: "Payment Refunded",
+  "document.created": "Document Created",
+  "document.sent": "Document Sent",
+  "document.voided": "Document Voided",
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -58,6 +64,9 @@ const ACTION_COLORS: Record<string, string> = {
   payment_created: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
   payment_completed: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   payment_refunded: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+  "document.created": "bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200",
+  "document.sent": "bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200",
+  "document.voided": "bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200",
 };
 
 function parseDetails(details: string | undefined | null): string {

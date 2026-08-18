@@ -375,19 +375,39 @@ async function resolveGabinetEvents(
       visibilityOverride: config.visibility,
     });
 
-    // Generate treatment documents for newly created appointments so the
-    // document gate isn't trivially bypassed on the sync path (#5353).
-    if (syncResult.type === "created" && treatmentId) {
+    if (syncResult.type === "created") {
+      // Automation event + reminder scheduling (#5358).
+      const patientName = attendee.displayName ?? attendee.email.split("@")[0];
       await ctx.runMutation(
-        internal.gabinet.appointments._generateDocsOnSync,
+        internal.gabinet.appointments._syncCreatedSideEffects,
         {
           organizationId: orgId,
           appointmentId: syncResult.appointmentId,
-          treatmentId,
           patientId,
+          treatmentId,
+          employeeId: employee.id,
+          date,
+          startTime,
+          endTime,
           createdBy: ownerId,
+          patientName,
+          patientEmail: attendee.email,
         },
       );
+
+      // Treatment documents: prevent document gate bypass on sync path (#5353).
+      if (treatmentId) {
+        await ctx.runMutation(
+          internal.gabinet.appointments._generateDocsOnSync,
+          {
+            organizationId: orgId,
+            appointmentId: syncResult.appointmentId,
+            treatmentId,
+            patientId,
+            createdBy: ownerId,
+          },
+        );
+      }
     }
 
     synced++;

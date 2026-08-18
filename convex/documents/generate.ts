@@ -186,6 +186,7 @@ export const generateDocument = action({
     const docId = await db.insert("formDocuments", {
       organizationId: String(args.organizationId),
       templateId: args.templateId,
+      templateVersion: (template.version as number | null | undefined) ?? null,
       title,
       responseData: args.responseData,
       entityType: args.entityType,

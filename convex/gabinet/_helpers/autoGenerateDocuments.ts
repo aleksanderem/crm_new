@@ -240,6 +240,7 @@ export async function autoGenerateAppointmentDocuments(
       const insertPayload = {
         organizationId: String(args.organizationId),
         templateId: String(entry.templateId),
+        templateVersion: (template.version as number | null | undefined) ?? null,
         title: template.name,
         responseData: JSON.stringify(prefilledData),
         entityType: "appointment",

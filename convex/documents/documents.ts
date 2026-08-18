@@ -334,9 +334,12 @@ export const create = action({
     const now = Date.now();
     const db = createSupabaseDb();
 
+    const template = await db.get("formTemplates", args.templateId);
+
     const docId = await db.insert("formDocuments", {
       organizationId: String(args.organizationId),
       templateId: args.templateId,
+      templateVersion: (template?.version as number | null | undefined) ?? null,
       title: args.title,
       responseData: args.responseData,
       entityType: args.entityType,

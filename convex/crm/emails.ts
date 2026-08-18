@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { publishActivityEnvelope } from "../_helpers/activityEnvelope";
 import { sendEmail } from "@cvx/email";
 import type { EmailRow } from "../_helpers/supabaseRows";
+import type { Id } from "../_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for email writes
 // listInbox, getThread, getById, getUnreadCount removed — frontend reads from Supabase via use-supabase-emails.ts
@@ -100,7 +101,7 @@ export const send = action({
       html: args.bodyHtml ?? args.bodyText ?? "",
       log: {
         ctx,
-        organizationId: args.organizationId,
+        organizationId: args.organizationId as Id<"organizations">,
         source: "manual_compose",
         triggeredBy: authResult.userId,
         relatedEntityType: args.contactId

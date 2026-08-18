@@ -40,8 +40,6 @@ const TABLE_MAP: Record<string, string> = {
   sources: "sources",
   lostReasons: "lost_reasons",
   documents: "documents",
-  documentTemplates: "document_templates",
-  documentTemplateFields: "document_template_fields",
   documentInstances: "document_instances",
   documentComponents: "document_components",
   documentAnalysisJobs: "document_analysis_jobs",

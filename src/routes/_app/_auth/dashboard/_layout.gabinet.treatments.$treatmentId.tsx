@@ -1183,6 +1183,7 @@ function TreatmentDetail() {
               requiredFormTemplates={
                 (treatment?.requiredFormTemplates as RequiredFormTemplate[] | undefined) ?? []
               }
+              readOnly={!canEdit}
             />
             <Separator />
             <EntityDocumentsTab

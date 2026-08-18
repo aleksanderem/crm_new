@@ -78,6 +78,7 @@ interface TreatmentRequiredDocumentsProps {
   treatmentId: Id<"gabinetTreatments">;
   organizationId: Id<"organizations">;
   requiredFormTemplates: RequiredFormTemplate[];
+  readOnly?: boolean;
 }
 
 interface FormTemplate {
@@ -96,6 +97,7 @@ export function TreatmentRequiredDocuments({
   treatmentId,
   organizationId,
   requiredFormTemplates,
+  readOnly = false,
 }: TreatmentRequiredDocumentsProps) {
   const { t } = useTranslation();
 
@@ -324,14 +326,14 @@ export function TreatmentRequiredDocuments({
                     <div className="flex items-center gap-2 shrink-0">
                       <TimingBadge
                         timing={req.timing}
-                        onTimingChange={(newTiming) =>
+                        onTimingChange={readOnly ? undefined : (newTiming) =>
                           handleTimingChange(req.templateId, newTiming)
                         }
                         t={t}
                       />
                       <FrequencyBadge
                         frequency={effectiveFrequency}
-                        onFrequencyChange={(newFrequency) =>
+                        onFrequencyChange={readOnly ? undefined : (newFrequency) =>
                           handleFrequencyChange(req.templateId, newFrequency)
                         }
                         t={t}
@@ -344,14 +346,16 @@ export function TreatmentRequiredDocuments({
                           {t("documents.requiredDocs.optional", "Opcjonalny")}
                         </Badge>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => handleRemove(req.templateId)}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
+                      {!readOnly && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleRemove(req.templateId)}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 );
@@ -359,18 +363,20 @@ export function TreatmentRequiredDocuments({
             </div>
           )}
 
-          <Button
-            size="sm"
-            variant="outline"
-            className="w-full"
-            onClick={() => setAddDialogOpen(true)}
-          >
-            <Plus className="mr-2 h-4 w-4" variant="stroke" />
-            {t(
-              "documents.requiredDocs.add",
-              "Dodaj wymagany dokument",
-            )}
-          </Button>
+          {!readOnly && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full"
+              onClick={() => setAddDialogOpen(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" variant="stroke" />
+              {t(
+                "documents.requiredDocs.add",
+                "Dodaj wymagany dokument",
+              )}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -626,13 +632,24 @@ function FrequencyBadge({
   t,
 }: {
   frequency: DocumentFrequency;
-  onFrequencyChange: (newFrequency: DocumentFrequency) => void;
+  onFrequencyChange?: (newFrequency: DocumentFrequency) => void;
   t: TFunction;
 }) {
   const nextFrequency = (current: DocumentFrequency) => {
     const idx = FREQUENCY_ORDER.indexOf(current);
     return FREQUENCY_ORDER[(idx + 1) % FREQUENCY_ORDER.length];
   };
+
+  if (!onFrequencyChange) {
+    return (
+      <Badge
+        className={cn("text-xs select-none", FREQUENCY_STYLES[frequency])}
+        variant="outline"
+      >
+        {frequencyLabel(frequency, t)}
+      </Badge>
+    );
+  }
 
   return (
     <button
@@ -657,13 +674,24 @@ function TimingBadge({
   t,
 }: {
   timing: RequiredFormTemplateTiming;
-  onTimingChange: (newTiming: RequiredFormTemplateTiming) => void;
+  onTimingChange?: (newTiming: RequiredFormTemplateTiming) => void;
   t: TFunction;
 }) {
   const nextTiming = (current: RequiredFormTemplateTiming) => {
     const idx = TIMING_ORDER.indexOf(current);
     return TIMING_ORDER[(idx + 1) % TIMING_ORDER.length];
   };
+
+  if (!onTimingChange) {
+    return (
+      <Badge
+        className={cn("text-xs select-none", TIMING_STYLES[timing])}
+        variant="outline"
+      >
+        {timingLabel(timing, t)}
+      </Badge>
+    );
+  }
 
   return (
     <button

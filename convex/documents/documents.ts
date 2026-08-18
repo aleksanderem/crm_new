@@ -1166,7 +1166,7 @@ export const listByPatientToken = action({
         updatedAt: doc.updatedAt as number,
         templateName: (template?.name as string | undefined) ?? "",
         category: (template?.category as string | undefined) ?? "custom",
-        formJson: (template?.formJson as string | undefined) ?? "{}",
+        formJson: ((doc as unknown as Record<string, unknown>).formJson as string | undefined) ?? (template?.formJson as string | undefined) ?? "{}",
         requiresSignature:
           (template?.requiresSignature as boolean | undefined) ?? false,
       };

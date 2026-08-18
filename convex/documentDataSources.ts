@@ -144,10 +144,6 @@ for (const src of ALL_DATA_SOURCES) {
   sourceMap.set(src.key, src);
 }
 
-export function getDataSource(key: string): DataSourceDefinition | undefined {
-  return sourceMap.get(key);
-}
-
 export function getDataSourcesForModule(module: string): DataSourceDefinition[] {
   return ALL_DATA_SOURCES.filter(
     (s) => s.module === "platform" || s.module === module,

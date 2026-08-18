@@ -538,7 +538,6 @@ PDF EXPORT:
 1.7. convex/documentTemplates.ts — CRUD + publish + archive + duplicate.
 1.8. convex/documentTemplateFields.ts — CRUD + reorder.
 1.9. convex/documentInstances.ts — create (z resolve sources + render), update draft, workflow transitions, sign, archive.
-1.10. Query: listAvailableSources(module) — zwraca deklaracje source'ów (bez resolverów) do UI.
 
 ### Etap 2: UI edytora szablonów
 

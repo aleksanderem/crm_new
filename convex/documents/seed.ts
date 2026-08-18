@@ -119,7 +119,7 @@ const EMPLOYEE_FILLED_FIELD_IDS = new Set<string>([
 
 async function _migrateFilledByHandler(
   ctx: MutationCtx,
-  organizationId: GenericId<"organizations">,
+  organizationId: string,
 ) {
   const all = await ctx.db
     .query("formTemplates")
@@ -2270,7 +2270,7 @@ function buildBeautyDocumentTemplates(c: ComponentMap): BeautyTemplate[] {
 
 async function seedBeautyHandler(
   ctx: MutationCtx,
-  orgId: GenericId<"organizations">,
+  orgId: string,
   userId: GenericId<"users">,
   force = false,
   templateName?: string,

@@ -160,12 +160,12 @@ describe("reminderEnabled: controls whether appointment creation schedules a rem
       employeeId: userId,
     });
 
-    const reminders = await t.run(async (ctx) =>
-      ctx.db.query("appointmentReminders").collect(),
-    );
+    const reminders = await createSupabaseDb()
+      .query("appointmentReminders")
+      .collect();
     expect(reminders.length).toBeGreaterThan(0);
     expect(reminders[0].status).toBe("pending");
-    expect(reminders[0].organizationId).toStrictEqual(organizationId);
+    expect(reminders[0].organizationId).toStrictEqual(String(organizationId));
   });
 
   test("reminderEnabled=false prevents any appointmentReminders entry from being created", async () => {
@@ -186,9 +186,9 @@ describe("reminderEnabled: controls whether appointment creation schedules a rem
       employeeId: userId,
     });
 
-    const reminders = await t.run(async (ctx) =>
-      ctx.db.query("appointmentReminders").collect(),
-    );
+    const reminders = await createSupabaseDb()
+      .query("appointmentReminders")
+      .collect();
     expect(reminders).toHaveLength(0);
   });
 });
@@ -218,9 +218,9 @@ describe("reminderHoursBefore: controls legacy single-reminder offset", () => {
       sendReminder: true,
     });
 
-    const reminders = await t.run(async (ctx) =>
-      ctx.db.query("appointmentReminders").collect(),
-    );
+    const reminders = await createSupabaseDb()
+      .query("appointmentReminders")
+      .collect();
     expect(reminders).toHaveLength(1);
     const expected48h = APPOINTMENT_MS - 48 * 60 * 60 * 1000;
     expect(reminders[0].scheduledFor).toBe(expected48h);
@@ -245,9 +245,9 @@ describe("reminderHoursBefore: controls legacy single-reminder offset", () => {
       sendReminder: true,
     });
 
-    const reminders = await t.run(async (ctx) =>
-      ctx.db.query("appointmentReminders").collect(),
-    );
+    const reminders = await createSupabaseDb()
+      .query("appointmentReminders")
+      .collect();
     expect(reminders).toHaveLength(1);
     const expected24h = APPOINTMENT_MS - 24 * 60 * 60 * 1000;
     expect(reminders[0].scheduledFor).toBe(expected24h);
@@ -290,9 +290,9 @@ describe("4-toggle channel settings: control which reminder timing slots get sch
       sendReminder: true,
     });
 
-    const reminders = await t.run(async (ctx) =>
-      ctx.db.query("appointmentReminders").collect(),
-    );
+    const reminders = await createSupabaseDb()
+      .query("appointmentReminders")
+      .collect();
     expect(reminders).toHaveLength(1);
     const expected24h = APPOINTMENT_MS - 24 * 60 * 60 * 1000;
     expect(reminders[0].scheduledFor).toBe(expected24h);
@@ -322,9 +322,9 @@ describe("4-toggle channel settings: control which reminder timing slots get sch
       sendReminder: true,
     });
 
-    const reminders = await t.run(async (ctx) =>
-      ctx.db.query("appointmentReminders").collect(),
-    );
+    const reminders = await createSupabaseDb()
+      .query("appointmentReminders")
+      .collect();
     expect(reminders).toHaveLength(1);
     const expected48h = APPOINTMENT_MS - 48 * 60 * 60 * 1000;
     expect(reminders[0].scheduledFor).toBe(expected48h);
@@ -354,11 +354,11 @@ describe("4-toggle channel settings: control which reminder timing slots get sch
       sendReminder: true,
     });
 
-    const reminders = await t.run(async (ctx) =>
-      ctx.db.query("appointmentReminders").collect(),
-    );
+    const reminders = await createSupabaseDb()
+      .query("appointmentReminders")
+      .collect();
     expect(reminders).toHaveLength(2);
-    const times = reminders.map((r) => r.scheduledFor).sort((a, b) => a - b);
+    const times = reminders.map((r) => r.scheduledFor).sort((a, b) => (a as number) - (b as number));
     expect(times[0]).toBe(APPOINTMENT_MS - 48 * 60 * 60 * 1000);
     expect(times[1]).toBe(APPOINTMENT_MS - 24 * 60 * 60 * 1000);
   });
@@ -387,9 +387,9 @@ describe("4-toggle channel settings: control which reminder timing slots get sch
       sendReminder: true,
     });
 
-    const reminders = await t.run(async (ctx) =>
-      ctx.db.query("appointmentReminders").collect(),
-    );
+    const reminders = await createSupabaseDb()
+      .query("appointmentReminders")
+      .collect();
     expect(reminders).toHaveLength(0);
   });
 });

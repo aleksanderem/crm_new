@@ -847,7 +847,6 @@ export const merge = action({
   },
   handler: async (ctx, args): Promise<{
     movedAppointments: number;
-    movedDocuments: number;
     movedPackageUsage: number;
     movedLoyaltyTransactions: number;
     movedPayments: number;
@@ -925,7 +924,6 @@ export const merge = action({
     // Bulk reassign foreign keys pointing at the source patient over to the target.
     const movedAppointments = await reassignByColumn("gabinet_appointments", "patient_id");
     const movedBookedBy = await reassignByColumn("gabinet_appointments", "booked_by_patient_id");
-    const movedDocuments = await reassignByColumn("gabinet_documents", "patient_id");
     const movedPackageUsage = await reassignByColumn("gabinet_package_usage", "patient_id");
     const movedLoyaltyTransactions = await reassignByColumn(
       "gabinet_loyalty_transactions",
@@ -1112,7 +1110,6 @@ export const merge = action({
 
     return {
       movedAppointments,
-      movedDocuments,
       movedPackageUsage,
       movedLoyaltyTransactions,
       movedPayments,

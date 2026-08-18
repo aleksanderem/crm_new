@@ -223,8 +223,6 @@ export type TableName =
   | "gabinet_package_usage"
   | "gabinet_loyalty_points"
   | "gabinet_loyalty_transactions"
-  | "gabinet_document_templates"
-  | "gabinet_documents"
   | "gabinet_portal_sessions"
   | "appointment_reminders"
   | "appointment_workflow_history"
@@ -337,8 +335,6 @@ export const TABLE_COLUMNS: Readonly<Record<TableName, ReadonlySet<string>>> = {
   gabinet_package_usage: new Set(["id", "organization_id", "patient_id", "package_id", "purchased_at", "expires_at", "status", "treatments_used", "paid_amount", "payment_method", "created_by", "created_at", "updated_at", "is_gift", "voucher_code", "gift_recipient_name", "gift_recipient_phone", "gift_recipient_email", "sold_by_employee_id"]),
   gabinet_loyalty_points: new Set(["id", "organization_id", "patient_id", "balance", "lifetime_earned", "lifetime_spent", "tier", "created_at", "updated_at"]),
   gabinet_loyalty_transactions: new Set(["id", "organization_id", "patient_id", "type", "points", "reason", "reference_type", "reference_id", "balance_after", "created_by", "created_at"]),
-  gabinet_document_templates: new Set(["id", "organization_id", "name", "type", "content", "requires_signature", "is_active", "sort_order", "created_by", "created_at", "updated_at"]),
-  gabinet_documents: new Set(["id", "organization_id", "patient_id", "appointment_id", "template_id", "title", "type", "content", "status", "signature_data", "signed_at", "signed_by_patient", "signed_by_employee", "file_storage_id", "file_name", "file_mime_type", "tag_ids", "category_id", "created_by", "created_at", "updated_at"]),
   gabinet_portal_sessions: new Set(["id", "patient_id", "organization_id", "token_hash", "otp_hash", "otp_expires_at", "is_active", "last_accessed_at", "created_at", "expires_at", "otp_send_count", "otp_send_window_start", "verify_fail_count", "locked_until"]),
   appointment_reminders: new Set(["id", "organization_id", "appointment_id", "type", "scheduled_for", "sent_at", "status", "scheduled_function_id", "created_at"]),
   appointment_workflow_history: new Set(["id", "organization_id", "appointment_id", "workflow_event", "channel", "direction", "source", "recipient", "recipient_name", "status", "rendered_subject", "rendered_body", "email_event_log_id", "error_message", "idempotency_key", "processed_at", "created_at", "updated_at"]),

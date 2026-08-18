@@ -738,6 +738,15 @@ export const resendSigningEmail = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_documents",
+        action: "edit",
+      },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     const doc = await db.get("formDocuments", args.documentId);

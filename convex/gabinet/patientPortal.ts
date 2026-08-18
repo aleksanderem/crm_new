@@ -59,10 +59,10 @@ function appendPlateNotes(existing: string | undefined, text: string): string {
 }
 
 export const getMyProfile = action({
-  args: { tokenHash: v.string() },
+  args: { token: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
-    const { patientId } = await validatePortalSessionSupabase(db, args.tokenHash);
+    const { patientId } = await validatePortalSessionSupabase(db, args.token);
 
     const patient = await db.get("gabinetPatients", patientId);
     if (!patient) throw new Error("Patient not found");
@@ -93,7 +93,7 @@ export const getMyProfile = action({
 
 export const updateMyProfile = action({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     phone: v.optional(v.string()),
     address: v.optional(
       v.object({
@@ -108,9 +108,9 @@ export const updateMyProfile = action({
   handler: async (ctx, args) => {
     try {
     const db = createSupabaseDb();
-    const { patientId } = await validatePortalSessionSupabase(db, args.tokenHash);
+    const { patientId } = await validatePortalSessionSupabase(db, args.token);
 
-    const { tokenHash, ...updates } = args;
+    const { token, ...updates } = args;
     await db.patch("gabinetPatients", patientId, { ...updates, updatedAt: Date.now() });
     } catch (err) {
       await logError(ctx, err, {
@@ -119,7 +119,7 @@ export const updateMyProfile = action({
         argsJson: JSON.stringify({
           // Do not log the session token; only log which fields the caller
           // tried to change.
-          updatedFields: Object.keys(args).filter((k) => k !== "tokenHash"),
+          updatedFields: Object.keys(args).filter((k) => k !== "token"),
           hasAddress: !!args.address,
         }),
       });
@@ -129,12 +129,12 @@ export const updateMyProfile = action({
 });
 
 export const getMyAppointments = action({
-  args: { tokenHash: v.string() },
+  args: { token: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const { patientId, organizationId } = await validatePortalSessionSupabase(
       db,
-      args.tokenHash,
+      args.token,
     );
 
     const appointments = await db
@@ -182,12 +182,12 @@ export const getMyAppointments = action({
 });
 
 export const getMyPackages = action({
-  args: { tokenHash: v.string() },
+  args: { token: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const { patientId, organizationId } = await validatePortalSessionSupabase(
       db,
-      args.tokenHash,
+      args.token,
     );
 
     const usages = await db
@@ -228,12 +228,12 @@ export const getMyPackages = action({
 });
 
 export const getMyLoyaltyBalance = action({
-  args: { tokenHash: v.string() },
+  args: { token: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const { patientId, organizationId } = await validatePortalSessionSupabase(
       db,
-      args.tokenHash,
+      args.token,
     );
 
     const row = await db
@@ -253,12 +253,12 @@ export const getMyLoyaltyBalance = action({
 });
 
 export const getMyLoyaltyTransactions = action({
-  args: { tokenHash: v.string() },
+  args: { token: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const { patientId, organizationId } = await validatePortalSessionSupabase(
       db,
-      args.tokenHash,
+      args.token,
     );
 
     const transactions = await db
@@ -285,12 +285,12 @@ export const getMyLoyaltyTransactions = action({
 
 /** List active treatments available for booking. */
 export const getBookableTreatments = action({
-  args: { tokenHash: v.string() },
+  args: { token: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const { organizationId } = await validatePortalSessionSupabase(
       db,
-      args.tokenHash,
+      args.token,
     );
 
     const treatments = await db
@@ -337,14 +337,14 @@ export const getBookableTreatments = action({
 /** List active employees qualified for a given treatment. */
 export const getQualifiedEmployees = action({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     treatmentId: v.string(),
   },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const { organizationId } = await validatePortalSessionSupabase(
       db,
-      args.tokenHash,
+      args.token,
     );
 
     const employees = await db
@@ -388,7 +388,7 @@ export const getQualifiedEmployees = action({
 /** Get available time slots for portal booking. */
 export const getPublicAvailableSlots = action({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     employeeId: v.string(),
     date: v.string(),
     duration: v.number(),
@@ -399,7 +399,7 @@ export const getPublicAvailableSlots = action({
     const db = createSupabaseDb();
     const { organizationId } = await validatePortalSessionSupabase(
       db,
-      args.tokenHash,
+      args.token,
     );
 
     return await getAvailableSlotsSupabase(db, {
@@ -417,7 +417,7 @@ export const getPublicAvailableSlots = action({
 /** Book an appointment from the patient portal. */
 export const bookFromPortal = action({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     treatmentId: v.string(),
     employeeId: v.optional(v.string()),
     preferredDate: v.string(),
@@ -426,7 +426,7 @@ export const bookFromPortal = action({
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
     const { patientId, organizationId: orgIdStr } =
-      await validatePortalSessionSupabase(db, args.tokenHash);
+      await validatePortalSessionSupabase(db, args.token);
     const organizationId = orgIdStr;
 
     // Past-time guard (issue #1415). The portal slot picker already hides
@@ -715,7 +715,7 @@ export const _bookingNotifications = internalMutation({
 
 export const requestReschedule = action({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     appointmentId: v.string(),
     requestedDate: v.string(), // YYYY-MM-DD
     requestedTime: v.string(), // HH:MM
@@ -724,7 +724,7 @@ export const requestReschedule = action({
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
     const { patientId, organizationId: orgIdStr } =
-      await validatePortalSessionSupabase(db, args.tokenHash);
+      await validatePortalSessionSupabase(db, args.token);
     const organizationId = orgIdStr;
 
     // Read appointment from Supabase

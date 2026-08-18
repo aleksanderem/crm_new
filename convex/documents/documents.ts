@@ -878,12 +878,12 @@ export const expireSigningTokens = internalAction({
 // ---------------------------------------------------------------------------
 
 export const listByPatientToken = action({
-  args: { tokenHash: v.string() },
+  args: { token: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const { patientId, organizationId } = await validatePortalSessionSupabase(
       db,
-      args.tokenHash,
+      args.token,
     );
 
     // 1. Documents linked directly to the patient

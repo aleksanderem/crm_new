@@ -30,7 +30,7 @@ function usePortalToken() {
 function PatientBooking() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const tokenHash = usePortalToken();
+  const token = usePortalToken();
 
   const [step, setStep] = useState<Step>("treatment");
   const [selectedTreatment, setSelectedTreatment] = useState<{
@@ -56,9 +56,9 @@ function PatientBooking() {
     api.gabinet.patientPortal.getBookableTreatments,
   );
   const { data: treatments } = useQuery({
-    queryKey: ["gabinet.patientPortal.getBookableTreatments", tokenHash],
-    queryFn: () => getBookableTreatments({ tokenHash }),
-    enabled: !!tokenHash,
+    queryKey: ["gabinet.patientPortal.getBookableTreatments", token],
+    queryFn: () => getBookableTreatments({ token }),
+    enabled: !!token,
   });
 
   const getQualifiedEmployees = useAction(
@@ -67,15 +67,15 @@ function PatientBooking() {
   const { data: employees } = useQuery({
     queryKey: [
       "gabinet.patientPortal.getQualifiedEmployees",
-      tokenHash,
+      token,
       selectedTreatment?._id,
     ],
     queryFn: () =>
       getQualifiedEmployees({
-        tokenHash,
+        token,
         treatmentId: (selectedTreatment?._id as string) ?? "",
       }),
-    enabled: !!tokenHash && !!selectedTreatment,
+    enabled: !!token && !!selectedTreatment,
   });
 
   const dateStr = selectedDate
@@ -96,7 +96,7 @@ function PatientBooking() {
   const { data: slotsResult } = useQuery({
     queryKey: [
       "gabinet.publicAvailableSlots",
-      tokenHash,
+      token,
       selectedEmployee?.userId,
       dateStr,
       selectedTreatment?.duration,
@@ -105,7 +105,7 @@ function PatientBooking() {
     ],
     queryFn: () =>
       getPublicSlots({
-        tokenHash,
+        token,
         employeeId: (selectedEmployee?.userId as string) ?? "",
         date: dateStr || "1970-01-01",
         duration: selectedTreatment?.duration ?? 0,
@@ -204,7 +204,7 @@ function PatientBooking() {
     setIsSubmitting(true);
     try {
       await bookMutation({
-        tokenHash,
+        token,
         treatmentId: selectedTreatment._id as string,
         employeeId: anyEmployee ? undefined : (selectedEmployee?.userId as string | undefined),
         preferredDate: dateStr,

@@ -12,13 +12,13 @@ export const Route = createFileRoute("/_app/patient/_layout/packages")({
 
 function PatientPackages() {
   const { t } = useTranslation();
-  const tokenHash = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") ?? "" : "";
+  const token = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") ?? "" : "";
 
   const getMyPackages = useAction(api.gabinet.patientPortal.getMyPackages);
   const { data: packages } = useQuery({
-    queryKey: ["gabinet.patientPortal.getMyPackages", tokenHash],
-    queryFn: () => getMyPackages({ tokenHash }),
-    enabled: !!tokenHash,
+    queryKey: ["gabinet.patientPortal.getMyPackages", token],
+    queryFn: () => getMyPackages({ token }),
+    enabled: !!token,
   });
 
   const statusColor = (s: string) => {

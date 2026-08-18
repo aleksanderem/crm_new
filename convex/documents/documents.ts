@@ -402,6 +402,11 @@ export const updateStatus = action({
         "Use voidDocument to void a document — updateStatus cannot set status to 'voided'",
       );
     }
+    if (args.status === "signed") {
+      throw new Error(
+        "Use recordSignature to sign a document — updateStatus cannot set status to 'signed'",
+      );
+    }
 
     await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,

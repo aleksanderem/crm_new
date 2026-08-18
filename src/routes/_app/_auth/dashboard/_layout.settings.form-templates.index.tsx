@@ -124,6 +124,7 @@ interface FormTemplateRecord {
   createdAt: number;
   updatedAt: number;
   updatedBy?: string;
+  updatedByName?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -471,13 +472,24 @@ function TemplateTree({
                 <span className="text-[10px] text-muted-foreground shrink-0">
                   v{tpl.version}
                 </span>
-                <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:inline">
-                  {new Date(tpl.updatedAt).toLocaleDateString(undefined, {
-                    day: "2-digit",
-                    month: "2-digit",
-                    year: "2-digit",
-                  })}
-                </span>
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:inline cursor-default">
+                        {new Date(tpl.updatedAt).toLocaleDateString(undefined, {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "2-digit",
+                        })}
+                      </span>
+                    </TooltipTrigger>
+                    {tpl.updatedByName && (
+                      <TooltipContent>
+                        {t("settings.formTemplates.updatedBy", "Zmodyfikował: {{name}}", { name: tpl.updatedByName })}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
                 {/* Rendered as a <div role="switch"> rather than the Radix
                     Switch component because Switch renders as
                     <button role="switch"> and the outer TreeItem wrapper is

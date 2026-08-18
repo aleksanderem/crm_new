@@ -10,15 +10,30 @@ import { formCategoryValidator } from "../schema/documents";
 
 export const list = action({
   args: { organizationId: v.string() },
-  handler: async (ctx, args): Promise<FormTemplateRow[]> => {
+  handler: async (ctx, args): Promise<(FormTemplateRow & { updatedByName: string | null })[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
-    return (await db
+    const templates = (await db
       .query("formTemplates")
       .eq("organizationId", String(args.organizationId))
       .collect()) as FormTemplateRow[];
+
+    const userIds = [
+      ...new Set(
+        templates
+          .map((t) => (t.updatedBy ? String(t.updatedBy) : null))
+          .filter((id): id is string => id !== null),
+      ),
+    ];
+    const users = userIds.length > 0 ? await db.getMany("users", userIds) : [];
+    const userById = new Map(users.map((u) => [String(u._id), (u.name as string | null) ?? null]));
+
+    return templates.map((t) => ({
+      ...t,
+      updatedByName: t.updatedBy ? (userById.get(String(t.updatedBy)) ?? null) : null,
+    }));
   },
 });
 

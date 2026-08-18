@@ -81,6 +81,8 @@ import {
 import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
 import { TemplateScanDialog } from "@/components/documents/template-scan-dialog";
+import { TemplatePreviewSheet } from "@/components/documents/template-preview-sheet";
+import type { EntityType } from "@/components/documents/template-settings-sheet";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/form-templates/",
@@ -619,6 +621,8 @@ export function FormTemplatesListPage() {
   const [scanOpen, setScanOpen] = useState(false);
   const [deletingTemplate, setDeletingTemplate] =
     useState<FormTemplateRecord | null>(null);
+  const [previewTemplateId, setPreviewTemplateId] = useState<Id<"formTemplates"> | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [seedConfirmOpen, setSeedConfirmOpen] = useState(false);
   const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -641,6 +645,13 @@ export function FormTemplatesListPage() {
     () => queryClient.invalidateQueries({ queryKey: templatesQueryKey }),
     [queryClient, templatesQueryKey],
   );
+
+  const getTemplateByIdAction = useAction(api.documents.templates.getById);
+  const { data: previewTemplate } = useQuery({
+    queryKey: ["documents.templates.getById", organizationId, previewTemplateId],
+    queryFn: () => getTemplateByIdAction({ organizationId, templateId: previewTemplateId! }),
+    enabled: !!previewTemplateId,
+  });
 
   const updateTemplate = useAction(api.documents.templates.update);
   const createTemplate = useAction(api.documents.templates.create);
@@ -1023,7 +1034,8 @@ export function FormTemplatesListPage() {
                 navigate({ to: "/dashboard/document-editor/$id", params: { id } });
               }}
               onPreviewTemplate={(id) => {
-                navigate({ to: "/dashboard/document-editor/$id", params: { id } });
+                setPreviewTemplateId(id);
+                setPreviewOpen(true);
               }}
               onDeleteTemplate={setDeletingTemplate}
               onDuplicateTemplate={handleDuplicate}
@@ -1173,6 +1185,18 @@ export function FormTemplatesListPage() {
 
       {/* Scan dialog */}
       <TemplateScanDialog open={scanOpen} onOpenChange={setScanOpen} />
+
+      {/* Read-only preview sheet */}
+      <TemplatePreviewSheet
+        open={previewOpen}
+        onOpenChange={(open) => {
+          setPreviewOpen(open);
+          if (!open) setPreviewTemplateId(null);
+        }}
+        organizationId={organizationId}
+        contentJson={previewTemplate?.contentJson ?? "{}"}
+        entityTypes={(previewTemplate?.entityTypes ?? []) as EntityType[]}
+      />
     </div>
   );
 }

@@ -351,11 +351,25 @@ export function AppointmentDocumentChecklist({
                     // fall through
                   }
 
-                  // Fallback: re-render from contentJson for document-type templates
+                  // Fallback: re-render from contentJson for document-type templates.
+                  // Guard: signed/completed documents must show an immutable
+                  // snapshot. Re-rendering from the current (possibly edited)
+                  // template would violate that guarantee, so we show a
+                  // placeholder instead.
                   if (
                     viewingTemplate.templateType === "document" &&
                     viewingTemplate.contentJson
                   ) {
+                    if (viewingDoc.status === "signed" || viewingDoc.status === "completed") {
+                      return (
+                        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
+                          <FileText className="h-7 w-7" />
+                          <p className="text-sm text-center">
+                            {t("documents.snapshotUnavailable", "Treść dokumentu z czasu podpisania jest niedostępna.")}
+                          </p>
+                        </div>
+                      );
+                    }
                     try {
                       const scope: Record<string, string> = {};
                       const rd = JSON.parse(viewingDoc.responseData);

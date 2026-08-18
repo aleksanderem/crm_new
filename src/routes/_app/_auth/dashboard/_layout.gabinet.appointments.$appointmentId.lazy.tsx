@@ -15,6 +15,7 @@ import { useSupabaseGabinetEquipmentList } from "@/hooks/use-supabase-gabinet-eq
 import { useSupabaseGabinetSameDayAppointments } from "@/hooks/use-supabase-gabinet-appointments";
 import { useSupabaseAutomationEntityRuns } from "@/hooks/use-supabase-automation";
 import { useSupabaseGabinetReceiptsByAppointment } from "@/hooks/use-supabase-gabinet-receipts";
+import { useSupabaseAppointmentStockMovements } from "@/hooks/use-supabase-products";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -382,6 +383,9 @@ function AppointmentDetail() {
     organizationId,
     appointmentId,
   );
+
+  const { data: appointmentUsedProducts = [] } =
+    useSupabaseAppointmentStockMovements(organizationId, appointmentId);
 
   // Which additional same-day appointments to include in the batch settlement.
   const [selectedAdditionalIds, setSelectedAdditionalIds] = useState<Set<string>>(
@@ -1181,6 +1185,7 @@ function AppointmentDetail() {
           loyaltyTier={loyaltyTier as string | null | undefined}
           loyaltyTransactions={loyaltyTransactions as Record<string, unknown>[] | null | undefined}
           allPatientPayments={allPatientPayments as Record<string, unknown>[] | null | undefined}
+          appointmentUsedProducts={appointmentUsedProducts}
           canEdit={canEdit}
           onUseMultiple={(pkg) => {
             setUsageDialogPkgId(pkg._id);

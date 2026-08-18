@@ -50,6 +50,8 @@ import {
   CircleCheck,
   GripVertical,
   Trash2,
+  OctagonX,
+  UserCheck,
 } from "@/lib/ez-icons";
 import { ScrollShadow } from "@/components/ui/scroll-shadow";
 import { cn } from "@/lib/utils";
@@ -83,13 +85,18 @@ interface FormDocument {
   title: string;
   status: FormDocumentStatus;
   templateId: Id<"formTemplates">;
+  templateVersion?: number;
   createdAt: number;
   responseData?: string;
   signedAt?: number;
   signatureData?: string;
   signedByName?: string;
+  signedByEmail?: string;
   signingToken?: string;
   signingEmailSentAt?: number;
+  sentByUserId?: string;
+  voidedAt?: number;
+  voidedByUserId?: string;
   contentJsonSnapshot?: string | null;
 }
 
@@ -116,10 +123,13 @@ export function EntityDocumentsTab({
   const [sendSuccessDocId, setSendSuccessDocId] = useState<string | null>(null);
   const [deletingDocId, setDeletingDocId] = useState<Id<"formDocuments"> | null>(null);
   const [docToDelete, setDocToDelete] = useState<Id<"formDocuments"> | null>(null);
+  const [voidingDocId, setVoidingDocId] = useState<Id<"formDocuments"> | null>(null);
+  const [docToVoid, setDocToVoid] = useState<Id<"formDocuments"> | null>(null);
 
   const resendSigningEmail = useAction(api.documents.documents.resendSigningEmail);
   const reorderByEntity = useAction(api.documents.documents.reorderByEntity);
   const removeDocument = useAction(api.documents.documents.remove);
+  const voidDocument = useAction(api.documents.documents.voidDocument);
 
   // --- Document list ---
 
@@ -252,6 +262,35 @@ export function EntityDocumentsTab({
       setDeletingDocId(null);
     }
   }, [docToDelete, removeDocument, organizationId, refetch, t]);
+
+  const handleVoidClick = useCallback(
+    (e: React.MouseEvent, docId: Id<"formDocuments">) => {
+      e.stopPropagation();
+      setDocToVoid(docId);
+    },
+    [],
+  );
+
+  const handleVoidConfirm = useCallback(async () => {
+    if (!docToVoid) return;
+    const docId = docToVoid;
+    setVoidingDocId(docId);
+    setDocToVoid(null);
+    if (viewingDocId === docId) setViewingDocId(null);
+    try {
+      await voidDocument({ organizationId, documentId: docId });
+      toast.success(t("documents.voided", "Dokument unieważniony"));
+      refetch();
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : t("documents.voidFailed", "Nie udało się unieważnić dokumentu"),
+      );
+    } finally {
+      setVoidingDocId(null);
+    }
+  }, [docToVoid, voidDocument, organizationId, refetch, t, viewingDocId]);
 
   // --- Viewing document ---
 
@@ -402,9 +441,11 @@ export function EntityDocumentsTab({
                   sendingDocId={sendingDocId}
                   sendSuccessDocId={sendSuccessDocId}
                   deletingDocId={deletingDocId}
+                  voidingDocId={voidingDocId}
                   onOpen={() => setViewingDocId(doc._id)}
                   onSend={handleSend}
                   onDelete={handleDeleteClick}
+                  onVoid={handleVoidClick}
                 />
               ))}
             </div>
@@ -445,17 +486,65 @@ export function EntityDocumentsTab({
 
             {viewingDoc && (
               <div className="space-y-4 mt-4">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <DocumentStatusBadge status={viewingDoc.status} />
-                  {viewingDoc.signedAt && (
-                    <span className="text-xs text-muted-foreground">
-                      {t("documents.signedAt", "Podpisano")}:{" "}
-                      {new Date(viewingDoc.signedAt).toLocaleDateString(
-                        i18n.language === "en" ? "en-US" : "pl-PL",
-                      )}
+                  {viewingDoc.templateVersion != null && (
+                    <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-mono text-muted-foreground">
+                      v{viewingDoc.templateVersion}
                     </span>
                   )}
                 </div>
+
+                {/* Chronological audit timeline */}
+                <div className="rounded-lg border divide-y text-sm">
+                  <DocumentAuditEvent
+                    icon={<FileText className="h-3.5 w-3.5" />}
+                    label={t("documents.audit.created", "Utworzono")}
+                    ts={viewingDoc.createdAt}
+                    locale={i18n.language === "en" ? "en-US" : "pl-PL"}
+                  />
+                  {viewingDoc.signingEmailSentAt && (
+                    <DocumentAuditEvent
+                      icon={<Send className="h-3.5 w-3.5" />}
+                      label={t("documents.audit.sent", "Wysłano do podpisu")}
+                      ts={viewingDoc.signingEmailSentAt}
+                      locale={i18n.language === "en" ? "en-US" : "pl-PL"}
+                    />
+                  )}
+                  {viewingDoc.signedAt && (
+                    <DocumentAuditEvent
+                      icon={<UserCheck className="h-3.5 w-3.5" />}
+                      label={t("documents.audit.signed", "Podpisano")}
+                      ts={viewingDoc.signedAt}
+                      detail={viewingDoc.signedByName ?? viewingDoc.signedByEmail}
+                      locale={i18n.language === "en" ? "en-US" : "pl-PL"}
+                    />
+                  )}
+                  {viewingDoc.voidedAt && (
+                    <DocumentAuditEvent
+                      icon={<OctagonX className="h-3.5 w-3.5 text-destructive" />}
+                      label={t("documents.audit.voided", "Unieważniono")}
+                      ts={viewingDoc.voidedAt}
+                      locale={i18n.language === "en" ? "en-US" : "pl-PL"}
+                    />
+                  )}
+                </div>
+
+                {/* Void action for signed/completed docs */}
+                {(viewingDoc.status === "signed" || viewingDoc.status === "completed") && (
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive border-destructive/40 hover:bg-destructive/5"
+                      onClick={(e) => handleVoidClick(e, viewingDoc._id)}
+                    >
+                      <OctagonX className="h-3.5 w-3.5 mr-1.5" />
+                      {t("documents.void", "Unieważnij")}
+                    </Button>
+                  </div>
+                )}
+
 
                 {viewingTemplate &&
                   (() => {
@@ -570,6 +659,37 @@ export function EntityDocumentsTab({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Void confirmation dialog */}
+      <AlertDialog
+        open={!!docToVoid}
+        onOpenChange={(open) => !open && setDocToVoid(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("documents.voidDialogTitle", "Unieważnij dokument")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                "documents.voidDialogDescription",
+                "Czy na pewno chcesz unieważnić ten dokument? Operacja jest nieodwracalna.",
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {t("common.cancel", "Anuluj")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleVoidConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("documents.void", "Unieważnij")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -584,9 +704,11 @@ interface SortableDocumentRowProps {
   sendingDocId: string | null;
   sendSuccessDocId: string | null;
   deletingDocId: Id<"formDocuments"> | null;
+  voidingDocId: Id<"formDocuments"> | null;
   onOpen: () => void;
   onSend: (e: React.MouseEvent, docId: Id<"formDocuments">) => void;
   onDelete: (e: React.MouseEvent, docId: Id<"formDocuments">) => void;
+  onVoid: (e: React.MouseEvent, docId: Id<"formDocuments">) => void;
 }
 
 function SortableDocumentRow({
@@ -595,9 +717,11 @@ function SortableDocumentRow({
   sendingDocId,
   sendSuccessDocId,
   deletingDocId,
+  voidingDocId,
   onOpen,
   onSend,
   onDelete,
+  onVoid,
 }: SortableDocumentRowProps) {
   const { t } = useTranslation();
   const {
@@ -699,6 +823,22 @@ function SortableDocumentRow({
         >
           <Eye className="h-4 w-4" variant="stroke" />
         </Button>
+        {(doc.status === "signed" || doc.status === "completed") && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="hidden sm:flex h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
+            disabled={voidingDocId === doc._id}
+            aria-label={t("documents.void", "Unieważnij")}
+            onClick={(e) => onVoid(e, doc._id)}
+          >
+            {voidingDocId === doc._id ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <OctagonX className="h-3.5 w-3.5" variant="stroke" />
+            )}
+          </Button>
+        )}
         <Button
           size="sm"
           variant="ghost"
@@ -714,6 +854,38 @@ function SortableDocumentRow({
           )}
         </Button>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Audit timeline event row
+// ---------------------------------------------------------------------------
+
+function DocumentAuditEvent({
+  icon,
+  label,
+  ts,
+  detail,
+  locale,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  ts: number;
+  detail?: string;
+  locale: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 px-3 py-2 text-xs">
+      <span className="text-muted-foreground shrink-0">{icon}</span>
+      <span className="flex-1 text-muted-foreground">{label}</span>
+      {detail && (
+        <span className="text-foreground font-medium truncate max-w-[120px]">{detail}</span>
+      )}
+      <span className="text-muted-foreground shrink-0 tabular-nums">
+        {new Date(ts).toLocaleDateString(locale)}{" "}
+        {new Date(ts).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
+      </span>
     </div>
   );
 }

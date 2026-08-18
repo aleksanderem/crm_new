@@ -38,6 +38,9 @@ export interface MappedFormDocument {
   createdBy: string;
   createdAt: number;
   updatedAt: number;
+  sentByUserId?: string;
+  voidedByUserId?: string;
+  voidedAt?: number;
   _source: "supabase";
 }
 

@@ -148,6 +148,7 @@
  *   • 00141_drop_document_instances.sql
  *   • 00142_form_documents_expires_at.sql
  *   • 00143_form_documents_is_required.sql
+ *   • 00144_form_documents_audit_fields.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -5911,6 +5912,9 @@ export interface Database {
           expires_at: number | null;
           document_validity_days: number | null;
           is_required: boolean | null;
+          sent_by_user_id: string | null;
+          voided_by_user_id: string | null;
+          voided_at: number | null;
         };
         Insert: {
           id?: string;
@@ -5946,6 +5950,9 @@ export interface Database {
           expires_at?: number | null;
           document_validity_days?: number | null;
           is_required?: boolean | null;
+          sent_by_user_id?: string | null;
+          voided_by_user_id?: string | null;
+          voided_at?: number | null;
         };
         Update: {
           id?: string;
@@ -5981,6 +5988,9 @@ export interface Database {
           expires_at?: number | null;
           document_validity_days?: number | null;
           is_required?: boolean | null;
+          sent_by_user_id?: string | null;
+          voided_by_user_id?: string | null;
+          voided_at?: number | null;
         };
         Relationships: [
           {

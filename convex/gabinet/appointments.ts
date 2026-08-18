@@ -1074,6 +1074,40 @@ export const _createSideEffects = internalMutation({
 });
 
 // ---------------------------------------------------------------------------
+// Internal mutation: generate treatment documents for sync-imported appointments.
+// Called by the Google Calendar sync action after creating an appointment via
+// the Supabase helper path (which bypasses _createSideEffects entirely).
+// ---------------------------------------------------------------------------
+export const _generateDocsOnSync = internalMutation({
+  args: {
+    organizationId: v.string(),
+    appointmentId: v.string(),
+    treatmentId: v.string(),
+    patientId: v.string(),
+    createdBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await autoGenerateAppointmentDocuments(ctx, {
+      organizationId: args.organizationId as Id<"organizations">,
+      appointmentId: args.appointmentId as Id<"gabinetAppointments">,
+      treatmentId: args.treatmentId as Id<"gabinetTreatments">,
+      patientId: args.patientId as Id<"gabinetPatients">,
+      createdBy: args.createdBy,
+      timing: "before_start",
+    });
+    await autoGenerateAppointmentDocuments(ctx, {
+      organizationId: args.organizationId as Id<"organizations">,
+      appointmentId: args.appointmentId as Id<"gabinetAppointments">,
+      treatmentId: args.treatmentId as Id<"gabinetTreatments">,
+      patientId: args.patientId as Id<"gabinetPatients">,
+      createdBy: args.createdBy,
+      timing: "during_visit",
+      deferEmails: true,
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
 // PUBLIC create action — Supabase-primary write
 // ---------------------------------------------------------------------------
 

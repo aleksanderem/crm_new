@@ -84,7 +84,7 @@ function randomBetween(min: number, max: number): number {
 // Seed implementation
 // ---------------------------------------------------------------------------
 
-async function doSeed(_ctx: unknown, orgId: Id<"organizations">, userId: Id<"users">) {
+async function doSeed(_ctx: unknown, orgId: string, userId: Id<"users">) {
   const supabaseDb = createSupabaseDb();
 
   // --- Guard ---
@@ -532,7 +532,7 @@ async function doSeed(_ctx: unknown, orgId: Id<"organizations">, userId: Id<"use
 // Clear implementation
 // ---------------------------------------------------------------------------
 
-async function doClear(_ctx: any, orgId: Id<"organizations">) {
+async function doClear(_ctx: any, orgId: string) {
   const supabaseDb = createSupabaseDb();
   const tables = [
     "scheduledActivities",

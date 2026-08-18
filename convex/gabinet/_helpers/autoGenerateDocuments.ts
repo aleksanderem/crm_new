@@ -217,10 +217,11 @@ export async function autoGenerateAppointmentDocuments(
         const tokenBytes = new Uint8Array(32);
         crypto.getRandomValues(tokenBytes);
         signingToken = Array.from(tokenBytes).map(b => b.toString(16).padStart(2, "0")).join("");
-        if (patientEmail) {
+        if (patientEmail && entry.timing !== "during_visit") {
           signingTokenExpiresAt = now + 48 * 60 * 60 * 1000; // 48 hours
         }
-        // No expiry when there is no email — expiry starts when the first email is sent.
+        // No expiry when there is no email, or when timing is during_visit (visit may be
+        // days away) — expiry starts when the first signing email is actually sent.
       }
 
       const insertPayload = {

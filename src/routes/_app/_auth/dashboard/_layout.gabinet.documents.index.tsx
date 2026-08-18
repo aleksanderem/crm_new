@@ -52,6 +52,8 @@ import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-s
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 import { useSupabaseFormDocumentsList } from "@/hooks/use-supabase-form-documents";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
+import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
+import { useSupabaseGabinetAppointmentsByIds } from "@/hooks/use-supabase-gabinet-appointments";
 import { useSavedViews, applyFilterConditions } from "@/hooks/use-saved-views";
 import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 
@@ -231,6 +233,35 @@ function GabinetDocumentsPage() {
     }
     return map;
   }, [patients]);
+
+  const { data: treatments } = useSupabaseGabinetTreatmentsList(organizationId);
+  const treatmentMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const t of treatments ?? []) map.set(t._id, t.name);
+    return map;
+  }, [treatments]);
+
+  // Collect appointment IDs referenced by documents so we can resolve dates
+  const appointmentIds = useMemo(() => {
+    if (!documents) return [];
+    const ids = new Set<string>();
+    for (const doc of documents) {
+      if (doc.entityType === "appointment") ids.add(doc.entityId);
+    }
+    return Array.from(ids);
+  }, [documents]);
+
+  const { data: linkedAppointments } = useSupabaseGabinetAppointmentsByIds(
+    organizationId,
+    appointmentIds,
+  );
+  const appointmentMap = useMemo(() => {
+    const map = new Map<string, { date: string; startTime: string }>();
+    for (const appt of linkedAppointments ?? []) {
+      map.set(appt._id, { date: appt.date, startTime: appt.startTime });
+    }
+    return map;
+  }, [linkedAppointments]);
 
   // Extract unique categories from loaded templates
   const availableCategories = useMemo(() => {
@@ -499,6 +530,34 @@ function GabinetDocumentsPage() {
     [userMap],
   );
 
+  const getDocPatientName = useCallback(
+    (doc: { entityType: string; entityId: string; scopeEntities?: unknown }) => {
+      if (doc.entityType === "patient") return patientMap.get(doc.entityId);
+      const scope = doc.scopeEntities as { patient?: string } | null | undefined;
+      if (scope?.patient) return patientMap.get(scope.patient);
+      return undefined;
+    },
+    [patientMap],
+  );
+
+  const getDocTreatmentName = useCallback(
+    (doc: { entityType: string; entityId: string; scopeEntities?: unknown }) => {
+      if (doc.entityType === "treatment") return treatmentMap.get(doc.entityId);
+      const scope = doc.scopeEntities as { treatment?: string } | null | undefined;
+      if (scope?.treatment) return treatmentMap.get(scope.treatment);
+      return undefined;
+    },
+    [treatmentMap],
+  );
+
+  const getDocAppointmentInfo = useCallback(
+    (doc: { entityType: string; entityId: string }) => {
+      if (doc.entityType === "appointment") return appointmentMap.get(doc.entityId);
+      return undefined;
+    },
+    [appointmentMap],
+  );
+
   const formatDate = useCallback(
     (timestamp: number) => {
       return new Date(timestamp).toLocaleDateString(
@@ -519,6 +578,101 @@ function GabinetDocumentsPage() {
         render: (item) => (
           <div className="font-medium">{item.title}</div>
         ),
+      },
+      {
+        id: "patient",
+        label: t("gabinet.formDocuments.colPatient", "Klient"),
+        className: "min-w-[150px]",
+        render: (item) => {
+          const name = getDocPatientName(item);
+          return name ? (
+            <div className="flex items-center gap-1.5 text-sm">
+              <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              {name}
+            </div>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          );
+        },
+      },
+      {
+        id: "status",
+        label: t("gabinet.formDocuments.colStatus", "Status"),
+        className: "min-w-[140px]",
+        render: (item) => (
+          <DocumentStatusBadge status={item.status as any} />
+        ),
+      },
+      {
+        id: "treatment",
+        label: t("gabinet.formDocuments.colTreatment", "Zabieg"),
+        className: "min-w-[150px]",
+        render: (item) => {
+          const name = getDocTreatmentName(item);
+          return name ? (
+            <span className="text-sm">{name}</span>
+          ) : (
+            <span className="text-xs text-muted-foreground">
+              {t("gabinet.formDocuments.noTreatment", "Brak zabiegu")}
+            </span>
+          );
+        },
+      },
+      {
+        id: "appointment",
+        label: t("gabinet.formDocuments.colAppointment", "Wizyta"),
+        className: "min-w-[130px]",
+        render: (item) => {
+          const appt = getDocAppointmentInfo(item);
+          if (!appt) {
+            return (
+              <span className="text-xs text-muted-foreground">
+                {t("gabinet.formDocuments.noAppointment", "Brak wizyty")}
+              </span>
+            );
+          }
+          return (
+            <div className="flex items-center gap-1.5 text-sm">
+              <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              {new Date(appt.date).toLocaleDateString(
+                lang === "en" ? "en-US" : "pl-PL",
+                { year: "numeric", month: "short", day: "numeric" },
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        id: "signedAt",
+        label: t("gabinet.formDocuments.colSignedAt", "Data podpisu"),
+        className: "min-w-[120px]",
+        render: (item) => {
+          if (!item.signedAt) {
+            return <span className="text-xs text-muted-foreground">—</span>;
+          }
+          return (
+            <div className="flex items-center gap-1.5 text-sm">
+              <FileSignature className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              {formatDate(item.signedAt)}
+            </div>
+          );
+        },
+      },
+      {
+        id: "expiresAt",
+        label: t("gabinet.formDocuments.colExpiresAt", "Wygaśnięcie"),
+        className: "min-w-[120px]",
+        render: (item) => {
+          if (!item.expiresAt) {
+            return <span className="text-xs text-muted-foreground">—</span>;
+          }
+          const isExpired = item.expiresAt < Date.now();
+          return (
+            <span className={`text-sm ${isExpired ? "text-destructive font-medium" : ""}`}>
+              {formatDate(item.expiresAt)}
+            </span>
+          );
+        },
       },
       {
         id: "signedBy",
@@ -542,12 +696,28 @@ function GabinetDocumentsPage() {
         },
       },
       {
-        id: "status",
-        label: t("gabinet.formDocuments.colStatus", "Status"),
-        className: "min-w-[140px]",
-        render: (item) => (
-          <DocumentStatusBadge status={item.status as any} />
-        ),
+        id: "template",
+        label: t("gabinet.formDocuments.colTemplate", "Szablon"),
+        className: "min-w-[160px]",
+        render: (item) => {
+          const tpl = templateMap.get(item.templateId);
+          return tpl ? (
+            <span className="text-sm">{tpl.name}</span>
+          ) : (
+            <span className="text-xs text-muted-foreground">{item.title}</span>
+          );
+        },
+      },
+      {
+        id: "templateVersion",
+        label: t("gabinet.formDocuments.colTemplateVersion", "Wersja"),
+        className: "min-w-[80px]",
+        render: (item) => {
+          if (!item.templateVersion) {
+            return <span className="text-xs text-muted-foreground">—</span>;
+          }
+          return <span className="text-sm font-mono">v{item.templateVersion}</span>;
+        },
       },
       {
         id: "actions",
@@ -600,11 +770,16 @@ function GabinetDocumentsPage() {
       },
     ];
     return result;
-  }, [t, patientMap, canEdit, canDelete]);
+  }, [t, lang, patientMap, templateMap, getDocPatientName, getDocTreatmentName, getDocAppointmentInfo, formatDate, canEdit, canDelete]);
 
   // --- Column visibility ---
-  const { allColumns, defaultHidden } = useAllColumns(columns, filterableFields);
-  const { hiddenColumnIds, toggleColumn, setHiddenColumns: _setHiddenColumns } = useColumnVisibility(defaultHidden, "gabinet-documents");
+  const { allColumns, defaultHidden: autoHidden } = useAllColumns(columns, filterableFields);
+  // template and templateVersion are available but hidden by default to keep the table readable
+  const initialHiddenColumns = useMemo(
+    () => new Set([...autoHidden, "template", "templateVersion"]),
+    [autoHidden],
+  );
+  const { hiddenColumnIds, toggleColumn, setHiddenColumns: _setHiddenColumns } = useColumnVisibility(initialHiddenColumns, "gabinet-documents");
 
   // --- Handlers ---
   const handleResendSigningEmail = (docId: string) => {

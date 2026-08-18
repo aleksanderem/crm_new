@@ -5995,6 +5995,9 @@ export interface Database {
           created_at: number;
           updated_at: number;
           sort_order: number | null;
+          template_version: number | null;
+          expires_at: number | null;
+          document_validity_days: number | null;
         };
         Insert: {
           id?: string;
@@ -6024,6 +6027,9 @@ export interface Database {
           created_at: number;
           updated_at: number;
           sort_order?: number | null;
+          template_version?: number | null;
+          expires_at?: number | null;
+          document_validity_days?: number | null;
         };
         Update: {
           id?: string;
@@ -6053,6 +6059,9 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
           sort_order?: number | null;
+          template_version?: number | null;
+          expires_at?: number | null;
+          document_validity_days?: number | null;
         };
         Relationships: [
           {

@@ -798,3 +798,43 @@ export function useSupabaseGabinetAppointment(
     enabled: enabled && isReady && !!organizationId && !!appointmentId,
   } satisfies UseQueryOptions<MappedGabinetAppointment | null, Error>);
 }
+
+// ---------------------------------------------------------------------------
+// Appointments by IDs (for document context resolution)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetches a specific set of appointments by their IDs.
+ * Used by the global documents view to resolve appointment dates and context
+ * without loading the full date-range dataset.
+ */
+export function useSupabaseGabinetAppointmentsByIds(
+  organizationId: string,
+  appointmentIds: string[],
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+  const stableKey = [...appointmentIds].sort().join(",");
+
+  return useQuery<MappedGabinetAppointment[], Error>({
+    queryKey: [
+      ...supabaseKeys.gabinetAppointments.list(organizationId),
+      "byIds",
+      stableKey,
+    ],
+    queryFn: async (): Promise<MappedGabinetAppointment[]> => {
+      if (!client || !appointmentIds.length) return [];
+
+      const { data, error } = await client
+        .from("gabinet_appointments")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .in("id", appointmentIds);
+
+      if (error) throw error;
+      return (data ?? []).map(mapGabinetAppointmentFromSupabase);
+    },
+    enabled: enabled && isReady && !!organizationId && appointmentIds.length > 0,
+  } satisfies UseQueryOptions<MappedGabinetAppointment[], Error>);
+}

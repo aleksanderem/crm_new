@@ -155,7 +155,7 @@ export const getBySigningToken = action({
       const resolved = await resolveComponentsInContent(db, contentToRender);
       return {
         document: doc,
-        template: { ...template, contentJson: resolved },
+        template: template ? { ...template, contentJson: resolved } : null,
       };
     }
     return { document: doc, template };
@@ -969,7 +969,7 @@ export const listByPatientToken = action({
         updatedAt: doc.updatedAt as number,
         templateName: (template?.name as string | undefined) ?? "",
         category: (template?.category as string | undefined) ?? "custom",
-        formJson: (doc.formJson as string | undefined) ?? "{}",
+        formJson: (template?.formJson as string | undefined) ?? "{}",
         requiresSignature:
           (template?.requiresSignature as boolean | undefined) ?? false,
       };

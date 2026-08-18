@@ -398,7 +398,7 @@ async function getAutomationEditPermission(
   if (feature.startsWith("gabinet_")) {
     const gabinetData = await ctx.runQuery(
       internal._helpers.authAction._getGabinetPermissionData,
-      { organizationId, userId: actorUserId },
+      { organizationId, userId: actorUserId as Id<"users"> },
     );
     if (gabinetData.membership) {
       const gRole = gabinetData.membership.gabinetRole;
@@ -443,7 +443,7 @@ export const _getAutomationPermission = internalAction({
   handler: async (ctx, args) => {
     return await getAutomationEditPermission(
       ctx,
-      args.organizationId,
+      args.organizationId as Id<"organizations">,
       args.actorUserId,
       args.feature as Feature,
       args.requireAdmin ? { requireAdmin: true } : undefined,
@@ -1080,7 +1080,10 @@ export const _patchLegacyAppointmentWorkflowHistory = internalAction({
     processedAt: v.optional(v.number()),
   },
   handler: async (_ctx, args) => {
-    await patchLegacyAppointmentWorkflowHistory(args);
+    await patchLegacyAppointmentWorkflowHistory({
+      ...args,
+      organizationId: args.organizationId as Id<"organizations">,
+    });
   },
 });
 

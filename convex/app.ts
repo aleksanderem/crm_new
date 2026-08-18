@@ -510,7 +510,7 @@ export const updateProfile = action({
     timezone: v.optional(v.string()),
     imageId: v.optional(v.id("_storage")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<string> => {
     const userData = await ctx.runMutation(internal.app._updateProfileInternal, args);
     try {
       await ctx.runAction(internal.supabase.users.writeUserToSupabase, {

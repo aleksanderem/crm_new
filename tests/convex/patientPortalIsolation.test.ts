@@ -329,7 +329,7 @@ describe("patient portal isolation — cross-patient data access", () => {
     await db.insert("gabinetPortalSessions", {
       patientId: String(patientAId),
       organizationId: String(organizationId),
-      tokenHash: "expired-token-isolation",
+      tokenHash: sha256Sync("expired-token-isolation"),
       isActive: true,
       lastAccessedAt: now,
       createdAt: now,
@@ -360,7 +360,7 @@ describe("patient portal isolation — cross-patient data access", () => {
     await db.insert("gabinetPortalSessions", {
       patientId: String(patientAId),
       organizationId: String(organizationId),
-      tokenHash: "inactive-token-isolation",
+      tokenHash: sha256Sync("inactive-token-isolation"),
       isActive: false,
       lastAccessedAt: now,
       createdAt: now,

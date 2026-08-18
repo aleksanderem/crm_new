@@ -344,11 +344,16 @@ export const create = action({
 
     const template = await db.get("formTemplates", args.templateId);
 
+    const rawContentJson = (template?.contentJson as string | null | undefined) ?? null;
+    const resolvedContentJson = rawContentJson
+      ? (await resolveComponentsInContent(db, rawContentJson)) ?? null
+      : null;
+
     const docId = await db.insert("formDocuments", {
       organizationId: String(args.organizationId),
       templateId: args.templateId,
       templateVersion: (template?.version as number | null | undefined) ?? null,
-      contentJsonSnapshot: (template?.contentJson as string | null | undefined) ?? null,
+      contentJsonSnapshot: resolvedContentJson,
       title: args.title,
       responseData: args.responseData,
       entityType: args.entityType,

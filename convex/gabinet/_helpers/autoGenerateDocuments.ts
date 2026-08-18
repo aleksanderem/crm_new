@@ -3,6 +3,7 @@ import { internal } from "../../_generated/api";
 import { Id } from "../../_generated/dataModel";
 import { createSupabaseDb } from "../../_helpers/supabaseDb";
 import { resolveScopeSupabase } from "../../documents/scopeResolver_supabase";
+import { resolveComponentsInContent } from "../../documents/resolveComponents";
 
 // ---------------------------------------------------------------------------
 // Server-safe TipTap JSON helpers (no DOM needed)
@@ -191,6 +192,12 @@ export async function autoGenerateAppointmentDocuments(
       const documentHasFormFields =
         isDocumentType && hasFormFields(JSON.parse(contentJson!));
 
+      // Resolve componentBlock nodes now so future component edits never
+      // affect the stored snapshot for this document.
+      const resolvedContentJson = contentJson
+        ? (await resolveComponentsInContent(supabaseDb, contentJson)) ?? null
+        : null;
+
       // Fetch the patient before determining status — we need their email to
       // decide whether we can create a deliverable pending_signature document.
       const patient = await supabaseDb.get(
@@ -241,7 +248,7 @@ export async function autoGenerateAppointmentDocuments(
         organizationId: String(args.organizationId),
         templateId: String(entry.templateId),
         templateVersion: (template.version as number | null | undefined) ?? null,
-        contentJsonSnapshot: (template.contentJson as string | null | undefined) ?? null,
+        contentJsonSnapshot: resolvedContentJson,
         title: template.name,
         responseData: JSON.stringify(prefilledData),
         entityType: "appointment",

@@ -4380,7 +4380,8 @@
       "cashSplit": "Cash split",
       "cashNextOpening": "Stays in register for next day",
       "cashToSafe": "To Safe (Sejf)",
-      "cashSplitRequired": "Sum must equal counted cash"
+      "cashSplitRequired": "Sum must equal counted cash",
+      "openingBalancePreFilled": "Auto-filled from previous day close"
     },
     "deliveries": {
       "loadError": "Failed to load delivery.",

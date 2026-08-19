@@ -173,7 +173,7 @@ export function useSupabasePaymentsRevenueByDateRange(
 
       let paymentsQuery = client
         .from("payments")
-        .select("amount, paid_at, currency, payment_method")
+        .select("amount, refund_amount, paid_at, currency, payment_method")
         .eq("organization_id", organizationId)
         .eq("status", "completed")
         .neq("payment_method", "gratis")
@@ -204,7 +204,7 @@ export function useSupabasePaymentsRevenueByDateRange(
       if (error) throw error;
 
       return (data ?? []).map((row) => ({
-        amount: Number(row.amount),
+        amount: Number(row.amount) - (Number(row.refund_amount) || 0),
         paidAt: Number(row.paid_at ?? 0),
         currency: (row.currency as string) ?? "PLN",
         paymentMethod: (row.payment_method as string | null) ?? undefined,

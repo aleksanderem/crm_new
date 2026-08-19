@@ -442,6 +442,8 @@ function DayCloseFormCard({
 
   const [openingBalance, setOpeningBalance] = useState("0");
   const [countedCash, setCountedCash] = useState("");
+  const [cashNextOpening, setCashNextOpening] = useState("");
+  const [cashToSafe, setCashToSafe] = useState("0");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -453,9 +455,38 @@ function DayCloseFormCard({
     ) / 100;
   const discrepancy = Math.round((countedCashNum - expectedCash) * 100) / 100;
 
+  const showSplit = !!countedCash && countedCashNum > 0;
+  const cashNextOpeningNum = parseFloat(cashNextOpening.replace(",", ".")) || 0;
+  const cashToSafeNum = parseFloat(cashToSafe.replace(",", ".")) || 0;
+  const splitSum = Math.round((cashNextOpeningNum + cashToSafeNum) * 100) / 100;
+  const splitValid =
+    !showSplit ||
+    (cashNextOpeningNum >= 0 &&
+      cashToSafeNum >= 0 &&
+      cashToSafeNum <= countedCashNum &&
+      Math.abs(splitSum - Math.round(countedCashNum * 100) / 100) < 0.005);
+
+  const handleCountedCashChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const raw = e.target.value;
+      setCountedCash(raw);
+      // Auto-fill: entire counted amount stays in register, safe gets 0.
+      const v = parseFloat(raw.replace(",", "."));
+      if (!isNaN(v) && v >= 0) {
+        setCashNextOpening(String(v));
+        setCashToSafe("0");
+      }
+    },
+    [],
+  );
+
   const handleClose = useCallback(async () => {
     if (!countedCash) {
       toast.error(t("gabinet.cash.countedCashRequired"));
+      return;
+    }
+    if (!splitValid) {
+      toast.error(t("gabinet.cash.cashSplitRequired"));
       return;
     }
     setSubmitting(true);
@@ -466,6 +497,8 @@ function DayCloseFormCard({
         date,
         cashOpeningBalance: openingBalanceNum,
         cashCounted: countedCashNum,
+        cashNextOpening: showSplit ? cashNextOpeningNum : undefined,
+        cashToSafe: showSplit ? cashToSafeNum : undefined,
         notes: notes || undefined,
       });
       toast.success(t("gabinet.cash.dayClosed"));
@@ -475,7 +508,11 @@ function DayCloseFormCard({
     } finally {
       setSubmitting(false);
     }
-  }, [createClose, organizationId, locationId, date, openingBalanceNum, countedCashNum, notes, t, countedCash, onClosed]);
+  }, [
+    createClose, organizationId, locationId, date, openingBalanceNum,
+    countedCashNum, cashNextOpeningNum, cashToSafeNum, showSplit,
+    notes, t, countedCash, splitValid, onClosed,
+  ]);
 
   if (isAlreadyClosed) return null;
 
@@ -514,7 +551,7 @@ function DayCloseFormCard({
               step="0.01"
               placeholder="0,00"
               value={countedCash}
-              onChange={(e) => setCountedCash(e.target.value)}
+              onChange={handleCountedCashChange}
               disabled={!canEdit}
             />
           </div>
@@ -583,6 +620,56 @@ function DayCloseFormCard({
           )}
         </div>
 
+        {/* Cash split — shown after countedCash is entered */}
+        {showSplit && (
+          <div className="rounded-md border p-4 space-y-3">
+            <p className="text-sm font-medium">{t("gabinet.cash.cashSplit")}</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <FieldLabel htmlFor="cash-next-opening">
+                  {t("gabinet.cash.cashNextOpening")}
+                </FieldLabel>
+                <Input
+                  id="cash-next-opening"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0,00"
+                  value={cashNextOpening}
+                  onChange={(e) => setCashNextOpening(e.target.value)}
+                  disabled={!canEdit}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <FieldLabel htmlFor="cash-to-safe">
+                  {t("gabinet.cash.cashToSafe")}
+                </FieldLabel>
+                <Input
+                  id="cash-to-safe"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0,00"
+                  value={cashToSafe}
+                  onChange={(e) => setCashToSafe(e.target.value)}
+                  disabled={!canEdit}
+                />
+              </div>
+            </div>
+            {!splitValid && (
+              <p className="text-sm text-red-600">
+                {t("gabinet.cash.cashSplitRequired")}
+              </p>
+            )}
+            {splitValid && splitSum > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {splitSum.toFixed(2)} /{" "}
+                {countedCashNum.toFixed(2)} PLN
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="space-y-1.5">
           <FieldLabel htmlFor="close-notes">{t("gabinet.cash.notes")}</FieldLabel>
           <Textarea
@@ -598,7 +685,7 @@ function DayCloseFormCard({
         {canEdit && (
           <Button
             onClick={handleClose}
-            disabled={submitting || !countedCash}
+            disabled={submitting || !countedCash || !splitValid}
             className="w-full"
           >
             {submitting
@@ -629,12 +716,16 @@ function DayCloseSummaryCard({
     cashExpected: number;
     cashCounted: number;
     cashDiscrepancy: number;
+    cashNextOpening: number | null;
+    cashToSafe: number | null;
     notes: string | null;
     closedAt: number;
   };
 }) {
   const { t } = useTranslation();
   const isOk = dayClose.cashDiscrepancy === 0;
+  const hasSplit =
+    dayClose.cashNextOpening !== null || dayClose.cashToSafe !== null;
 
   return (
     <Card className="border-green-200">
@@ -748,6 +839,33 @@ function DayCloseSummaryCard({
             </span>
           </div>
         </div>
+
+        {/* Cash split summary (R2B) */}
+        {hasSplit && (
+          <div className="rounded-md border p-4 space-y-2 text-sm">
+            <p className="font-medium">{t("gabinet.cash.cashSplit")}</p>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">
+                {t("gabinet.cash.cashNextOpening")}
+              </span>
+              <span>
+                {formatCurrencyPLN(dayClose.cashNextOpening ?? 0, "PLN", {
+                  fractionDigits: 2,
+                })}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">
+                {t("gabinet.cash.cashToSafe")}
+              </span>
+              <span className="font-medium">
+                {formatCurrencyPLN(dayClose.cashToSafe ?? 0, "PLN", {
+                  fractionDigits: 2,
+                })}
+              </span>
+            </div>
+          </div>
+        )}
 
         {dayClose.notes && (
           <p className="text-sm text-muted-foreground italic">{dayClose.notes}</p>

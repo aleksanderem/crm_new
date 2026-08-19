@@ -38,6 +38,10 @@ export interface GabinetDayClose {
   cashExpected: number;
   cashCounted: number;
   cashDiscrepancy: number;
+  /** R2B: amount staying in register as next-day opening balance. NULL for historical records. */
+  cashNextOpening: number | null;
+  /** R2B: amount transferred to the safe (Sejf). NULL for historical records. */
+  cashToSafe: number | null;
   notes: string | null;
   closedBy: string;
   closedAt: number;
@@ -80,6 +84,8 @@ function mapDayClose(row: Record<string, unknown>): GabinetDayClose {
     cashExpected: Number(row.cash_expected),
     cashCounted: Number(row.cash_counted),
     cashDiscrepancy: Number(row.cash_discrepancy),
+    cashNextOpening: row.cash_next_opening != null ? Number(row.cash_next_opening) : null,
+    cashToSafe: row.cash_to_safe != null ? Number(row.cash_to_safe) : null,
     notes: (row.notes as string | null) ?? null,
     closedBy: row.closed_by as string,
     closedAt: Number(row.closed_at),

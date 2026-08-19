@@ -4375,7 +4375,11 @@
       "dayClosed": "Dzień zamknięty pomyślnie",
       "dayAlreadyClosed": "Dzień zamknięty",
       "totalCollected": "Łączne wpłaty",
-      "history": "Historia zamknięć"
+      "history": "Historia zamknięć",
+      "cashSplit": "Podział gotówki",
+      "cashNextOpening": "Zostaje w kasie na następny dzień",
+      "cashToSafe": "Do Sejfu",
+      "cashSplitRequired": "Suma musi być równa policzonej gotówce"
     },
     "deliveries": {
       "loadError": "Nie udało się załadować dostawy.",

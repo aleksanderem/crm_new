@@ -3687,6 +3687,111 @@ export const cancelRecurringSeries = action({
 });
 
 /**
+ * Apply a new start/end time to all future occurrences of a recurring series.
+ * Dates are kept as-is; only the clock time is shifted. Skips cancelled and
+ * completed occurrences. Requires `gabinet_appointments.edit` permission.
+ */
+export const rescheduleSeries = action({
+  args: {
+    organizationId: v.string(),
+    recurringGroupId: v.string(),
+    fromDate: v.string(),       // YYYY-MM-DD — update this date and all after
+    newStartTime: v.string(),   // HH:MM
+    newEndTime: v.string(),     // HH:MM
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_appointments",
+        action: "edit",
+      },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+
+    const appointments = await db.query("gabinetAppointments")
+      .eq("organizationId", String(args.organizationId))
+      .eq("recurringGroupId", args.recurringGroupId)
+      .collect();
+
+    const allApptIds = appointments.map((a) => String(a._id));
+    const junctionMap = await getJunctionTreatmentIds(db, allApptIds);
+
+    const now = Date.now();
+    let count = 0;
+    for (const appt of appointments) {
+      if (appt.status === "cancelled" || appt.status === "completed") continue;
+      if ((appt.date as string) < args.fromDate) continue;
+
+      const appointmentId = appt._id as string;
+
+      await db.patch("gabinetAppointments", appointmentId, {
+        startTime: args.newStartTime,
+        endTime: args.newEndTime,
+        updatedAt: now,
+      });
+
+      if (appt.scheduledActivityId) {
+        try {
+          await db.patch("scheduledActivities", appt.scheduledActivityId as string, {
+            startTime: args.newStartTime,
+            endTime: args.newEndTime,
+            updatedAt: now,
+          });
+        } catch (e) {
+          console.warn("[rescheduleSeries] scheduledActivity patch failed (non-fatal):", e);
+        }
+      }
+
+      const primaryTreatmentId = (junctionMap.get(appointmentId) ?? [])[0]?.treatmentId;
+      try {
+        await ctx.runMutation(
+          internal.gabinet.appointments._updateSideEffects,
+          {
+            appointmentId,
+            organizationId: args.organizationId,
+            actorUserId: authResult.userId,
+            previousStatus: appt.status as string,
+            previousDate: appt.date as string,
+            previousStartTime: appt.startTime as string,
+            previousEndTime: appt.endTime as string,
+            previousEmployeeId: appt.employeeId as string,
+            scheduledActivityId: (appt.scheduledActivityId as string) ?? undefined,
+            patientId: appt.patientId as string,
+            treatmentId: primaryTreatmentId,
+            createdBy: appt.createdBy as string,
+            newDate: appt.date as string,
+            newStartTime: args.newStartTime,
+            newEndTime: args.newEndTime,
+            newEmployeeId: appt.employeeId as string,
+            newStatus: appt.status as string,
+            dateChanged: false,
+            employeeChanged: false,
+            updatedFields: ["startTime", "endTime"],
+            updatedAt: now,
+            actorLabel: authResult.userName ?? authResult.userEmail,
+          },
+        );
+      } catch (e) {
+        console.error("[rescheduleSeries] Side effects FAILED for appointment", appointmentId, ":", e);
+      }
+
+      count++;
+    }
+
+    return { updated: count };
+  },
+});
+
+/**
  * Treatment usage entry within an enriched package usage row — the raw
  * `treatmentsUsed` array is augmented with a resolved `treatmentName`.
  */

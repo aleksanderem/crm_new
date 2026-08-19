@@ -63,7 +63,7 @@ function buildConfirmationMessage(args: {
 async function logSmsSharedActivities(
   ctx: MutationCtx,
   args: {
-    organizationId: Id<"organizations">;
+    organizationId: string;
     appointmentId?: Id<"gabinetAppointments">;
     patientId?: Id<"gabinetPatients">;
     action: "sms_sent" | "sms_received";

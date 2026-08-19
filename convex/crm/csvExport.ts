@@ -2,6 +2,9 @@ import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import type { SupabaseRow } from "../_helpers/supabaseRows";
+
+type StockLevelRow = SupabaseRow<"productStockLevels">;
 
 async function requireOrgAdminAction(
   ctx: { runAction: Function },
@@ -168,6 +171,40 @@ export const exportPatients = action({
   },
 });
 
+type StockSummary = { currentQty: number; avgCost: number | null };
+
+async function loadStockMap(organizationId: string): Promise<Map<string, StockSummary>> {
+  const db = createSupabaseDb();
+  const levels = await db
+    .query<StockLevelRow>("productStockLevels")
+    .eq("organizationId", organizationId)
+    .collect();
+
+  const map = new Map<string, StockSummary>();
+  for (const row of levels) {
+    const key = String(row.productId);
+    const existing = map.get(key);
+    const qty = Number(row.quantity);
+    const cost = row.avgCost != null ? Number(row.avgCost) : null;
+    if (!existing) {
+      map.set(key, { currentQty: qty, avgCost: cost });
+    } else {
+      // Weighted average across locations for avgCost
+      const totalQty = existing.currentQty + qty;
+      let newAvgCost: number | null = null;
+      if (existing.avgCost != null && cost != null && totalQty > 0) {
+        newAvgCost = (existing.currentQty * existing.avgCost + qty * cost) / totalQty;
+      } else if (existing.avgCost != null) {
+        newAvgCost = existing.avgCost;
+      } else if (cost != null) {
+        newAvgCost = cost;
+      }
+      map.set(key, { currentQty: totalQty, avgCost: newAvgCost });
+    }
+  }
+  return map;
+}
+
 export const exportProducts = action({
   args: { organizationId: v.string() },
   handler: async (ctx, args) => {
@@ -176,35 +213,41 @@ export const exportProducts = action({
     });
 
     const db = createSupabaseDb();
-    const [products, { tagMap, categoryMap }] = await Promise.all([
+    const [products, { tagMap, categoryMap }, stockMap] = await Promise.all([
       db.query("products").eq("organizationId", args.organizationId).collect(),
       loadLookups(args.organizationId),
+      loadStockMap(args.organizationId),
     ]);
 
-    return products.map((p) => ({
-      name: p.name,
-      sku: p.sku ?? "",
-      unitPrice: p.unitPrice.toString(),
-      taxRate: p.taxExempt ? "ZW" : p.taxRate != null ? p.taxRate.toString() : "",
-      isActive: p.isActive ? "Yes" : "No",
-      description: p.description ?? "",
-      manufacturer: p.manufacturer ?? "",
-      catalogNumber: p.catalogNumber ?? "",
-      purchasePrice: p.purchasePrice != null ? p.purchasePrice.toString() : "",
-      salePrice: p.salePrice != null ? p.salePrice.toString() : "",
-      salePriceNet: (() => {
-        if (p.salePrice == null) return "";
-        if (p.taxExempt || p.taxRate == null) return p.salePrice.toString();
-        return (Math.round((p.salePrice / (1 + (p.taxRate as number) / 100)) * 100) / 100).toString();
-      })(),
-      trackStock: p.trackStock ? "Yes" : "No",
-      stockUnit: p.stockUnit ?? "",
-      minStock: p.minStock != null ? p.minStock.toString() : "",
-      stockNote: p.stockNote ?? "",
-      productSection: p.productSection ?? "",
-      tags: resolveTagIds(p.tagIds as string[] | null, null, tagMap),
-      category: resolveCategoryId(p.categoryId as string | null, categoryMap),
-      createdAt: new Date(p.createdAt).toISOString(),
-    }));
+    return products.map((p) => {
+      const stock = stockMap.get(String(p._id));
+      return {
+        name: p.name,
+        sku: p.sku ?? "",
+        unitPrice: p.unitPrice.toString(),
+        taxRate: p.taxExempt ? "ZW" : p.taxRate != null ? p.taxRate.toString() : "",
+        isActive: p.isActive ? "Yes" : "No",
+        description: p.description ?? "",
+        manufacturer: p.manufacturer ?? "",
+        catalogNumber: p.catalogNumber ?? "",
+        purchasePrice: p.purchasePrice != null ? p.purchasePrice.toString() : "",
+        salePrice: p.salePrice != null ? p.salePrice.toString() : "",
+        salePriceNet: (() => {
+          if (p.salePrice == null) return "";
+          if (p.taxExempt || p.taxRate == null) return p.salePrice.toString();
+          return (Math.round((p.salePrice / (1 + (p.taxRate as number) / 100)) * 100) / 100).toString();
+        })(),
+        trackStock: p.trackStock ? "Yes" : "No",
+        stockUnit: p.stockUnit ?? "",
+        minStock: p.minStock != null ? p.minStock.toString() : "",
+        stockNote: p.stockNote ?? "",
+        productSection: p.productSection ?? "",
+        currentQty: p.trackStock && stock != null ? stock.currentQty.toString() : "",
+        avgCost: p.trackStock && stock?.avgCost != null ? stock.avgCost.toString() : "",
+        tags: resolveTagIds(p.tagIds as string[] | null, null, tagMap),
+        category: resolveCategoryId(p.categoryId as string | null, categoryMap),
+        createdAt: new Date(p.createdAt).toISOString(),
+      };
+    });
   },
 });

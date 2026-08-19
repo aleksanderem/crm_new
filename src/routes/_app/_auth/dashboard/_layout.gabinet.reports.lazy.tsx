@@ -44,6 +44,7 @@ import {
   bucketizePairs,
   computeDailyStats,
   computeEmployeeStats,
+  computeDirectSalesPaymentBreakdown,
   computePaymentMethodBreakdown,
   computeStatusStats,
   computeTreatmentStats,
@@ -1369,12 +1370,9 @@ function ProductSalesSection({
 
   const maxProductRevenue = useMemo(() => Math.max(...perProduct.map((p) => p.revenue), 1), [perProduct]);
 
-  const paymentMethodBreakdown = useMemo(
-    () =>
-      computePaymentMethodBreakdown(
-        sales.map((m) => ({ paymentMethod: m.paymentMethod ?? "other", amount: m.revenue })),
-      ),
-    [sales],
+  const { breakdown: paymentMethodBreakdown, unattributedReturnAmount, unattributedReturnCount } = useMemo(
+    () => computeDirectSalesPaymentBreakdown(sales, returns),
+    [sales, returns],
   );
 
   if (isLoading) {
@@ -1497,7 +1495,17 @@ function ProductSalesSection({
       )}
 
       {movements.length > 0 && (
-        <PaymentMethodsCard data={paymentMethodBreakdown} currency={currency} rangeLabel={rangeLabel} />
+        <div className="space-y-2">
+          <PaymentMethodsCard data={paymentMethodBreakdown} currency={currency} rangeLabel={rangeLabel} />
+          {unattributedReturnCount > 0 && (
+            <p className="text-muted-foreground text-xs px-1">
+              {t("gabinet.reports.unattributedReturnsNote", {
+                count: unattributedReturnCount,
+                amount: formatCurrencyPLN(unattributedReturnAmount, currency, { fractionDigits: 2 }),
+              })}
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
@@ -2235,6 +2243,15 @@ function GabinetReports() {
     for (const [key, stats] of empProductSalesMap) {
       const name = key === "__unknown__" ? "Unknown" : (employeeMapById.get(key) ?? key);
       rows.push({ section: "product_sales_by_employee", metric: name, value: stats.quantity, revenue: stats.revenue });
+    }
+    const { breakdown: productPaymentBreakdown, unattributedReturnAmount: csvUnattributed } =
+      computeDirectSalesPaymentBreakdown(sales, returns);
+    for (const pm of productPaymentBreakdown) {
+      if (pm.count > 0 || pm.total !== 0)
+        rows.push({ section: "product_sales_payment_method", metric: pm.method, value: pm.count, revenue: pm.total });
+    }
+    if (csvUnattributed > 0) {
+      rows.push({ section: "product_sales_payment_method", metric: "unattributed_returns", value: "", revenue: -csvUnattributed });
     }
     const csv = Papa.unparse(rows as unknown as Record<string, unknown>[]);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });

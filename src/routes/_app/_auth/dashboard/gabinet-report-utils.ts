@@ -143,7 +143,7 @@ export function computeEmployeeStats(
 }
 
 const PAYMENT_CATEGORIES = ["cash", "card", "transfer", "package", "other"] as const;
-type PaymentCategory = (typeof PAYMENT_CATEGORIES)[number];
+export type PaymentCategory = (typeof PAYMENT_CATEGORIES)[number];
 
 export function computePaymentMethodBreakdown(
   payments: { paymentMethod: string; amount: number }[],
@@ -169,4 +169,56 @@ export function computePaymentMethodBreakdown(
     total: map.get(key)?.total ?? 0,
     count: map.get(key)?.count ?? 0,
   }));
+}
+
+// Aggregates direct_sale movements into a per-payment-method breakdown and
+// deducts returns from the matching bucket when their paymentMethod is known.
+// Returns with a null paymentMethod cannot be attributed to any bucket and are
+// tracked separately as unattributedReturnAmount / unattributedReturnCount so
+// the UI can surface the limitation instead of silently discarding the amounts.
+// The sum of breakdown totals equals netRevenue only when unattributedReturnCount === 0.
+export function computeDirectSalesPaymentBreakdown(
+  sales: { paymentMethod: string | null; revenue: number }[],
+  returns: { paymentMethod: string | null; revenue: number }[],
+): {
+  breakdown: { method: PaymentCategory; total: number; count: number }[];
+  unattributedReturnAmount: number;
+  unattributedReturnCount: number;
+} {
+  const categoryOf = (method: string): PaymentCategory => {
+    if (method === "cash" || method === "card" || method === "transfer" || method === "package")
+      return method;
+    return "other";
+  };
+
+  const map = new Map<PaymentCategory, { total: number; count: number }>();
+
+  for (const s of sales) {
+    const cat = categoryOf(s.paymentMethod ?? "other");
+    const prev = map.get(cat) ?? { total: 0, count: 0 };
+    map.set(cat, { total: prev.total + s.revenue, count: prev.count + 1 });
+  }
+
+  let unattributedReturnAmount = 0;
+  let unattributedReturnCount = 0;
+  for (const r of returns) {
+    if (r.paymentMethod == null) {
+      unattributedReturnAmount += r.revenue;
+      unattributedReturnCount += 1;
+    } else {
+      const cat = categoryOf(r.paymentMethod);
+      const prev = map.get(cat) ?? { total: 0, count: 0 };
+      map.set(cat, { total: prev.total - r.revenue, count: prev.count });
+    }
+  }
+
+  return {
+    breakdown: PAYMENT_CATEGORIES.map((key) => ({
+      method: key,
+      total: map.get(key)?.total ?? 0,
+      count: map.get(key)?.count ?? 0,
+    })),
+    unattributedReturnAmount,
+    unattributedReturnCount,
+  };
 }

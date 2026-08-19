@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   bucketizePairs,
   computeDailyStats,
+  computeDirectSalesPaymentBreakdown,
   computeEmployeeStats,
   computePaymentMethodBreakdown,
   computeStatusStats,
@@ -402,5 +403,116 @@ describe("computePaymentMethodBreakdown", () => {
     const card = result.find((r) => r.method === "card");
     expect(card?.total).toBe(300);
     expect(card?.count).toBe(3);
+  });
+});
+
+// ─── computeDirectSalesPaymentBreakdown ───────────────────────────────────────
+
+describe("computeDirectSalesPaymentBreakdown", () => {
+  it("returns all 5 categories with zero values and no unattributed when both arrays are empty", () => {
+    const { breakdown, unattributedReturnAmount, unattributedReturnCount } =
+      computeDirectSalesPaymentBreakdown([], []);
+    expect(breakdown).toHaveLength(5);
+    expect(breakdown.every((b) => b.total === 0 && b.count === 0)).toBe(true);
+    expect(unattributedReturnAmount).toBe(0);
+    expect(unattributedReturnCount).toBe(0);
+  });
+
+  it("aggregates cash, card, and transfer sales correctly", () => {
+    const sales = [
+      { paymentMethod: "cash", revenue: 100 },
+      { paymentMethod: "card", revenue: 200 },
+      { paymentMethod: "transfer", revenue: 50 },
+    ];
+    const { breakdown } = computeDirectSalesPaymentBreakdown(sales, []);
+    expect(breakdown.find((b) => b.method === "cash")?.total).toBe(100);
+    expect(breakdown.find((b) => b.method === "card")?.total).toBe(200);
+    expect(breakdown.find((b) => b.method === "transfer")?.total).toBe(50);
+  });
+
+  it("accumulates multiple sales with the same payment method", () => {
+    const sales = [
+      { paymentMethod: "card", revenue: 100 },
+      { paymentMethod: "card", revenue: 150 },
+      { paymentMethod: "card", revenue: 50 },
+    ];
+    const { breakdown } = computeDirectSalesPaymentBreakdown(sales, []);
+    const card = breakdown.find((b) => b.method === "card");
+    expect(card?.total).toBe(300);
+    expect(card?.count).toBe(3);
+  });
+
+  it("deducts a return with known paymentMethod from the correct bucket", () => {
+    const sales = [
+      { paymentMethod: "cash", revenue: 200 },
+      { paymentMethod: "card", revenue: 100 },
+    ];
+    const returns = [{ paymentMethod: "cash", revenue: 50 }];
+    const { breakdown, unattributedReturnAmount, unattributedReturnCount } =
+      computeDirectSalesPaymentBreakdown(sales, returns);
+    expect(breakdown.find((b) => b.method === "cash")?.total).toBe(150);
+    expect(breakdown.find((b) => b.method === "card")?.total).toBe(100);
+    expect(unattributedReturnAmount).toBe(0);
+    expect(unattributedReturnCount).toBe(0);
+  });
+
+  it("tracks returns with null paymentMethod as unattributed instead of guessing", () => {
+    const sales = [{ paymentMethod: "cash", revenue: 200 }];
+    const returns = [
+      { paymentMethod: null, revenue: 40 },
+      { paymentMethod: null, revenue: 30 },
+    ];
+    const { breakdown, unattributedReturnAmount, unattributedReturnCount } =
+      computeDirectSalesPaymentBreakdown(sales, returns);
+    expect(breakdown.find((b) => b.method === "cash")?.total).toBe(200);
+    expect(unattributedReturnAmount).toBe(70);
+    expect(unattributedReturnCount).toBe(2);
+  });
+
+  it("does not double-count: each sale and return appears exactly once", () => {
+    const sales = [
+      { paymentMethod: "card", revenue: 300 },
+      { paymentMethod: "cash", revenue: 100 },
+    ];
+    const returns = [{ paymentMethod: "card", revenue: 50 }];
+    const { breakdown } = computeDirectSalesPaymentBreakdown(sales, returns);
+    const grandTotal = breakdown.reduce((s, b) => s + b.total, 0);
+    expect(grandTotal).toBe(350);
+  });
+
+  it("sum of breakdown totals equals net revenue when all returns are attributed", () => {
+    const sales = [
+      { paymentMethod: "cash", revenue: 500 },
+      { paymentMethod: "card", revenue: 300 },
+      { paymentMethod: "transfer", revenue: 200 },
+    ];
+    const returns = [
+      { paymentMethod: "cash", revenue: 100 },
+      { paymentMethod: "card", revenue: 50 },
+    ];
+    const totalRevenue = sales.reduce((s, m) => s + m.revenue, 0);
+    const totalReturns = returns.reduce((s, m) => s + m.revenue, 0);
+    const netRevenue = totalRevenue - totalReturns;
+    const { breakdown, unattributedReturnAmount, unattributedReturnCount } =
+      computeDirectSalesPaymentBreakdown(sales, returns);
+    expect(unattributedReturnCount).toBe(0);
+    const breakdownSum = breakdown.reduce((s, b) => s + b.total, 0);
+    expect(breakdownSum).toBe(netRevenue);
+    expect(unattributedReturnAmount).toBe(0);
+  });
+
+  it("sum of breakdown differs from netRevenue by unattributedReturnAmount when some returns lack paymentMethod", () => {
+    const sales = [{ paymentMethod: "cash", revenue: 300 }];
+    const returns = [
+      { paymentMethod: "cash", revenue: 50 },
+      { paymentMethod: null, revenue: 30 },
+    ];
+    const totalRevenue = sales.reduce((s, m) => s + m.revenue, 0);
+    const totalReturns = returns.reduce((s, m) => s + m.revenue, 0);
+    const netRevenue = totalRevenue - totalReturns;
+    const { breakdown, unattributedReturnAmount } =
+      computeDirectSalesPaymentBreakdown(sales, returns);
+    const breakdownSum = breakdown.reduce((s, b) => s + b.total, 0);
+    expect(breakdownSum).toBe(netRevenue + unattributedReturnAmount);
   });
 });

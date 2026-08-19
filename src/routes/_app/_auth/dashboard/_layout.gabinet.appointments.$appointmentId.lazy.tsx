@@ -253,6 +253,7 @@ function AppointmentDetail() {
   const updateStatus = useAction(api.gabinet.appointments.updateStatus);
   const updateAppointment = useAction(api.gabinet.appointments.update);
   const cancelRecurringSeries = useAction(api.gabinet.appointments.cancelRecurringSeries);
+  const rescheduleSeriesAction = useAction(api.gabinet.appointments.rescheduleSeries);
   const trackView = useAction(api.recentlyViewed.track);
   const sendReminderNow = useAction(api.gabinet.appointmentReminders.sendReminderNow);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
@@ -736,17 +737,28 @@ function AppointmentDetail() {
     }
   };
 
-  const handleReschedule = async (date: string, startTime: string, endTime: string) => {
+  const handleReschedule = async (date: string, startTime: string, endTime: string, scope: "single" | "series") => {
     setIsRescheduling(true);
     try {
-      await updateAppointment({
-        organizationId,
-        appointmentId: appointment._id,
-        date,
-        startTime,
-        endTime,
-      });
-      toast.success(t("gabinet.appointments.rescheduled", "Wizyta przeniesiona"));
+      if (scope === "series" && appointment.recurringGroupId) {
+        await rescheduleSeriesAction({
+          organizationId,
+          recurringGroupId: String(appointment.recurringGroupId),
+          fromDate: date,
+          newStartTime: startTime,
+          newEndTime: endTime,
+        });
+        toast.success(t("gabinet.appointments.seriesRescheduled", "Seria wizyt przeniesiona"));
+      } else {
+        await updateAppointment({
+          organizationId,
+          appointmentId: appointment._id,
+          date,
+          startTime,
+          endTime,
+        });
+        toast.success(t("gabinet.appointments.rescheduled", "Wizyta przeniesiona"));
+      }
       setRescheduleOpen(false);
       await invalidateAppointmentCaches();
       await refetch();
@@ -1338,6 +1350,7 @@ function AppointmentDetail() {
         currentEndTime={appointment.endTime as string}
         isSaving={isRescheduling}
         onSave={handleReschedule}
+        isRecurring={!!(appointment.isRecurring && appointment.recurringGroupId)}
         t={t}
       />
 

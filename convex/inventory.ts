@@ -168,6 +168,7 @@ interface ApplyMovementParams {
   lotNumber?: string | null;
   expiryDate?: string | null;
   treatmentId?: string | null;
+  appointmentId?: string | null;
   performedBy: string;
 }
 
@@ -271,6 +272,7 @@ export async function applyMovementInternal(
     ...(params.lotNumber ? { lotNumber: params.lotNumber } : {}),
     ...(params.expiryDate ? { expiryDate: params.expiryDate } : {}),
     ...(params.treatmentId ? { treatmentId: params.treatmentId } : {}),
+    ...(params.appointmentId ? { appointmentId: params.appointmentId } : {}),
     performedBy: params.performedBy,
     createdAt: now,
   });

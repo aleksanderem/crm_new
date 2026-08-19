@@ -969,6 +969,9 @@ export function createGabinetTables({
     cashExpected: v.float64(),
     cashCounted: v.float64(),
     cashDiscrepancy: v.float64(),
+    // R2B (issue #5575): cash split at day close. NULL for historical records.
+    cashNextOpening: v.optional(v.float64()),
+    cashToSafe: v.optional(v.float64()),
     notes: v.optional(v.string()),
     closedBy: v.id("users"),
     closedAt: v.number(),

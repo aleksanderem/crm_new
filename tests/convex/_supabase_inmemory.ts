@@ -501,6 +501,29 @@ class InMemoryRawQuery {
     return this;
   }
 
+  /** Inserts one or more rows into the table. Each row with snake_case keys is
+   *  converted to camelCase before storage (mirroring how other write paths
+   *  work in InMemoryRawQuery). Returns PostgREST-style { data, error }. */
+  async insert(
+    payload: Record<string, unknown> | Record<string, unknown>[],
+  ): Promise<{ data: Row[] | null; error: null | { message: string } }> {
+    const rows = Array.isArray(payload) ? payload : [payload];
+    const t = getTable(this.table);
+    const inserted: Row[] = [];
+    for (const rawRow of rows) {
+      const camel: Row = {};
+      for (const [k, v] of Object.entries(rawRow)) {
+        camel[snakeToCamel(k)] = v as unknown;
+      }
+      const id = camel.id ? String(camel.id) : randomId();
+      const stored: Row = { ...camel, id };
+      delete (stored as any)._id;
+      t.set(id, stored);
+      inserted.push({ ...convertKeysToSnake(stored) });
+    }
+    return { data: inserted, error: null };
+  }
+
   /** Builder step — records that columns should be projected (or switches to
    *  read-after-write for update/delete). Does NOT execute the query. */
   select(_cols?: string) {
@@ -534,6 +557,28 @@ class InMemoryRawQuery {
       }
       return r[camelField] !== value;
     });
+    return this;
+  }
+
+  is(field: string, value: unknown) {
+    const camelField = snakeToCamel(field);
+    if (value === null) {
+      this.filters.push((r) => r[camelField] == null);
+    } else {
+      this.filters.push((r) => r[camelField] === value);
+    }
+    return this;
+  }
+
+  gte(field: string, value: unknown) {
+    const camelField = snakeToCamel(field);
+    this.filters.push((r) => (r[camelField] as any) >= (value as any));
+    return this;
+  }
+
+  lte(field: string, value: unknown) {
+    const camelField = snakeToCamel(field);
+    this.filters.push((r) => (r[camelField] as any) <= (value as any));
     return this;
   }
 

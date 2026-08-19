@@ -4376,7 +4376,11 @@
       "dayClosed": "Day closed successfully",
       "dayAlreadyClosed": "Day already closed",
       "totalCollected": "Total collected",
-      "history": "Closure history"
+      "history": "Closure history",
+      "cashSplit": "Cash split",
+      "cashNextOpening": "Stays in register for next day",
+      "cashToSafe": "To Safe (Sejf)",
+      "cashSplitRequired": "Sum must equal counted cash"
     },
     "deliveries": {
       "loadError": "Failed to load delivery.",

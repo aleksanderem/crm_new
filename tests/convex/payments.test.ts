@@ -186,6 +186,63 @@ describe("payments", () => {
     expect(refunded.refundedAt).toBeLessThanOrEqual(afterRefund);
   });
 
+  test("partial refund stores the specified refundAmount (issue #5595)", async () => {
+    const t = createTestCtx();
+    const { organizationId, identity } = await seedTestUser(t);
+
+    const paymentId = await t.withIdentity(identity).action(
+      api.payments.create,
+      {
+        organizationId,
+        amount: 300,
+        currency: "PLN",
+        paymentMethod: "card",
+      },
+    );
+
+    await t.withIdentity(identity).action(api.payments.refund, {
+      organizationId,
+      paymentId,
+      refundAmount: 100,
+      reason: "Partial cancellation",
+    });
+
+    const result = await t.withIdentity(identity).action(api.payments.list, {
+      organizationId,
+      paginationOpts: { numItems: 10, cursor: null },
+    });
+
+    const refunded = result.page[0];
+    expect(refunded.status).toBe("refunded");
+    expect(refunded.refundAmount).toBe(100);
+    expect(typeof refunded.refundedAt).toBe("number");
+    // Original amount is preserved
+    expect(refunded.amount).toBe(300);
+  });
+
+  test("refundAmount exceeding payment amount is rejected (issue #5595)", async () => {
+    const t = createTestCtx();
+    const { organizationId, identity } = await seedTestUser(t);
+
+    const paymentId = await t.withIdentity(identity).action(
+      api.payments.create,
+      {
+        organizationId,
+        amount: 100,
+        currency: "PLN",
+        paymentMethod: "cash",
+      },
+    );
+
+    await expect(
+      t.withIdentity(identity).action(api.payments.refund, {
+        organizationId,
+        paymentId,
+        refundAmount: 200,
+      }),
+    ).rejects.toThrow(/exceeds payment amount/);
+  });
+
   test("cannot refund a pending payment", async () => {
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);

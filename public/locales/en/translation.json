@@ -138,7 +138,8 @@
       "leaves": "Leaves",
       "myLeaves": "My Leave Requests",
       "documentTemplates": "Document Templates",
-      "cash": "Cash Register"
+      "cash": "Cash Register",
+      "additionalTools": "Additional Tools"
     },
     "sections": {
       "main": "Main",

@@ -26,6 +26,13 @@ export interface ModuleNavItem {
   crossModule?: boolean;
 }
 
+export interface ModuleNavGroup {
+  type: "group";
+  labelKey: string;
+  icon: ElementType;
+  children: ModuleNavItem[];
+}
+
 export interface ModuleContextSubAction {
   labelKey: string;
   dispatch?: string;
@@ -70,7 +77,7 @@ export interface ModuleManifest {
   workspaceRoot: string;
   settingsRoots: string[];
   workspace: ModuleWorkspaceOption;
-  primaryNav: ModuleNavItem[];
+  primaryNav: (ModuleNavItem | ModuleNavGroup)[];
   settingsNav: ModuleSettingsNavItem[];
   pageContexts: ModulePageContext[];
   fallbackPageContextKey?: string;

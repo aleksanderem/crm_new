@@ -18,6 +18,7 @@ import {
   PlusCircle,
   SearchIcon,
   Settings,
+  Settings2,
   Stethoscope,
   Tag,
   TrendingUp,
@@ -58,7 +59,14 @@ export const gabinetManifest: ModuleManifest = {
     { labelKey: "nav.gabinet.myLeaves", href: "/dashboard/gabinet/my-leaves", icon: CalendarCheck },
     { labelKey: "nav.gabinet.documents", href: "/dashboard/gabinet/documents", icon: ClipboardList },
     { labelKey: "nav.gabinet.deliveries", href: "/dashboard/gabinet/deliveries", icon: TruckIcon },
-    { labelKey: "nav.gabinet.cash", href: "/dashboard/gabinet/cash", icon: DollarSign },
+    {
+      type: "group" as const,
+      labelKey: "nav.gabinet.additionalTools",
+      icon: Settings2,
+      children: [
+        { labelKey: "nav.gabinet.cash", href: "/dashboard/gabinet/cash", icon: DollarSign },
+      ],
+    },
     { labelKey: "nav.gabinet.reports", href: "/dashboard/gabinet/reports", icon: PieChart },
     { labelKey: "nav.notifications", href: "/dashboard/notifications", icon: Bell, crossModule: true },
   ],

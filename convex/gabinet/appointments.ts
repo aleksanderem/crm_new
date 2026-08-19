@@ -102,7 +102,7 @@ async function assertRequiredEquipmentAtLocation(
 async function emitAutomationEvent(
   ctx: MutationCtx,
   args: {
-    organizationId: Id<"organizations">;
+    organizationId: string;
     module: "gabinet" | "crm" | "platform";
     eventType: string;
     entityType?: string;
@@ -132,7 +132,7 @@ async function applyAppointmentStatusChange(
   ctx: MutationCtx,
   args: {
     appointment: Doc<"gabinetAppointments">;
-    organizationId: Id<"organizations">;
+    organizationId: string;
     nextStatus: Doc<"gabinetAppointments">["status"];
     actorUserId: string;
     auditAction: string;
@@ -1091,7 +1091,7 @@ export const _generateDocsOnSync = internalMutation({
   },
   handler: async (ctx, args) => {
     await autoGenerateAppointmentDocuments(ctx, {
-      organizationId: args.organizationId as Id<"organizations">,
+      organizationId: args.organizationId,
       appointmentId: args.appointmentId as Id<"gabinetAppointments">,
       treatmentId: args.treatmentId as Id<"gabinetTreatments">,
       patientId: args.patientId as Id<"gabinetPatients">,
@@ -1099,7 +1099,7 @@ export const _generateDocsOnSync = internalMutation({
       timing: "before_start",
     });
     await autoGenerateAppointmentDocuments(ctx, {
-      organizationId: args.organizationId as Id<"organizations">,
+      organizationId: args.organizationId,
       appointmentId: args.appointmentId as Id<"gabinetAppointments">,
       treatmentId: args.treatmentId as Id<"gabinetTreatments">,
       patientId: args.patientId as Id<"gabinetPatients">,
@@ -1144,7 +1144,7 @@ export const _syncCreatedSideEffects = internalMutation({
     }
 
     await emitAutomationEvent(ctx, {
-      organizationId: args.organizationId as Id<"organizations">,
+      organizationId: args.organizationId,
       module: "gabinet",
       eventType: "gabinet.appointment.created",
       entityType: "gabinetAppointment",
@@ -2425,7 +2425,7 @@ export const _updateSideEffects = internalMutation({
       }
 
       await autoGenerateAppointmentDocuments(ctx, {
-        organizationId: args.organizationId as Id<"organizations">,
+        organizationId: args.organizationId,
         appointmentId: args.appointmentId as Id<"gabinetAppointments">,
         treatmentId: args.treatmentId as Id<"gabinetTreatments">,
         patientId: args.patientId as Id<"gabinetPatients">,
@@ -2433,7 +2433,7 @@ export const _updateSideEffects = internalMutation({
         timing: "before_start",
       });
       await autoGenerateAppointmentDocuments(ctx, {
-        organizationId: args.organizationId as Id<"organizations">,
+        organizationId: args.organizationId,
         appointmentId: args.appointmentId as Id<"gabinetAppointments">,
         treatmentId: args.treatmentId as Id<"gabinetTreatments">,
         patientId: args.patientId as Id<"gabinetPatients">,
@@ -3374,7 +3374,7 @@ export const _cancelSideEffects = internalMutation({
 async function resolveAutoPackageUsageSupabase(
   db: ReturnType<typeof createSupabaseDb>,
   args: {
-    organizationId: Id<"organizations">;
+    organizationId: string;
     patientId: string;
     treatmentId: string;
     treatment: GabinetTreatmentRow;
@@ -3462,7 +3462,7 @@ async function resolveAutoPackageUsageSupabase(
 async function handleAppointmentCompletion(
   ctx: MutationCtx,
   args: {
-    organizationId: Id<"organizations">;
+    organizationId: string;
     appointmentId: Id<"gabinetAppointments">;
     patientId: Id<"gabinetPatients">;
     treatmentId: Id<"gabinetTreatments">;

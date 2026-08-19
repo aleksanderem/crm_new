@@ -36,7 +36,7 @@ function hasFormFields(node: unknown): boolean {
 export async function autoGenerateAppointmentDocuments(
   ctx: MutationCtx,
   args: {
-    organizationId: Id<"organizations">;
+    organizationId: string;
     appointmentId: Id<"gabinetAppointments">;
     treatmentId: Id<"gabinetTreatments">;
     patientId: Id<"gabinetPatients">;

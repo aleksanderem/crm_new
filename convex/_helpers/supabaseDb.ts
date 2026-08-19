@@ -96,6 +96,7 @@ const TABLE_MAP: Record<string, string> = {
   gabinetReceiptSequences: "gabinet_receipt_sequences",
   gabinetCashTransactions: "gabinet_cash_transactions",
   gabinetDayCloses: "gabinet_day_closes",
+  gabinetSafeMovements: "gabinet_safe_movements",
   gabinetWaitlist: "gabinet_waitlist",
 };
 

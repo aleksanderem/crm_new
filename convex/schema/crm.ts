@@ -403,6 +403,7 @@ export function createCrmTables({
     lotNumber: v.optional(v.string()),        // LOT/batch number (#2989)
     expiryDate: v.optional(v.string()),       // ISO date YYYY-MM-DD (#2989)
     treatmentId: v.optional(v.string()),      // which treatment drove the deduction (#5198)
+    appointmentId: v.optional(v.string()),   // appointment during which a direct sale occurred (#5601)
     performedBy: v.id("users"),
     createdAt: v.number(),
   })

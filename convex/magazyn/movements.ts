@@ -323,6 +323,7 @@ export const sellProductStandalone = action({
     locationId: v.union(v.string(), v.null()),
     clientId: v.optional(v.string()),
     paymentMethod: v.optional(v.string()),
+    appointmentId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{ negativeStock: boolean }> => {
     const auth = await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
@@ -346,6 +347,7 @@ export const sellProductStandalone = action({
       sourceId: args.clientId ?? null,
       unitPrice: args.salePrice,
       paymentMethod: args.paymentMethod ?? null,
+      appointmentId: args.appointmentId ?? null,
       performedBy: String(auth.userId),
     };
 
@@ -398,6 +400,7 @@ export const sellReturnStandalone = action({
     clientId: v.optional(v.string()),
     paymentMethod: v.optional(v.string()),
     note: v.optional(v.string()),
+    appointmentId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{ movementId: string; balanceAfter: number }> => {
     const auth = await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
@@ -423,6 +426,7 @@ export const sellReturnStandalone = action({
       unitPrice: args.salePrice,
       paymentMethod: args.paymentMethod ?? null,
       note: args.note ?? null,
+      appointmentId: args.appointmentId ?? null,
       performedBy: String(auth.userId),
     });
 

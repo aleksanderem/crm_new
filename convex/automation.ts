@@ -1754,7 +1754,7 @@ export const processRun = internalAction({
 
             await ctx.runMutation(internal.automation._createNotificationForRun, {
               organizationId: run.organizationId,
-              userId,
+              userId: userId as Id<"users">,
               type: "automation_rule",
               title,
               message,

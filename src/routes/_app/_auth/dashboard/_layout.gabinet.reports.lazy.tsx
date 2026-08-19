@@ -742,7 +742,7 @@ function EmployeeUtilizationChart({
   data,
   rangeLabel,
 }: {
-  data: { name: string; count: number; completedCount: number }[];
+  data: { name: string; count: number; completedCount: number; revenue: number }[];
   rangeLabel: string;
 }) {
   const { t } = useTranslation();
@@ -824,9 +824,16 @@ function EmployeeUtilizationChart({
                     <span className="text-sm font-medium truncate">
                       {emp.name}
                     </span>
-                    <span className="text-sm text-muted-foreground ml-2 shrink-0">
-                      {emp.count} {t("gabinet.reports.appointmentsShort")}
-                    </span>
+                    <div className="flex items-center gap-2 ml-2 shrink-0">
+                      {emp.revenue > 0 && (
+                        <span className="text-sm font-medium">
+                          {formatCurrencyPLN(emp.revenue)}
+                        </span>
+                      )}
+                      <span className="text-sm text-muted-foreground">
+                        {emp.count} {t("gabinet.reports.appointmentsShort")}
+                      </span>
+                    </div>
                   </div>
                   <div className="h-2 rounded-full bg-muted overflow-hidden">
                     <div
@@ -2026,8 +2033,8 @@ function GabinetReports() {
 
   // Employee utilization
   const employeeStats = useMemo(
-    () => computeEmployeeStats(appointments ?? [], employeeMap),
-    [appointments, employeeMap]
+    () => computeEmployeeStats(appointments ?? [], employeeMap, treatmentMap, gratisBarterIds ?? new Set()),
+    [appointments, employeeMap, treatmentMap, gratisBarterIds]
   );
 
   // Revenue: relative to the selected date range (endDate = last day of range)
@@ -2165,7 +2172,7 @@ function GabinetReports() {
         section: "employee",
         metric: e.name,
         value: e.count,
-        revenue: e.completedCount,
+        revenue: e.revenue,
       });
     }
     for (const pm of paymentMethodBreakdown) {

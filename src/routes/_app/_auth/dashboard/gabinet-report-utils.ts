@@ -112,16 +112,24 @@ export function computeDailyStats(
 }
 
 export function computeEmployeeStats(
-  appointments: Pick<AppointmentForStats, "employeeId" | "status">[],
+  appointments: AppointmentForStats[],
   employeeMap: Map<string, string>,
-): { name: string; count: number; completedCount: number }[] {
-  const map = new Map<string, { count: number; completedCount: number }>();
+  treatmentMap: Map<string, TreatmentInfo>,
+  gratisBarterIds: Set<string>,
+): { name: string; count: number; completedCount: number; revenue: number }[] {
+  const map = new Map<string, { count: number; completedCount: number; revenue: number }>();
   for (const a of appointments) {
     const uid = a.employeeId;
-    const prev = map.get(uid) ?? { count: 0, completedCount: 0 };
+    const prev = map.get(uid) ?? { count: 0, completedCount: 0, revenue: 0 };
+    const isCompleted = a.status === "completed";
+    const price =
+      isCompleted && !gratisBarterIds.has(a._id)
+        ? (a.priceAtBooking ?? treatmentMap.get(a.treatmentId ?? "")?.price ?? 0)
+        : 0;
     map.set(uid, {
       count: prev.count + 1,
-      completedCount: prev.completedCount + (a.status === "completed" ? 1 : 0),
+      completedCount: prev.completedCount + (isCompleted ? 1 : 0),
+      revenue: prev.revenue + price,
     });
   }
   return Array.from(map.entries())
@@ -129,6 +137,7 @@ export function computeEmployeeStats(
       name: employeeMap.get(userId) ?? userId,
       count: stats.count,
       completedCount: stats.completedCount,
+      revenue: stats.revenue,
     }))
     .sort((a, b) => b.count - a.count);
 }

@@ -280,41 +280,77 @@ describe("computeEmployeeStats", () => {
     ["e1", "Anna Kowalska"],
     ["e2", "Jan Nowak"],
   ]);
+  const treatmentMap = new Map([
+    ["t1", { name: "Massage", price: 100, currency: "PLN" }],
+    ["t2", { name: "Facial", price: 200, currency: "PLN" }],
+  ]);
+  const noGratis = new Set<string>();
 
   it("returns empty array for no appointments", () => {
-    expect(computeEmployeeStats([], employeeMap)).toEqual([]);
+    expect(computeEmployeeStats([], employeeMap, treatmentMap, noGratis)).toEqual([]);
   });
 
   it("resolves employee names from the map, falls back to id when missing", () => {
     const appts = [
-      { employeeId: "e1", status: "completed" },
-      { employeeId: "e_unknown", status: "completed" },
+      { _id: "a1", employeeId: "e1", status: "completed", date: "2025-01-01" },
+      { _id: "a2", employeeId: "e_unknown", status: "completed", date: "2025-01-01" },
     ];
-    const result = computeEmployeeStats(appts, employeeMap);
+    const result = computeEmployeeStats(appts, employeeMap, treatmentMap, noGratis);
     expect(result.find((r) => r.name === "Anna Kowalska")).toBeTruthy();
     expect(result.find((r) => r.name === "e_unknown")).toBeTruthy();
   });
 
   it("counts total and completed appointments per employee", () => {
     const appts = [
-      { employeeId: "e1", status: "completed" },
-      { employeeId: "e1", status: "completed" },
-      { employeeId: "e1", status: "cancelled" },
-      { employeeId: "e2", status: "completed" },
+      { _id: "a1", employeeId: "e1", status: "completed", date: "2025-01-01" },
+      { _id: "a2", employeeId: "e1", status: "completed", date: "2025-01-01" },
+      { _id: "a3", employeeId: "e1", status: "cancelled", date: "2025-01-01" },
+      { _id: "a4", employeeId: "e2", status: "completed", date: "2025-01-01" },
     ];
-    const result = computeEmployeeStats(appts, employeeMap);
+    const result = computeEmployeeStats(appts, employeeMap, treatmentMap, noGratis);
     const anna = result.find((r) => r.name === "Anna Kowalska");
     expect(anna?.count).toBe(3);
     expect(anna?.completedCount).toBe(2);
   });
 
+  it("sums PLN revenue for completed non-gratis appointments", () => {
+    const appts = [
+      { _id: "a1", employeeId: "e1", treatmentId: "t1", status: "completed", date: "2025-01-01" },
+      { _id: "a2", employeeId: "e1", treatmentId: "t1", status: "completed", date: "2025-01-01" },
+      { _id: "a3", employeeId: "e1", treatmentId: "t1", status: "cancelled", date: "2025-01-01" },
+    ];
+    const result = computeEmployeeStats(appts, employeeMap, treatmentMap, noGratis);
+    const anna = result.find((r) => r.name === "Anna Kowalska");
+    expect(anna?.revenue).toBe(200); // 2 completed × 100 PLN
+  });
+
+  it("excludes gratis/barter appointments from revenue", () => {
+    const appts = [
+      { _id: "a1", employeeId: "e1", treatmentId: "t1", status: "completed", date: "2025-01-01" },
+      { _id: "a2", employeeId: "e1", treatmentId: "t1", status: "completed", date: "2025-01-01" },
+    ];
+    const gratis = new Set(["a2"]);
+    const result = computeEmployeeStats(appts, employeeMap, treatmentMap, gratis);
+    const anna = result.find((r) => r.name === "Anna Kowalska");
+    expect(anna?.revenue).toBe(100); // only a1 contributes
+  });
+
+  it("uses priceAtBooking over treatment price when set", () => {
+    const appts = [
+      { _id: "a1", employeeId: "e1", treatmentId: "t1", status: "completed", date: "2025-01-01", priceAtBooking: 150 },
+    ];
+    const result = computeEmployeeStats(appts, employeeMap, treatmentMap, noGratis);
+    const anna = result.find((r) => r.name === "Anna Kowalska");
+    expect(anna?.revenue).toBe(150);
+  });
+
   it("sorts by total count descending", () => {
     const appts = [
-      { employeeId: "e1", status: "scheduled" },
-      { employeeId: "e2", status: "completed" },
-      { employeeId: "e2", status: "completed" },
+      { _id: "a1", employeeId: "e1", status: "scheduled", date: "2025-01-01" },
+      { _id: "a2", employeeId: "e2", status: "completed", date: "2025-01-01" },
+      { _id: "a3", employeeId: "e2", status: "completed", date: "2025-01-01" },
     ];
-    const result = computeEmployeeStats(appts, employeeMap);
+    const result = computeEmployeeStats(appts, employeeMap, treatmentMap, noGratis);
     expect(result[0]!.name).toBe("Jan Nowak");
   });
 });

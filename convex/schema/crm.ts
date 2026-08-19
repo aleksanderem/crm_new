@@ -404,6 +404,7 @@ export function createCrmTables({
     expiryDate: v.optional(v.string()),       // ISO date YYYY-MM-DD (#2989)
     treatmentId: v.optional(v.string()),      // which treatment drove the deduction (#5198)
     appointmentId: v.optional(v.string()),   // appointment during which a direct sale occurred (#5601)
+    employeeId: v.optional(v.id("gabinetEmployees")), // gabinet employee who performed the sale (#5598)
     performedBy: v.id("users"),
     createdAt: v.number(),
   })

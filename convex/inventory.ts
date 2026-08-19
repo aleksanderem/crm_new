@@ -23,6 +23,8 @@ const REASON_VALIDATOR = v.union(
   v.literal("inventory_adjustment"),
   v.literal("appointment_use"),
   v.literal("appointment_return"),
+  v.literal("reserved"),
+  v.literal("reservation_release"),
   v.literal("direct_sale"),
   v.literal("deal_close"),
   v.literal("deal_reopen"),
@@ -30,6 +32,12 @@ const REASON_VALIDATOR = v.union(
   v.literal("transfer_out"),
   v.literal("other"),
 );
+
+// Informational-only movement reasons: written to the audit trail but do NOT
+// update product_stock_levels (on-hand balance is unchanged). Used for
+// reservation tracking so warehouse reports can see stock committed to
+// future appointments without affecting the available quantity.
+const INFORMATIONAL_REASONS = new Set(["reserved", "reservation_release"]);
 
 export interface ProductStockSummary {
   productId: string;
@@ -192,8 +200,10 @@ export async function applyMovementInternal(
     newBalance = previousBalance + resolvedDelta;
   }
 
+  const isInformational = INFORMATIONAL_REASONS.has(params.reason);
+
   let warning: string | null = null;
-  if (trackStock && newBalance < 0) {
+  if (!isInformational && trackStock && newBalance < 0) {
     // Warn-and-allow (#1700): negative stock is permitted but the caller is
     // expected to surface this in the UI so staff can correct it.
     warning = "negative_stock";
@@ -223,7 +233,7 @@ export async function applyMovementInternal(
 
   const now = Date.now();
 
-  if (trackStock) {
+  if (trackStock && !isInformational) {
     if (level) {
       await db.patch("productStockLevels", String(level._id), {
         quantity: newBalance,
@@ -249,7 +259,7 @@ export async function applyMovementInternal(
     productId: params.productId,
     locationId: params.locationId,
     delta: resolvedDelta,
-    balanceAfter: trackStock ? newBalance : null,
+    balanceAfter: (trackStock && !isInformational) ? newBalance : null,
     reason: params.reason,
     sourceType: params.sourceType ?? null,
     sourceId: params.sourceId ?? null,

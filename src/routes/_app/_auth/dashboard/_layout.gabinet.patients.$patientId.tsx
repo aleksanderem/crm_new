@@ -50,6 +50,7 @@ import { ActivityFeed } from "@/components/crm/activity-feed";
 import { activitiesToFeedEntries } from "@/components/crm/activity-feed-adapter";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PatientPhotosTab } from "@/components/gabinet/patient-photos-tab";
 import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
@@ -125,6 +126,8 @@ function PatientDetail() {
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action
   const removePatient = useAction(api.gabinet.patients.remove);
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action
+  const reactivatePatient = useAction(api.gabinet.patients.reactivate);
+  // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action
   const gdprErasePatient = useAction(api.gabinet.patients.gdprErase);
   const updatePaymentAction = useAction(api.payments.update);
   const createPaymentAction = useAction(api.payments.create);
@@ -147,6 +150,7 @@ function PatientDetail() {
 
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isReactivating, setIsReactivating] = useState(false);
   const [gdprDialogOpen, setGdprDialogOpen] = useState(false);
   const [gdprConfirmText, setGdprConfirmText] = useState("");
   const [isGdprSubmitting, setIsGdprSubmitting] = useState(false);
@@ -522,6 +526,31 @@ function PatientDetail() {
   const fullName = patient
     ? `${patient.firstName} ${patient.lastName}`.trim()
     : "";
+
+  const handleReactivate = async () => {
+    setIsReactivating(true);
+    try {
+      await reactivatePatient({ organizationId, patientId });
+      void queryClient.invalidateQueries({
+        queryKey: supabaseKeys.gabinetPatients.detail(organizationId, patientId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: supabaseKeys.gabinetPatients.list(organizationId),
+      });
+      toast.success(
+        t("gabinet.patients.reactivateSuccess", "Klient został przywrócony."),
+      );
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "common.error",
+          defaultValue: "Wystąpił błąd podczas przywracania klienta.",
+        }),
+      );
+    } finally {
+      setIsReactivating(false);
+    }
+  };
 
   const handleEditSubmit = async (formData: {
     firstName: string;
@@ -1106,6 +1135,10 @@ function PatientDetail() {
         }
         onEdit={canEdit ? () => setEditDrawerOpen(true) : undefined}
         secondaryActions={[
+          ...(patient && !patient.isActive && canEdit ? [{
+            label: t("gabinet.patients.reactivate", "Przywróć klienta"),
+            onClick: handleReactivate,
+          }] : []),
           {
             label: t("gabinet.patients.merge.action", { defaultValue: "Scal z..." }),
             onClick: () => setMergeDialogOpen(true),
@@ -1128,6 +1161,26 @@ function PatientDetail() {
               ]
             : []),
         ]}
+        beforeTabs={
+          patient && !patient.isActive ? (
+            <div className="flex items-center justify-between rounded-md border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-200">
+              <span>{t("gabinet.patients.inactiveBanner", "Ten klient jest nieaktywny (usunięty). Możesz go przywrócić.")}</span>
+              {canEdit && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isReactivating}
+                  onClick={handleReactivate}
+                  className="ml-4 shrink-0"
+                >
+                  {isReactivating
+                    ? t("common.saving", "Zapisywanie...")
+                    : t("gabinet.patients.reactivate", "Przywróć klienta")}
+                </Button>
+              )}
+            </div>
+          ) : undefined
+        }
         fields={detailFields}
         expandedFieldCount={4}
         sidebarExtra={

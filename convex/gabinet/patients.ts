@@ -1170,6 +1170,65 @@ export const _mergeSideEffects = internalMutation({
   },
 });
 
+export const reactivate = action({
+  args: {
+    organizationId: v.string(),
+    patientId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_patients",
+        action: "edit",
+      },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+
+    const patient = await db.get("gabinetPatients", args.patientId);
+    if (!patient || String(patient.organizationId) !== String(args.organizationId)) {
+      throw new Error("Patient not found");
+    }
+    if (perm.scope === "own") {
+      const hasAppt = await db
+        .query("gabinetAppointments")
+        .eq("organizationId", String(args.organizationId))
+        .eq("employeeId", String(authResult.userId))
+        .eq("patientId", args.patientId)
+        .first();
+      if (!hasAppt) throw new Error("Permission denied: you can only edit your own records");
+    }
+
+    await db.patch("gabinetPatients", args.patientId, {
+      isActive: true,
+      updatedAt: Date.now(),
+    });
+
+    try {
+      await ctx.runMutation(internal.gabinet.patients._updateSideEffects, {
+        patientId: args.patientId,
+        organizationId: args.organizationId,
+        firstName: (patient.firstName as string) ?? "",
+        lastName: (patient.lastName as string) ?? "",
+        updatedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+      });
+    } catch (e) {
+      console.error("[patients.reactivate] Side effects FAILED for patient", args.patientId, ":", e);
+    }
+
+    return args.patientId;
+  },
+});
+
 export const gdprErase = action({
   args: {
     organizationId: v.string(),

@@ -1,13 +1,16 @@
-import { useMemo } from "react";
+import { useMemo, type CSSProperties, type ReactNode } from "react";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { useTranslation } from "react-i18next";
 
 interface Appointment {
   _id: string;
   date: string;
   startTime: string;
+  endTime: string;
   status: string;
   patientName: string;
   treatmentName: string;
+  color?: string;
 }
 
 interface CalendarMonthViewProps {
@@ -65,17 +68,81 @@ const DAY_LABEL_DEFAULTS: Record<(typeof DAY_LABEL_KEYS)[number], string> = {
   sun: "Nd",
 };
 
+const MAX_VISIBLE_CHIPS = 3;
+
+function DraggableMonthChip({ appointment }: { appointment: Appointment }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: appointment._id,
+    data: {
+      type: "appointment",
+      appointmentId: appointment._id,
+      date: appointment.date,
+      startTime: appointment.startTime,
+      endTime: appointment.endTime,
+    },
+  });
+
+  const bg = appointment.color ? `${appointment.color}26` : undefined;
+  const textColor = appointment.color ?? undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      onClick={(e: { stopPropagation(): void }) => e.stopPropagation()}
+      className={`truncate rounded px-1 py-0.5 text-[10px] font-medium cursor-grab touch-none select-none ${isDragging ? "opacity-40" : "hover:brightness-95"}`}
+      style={
+        appointment.color
+          ? { backgroundColor: bg, color: textColor }
+          : { backgroundColor: "hsl(var(--primary)/0.1)", color: "hsl(var(--primary))" }
+      }
+      title={`${appointment.startTime} ${appointment.patientName}`}
+    >
+      {appointment.startTime} {appointment.patientName}
+    </div>
+  );
+}
+
+interface MonthDayCellProps {
+  date: string;
+  className?: string;
+  style?: CSSProperties;
+  onClick?: () => void;
+  children: ReactNode;
+}
+
+function MonthDayCell({ date, className, style, onClick, children }: MonthDayCellProps) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: `month-day-${date}`,
+    data: { type: "date-slot", date },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`${className ?? ""} ${isOver ? "ring-2 ring-inset ring-primary/60 bg-primary/10" : ""}`}
+      style={style}
+      onClick={onClick}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function CalendarMonthView({ year, month, appointments, onDayClick, selectedDate, leaveDates, paymentDueDates, creditDates }: CalendarMonthViewProps) {
   const { t } = useTranslation();
   const grid = useMemo(() => getMonthGrid(year, month), [year, month]);
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
-  const countByDate = useMemo(() => {
-    const m = new Map<string, number>();
+  const appointmentsByDate = useMemo(() => {
+    const m = new Map<string, Appointment[]>();
     for (const a of appointments) {
       if (a.status !== "cancelled") {
-        m.set(a.date, (m.get(a.date) ?? 0) + 1);
+        const list = m.get(a.date) ?? [];
+        list.push(a);
+        m.set(a.date, list);
       }
     }
     return m;
@@ -101,15 +168,18 @@ export function CalendarMonthView({ year, month, appointments, onDayClick, selec
             return <div key={i} className="border-b border-r bg-muted/20" />;
           }
 
-          const count = countByDate.get(date) ?? 0;
+          const dayAppointments = appointmentsByDate.get(date) ?? [];
+          const visible = dayAppointments.slice(0, MAX_VISIBLE_CHIPS);
+          const overflow = dayAppointments.length - visible.length;
           const isToday = date === today;
           const isLeave = leaveDates?.has(date) ?? false;
           const hasPaymentDue = paymentDueDates?.has(date) ?? false;
           const hasCredit = creditDates?.has(date) ?? false;
 
           return (
-            <div
+            <MonthDayCell
               key={date}
+              date={date}
               className={`relative border-b border-r p-1 cursor-pointer hover:bg-muted/30 transition-colors ${date === selectedDate ? "bg-primary/15 ring-1 ring-inset ring-primary/30" : isToday ? "bg-primary/5" : ""}`}
               style={
                 isLeave
@@ -121,8 +191,40 @@ export function CalendarMonthView({ year, month, appointments, onDayClick, selec
               }
               onClick={() => onDayClick?.(date)}
             >
-              <div className={`text-xs ${isToday ? "font-bold text-primary" : "text-muted-foreground"}`}>
-                {parseInt(date.split("-")[2])}
+              <div className="flex items-center justify-between">
+                <div className={`text-xs ${isToday ? "font-bold text-primary" : "text-muted-foreground"}`}>
+                  {parseInt(date.split("-")[2])}
+                </div>
+                {(hasPaymentDue || hasCredit) && (
+                  <div className="flex items-center gap-0.5">
+                    {hasPaymentDue && (
+                      <span
+                        title={t("gabinet.calendar.indicators.paymentDue", {
+                          defaultValue: "Wymagana przedpłata",
+                        })}
+                        aria-label={t("gabinet.calendar.indicators.paymentDue", {
+                          defaultValue: "Wymagana przedpłata",
+                        })}
+                        className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-amber-500 px-0.5 text-[10px] font-bold leading-none text-white"
+                      >
+                        $
+                      </span>
+                    )}
+                    {hasCredit && (
+                      <span
+                        title={t("gabinet.calendar.indicators.credit", {
+                          defaultValue: "Pacjent ma saldo do wykorzystania",
+                        })}
+                        aria-label={t("gabinet.calendar.indicators.credit", {
+                          defaultValue: "Pacjent ma saldo do wykorzystania",
+                        })}
+                        className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-indigo-500 px-0.5 text-[10px] font-bold leading-none text-white"
+                      >
+                        +
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               {isLeave && (
                 <div className="mt-0.5">
@@ -131,42 +233,17 @@ export function CalendarMonthView({ year, month, appointments, onDayClick, selec
                   </span>
                 </div>
               )}
-              {(count > 0 || hasPaymentDue || hasCredit) && (
-                <div className="mt-0.5 flex flex-wrap items-center gap-1">
-                  {count > 0 && (
-                    <span className="inline-flex items-center rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
-                      {count}
-                    </span>
-                  )}
-                  {hasPaymentDue && (
-                    <span
-                      title={t("gabinet.calendar.indicators.paymentDue", {
-                        defaultValue: "Wymagana przedpłata",
-                      })}
-                      aria-label={t("gabinet.calendar.indicators.paymentDue", {
-                        defaultValue: "Wymagana przedpłata",
-                      })}
-                      className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-amber-500 px-0.5 text-[10px] font-bold leading-none text-white"
-                    >
-                      $
-                    </span>
-                  )}
-                  {hasCredit && (
-                    <span
-                      title={t("gabinet.calendar.indicators.credit", {
-                        defaultValue: "Pacjent ma saldo do wykorzystania",
-                      })}
-                      aria-label={t("gabinet.calendar.indicators.credit", {
-                        defaultValue: "Pacjent ma saldo do wykorzystania",
-                      })}
-                      className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-indigo-500 px-0.5 text-[10px] font-bold leading-none text-white"
-                    >
-                      +
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
+              <div className="mt-0.5 flex flex-col gap-0.5 overflow-hidden">
+                {visible.map((a) => (
+                  <DraggableMonthChip key={a._id} appointment={a} />
+                ))}
+                {overflow > 0 && (
+                  <div className="px-1 text-[10px] text-muted-foreground">
+                    +{overflow}
+                  </div>
+                )}
+              </div>
+            </MonthDayCell>
           );
         })}
       </div>

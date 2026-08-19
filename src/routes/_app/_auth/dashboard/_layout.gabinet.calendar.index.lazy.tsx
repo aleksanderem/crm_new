@@ -1249,6 +1249,48 @@ function GabinetCalendarPage() {
             }),
           );
         }
+      } else if (dropData?.type === "date-slot") {
+        // Month view drop: change the date but preserve the appointment's
+        // original time (the slot carries no meaningful time value).
+        const newDate = dropData.date as string;
+
+        const originalAppt = viewAppointments.find(
+          (a) => a._id === appointmentId,
+        );
+        if (!originalAppt) return;
+
+        if (originalAppt.status === "blocked") {
+          toast.error(
+            t(
+              "gabinet.appointments.errors.blockedNotDraggable",
+              "Wydarzeń z Google nie można przesuwać w kalendarzu.",
+            ),
+          );
+          return;
+        }
+
+        if (newDate === originalAppt.date) return;
+
+        try {
+          await updateAppointment({
+            organizationId,
+            appointmentId: appointmentId as Id<"gabinetAppointments">,
+            date: newDate,
+            startTime: originalAppt.startTime,
+            endTime: originalAppt.endTime,
+          });
+          toast.success(
+            t("gabinet.appointments.rescheduled", "Appointment rescheduled"),
+          );
+          void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetAppointments.all });
+        } catch (e) {
+          toast.error(
+            formatAppointmentError(e, t, {
+              key: "gabinet.appointments.rescheduleFailed",
+              defaultValue: "Nie udało się przenieść wizyty.",
+            }),
+          );
+        }
       }
     },
     [organizationId, updateAppointment, viewAppointments, queryClient, t, canUpdate],

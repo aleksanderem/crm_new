@@ -15,6 +15,28 @@ import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { nanoid } from "nanoid";
 
+// Returns the UTC timestamp (ms) of midnight on the given YYYY-MM-DD date in
+// Europe/Warsaw. Handles both CET (UTC+1) and CEST (UTC+2) automatically so
+// payment queries use local-day boundaries, not UTC-day boundaries.
+function warsawMidnightToUtcMs(dateStr: string): number {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const utcMidnight = Date.UTC(year, month - 1, day);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Warsaw",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(utcMidnight));
+  const pMap = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  const h = parseInt(pMap.hour) % 24; // guard against "24" at midnight
+  const m = parseInt(pMap.minute);
+  const s = parseInt(pMap.second);
+  // UTC midnight is (h hours + m min + s sec) ahead of Warsaw midnight, so
+  // Warsaw midnight = UTC midnight minus that offset.
+  return utcMidnight - (h * 3_600_000 + m * 60_000 + s * 1_000);
+}
+
 // ---------------------------------------------------------------------------
 // Cash Transactions
 // ---------------------------------------------------------------------------
@@ -155,9 +177,13 @@ export const createDayClose = action({
       throw new Error("Day already closed for this date and location");
     }
 
-    // Fetch completed payments for the day.
-    const startTs = new Date(args.date + "T00:00:00.000Z").getTime();
-    const endTs = new Date(args.date + "T23:59:59.999Z").getTime();
+    // Fetch completed payments for the day using Europe/Warsaw midnight boundaries
+    // so clinics running past local midnight are correctly captured regardless of
+    // the UTC+1/UTC+2 offset.
+    const startTs = warsawMidnightToUtcMs(args.date);
+    const [yr, mo, dy] = args.date.split("-").map(Number);
+    const nextDate = new Date(Date.UTC(yr, mo - 1, dy + 1)).toISOString().slice(0, 10);
+    const endTs = warsawMidnightToUtcMs(nextDate) - 1;
 
     let paymentsQuery = client
       .from("payments")

@@ -4000,6 +4000,7 @@
         "cash": "Gotówka",
         "card": "Karta",
         "transfer": "Przelew",
+        "package": "Pakiet",
         "other": "Inne"
       },
       "packageSales": "Sprzedaż pakietów",
@@ -4029,7 +4030,8 @@
       "netProductRevenue": "Przychód netto",
       "noProductSales": "Brak sprzedaży produktów w tym okresie",
       "perProductBreakdown": "Wg. produktu",
-      "perEmployeeProductSales": "Wg. pracownika"
+      "perEmployeeProductSales": "Wg. pracownika",
+      "unattributedReturnsNote": "{{count}} zwrot(ów) na łączną kwotę {{amount}} nie ma przypisanej metody płatności i nie zostało odjęte od żadnej kategorii"
     },
     "bodyChart": {
       "description": "Zaznacz obszary ciała powiązane z wizytą",

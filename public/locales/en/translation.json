@@ -2608,7 +2608,8 @@
         "loyalty": "Loyalty",
         "credit": "Credit",
         "activity": "Activity",
-        "billing": "Billing"
+        "billing": "Billing",
+        "notes": "Notes"
       },
       "billing": {
         "title": "Billing",

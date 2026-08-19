@@ -15,6 +15,7 @@ import { useActiveLocation } from "@/contexts/gabinet-location-context";
 import { useSupabaseGabinetPatient, useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseContact } from "@/hooks/use-supabase-contacts";
 import { useSupabaseActivitiesByEntity } from "@/hooks/use-supabase-activities";
+import { useSupabaseNotesByEntity } from "@/hooks/use-supabase-notes";
 import {
   useSupabaseGabinetAppointmentsByPatient,
   useSupabaseGabinetAppointmentPackagePositions,
@@ -66,6 +67,7 @@ import { PatientPaymentsTab } from "@/components/gabinet/patients/patient-paymen
 import { PatientBillingTab } from "@/components/gabinet/patients/patient-billing-tab";
 import { PatientLoyaltyTab } from "@/components/gabinet/patients/patient-loyalty-tab";
 import { PatientSidebarExtra } from "@/components/gabinet/patients/patient-sidebar-extra";
+import { NotesTabContent } from "@/components/gabinet/employees/notes-tab-content";
 import { EditPaymentDialog } from "@/components/gabinet/patients/edit-payment-dialog";
 import { RefundCreditDialog } from "@/components/gabinet/patients/refund-credit-dialog";
 import { AddPaymentDialog } from "@/components/gabinet/patients/add-payment-dialog";
@@ -142,6 +144,7 @@ function PatientDetail() {
   );
   const trackView = useAction(api.recentlyViewed.track);
   const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
+  const createNote = useAction(api.crm.notes.create);
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen for this action
   const getLatestSignedIntakeByPatientAction = useAction(
     api.documents.documents.getLatestSignedIntakeByPatient,
@@ -161,6 +164,8 @@ function PatientDetail() {
   // the fold. On desktop (md+) the section stays expanded.
   const [lastAppointmentsExpanded, setLastAppointmentsExpanded] =
     useState(false);
+  const [newNote, setNewNote] = useState("");
+  const [isAddingNote, setIsAddingNote] = useState(false);
 
   const { tags: orgTags } = useTagDefinitions(organizationId);
   const { categories: patientCategories } = useCategoryDefinitions(
@@ -249,6 +254,12 @@ function PatientDetail() {
   }, [setShellSidebarMode]);
 
   const { data: activities } = useSupabaseActivitiesByEntity(
+    organizationId,
+    "gabinetPatient",
+    patientId,
+  );
+
+  const { data: notesData } = useSupabaseNotesByEntity(
     organizationId,
     "gabinetPatient",
     patientId,
@@ -937,6 +948,30 @@ function PatientDetail() {
     }
   };
 
+  const handleAddNote = async () => {
+    if (!newNote.trim()) return;
+    setIsAddingNote(true);
+    try {
+      await createNote({
+        organizationId,
+        entityType: "gabinetPatient",
+        entityId: patientId,
+        content: newNote.trim(),
+      });
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.notes.list(organizationId) });
+      setNewNote("");
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "notes.errors.createFailed",
+          defaultValue: "Nie udało się dodać notatki.",
+        }),
+      );
+    } finally {
+      setIsAddingNote(false);
+    }
+  };
+
   // --- Tabs ---
   const today = new Date().toISOString().split("T")[0];
   const upcomingAppointments = (patientAppointments ?? [])
@@ -1096,6 +1131,21 @@ function PatientDetail() {
         <PatientLoyaltyTab
           loyaltyBalance={loyaltyBalance}
           loyaltyTransactions={loyaltyTransactions}
+          t={t}
+        />
+      ),
+    },
+    {
+      label: t("gabinet.patients.tabs.notes"),
+      count: notesData?.length,
+      content: (
+        <NotesTabContent
+          notesData={notesData}
+          newNote={newNote}
+          setNewNote={setNewNote}
+          isAddingNote={isAddingNote}
+          setIsAddingNote={setIsAddingNote}
+          handleAddNote={handleAddNote}
           t={t}
         />
       ),

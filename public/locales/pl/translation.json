@@ -2607,7 +2607,8 @@
         "loyalty": "Lojalność",
         "credit": "Saldo",
         "activity": "Aktywność",
-        "billing": "Rozliczenia"
+        "billing": "Rozliczenia",
+        "notes": "Notatki"
       },
       "billing": {
         "title": "Rozliczenia",

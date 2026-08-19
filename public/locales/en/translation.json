@@ -4381,7 +4381,32 @@
       "cashNextOpening": "Stays in register for next day",
       "cashToSafe": "To Safe (Sejf)",
       "cashSplitRequired": "Sum must equal counted cash",
-      "openingBalancePreFilled": "Auto-filled from previous day close"
+      "openingBalancePreFilled": "Auto-filled from previous day close",
+      "tabKasa": "Cash Register",
+      "tabSejf": "Safe (Sejf)"
+    },
+    "safe": {
+      "title": "Safe (Sejf)",
+      "noLocation": "Select a location to view safe data",
+      "balance": "Safe Balance",
+      "balanceDescription": "Balance is calculated from movement history",
+      "totalIn": "Total in",
+      "totalOut": "Total out",
+      "movements": "Movement History",
+      "noMovements": "No safe movements",
+      "typeTransferIn": "Transfer to Safe",
+      "typeWithdrawal": "Withdrawal from Safe",
+      "withdrawButton": "Safe Withdrawal",
+      "withdrawForm": "Safe Withdrawal",
+      "withdrawAmount": "Amount",
+      "withdrawReason": "Reason",
+      "withdrawReasonPlaceholder": "e.g. expenses, supplies",
+      "withdraw": "Withdraw",
+      "withdrawSuccess": "Withdrawal recorded",
+      "invalidAmount": "Amount must be greater than 0",
+      "insufficientBalance": "Amount exceeds available safe balance ({{balance}} PLN)",
+      "dayCloseRef": "Day close reference",
+      "description": "Description"
     },
     "deliveries": {
       "loadError": "Failed to load delivery.",

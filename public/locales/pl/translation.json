@@ -4380,7 +4380,32 @@
       "cashNextOpening": "Zostaje w kasie na następny dzień",
       "cashToSafe": "Do Sejfu",
       "cashSplitRequired": "Suma musi być równa policzonej gotówce",
-      "openingBalancePreFilled": "Uzupełnione automatycznie z poprzedniego zamknięcia dnia"
+      "openingBalancePreFilled": "Uzupełnione automatycznie z poprzedniego zamknięcia dnia",
+      "tabKasa": "Kasa",
+      "tabSejf": "Sejf"
+    },
+    "safe": {
+      "title": "Sejf",
+      "noLocation": "Wybierz lokalizację, aby zobaczyć dane Sejfu",
+      "balance": "Saldo Sejfu",
+      "balanceDescription": "Saldo wyliczone z historii ruchów",
+      "totalIn": "Łącznie wpłynęło",
+      "totalOut": "Łącznie wypłacono",
+      "movements": "Historia ruchów",
+      "noMovements": "Brak ruchów w Sejfie",
+      "typeTransferIn": "Wpłata do Sejfu",
+      "typeWithdrawal": "Wypłata z Sejfu",
+      "withdrawButton": "Wypłata z Sejfu",
+      "withdrawForm": "Wypłata z Sejfu",
+      "withdrawAmount": "Kwota",
+      "withdrawReason": "Powód",
+      "withdrawReasonPlaceholder": "np. zakupy, opłaty bieżące",
+      "withdraw": "Wypłać",
+      "withdrawSuccess": "Wypłata z Sejfu zarejestrowana",
+      "invalidAmount": "Kwota musi być większa niż 0",
+      "insufficientBalance": "Kwota przekracza dostępne saldo Sejfu ({{balance}} PLN)",
+      "dayCloseRef": "Zamknięcie dnia",
+      "description": "Opis"
     },
     "deliveries": {
       "loadError": "Nie udało się załadować dostawy.",

@@ -2012,6 +2012,12 @@ function GabinetCalendarPage() {
               month={currentDate.getMonth()}
               appointments={aggregatedAppointments}
               onDayClick={handleDayClick}
+              onAppointmentClick={(appointmentId) =>
+                routeNavigate({
+                  to: "/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId",
+                  params: { appointmentId },
+                })
+              }
               selectedDate={formatDateStr(currentDate)}
               leaveDates={leaveDates}
               paymentDueDates={paymentDueDates}

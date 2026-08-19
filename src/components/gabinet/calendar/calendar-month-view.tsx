@@ -1,4 +1,4 @@
-import { useMemo, type CSSProperties, type ReactNode } from "react";
+import { useMemo, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { useTranslation } from "react-i18next";
 
@@ -18,6 +18,7 @@ interface CalendarMonthViewProps {
   month: number; // 0-11
   appointments: Appointment[];
   onDayClick?: (date: string) => void;
+  onAppointmentClick?: (appointmentId: string) => void;
   selectedDate?: string;
   /** Dates covered by approved leave for the filtered employee. */
   leaveDates?: Set<string>;
@@ -70,7 +71,13 @@ const DAY_LABEL_DEFAULTS: Record<(typeof DAY_LABEL_KEYS)[number], string> = {
 
 const MAX_VISIBLE_CHIPS = 3;
 
-function DraggableMonthChip({ appointment }: { appointment: Appointment }) {
+function DraggableMonthChip({
+  appointment,
+  onAppointmentClick,
+}: {
+  appointment: Appointment;
+  onAppointmentClick?: (appointmentId: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: appointment._id,
     data: {
@@ -82,6 +89,14 @@ function DraggableMonthChip({ appointment }: { appointment: Appointment }) {
     },
   });
 
+  // Track whether a drag occurred so the post-drag click doesn't navigate.
+  // useDraggable fires a synthetic onClick after every drag drop; without this
+  // guard every successful reschedule would also open the detail page.
+  const dragHappenedRef = useRef(false);
+  useEffect(() => {
+    if (isDragging) dragHappenedRef.current = true;
+  }, [isDragging]);
+
   const bg = appointment.color ? `${appointment.color}26` : undefined;
   const textColor = appointment.color ?? undefined;
 
@@ -90,8 +105,15 @@ function DraggableMonthChip({ appointment }: { appointment: Appointment }) {
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      onClick={(e: { stopPropagation(): void }) => e.stopPropagation()}
-      className={`truncate rounded px-1 py-0.5 text-[10px] font-medium cursor-grab touch-none select-none ${isDragging ? "opacity-40" : "hover:brightness-95"}`}
+      onClick={(e: { stopPropagation(): void }) => {
+        e.stopPropagation();
+        if (dragHappenedRef.current) {
+          dragHappenedRef.current = false;
+          return;
+        }
+        onAppointmentClick?.(appointment._id);
+      }}
+      className={`truncate rounded px-1 py-0.5 text-[10px] font-medium touch-none select-none ${isDragging ? "opacity-40 cursor-grabbing" : onAppointmentClick ? "cursor-pointer hover:brightness-95" : "cursor-grab hover:brightness-95"}`}
       style={
         appointment.color
           ? { backgroundColor: bg, color: textColor }
@@ -130,7 +152,7 @@ function MonthDayCell({ date, className, style, onClick, children }: MonthDayCel
   );
 }
 
-export function CalendarMonthView({ year, month, appointments, onDayClick, selectedDate, leaveDates, paymentDueDates, creditDates }: CalendarMonthViewProps) {
+export function CalendarMonthView({ year, month, appointments, onDayClick, onAppointmentClick, selectedDate, leaveDates, paymentDueDates, creditDates }: CalendarMonthViewProps) {
   const { t } = useTranslation();
   const grid = useMemo(() => getMonthGrid(year, month), [year, month]);
   const now = new Date();
@@ -235,7 +257,7 @@ export function CalendarMonthView({ year, month, appointments, onDayClick, selec
               )}
               <div className="mt-0.5 flex flex-col gap-0.5 overflow-hidden">
                 {visible.map((a) => (
-                  <DraggableMonthChip key={a._id} appointment={a} />
+                  <DraggableMonthChip key={a._id} appointment={a} onAppointmentClick={onAppointmentClick} />
                 ))}
                 {overflow > 0 && (
                   <div className="px-1 text-[10px] text-muted-foreground">

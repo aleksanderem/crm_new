@@ -5,6 +5,7 @@ import { logActivity } from "./_helpers/activities";
 import { createNotificationDirect } from "./notifications";
 import { v } from "convex/values";
 import { activityTypeValidator } from "@cvx/schema";
+import { Id } from "./_generated/dataModel";
 
 // Supabase is primary for scheduledActivities. Writes go through
 // createSupabaseDb() in the actions below; the frontend reads via
@@ -24,7 +25,7 @@ export const _createSideEffects = internalMutation({
     activityType: v.string(),
     title: v.string(),
     userId: v.string(),
-    ownerId: v.string(),
+    ownerId: v.id("users"),
     description: v.optional(v.string()),
     actorLabel: v.optional(v.string()),
   },
@@ -65,7 +66,7 @@ export const _updateSideEffects = internalMutation({
     activityType: v.string(),
     title: v.string(),
     userId: v.string(),
-    newOwnerId: v.optional(v.string()),
+    newOwnerId: v.optional(v.id("users")),
     oldOwnerId: v.optional(v.string()),
     googleEventId: v.optional(v.string()),
     description: v.optional(v.string()),
@@ -203,7 +204,7 @@ export const create = action({
         activityType: args.activityType,
         title: args.title,
         userId: String(authResult.userId),
-        ownerId: args.ownerId,
+        ownerId: args.ownerId as Id<"users">,
         actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
@@ -274,7 +275,7 @@ export const update = action({
         activityType: (updates.activityType ?? activity.activityType) as string,
         title: (updates.title ?? activity.title) as string,
         userId: String(authResult.userId),
-        newOwnerId: updates.ownerId,
+        newOwnerId: updates.ownerId as Id<"users"> | undefined,
         oldOwnerId: activity.ownerId as string | undefined,
         googleEventId: activity.googleEventId as string | undefined,
         actorLabel: authResult.userName ?? authResult.userEmail,

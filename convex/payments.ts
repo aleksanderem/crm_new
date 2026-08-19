@@ -1119,7 +1119,7 @@ export const _requestRefundAuthSideEffects = internalMutation({
       status: "pending" as const,
     };
 
-    const adminContacts: Array<{ userId: string; email: string; name: string | null }> = [];
+    const adminContacts: Array<{ userId: Id<"users">; email: string; name: string | null }> = [];
 
     for (const m of admins) {
       await createNotificationDirect(ctx, {
@@ -1134,7 +1134,7 @@ export const _requestRefundAuthSideEffects = internalMutation({
       const user = await ctx.db.get(m.userId);
       if (user?.email) {
         adminContacts.push({
-          userId: String(m.userId),
+          userId: m.userId,
           email: user.email,
           name: (user.name as string | undefined) ?? null,
         });
@@ -1869,7 +1869,7 @@ export const _resolveRefundAuthSideEffects = internalMutation({
     approverId: v.id("users"),
     approverName: v.string(),
     requestId: v.string(),
-    requesterId: v.string(),
+    requesterId: v.id("users"),
     patientId: v.string(),
     patientLabel: v.string(),
     amount: v.number(),

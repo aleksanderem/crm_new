@@ -454,7 +454,7 @@ export const _getAutomationPermission = internalAction({
 export const _createNotificationForRun = internalMutation({
   args: {
     organizationId: v.string(),
-    userId: v.string(),
+    userId: v.id("users"),
     type: v.string(),
     title: v.string(),
     message: v.string(),

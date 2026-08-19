@@ -234,7 +234,7 @@ export const sendReminder = internalMutation({
     // Send in-app notification to the employee assigned to the appointment
     await createNotificationDirect(ctx, {
       organizationId: String(reminder.organizationId),
-      userId: String(appointment.employeeId),
+      userId: appointment.employeeId as Id<"users">,
       type: "appointment_reminder",
       title: "Przypomnienie o wizycie",
       message: `${patientName} — ${treatmentName}, ${appointment.date} o ${appointment.startTime}`,
@@ -245,7 +245,7 @@ export const sendReminder = internalMutation({
     if (appointment.createdBy !== appointment.employeeId) {
       await createNotificationDirect(ctx, {
         organizationId: String(reminder.organizationId),
-        userId: String(appointment.createdBy),
+        userId: appointment.createdBy as Id<"users">,
         type: "appointment_reminder",
         title: "Przypomnienie o wizycie",
         message: `${patientName} — ${treatmentName}, ${appointment.date} o ${appointment.startTime}`,

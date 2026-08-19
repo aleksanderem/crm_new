@@ -4001,6 +4001,7 @@
         "cash": "Cash",
         "card": "Card",
         "transfer": "Transfer",
+        "package": "Package",
         "other": "Other"
       },
       "packageSales": "Package Sales",
@@ -4030,7 +4031,8 @@
       "netProductRevenue": "Net Revenue",
       "noProductSales": "No product sales in this period",
       "perProductBreakdown": "By Product",
-      "perEmployeeProductSales": "By Employee"
+      "perEmployeeProductSales": "By Employee",
+      "unattributedReturnsNote": "{{count}} return(s) totalling {{amount}} have no payment method and could not be deducted from any category"
     },
     "bodyChart": {
       "description": "Mark body areas related to the appointment",

@@ -12,13 +12,19 @@ interface DroppableSlotProps {
   children?: ReactNode;
   className?: string;
   style?: CSSProperties;
+  /**
+   * "time-slot" (default) — drop changes both date and time (day/week views).
+   * "date-slot" — drop changes only the date; the handler preserves the
+   *   appointment's original time (month view).
+   */
+  slotType?: "time-slot" | "date-slot";
 }
 
-export function DroppableSlot({ id, date, time, employeeId, children, className, style }: DroppableSlotProps) {
+export function DroppableSlot({ id, date, time, employeeId, children, className, style, slotType = "time-slot" }: DroppableSlotProps) {
   const { isOver, setNodeRef } = useDroppable({
     id,
     data: {
-      type: "time-slot",
+      type: slotType,
       date,
       time,
       employeeId,

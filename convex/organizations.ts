@@ -172,7 +172,7 @@ export const getMyOrganizations = query({
 
     const orgs = await Promise.all(
       memberships.map(async (m) => {
-        const org = await ctx.db.get(m.organizationId);
+        const org = await ctx.db.get(m.organizationId as Id<"organizations">);
         return org ? { ...org, role: m.role } : null;
       })
     );
@@ -185,7 +185,7 @@ export const getById = query({
   args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db.get(args.organizationId);
+    return await ctx.db.get(args.organizationId as Id<"organizations">);
   },
 });
 
@@ -220,7 +220,7 @@ export const update = action({
       // Supabase write is best-effort
     }
 
-    return args.organizationId;
+    return args.organizationId as Id<"organizations">;
   },
 });
 
@@ -246,7 +246,7 @@ export const _updateOrgInternal = internalMutation({
       }
     }
 
-    await ctx.db.patch(organizationId, { ...updates, updatedAt: Date.now() });
+    await ctx.db.patch(organizationId as Id<"organizations">, { ...updates, updatedAt: Date.now() });
 
     await logActivity({
       organizationId,

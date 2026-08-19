@@ -681,16 +681,19 @@ export const _updateSideEffects = internalMutation({
     lastName: v.string(),
     updatedBy: v.string(),
     actorLabel: v.optional(v.string()),
+    auditAction: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const updatedByUserId = args.updatedBy;
+    const auditAction = args.auditAction ?? "patient_updated";
+    const fullName = `${args.firstName} ${args.lastName}`;
 
     await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetPatient",
       entityId: args.patientId as Id<"gabinetPatients">,
       action: "updated",
-      description: `Updated patient ${args.firstName} ${args.lastName}`,
+      description: `Updated patient ${fullName}`,
       performedBy: updatedByUserId,
       actorLabel: args.actorLabel,
     });
@@ -698,10 +701,10 @@ export const _updateSideEffects = internalMutation({
     await logAudit(ctx, {
       organizationId: args.organizationId,
       userId: updatedByUserId,
-      action: "patient_updated",
+      action: auditAction,
       entityType: "gabinetPatient",
       entityId: args.patientId,
-      details: `Updated patient ${args.firstName} ${args.lastName}`,
+      details: `Updated patient ${fullName}`,
     });
   },
 });
@@ -1220,6 +1223,7 @@ export const reactivate = action({
         lastName: (patient.lastName as string) ?? "",
         updatedBy: String(authResult.userId),
         actorLabel: authResult.userName ?? authResult.userEmail,
+        auditAction: "patient_reactivated",
       });
     } catch (e) {
       console.error("[patients.reactivate] Side effects FAILED for patient", args.patientId, ":", e);

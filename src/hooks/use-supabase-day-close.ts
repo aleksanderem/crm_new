@@ -176,6 +176,50 @@ export function useSupabaseGabinetDayCloseByDate(
 }
 
 // ---------------------------------------------------------------------------
+// Most recent Day Close before a given date (used to pre-fill opening balance)
+// ---------------------------------------------------------------------------
+
+export function useSupabaseGabinetPreviousDayClose(
+  organizationId: string,
+  date: string,
+  options: { enabled?: boolean; locationId?: string } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true, locationId } = options;
+
+  return useQuery<GabinetDayClose | null, Error>({
+    queryKey: [
+      ...supabaseKeys.gabinetDayCloses.list(organizationId),
+      "previous",
+      date,
+      locationId ?? "",
+    ],
+    queryFn: async (): Promise<GabinetDayClose | null> => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      let q = client
+        .from("gabinet_day_closes")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .lt("date", date)
+        .order("date", { ascending: false });
+
+      if (locationId) {
+        q = q.eq("location_id", locationId);
+      } else {
+        q = q.is("location_id", null);
+      }
+
+      const { data, error } = await q.limit(1).maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return mapDayClose(data as Record<string, unknown>);
+    },
+    enabled: enabled && isReady && !!organizationId && !!date,
+  } satisfies UseQueryOptions<GabinetDayClose | null, Error>);
+}
+
+// ---------------------------------------------------------------------------
 // Recent Day Closes list
 // ---------------------------------------------------------------------------
 

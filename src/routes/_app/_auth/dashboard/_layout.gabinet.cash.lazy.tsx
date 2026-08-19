@@ -1,5 +1,5 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useAction } from "convex/react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -38,6 +38,7 @@ import {
   useSupabaseGabinetCashTransactions,
   useSupabaseGabinetDayCloseByDate,
   useSupabaseGabinetDayClosesList,
+  useSupabaseGabinetPreviousDayClose,
 } from "@/hooks/use-supabase-day-close";
 import { useSupabasePaymentsRevenueByDateRange } from "@/hooks/use-supabase-payments";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
@@ -425,6 +426,7 @@ function DayCloseFormCard({
   cashWithdrawals,
   canEdit,
   isAlreadyClosed,
+  previousCashNextOpening,
   onClosed,
 }: {
   organizationId: string;
@@ -435,14 +437,22 @@ function DayCloseFormCard({
   cashWithdrawals: number;
   canEdit: boolean;
   isAlreadyClosed: boolean;
+  previousCashNextOpening: number | null | undefined;
   onClosed: () => void;
 }) {
   const { t } = useTranslation();
   const createClose = useAction(api.gabinet.dayClose.createDayClose);
 
   const [openingBalance, setOpeningBalance] = useState("0");
+  const [openingBalanceTouched, setOpeningBalanceTouched] = useState(false);
   const [countedCash, setCountedCash] = useState("");
   const [cashNextOpening, setCashNextOpening] = useState("");
+
+  useEffect(() => {
+    if (!openingBalanceTouched && previousCashNextOpening != null) {
+      setOpeningBalance(previousCashNextOpening.toFixed(2));
+    }
+  }, [previousCashNextOpening, openingBalanceTouched]);
   const [cashToSafe, setCashToSafe] = useState("0");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -536,9 +546,17 @@ function DayCloseFormCard({
               step="0.01"
               placeholder="0,00"
               value={openingBalance}
-              onChange={(e) => setOpeningBalance(e.target.value)}
+              onChange={(e) => {
+                setOpeningBalance(e.target.value);
+                setOpeningBalanceTouched(true);
+              }}
               disabled={!canEdit}
             />
+            {previousCashNextOpening != null && !openingBalanceTouched && (
+              <p className="text-xs text-muted-foreground">
+                {t("gabinet.cash.openingBalancePreFilled")}
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <FieldLabel htmlFor="counted-cash">
@@ -1035,6 +1053,13 @@ function GabinetCash() {
       locationId: selectedLocationId,
     });
 
+  // Previous day close — used to pre-fill opening balance when not yet closed.
+  const { data: prevDayClose } = useSupabaseGabinetPreviousDayClose(
+    organizationId,
+    selectedDate,
+    { locationId: selectedLocationId, enabled: !loadingDayClose && !dayClose },
+  );
+
   const handleClosed = useCallback(() => {
     qc.invalidateQueries({
       queryKey: supabaseKeys.gabinetDayCloses.list(organizationId),
@@ -1138,6 +1163,7 @@ function GabinetCash() {
           cashWithdrawals={cashWithdrawals}
           canEdit={canEdit}
           isAlreadyClosed={isAlreadyClosed}
+          previousCashNextOpening={prevDayClose?.cashNextOpening ?? null}
           onClosed={handleClosed}
         />
       )}

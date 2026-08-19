@@ -4379,7 +4379,8 @@
       "cashSplit": "Podział gotówki",
       "cashNextOpening": "Zostaje w kasie na następny dzień",
       "cashToSafe": "Do Sejfu",
-      "cashSplitRequired": "Suma musi być równa policzonej gotówce"
+      "cashSplitRequired": "Suma musi być równa policzonej gotówce",
+      "openingBalancePreFilled": "Uzupełnione automatycznie z poprzedniego zamknięcia dnia"
     },
     "deliveries": {
       "loadError": "Nie udało się załadować dostawy.",

@@ -673,6 +673,9 @@ export const refund = action({
     organizationId: v.string(),
     paymentId: v.string(),
     reason: v.optional(v.string()),
+    // Optional partial-refund amount (issue #5595). Defaults to the full
+    // payment amount. Must be positive and must not exceed the original charge.
+    refundAmount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runAction(
@@ -688,6 +691,19 @@ export const refund = action({
 
     if (payment.status !== "completed") {
       throw new Error(`Cannot refund a ${payment.status} payment`);
+    }
+
+    const fullAmount = payment.amount as number;
+    const effectiveRefundAmount =
+      args.refundAmount !== undefined ? args.refundAmount : fullAmount;
+
+    if (!Number.isFinite(effectiveRefundAmount) || effectiveRefundAmount <= 0) {
+      throw new Error("Refund amount must be positive");
+    }
+    if (effectiveRefundAmount > fullAmount + 0.005) {
+      throw new Error(
+        `Refund amount ${effectiveRefundAmount} exceeds payment amount ${fullAmount}`,
+      );
     }
 
     // Block refund on the secondary leg of a split payment (issue #3776).
@@ -713,7 +729,7 @@ export const refund = action({
     const now = Date.now();
     await db.patch("payments", args.paymentId, {
       status: "refunded",
-      refundAmount: payment.amount,
+      refundAmount: effectiveRefundAmount,
       refundedAt: now,
       notes: args.reason
         ? `${payment.notes ? (payment.notes as string) + "\n" : ""}Refund: ${args.reason}`
@@ -727,7 +743,7 @@ export const refund = action({
         paymentId: args.paymentId,
         organizationId: args.organizationId,
         userId: authResult.userId,
-        amount: payment.amount as number,
+        amount: effectiveRefundAmount,
         reason: args.reason,
       });
     } catch {

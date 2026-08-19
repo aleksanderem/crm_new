@@ -1416,75 +1416,96 @@ export const _purgeExpiredPatients = internalAction({
       const GDPR_REDACTED = "[RODO: dane usunięte]";
 
       for (const patient of expiredPatients) {
-        const anonSuffix = patient.id.slice(-6).toUpperCase();
-
-        await db.patch("gabinetPatients", patient.id, {
-          firstName: "ANONIMOWY",
-          lastName: `#${anonSuffix}`,
-          email: `deleted-${anonSuffix}@gdpr.invalid`,
-          phone: null,
-          pesel: null,
-          dateOfBirth: null,
-          address: null,
-          medicalNotes: null,
-          allergies: null,
-          bloodType: null,
-          emergencyContactName: null,
-          emergencyContactPhone: null,
-          referralSource: null,
-          referredByPatientId: null,
-          contactId: null,
-          tags: null,
-          tagIds: null,
-          categoryId: null,
-          customFields: null,
-          updatedAt: nowMs,
-        });
-
-        await client
-          .from("gabinet_portal_sessions")
-          .delete()
-          .eq("organization_id", orgId)
-          .eq("patient_id", patient.id);
-
-        await client
-          .from("activities")
-          .update({ description: GDPR_REDACTED })
-          .eq("organization_id", orgId)
-          .eq("entity_type", "gabinetPatient")
-          .eq("entity_id", patient.id);
-
-        await client
-          .from("notes")
-          .update({ content: GDPR_REDACTED, updated_at: nowMs })
-          .eq("organization_id", orgId)
-          .eq("entity_type", "gabinetPatient")
-          .eq("entity_id", patient.id);
-
-        await client
-          .from("gabinet_appointments")
-          .update({
-            interview_notes: null,
-            notes: null,
-            internal_notes: null,
-            clinical_remarks: null,
-            body_chart_data: null,
-            treatment_parameter_values: null,
-          })
-          .eq("organization_id", orgId)
-          .eq("patient_id", patient.id);
-
-        const originalName = `${patient.firstName} ${patient.lastName}`.trim();
         try {
-          await ctx.runMutation(internal.gabinet.patients._gdprEraseSideEffects, {
-            patientId: patient.id,
-            organizationId: orgId,
-            originalName,
-            erasedBy: performedBy,
+          const anonSuffix = patient.id.slice(-6).toUpperCase();
+
+          await db.patch("gabinetPatients", patient.id, {
+            firstName: "ANONIMOWY",
+            lastName: `#${anonSuffix}`,
+            email: `deleted-${anonSuffix}@gdpr.invalid`,
+            phone: null,
+            pesel: null,
+            dateOfBirth: null,
+            address: null,
+            medicalNotes: null,
+            allergies: null,
+            bloodType: null,
+            emergencyContactName: null,
+            emergencyContactPhone: null,
+            referralSource: null,
+            referredByPatientId: null,
+            contactId: null,
+            tags: null,
+            tagIds: null,
+            categoryId: null,
+            customFields: null,
+            updatedAt: nowMs,
           });
+
+          await client
+            .from("gabinet_portal_sessions")
+            .delete()
+            .eq("organization_id", orgId)
+            .eq("patient_id", patient.id);
+
+          await client
+            .from("activities")
+            .update({ description: GDPR_REDACTED })
+            .eq("organization_id", orgId)
+            .eq("entity_type", "gabinetPatient")
+            .eq("entity_id", patient.id);
+
+          await client
+            .from("notes")
+            .update({ content: GDPR_REDACTED, updated_at: nowMs })
+            .eq("organization_id", orgId)
+            .eq("entity_type", "gabinetPatient")
+            .eq("entity_id", patient.id);
+
+          await client
+            .from("gabinet_appointments")
+            .update({
+              interview_notes: null,
+              notes: null,
+              internal_notes: null,
+              clinical_remarks: null,
+              body_chart_data: null,
+              treatment_parameter_values: null,
+            })
+            .eq("organization_id", orgId)
+            .eq("patient_id", patient.id);
+
+          const originalName = `${patient.firstName} ${patient.lastName}`.trim();
+          try {
+            await ctx.runMutation(internal.gabinet.patients._gdprEraseSideEffects, {
+              patientId: patient.id,
+              organizationId: orgId,
+              originalName,
+              erasedBy: performedBy,
+            });
+          } catch (e) {
+            await logError(ctx, e, {
+              scope: "gabinet.patients",
+              fnName: "_purgeExpiredPatients._gdprEraseSideEffects",
+              organizationId: orgId,
+              argsJson: JSON.stringify({ patientId: patient.id }),
+            });
+            console.error(
+              "[patients._purgeExpiredPatients] Side effects failed for patient",
+              patient.id,
+              ":",
+              e,
+            );
+          }
         } catch (e) {
+          await logError(ctx, e, {
+            scope: "gabinet.patients",
+            fnName: "_purgeExpiredPatients",
+            organizationId: orgId,
+            argsJson: JSON.stringify({ patientId: patient.id }),
+          });
           console.error(
-            "[patients._purgeExpiredPatients] Side effects failed for patient",
+            "[patients._purgeExpiredPatients] Anonymization FAILED for patient",
             patient.id,
             ":",
             e,

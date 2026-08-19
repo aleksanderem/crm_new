@@ -36,6 +36,17 @@ import { useSidebarDispatch } from "@/components/layout/sidebar-context";
 import { Input } from "@/components/ui/input";
 import { Label as FieldLabel } from "@/components/ui/label";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  bucketizePairs,
+  computeDailyStats,
+  computeEmployeeStats,
+  computePaymentMethodBreakdown,
+  computeStatusStats,
+  computeTreatmentStats,
+  getPresetDateRange,
+  slugify,
+  type DateRangeKey,
+} from "./gabinet-report-utils";
 import { useTranslation } from "react-i18next";
 import { EllipsisVerticalIcon } from "@/lib/ez-icons";
 import {
@@ -139,58 +150,6 @@ const UTILIZATION_COLORS = [
   "var(--chart-5)",
 ];
 
-type DateRangeKey = "today" | "yesterday" | "7d" | "30d" | "90d" | "365d" | "custom";
-
-function getPresetDateRange(key: Exclude<DateRangeKey, "custom">): {
-  startDate: string;
-  endDate: string;
-} {
-  const today = new Date();
-  if (key === "today") {
-    const iso = today.toISOString().split("T")[0];
-    return { startDate: iso, endDate: iso };
-  }
-  if (key === "yesterday") {
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const iso = yesterday.toISOString().split("T")[0];
-    return { startDate: iso, endDate: iso };
-  }
-  const past = new Date(today);
-  const days = key === "7d" ? 7 : key === "30d" ? 30 : key === "90d" ? 90 : 365;
-  past.setDate(past.getDate() - days);
-  return {
-    startDate: past.toISOString().split("T")[0],
-    endDate: today.toISOString().split("T")[0],
-  };
-}
-
-function slugify(s: string): string {
-  return (
-    s
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "") || "other"
-  );
-}
-
-function bucketizePairs(
-  pairs: [string, number][],
-): { index: number; count: number }[] {
-  if (!pairs.length)
-    return Array.from({ length: 7 }, (_, i) => ({ index: i, count: 0 }));
-  const sorted = [...pairs].sort((a, b) => a[0]!.localeCompare(b[0]!));
-  const bucketSize = Math.max(1, Math.ceil(sorted.length / 7));
-  const buckets: { index: number; count: number }[] = [];
-  for (let i = 0; i < sorted.length; i += bucketSize) {
-    const slice = sorted.slice(i, i + bucketSize);
-    buckets.push({
-      index: buckets.length,
-      count: slice.reduce((s, d) => s + d[1], 0),
-    });
-  }
-  return buckets;
-}
 
 function CardMenu() {
   const { t } = useTranslation();
@@ -1854,26 +1813,10 @@ function GabinetReports() {
   }, [packagesListData]);
 
   // Treatment stats: count + estimated revenue (completed only, gratis/barter excluded from revenue)
-  const treatmentStats = useMemo(() => {
-    if (!appointments) return [];
-    const map = new Map<string, { count: number; revenue: number }>();
-    for (const a of appointments) {
-      const tid = a.treatmentId as string;
-      const prev = map.get(tid) ?? { count: 0, revenue: 0 };
-      const price = a.status === "completed" && !gratisBarterIds?.has(a._id)
-        ? (a.priceAtBooking ?? treatmentMap.get(tid)?.price ?? 0)
-        : 0;
-      map.set(tid, { count: prev.count + 1, revenue: prev.revenue + price });
-    }
-    return Array.from(map.entries())
-      .map(([id, stats]) => ({
-        name: treatmentMap.get(id)?.name ?? id,
-        count: stats.count,
-        revenue: stats.revenue,
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-  }, [appointments, treatmentMap, gratisBarterIds]);
+  const treatmentStats = useMemo(
+    () => computeTreatmentStats(appointments ?? [], treatmentMap, gratisBarterIds ?? new Set()),
+    [appointments, treatmentMap, gratisBarterIds]
+  );
 
   const topByRevenue = useMemo(
     () =>
@@ -1884,50 +1827,22 @@ function GabinetReports() {
   );
 
   // Status distribution
-  const statusStats = useMemo(() => {
-    if (!appointments) return [];
-    const map = new Map<string, number>();
-    for (const a of appointments) {
-      map.set(a.status, (map.get(a.status) ?? 0) + 1);
-    }
-    return Array.from(map.entries())
-      .map(([status, count]) => ({ status, count }))
-      .sort((a, b) => b.count - a.count);
-  }, [appointments]);
+  const statusStats = useMemo(
+    () => computeStatusStats(appointments ?? []),
+    [appointments]
+  );
 
   // Daily appointment counts
-  const dailyStats = useMemo(() => {
-    if (!appointments) return [];
-    const map = new Map<string, number>();
-    for (const a of appointments) {
-      map.set(a.date, (map.get(a.date) ?? 0) + 1);
-    }
-    return Array.from(map.entries())
-      .map(([date, count]) => ({ date, count }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }, [appointments]);
+  const dailyStats = useMemo(
+    () => computeDailyStats(appointments ?? []),
+    [appointments]
+  );
 
   // Employee utilization
-  const employeeStats = useMemo(() => {
-    if (!appointments) return [];
-    const map = new Map<string, { count: number; completedCount: number }>();
-    for (const a of appointments) {
-      const uid = a.employeeId as string;
-      const prev = map.get(uid) ?? { count: 0, completedCount: 0 };
-      map.set(uid, {
-        count: prev.count + 1,
-        completedCount:
-          prev.completedCount + (a.status === "completed" ? 1 : 0),
-      });
-    }
-    return Array.from(map.entries())
-      .map(([userId, stats]) => ({
-        name: employeeMap.get(userId) ?? userId,
-        count: stats.count,
-        completedCount: stats.completedCount,
-      }))
-      .sort((a, b) => b.count - a.count);
-  }, [appointments, employeeMap]);
+  const employeeStats = useMemo(
+    () => computeEmployeeStats(appointments ?? [], employeeMap),
+    [appointments, employeeMap]
+  );
 
   // Revenue: relative to the selected date range (endDate = last day of range)
   const sevenDaysBeforeEnd = useMemo(() => {
@@ -1979,24 +1894,10 @@ function GabinetReports() {
   }, [actualPayments, sevenDaysBeforeEnd, endDate]);
 
   // Maps raw payment_method values to display categories (cash/card/transfer/package/other)
-  const paymentMethodBreakdown = useMemo(() => {
-    const categoryOf = (method: string | undefined): string => {
-      if (method === "cash" || method === "card" || method === "transfer" || method === "package")
-        return method;
-      return "other";
-    };
-    const map = new Map<string, { total: number; count: number }>();
-    for (const p of actualPayments ?? []) {
-      const cat = categoryOf(p.paymentMethod);
-      const prev = map.get(cat) ?? { total: 0, count: 0 };
-      map.set(cat, { total: prev.total + p.amount, count: prev.count + 1 });
-    }
-    return (["cash", "card", "transfer", "package", "other"] as const).map((key) => ({
-      method: key,
-      total: map.get(key)?.total ?? 0,
-      count: map.get(key)?.count ?? 0,
-    }));
-  }, [actualPayments]);
+  const paymentMethodBreakdown = useMemo(
+    () => computePaymentMethodBreakdown(actualPayments ?? []),
+    [actualPayments]
+  );
 
   const totalAppointments = appointments?.length ?? 0;
   const completedCount =

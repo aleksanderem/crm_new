@@ -37,6 +37,7 @@
     "check:convex-auth": "node scripts/check-convex-auth.mjs",
     "check:convex-db-reads": "node scripts/check-convex-db-reads.mjs",
     "check:convex-db-writes": "node scripts/check-convex-db-writes.mjs",
+    "check:i18n-coverage": "node scripts/check-i18n-coverage.mjs",
     "migrations:check": "node scripts/supabase-migrations.mjs check",
     "migrations:apply": "node scripts/supabase-migrations.mjs apply",
     "test": "npm run test:unit && npm run test:e2e",

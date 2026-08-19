@@ -1,0 +1,39 @@
+name: i18n Coverage Gate
+
+# Ensures every static i18n key referenced in src/ exists in all supported
+# locale files under public/locales/. Catches two classes of missing keys:
+#
+#   1. formatActionError's `key: "..."` property — not covered by TypeScript's
+#      type-checker (src/i18next.d.ts only types the t() call, not raw strings)
+#   2. PL locale gaps — keys present in code and EN but absent from pl/translation.json
+#
+# The TypeScript typecheck job already enforces t("key") coverage for the EN
+# locale; this gate covers what TypeScript cannot reach.
+#
+# See scripts/check-i18n-coverage.mjs and issue #5522.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  i18n-coverage:
+    name: check:i18n-coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Check all static i18n keys exist in every locale
+        run: npm run check:i18n-coverage

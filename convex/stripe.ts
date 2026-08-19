@@ -14,6 +14,7 @@ import { currencyValidator, intervalValidator, PLANS, PRODUCT_KEYS } from "@cvx/
 import { api, internal } from "~/convex/_generated/api";
 import { SITE_URL, STRIPE_SECRET_KEY } from "@cvx/env";
 import { asyncMap } from "convex-helpers";
+import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 const TRIAL_PERIOD_DAYS = 14;
 
@@ -60,7 +61,24 @@ export const PREAUTH_updateCustomerId = internalMutation({
     customerId: v.string(),
   },
   handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
     await ctx.db.patch(args.userId, { customerId: args.customerId });
+    if (!user) return null;
+    return {
+      userId: String(args.userId),
+      email: user.email,
+      name: user.name,
+      username: user.username,
+      image: user.image,
+      imageStorageId: user.imageId ? String(user.imageId) : undefined,
+      phone: user.phone,
+      isAnonymous: user.isAnonymous,
+      customerId: args.customerId,
+      language: user.language,
+      theme: user.theme,
+      timezone: user.timezone,
+      createdAt: Math.floor(user._creationTime),
+    };
   },
 });
 
@@ -302,33 +320,32 @@ export const PREAUTH_deleteSubscription = internalMutation({
   },
 });
 
-/**
- * Upserts a per-organization per-product subscription record.
- * Called from Stripe webhook handlers to keep the productSubscriptions table
- * in sync with actual Stripe subscription state.
- */
-export const PREAUTH_upsertProductSubscription = internalMutation({
-  args: {
-    organizationId: v.id("organizations"),
-    productId: v.string(),
-    stripeSubscriptionId: v.string(),
-    status: v.union(
-      v.literal("active"),
-      v.literal("trialing"),
-      v.literal("past_due"),
-      v.literal("canceled"),
-      v.literal("incomplete"),
-    ),
-    currentPeriodStart: v.optional(v.number()),
-    currentPeriodEnd: v.optional(v.number()),
-    cancelAtPeriodEnd: v.boolean(),
-    trialEndDate: v.optional(v.number()),
-  },
+const upsertProductSubscriptionArgs = {
+  organizationId: v.string(),
+  productId: v.string(),
+  stripeSubscriptionId: v.string(),
+  status: v.union(
+    v.literal("active"),
+    v.literal("trialing"),
+    v.literal("past_due"),
+    v.literal("canceled"),
+    v.literal("incomplete"),
+  ),
+  currentPeriodStart: v.optional(v.number()),
+  currentPeriodEnd: v.optional(v.number()),
+  cancelAtPeriodEnd: v.boolean(),
+  trialEndDate: v.optional(v.number()),
+};
+
+// Convex-side write kept as a mutation so verifyProductAccess (QueryCtx) sees
+// the updated row immediately within the same deployment.
+export const _upsertProductSubscriptionInternal = internalMutation({
+  args: upsertProductSubscriptionArgs,
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("productSubscriptions")
       .withIndex("by_orgAndProduct", (q) =>
-        q.eq("organizationId", args.organizationId).eq("productId", args.productId)
+        q.eq("organizationId", args.organizationId).eq("productId", args.productId),
       )
       .first();
 
@@ -356,6 +373,60 @@ export const PREAUTH_upsertProductSubscription = internalMutation({
         createdAt: now,
         updatedAt: now,
       });
+    }
+  },
+});
+
+/**
+ * Upserts a per-organization per-product subscription record.
+ * Called from Stripe webhook handlers to keep the productSubscriptions table
+ * in sync with actual Stripe subscription state.
+ * Dual-writes: Convex (for verifyProductAccess reads) and Supabase (primary store).
+ */
+export const PREAUTH_upsertProductSubscription = internalAction({
+  args: upsertProductSubscriptionArgs,
+  handler: async (ctx, args) => {
+    // Convex write (dual-write requirement: verifyProductAccess reads ctx.db).
+    await ctx.runMutation(internal.stripe._upsertProductSubscriptionInternal, args);
+
+    // Mirror to Supabase (primary data store).
+    const db = createSupabaseDb();
+    try {
+      const now = Date.now();
+      const orgIdStr = String(args.organizationId);
+
+      const existing = await db
+        .query("productSubscriptions")
+        .eq("organizationId", orgIdStr)
+        .eq("productId", args.productId)
+        .unique();
+
+      if (existing) {
+        await db.patch("productSubscriptions", String(existing._id), {
+          stripeSubscriptionId: args.stripeSubscriptionId,
+          status: args.status,
+          currentPeriodStart: args.currentPeriodStart ?? null,
+          currentPeriodEnd: args.currentPeriodEnd ?? null,
+          cancelAtPeriodEnd: args.cancelAtPeriodEnd,
+          trialEndDate: args.trialEndDate ?? null,
+          updatedAt: now,
+        });
+      } else {
+        await db.insert("productSubscriptions", {
+          organizationId: orgIdStr,
+          productId: args.productId,
+          stripeSubscriptionId: args.stripeSubscriptionId,
+          status: args.status,
+          currentPeriodStart: args.currentPeriodStart ?? null,
+          currentPeriodEnd: args.currentPeriodEnd ?? null,
+          cancelAtPeriodEnd: args.cancelAtPeriodEnd,
+          trialEndDate: args.trialEndDate ?? null,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    } catch (e) {
+      console.error("[stripe.PREAUTH_upsertProductSubscription] Supabase write failed:", e);
     }
   },
 });
@@ -397,10 +468,20 @@ export const PREAUTH_createFreeStripeSubscription = internalAction({
       cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
     });
 
-    await ctx.runMutation(internal.stripe.PREAUTH_updateCustomerId, {
+    const userData = await ctx.runMutation(internal.stripe.PREAUTH_updateCustomerId, {
       userId: args.userId,
       customerId: args.customerId,
     });
+    if (userData) {
+      try {
+        await ctx.runAction(internal.supabase.users.writeUserToSupabase, {
+          ...userData,
+          updatedAt: Date.now(),
+        });
+      } catch (e) {
+        console.error("[stripe] Supabase user write failed:", e);
+      }
+    }
   },
 });
 
@@ -453,7 +534,7 @@ export const getCurrentUserSubscription = internalQuery({
 export const createSubscriptionCheckout = action({
   args: {
     userId: v.id("users"),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     planId: v.id("plans"),
     planInterval: intervalValidator,
     currency: currencyValidator,

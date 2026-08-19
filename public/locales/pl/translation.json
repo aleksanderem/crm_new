@@ -85,7 +85,9 @@
       "invalidArguments": "Nieprawidłowe dane. Sprawdź formularz i spróbuj ponownie.",
       "invalidField": "Nieprawidłowe dane: {{field}} — {{reason}}.",
       "schemaCache": "Brak kolumny w schemacie bazy — najpewniej nie zastosowano migracji. Uruchom `npm run migrations:apply` i odśwież stronę.",
-      "storage": "Błąd magazynu danych. Spróbuj ponownie."
+      "storage": "Błąd magazynu danych. Spróbuj ponownie.",
+      "connectionLost": "Wystąpił chwilowy problem z połączeniem. Spróbuj ponownie za moment.",
+      "saveFailed": "Błąd magazynu danych. Spróbuj ponownie."
     },
     "previous": "Poprzedni",
     "next": "Następny",
@@ -134,6 +136,7 @@
       "reports": "Raporty",
       "scheduling": "Godziny pracy",
       "leaves": "Urlopy",
+      "myLeaves": "Moje urlopy",
       "documentTemplates": "Szablony dokumentów",
       "cash": "Kasa"
     },
@@ -572,7 +575,8 @@
       "notes": "Notatki"
     },
     "errors": {
-      "createFailed": "Nie udało się utworzyć kontaktu."
+      "createFailed": "Nie udało się utworzyć kontaktu.",
+      "updateFailed": "Nie udało się zaktualizować kontaktu."
     }
   },
   "companies": {
@@ -620,7 +624,8 @@
       "notes": "Notatki"
     },
     "errors": {
-      "createFailed": "Nie udało się utworzyć firmy."
+      "createFailed": "Nie udało się utworzyć firmy.",
+      "updateFailed": "Nie udało się zaktualizować firmy."
     }
   },
   "activities": {
@@ -668,7 +673,12 @@
       "showCompleted": "Pokaż ukończone",
       "hideCompleted": "Ukryj ukończone"
     },
-    "pageTitle": "Aktywności"
+    "pageTitle": "Aktywności",
+    "errors": {
+      "createFailed": "Nie udało się utworzyć aktywności.",
+      "updateFailed": "Nie udało się zaktualizować aktywności.",
+      "deleteFailed": "Nie udało się usunąć aktywności."
+    }
   },
   "documents": {
     "title": "Dokumenty",
@@ -753,7 +763,11 @@
       "errorGeneric": "Wystąpił nieoczekiwany błąd",
       "formTitle": "Formularz",
       "fillPrompt": "Uzupełnij wymagane pola, a następnie przejdź do podpisu.",
-      "renderError": "Nie udało się wyrenderować dokumentu. Skontaktuj się z gabinetem."
+      "renderError": "Nie udało się wyrenderować dokumentu. Skontaktuj się z gabinetem.",
+      "otpSendError": "Nie udało się wysłać kodu weryfikacyjnego. Spróbuj ponownie.",
+      "otpVerifyError": "Nieprawidłowy kod lub błąd połączenia. Spróbuj ponownie.",
+      "signError": "Nie udało się podpisać dokumentu. Sprawdź połączenie z Internetem i spróbuj ponownie.",
+      "submitError": "Nie udało się dokończyć podpisywania dokumentu. Sprawdź połączenie z Internetem i spróbuj ponownie."
     },
     "document": "Dokument",
     "generate": "Generuj",
@@ -868,6 +882,19 @@
       "filled": "Dokument wypełniony i wysłany do klienta do podpisu.",
       "sent": "Dokument wysłany do klienta do podpisu.",
       "later": "Wypełnię później"
+    },
+    "void": "Unieważnij",
+    "voided": "Dokument unieważniony",
+    "voidFailed": "Nie udało się unieważnić dokumentu",
+    "voidDialogTitle": "Unieważnij dokument",
+    "voidDialogDescription": "Czy na pewno chcesz unieważnić ten dokument? Operacja jest nieodwracalna.",
+    "resend": "Wyślij ponownie",
+    "view": "Podgląd",
+    "audit": {
+      "created": "Utworzono",
+      "sent": "Wysłano do podpisu",
+      "signed": "Podpisano",
+      "voided": "Unieważniono"
     }
   },
   "products": {
@@ -915,7 +942,10 @@
       "descriptionPlaceholder": "Opis produktu..."
     },
     "errors": {
-      "saveFailed": "Nie udało się zapisać produktu."
+      "saveFailed": "Nie udało się zapisać produktu.",
+      "createFailed": "Nie udało się utworzyć produktu.",
+      "deleteFailed": "Nie udało się usunąć produktu.",
+      "toggleFailed": "Nie udało się zmienić aktywności produktu."
     },
     "stock": {
       "column": "Stan",
@@ -941,6 +971,9 @@
         "success": "Stan magazynowy zaktualizowany.",
         "negativeWarning": "Stan magazynowy spadł poniżej zera. Sprawdź historię ruchów i skoryguj braki.",
         "error": "Nie udało się zaktualizować stanu magazynowego."
+      },
+      "correction": {
+        "error": "Nie udało się zapisać korekty stanu."
       }
     },
     "simpleFilter": {
@@ -1026,6 +1059,9 @@
       "note": "Notatki",
       "notePlaceholder": "Dodaj notatki z połączenia...",
       "logCall": "Zarejestruj połączenie"
+    },
+    "errors": {
+      "createFailed": "Nie udało się utworzyć połączenia."
     }
   },
   "pipelines": {
@@ -1595,6 +1631,8 @@
       "requiresSignature": "Wymaga podpisu",
       "signatureMethodLabel": "Metoda podpisu",
       "signerRoleLabel": "Rola podpisującego",
+      "isOrgRequired": "Wymagany dla całej organizacji",
+      "isOrgRequiredHint": "Dokument będzie automatycznie wymagany dla każdego klienta niezależnie od wybranego zabiegu. Po podpisaniu nie będzie wymagany ponownie.",
       "variableBindingsTitle": "Powiązania zmiennych",
       "variableBindingsDescription": "Przypisz zmienne formularza do pól podmiotu w celu automatycznego uzupełniania.",
       "colName": "Nazwa",
@@ -1646,15 +1684,25 @@
       },
       "categories": {
         "intake": "Wywiad",
-        "consent": "Zgoda",
-        "protocol": "Protokół zabiegu",
+        "consent": "Zgoda na zabieg",
+        "protocol": "Karta wykonania zabiegu",
         "medical_record": "Karta medyczna",
         "prescription": "Recepta",
         "referral": "Skierowanie",
         "contract": "Umowa",
         "invoice": "Faktura",
-        "custom": "Własny"
+        "aftercare": "Zalecenia pozabiegowe",
+        "consent_photo": "Zgoda fotograficzna",
+        "consent_marketing": "Zgoda marketingowa",
+        "declaration": "Oświadczenie",
+        "custom": "Inny"
       },
+      "filterAll": "Wszystkie",
+      "filterActive": "Aktywne",
+      "filterInactive": "Nieaktywne",
+      "preview": "Podgląd",
+      "assignToTreatment": "Przypisz do zabiegu",
+      "assignToTreatmentSoon": "Dostępne w D25",
       "signatureMethods": {
         "click": "Kliknięcie",
         "sms": "Kod SMS",
@@ -2195,14 +2243,22 @@
     "emptyReasons": "Brak zdefiniowanych powodów przegrania.",
     "confirmDelete": "Usunąć ten powód?",
     "reasonRequired": "Wymagaj podania powodu przy przegrywaniu transakcji",
-    "allowCustom": "Zezwalaj na własne (tekstowe) powody"
+    "allowCustom": "Zezwalaj na własne (tekstowe) powody",
+    "errors": {
+      "createFailed": "Nie udało się utworzyć powodu utraty.",
+      "updateFailed": "Nie udało się zaktualizować powodu utraty."
+    }
   },
   "sources": {
     "title": "Źródła",
     "description": "Zarządzaj źródłami pozyskiwania kontaktów i transakcji.",
     "addSource": "Dodaj źródło",
     "emptySources": "Brak zdefiniowanych źródeł.",
-    "confirmDelete": "Usunąć to źródło?"
+    "confirmDelete": "Usunąć to źródło?",
+    "errors": {
+      "createFailed": "Nie udało się utworzyć źródła.",
+      "updateFailed": "Nie udało się zaktualizować źródła."
+    }
   },
   "globalSearch": {
     "placeholder": "Szukaj kontaktów, firm, transakcji...",
@@ -2422,7 +2478,11 @@
     "sentDate": "Wysłano",
     "joinedDate": "Dołączył",
     "upgrade": "Rozbuduj plan",
-    "remainingSeats": "Pozostało {{count}} miejsc(e)"
+    "remainingSeats": "Pozostało {{count}} miejsc(e)",
+    "errors": {
+      "resendFailed": "Nie udało się wysłać zaproszenia.",
+      "cancelFailed": "Nie udało się anulować zaproszenia."
+    }
   },
   "orgSettings": {
     "title": "Organizacja",
@@ -2463,7 +2523,10 @@
     "syncNow": "Synchronizuj teraz",
     "syncing": "Synchronizacja...",
     "oauthSuccess": "Konto Google zostało połączone pomyślnie.",
-    "oauthError": "Nie udało się połączyć konta Google. Spróbuj ponownie."
+    "oauthError": "Nie udało się połączyć konta Google. Spróbuj ponownie.",
+    "errors": {
+      "disconnectFailed": "Nie udało się odłączyć integracji."
+    }
   },
   "csv": {
     "import": "Importuj",
@@ -2475,7 +2538,6 @@
     "importing": "Importowanie...",
     "importComplete": "Import zakończony",
     "importSuccess": "Pomyślnie zaimportowano {{count}} rekordów.",
-    "errors": "Wystąpiło {{count}} błąd(ów) podczas importu.",
     "downloadTemplate": "Pobierz szablon",
     "dragOrClick": "Przeciągnij i upuść plik CSV lub kliknij, aby przeglądać",
     "csvFilesOnly": "Tylko pliki CSV",
@@ -2490,7 +2552,11 @@
     "close": "Zamknij",
     "startImport": "Rozpocznij import",
     "next": "Dalej",
-    "back": "Wstecz"
+    "back": "Wstecz",
+    "errorsLabel": "Wystąpiło {{count}} błąd(ów) podczas importu.",
+    "errors": {
+      "exportFailed": "Nie udało się wyeksportować danych do CSV."
+    }
   },
   "gabinet": {
     "patients": {
@@ -2566,6 +2632,8 @@
       "referralSourceCustomGroup": "Własne źródła",
       "referredBy": "Skierowany przez",
       "linkedContact": "Powiązany kontakt CRM",
+      "contactSearchPlaceholder": "Szukaj kontaktu CRM...",
+      "contactSearchHint": "Opcjonalnie: powiąż nowego klienta z istniejącym kontaktem CRM.",
       "address": "Adres",
       "street": "Ulica",
       "city": "Miasto",
@@ -2579,7 +2647,8 @@
         "loyalty": "Lojalność",
         "credit": "Saldo",
         "activity": "Aktywność",
-        "billing": "Rozliczenia"
+        "billing": "Rozliczenia",
+        "notes": "Notatki"
       },
       "billing": {
         "title": "Rozliczenia",
@@ -2625,7 +2694,8 @@
       "noMedicalInfo": "Brak informacji medycznych",
       "errors": {
         "createFailed": "Nie udało się dodać klienta.",
-        "saveFailed": "Nie udało się zapisać zmian klienta."
+        "saveFailed": "Nie udało się zapisać zmian klienta.",
+        "deleteFailed": "Nie udało się usunąć pacjenta."
       },
       "merge": {
         "action": "Scal z...",
@@ -2666,7 +2736,12 @@
           "medicalNotes": "Notatki medyczne",
           "referralSource": "Źródło polecenia"
         }
-      }
+      },
+      "preferredLocation": "Preferowana lokalizacja",
+      "smsConsent": "Zgoda na kontakt SMS",
+      "smsConsentHint": "Klient wyraził zgodę na wysyłanie przypomnień i informacji przez SMS na podany numer telefonu.",
+      "reactivate": "Przywróć klienta",
+      "reactivateSuccess": "Klient został przywrócony."
     },
     "treatments": {
       "title": "Zabiegi",
@@ -2741,7 +2816,10 @@
         "invalidField": "Nie udało się zapisać zabiegu: {{field}} — {{reason}}.",
         "schemaCache": "Brak kolumny w schemacie bazy — najpewniej nie zastosowano migracji. Uruchom `npm run migrations:apply` i odśwież stronę.",
         "storage": "Nie udało się zapisać zabiegu — błąd magazynu danych. Spróbuj ponownie.",
-        "purchaseFailed": "Nie udało się sprzedać zabiegu."
+        "purchaseFailed": "Nie udało się sprzedać zabiegu.",
+        "productsSaveFailed": "Nie udało się zapisać produktów.",
+        "productsSaveFailedDetail": "Nie udało się zapisać produktów zabiegu.",
+        "deleteFailed": "Nie udało się usunąć zabiegu."
       },
       "patientTreatments": "Zabiegi",
       "addOrSell": "Dodaj/Sprzedaj",
@@ -2945,6 +3023,7 @@
       "title": "Zarządzanie urlopami",
       "description": "Zarządzaj urlopami i dniami wolnymi pracowników",
       "requestLeave": "Złóż wniosek",
+      "addLeaveRequest": "Dodaj wniosek urlopowy",
       "type": "Typ",
       "startDate": "Data rozpoczęcia",
       "endDate": "Data zakończenia",
@@ -2980,10 +3059,13 @@
       "confirmRejectDesc": "Czy na pewno chcesz odrzucić ten wniosek urlopowy? Pracownik zostanie powiadomiony.",
       "confirmDeleteTitle": "Usuń wniosek urlopowy",
       "confirmDeleteDesc": "Czy na pewno chcesz usunąć ten wniosek urlopowy? Tej operacji nie można cofnąć.",
+      "withdraw": "Wycofaj wniosek",
+      "withdrawn": "Wniosek urlopowy wycofany",
       "errors": {
         "createFailed": "Nie udało się utworzyć wniosku urlopowego.",
         "statusChangeFailed": "Nie udało się zaktualizować statusu wniosku urlopowego.",
-        "deleteFailed": "Nie udało się usunąć wniosku urlopowego."
+        "deleteFailed": "Nie udało się usunąć wniosku urlopowego.",
+        "withdrawFailed": "Nie udało się wycofać wniosku urlopowego."
       }
     },
     "overtime": {
@@ -3051,6 +3133,15 @@
       "confirmDeactivate": "Czy na pewno chcesz dezaktywować tego pracownika?",
       "deactivated": "Pracownik dezaktywowany",
       "hireDate": "Data zatrudnienia",
+      "performsServices": "Czy pracownik wykonuje usługi lub zabiegi?",
+      "officesAndLocations": "Gabinety i lokalizacje",
+      "location": "Lokalizacja",
+      "locationPlaceholder": "Wybierz lokalizację",
+      "noLocation": "Brak lokalizacji",
+      "locationRole": "Rola w tej lokalizacji (opcjonalne nadpisanie)",
+      "locationRolePlaceholder": "Taka sama jak rola główna",
+      "locationRoleNone": "Taka sama jak rola główna",
+      "calendarSettings": "Ustawienia kalendarza",
       "notes": "Notatki",
       "editEmployee": "Edytuj pracownika",
       "editEmployeeDesc": "Zmień dane i ustawienia pracownika",
@@ -3071,6 +3162,17 @@
       "accountStatus": "Status konta",
       "accountActive": "Aktywny",
       "accountInactive": "Nieaktywny",
+      "activateAccount": "Aktywuj konto",
+      "blockAccount": "Zablokuj konto",
+      "unblockAccount": "Odblokuj konto",
+      "activated": "Konto aktywowane.",
+      "blocked": "Konto zablokowane.",
+      "unblocked": "Konto odblokowane.",
+      "confirmBlock": "Czy na pewno chcesz zablokować konto tego pracownika?",
+      "confirmUnblock": "Czy na pewno chcesz odblokować konto tego pracownika?",
+      "confirmActivate": "Czy na pewno chcesz aktywować konto tego pracownika?",
+      "confirmCancelInvitation": "Czy na pewno chcesz anulować zaproszenie?",
+      "invitationExpired": "Wygasło",
       "details": "Szczegóły",
       "activity": "Aktywność",
       "qualifications": "Kwalifikacje zabiegowe",
@@ -3169,6 +3271,7 @@
         "certifications": "Certyfikaty / Kursy",
         "certNamePlaceholder": "Nazwa certyfikatu",
         "noQualificationsYet": "Brak dodanych kwalifikacji ani umiejętności.",
+        "notPerformingServicesNotice": "Pracownik aktualnie nie wykonuje usług ani zabiegów. Dane kwalifikacji są dostępne poniżej w trybie podglądu.",
         "assignedTreatments": "Przypisane zabiegi",
         "compensation": "Wynagrodzenie",
         "baseSalary": "Wynagrodzenie podstawowe",
@@ -3216,10 +3319,17 @@
       "active": "Aktywny",
       "confirmDelete": "Czy na pewno chcesz usunąć tego pracownika?",
       "searchPlaceholder": "Szukaj pracowników...",
+      "linkedAsMember": "Profil pracownika utworzony i powiązany z istniejącym kontem.",
       "errors": {
         "createFailed": "Nie udało się dodać pracownika.",
         "saveFailed": "Nie udało się zapisać zmian pracownika.",
-        "noteFailed": "Nie udało się dodać notatki."
+        "noteFailed": "Nie udało się dodać notatki.",
+        "changePasswordFailed": "Nie udało się zmienić hasła.",
+        "photoUploadFailed": "Nie udało się dodać zdjęcia.",
+        "activateFailed": "Nie udało się aktywować konta.",
+        "blockFailed": "Nie udało się zablokować konta.",
+        "unblockFailed": "Nie udało się odblokować konta.",
+        "deleteFailed": "Nie udało się usunąć pracownika."
       },
       "navGroups": {
         "clientsAndVisits": "Klienci i wizyty",
@@ -3227,6 +3337,10 @@
         "employeeData": "Dane pracownika",
         "documentsAndAssets": "Dokumenty i mienie",
         "accountAndAccess": "Konto i dostęp"
+      },
+      "permissions": {
+        "saveError": "Nie udało się zapisać uprawnień.",
+        "resetError": "Nie udało się zresetować uprawnień."
       }
     },
     "leaveTypes": {
@@ -3327,6 +3441,7 @@
       },
       "actions": {
         "cancel": "Anuluj wizytę",
+        "cancelSeries": "Anuluj serię",
         "complete": "Zakończ",
         "confirm": "Potwierdź",
         "noShow": "Nie pojawił się",
@@ -3336,14 +3451,21 @@
       "cancelDesc": "Podaj powód anulowania wizyty",
       "cancelReasonPlaceholder": "Wpisz powód anulowania...",
       "cancelReasonRequired": "Powód anulowania jest wymagany",
+      "cancelScope": {
+        "single": "Tylko ta wizyta",
+        "series": "Ta i wszystkie następne"
+      },
+      "cancelSeriesTitle": "Anuluj serię wizyt",
       "cancelTitle": "Anuluj wizytę",
       "cancelled": "Wizyta anulowana",
+      "seriesCancelled": "Seria wizyt anulowana",
       "details": "Szczegóły wizyty",
       "internalNotes": "Uwagi dla personelu",
       "internalNotesDesc": "Widoczne tylko dla personelu. Klient nie widzi tych informacji.",
       "internalNotesPlaceholder": "Dodaj opis",
       "prepayment": "Przedpłata",
       "prepaymentAmount": "Kwota przedpłaty",
+      "prepaymentPaid": "Przedpłata opłacona",
       "prepaymentPending": "Oczekuje na przedpłatę",
       "prepaymentRequired": "Wymagana przedpłata",
       "scheduling": "Harmonogram",
@@ -3410,10 +3532,14 @@
       "addTreatment": "Dodaj zabieg",
       "removeTreatment": "Usuń zabieg",
       "totalDuration": "Łącznie",
-      "packageTreatment": "Zabieg objęty pakietem"
+      "packageTreatment": "Zabieg objęty pakietem",
+      "createFailed": "Nie udało się utworzyć wizyty."
     },
     "events": {
-      "create": "Nowe zdarzenie"
+      "create": "Nowe zdarzenie",
+      "errors": {
+        "createFailed": "Nie udało się dodać zdarzenia."
+      }
     },
     "appointmentDetail": {
       "title": "Szczegóły wizyty",
@@ -3459,6 +3585,23 @@
           "workflowSmsSent": "Wysłano SMS w workflow wizyty",
           "workflowEmail": "E-mail workflow wizyty",
           "workflowSms": "SMS workflow wizyty"
+        }
+      },
+      "documentStatus": {
+        "title": "Status dokumentacji",
+        "complete": "Dokumentacja kompletna",
+        "missingRequired": "Brakuje wymaganych dokumentów",
+        "needsAttention": "Wymaga uwagi",
+        "progress": "{{satisfied}} / {{total}} spełnionych",
+        "optional": "opcjonalny",
+        "showAll": "Pokaż wszystkie",
+        "showLess": "Ukryj niewymagane",
+        "statuses": {
+          "satisfied": "Spełniony",
+          "expired": "Wygasły",
+          "pending": "Oczekujący",
+          "missing": "Brakuje",
+          "notApplicable": "Nie dotyczy"
         }
       },
       "markContraindicationAsDiscussed": "Oznacz jako omówione",
@@ -3682,7 +3825,10 @@
       "errors": {
         "saveFailed": "Nie udało się zapisać pakietu.",
         "deleteFailed": "Nie udało się usunąć pakietu.",
-        "purchaseFailed": "Nie udało się sprzedać pakietu."
+        "purchaseFailed": "Nie udało się sprzedać pakietu.",
+        "createFailed": "Nie udało się utworzyć pakietu.",
+        "toggleActiveFailed": "Nie udało się zmienić aktywności pakietu.",
+        "assignFailed": "Nie udało się przypisać pakietu."
       }
     },
     "documents": {
@@ -4229,7 +4375,51 @@
       "dayClosed": "Dzień zamknięty pomyślnie",
       "dayAlreadyClosed": "Dzień zamknięty",
       "totalCollected": "Łączne wpłaty",
-      "history": "Historia zamknięć"
+      "history": "Historia zamknięć",
+      "cashSplit": "Podział gotówki",
+      "cashNextOpening": "Zostaje w kasie na następny dzień",
+      "cashToSafe": "Do Sejfu",
+      "cashSplitRequired": "Suma musi być równa policzonej gotówce",
+      "openingBalancePreFilled": "Uzupełnione automatycznie z poprzedniego zamknięcia dnia",
+      "tabKasa": "Kasa",
+      "tabSejf": "Sejf"
+    },
+    "safe": {
+      "title": "Sejf",
+      "noLocation": "Wybierz lokalizację, aby zobaczyć dane Sejfu",
+      "balance": "Saldo Sejfu",
+      "balanceDescription": "Saldo wyliczone z historii ruchów",
+      "totalIn": "Łącznie wpłynęło",
+      "totalOut": "Łącznie wypłacono",
+      "movements": "Historia ruchów",
+      "noMovements": "Brak ruchów w Sejfie",
+      "typeTransferIn": "Wpłata do Sejfu",
+      "typeWithdrawal": "Wypłata z Sejfu",
+      "withdrawButton": "Wypłata z Sejfu",
+      "withdrawForm": "Wypłata z Sejfu",
+      "withdrawAmount": "Kwota",
+      "withdrawReason": "Powód",
+      "withdrawReasonPlaceholder": "np. zakupy, opłaty bieżące",
+      "withdraw": "Wypłać",
+      "withdrawSuccess": "Wypłata z Sejfu zarejestrowana",
+      "invalidAmount": "Kwota musi być większa niż 0",
+      "insufficientBalance": "Kwota przekracza dostępne saldo Sejfu ({{balance}} PLN)",
+      "dayCloseRef": "Zamknięcie dnia",
+      "description": "Opis"
+    },
+    "deliveries": {
+      "loadError": "Nie udało się załadować dostawy.",
+      "analyzeError": "Nie udało się przeanalizować faktury.",
+      "matchError": "Nie udało się dopasować pozycji.",
+      "postError": "Nie udało się zaksięgować dostawy.",
+      "cancelError": "Nie udało się usunąć dostawy.",
+      "invoiceImport": {
+        "error": "Nie udało się utworzyć dostawy."
+      },
+      "decisions": {
+        "saveError": "Nie udało się zapisać decyzji.",
+        "postError": "Nie udało się zatwierdzić dostawy."
+      }
     }
   },
   "customFields": {
@@ -4835,6 +5025,11 @@
       "errors": {
         "roleUpdateFailed": "Nie udało się zmienić roli użytkownika."
       }
+    },
+    "entitlements": {
+      "errors": {
+        "setFailed": "Nie udało się zaktualizować dostępu do modułu."
+      }
     }
   },
   "login": {
@@ -5019,6 +5214,57 @@
       "funnelSpeed": "Prędkość lejka",
       "funnelVelocity": "Prędkość lejka",
       "avgDaysPerStage": "Śr. dni na etap"
+    }
+  },
+  "notes": {
+    "errors": {
+      "createFailed": "Nie udało się dodać notatki."
+    }
+  },
+  "associations": {
+    "errors": {
+      "linkFailed": "Nie udało się powiązać rekordów."
+    }
+  },
+  "search": {
+    "errors": {
+      "searchFailed": "Nie udało się wyszukać."
+    }
+  },
+  "email": {
+    "errors": {
+      "sendFailed": "Nie udało się wysłać wiadomości."
+    }
+  },
+  "inventory": {
+    "confirm": {
+      "error": "Nie udało się zatwierdzić inwentaryzacji."
+    }
+  },
+  "leads": {
+    "errors": {
+      "createFailed": "Nie udało się utworzyć leada.",
+      "updateFailed": "Nie udało się zaktualizować leada."
+    }
+  },
+  "gdpr": {
+    "exportFailed": "Nie udało się wyeksportować danych.",
+    "eraseFailed": "Nie udało się usunąć danych."
+  },
+  "invitations": {
+    "errors": {
+      "createFailed": "Nie udało się wysłać zaproszenia."
+    }
+  },
+  "activityTypes": {
+    "errors": {
+      "createFailed": "Nie udało się utworzyć typu aktywności.",
+      "updateFailed": "Nie udało się zaktualizować typu aktywności."
+    }
+  },
+  "organization": {
+    "errors": {
+      "saveFailed": "Nie udało się zapisać ustawień organizacji."
     }
   }
 }

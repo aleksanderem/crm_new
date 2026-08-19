@@ -17,15 +17,15 @@ export const Route = createFileRoute("/_app/patient/_layout/profile")({
 
 function PatientProfile() {
   const { t } = useTranslation();
-  const tokenHash = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") ?? "" : "";
+  const token = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") ?? "" : "";
 
   const updateProfile = useAction(api.gabinet.patientPortal.updateMyProfile);
   const getMyProfile = useAction(api.gabinet.patientPortal.getMyProfile);
 
   const { data: profile } = useQuery({
-    queryKey: ["gabinet.patientPortal.getMyProfile", tokenHash],
-    queryFn: () => getMyProfile({ tokenHash }),
-    enabled: !!tokenHash,
+    queryKey: ["gabinet.patientPortal.getMyProfile", token],
+    queryFn: () => getMyProfile({ token }),
+    enabled: !!token,
   });
 
   const [phone, setPhone] = useState("");
@@ -51,7 +51,7 @@ function PatientProfile() {
     setSaving(true);
     try {
       await updateProfile({
-        tokenHash,
+        token,
         phone: phone || undefined,
         address: (street || city || postalCode) ? { street, city, postalCode } : undefined,
         emergencyContactName: emergencyContactName || undefined,

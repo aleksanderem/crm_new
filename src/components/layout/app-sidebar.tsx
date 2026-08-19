@@ -23,6 +23,7 @@ import { usePermissions, useRole } from "@/hooks/use-permission";
 import { useMiniCalendar } from "@/components/layout/mini-calendar-context";
 import { CalendarMiniMonth } from "@untitled/app/calendar/base-components/calendar-mini-month";
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
+import { GabinetLocationSwitcher } from "@/components/gabinet/location-switcher";
 import { cn } from "@/utils/misc";
 import Logo from "@/assets/svg/logo";
 import {
@@ -246,6 +247,11 @@ export function AppSidebar() {
               activeWorkspace={activeWorkspace}
               workspaces={visibleModules.map((module) => module.workspace)}
             />
+            {activeWorkspace === "gabinet" && (
+              <div className="mt-1.5">
+                <GabinetLocationSwitcher />
+              </div>
+            )}
           </div>
 
           {isSettingsRoute ? (

@@ -1,10 +1,7 @@
-import { query, action, internalMutation } from "../_generated/server";
+import { action, internalMutation, internalAction } from "../_generated/server";
 import { v } from "convex/values";
-import { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
-import { verifyOrgAccess } from "../_helpers/auth";
-import { checkModuleAccess } from "../_helpers/products";
 import { logError } from "../_helpers/logged";
 import { logActivity } from "../_helpers/activities";
 import type {
@@ -30,7 +27,7 @@ function normalizeUnits(units: string[] | undefined): string[] | null {
 
 export const listEquipment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     locationId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<GabinetEquipmentRow[]> => {
@@ -49,7 +46,7 @@ export const listEquipment = action({
 
 export const getEquipment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     equipmentId: v.string(),
   },
   handler: async (
@@ -96,7 +93,7 @@ const equipmentStatusValidator = v.union(
 
 export const createEquipment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.union(v.string(), v.null())),
     serialNumber: v.optional(v.union(v.string(), v.null())),
@@ -201,7 +198,7 @@ export const createEquipment = action({
 
 export const updateEquipment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     equipmentId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.union(v.string(), v.null())),
@@ -269,7 +266,7 @@ export const updateEquipment = action({
 
 export const transferEquipment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     equipmentId: v.string(),
     toLocationId: v.string(),
     toRoomId: v.optional(v.string()),
@@ -338,20 +335,20 @@ export const transferEquipment = action({
 
 export const _createEquipmentSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     equipmentId: v.string(),
     name: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetEquipment",
       entityId: args.equipmentId,
       action: "created",
       description: `Created equipment "${args.name}"`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -359,19 +356,19 @@ export const _createEquipmentSideEffects = internalMutation({
 
 export const _updateEquipmentSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     equipmentId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetEquipment",
       entityId: args.equipmentId,
       action: "updated",
       description: `Updated equipment`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -379,81 +376,90 @@ export const _updateEquipmentSideEffects = internalMutation({
 
 export const _transferEquipmentSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     equipmentId: v.string(),
     toLocationId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetEquipment",
       entityId: args.equipmentId,
       action: "updated",
       description: `Transferred equipment to location`,
       metadata: { toLocationId: args.toLocationId },
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
 });
 
-export const listTransfers = query({
+export const listTransfers = action({
   args: {
-    organizationId: v.id("organizations"),
-    equipmentId: v.id("gabinetEquipment"),
+    organizationId: v.string(),
+    equipmentId: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyOrgAccess(ctx, args.organizationId);
-    await checkModuleAccess(ctx, args.organizationId, "equipment");
-    const equipment = await ctx.db.get(args.equipmentId);
-    if (!equipment || equipment.organizationId !== args.organizationId) return [];
-    return await ctx.db
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
+      organizationId: args.organizationId,
+    });
+    const db = createSupabaseDb();
+    const equipment = await db.get("gabinetEquipment", args.equipmentId);
+    if (!equipment || String(equipment.organizationId) !== String(args.organizationId)) return [];
+    return await db
       .query("gabinetEquipmentTransfers")
-      .withIndex("by_equipment", (q) => q.eq("equipmentId", args.equipmentId))
-      .order("desc")
+      .eq("equipmentId", args.equipmentId)
+      .order("transferredAt", false)
       .collect();
   },
 });
 
-export const migrateEquipmentStrings = internalMutation({
-  args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .first();
+export const migrateEquipmentStrings = internalAction({
+  args: { organizationId: v.string() },
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+
+    const user = await db.query("users").first();
     if (!user) throw new Error("No users found");
 
-    const treatments = await ctx.db
+    const treatments = await db
       .query("gabinetTreatments")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", orgIdStr)
       .collect();
 
-    const nameToId = new Map<string, Id<"gabinetEquipment">>();
+    const nameToId = new Map<string, string>();
     const now = Date.now();
 
     // Idempotency: pre-load existing equipment by name to avoid duplicates on re-run
-    const existingEquipment = await ctx.db
+    const existingEquipment = await db
       .query("gabinetEquipment")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", orgIdStr)
       .collect();
     for (const eq of existingEquipment) {
-      nameToId.set(eq.name, eq._id);
+      nameToId.set(eq.name, String(eq._id));
     }
 
+    let updatedTreatments = 0;
     for (const t of treatments) {
-      if (!t.requiredEquipment?.length) continue;
-      if (t.requiredEquipmentIds?.length) continue; // Already migrated
-      const equipmentIds: Id<"gabinetEquipment">[] = [];
+      const requiredEquipment = t.requiredEquipment as string[] | undefined | null;
+      const requiredEquipmentIds = t.requiredEquipmentIds as string[] | undefined | null;
+      if (!requiredEquipment?.length) continue;
+      if (requiredEquipmentIds?.length) continue; // Already migrated
+      const equipmentIds: string[] = [];
 
-      for (const name of t.requiredEquipment) {
+      for (const name of requiredEquipment) {
         if (!nameToId.has(name)) {
-          const id = await ctx.db.insert("gabinetEquipment", {
-            organizationId: args.organizationId,
+          const id = await db.insert("gabinetEquipment", {
+            organizationId: orgIdStr,
             name,
-            status: "available" as const,
-            createdBy: user._id,
+            status: "available",
+            createdBy: String(user._id),
             createdAt: now,
             updatedAt: now,
           });
@@ -462,9 +468,10 @@ export const migrateEquipmentStrings = internalMutation({
         equipmentIds.push(nameToId.get(name)!);
       }
 
-      await ctx.db.patch(t._id, { requiredEquipmentIds: equipmentIds });
+      await db.patch("gabinetTreatments", String(t._id), { requiredEquipmentIds: equipmentIds });
+      updatedTreatments++;
     }
 
-    return { migratedEquipment: nameToId.size, updatedTreatments: treatments.filter(t => t.requiredEquipment?.length && !t.requiredEquipmentIds?.length).length };
+    return { migratedEquipment: nameToId.size, updatedTreatments };
   },
 });

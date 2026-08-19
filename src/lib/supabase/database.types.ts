@@ -121,6 +121,34 @@
  *   • 00114_audit_log_nullable_user_id.sql
  *   • 00115_leads_created_at_idx.sql
  *   • 00116_lead_stage_history.sql
+ *   • 00117_gabinet_employees_performs_services.sql
+ *   • 00118_gabinet_employees_work_scope.sql
+ *   • 00119_gabinet_employees_is_blocked.sql
+ *   • 00120_gabinet_employees_org_email_idx.sql
+ *   • 00121_approve_gabinet_leave_atomic_fn.sql
+ *   • 00122_approve_gabinet_leave_partial_day.sql
+ *   • 00123_reject_gabinet_leave_atomic_fn.sql
+ *   • 00124_delete_gabinet_leave_atomic_fn.sql
+ *   • 00125_product_stock_movements_payment_method.sql
+ *   • 00126_product_subscriptions_source_granted_by.sql
+ *   • 00127_email_accounts_from_email_idx.sql
+ *   • 00128_email_accounts_org_is_default_idx.sql
+ *   • 00129_product_stock_movements_treatment_id.sql
+ *   • 00130_gabinet_package_deduction_atomic_fns.sql
+ *   • 00131_gabinet_appointment_package_overbooking_guard.sql
+ *   • 00132_gabinet_overbooking_guard_series_count.sql
+ *   • 00133_gabinet_package_cas_atomic_fns.sql
+ *   • 00134_form_templates_is_org_required.sql
+ *   • 00135_form_documents_generated_for_treatment_id.sql
+ *   • 00136_form_documents_template_version.sql
+ *   • 00137_form_documents_content_json_snapshot.sql
+ *   • 00138_form_templates_d24_categories_and_updated_by.sql
+ *   • 00139_drop_document_templates_and_fields.sql
+ *   • 00140_signature_requests_embed_document.sql
+ *   • 00141_drop_document_instances.sql
+ *   • 00142_form_documents_expires_at.sql
+ *   • 00143_form_documents_is_required.sql
+ *   • 00144_form_documents_audit_fields.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -527,6 +555,8 @@ export interface Database {
           created_at: number;
           updated_at: number;
           trial_end_date: number | null;
+          source: string | null;
+          granted_by_user_id: string | null;
         };
         Insert: {
           id?: string;
@@ -540,6 +570,8 @@ export interface Database {
           created_at: number;
           updated_at: number;
           trial_end_date?: number | null;
+          source?: string | null;
+          granted_by_user_id?: string | null;
         };
         Update: {
           id?: string;
@@ -553,6 +585,8 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
           trial_end_date?: number | null;
+          source?: string | null;
+          granted_by_user_id?: string | null;
         };
         Relationships: [
           {
@@ -560,6 +594,13 @@ export interface Database {
             columns: ["organization_id"];
             isOneToOne: false;
             referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "product_subscriptions_granted_by_user_id_fkey";
+            columns: ["granted_by_user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
             referencedColumns: ["id"];
           },
         ];
@@ -624,7 +665,6 @@ export interface Database {
           resource_sharing_enabled: boolean | null;
           reminder_enabled: boolean | null;
           reminder_hours_before: number | null;
-          appointment_workflow_config: string | null;
           created_at: number;
           updated_at: number;
           reminder_sms_48h: boolean | null;
@@ -643,7 +683,6 @@ export interface Database {
           resource_sharing_enabled?: boolean | null;
           reminder_enabled?: boolean | null;
           reminder_hours_before?: number | null;
-          appointment_workflow_config?: string | null;
           created_at: number;
           updated_at: number;
           reminder_sms_48h?: boolean | null;
@@ -662,7 +701,6 @@ export interface Database {
           resource_sharing_enabled?: boolean | null;
           reminder_enabled?: boolean | null;
           reminder_hours_before?: number | null;
-          appointment_workflow_config?: string | null;
           created_at?: number;
           updated_at?: number;
           reminder_sms_48h?: boolean | null;
@@ -4122,9 +4160,11 @@ export interface Database {
           updated_at: number;
           show_in_calendar: boolean;
           assigned_items: unknown | null;
-          location_id: string | null;
           bio: string | null;
           avatar_url: string | null;
+          performs_services: boolean;
+          work_scope: string | null;
+          is_blocked: boolean;
         };
         Insert: {
           id?: string;
@@ -4162,9 +4202,11 @@ export interface Database {
           updated_at: number;
           show_in_calendar?: boolean;
           assigned_items?: unknown | null;
-          location_id?: string | null;
           bio?: string | null;
           avatar_url?: string | null;
+          performs_services?: boolean;
+          work_scope?: string | null;
+          is_blocked?: boolean;
         };
         Update: {
           id?: string;
@@ -4202,9 +4244,11 @@ export interface Database {
           updated_at?: number;
           show_in_calendar?: boolean;
           assigned_items?: unknown | null;
-          location_id?: string | null;
           bio?: string | null;
           avatar_url?: string | null;
+          performs_services?: boolean;
+          work_scope?: string | null;
+          is_blocked?: boolean;
         };
         Relationships: [
           {
@@ -4233,13 +4277,6 @@ export interface Database {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_employees_location_id_fkey";
-            columns: ["location_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_locations";
             referencedColumns: ["id"];
           },
         ];
@@ -4817,7 +4854,6 @@ export interface Database {
           id: string;
           organization_id: string;
           patient_id: string;
-          treatment_id: string | null;
           employee_id: string;
           date: string;
           start_time: string;
@@ -4857,18 +4893,13 @@ export interface Database {
           created_at: number;
           updated_at: number;
           contraindication_alerts_reviewed: boolean | null;
-          price_at_booking: number | null;
           reminder_overrides: string | null;
-          variant_id: string | null;
-          stock_deducted: boolean;
-          package_deducted: boolean;
           package_treatment_id: string | null;
         };
         Insert: {
           id?: string;
           organization_id: string;
           patient_id: string;
-          treatment_id?: string | null;
           employee_id: string;
           date: string;
           start_time: string;
@@ -4908,18 +4939,13 @@ export interface Database {
           created_at: number;
           updated_at: number;
           contraindication_alerts_reviewed?: boolean | null;
-          price_at_booking?: number | null;
           reminder_overrides?: string | null;
-          variant_id?: string | null;
-          stock_deducted?: boolean;
-          package_deducted?: boolean;
           package_treatment_id?: string | null;
         };
         Update: {
           id?: string;
           organization_id?: string;
           patient_id?: string;
-          treatment_id?: string | null;
           employee_id?: string;
           date?: string;
           start_time?: string;
@@ -4959,11 +4985,7 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
           contraindication_alerts_reviewed?: boolean | null;
-          price_at_booking?: number | null;
           reminder_overrides?: string | null;
-          variant_id?: string | null;
-          stock_deducted?: boolean;
-          package_deducted?: boolean;
           package_treatment_id?: string | null;
         };
         Relationships: [
@@ -4979,13 +5001,6 @@ export interface Database {
             columns: ["patient_id"];
             isOneToOne: false;
             referencedRelation: "gabinet_patients";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_appointments_treatment_id_fkey";
-            columns: ["treatment_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_treatments";
             referencedColumns: ["id"];
           },
           {
@@ -5049,13 +5064,6 @@ export interface Database {
             columns: ["package_usage_id"];
             isOneToOne: false;
             referencedRelation: "gabinet_package_usage";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_appointments_variant_id_fkey";
-            columns: ["variant_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_treatment_variants";
             referencedColumns: ["id"];
           },
           {
@@ -5359,185 +5367,6 @@ export interface Database {
           },
           {
             foreignKeyName: "gabinet_loyalty_transactions_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      gabinet_document_templates: {
-        Row: {
-          id: string;
-          organization_id: string;
-          name: string;
-          type: string;
-          content: string;
-          requires_signature: boolean;
-          is_active: boolean;
-          sort_order: number | null;
-          created_by: string;
-          created_at: number;
-          updated_at: number;
-        };
-        Insert: {
-          id?: string;
-          organization_id: string;
-          name: string;
-          type: string;
-          content: string;
-          requires_signature: boolean;
-          is_active: boolean;
-          sort_order?: number | null;
-          created_by: string;
-          created_at: number;
-          updated_at: number;
-        };
-        Update: {
-          id?: string;
-          organization_id?: string;
-          name?: string;
-          type?: string;
-          content?: string;
-          requires_signature?: boolean;
-          is_active?: boolean;
-          sort_order?: number | null;
-          created_by?: string;
-          created_at?: number;
-          updated_at?: number;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "gabinet_document_templates_organization_id_fkey";
-            columns: ["organization_id"];
-            isOneToOne: false;
-            referencedRelation: "organizations";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_document_templates_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      gabinet_documents: {
-        Row: {
-          id: string;
-          organization_id: string;
-          patient_id: string;
-          appointment_id: string | null;
-          template_id: string | null;
-          title: string;
-          type: string;
-          content: string;
-          status: string;
-          signature_data: string | null;
-          signed_at: number | null;
-          signed_by_patient: boolean | null;
-          signed_by_employee: string | null;
-          file_storage_id: string | null;
-          file_name: string | null;
-          file_mime_type: string | null;
-          tag_ids: string[] | null;
-          category_id: string | null;
-          created_by: string;
-          created_at: number;
-          updated_at: number;
-        };
-        Insert: {
-          id?: string;
-          organization_id: string;
-          patient_id: string;
-          appointment_id?: string | null;
-          template_id?: string | null;
-          title: string;
-          type: string;
-          content: string;
-          status: string;
-          signature_data?: string | null;
-          signed_at?: number | null;
-          signed_by_patient?: boolean | null;
-          signed_by_employee?: string | null;
-          file_storage_id?: string | null;
-          file_name?: string | null;
-          file_mime_type?: string | null;
-          tag_ids?: string[] | null;
-          category_id?: string | null;
-          created_by: string;
-          created_at: number;
-          updated_at: number;
-        };
-        Update: {
-          id?: string;
-          organization_id?: string;
-          patient_id?: string;
-          appointment_id?: string | null;
-          template_id?: string | null;
-          title?: string;
-          type?: string;
-          content?: string;
-          status?: string;
-          signature_data?: string | null;
-          signed_at?: number | null;
-          signed_by_patient?: boolean | null;
-          signed_by_employee?: string | null;
-          file_storage_id?: string | null;
-          file_name?: string | null;
-          file_mime_type?: string | null;
-          tag_ids?: string[] | null;
-          category_id?: string | null;
-          created_by?: string;
-          created_at?: number;
-          updated_at?: number;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "gabinet_documents_organization_id_fkey";
-            columns: ["organization_id"];
-            isOneToOne: false;
-            referencedRelation: "organizations";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_documents_patient_id_fkey";
-            columns: ["patient_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_patients";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_documents_appointment_id_fkey";
-            columns: ["appointment_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_appointments";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_documents_template_id_fkey";
-            columns: ["template_id"];
-            isOneToOne: false;
-            referencedRelation: "gabinet_document_templates";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_documents_signed_by_employee_fkey";
-            columns: ["signed_by_employee"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_documents_category_id_fkey";
-            columns: ["category_id"];
-            isOneToOne: false;
-            referencedRelation: "category_definitions";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "gabinet_documents_created_by_fkey";
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "users";
@@ -5851,288 +5680,11 @@ export interface Database {
           },
         ];
       };
-      document_templates: {
-        Row: {
-          id: string;
-          organization_id: string;
-          name: string;
-          description: string | null;
-          category: string;
-          content: string;
-          module: string;
-          required_sources: string[];
-          requires_signature: boolean;
-          signature_slots: unknown;
-          access_control: unknown;
-          version: number;
-          parent_template_id: string | null;
-          status: string;
-          created_by: string;
-          created_at: number;
-          updated_at: number;
-        };
-        Insert: {
-          id?: string;
-          organization_id: string;
-          name: string;
-          description?: string | null;
-          category: string;
-          content: string;
-          module: string;
-          required_sources: string[];
-          requires_signature: boolean;
-          signature_slots: unknown;
-          access_control: unknown;
-          version: number;
-          parent_template_id?: string | null;
-          status: string;
-          created_by: string;
-          created_at: number;
-          updated_at: number;
-        };
-        Update: {
-          id?: string;
-          organization_id?: string;
-          name?: string;
-          description?: string | null;
-          category?: string;
-          content?: string;
-          module?: string;
-          required_sources?: string[];
-          requires_signature?: boolean;
-          signature_slots?: unknown;
-          access_control?: unknown;
-          version?: number;
-          parent_template_id?: string | null;
-          status?: string;
-          created_by?: string;
-          created_at?: number;
-          updated_at?: number;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "document_templates_organization_id_fkey";
-            columns: ["organization_id"];
-            isOneToOne: false;
-            referencedRelation: "organizations";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "document_templates_parent_template_id_fkey";
-            columns: ["parent_template_id"];
-            isOneToOne: false;
-            referencedRelation: "document_templates";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "document_templates_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      document_template_fields: {
-        Row: {
-          id: string;
-          template_id: string;
-          field_key: string;
-          label: string;
-          type: string;
-          sort_order: number;
-          group: string | null;
-          options: unknown | null;
-          default_value: string | null;
-          binding: unknown | null;
-          validation: unknown | null;
-          placeholder: string | null;
-          help_text: string | null;
-          width: string;
-        };
-        Insert: {
-          id?: string;
-          template_id: string;
-          field_key: string;
-          label: string;
-          type: string;
-          sort_order: number;
-          group?: string | null;
-          options?: unknown | null;
-          default_value?: string | null;
-          binding?: unknown | null;
-          validation?: unknown | null;
-          placeholder?: string | null;
-          help_text?: string | null;
-          width: string;
-        };
-        Update: {
-          id?: string;
-          template_id?: string;
-          field_key?: string;
-          label?: string;
-          type?: string;
-          sort_order?: number;
-          group?: string | null;
-          options?: unknown | null;
-          default_value?: string | null;
-          binding?: unknown | null;
-          validation?: unknown | null;
-          placeholder?: string | null;
-          help_text?: string | null;
-          width?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "document_template_fields_template_id_fkey";
-            columns: ["template_id"];
-            isOneToOne: false;
-            referencedRelation: "document_templates";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      document_instances: {
-        Row: {
-          id: string;
-          organization_id: string;
-          type: string | null;
-          template_id: string | null;
-          template_version: number | null;
-          rendered_content: string | null;
-          field_values: unknown | null;
-          resolved_sources: unknown | null;
-          file_id: string | null;
-          file_url: string | null;
-          file_name: string | null;
-          mime_type: string | null;
-          file_size: number | null;
-          category: string | null;
-          title: string;
-          status: string;
-          module: string | null;
-          signatures: unknown;
-          pdf_file_id: string | null;
-          created_by: string;
-          created_at: number;
-          updated_at: number;
-          assigned_reviewer_id: string | null;
-          assigned_reviewer_name: string | null;
-          reviewed_by: string | null;
-          reviewed_at: number | null;
-          approved_by: string | null;
-          approved_at: number | null;
-        };
-        Insert: {
-          id?: string;
-          organization_id: string;
-          type?: string | null;
-          template_id?: string | null;
-          template_version?: number | null;
-          rendered_content?: string | null;
-          field_values?: unknown | null;
-          resolved_sources?: unknown | null;
-          file_id?: string | null;
-          file_url?: string | null;
-          file_name?: string | null;
-          mime_type?: string | null;
-          file_size?: number | null;
-          category?: string | null;
-          title: string;
-          status: string;
-          module?: string | null;
-          signatures: unknown;
-          pdf_file_id?: string | null;
-          created_by: string;
-          created_at: number;
-          updated_at: number;
-          assigned_reviewer_id?: string | null;
-          assigned_reviewer_name?: string | null;
-          reviewed_by?: string | null;
-          reviewed_at?: number | null;
-          approved_by?: string | null;
-          approved_at?: number | null;
-        };
-        Update: {
-          id?: string;
-          organization_id?: string;
-          type?: string | null;
-          template_id?: string | null;
-          template_version?: number | null;
-          rendered_content?: string | null;
-          field_values?: unknown | null;
-          resolved_sources?: unknown | null;
-          file_id?: string | null;
-          file_url?: string | null;
-          file_name?: string | null;
-          mime_type?: string | null;
-          file_size?: number | null;
-          category?: string | null;
-          title?: string;
-          status?: string;
-          module?: string | null;
-          signatures?: unknown;
-          pdf_file_id?: string | null;
-          created_by?: string;
-          created_at?: number;
-          updated_at?: number;
-          assigned_reviewer_id?: string | null;
-          assigned_reviewer_name?: string | null;
-          reviewed_by?: string | null;
-          reviewed_at?: number | null;
-          approved_by?: string | null;
-          approved_at?: number | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "document_instances_organization_id_fkey";
-            columns: ["organization_id"];
-            isOneToOne: false;
-            referencedRelation: "organizations";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "document_instances_template_id_fkey";
-            columns: ["template_id"];
-            isOneToOne: false;
-            referencedRelation: "document_templates";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "document_instances_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "document_instances_assigned_reviewer_id_fkey";
-            columns: ["assigned_reviewer_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "document_instances_reviewed_by_fkey";
-            columns: ["reviewed_by"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "document_instances_approved_by_fkey";
-            columns: ["approved_by"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       signature_requests: {
         Row: {
           id: string;
           organization_id: string;
-          instance_id: string;
+          instance_id: string | null;
           slot_id: string;
           token: string;
           signer_email: string | null;
@@ -6147,11 +5699,16 @@ export interface Database {
           expires_at: number;
           signed_at: number | null;
           created_at: number;
+          document_title: string;
+          rendered_content: string | null;
+          document_created_by: string | null;
+          slot_label: string | null;
+          signature_data: string | null;
         };
         Insert: {
           id?: string;
           organization_id: string;
-          instance_id: string;
+          instance_id?: string | null;
           slot_id: string;
           token: string;
           signer_email?: string | null;
@@ -6166,11 +5723,16 @@ export interface Database {
           expires_at: number;
           signed_at?: number | null;
           created_at: number;
+          document_title?: string;
+          rendered_content?: string | null;
+          document_created_by?: string | null;
+          slot_label?: string | null;
+          signature_data?: string | null;
         };
         Update: {
           id?: string;
           organization_id?: string;
-          instance_id?: string;
+          instance_id?: string | null;
           slot_id?: string;
           token?: string;
           signer_email?: string | null;
@@ -6185,6 +5747,11 @@ export interface Database {
           expires_at?: number;
           signed_at?: number | null;
           created_at?: number;
+          document_title?: string;
+          rendered_content?: string | null;
+          document_created_by?: string | null;
+          slot_label?: string | null;
+          signature_data?: string | null;
         };
         Relationships: [
           {
@@ -6233,6 +5800,8 @@ export interface Database {
           created_by: string;
           created_at: number;
           updated_at: number;
+          is_org_required: boolean;
+          updated_by: string | null;
         };
         Insert: {
           id?: string;
@@ -6256,6 +5825,8 @@ export interface Database {
           created_by: string;
           created_at: number;
           updated_at: number;
+          is_org_required?: boolean;
+          updated_by?: string | null;
         };
         Update: {
           id?: string;
@@ -6279,6 +5850,8 @@ export interface Database {
           created_by?: string;
           created_at?: number;
           updated_at?: number;
+          is_org_required?: boolean;
+          updated_by?: string | null;
         };
         Relationships: [
           {
@@ -6291,6 +5864,13 @@ export interface Database {
           {
             foreignKeyName: "form_templates_created_by_fkey";
             columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "form_templates_updated_by_fkey";
+            columns: ["updated_by"];
             isOneToOne: false;
             referencedRelation: "users";
             referencedColumns: ["id"];
@@ -6326,6 +5906,15 @@ export interface Database {
           created_at: number;
           updated_at: number;
           sort_order: number | null;
+          generated_for_treatment_id: string | null;
+          template_version: number | null;
+          content_json_snapshot: string | null;
+          expires_at: number | null;
+          document_validity_days: number | null;
+          is_required: boolean | null;
+          sent_by_user_id: string | null;
+          voided_by_user_id: string | null;
+          voided_at: number | null;
         };
         Insert: {
           id?: string;
@@ -6355,6 +5944,15 @@ export interface Database {
           created_at: number;
           updated_at: number;
           sort_order?: number | null;
+          generated_for_treatment_id?: string | null;
+          template_version?: number | null;
+          content_json_snapshot?: string | null;
+          expires_at?: number | null;
+          document_validity_days?: number | null;
+          is_required?: boolean | null;
+          sent_by_user_id?: string | null;
+          voided_by_user_id?: string | null;
+          voided_at?: number | null;
         };
         Update: {
           id?: string;
@@ -6384,6 +5982,15 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
           sort_order?: number | null;
+          generated_for_treatment_id?: string | null;
+          template_version?: number | null;
+          content_json_snapshot?: string | null;
+          expires_at?: number | null;
+          document_validity_days?: number | null;
+          is_required?: boolean | null;
+          sent_by_user_id?: string | null;
+          voided_by_user_id?: string | null;
+          voided_at?: number | null;
         };
         Relationships: [
           {
@@ -6405,6 +6012,13 @@ export interface Database {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "form_documents_generated_for_treatment_id_fkey";
+            columns: ["generated_for_treatment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatments";
             referencedColumns: ["id"];
           },
         ];
@@ -6807,6 +6421,8 @@ export interface Database {
           avg_cost_after: number | null;
           lot_number: string | null;
           expiry_date: string | null;
+          payment_method: string | null;
+          treatment_id: string | null;
         };
         Insert: {
           id?: string;
@@ -6825,6 +6441,8 @@ export interface Database {
           avg_cost_after?: number | null;
           lot_number?: string | null;
           expiry_date?: string | null;
+          payment_method?: string | null;
+          treatment_id?: string | null;
         };
         Update: {
           id?: string;
@@ -6843,6 +6461,8 @@ export interface Database {
           avg_cost_after?: number | null;
           lot_number?: string | null;
           expiry_date?: string | null;
+          payment_method?: string | null;
+          treatment_id?: string | null;
         };
         Relationships: [
           {
@@ -6871,6 +6491,13 @@ export interface Database {
             columns: ["performed_by"];
             isOneToOne: false;
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "product_stock_movements_treatment_id_fkey";
+            columns: ["treatment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_treatments";
             referencedColumns: ["id"];
           },
         ];
@@ -7761,8 +7388,8 @@ export interface Database {
           patient_id: string;
           treatment_id: string | null;
           employee_id: string | null;
-          preferred_dates: unknown | null;
-          preferred_times: unknown | null;
+          preferred_dates: string[] | null;
+          preferred_times: string[] | null;
           notes: string | null;
           status: string;
           notified_at: number | null;
@@ -7777,8 +7404,8 @@ export interface Database {
           patient_id: string;
           treatment_id?: string | null;
           employee_id?: string | null;
-          preferred_dates?: unknown | null;
-          preferred_times?: unknown | null;
+          preferred_dates?: string[] | null;
+          preferred_times?: string[] | null;
           notes?: string | null;
           status?: string;
           notified_at?: number | null;
@@ -7793,8 +7420,8 @@ export interface Database {
           patient_id?: string;
           treatment_id?: string | null;
           employee_id?: string | null;
-          preferred_dates?: unknown | null;
-          preferred_times?: unknown | null;
+          preferred_dates?: string[] | null;
+          preferred_times?: string[] | null;
           notes?: string | null;
           status?: string;
           notified_at?: number | null;
@@ -8053,12 +7680,6 @@ export type GabinetLeaveUpdate = Database["public"]["Tables"]["gabinet_leaves"][
 export type GabinetOvertimeRow = Database["public"]["Tables"]["gabinet_overtime"]["Row"];
 export type GabinetOvertimeInsert = Database["public"]["Tables"]["gabinet_overtime"]["Insert"];
 export type GabinetOvertimeUpdate = Database["public"]["Tables"]["gabinet_overtime"]["Update"];
-export type GabinetDocumentTemplateRow = Database["public"]["Tables"]["gabinet_document_templates"]["Row"];
-export type GabinetDocumentTemplateInsert = Database["public"]["Tables"]["gabinet_document_templates"]["Insert"];
-export type GabinetDocumentTemplateUpdate = Database["public"]["Tables"]["gabinet_document_templates"]["Update"];
-export type GabinetDocumentRow = Database["public"]["Tables"]["gabinet_documents"]["Row"];
-export type GabinetDocumentInsert = Database["public"]["Tables"]["gabinet_documents"]["Insert"];
-export type GabinetDocumentUpdate = Database["public"]["Tables"]["gabinet_documents"]["Update"];
 export type GabinetTreatmentPackageRow = Database["public"]["Tables"]["gabinet_treatment_packages"]["Row"];
 export type GabinetTreatmentPackageInsert = Database["public"]["Tables"]["gabinet_treatment_packages"]["Insert"];
 export type GabinetTreatmentPackageUpdate = Database["public"]["Tables"]["gabinet_treatment_packages"]["Update"];

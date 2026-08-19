@@ -5,7 +5,8 @@ import { internal } from "../_generated/api";
 import { logActivity } from "../_helpers/activities";
 import { logAudit } from "../auditLog";
 import { logError } from "../_helpers/logged";
-import { gabinetEmployeeRoleValidator } from "../schema";
+import { gabinetEmployeeRoleValidator, GabinetEmployeeRole } from "../schema";
+import { isSystemGabinetRole } from "../_helpers/gabinetRolePermissions";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { createLogger } from "../_helpers/logger";
 import type { GabinetEmployeeRow, SupabasePaginationResult } from "../_helpers/supabaseRows";
@@ -16,7 +17,7 @@ import { createAccount, modifyAccountCredentials } from "@convex-dev/auth/server
 
 export const list = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paginationOpts: paginationOptsValidator,
     role: v.optional(gabinetEmployeeRoleValidator),
     activeOnly: v.optional(v.boolean()),
@@ -72,7 +73,7 @@ export const list = action({
 
 export const listAll = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activeOnly: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<GabinetEmployeeRow[]> => {
@@ -105,7 +106,7 @@ export const listAll = action({
 
 export const getById = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetEmployeeRow> => {
@@ -135,7 +136,7 @@ export const getById = action({
 
 export const getByUserId = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetEmployeeRow | null> => {
@@ -164,7 +165,7 @@ export const getByUserId = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.optional(v.string()),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
@@ -173,18 +174,21 @@ export const create = action({
     qualifiedTreatmentIds: v.optional(v.array(v.string())),
     licenseNumber: v.optional(v.union(v.string(), v.null())),
     hireDate: v.optional(v.union(v.string(), v.null())),
+    isActive: v.optional(v.boolean()),
     color: v.optional(v.union(v.string(), v.null())),
     notes: v.optional(v.union(v.string(), v.null())),
     showInCalendar: v.optional(v.boolean()),
+    performsServices: v.optional(v.boolean()),
+    workScope: v.optional(v.union(v.literal("clinic"), v.literal("office"), v.literal("both"))),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),
     customFields: v.optional(v.array(v.any())),
+    email: v.optional(v.union(v.string(), v.null())),
+    locationId: v.optional(v.string()),
+    locationRole: v.optional(gabinetEmployeeRoleValidator),
   },
   handler: async (ctx, args) => {
     try {
-    if (!args.userId) {
-      throw new Error("Tworzenie pracownika bez konta użytkownika jest niedozwolone. Wyślij zaproszenie e-mail.");
-    }
 
     // --- Auth + permissions (via internal queries) ---
     const authResult = await ctx.runAction(
@@ -218,6 +222,7 @@ export const create = action({
     const employeeId = await db.insert("gabinetEmployees", {
       organizationId: String(args.organizationId),
       userId: args.userId ?? null,
+      email: args.email ?? null,
       firstName: args.firstName ?? null,
       lastName: args.lastName ?? null,
       role: args.role,
@@ -225,16 +230,33 @@ export const create = action({
       qualifiedTreatmentIds: args.qualifiedTreatmentIds ?? [],
       licenseNumber: args.licenseNumber ?? null,
       hireDate: args.hireDate ?? null,
-      isActive: true,
+      isActive: args.isActive ?? true,
       color: args.color ?? null,
       notes: args.notes ?? null,
       showInCalendar: args.showInCalendar ?? true,
+      performsServices: args.performsServices ?? true,
+      workScope: args.workScope ?? null,
       tagIds: args.tagIds ?? null,
       categoryId: args.categoryId ?? null,
       createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
     });
+
+    if (args.locationId) {
+      try {
+        await db.insert("gabinetEmployeeLocations", {
+          organizationId: String(args.organizationId),
+          employeeId: String(employeeId),
+          locationId: args.locationId,
+          isPrimary: true,
+          role: args.locationRole,
+          createdAt: now,
+        });
+      } catch (e) {
+        console.error("[employees.create] location insert failed:", e);
+      }
+    }
 
     // --- Delegate post-write side effects ---
     try {
@@ -257,6 +279,14 @@ export const create = action({
         gabinetRole: args.role,
         isActive: true,
       });
+      if (args.locationId) {
+        await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
+          organizationId: args.organizationId,
+          userId: args.userId,
+          locationId: args.locationId,
+          role: args.locationRole ?? undefined,
+        });
+      }
     }
 
     if (args.customFields && args.customFields.length > 0) {
@@ -319,10 +349,11 @@ export const create = action({
  */
 export const _createFromInvitation = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     invitedBy: v.string(),
     data: v.any(),
+    email: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
@@ -341,13 +372,13 @@ export const _createFromInvitation = internalAction({
       // Still honour any locationId on the re-invite so the new assignment is not silently dropped.
       const d2 = (args.data ?? {}) as Record<string, unknown>;
       const locationId2 = typeof d2.locationId === "string" && d2.locationId.length > 0 ? d2.locationId : null;
-      const allowedRoles2 = ["doctor", "cosmetologist", "nurse", "therapist", "receptionist", "manager", "admin", "other"];
       const locationRole2Raw = typeof d2.locationRole === "string" ? d2.locationRole : null;
-      const locationRole2 = locationRole2Raw && allowedRoles2.includes(locationRole2Raw) ? locationRole2Raw : undefined;
+      const locationRole2 = locationRole2Raw && isSystemGabinetRole(locationRole2Raw) ? locationRole2Raw : undefined;
       if (locationId2) {
         try {
           const existingLocation = await db
             .query("gabinetEmployeeLocations")
+            .eq("organizationId", String(args.organizationId))
             .eq("employeeId", existingEmployeeId)
             .eq("locationId", locationId2)
             .collect();
@@ -359,6 +390,12 @@ export const _createFromInvitation = internalAction({
               isPrimary: false,
               role: locationRole2,
               createdAt: Date.now(),
+            });
+            await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
+              organizationId: args.organizationId,
+              userId: args.userId,
+              locationId: locationId2,
+              role: locationRole2 ?? undefined,
             });
           }
         } catch (e) {
@@ -372,6 +409,80 @@ export const _createFromInvitation = internalAction({
       return { skipped: true, employeeId: existingEmployeeId };
     }
 
+    // Fallback: if no userId match but an email is known, look for a pre-created
+    // employee row (userId=null) so we link it instead of inserting a duplicate.
+    if (args.email) {
+      const byEmail = (await db
+        .query("gabinetEmployees")
+        .eq("organizationId", String(args.organizationId))
+        .eq("email", args.email)
+        .collect()) as Array<{ _id: string; userId: string | null; role: string; isActive: boolean }>;
+
+      // Don't guess when multiple unlinked candidates share the same email.
+      const unlinkedCandidates = byEmail.filter((e) => !e.userId);
+      if (unlinkedCandidates.length > 1) {
+        log.warn("email collision — multiple unlinked employees share the same email; skipping pre-created link", {
+          email: args.email,
+          organizationId: String(args.organizationId),
+          candidateIds: unlinkedCandidates.map((e) => e._id),
+        });
+      }
+      const preCreated = unlinkedCandidates.length === 1 ? unlinkedCandidates[0] : undefined;
+      if (preCreated) {
+        const existingEmployeeId = String(preCreated._id);
+        log.info("linking pre-created employee by email", { email: args.email, employeeId: existingEmployeeId });
+
+        await db.patch("gabinetEmployees", existingEmployeeId, {
+          userId: args.userId,
+          isActive: true,
+          updatedAt: Date.now(),
+        });
+
+        const d2 = (args.data ?? {}) as Record<string, unknown>;
+        const locationId2 = typeof d2.locationId === "string" && d2.locationId.length > 0 ? d2.locationId : null;
+        const locationRole2Raw = typeof d2.locationRole === "string" ? d2.locationRole : null;
+        const locationRole2 = locationRole2Raw && isSystemGabinetRole(locationRole2Raw) ? locationRole2Raw : undefined;
+        if (locationId2) {
+          try {
+            const existingLocation = await db
+              .query("gabinetEmployeeLocations")
+              .eq("organizationId", String(args.organizationId))
+              .eq("employeeId", existingEmployeeId)
+              .eq("locationId", locationId2)
+              .collect();
+            if (existingLocation.length === 0) {
+              await db.insert("gabinetEmployeeLocations", {
+                organizationId: String(args.organizationId),
+                employeeId: existingEmployeeId,
+                locationId: locationId2,
+                isPrimary: false,
+                role: locationRole2,
+                createdAt: Date.now(),
+              });
+              await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
+                organizationId: args.organizationId,
+                userId: args.userId,
+                locationId: locationId2,
+                role: locationRole2 ?? undefined,
+              });
+            }
+          } catch (e) {
+            console.error(`[gabinet.employees._createFromInvitation] location insert on email-link failed:`, e);
+          }
+        }
+
+        const empRole = isSystemGabinetRole(preCreated.role) ? (preCreated.role as GabinetEmployeeRole) : "doctor";
+        await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
+          organizationId: args.organizationId,
+          userId: args.userId,
+          gabinetRole: empRole,
+          isActive: true,
+        });
+
+        return { skipped: true, employeeId: existingEmployeeId };
+      }
+    }
+
     const d = (args.data ?? {}) as Record<string, unknown>;
 
     const asString = (v: unknown) =>
@@ -380,13 +491,13 @@ export const _createFromInvitation = internalAction({
       Array.isArray(v) ? (v.filter((x) => typeof x === "string") as string[]) : null;
 
     const role = asString(d.role) ?? "doctor";
-    const allowedRoles = ["doctor", "cosmetologist", "nurse", "therapist", "receptionist", "manager", "admin", "other"];
-    const safeRole = allowedRoles.includes(role) ? role : "doctor";
+    const safeRole = isSystemGabinetRole(role) ? role : "doctor";
 
     const now = Date.now();
     const employeeId = await db.insert("gabinetEmployees", {
       organizationId: String(args.organizationId),
       userId: args.userId,
+      email: args.email ?? null,
       firstName: asString(d.firstName),
       lastName: asString(d.lastName),
       role: safeRole,
@@ -408,7 +519,7 @@ export const _createFromInvitation = internalAction({
     // Location assignment — moduleData.locationId seeds the primary location.
     const locationId = asString(d.locationId);
     const locationRoleRaw = asString(d.locationRole);
-    const locationRole = locationRoleRaw && allowedRoles.includes(locationRoleRaw) ? locationRoleRaw : undefined;
+    const locationRole = locationRoleRaw && isSystemGabinetRole(locationRoleRaw) ? locationRoleRaw : undefined;
     if (locationId) {
       try {
         await db.insert("gabinetEmployeeLocations", {
@@ -418,6 +529,12 @@ export const _createFromInvitation = internalAction({
           isPrimary: true,
           role: locationRole,
           createdAt: now,
+        });
+        await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
+          organizationId: args.organizationId,
+          userId: args.userId,
+          locationId,
+          role: locationRole ?? undefined,
         });
       } catch (e) {
         console.error(
@@ -509,9 +626,9 @@ export const _backfillMemberships = internalAction({
       }
       try {
         await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
-          organizationId: e.organizationId as Id<"organizations">,
+          organizationId: String(e.organizationId),
           userId: e.userId,
-          gabinetRole: e.role,
+          gabinetRole: e.role as GabinetEmployeeRole,
           isActive: Boolean(e.isActive),
         });
         upserted += 1;
@@ -531,9 +648,9 @@ export const _backfillMemberships = internalAction({
  */
 export const _upsertMembership = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
-    gabinetRole: v.string(),
+    gabinetRole: gabinetEmployeeRoleValidator,
     isActive: v.boolean(),
   },
   handler: async (ctx, args) => {
@@ -564,17 +681,71 @@ export const _upsertMembership = internalMutation({
   },
 });
 
+// Mirror gabinetEmployeeLocations into Convex so checkPermission (QueryCtx/MutationCtx,
+// no Supabase access) can resolve both location assignments and optional role overrides.
+export const _upsertLocationMembership = internalMutation({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    locationId: v.string(),
+    role: v.optional(gabinetEmployeeRoleValidator),
+  },
+  handler: async (ctx, args) => {
+    const userId = args.userId as Id<"users">;
+    const locationId = args.locationId as Id<"gabinetLocations">;
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("gabinetLocationMemberships")
+      .withIndex("by_orgAndUserAndLocation", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", userId).eq("locationId", locationId),
+      )
+      .unique();
+    if (existing) {
+      await ctx.db.patch(existing._id, { role: args.role, updatedAt: now });
+    } else {
+      await ctx.db.insert("gabinetLocationMemberships", {
+        organizationId: args.organizationId,
+        userId,
+        locationId,
+        role: args.role,
+        updatedAt: now,
+      });
+    }
+  },
+});
+
+export const _deleteLocationMembership = internalMutation({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    locationId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = args.userId as Id<"users">;
+    const locationId = args.locationId as Id<"gabinetLocations">;
+    const existing = await ctx.db
+      .query("gabinetLocationMemberships")
+      .withIndex("by_orgAndUserAndLocation", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", userId).eq("locationId", locationId),
+      )
+      .unique();
+    if (existing) {
+      await ctx.db.delete(existing._id);
+    }
+  },
+});
+
 export const _createSideEffects = internalMutation({
   args: {
     employeeId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     createdBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const createdByUserId = args.createdBy as Id<"users">;
+    const createdByUserId = args.createdBy;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetEmployee",
       entityId: args.employeeId as Id<"gabinetEmployees">,
@@ -597,7 +768,7 @@ export const _createSideEffects = internalMutation({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
     userId: v.optional(v.string()),
     firstName: v.optional(v.string()),
@@ -669,10 +840,14 @@ export const update = action({
     commissionPercent: v.optional(v.union(v.number(), v.null())),
     bankAccount: v.optional(v.union(v.string(), v.null())),
     showInCalendar: v.optional(v.boolean()),
+    performsServices: v.optional(v.boolean()),
+    workScope: v.optional(v.union(v.literal("clinic"), v.literal("office"), v.literal("both"), v.null())),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),
     bio: v.optional(v.union(v.string(), v.null())),
     avatarUrl: v.optional(v.union(v.string(), v.null())),
+    locationId: v.optional(v.union(v.string(), v.null())),
+    locationRole: v.optional(v.union(gabinetEmployeeRoleValidator, v.null())),
   },
   handler: async (ctx, args) => {
     try {
@@ -719,8 +894,76 @@ export const update = action({
     }
 
     // --- Build updates and PATCH to Supabase ---
-    const { organizationId, employeeId, ...updates } = args;
+    // locationId and locationRole live in gabinetEmployeeLocations, not gabinetEmployees — exclude from patch
+    const { organizationId, employeeId, locationId, locationRole, ...updates } = args;
     await db.patch("gabinetEmployees", employeeId, { ...updates, updatedAt: Date.now() });
+
+    // --- Upsert primary location ---
+    if (locationId !== undefined) {
+      const existingLocs = await db.query("gabinetEmployeeLocations")
+        .eq("organizationId", String(organizationId))
+        .eq("employeeId", employeeId)
+        .eq("isPrimary", true)
+        .collect();
+      for (const loc of existingLocs) {
+        await db.delete("gabinetEmployeeLocations", String(loc._id));
+        if (emp.userId) {
+          await ctx.runMutation(internal.gabinet.employees._deleteLocationMembership, {
+            organizationId,
+            userId: String(emp.userId),
+            locationId: String(loc.locationId),
+          });
+        }
+      }
+      if (locationId) {
+        const effectiveLocationRole = locationRole != null ? locationRole : undefined;
+        try {
+          await db.insert("gabinetEmployeeLocations", {
+            organizationId: String(organizationId),
+            employeeId,
+            locationId,
+            isPrimary: true,
+            role: effectiveLocationRole,
+            createdAt: Date.now(),
+          });
+          if (emp.userId) {
+            await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
+              organizationId,
+              userId: String(emp.userId),
+              locationId,
+              role: effectiveLocationRole,
+            });
+          }
+        } catch (e) {
+          console.error("[employees.update] location insert failed:", e);
+        }
+      }
+    } else if (locationRole !== undefined) {
+      // locationId not provided — patch the role on the existing primary location in-place
+      const existingLocs = await db.query("gabinetEmployeeLocations")
+        .eq("organizationId", String(organizationId))
+        .eq("employeeId", employeeId)
+        .eq("isPrimary", true)
+        .collect();
+      for (const loc of existingLocs) {
+        const effectiveLocationRole = locationRole ?? null;
+        try {
+          await db.patch("gabinetEmployeeLocations", String(loc._id), {
+            role: effectiveLocationRole,
+          });
+          if (emp.userId) {
+            await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
+              organizationId,
+              userId: String(emp.userId),
+              locationId: String(loc.locationId),
+              role: effectiveLocationRole ?? undefined,
+            });
+          }
+        } catch (e) {
+          console.error("[employees.update] location role patch failed:", e);
+        }
+      }
+    }
 
     // --- Delegate post-write side effects ---
     try {
@@ -737,7 +980,7 @@ export const update = action({
     // Mirror role change (or isActive change) into Convex `gabinetMemberships`
     // so permission checks reflect the new role on the next call.
     if ((args.role !== undefined || args.isActive !== undefined) && emp.userId) {
-      const effectiveRole = args.role ?? (emp.role as string);
+      const effectiveRole = args.role ?? (emp.role as GabinetEmployeeRole);
       const effectiveActive = args.isActive ?? Boolean(emp.isActive);
       await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
         organizationId: args.organizationId,
@@ -775,14 +1018,14 @@ export const update = action({
 export const _updateSideEffects = internalMutation({
   args: {
     employeeId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     updatedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const updatedByUserId = args.updatedBy as Id<"users">;
+    const updatedByUserId = args.updatedBy;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetEmployee",
       entityId: args.employeeId as Id<"gabinetEmployees">,
@@ -805,7 +1048,7 @@ export const _updateSideEffects = internalMutation({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -859,24 +1102,152 @@ export const remove = action({
       await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
         organizationId: args.organizationId,
         userId: String(emp.userId),
-        gabinetRole: emp.role as string,
+        gabinetRole: emp.role as GabinetEmployeeRole,
         isActive: false,
       });
     }
   },
 });
 
+export const blockEmployee = action({
+  args: {
+    organizationId: v.string(),
+    employeeId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_employees", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+    const emp = await db.get("gabinetEmployees", args.employeeId);
+    if (!emp || String(emp.organizationId) !== String(args.organizationId)) {
+      throw new Error("Employee not found");
+    }
+
+    await db.patch("gabinetEmployees", args.employeeId, {
+      isBlocked: true,
+      isActive: false,
+      updatedAt: Date.now(),
+    });
+
+    if (emp.userId) {
+      await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
+        organizationId: args.organizationId,
+        userId: String(emp.userId),
+        gabinetRole: emp.role as GabinetEmployeeRole,
+        isActive: false,
+      });
+    }
+
+    await ctx.runMutation(internal.gabinet.employees._blockSideEffects, {
+      organizationId: args.organizationId,
+      userId: authResult.userId as Id<"users">,
+      employeeId: args.employeeId,
+    });
+  },
+});
+
+export const unblockEmployee = action({
+  args: {
+    organizationId: v.string(),
+    employeeId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_employees", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+    const emp = await db.get("gabinetEmployees", args.employeeId);
+    if (!emp || String(emp.organizationId) !== String(args.organizationId)) {
+      throw new Error("Employee not found");
+    }
+
+    await db.patch("gabinetEmployees", args.employeeId, {
+      isBlocked: false,
+      isActive: true,
+      updatedAt: Date.now(),
+    });
+
+    if (emp.userId) {
+      await ctx.runMutation(internal.gabinet.employees._upsertMembership, {
+        organizationId: args.organizationId,
+        userId: String(emp.userId),
+        gabinetRole: emp.role as GabinetEmployeeRole,
+        isActive: true,
+      });
+    }
+
+    await ctx.runMutation(internal.gabinet.employees._unblockSideEffects, {
+      organizationId: args.organizationId,
+      userId: authResult.userId as Id<"users">,
+      employeeId: args.employeeId,
+    });
+  },
+});
+
+export const _blockSideEffects = internalMutation({
+  args: {
+    organizationId: v.string(),
+    userId: v.id("users"),
+    employeeId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.userId,
+      action: "employee_blocked",
+      entityType: "gabinetEmployee",
+      entityId: args.employeeId,
+      details: `Blocked employee account`,
+    });
+  },
+});
+
+export const _unblockSideEffects = internalMutation({
+  args: {
+    organizationId: v.string(),
+    userId: v.id("users"),
+    employeeId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.userId,
+      action: "employee_unblocked",
+      entityType: "gabinetEmployee",
+      entityId: args.employeeId,
+      details: `Unblocked employee account`,
+    });
+  },
+});
+
 export const _removeSideEffects = internalMutation({
   args: {
     employeeId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     deletedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const deletedByUserId = args.deletedBy as Id<"users">;
+    const deletedByUserId = args.deletedBy;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetEmployee",
       entityId: args.employeeId as Id<"gabinetEmployees">,
@@ -900,7 +1271,7 @@ export const _removeSideEffects = internalMutation({
 /** Get employees qualified for a specific treatment */
 export const getQualifiedForTreatment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetEmployeeRow[]> => {
@@ -929,7 +1300,7 @@ export const getQualifiedForTreatment = action({
 /** Update treatment qualifications for an employee */
 export const setQualifiedTreatments = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
     treatmentIds: v.array(v.string()),
   },
@@ -980,15 +1351,15 @@ export const setQualifiedTreatments = action({
 export const _setQualifiedSideEffects = internalMutation({
   args: {
     employeeId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentCount: v.number(),
     updatedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const updatedByUserId = args.updatedBy as Id<"users">;
+    const updatedByUserId = args.updatedBy;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetEmployee",
       entityId: args.employeeId as Id<"gabinetEmployees">,
@@ -1041,9 +1412,13 @@ export const _finalisePasswordUser = internalAction({
     userId: v.string(),
     email: v.string(),
     name: v.optional(v.string()),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     teamRole: v.union(v.literal("admin"), v.literal("member"), v.literal("viewer")),
     invitedBy: v.string(),
+    // Set to true when the user row already exists in Supabase (existing-user
+    // linking path). Skips writeUserToSupabase to avoid a redundant write that
+    // could overwrite created_at with Convex _creationTime.
+    userAlreadyInSupabase: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
@@ -1058,45 +1433,53 @@ export const _finalisePasswordUser = internalAction({
       throw new Error("Ten użytkownik jest już członkiem tej organizacji.");
     }
 
-    // The user was just created by Convex auth (createAccount) and is not yet
-    // mirrored to Supabase — intentional Convex-side read.
-    const user = await ctx.runQuery(internal.gabinet.employees._getConvexUser, {
-      userId: args.userId,
-    });
-    if (!user) throw new Error("User not found after account creation");
-
-    let effectiveUsername = user.username ?? undefined;
-    if (!user.username) {
-      const local = args.email.split("@")[0] ?? "";
-      const base = local.toLowerCase().replace(/[^a-z0-9]/g, "");
-      let candidate = (base || "user").slice(0, 16);
-      let suffix = 0;
-      // Username uniqueness check against Supabase (authoritative post-migration).
-      while ((await db.query("users").eq("username", candidate).first()) !== null) {
-        suffix += 1;
-        candidate = `${(base || "user").slice(0, 14)}${suffix}`;
-        if (suffix > 50) break;
-      }
-      // Patch the Convex auth record so auth flows see the derived username.
-      await ctx.runMutation(internal.gabinet.employees._patchConvexUsername, {
-        userId: args.userId,
-        username: candidate,
-      });
-      effectiveUsername = candidate;
-    }
-
     const now = Date.now();
 
-    // Mirror user to Supabase synchronously so the FK exists when we insert
-    // team_memberships below. Supabase enforces team_memberships.user_id → users.id.
-    await ctx.runAction(internal.supabase.users.writeUserToSupabase, {
-      userId: args.userId,
-      email: args.email,
-      name: args.name,
-      username: effectiveUsername,
-      createdAt: Math.floor(user._creationTime),
-      updatedAt: now,
-    });
+    // New-account path only: the user was just created by Convex auth (createAccount)
+    // and is not yet mirrored to Supabase. Derive a username, patch the Convex
+    // record, then mirror to Supabase. Skipped for existing-user paths
+    // (userAlreadyInSupabase=true) where userId is a Supabase UUID that cannot
+    // be resolved via ctx.db.get(), and the Supabase record already exists.
+    if (!args.userAlreadyInSupabase) {
+      const user = await ctx.runQuery(internal.gabinet.employees._getConvexUser, {
+        userId: args.userId,
+      });
+      if (!user)
+        throw new Error(
+          `Convex user record missing for userId=${args.userId} (email=${args.email}). ` +
+            "The account may have been provisioned outside the Convex auth flow " +
+            "(e.g. direct Supabase insert). Use the employee-linking path for existing org members.",
+        );
+
+      let effectiveUsername = user.username ?? undefined;
+      if (!user.username) {
+        const local = args.email.split("@")[0] ?? "";
+        const base = local.toLowerCase().replace(/[^a-z0-9]/g, "");
+        let candidate = (base || "user").slice(0, 16);
+        let suffix = 0;
+        // Username uniqueness check against Supabase (authoritative post-migration).
+        while ((await db.query("users").eq("username", candidate).first()) !== null) {
+          suffix += 1;
+          candidate = `${(base || "user").slice(0, 14)}${suffix}`;
+          if (suffix > 50) break;
+        }
+        // Patch the Convex auth record so auth flows see the derived username.
+        await ctx.runMutation(internal.gabinet.employees._patchConvexUsername, {
+          userId: args.userId,
+          username: candidate,
+        });
+        effectiveUsername = candidate;
+      }
+
+      await ctx.runAction(internal.supabase.users.writeUserToSupabase, {
+        userId: args.userId,
+        email: args.email,
+        name: args.name,
+        username: effectiveUsername,
+        createdAt: Math.floor(user._creationTime),
+        updatedAt: now,
+      });
+    }
 
     // Insert team membership directly into Supabase (primary store post-migration).
     await db.insert("teamMemberships", {
@@ -1122,7 +1505,7 @@ export const _finalisePasswordUser = internalAction({
  */
 export const createWithPassword = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     email: v.string(),
     password: v.string(),
     teamRole: v.union(v.literal("admin"), v.literal("member"), v.literal("viewer")),
@@ -1131,6 +1514,7 @@ export const createWithPassword = action({
     role: gabinetEmployeeRoleValidator,
     specialization: v.optional(v.string()),
     licenseNumber: v.optional(v.string()),
+    hireDate: v.optional(v.union(v.string(), v.null())),
     color: v.optional(v.string()),
     showInCalendar: v.optional(v.boolean()),
     qualifiedTreatmentIds: v.optional(v.array(v.string())),
@@ -1138,7 +1522,7 @@ export const createWithPassword = action({
     categoryId: v.optional(v.string()),
     customFields: v.optional(v.array(v.any())),
     locationId: v.optional(v.string()),
-    locationRole: v.optional(v.string()),
+    locationRole: v.optional(gabinetEmployeeRoleValidator),
   },
   handler: async (ctx, args) => {
     if (args.password.length < 8) {
@@ -1169,68 +1553,138 @@ export const createWithPassword = action({
     const name =
       [args.firstName, args.lastName].filter(Boolean).join(" ") || undefined;
 
-    const { user } = await createAccount(ctx, {
-      provider: "password",
-      account: { id: args.email, secret: args.password },
-      profile: { email: args.email, name },
-      shouldLinkViaEmail: false,
-      shouldLinkViaPhone: false,
-    });
-
-    const { userId } = await ctx.runAction(
-      internal.gabinet.employees._finalisePasswordUser,
-      {
-        userId: String(user._id),
-        email: args.email,
-        name: user.name ?? name,
-        organizationId: args.organizationId,
-        teamRole: args.teamRole,
-        invitedBy: String(authResult.userId),
-      },
-    );
-
     const db = createSupabaseDb();
+    const log = createLogger("gabinet.employees", { correlationId: db.correlationId });
     const now = Date.now();
 
-    const employeeId = await db.insert("gabinetEmployees", {
-      organizationId: String(args.organizationId),
-      userId,
-      firstName: args.firstName ?? null,
-      lastName: args.lastName ?? null,
-      role: args.role,
-      specialization: args.specialization ?? null,
-      qualifiedTreatmentIds: args.qualifiedTreatmentIds ?? [],
-      licenseNumber: args.licenseNumber ?? null,
-      hireDate: null,
-      isActive: true,
-      color: args.color ?? null,
-      notes: null,
-      showInCalendar: args.showInCalendar ?? true,
-      tagIds: args.tagIds ?? null,
-      categoryId: args.categoryId ?? null,
-      createdBy: String(authResult.userId),
-      createdAt: now,
-      updatedAt: now,
-    });
+    // Check if a user with this email already exists before creating a new account.
+    // If found, link to the existing user instead of creating a duplicate.
+    const existingUserByEmail = await db.query("users").eq("email", args.email).first();
+
+    let userId: string;
+    if (existingUserByEmail) {
+      const { userId: resolvedId } = await ctx.runAction(
+        internal.gabinet.employees._finalisePasswordUser,
+        {
+          userId: String(existingUserByEmail._id),
+          email: args.email,
+          name: (existingUserByEmail.name as string | undefined) ?? name,
+          organizationId: args.organizationId,
+          teamRole: args.teamRole,
+          invitedBy: String(authResult.userId),
+          userAlreadyInSupabase: true,
+        },
+      );
+      userId = resolvedId;
+    } else {
+      const { user } = await createAccount(ctx, {
+        provider: "password",
+        account: { id: args.email, secret: args.password },
+        profile: { email: args.email, name },
+        shouldLinkViaEmail: false,
+        shouldLinkViaPhone: false,
+      });
+
+      const { userId: resolvedId } = await ctx.runAction(
+        internal.gabinet.employees._finalisePasswordUser,
+        {
+          userId: String(user._id),
+          email: args.email,
+          name: user.name ?? name,
+          organizationId: args.organizationId,
+          teamRole: args.teamRole,
+          invitedBy: String(authResult.userId),
+        },
+      );
+      userId = resolvedId;
+    }
+
+    const existingProfile = await db
+      .query("gabinetEmployees")
+      .eq("organizationId", String(args.organizationId))
+      .eq("userId", userId)
+      .collect();
+    if (existingProfile.length > 0) {
+      throw new Error("Employee profile already exists for this user");
+    }
+
+    // Check for a pre-created employee row (userId=null) matched by email — link
+    // it instead of inserting a duplicate that would leave the pre-created row orphaned.
+    const byEmail = (await db
+      .query("gabinetEmployees")
+      .eq("organizationId", String(args.organizationId))
+      .eq("email", args.email)
+      .collect()) as Array<{ _id: string; userId: string | null }>;
+    const unlinkedByEmail = byEmail.filter((e) => !e.userId);
+    if (unlinkedByEmail.length > 1) {
+      log.warn("email collision — multiple unlinked employees share the same email; skipping pre-created link", {
+        email: args.email,
+        organizationId: String(args.organizationId),
+        candidateIds: unlinkedByEmail.map((e) => e._id),
+      });
+    }
+    const preCreated = unlinkedByEmail.length === 1 ? unlinkedByEmail[0] : undefined;
+
+    let employeeId: string;
+    if (preCreated) {
+      employeeId = String(preCreated._id);
+      await db.patch("gabinetEmployees", employeeId, {
+        userId,
+        firstName: args.firstName ?? null,
+        lastName: args.lastName ?? null,
+        role: args.role,
+        specialization: args.specialization ?? null,
+        qualifiedTreatmentIds: args.qualifiedTreatmentIds ?? [],
+        licenseNumber: args.licenseNumber ?? null,
+        hireDate: args.hireDate ?? null,
+        isActive: true,
+        color: args.color ?? null,
+        showInCalendar: args.showInCalendar ?? true,
+        tagIds: args.tagIds ?? null,
+        categoryId: args.categoryId ?? null,
+        updatedAt: now,
+      });
+    } else {
+      employeeId = String(await db.insert("gabinetEmployees", {
+        organizationId: String(args.organizationId),
+        userId,
+        firstName: args.firstName ?? null,
+        lastName: args.lastName ?? null,
+        role: args.role,
+        specialization: args.specialization ?? null,
+        qualifiedTreatmentIds: args.qualifiedTreatmentIds ?? [],
+        licenseNumber: args.licenseNumber ?? null,
+        hireDate: args.hireDate ?? null,
+        isActive: true,
+        color: args.color ?? null,
+        notes: null,
+        showInCalendar: args.showInCalendar ?? true,
+        tagIds: args.tagIds ?? null,
+        categoryId: args.categoryId ?? null,
+        createdBy: String(authResult.userId),
+        createdAt: now,
+        updatedAt: now,
+      }));
+    }
 
     if (args.locationId) {
-      const allowedRoles = [
-        "doctor", "cosmetologist", "nurse", "therapist",
-        "receptionist", "manager", "admin", "other",
-      ];
-      const locationRole =
-        args.locationRole && allowedRoles.includes(args.locationRole)
-          ? args.locationRole
-          : undefined;
       try {
-        await db.insert("gabinetEmployeeLocations", {
-          organizationId: String(args.organizationId),
-          employeeId: String(employeeId),
-          locationId: args.locationId,
-          isPrimary: true,
-          role: locationRole,
-          createdAt: now,
-        });
+        const existingLocation = await db
+          .query("gabinetEmployeeLocations")
+          .eq("organizationId", String(args.organizationId))
+          .eq("employeeId", String(employeeId))
+          .eq("locationId", args.locationId)
+          .collect();
+        if (existingLocation.length === 0) {
+          await db.insert("gabinetEmployeeLocations", {
+            organizationId: String(args.organizationId),
+            employeeId: String(employeeId),
+            locationId: args.locationId,
+            isPrimary: true,
+            role: args.locationRole,
+            createdAt: now,
+          });
+        }
       } catch (e) {
         console.error("[employees.createWithPassword] location insert failed:", e);
       }
@@ -1275,6 +1729,14 @@ export const createWithPassword = action({
       gabinetRole: args.role,
       isActive: true,
     });
+    if (userId && args.locationId) {
+      await ctx.runMutation(internal.gabinet.employees._upsertLocationMembership, {
+        organizationId: args.organizationId,
+        userId,
+        locationId: args.locationId,
+        role: args.locationRole ?? undefined,
+      });
+    }
 
     return String(employeeId);
   },
@@ -1282,7 +1744,7 @@ export const createWithPassword = action({
 
 export const changeEmployeePassword = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
     newPassword: v.string(),
   },
@@ -1325,12 +1787,12 @@ export const changeEmployeePassword = action({
 export const _changePasswordSideEffects = internalMutation({
   args: {
     employeeId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     changedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const changedByUserId = args.changedBy as Id<"users">;
+    const changedByUserId = args.changedBy;
 
     await logAudit(ctx, {
       organizationId: args.organizationId,
@@ -1339,6 +1801,104 @@ export const _changePasswordSideEffects = internalMutation({
       entityType: "gabinetEmployee",
       entityId: args.employeeId,
       details: `Changed employee account password`,
+    });
+  },
+});
+
+// Creates a Gabinet employee profile for a user who already has an account.
+// If the user is not yet a member of the organisation, membership is created
+// automatically (no invitation email required). If membership already exists,
+// the existing record is reused — duplicates are never created.
+// Throws "No user account found" when the email is unknown, so callers can
+// fall back to createInvitation for genuinely new users.
+export const createForExistingMember = action({
+  args: {
+    organizationId: v.string(),
+    email: v.string(),
+    teamRole: v.optional(v.union(v.literal("admin"), v.literal("member"), v.literal("viewer"))),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    role: gabinetEmployeeRoleValidator,
+    specialization: v.optional(v.string()),
+    licenseNumber: v.optional(v.string()),
+    color: v.optional(v.string()),
+    showInCalendar: v.optional(v.boolean()),
+    qualifiedTreatmentIds: v.optional(v.array(v.string())),
+    tagIds: v.optional(v.array(v.string())),
+    categoryId: v.optional(v.string()),
+    customFields: v.optional(v.array(v.any())),
+    locationId: v.optional(v.string()),
+    locationRole: v.optional(gabinetEmployeeRoleValidator),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
+      organizationId: args.organizationId,
+    });
+    await ctx.runAction(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_employees",
+      action: "create",
+    }).then((perm: { allowed: boolean; scope: string }) => {
+      if (!perm.allowed) throw new Error("Permission denied");
+    });
+
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+
+    const user = await db.query("users").eq("email", args.email).first();
+    if (!user) {
+      throw new Error("No user account found for this email address.");
+    }
+
+    const membership = await db
+      .query("teamMemberships")
+      .eq("organizationId", orgIdStr)
+      .eq("userId", String(user._id))
+      .first();
+
+    if (!membership) {
+      // User has an account but is not yet an org member — create membership now.
+      const { canAddMore, currentSeats, seatLimit } = await ctx.runAction(
+        internal._helpers.seatLimits.checkSeatLimitAction,
+        { organizationId: args.organizationId },
+      );
+      if (!canAddMore) {
+        throw new Error(
+          `Seat limit reached (${currentSeats}/${seatLimit}). Upgrade your plan to add more team members.`,
+        );
+      }
+      await db.insert("teamMemberships", {
+        organizationId: orgIdStr,
+        userId: String(user._id),
+        role: args.teamRole ?? "member",
+        invitedBy: String(authResult.userId),
+        joinedAt: Date.now(),
+      });
+    }
+
+    await ctx.runAction(internal.gabinet.employees._createFromInvitation, {
+      organizationId: args.organizationId,
+      userId: String(user._id),
+      invitedBy: String(authResult.userId),
+      data: {
+        firstName: args.firstName,
+        lastName: args.lastName,
+        role: args.role,
+        specialization: args.specialization,
+        licenseNumber: args.licenseNumber,
+        color: args.color,
+        showInCalendar: args.showInCalendar,
+        qualifiedTreatmentIds: args.qualifiedTreatmentIds,
+        tagIds: args.tagIds,
+        categoryId: args.categoryId,
+        customFields: args.customFields,
+        locationId: args.locationId,
+        locationRole: args.locationRole,
+      },
     });
   },
 });

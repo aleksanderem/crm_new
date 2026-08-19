@@ -7,7 +7,7 @@ import { v } from "convex/values";
 
 export const upsert = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     logoStorageId: v.optional(v.id("_storage")),
     companyName: v.optional(v.string()),
     primaryColor: v.string(),

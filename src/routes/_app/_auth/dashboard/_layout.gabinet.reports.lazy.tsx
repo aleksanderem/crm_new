@@ -1,4 +1,5 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
+import type { Id } from "@cvx/_generated/dataModel";
 import Papa from "papaparse";
 import { toast } from "sonner";
 import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
@@ -17,7 +18,8 @@ import {
 import type { MappedGabinetPackageUsage } from "@/lib/supabase/mappers/gabinet/package-usage";
 import type { MappedGabinetTreatmentPackage } from "@/lib/supabase/mappers/gabinet/treatment-packages";
 import { useOrganization } from "@/components/org-context";
-import { usePermission } from "@/hooks/use-permission";
+import { useActiveLocation } from "@/contexts/gabinet-location-context";
+import { PermissionGate } from "@/hooks/use-permission";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { PageHeader } from "@/components/layout/page-header";
 import { SidePanel } from "@/components/crm/side-panel";
@@ -73,10 +75,42 @@ import StatisticsProfitCard from "@/components/shadcn-studio/blocks/statistics-p
 import StatisticsImpressionCard from "@/components/shadcn-studio/blocks/statistics-impression-card";
 import StatisticsSalesGrowthCard from "@/components/shadcn-studio/blocks/statistics-sales-growth-card";
 
+function GabinetReportsSkeleton() {
+  return (
+    <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
+      <Skeleton className="h-10 w-64" />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-28 rounded-lg" />
+        ))}
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-64 rounded-lg" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GabinetReportsRoute() {
+  const { activeLocationId } = useActiveLocation();
+  return (
+    <PermissionGate
+      feature="gabinet_reports"
+      action="view"
+      locationId={(activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined}
+      loadingFallback={<GabinetReportsSkeleton />}
+    >
+      <GabinetReports />
+    </PermissionGate>
+  );
+}
+
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/reports"
 )({
-  component: GabinetReports,
+  component: GabinetReportsRoute,
 });
 
 
@@ -136,7 +170,7 @@ function bucketizePairs(
 ): { index: number; count: number }[] {
   if (!pairs.length)
     return Array.from({ length: 7 }, (_, i) => ({ index: i, count: 0 }));
-  const sorted = [...pairs].sort((a, b) => a[0].localeCompare(b[0]));
+  const sorted = [...pairs].sort((a, b) => a[0]!.localeCompare(b[0]!));
   const bucketSize = Math.max(1, Math.ceil(sorted.length / 7));
   const buckets: { index: number; count: number }[] = [];
   for (let i = 0; i < sorted.length; i += bucketSize) {
@@ -1021,7 +1055,7 @@ function PackageSalesSection({
       buckets.set(key, { revenue: prev.revenue + u.paidAmount, count: prev.count + 1 });
     }
     return Array.from(buckets.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
+      .sort((a, b) => a[0]!.localeCompare(b[0]!))
       .map(([period, s]) => ({ period, revenue: s.revenue, count: s.count }));
   }, [filteredUsages, groupBy]);
 
@@ -1306,10 +1340,8 @@ function PackageSalesSection({
 function GabinetReports() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
-  const { allowed: canViewReports, loading: permLoading } = usePermission("gabinet_reports", "view");
-
+  const { activeLocationId, setActiveLocationId } = useActiveLocation();
   const [dateRange, setDateRange] = useState<DateRangeKey>("30d");
-  const [selectedLocationId, setSelectedLocationId] = useState<string | undefined>(undefined);
   const [dateFilterPanelOpen, setDateFilterPanelOpen] = useState(false);
   const todayIso = new Date().toISOString().split("T")[0];
   const defaultCustomStart = useMemo(() => {
@@ -1366,14 +1398,14 @@ function GabinetReports() {
 
   const { data: appointments, isLoading: loadingAppointments } =
     useSupabaseGabinetAppointmentsByDateRange(organizationId, startDate, endDate, {
-      locationId: selectedLocationId,
+      locationId: activeLocationId ?? undefined,
     });
 
   const { data: treatments, isLoading: loadingTreatments } =
     useSupabaseGabinetTreatmentsList(organizationId);
 
   const { data: patients, isLoading: loadingPatients } =
-    useSupabaseGabinetPatientsList(organizationId, { limit: 500 });
+    useSupabaseGabinetPatientsList(organizationId, { limit: 500, activeOnly: true });
 
   const { data: employees, isLoading: loadingEmployees } =
     useSupabaseGabinetEmployeesList(organizationId, { activeOnly: true });
@@ -1390,7 +1422,7 @@ function GabinetReports() {
 
   const { data: actualPayments, isLoading: loadingActualPayments } =
     useSupabasePaymentsRevenueByDateRange(organizationId, startDate, endDate, {
-      locationId: selectedLocationId,
+      locationId: activeLocationId ?? undefined,
     });
 
   const { data: packageUsages, isLoading: loadingPackageUsages } =
@@ -1762,25 +1794,6 @@ function GabinetReports() {
     };
   }, []);
 
-  if (permLoading) {
-    return (
-      <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
-        <Skeleton className="h-10 w-64" />
-      </div>
-    );
-  }
-
-  if (!canViewReports) {
-    return (
-      <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
-        <PageHeader
-          title={t("gabinet.reports.title")}
-          description={t("common.noPermission", "You don't have permission to view this page.")}
-        />
-      </div>
-    );
-  }
-
   if (isLoading) {
     return (
       <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
@@ -1809,8 +1822,8 @@ function GabinetReports() {
         <div className="flex gap-2 shrink-0">
           {locations && locations.length > 0 && (
             <Select
-              value={selectedLocationId ?? "all"}
-              onValueChange={(v) => setSelectedLocationId(v === "all" ? undefined : v)}
+              value={activeLocationId ?? "all"}
+              onValueChange={(v) => setActiveLocationId(v === "all" ? null : v)}
             >
               <SelectTrigger className="w-40" aria-label={t("gabinet.reports.location", "Location")}>
                 <SelectValue />
@@ -1879,9 +1892,9 @@ function GabinetReports() {
         />
         <StatisticsImpressionCard
           title={t("gabinet.reports.totalPatients")}
-          description={selectedLocationId ? t("gabinet.reports.allClientsOrgWide") : t("gabinet.reports.allClientsInSystem")}
+          description={activeLocationId ? t("gabinet.reports.allClientsOrgWide") : t("gabinet.reports.allClientsInSystem")}
           value={totalPatients.toLocaleString()}
-          changePercentage={selectedLocationId ? t("gabinet.reports.allClientsOrgWide") : t("gabinet.reports.allClientsInSystem")}
+          changePercentage={activeLocationId ? t("gabinet.reports.allClientsOrgWide") : t("gabinet.reports.allClientsInSystem")}
           chartData={revenueChartPoints.map((d) => ({ month: String(d.index), impression: d.count }))}
         />
       </div>

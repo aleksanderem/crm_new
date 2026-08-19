@@ -11,6 +11,7 @@
  */
 
 import { afterEach, describe, expect, test } from "vitest";
+import { createHash } from "crypto";
 import { api } from "../../convex/_generated/api";
 import {
   createTestCtx,
@@ -18,6 +19,10 @@ import {
   seedGabinetPrereqs,
 } from "../../convex/_test_helpers";
 import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
+
+function sha256Sync(input: string): string {
+  return createHash("sha256").update(input).digest("hex");
+}
 
 afterEach(async () => {
   // Let any scheduler-spawned callbacks settle before the next test resets
@@ -128,7 +133,7 @@ describe("patient portal isolation — cross-patient data access", () => {
 
     const result = await t.withIdentity(identity).action(
       api.gabinet.patientPortal.getMyAppointments,
-      { tokenHash: tokenA },
+      { token: tokenA },
     );
 
     expect(result).toHaveLength(0);
@@ -179,7 +184,7 @@ describe("patient portal isolation — cross-patient data access", () => {
 
     const result = await t.withIdentity(identity).action(
       api.gabinet.patientPortal.getMyPackages,
-      { tokenHash: tokenA },
+      { token: tokenA },
     );
 
     expect(result).toHaveLength(0);
@@ -218,7 +223,7 @@ describe("patient portal isolation — cross-patient data access", () => {
 
     const result = await t.withIdentity(identity).action(
       api.gabinet.patientPortal.getMyLoyaltyBalance,
-      { tokenHash: tokenA },
+      { token: tokenA },
     );
 
     // Patient A has no loyalty row — result must be null, not patient B's balance.
@@ -256,7 +261,7 @@ describe("patient portal isolation — cross-patient data access", () => {
 
     const result = await t.withIdentity(identity).action(
       api.gabinet.patientPortal.getMyLoyaltyTransactions,
-      { tokenHash: tokenA },
+      { token: tokenA },
     );
 
     expect(result).toHaveLength(0);
@@ -295,7 +300,7 @@ describe("patient portal isolation — cross-patient data access", () => {
 
     const result = await t.withIdentity(identity).action(
       api.documents.documents.listByPatientToken,
-      { tokenHash: tokenA },
+      { token: tokenA },
     );
 
     expect(result).toHaveLength(0);
@@ -318,7 +323,7 @@ describe("patient portal isolation — cross-patient data access", () => {
 
     const result = await t.withIdentity(identity).action(
       api.gabinet.patientPortal.getMyProfile,
-      { tokenHash: tokenA },
+      { token: tokenA },
     );
 
     // seedGabinetPrereqs seeds patient A with jan@example.com.
@@ -342,7 +347,7 @@ describe("patient portal isolation — cross-patient data access", () => {
     await db.insert("gabinetPortalSessions", {
       patientId: String(patientAId),
       organizationId: String(organizationId),
-      tokenHash: "expired-token-isolation",
+      tokenHash: sha256Sync("expired-token-isolation"),
       isActive: true,
       lastAccessedAt: now,
       createdAt: now,
@@ -352,7 +357,7 @@ describe("patient portal isolation — cross-patient data access", () => {
     await expect(
       t.withIdentity(identity).action(
         api.gabinet.patientPortal.getMyAppointments,
-        { tokenHash: "expired-token-isolation" },
+        { token: "expired-token-isolation" },
       ),
     ).rejects.toThrow(/invalid|expired/i);
   });
@@ -373,7 +378,7 @@ describe("patient portal isolation — cross-patient data access", () => {
     await db.insert("gabinetPortalSessions", {
       patientId: String(patientAId),
       organizationId: String(organizationId),
-      tokenHash: "inactive-token-isolation",
+      tokenHash: sha256Sync("inactive-token-isolation"),
       isActive: false,
       lastAccessedAt: now,
       createdAt: now,
@@ -383,7 +388,7 @@ describe("patient portal isolation — cross-patient data access", () => {
     await expect(
       t.withIdentity(identity).action(
         api.gabinet.patientPortal.getMyAppointments,
-        { tokenHash: "inactive-token-isolation" },
+        { token: "inactive-token-isolation" },
       ),
     ).rejects.toThrow(/invalid|expired/i);
   });

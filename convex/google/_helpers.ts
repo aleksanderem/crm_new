@@ -9,7 +9,7 @@ import { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from "@cvx/env";
  */
 export async function getValidAccessToken(
   ctx: ActionCtx,
-  organizationId: Id<"organizations">
+  organizationId: string
 ): Promise<{ accessToken: string; connectionId: Id<"oauthConnections"> } | null> {
   const connection = await ctx.runQuery(
     internal.oauthConnections.getActiveGoogle,

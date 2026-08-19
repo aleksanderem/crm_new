@@ -10,7 +10,7 @@ describe("products.create — happy path (#2185)", () => {
 
     const productId = await t
       .withIdentity(identity)
-      .action(api.products.create, {
+      .action(api.crm.products.create, {
         organizationId,
         name: "Test Product",
         sku: "PRD-001",
@@ -41,7 +41,7 @@ describe("products.create — happy path (#2185)", () => {
 
     const productId = await t
       .withIdentity(identity)
-      .action(api.products.create, {
+      .action(api.crm.products.create, {
         organizationId,
         name: "Minimal Product",
         sku: "PRD-002",
@@ -76,7 +76,7 @@ describe("products.create — happy path (#2185)", () => {
 
     const productId = await t
       .withIdentity(identity)
-      .action(api.products.create, {
+      .action(api.crm.products.create, {
         organizationId,
         name: "VAT-Exempt Product",
         sku: "PRD-003",
@@ -101,7 +101,7 @@ describe("products.create — happy path (#2185)", () => {
 
     const productId = await t
       .withIdentity(identity)
-      .action(api.products.create, {
+      .action(api.crm.products.create, {
         organizationId,
         name: "Tracked Product",
         sku: "PRD-004",

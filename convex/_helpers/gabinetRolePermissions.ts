@@ -13,7 +13,8 @@
  * used by `authAction.checkPermission` and the settings UI.
  */
 
-import type { Feature, Action, Scope, FeaturePermissions } from "./permissionTypes";
+import { FEATURES } from "./permissionTypes";
+import type { Action, Feature, Scope, FeaturePermissions } from "./permissionTypes";
 
 export type SystemGabinetRole =
   | "doctor"
@@ -39,8 +40,11 @@ export const SYSTEM_GABINET_ROLES: readonly SystemGabinetRole[] = [
 // Build a partial feature-permission record covering only gabinet_* features.
 // Non-gabinet features intentionally stay "none" — gabinet-role doesn't grant
 // anything outside its module; org-role still owns those.
+//
+// Parameter uses `gabinet_${string}` (not Extract<Feature, ...>) because Feature
+// is now `string` — Extract<string, `gabinet_${string}`> would yield `never`.
 function buildGabinet(
-  perms: Partial<Record<Extract<Feature, `gabinet_${string}`>, Partial<Record<Action, Scope>>>>,
+  perms: Partial<Record<`gabinet_${string}`, Partial<Record<Action, Scope>>>>,
 ): FeaturePermissions {
   const empty: Record<Action, Scope> = {
     view: "none",
@@ -52,44 +56,14 @@ function buildGabinet(
     refund: "none",
   };
   const result = {} as FeaturePermissions;
-  // Every feature defaults to all-none, so MAX-merge with org-role is a no-op
-  // for features this role doesn't speak to.
-  for (const f of [
-    "leads",
-    "contacts",
-    "companies",
-    "documents",
-    "activities",
-    "calls",
-    "email",
-    "products",
-    "pipelines",
-    "gabinet_dashboard",
-    "gabinet_patients",
-    "gabinet_appointments",
-    "gabinet_treatments",
-    "gabinet_packages",
-    "gabinet_employees",
-    "gabinet_payments",
-    "gabinet_receipts",
-    "gabinet_reports",
-    "gabinet_financial_reports",
-    "gabinet_purchase_prices",
-    "gabinet_photos",
-    "gabinet_online_booking",
-    "gabinet_inventory",
-    "gabinet_settings",
-    "settings",
-    "team",
-    "document_templates",
-    "document_instances",
-    "tagDefinitions",
-    "categoryDefinitions",
-  ] as const) {
-    result[f as Feature] = { ...empty };
+  // Seed every known feature to all-none so MAX-merge with org-role is a no-op
+  // for features this role doesn't speak to. Uses the canonical FEATURES registry
+  // (permissionTypes.ts) — no duplicate list needed here.
+  for (const f of FEATURES) {
+    result[f] = { ...empty };
   }
   for (const [feature, actions] of Object.entries(perms)) {
-    result[feature as Feature] = { ...empty, ...(actions ?? {}) };
+    result[feature] = { ...empty, ...(actions ?? {}) };
   }
   return result;
 }
@@ -110,6 +84,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_treatments: { view: "all" },
     gabinet_packages: { view: "all" },
     gabinet_employees: { view: "all" },
+    gabinet_documents: { view: "all", create: "all", edit: "own", delete: "own" },
     gabinet_payments: { view: "all" },
     gabinet_receipts: { view: "all" },
     gabinet_photos: { view: "all", create: "all", edit: "own", delete: "own" },
@@ -121,6 +96,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_treatments: { view: "all" },
     gabinet_packages: { view: "all" },
     gabinet_employees: { view: "all" },
+    gabinet_documents: { view: "all", create: "all", edit: "own", delete: "own" },
     gabinet_payments: { view: "all" },
     gabinet_receipts: { view: "all" },
     gabinet_photos: { view: "all", create: "all", edit: "own", delete: "own" },
@@ -132,6 +108,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_treatments: { view: "all" },
     gabinet_packages: { view: "all" },
     gabinet_employees: { view: "all" },
+    gabinet_documents: { view: "all", create: "all", edit: "own", delete: "own" },
     gabinet_payments: { view: "all" },
     gabinet_receipts: { view: "all" },
     gabinet_photos: { view: "all", create: "all", edit: "own", delete: "own" },
@@ -143,6 +120,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_treatments: { view: "all" },
     gabinet_packages: { view: "all" },
     gabinet_employees: { view: "all" },
+    gabinet_documents: { view: "all", create: "all", edit: "own" },
     gabinet_payments: { view: "all" },
     gabinet_receipts: { view: "all" },
     gabinet_photos: { view: "all", create: "all", edit: "own" },
@@ -154,6 +132,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_treatments: { view: "all" },
     gabinet_packages: { view: "all" },
     gabinet_employees: { view: "all" },
+    gabinet_documents: { view: "all", create: "all", edit: "all" },
     // Recepcja może rejestrować wpłaty i edytować je, ale NIE robi zwrotów —
     // zwrot wymaga osobnej autoryzacji administratora (issue #1690).
     gabinet_payments: { view: "all", create: "all", edit: "all" },
@@ -174,6 +153,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_treatments: { view: "all", create: "all", edit: "all" },
     gabinet_packages: { view: "all", create: "all", edit: "all" },
     gabinet_employees: { view: "all" },
+    gabinet_documents: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_payments: { view: "all", create: "all", edit: "all" },
     // Manager może drukować i unieważniać paragony (delete = void).
     gabinet_receipts: { view: "all", create: "all", edit: "all", delete: "all" },
@@ -183,6 +163,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_photos: { view: "all" },
     gabinet_online_booking: { view: "all", edit: "all" },
     gabinet_inventory: { view: "all", create: "all", edit: "all" },
+    gabinet_salary: { view: "all" },
     gabinet_settings: { view: "all" },
   }),
   admin: buildGabinet({
@@ -191,6 +172,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_treatments: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_packages: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_employees: { view: "all", create: "all", edit: "all", delete: "all" },
+    gabinet_documents: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_payments: { view: "all", create: "all", edit: "all", delete: "all", refund: "all" },
     // Admin może drukować i unieważniać paragony (delete = void).
     gabinet_receipts: { view: "all", create: "all", edit: "all", delete: "all" },
@@ -200,6 +182,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_photos: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_online_booking: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_inventory: { view: "all", create: "all", edit: "all", delete: "all" },
+    gabinet_salary: { view: "all", create: "all", edit: "all", delete: "all" },
     gabinet_settings: { view: "all", create: "all", edit: "all", delete: "all" },
   }),
   other: buildGabinet({
@@ -208,6 +191,7 @@ export const DEFAULT_GABINET_ROLE_PERMISSIONS: Record<SystemGabinetRole, Feature
     gabinet_treatments: { view: "all" },
     gabinet_packages: { view: "all" },
     gabinet_employees: { view: "all" },
+    gabinet_documents: { view: "all" },
     gabinet_payments: { view: "all" },
     gabinet_receipts: { view: "all" },
     gabinet_settings: {},

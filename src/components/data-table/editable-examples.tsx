@@ -151,7 +151,7 @@ export function getPatientColumnsWithInlineEdit(
  * import { api } from "@cvx/_generated/api";
  *
  * function ContactsPage() {
- *   const updateContact = useMutation(api.contacts.update);
+ *   const updateContact = useMutation(api.crm.contacts.update);
  *
  *   const handleInlineUpdate = async (contactId: string, field: keyof Contact, value: any) => {
  *     await updateContact({ id: contactId, [field]: value });

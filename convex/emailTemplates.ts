@@ -95,12 +95,12 @@ export const listVariableSources = query({
  */
 export const renderTemplate = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.string(),
     // CRM entities
-    contactId: v.optional(v.id("contacts")),
-    companyId: v.optional(v.id("companies")),
-    leadId: v.optional(v.id("leads")),
+    contactId: v.optional(v.string()),
+    companyId: v.optional(v.string()),
+    leadId: v.optional(v.string()),
     // Gabinet entities (Supabase-primary — strings, not Convex Ids)
     patientId: v.optional(v.string()),
     employeeId: v.optional(v.string()),
@@ -154,7 +154,7 @@ export const renderTemplate = query({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     subject: v.string(),
     body: v.string(),
@@ -193,7 +193,7 @@ export const create = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.string(),
     name: v.optional(v.string()),
     subject: v.optional(v.string()),
@@ -235,7 +235,7 @@ export const update = action({
 
 export const archive = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -262,7 +262,7 @@ export const archive = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.string(),
   },
   handler: async (ctx, args) => {

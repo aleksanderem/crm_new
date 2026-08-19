@@ -7,7 +7,7 @@ import { logAudit } from "./auditLog";
 
 export const listByResource = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     resourceType: v.string(),
     resourceId: v.string(),
   },
@@ -30,7 +30,7 @@ export const listByResource = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     email: v.string(),
     resourceType: v.string(),
     resourceId: v.string(),
@@ -74,7 +74,7 @@ export const create = action({
         resourceType: args.resourceType,
         resourceId: args.resourceId,
         accessLevel: args.accessLevel,
-        orgOwnerId: (org?.ownerId as string | undefined) ?? undefined,
+        orgOwnerId: org?.ownerId ?? undefined,
       });
     } catch {
       // side effects are best-effort
@@ -118,7 +118,7 @@ export const acceptByToken = action({
 
 export const revoke = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     inviteId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -159,20 +159,20 @@ export const revoke = action({
 
 export const _createSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     userName: v.string(),
     email: v.string(),
     resourceType: v.string(),
     resourceId: v.string(),
     accessLevel: v.string(),
-    orgOwnerId: v.optional(v.string()),
+    orgOwnerId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
     if (args.orgOwnerId) {
       await createNotificationDirect(ctx, {
         organizationId: args.organizationId,
-        userId: args.orgOwnerId as any,
+        userId: args.orgOwnerId,
         type: "resource_invite",
         title: "Resource shared",
         message: `${args.userName} shared a ${args.resourceType} with ${args.email}`,
@@ -193,7 +193,7 @@ export const _createSideEffects = internalMutation({
 
 export const _revokeSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     email: v.string(),
     resourceType: v.string(),

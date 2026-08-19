@@ -32,7 +32,7 @@ function stripTokens(c: Doc<"oauthConnections">) {
 }
 
 export const list = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
     const connections = await ctx.db
@@ -45,7 +45,7 @@ export const list = query({
 
 export const getByProvider = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     provider: v.literal("google"),
   },
   handler: async (ctx, args) => {
@@ -67,7 +67,7 @@ export const getByProvider = query({
 });
 
 export const getMyGoogleConnection = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     // Try per-user connection first
@@ -97,7 +97,7 @@ export const getMyGoogleConnection = query({
 
 export const deactivate = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     connectionId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -114,7 +114,7 @@ export const deactivate = action({
 
 export const revokeAndDeactivate = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     connectionId: v.id("oauthConnections"),
   },
   handler: async (ctx, args) => {
@@ -157,7 +157,7 @@ export const revokeAndDeactivate = action({
 // --- Internal functions for backend use ---
 
 export const getActiveGoogle = internalQuery({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("oauthConnections")
@@ -173,7 +173,7 @@ export const getActiveGoogle = internalQuery({
 
 export const createOrUpdate = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     providerAccountId: v.string(),
     accessToken: v.string(),
     refreshToken: v.string(),
@@ -245,7 +245,7 @@ export const getById = internalQuery({
 });
 
 export const verifyAdminAccess = internalQuery({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await requireOrgAdmin(ctx, args.organizationId);
   },
@@ -254,7 +254,7 @@ export const verifyAdminAccess = internalQuery({
 export const getForRevocation = internalQuery({
   args: {
     connectionId: v.id("oauthConnections"),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     const connection = await ctx.db.get(args.connectionId);

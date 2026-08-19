@@ -20,19 +20,20 @@ export const create = action({
   },
   handler: async (ctx, args): Promise<string> => {
     // Create org in Convex (Convex-side mutation; also mirrored to Supabase below)
-    const orgId: string = await ctx.runMutation(internal.organizations._createOrgInternal, {
+    const result = await ctx.runMutation(internal.organizations._createOrgInternal, {
       name: args.name,
       slug: args.slug,
       logo: args.logo,
       website: args.website,
     });
 
-    // Also write to Supabase
+    const db = createSupabaseDb();
+
+    // Write org to Supabase
     try {
-      const db = createSupabaseDb();
       await db.insert("organizations", {
-        _id: orgId,
-        organizationId: orgId,
+        _id: result.orgId,
+        organizationId: result.orgId,
         name: args.name,
         slug: args.slug,
         logo: args.logo ?? null,
@@ -44,7 +45,38 @@ export const create = action({
       // Supabase write is best-effort
     }
 
-    return orgId;
+    // Write owner teamMembership directly to Supabase (same pattern as invitations.accept).
+    try {
+      await db.insert("teamMemberships", {
+        _id: result.ownerMembershipId,
+        userId: result.ownerUserId,
+        organizationId: result.orgId,
+        role: "owner",
+        joinedAt: result.ownerJoinedAt,
+      });
+    } catch (e) {
+      console.error("[organizations.create] Supabase teamMembership write failed:", e);
+    }
+
+    // Write productSubscription directly to Supabase — avoids scheduler race
+    // where the UI can read Supabase before the fire-and-forget runAfter(0) fires.
+    try {
+      await ctx.runAction(internal.supabase.organizations.writeProductSubscriptionToSupabase, {
+        subscriptionId: result.subscriptionId,
+        organizationId: result.orgId,
+        productId: "crm",
+        status: "active",
+        cancelAtPeriodEnd: false,
+        source: "manual",
+        grantedByUserId: result.ownerUserId,
+        createdAt: result.subscriptionCreatedAt,
+        updatedAt: result.subscriptionCreatedAt,
+      });
+    } catch (e) {
+      console.error("[organizations.create] Supabase productSubscription write failed:", e);
+    }
+
+    return result.orgId;
   },
 });
 
@@ -82,23 +114,7 @@ export const _createOrgInternal = internalMutation({
       joinedAt: now,
     });
 
-    // Mirror owner membership to Supabase — same reason as in
-    // invitations._acceptInternal: the UI reads team_memberships from
-    // Supabase, not Convex, so without this the org creator has zero
-    // permissions in their own org.
-    await ctx.scheduler.runAfter(
-      0,
-      internal.supabase.organizations.writeTeamMembershipToSupabase,
-      {
-        membershipId: String(ownerMembershipId),
-        userId: String(user._id),
-        organizationId: String(orgId),
-        role: "owner",
-        joinedAt: now,
-      },
-    );
-
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: orgId,
       entityType: "organization",
       entityId: orgId,
@@ -111,7 +127,7 @@ export const _createOrgInternal = internalMutation({
     // verifyProductAccess read productSubscriptions; without this a new org
     // would have no modules once enforcement is on. Direct insert (create path,
     // no pre-existing row); mirrors _upsertEntitlement's shape.
-    await ctx.db.insert("productSubscriptions", {
+    const subscriptionId = await ctx.db.insert("productSubscriptions", {
       organizationId: orgId,
       productId: "crm",
       status: "active",
@@ -129,7 +145,14 @@ export const _createOrgInternal = internalMutation({
       { organizationId: orgId, userId: user._id },
     );
 
-    return String(orgId);
+    return {
+      orgId: String(orgId),
+      ownerMembershipId: String(ownerMembershipId),
+      ownerUserId: String(user._id),
+      ownerJoinedAt: now,
+      subscriptionId: String(subscriptionId),
+      subscriptionCreatedAt: now,
+    };
   },
 });
 
@@ -149,7 +172,7 @@ export const getMyOrganizations = query({
 
     const orgs = await Promise.all(
       memberships.map(async (m) => {
-        const org = await ctx.db.get(m.organizationId);
+        const org = await ctx.db.get(m.organizationId as Id<"organizations">);
         return org ? { ...org, role: m.role } : null;
       })
     );
@@ -159,16 +182,16 @@ export const getMyOrganizations = query({
 });
 
 export const getById = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db.get(args.organizationId);
+    return await ctx.db.get(args.organizationId as Id<"organizations">);
   },
 });
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.optional(v.string()),
     slug: v.optional(v.string()),
     logo: v.optional(v.string()),
@@ -197,13 +220,13 @@ export const update = action({
       // Supabase write is best-effort
     }
 
-    return args.organizationId;
+    return args.organizationId as Id<"organizations">;
   },
 });
 
 export const _updateOrgInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.optional(v.string()),
     slug: v.optional(v.string()),
     logo: v.optional(v.string()),
@@ -223,9 +246,9 @@ export const _updateOrgInternal = internalMutation({
       }
     }
 
-    await ctx.db.patch(organizationId, { ...updates, updatedAt: Date.now() });
+    await ctx.db.patch(organizationId as Id<"organizations">, { ...updates, updatedAt: Date.now() });
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId,
       entityType: "organization",
       entityId: organizationId,
@@ -237,7 +260,7 @@ export const _updateOrgInternal = internalMutation({
 });
 
 export const getMembers = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
@@ -267,7 +290,7 @@ export const getMembers = action({
 
 export const inviteMember = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     role: orgRoleValidator,
   },
@@ -282,7 +305,7 @@ export const inviteMember = action({
       );
     }
 
-    const membershipId: string = await ctx.runMutation(
+    const membership = await ctx.runMutation(
       internal.organizations._inviteMemberInternal,
       {
         organizationId: args.organizationId,
@@ -290,13 +313,21 @@ export const inviteMember = action({
         role: args.role,
       },
     );
-    return membershipId;
+    await ctx.runAction(internal.supabase.organizations.writeTeamMembershipToSupabase, {
+      membershipId: membership.membershipId,
+      userId: membership.userId,
+      organizationId: membership.organizationId,
+      role: membership.role,
+      invitedBy: membership.invitedBy,
+      joinedAt: membership.joinedAt,
+    });
+    return membership.membershipId;
   },
 });
 
 export const _inviteMemberInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     role: orgRoleValidator,
   },
@@ -320,21 +351,7 @@ export const _inviteMemberInternal = internalMutation({
       joinedAt,
     });
 
-    // Mirror to Supabase — UI reads team_memberships from there.
-    await ctx.scheduler.runAfter(
-      0,
-      internal.supabase.organizations.writeTeamMembershipToSupabase,
-      {
-        membershipId: String(membershipId),
-        userId: String(args.userId),
-        organizationId: String(args.organizationId),
-        role: args.role,
-        invitedBy: String(user._id),
-        joinedAt,
-      },
-    );
-
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "organization",
       entityId: args.organizationId,
@@ -343,13 +360,20 @@ export const _inviteMemberInternal = internalMutation({
       performedBy: user._id,
     });
 
-    return String(membershipId);
+    return {
+      membershipId: String(membershipId),
+      userId: String(args.userId),
+      organizationId: String(args.organizationId),
+      role: args.role,
+      invitedBy: String(user._id),
+      joinedAt,
+    };
   },
 });
 
 export const updateMemberRole = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     membershipId: v.string(),
     role: orgRoleValidator,
   },
@@ -375,7 +399,7 @@ export const updateMemberRole = action({
 
 export const _updateMemberRoleInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     membershipId: v.id("teamMemberships"),
     role: orgRoleValidator,
   },
@@ -392,7 +416,7 @@ export const _updateMemberRoleInternal = internalMutation({
 
     await ctx.db.patch(args.membershipId, { role: args.role });
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "organization",
       entityId: args.organizationId,
@@ -411,7 +435,7 @@ export const _updateMemberRoleInternal = internalMutation({
 
 export const removeMember = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     membershipId: v.string(),
   },
   handler: async (ctx, args): Promise<string> => {
@@ -430,7 +454,7 @@ export const removeMember = action({
 
 export const _removeMemberInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     membershipId: v.id("teamMemberships"),
   },
   handler: async (ctx, args) => {
@@ -446,7 +470,7 @@ export const _removeMemberInternal = internalMutation({
 
     await ctx.db.delete(args.membershipId);
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "organization",
       entityId: args.organizationId,
@@ -458,7 +482,7 @@ export const _removeMemberInternal = internalMutation({
 });
 
 export const getSeatUsage = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
     return await checkSeatLimit(ctx, args);
@@ -468,27 +492,40 @@ export const getSeatUsage = query({
 // Returns only the seat limit (from subscriptions/plans, which are Convex-only tables).
 // Seat counts (team_memberships + invitations) are read from Supabase by the frontend hook.
 export const getSeatLimit = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
 
-    const org = await ctx.db.get(args.organizationId);
-    if (!org) throw new Error("Organization not found");
+    const ownerMembership = await ctx.db
+      .query("teamMemberships")
+      .withIndex("by_organizationId", (q) =>
+        q.eq("organizationId", args.organizationId)
+      )
+      .filter((q) => q.eq(q.field("role"), "owner"))
+      .first();
+    if (!ownerMembership) throw new Error("Organization not found");
 
-    const subscription = await ctx.db
+    const subscriptions = await ctx.db
       .query("subscriptions")
-      .withIndex("userId", (q) => q.eq("userId", org.ownerId))
+      .withIndex("userId", (q) => q.eq("userId", ownerMembership.userId))
       .filter((q) =>
         q.or(
           q.eq(q.field("status"), "active"),
           q.eq(q.field("status"), "trialing"),
         ),
       )
-      .first();
+      .collect();
 
-    if (!subscription) return { seatLimit: 20 };
+    if (subscriptions.length === 0) return { seatLimit: 20 };
 
-    const plan = await ctx.db.get(subscription.planId);
-    return { seatLimit: plan?.seatLimit ?? 20 };
+    let maxSeatLimit: number | null = null;
+    for (const sub of subscriptions) {
+      const plan = await ctx.db.get(sub.planId);
+      if (!plan) continue;
+      if (maxSeatLimit === null || plan.seatLimit > maxSeatLimit) {
+        maxSeatLimit = plan.seatLimit;
+      }
+    }
+    return { seatLimit: maxSeatLimit ?? 20 };
   },
 });

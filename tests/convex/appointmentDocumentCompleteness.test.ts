@@ -1,0 +1,677 @@
+/**
+ * Unit tests for getAppointmentDocumentCompleteness (D28).
+ *
+ * Covers:
+ *   - satisfied: signed doc on this appointment, no expiry
+ *   - expired: signed doc with expiresAt in the past
+ *   - pending: doc exists but only draft/pending_signature
+ *   - missing (before_each_visit): no doc generated for this appointment
+ *   - once: satisfied by a prior appointment's signed doc
+ *   - first_visit_only: not_applicable on second+ visit, missing on first
+ *   - every_n_days: satisfied while prior doc is within validity; expired when past
+ *   - optional doc (isRequired=false): blocksCompletion=false even when missing
+ *   - isComplete=true when no blocking items
+ *   - isComplete=false when a required doc is missing
+ *
+ * Closes #5457.
+ */
+
+import { afterEach, describe, expect, test } from "vitest";
+import type { Id } from "../../convex/_generated/dataModel";
+import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
+import { getAppointmentDocumentCompleteness } from "../../convex/gabinet/_helpers/documentGate";
+
+afterEach(async () => {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+});
+
+// ---------------------------------------------------------------------------
+// Seed helpers
+// ---------------------------------------------------------------------------
+
+async function seedOrg(orgId: string, userId: string) {
+  const db = createSupabaseDb();
+  const now = Date.now();
+  // org and user must exist for FK references; use direct insert
+  await db.insert("organizations", {
+    _id: orgId,
+    name: "Test Org",
+    slug: orgId,
+    createdAt: now,
+    updatedAt: now,
+  });
+  await db.insert("users", {
+    _id: userId,
+    email: `user-${userId}@test.com`,
+    name: "Test User",
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+async function seedTemplate(
+  orgStr: string,
+  userId: string,
+  templateId: string,
+  name = "Consent Form",
+) {
+  const db = createSupabaseDb();
+  const now = Date.now();
+  await db.insert("formTemplates", {
+    _id: templateId,
+    organizationId: orgStr,
+    name,
+    category: "intake",
+    formJson: "{}",
+    modules: ["gabinet"],
+    entityTypes: ["appointment"],
+    requiresSignature: false,
+    version: 1,
+    isActive: true,
+    createdBy: userId,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+async function seedTreatment(
+  orgStr: string,
+  userId: string,
+  treatmentId: string,
+  templates: Array<{
+    templateId: string;
+    timing?: "before_start" | "during_visit" | "after_completion";
+    frequency?: "once" | "first_visit_only" | "before_each_visit" | "every_n_days" | "on_expiry";
+    validityDays?: number;
+    isRequired?: boolean;
+    isOneTime?: boolean;
+  }>,
+) {
+  const db = createSupabaseDb();
+  const now = Date.now();
+  await db.insert("gabinetTreatments", {
+    _id: treatmentId,
+    organizationId: orgStr,
+    name: "Treatment",
+    duration: 30,
+    price: 100,
+    isActive: true,
+    requiredFormTemplates: templates.map((t) => ({
+      templateId: t.templateId,
+      timing: t.timing ?? "before_start",
+      frequency: t.frequency ?? "before_each_visit",
+      validityDays: t.validityDays ?? null,
+      isRequired: t.isRequired !== false,
+      isOneTime: t.isOneTime ?? false,
+    })),
+    createdBy: userId,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+async function seedPatient(orgStr: string, userId: string, patientId: string) {
+  const db = createSupabaseDb();
+  const now = Date.now();
+  await db.insert("gabinetPatients", {
+    _id: patientId,
+    organizationId: orgStr,
+    firstName: "Anna",
+    lastName: "Nowak",
+    isActive: true,
+    createdBy: userId,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+async function seedAppointment(
+  orgStr: string,
+  userId: string,
+  appointmentId: string,
+  patientId: string,
+  treatmentId: string,
+  status = "scheduled",
+) {
+  const db = createSupabaseDb();
+  const now = Date.now();
+  await db.insert("gabinetAppointments", {
+    _id: appointmentId,
+    organizationId: orgStr,
+    patientId,
+    treatmentId,
+    employeeId: userId,
+    date: "2026-08-20",
+    startTime: "10:00",
+    endTime: "10:30",
+    status,
+    isRecurring: false,
+    createdBy: userId,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+async function seedFormDoc(
+  orgStr: string,
+  userId: string,
+  templateId: string,
+  appointmentId: string,
+  opts: {
+    status?: string;
+    signedAt?: number | null;
+    expiresAt?: number | null;
+    isRequired?: boolean;
+    timing?: string;
+  } = {},
+) {
+  const db = createSupabaseDb();
+  const now = Date.now();
+  await db.insert("formDocuments", {
+    organizationId: orgStr,
+    templateId,
+    entityType: "appointment",
+    entityId: appointmentId,
+    title: "Consent Form",
+    responseData: "{}",
+    status: opts.status ?? "draft",
+    signedAt: opts.signedAt ?? null,
+    expiresAt: opts.expiresAt ?? null,
+    autoGenerated: true,
+    isRequired: opts.isRequired !== false,
+    timing: opts.timing ?? "before_start",
+    createdBy: userId,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+// IDs unique per test (use short unique prefixes to avoid collisions)
+function ids(prefix: string) {
+  return {
+    orgId: `org-${prefix}`,
+    userId: `user-${prefix}`,
+    patientId: `patient-${prefix}`,
+    treatmentId: `treat-${prefix}`,
+    appointmentId: `appt-${prefix}`,
+    templateId: `tmpl-${prefix}`,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// satisfied: signed doc on this appointment
+// ---------------------------------------------------------------------------
+
+describe("status: satisfied", () => {
+  test("signed doc with no expiresAt → satisfied, not blocking", async () => {
+    const id = ids("sat-a");
+    await seedOrg(id.orgId, id.userId);
+    await seedTemplate(id.orgId, id.userId, id.templateId);
+    await seedTreatment(id.orgId, id.userId, id.treatmentId, [
+      { templateId: id.templateId, frequency: "before_each_visit" },
+    ]);
+    await seedPatient(id.orgId, id.userId, id.patientId);
+    await seedAppointment(id.orgId, id.userId, id.appointmentId, id.patientId, id.treatmentId);
+    await seedFormDoc(id.orgId, id.userId, id.templateId, id.appointmentId, {
+      status: "signed",
+      signedAt: Date.now() - 1000,
+    });
+
+    const result = await getAppointmentDocumentCompleteness(
+      id.appointmentId as unknown as Id<"gabinetAppointments">,
+    );
+
+    expect(result.isComplete).toBe(true);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].status).toBe("satisfied");
+    expect(result.items[0].blocksCompletion).toBe(false);
+    expect(result.summary.satisfied).toBe(1);
+    expect(result.summary.blocking).toBe(0);
+  });
+
+  test("completed doc → satisfied", async () => {
+    const id = ids("sat-b");
+    await seedOrg(id.orgId, id.userId);
+    await seedTemplate(id.orgId, id.userId, id.templateId);
+    await seedTreatment(id.orgId, id.userId, id.treatmentId, [
+      { templateId: id.templateId, frequency: "before_each_visit" },
+    ]);
+    await seedPatient(id.orgId, id.userId, id.patientId);
+    await seedAppointment(id.orgId, id.userId, id.appointmentId, id.patientId, id.treatmentId);
+    await seedFormDoc(id.orgId, id.userId, id.templateId, id.appointmentId, {
+      status: "completed",
+      signedAt: Date.now() - 1000,
+    });
+
+    const result = await getAppointmentDocumentCompleteness(
+      id.appointmentId as unknown as Id<"gabinetAppointments">,
+    );
+
+    expect(result.items[0].status).toBe("satisfied");
+    expect(result.isComplete).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// expired: signed doc with expiresAt in the past
+// ---------------------------------------------------------------------------
+
+describe("status: expired", () => {
+  test("signed doc with past expiresAt → expired, blocking if required", async () => {
+    const id = ids("exp-a");
+    await seedOrg(id.orgId, id.userId);
+    await seedTemplate(id.orgId, id.userId, id.templateId);
+    await seedTreatment(id.orgId, id.userId, id.treatmentId, [
+      { templateId: id.templateId, frequency: "every_n_days", validityDays: 30 },
+    ]);
+    await seedPatient(id.orgId, id.userId, id.patientId);
+    await seedAppointment(id.orgId, id.userId, id.appointmentId, id.patientId, id.treatmentId);
+    await seedFormDoc(id.orgId, id.userId, id.templateId, id.appointmentId, {
+      status: "signed",
+      signedAt: Date.now() - 40 * 24 * 60 * 60 * 1000,
+      expiresAt: Date.now() - 10 * 24 * 60 * 60 * 1000, // expired 10 days ago
+    });
+
+    const result = await getAppointmentDocumentCompleteness(
+      id.appointmentId as unknown as Id<"gabinetAppointments">,
+    );
+
+    expect(result.items[0].status).toBe("expired");
+    expect(result.items[0].blocksCompletion).toBe(true);
+    expect(result.isComplete).toBe(false);
+    expect(result.summary.expired).toBe(1);
+    expect(result.summary.blocking).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// pending: doc exists but is draft or pending_signature
+// ---------------------------------------------------------------------------
+
+describe("status: pending", () => {
+  test("draft doc → pending, blocking if required", async () => {
+    const id = ids("pend-a");
+    await seedOrg(id.orgId, id.userId);
+    await seedTemplate(id.orgId, id.userId, id.templateId);
+    await seedTreatment(id.orgId, id.userId, id.treatmentId, [
+      { templateId: id.templateId, frequency: "before_each_visit" },
+    ]);
+    await seedPatient(id.orgId, id.userId, id.patientId);
+    await seedAppointment(id.orgId, id.userId, id.appointmentId, id.patientId, id.treatmentId);
+    await seedFormDoc(id.orgId, id.userId, id.templateId, id.appointmentId, {
+      status: "draft",
+    });
+
+    const result = await getAppointmentDocumentCompleteness(
+      id.appointmentId as unknown as Id<"gabinetAppointments">,
+    );
+
+    expect(result.items[0].status).toBe("pending");
+    expect(result.items[0].blocksCompletion).toBe(true);
+    expect(result.isComplete).toBe(false);
+    expect(result.summary.pending).toBe(1);
+  });
+
+  test("pending_signature doc → pending", async () => {
+    const id = ids("pend-b");
+    await seedOrg(id.orgId, id.userId);
+    await seedTemplate(id.orgId, id.userId, id.templateId);
+    await seedTreatment(id.orgId, id.userId, id.treatmentId, [
+      { templateId: id.templateId, frequency: "before_each_visit" },
+    ]);
+    await seedPatient(id.orgId, id.userId, id.patientId);
+    await seedAppointment(id.orgId, id.userId, id.appointmentId, id.patientId, id.treatmentId);
+    await seedFormDoc(id.orgId, id.userId, id.templateId, id.appointmentId, {
+      status: "pending_signature",
+    });
+
+    const result = await getAppointmentDocumentCompleteness(
+      id.appointmentId as unknown as Id<"gabinetAppointments">,
+    );
+
+    expect(result.items[0].status).toBe("pending");
+    expect(result.isComplete).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// missing: no doc generated for this appointment (before_each_visit)
+// ---------------------------------------------------------------------------
+
+describe("status: missing", () => {
+  test("no doc for before_each_visit → missing, blocking", async () => {
+    const id = ids("miss-a");
+    await seedOrg(id.orgId, id.userId);
+    await seedTemplate(id.orgId, id.userId, id.templateId);
+    await seedTreatment(id.orgId, id.userId, id.treatmentId, [
+      { templateId: id.templateId, frequency: "before_each_visit" },
+    ]);
+    await seedPatient(id.orgId, id.userId, id.patientId);
+    await seedAppointment(id.orgId, id.userId, id.appointmentId, id.patientId, id.treatmentId);
+    // No formDocument inserted
+
+    const result = await getAppointmentDocumentCompleteness(
+      id.appointmentId as unknown as Id<"gabinetAppointments">,
+    );
+
+    expect(result.items[0].status).toBe("missing");
+    expect(result.items[0].blocksCompletion).toBe(true);
+    expect(result.isComplete).toBe(false);
+    expect(result.summary.missing).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// optional doc: isRequired=false → never blocks
+// ---------------------------------------------------------------------------
+
+describe("optional documents", () => {
+  test("optional missing doc → missing but not blocking, isComplete=true", async () => {
+    const id = ids("opt-a");
+    await seedOrg(id.orgId, id.userId);
+    await seedTemplate(id.orgId, id.userId, id.templateId);
+    await seedTreatment(id.orgId, id.userId, id.treatmentId, [
+      { templateId: id.templateId, frequency: "before_each_visit", isRequired: false },
+    ]);
+    await seedPatient(id.orgId, id.userId, id.patientId);
+    await seedAppointment(id.orgId, id.userId, id.appointmentId, id.patientId, id.treatmentId);
+
+    const result = await getAppointmentDocumentCompleteness(
+      id.appointmentId as unknown as Id<"gabinetAppointments">,
+    );
+
+    expect(result.items[0].status).toBe("missing");
+    expect(result.items[0].isRequired).toBe(false);
+    expect(result.items[0].blocksCompletion).toBe(false);
+    expect(result.isComplete).toBe(true);
+    expect(result.summary.blocking).toBe(0);
+  });
+
+  test("optional expired doc → expired but not blocking", async () => {
+    const id = ids("opt-b");
+    await seedOrg(id.orgId, id.userId);
+    await seedTemplate(id.orgId, id.userId, id.templateId);
+    await seedTreatment(id.orgId, id.userId, id.treatmentId, [
+      { templateId: id.templateId, frequency: "every_n_days", validityDays: 30, isRequired: false },
+    ]);
+    await seedPatient(id.orgId, id.userId, id.patientId);
+    await seedAppointment(id.orgId, id.userId, id.appointmentId, id.patientId, id.treatmentId);
+    await seedFormDoc(id.orgId, id.userId, id.templateId, id.appointmentId, {
+      status: "signed",
+      signedAt: Date.now() - 40 * 24 * 60 * 60 * 1000,
+      expiresAt: Date.now() - 1 * 24 * 60 * 60 * 1000,
+      isRequired: false,
+    });
+
+    const result = await getAppointmentDocumentCompleteness(
+      id.appointmentId as unknown as Id<"gabinetAppointments">,
+    );
+
+    expect(result.items[0].status).toBe("expired");
+    expect(result.items[0].isRequired).toBe(false);
+    expect(result.items[0].blocksCompletion).toBe(false);
+    expect(result.isComplete).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// frequency: once — satisfied by a prior appointment's signed doc
+// ---------------------------------------------------------------------------
+
+describe("frequency: once (cross-appointment)", () => {
+  test("prior signed doc satisfies the requirement for this appointment", async () => {
+    const id = ids("once-a");
+    const priorApptId = `${id.appointmentId}-prior`;
+    await seedOrg(id.orgId, id.userId);
+    await seedTemplate(id.orgId, id.userId, id.templateId);
+    await seedTreatment(id.orgId, id.userId, id.treatmentId, [
+      { templateId: id.templateId, frequency: "once" },
+    ]);
+    await seedPatient(id.orgId, id.userId, id.patientId);
+    // Prior appointment with signed doc
+    await seedAppointment(id.orgId, id.userId, priorApptId, id.patientId, id.treatmentId, "completed");
+    await seedFormDoc(id.orgId, id.userId, id.templateId, priorApptId, {
+      status: "signed",
+      signedAt: Date.now() - 10_000,
+    });
+    // Current appointment — no doc generated (autoGenerate skipped it)
+    await seedAppointment(id.orgId, id.userId, id.appointmentId, id.patientId, id.treatmentId);
+
+    const result = await getAppointmentDocumentCompleteness(
+      id.appointmentId as unknown as Id<"gabinetAppointments">,
+    );
+
+    expect(result.items[0].status).toBe("satisfied");
+    expect(result.items[0].blocksCompletion).toBe(false);
+    expect(result.isComplete).toBe(true);
+    expect(result.summary.satisfied).toBe(1);
+  });
+
+  test("no prior signed doc → missing, blocking", async () => {
+    const id = ids("once-b");
+    await seedOrg(id.orgId, id.userId);
+    await seedTemplate(id.orgId, id.userId, id.templateId);
+    await seedTreatment(id.orgId, id.userId, id.treatmentId, [
+      { templateId: id.templateId, frequency: "once" },
+    ]);
+    await seedPatient(id.orgId, id.userId, id.patientId);
+    await seedAppointment(id.orgId, id.userId, id.appointmentId, id.patientId, id.treatmentId);
+
+    const result = await getAppointmentDocumentCompleteness(
+      id.appointmentId as unknown as Id<"gabinetAppointments">,
+    );
+
+    expect(result.items[0].status).toBe("missing");
+    expect(result.items[0].blocksCompletion).toBe(true);
+    expect(result.isComplete).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// frequency: first_visit_only
+// ---------------------------------------------------------------------------
+
+describe("frequency: first_visit_only", () => {
+  test("first visit → missing when no doc generated", async () => {
+    const id = ids("fvo-a");
+    await seedOrg(id.orgId, id.userId);
+    await seedTemplate(id.orgId, id.userId, id.templateId);
+    await seedTreatment(id.orgId, id.userId, id.treatmentId, [
+      { templateId: id.templateId, frequency: "first_visit_only" },
+    ]);
+    await seedPatient(id.orgId, id.userId, id.patientId);
+    await seedAppointment(id.orgId, id.userId, id.appointmentId, id.patientId, id.treatmentId);
+
+    const result = await getAppointmentDocumentCompleteness(
+      id.appointmentId as unknown as Id<"gabinetAppointments">,
+    );
+
+    expect(result.items[0].status).toBe("missing");
+    expect(result.items[0].blocksCompletion).toBe(true);
+  });
+
+  test("second visit (prior completed appointment) → not_applicable, never blocks", async () => {
+    const id = ids("fvo-b");
+    const priorApptId = `${id.appointmentId}-prior`;
+    await seedOrg(id.orgId, id.userId);
+    await seedTemplate(id.orgId, id.userId, id.templateId);
+    await seedTreatment(id.orgId, id.userId, id.treatmentId, [
+      { templateId: id.templateId, frequency: "first_visit_only" },
+    ]);
+    await seedPatient(id.orgId, id.userId, id.patientId);
+    await seedAppointment(id.orgId, id.userId, priorApptId, id.patientId, id.treatmentId, "completed");
+    await seedAppointment(id.orgId, id.userId, id.appointmentId, id.patientId, id.treatmentId);
+
+    const result = await getAppointmentDocumentCompleteness(
+      id.appointmentId as unknown as Id<"gabinetAppointments">,
+    );
+
+    expect(result.items[0].status).toBe("not_applicable");
+    expect(result.items[0].blocksCompletion).toBe(false);
+    expect(result.isComplete).toBe(true);
+    expect(result.summary.notApplicable).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// frequency: every_n_days (cross-appointment via signedAt + validityDays)
+// ---------------------------------------------------------------------------
+
+describe("frequency: every_n_days (cross-appointment)", () => {
+  test("prior signed doc still valid → satisfied (no doc for current appt)", async () => {
+    const id = ids("end-a");
+    const priorApptId = `${id.appointmentId}-prior`;
+    const validityDays = 30;
+    await seedOrg(id.orgId, id.userId);
+    await seedTemplate(id.orgId, id.userId, id.templateId);
+    await seedTreatment(id.orgId, id.userId, id.treatmentId, [
+      { templateId: id.templateId, frequency: "every_n_days", validityDays },
+    ]);
+    await seedPatient(id.orgId, id.userId, id.patientId);
+    await seedAppointment(id.orgId, id.userId, priorApptId, id.patientId, id.treatmentId, "completed");
+    // Signed 5 days ago, still within 30-day window
+    await seedFormDoc(id.orgId, id.userId, id.templateId, priorApptId, {
+      status: "signed",
+      signedAt: Date.now() - 5 * 24 * 60 * 60 * 1000,
+    });
+    // Current appointment has no doc (autoGenerate skipped — still valid)
+    await seedAppointment(id.orgId, id.userId, id.appointmentId, id.patientId, id.treatmentId);
+
+    const result = await getAppointmentDocumentCompleteness(
+      id.appointmentId as unknown as Id<"gabinetAppointments">,
+    );
+
+    expect(result.items[0].status).toBe("satisfied");
+    expect(result.isComplete).toBe(true);
+  });
+
+  test("prior signed doc expired (signedAt-based) → expired, blocking", async () => {
+    const id = ids("end-b");
+    const priorApptId = `${id.appointmentId}-prior`;
+    const validityDays = 30;
+    await seedOrg(id.orgId, id.userId);
+    await seedTemplate(id.orgId, id.userId, id.templateId);
+    await seedTreatment(id.orgId, id.userId, id.treatmentId, [
+      { templateId: id.templateId, frequency: "every_n_days", validityDays },
+    ]);
+    await seedPatient(id.orgId, id.userId, id.patientId);
+    await seedAppointment(id.orgId, id.userId, priorApptId, id.patientId, id.treatmentId, "completed");
+    // Signed 35 days ago — past 30-day window
+    await seedFormDoc(id.orgId, id.userId, id.templateId, priorApptId, {
+      status: "signed",
+      signedAt: Date.now() - 35 * 24 * 60 * 60 * 1000,
+    });
+    // Current appointment: no doc (in this scenario autoGenerate would have created one,
+    // but here we test the cross-appointment lookup path when no appt doc exists)
+    await seedAppointment(id.orgId, id.userId, id.appointmentId, id.patientId, id.treatmentId);
+
+    const result = await getAppointmentDocumentCompleteness(
+      id.appointmentId as unknown as Id<"gabinetAppointments">,
+    );
+
+    expect(result.items[0].status).toBe("expired");
+    expect(result.items[0].blocksCompletion).toBe(true);
+    expect(result.isComplete).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// No treatment on appointment
+// ---------------------------------------------------------------------------
+
+describe("appointment without treatment", () => {
+  test("no templates → isComplete=true, empty items", async () => {
+    const id = ids("notreat-a");
+    await seedOrg(id.orgId, id.userId);
+    await seedPatient(id.orgId, id.userId, id.patientId);
+    const db = createSupabaseDb();
+    const now = Date.now();
+    await db.insert("gabinetAppointments", {
+      _id: id.appointmentId,
+      organizationId: id.orgId,
+      patientId: id.patientId,
+      treatmentId: null,
+      employeeId: id.userId,
+      date: "2026-08-20",
+      startTime: "10:00",
+      endTime: "10:30",
+      status: "scheduled",
+      isRecurring: false,
+      createdBy: id.userId,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const result = await getAppointmentDocumentCompleteness(
+      id.appointmentId as unknown as Id<"gabinetAppointments">,
+    );
+
+    expect(result.isComplete).toBe(true);
+    expect(result.items).toHaveLength(0);
+    expect(result.summary.total).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// mixed: multiple templates, some satisfied, some missing
+// ---------------------------------------------------------------------------
+
+describe("summary aggregation", () => {
+  test("two required docs: one satisfied, one missing → isComplete=false, blocking=1", async () => {
+    const id = ids("mix-a");
+    const templateId2 = `${id.templateId}-b`;
+    await seedOrg(id.orgId, id.userId);
+    await seedTemplate(id.orgId, id.userId, id.templateId, "Consent Form");
+    await seedTemplate(id.orgId, id.userId, templateId2, "Health Questionnaire");
+    await seedTreatment(id.orgId, id.userId, id.treatmentId, [
+      { templateId: id.templateId, frequency: "before_each_visit" },
+      { templateId: templateId2, frequency: "before_each_visit" },
+    ]);
+    await seedPatient(id.orgId, id.userId, id.patientId);
+    await seedAppointment(id.orgId, id.userId, id.appointmentId, id.patientId, id.treatmentId);
+    // First doc signed
+    await seedFormDoc(id.orgId, id.userId, id.templateId, id.appointmentId, {
+      status: "signed",
+      signedAt: Date.now() - 1000,
+    });
+    // Second doc not generated
+
+    const result = await getAppointmentDocumentCompleteness(
+      id.appointmentId as unknown as Id<"gabinetAppointments">,
+    );
+
+    expect(result.isComplete).toBe(false);
+    expect(result.summary.total).toBe(2);
+    expect(result.summary.satisfied).toBe(1);
+    expect(result.summary.missing).toBe(1);
+    expect(result.summary.blocking).toBe(1);
+  });
+
+  test("required satisfied + optional missing → isComplete=true", async () => {
+    const id = ids("mix-b");
+    const templateId2 = `${id.templateId}-b`;
+    await seedOrg(id.orgId, id.userId);
+    await seedTemplate(id.orgId, id.userId, id.templateId, "Required Form");
+    await seedTemplate(id.orgId, id.userId, templateId2, "Optional Form");
+    await seedTreatment(id.orgId, id.userId, id.treatmentId, [
+      { templateId: id.templateId, frequency: "before_each_visit", isRequired: true },
+      { templateId: templateId2, frequency: "before_each_visit", isRequired: false },
+    ]);
+    await seedPatient(id.orgId, id.userId, id.patientId);
+    await seedAppointment(id.orgId, id.userId, id.appointmentId, id.patientId, id.treatmentId);
+    await seedFormDoc(id.orgId, id.userId, id.templateId, id.appointmentId, {
+      status: "signed",
+      signedAt: Date.now() - 1000,
+    });
+    // Optional doc not generated
+
+    const result = await getAppointmentDocumentCompleteness(
+      id.appointmentId as unknown as Id<"gabinetAppointments">,
+    );
+
+    expect(result.isComplete).toBe(true);
+    expect(result.summary.satisfied).toBe(1);
+    expect(result.summary.missing).toBe(1);
+    expect(result.summary.blocking).toBe(0);
+  });
+});

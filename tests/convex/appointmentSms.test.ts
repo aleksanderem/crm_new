@@ -133,17 +133,15 @@ async function linkPatientToContact(
 }
 
 async function listActivitiesForEntity(
-  t: ReturnType<typeof import("convex-test").convexTest>,
+  _t: ReturnType<typeof import("convex-test").convexTest>,
   entityType: string,
   entityId: string,
 ) {
-  return await t.run(async (ctx) => {
-    const activities = await ctx.db.query("activities").collect();
-    return activities.filter(
-      (activity) =>
-        activity.entityType === entityType && activity.entityId === entityId,
-    );
-  });
+  return createSupabaseDb()
+    .query("activities")
+    .eq("entityType", entityType)
+    .eq("entityId", entityId)
+    .collect();
 }
 
 async function createLead(
@@ -176,6 +174,7 @@ async function seedSmsConfig(
   const db = createSupabaseDb();
   const now = Date.now();
   await db.insert("orgSmsConfig", {
+    _id: `sms-config-${String(organizationId)}`,
     organizationId: String(organizationId),
     provider: "twilio",
     apiToken: "test-account-sid",
@@ -469,7 +468,7 @@ describe("appointment SMS flow", () => {
 
     const appointment = await getAppointment(appointmentId);
     const inboundEvent = await (result.eventId ? createSupabaseDb().get("appointmentSmsEvents", result.eventId) : null);
-    const auditEntries = await t.run(async (ctx) => ctx.db.query("auditLog").collect());
+    const auditEntries = await createSupabaseDb().query("auditLog").collect();
     const notifications = await t.run(async (ctx) =>
       ctx.db.query("notifications").collect(),
     );

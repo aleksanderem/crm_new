@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-import { EyeIcon, EyeOffIcon } from 'lucide-react'
+import { EyeIcon, EyeOffIcon } from '@/lib/ez-icons'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

@@ -10,7 +10,7 @@ import { buildSystemComponents } from "./components";
 
 /** One-time migration: add "treatment" to entityTypes on all templates that have "appointment" or "patient" */
 export const migrateEntityTypes = internalMutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     const all = await ctx.db
       .query("formTemplates")
@@ -58,7 +58,7 @@ const CATEGORY_FOLDER_MAP: Record<string, Record<string, string>> = {
 };
 
 export const migrateFolderPaths = mutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
     const all = await ctx.db
@@ -119,7 +119,7 @@ const EMPLOYEE_FILLED_FIELD_IDS = new Set<string>([
 
 async function _migrateFilledByHandler(
   ctx: MutationCtx,
-  organizationId: GenericId<"organizations">,
+  organizationId: string,
 ) {
   const all = await ctx.db
     .query("formTemplates")
@@ -164,7 +164,7 @@ async function _migrateFilledByHandler(
 }
 
 export const migrateFormFieldFilledBy = mutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
     return await _migrateFilledByHandler(ctx, args.organizationId);
@@ -172,7 +172,7 @@ export const migrateFormFieldFilledBy = mutation({
 });
 
 export const migrateFormFieldFilledByInternal = internalMutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     return await _migrateFilledByHandler(ctx, args.organizationId);
   },
@@ -197,7 +197,7 @@ export const _listOnboardedOrgIds = internalQuery({
  * Used by backfill actions that need a createdBy userId when seeding templates.
  */
 export const _getOrgFirstMemberId = internalQuery({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<GenericId<"users"> | null> => {
     const membership = await ctx.db
       .query("teamMemberships")
@@ -232,7 +232,7 @@ export const backfillFilledByAllOrgs = internalAction({
 
 /** Authenticated version — callable from frontend (legacy, no-op) */
 export const seedFormTemplates = mutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
     return { skipped: true, count: 0, message: "Use seedBeautyDocumentTemplates instead" };
@@ -242,7 +242,7 @@ export const seedFormTemplates = mutation({
 /** Internal version (legacy, no-op) */
 export const seedFormTemplatesInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
   },
   handler: async () => {
@@ -2270,7 +2270,7 @@ function buildBeautyDocumentTemplates(c: ComponentMap): BeautyTemplate[] {
 
 async function seedBeautyHandler(
   ctx: MutationCtx,
-  orgId: GenericId<"organizations">,
+  orgId: string,
   userId: GenericId<"users">,
   force = false,
   templateName?: string,
@@ -2387,7 +2387,7 @@ async function seedBeautyHandler(
 /** Authenticated version — callable from frontend */
 export const seedBeautyDocumentTemplates = mutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     force: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -2398,7 +2398,7 @@ export const seedBeautyDocumentTemplates = mutation({
 
 /** Rename legacy template names to the production-ready "Gotowe – …" prefix */
 export const renameReadyTemplates = internalMutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     const renames: Array<{ old: string; next: string }> = [
       { old: "+RODO V2", next: "Gotowe – RODO" },
@@ -2429,7 +2429,7 @@ export const renameReadyTemplates = internalMutation({
 /** Internal version — callable from CLI via `convex run` */
 export const seedBeautyDocumentTemplatesInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     force: v.optional(v.boolean()),
   },
@@ -2441,7 +2441,7 @@ export const seedBeautyDocumentTemplatesInternal = internalMutation({
 /** Seed a single template by name. Public (frontend-callable). */
 export const seedSingleBeautyDocumentTemplate = mutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateName: v.string(),
     force: v.optional(v.boolean()),
   },
@@ -2460,7 +2460,7 @@ export const seedSingleBeautyDocumentTemplate = mutation({
 /** Seed a single template by name. Internal (callable via `convex run`). */
 export const seedSingleBeautyDocumentTemplateInternal = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     templateName: v.string(),
     force: v.optional(v.boolean()),
@@ -2490,7 +2490,7 @@ const GOTOWE_TEMPLATE_NAMES = new Set([
  * Safe to run multiple times — skips templates that already include "contact".
  */
 export const migrateGotoweContactEntityTypes = internalMutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     const all = await ctx.db
       .query("formTemplates")

@@ -3,6 +3,7 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { auth } from "@cvx/auth";
 import { createSupabaseDb } from "./supabaseDb";
+import type { UserRow } from "./supabaseRows";
 import type { Feature, Action, PermissionResult, Scope } from "./permissionTypes";
 import { DEFAULT_PERMISSIONS } from "./permissions";
 import { defaultGabinetScope, maxScope } from "./gabinetRolePermissions";
@@ -28,8 +29,9 @@ export const _getAuthUser = internalQuery({
 // TABLE_MAP and must be read via ctx.db.
 export const _getGabinetPermissionData = internalQuery({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
+    locationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const gabinetMembership = await ctx.db
@@ -43,7 +45,24 @@ export const _getGabinetPermissionData = internalQuery({
       return { membership: null, rolePermissions: null, membershipPermissions: null };
     }
 
-    const gRole = gabinetMembership.gabinetRole;
+    let gRole = gabinetMembership.gabinetRole;
+
+    // Location-scoped role override: if a locationId is provided, check the
+    // Convex mirror (gabinetLocationMemberships) for a per-location role
+    // override. When found, it replaces the global gabinet role for this check.
+    if (args.locationId) {
+      const locationMembership = await ctx.db
+        .query("gabinetLocationMemberships")
+        .withIndex("by_orgAndUserAndLocation", (q) =>
+          q.eq("organizationId", args.organizationId)
+           .eq("userId", args.userId)
+           .eq("locationId", args.locationId!),
+        )
+        .unique();
+      if (locationMembership?.role) {
+        gRole = locationMembership.role;
+      }
+    }
 
     const gOverride = await ctx.db
       .query("gabinetRolePermissions")
@@ -76,7 +95,7 @@ export const _getGabinetPermissionData = internalQuery({
 // Callers must use ctx.runAction (not ctx.runQuery).
 // ---------------------------------------------------------------------------
 export const verifyOrgAccess = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (
     ctx,
     args,
@@ -84,7 +103,7 @@ export const verifyOrgAccess = internalAction({
     userId: Id<"users">;
     userName: string | undefined;
     userEmail: string | undefined;
-    membershipId: Id<"teamMemberships">;
+    membershipId: string;
     role: string;
   }> => {
     const userId = await auth.getUserId(ctx);
@@ -106,7 +125,7 @@ export const verifyOrgAccess = internalAction({
       userId: userId as Id<"users">,
       userName: user.name as string | undefined,
       userEmail: user.email as string | undefined,
-      membershipId: membership._id as Id<"teamMemberships">,
+      membershipId: membership._id,
       role: membership.role as string,
     };
   },
@@ -119,9 +138,10 @@ export const verifyOrgAccess = internalAction({
 // ---------------------------------------------------------------------------
 export const checkPermission = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     feature: v.string(),
     action: v.string(),
+    locationId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<PermissionResult> => {
     const userId = await auth.getUserId(ctx);
@@ -169,7 +189,7 @@ export const checkPermission = internalAction({
     if (feature.startsWith("gabinet_")) {
       const gabinetData = await ctx.runQuery(
         internal._helpers.authAction._getGabinetPermissionData,
-        { organizationId: args.organizationId, userId },
+        { organizationId: args.organizationId, userId, locationId: args.locationId },
       );
       if (gabinetData.membership) {
         const gRole = gabinetData.membership.gabinetRole;
@@ -238,7 +258,7 @@ export const verifyPlatformAdmin = internalAction({
     const userId = await auth.getUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
     const db = createSupabaseDb();
-    const user = await db.get("users", String(userId));
+    const user = (await db.get("users", String(userId))) as UserRow | null;
     if (!user) throw new Error("User not found");
     if (!user.isPlatformAdmin) throw new Error("Platform admin access required");
     return { userId: userId as Id<"users"> };

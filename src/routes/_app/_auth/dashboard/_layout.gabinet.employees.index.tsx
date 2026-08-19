@@ -7,7 +7,9 @@ import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-em
 import { useSupabaseGabinetEmployeeSchedulesList } from "@/hooks/use-supabase-gabinet-employee-schedules";
 import { useSupabaseGabinetWorkingHoursList } from "@/hooks/use-supabase-gabinet-working-hours";
 import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
+import { useSupabasePendingInvitations } from "@/hooks/use-supabase-invitations";
 import { useOrganization } from "@/components/org-context";
+import { useActiveLocation } from "@/contexts/gabinet-location-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
 import { SidePanel } from "@/components/crm/side-panel";
@@ -33,6 +35,7 @@ import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
 import { Id } from "@cvx/_generated/dataModel";
 import type { MappedGabinetEmployee } from "@/lib/supabase/mappers/gabinet/employees";
+import { computeEmployeeAccountStatus } from "@/lib/gabinet/employee-account-status";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
@@ -76,14 +79,24 @@ function EmployeesIndexSkeleton() {
   );
 }
 
+function EmployeesIndexRoute() {
+  const { activeLocationId } = useActiveLocation();
+  return (
+    <PermissionGate
+      feature="gabinet_employees"
+      action="view"
+      locationId={(activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined}
+      loadingFallback={<EmployeesIndexSkeleton />}
+    >
+      <EmployeesIndex />
+    </PermissionGate>
+  );
+}
+
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/employees/"
 )({
-  component: () => (
-    <PermissionGate feature="gabinet_employees" action="view" loadingFallback={<EmployeesIndexSkeleton />}>
-      <EmployeesIndex />
-    </PermissionGate>
-  ),
+  component: EmployeesIndexRoute,
 });
 
 
@@ -92,11 +105,13 @@ type Employee = MappedGabinetEmployee;
 function EmployeesIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const { activeLocationId } = useActiveLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { allowed: canCreate } = usePermission("gabinet_employees", "create");
-  const { allowed: canEdit } = usePermission("gabinet_employees", "edit");
-  const { allowed: canDelete } = usePermission("gabinet_employees", "delete");
+  const locationIdParam = (activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined;
+  const { allowed: canCreate } = usePermission("gabinet_employees", "create", locationIdParam);
+  const { allowed: canEdit } = usePermission("gabinet_employees", "edit", locationIdParam);
+  const { allowed: canDelete } = usePermission("gabinet_employees", "delete", locationIdParam);
   const { tags } = useTagDefinitions(organizationId);
   const { categories } = useCategoryDefinitions(organizationId, "gabinetEmployee");
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
@@ -140,7 +155,12 @@ function EmployeesIndex() {
     { id: "categoryId", label: t('common.category', { defaultValue: "Kategoria" }), type: "select" as const, options: categories.map(cat => ({ label: cat.name, value: cat._id })) },
   ], [t, tags, categories]);
 
+  const updateEmployee = useAction(api.gabinet.employees.update);
   const removeEmployee = useAction(api.gabinet.employees.remove);
+  const blockEmployee = useAction(api.gabinet.employees.blockEmployee);
+  const unblockEmployee = useAction(api.gabinet.employees.unblockEmployee);
+  const resendInvitation = useAction(api.invitations.resend);
+  const cancelInvitation = useAction(api.invitations.cancel);
   const bulkSetEmployeeSchedule = useAction(
     // @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
     api.gabinet.scheduling.bulkSetEmployeeSchedule,
@@ -154,9 +174,16 @@ function EmployeesIndex() {
     api.gabinet.scheduling.removeSchedulePeriod,
   );
 
-  const { data: employees } = useSupabaseGabinetEmployeesList(organizationId);
+  const { data: employees } = useSupabaseGabinetEmployeesList(organizationId, {
+    locationId: activeLocationId,
+  });
 
   const { data: members } = useSupabaseOrganizationMembers(organizationId);
+  const { data: pendingInvitations } = useSupabasePendingInvitations(organizationId);
+  const pendingGabinetInvitations = useMemo(
+    () => (pendingInvitations ?? []).filter((inv) => inv.module === "gabinet"),
+    [pendingInvitations],
+  );
   const { data: employeeSchedules } =
     useSupabaseGabinetEmployeeSchedulesList(organizationId);
   const { data: clinicHours } = useSupabaseGabinetWorkingHoursList(organizationId);
@@ -190,6 +217,19 @@ function EmployeesIndex() {
     });
     return map;
   }, [members]);
+
+  const invitationByEmail = useMemo(() => {
+    const map = new Map<string, (typeof pendingGabinetInvitations)[0]>();
+    pendingGabinetInvitations.forEach((inv) => map.set(inv.email, inv));
+    return map;
+  }, [pendingGabinetInvitations]);
+
+  const pendingGabinetInvitationsFiltered = useMemo(() => {
+    const employeeEmails = new Set(
+      (employees ?? []).filter((e) => !e.userId && e.email).map((e) => e.email!),
+    );
+    return pendingGabinetInvitations.filter((inv) => !employeeEmails.has(inv.email));
+  }, [pendingGabinetInvitations, employees]);
 
   function getDisplayName(emp: { firstName?: string; lastName?: string; userId: string }) {
     if (emp.firstName || emp.lastName) {
@@ -234,11 +274,26 @@ function EmployeesIndex() {
                 <p className="text-xs text-fg-quaternary">{user.email}</p>
               )}
             </div>
-            {!item.isActive && (
-              <Badge variant="outline" className="text-xs text-muted-foreground">
-                {t("common.inactive")}
-              </Badge>
-            )}
+            {(() => {
+              const inv = item.email ? invitationByEmail.get(item.email) : undefined;
+              const status = computeEmployeeAccountStatus({
+                isActive: item.isActive,
+                isBlocked: item.isBlocked,
+                invitation: inv ?? null,
+              });
+              if (status === "active") return null;
+              const statusLabels: Record<string, string> = {
+                blocked: t("gabinet.employees.statusBlocked", "Konto zablokowane"),
+                invitation_pending: t("gabinet.employees.statusInvitationPending", "Zaproszenie wysłane — oczekuje"),
+                invitation_expired: t("gabinet.employees.statusInvitationExpired", "Zaproszenie wygasło"),
+                inactive: t("gabinet.employees.statusInactive", "Konto nieaktywne"),
+              };
+              return (
+                <Badge variant="outline" className="text-xs text-muted-foreground">
+                  {statusLabels[status]}
+                </Badge>
+              );
+            })()}
           </div>
         );
       },
@@ -296,7 +351,7 @@ function EmployeesIndex() {
       render: (item) => new Date(item.createdAt).toLocaleDateString(),
       getSortValue: (item) => item.createdAt,
     },
-  ], [t, userMap]);
+  ], [t, userMap, invitationByEmail]);
 
   const filteredEmployees = useMemo(() => {
     const data = applyFilterConditions(employees ?? [], activeFilters);
@@ -339,6 +394,33 @@ function EmployeesIndex() {
     });
   }, [queryClient, organizationId]);
 
+  const invalidateEmployeesCache = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: supabaseKeys.gabinetEmployees.list(organizationId),
+    });
+  }, [queryClient, organizationId]);
+
+  const handleResendInvitation = useCallback(async (invitationId: string) => {
+    try {
+      await resendInvitation({ organizationId, invitationId });
+      toast.success(t("team.invitationResent"));
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
+    } catch (e) {
+      toast.error(formatActionError(e, t, { key: "team.errors.resendFailed", defaultValue: "Nie udało się wysłać zaproszenia ponownie." }));
+    }
+  }, [resendInvitation, organizationId, t, queryClient]);
+
+  const handleCancelInvitation = useCallback(async (invitationId: string) => {
+    if (!window.confirm(t("gabinet.employees.confirmCancelInvitation", "Czy na pewno chcesz anulować zaproszenie?"))) return;
+    try {
+      await cancelInvitation({ organizationId, invitationId });
+      toast.success(t("team.invitationCancelled"));
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(organizationId) });
+    } catch (e) {
+      toast.error(formatActionError(e, t, { key: "team.errors.cancelFailed", defaultValue: "Nie udało się anulować zaproszenia." }));
+    }
+  }, [cancelInvitation, organizationId, t, queryClient]);
+
   const rowActions = useCallback(
     (row: Employee) => [
       ...(canEdit
@@ -354,6 +436,80 @@ function EmployeesIndex() {
         icon: <Calendar className="h-4 w-4" variant="stroke" />,
         onClick: () => setEditingScheduleEmployee(row),
       },
+      ...(canEdit
+        ? (() => {
+            const inv = row.email ? invitationByEmail.get(row.email) : undefined;
+            const status = computeEmployeeAccountStatus({
+              isActive: row.isActive,
+              isBlocked: row.isBlocked,
+              invitation: inv ?? null,
+            });
+            if (status === "blocked") {
+              return [{
+                label: t("gabinet.employees.unblockAccount", "Odblokuj konto"),
+                onClick: async () => {
+                  if (!window.confirm(t("gabinet.employees.confirmUnblock", "Czy na pewno chcesz odblokować konto tego pracownika?"))) return;
+                  try {
+                    await unblockEmployee({ organizationId, employeeId: row._id });
+                    toast.success(t("gabinet.employees.unblocked", "Konto odblokowane."));
+                    invalidateEmployeesCache();
+                  } catch (e) {
+                    toast.error(formatActionError(e, t, { key: "gabinet.employees.errors.unblockFailed", defaultValue: "Nie udało się odblokować konta." }));
+                  }
+                },
+              }];
+            }
+            if (status === "active") {
+              return [{
+                label: t("gabinet.employees.blockAccount", "Zablokuj konto"),
+                onClick: async () => {
+                  if (!window.confirm(t("gabinet.employees.confirmBlock", "Czy na pewno chcesz zablokować konto tego pracownika?"))) return;
+                  try {
+                    await blockEmployee({ organizationId, employeeId: row._id });
+                    toast.success(t("gabinet.employees.blocked", "Konto zablokowane."));
+                    invalidateEmployeesCache();
+                  } catch (e) {
+                    toast.error(formatActionError(e, t, { key: "gabinet.employees.errors.blockFailed", defaultValue: "Nie udało się zablokować konta." }));
+                  }
+                },
+              }];
+            }
+            if (status === "invitation_pending" && inv) {
+              return [
+                {
+                  label: t("team.resendInvitation"),
+                  onClick: () => handleResendInvitation(inv._id),
+                },
+                {
+                  label: t("team.cancelInvitation"),
+                  onClick: () => handleCancelInvitation(inv._id),
+                },
+              ];
+            }
+            if (status === "invitation_expired" && inv) {
+              return [{
+                label: t("team.resendInvitation"),
+                onClick: () => handleResendInvitation(inv._id),
+              }];
+            }
+            if (status === "inactive" && !row.userId) {
+              return [{
+                label: t("gabinet.employees.activateAccount", "Aktywuj konto"),
+                onClick: async () => {
+                  if (!window.confirm(t("gabinet.employees.confirmActivate", "Czy na pewno chcesz aktywować konto tego pracownika?"))) return;
+                  try {
+                    await updateEmployee({ organizationId, employeeId: row._id, isActive: true });
+                    toast.success(t("gabinet.employees.activated", "Konto aktywowane."));
+                    invalidateEmployeesCache();
+                  } catch (e) {
+                    toast.error(formatActionError(e, t, { key: "gabinet.employees.errors.activateFailed", defaultValue: "Nie udało się aktywować konta." }));
+                  }
+                },
+              }];
+            }
+            return [];
+          })()
+        : []),
       ...(canDelete
         ? [
             {
@@ -378,7 +534,7 @@ function EmployeesIndex() {
           ]
         : []),
     ],
-    [navigate, removeEmployee, organizationId, t, canEdit, canDelete]
+    [navigate, updateEmployee, blockEmployee, unblockEmployee, removeEmployee, organizationId, t, canEdit, canDelete, invalidateEmployeesCache, invitationByEmail, handleResendInvitation, handleCancelInvitation]
   );
 
   const handleBulkAction = useCallback(
@@ -417,7 +573,7 @@ function EmployeesIndex() {
         title={t("gabinet.employees.title")}
         description={t("gabinet.employees.description")}
         actions={
-          <PermissionGate feature="gabinet_employees" action="create">
+          <PermissionGate feature="gabinet_employees" action="create" locationId={locationIdParam}>
             <Button onClick={() => setShowCreate(true)}>
               <Plus className="mr-2 h-4 w-4" variant="stroke" />
               {t("gabinet.employees.add")}
@@ -479,11 +635,6 @@ function EmployeesIndex() {
                 },
               ]
             : []),
-          {
-            label: t("gabinet.timetable.title"),
-            icon: <Calendar className="mr-1.5 h-4 w-4" variant="stroke" />,
-            onClick: () => navigate({ to: "/dashboard/gabinet/settings/timetable" }),
-          },
         ]}
         columnDefs={allColumns.map(c => ({ id: c.id, label: c.label ?? c.id }))}
         hiddenColumnIds={hiddenColumnIds}
@@ -511,6 +662,58 @@ function EmployeesIndex() {
           navigate({ to: `/dashboard/gabinet/employees/${employeeId}` })
         }
       />
+
+      {pendingGabinetInvitationsFiltered.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-fg-secondary">
+            {t("team.invitations", { defaultValue: "Oczekujące zaproszenia" })}
+          </p>
+          <div className="rounded-md border divide-y">
+            {pendingGabinetInvitationsFiltered.map((inv) => {
+              const md = inv.moduleData as { firstName?: string; lastName?: string; role?: string } | undefined;
+              const name = [md?.firstName, md?.lastName].filter(Boolean).join(" ") || inv.email;
+              const isExpired = inv.expiresAt <= Date.now();
+              return (
+                <div key={inv._id} className="flex items-center gap-3 px-4 py-3">
+                  <Avatar size="sm" initials={name.substring(0, 2).toUpperCase()} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{name}</p>
+                    <p className="text-xs text-fg-quaternary truncate">{inv.email}</p>
+                  </div>
+                  {md?.role && (
+                    <span className="text-xs text-fg-tertiary hidden sm:block">
+                      {t(`gabinet.employees.roles.${md.role}`, { defaultValue: md.role })}
+                    </span>
+                  )}
+                  <Badge variant="outline" className="text-xs shrink-0">
+                    {isExpired
+                      ? t("gabinet.employees.statusInvitationExpired", "Zaproszenie wygasło")
+                      : t("gabinet.employees.statusInvitationPending", "Zaproszenie wysłane — oczekuje na akceptację")}
+                  </Badge>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="shrink-0"
+                    onClick={() => handleResendInvitation(inv._id)}
+                  >
+                    {t("team.resendInvitation")}
+                  </Button>
+                  {!isExpired && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="shrink-0 text-destructive hover:text-destructive"
+                      onClick={() => handleCancelInvitation(inv._id)}
+                    >
+                      {t("team.cancelInvitation")}
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <TagsManagerSlideout
         isOpen={tagsSlideoutOpen}
@@ -611,7 +814,7 @@ function EmployeesIndex() {
                   invalidateScheduleCache();
                 }}
                 onManageLeaves={() =>
-                  navigate({ to: "/dashboard/gabinet/settings/leaves" })
+                  navigate({ to: "/dashboard/gabinet/settings/leaves", search: { userId: editingScheduleEmployee.userId } })
                 }
               />
             </div>
@@ -640,6 +843,7 @@ function CreateEmployeeSheet({
   const createEmployee = useAction(api.gabinet.employees.create);
   const createInvitation = useAction(api.invitations.create);
   const createWithPassword = useAction(api.gabinet.employees.createWithPassword);
+  const createForExistingMember = useAction(api.gabinet.employees.createForExistingMember);
   const [saving, setSaving] = useState(false);
 
   return (
@@ -659,7 +863,33 @@ function CreateEmployeeSheet({
             onSubmit={async (data) => {
               setSaving(true);
               try {
-                if (data.accessMode === "password" && data.accessEmail && data.password) {
+                if (data.accessMode === "inactive") {
+                  // Create employee record without any user account (no login access).
+                  // isActive is a new param added to the create action validator — types
+                  // will be in sync after the next `npx convex dev` codegen run.
+                  await (createEmployee as (args: Record<string, unknown>) => Promise<unknown>)({
+                    organizationId,
+                    firstName: data.firstName,
+                    lastName: data.lastName,
+                    hireDate: data.hireDate,
+                    role: data.role,
+                    specialization: data.specialization,
+                    licenseNumber: data.licenseNumber,
+                    color: data.color,
+                    showInCalendar: data.showInCalendar,
+                    qualifiedTreatmentIds: data.qualifiedTreatmentIds as string[],
+                    tagIds: data.tagIds as string[] | undefined,
+                    categoryId: data.categoryId as string | undefined,
+                    customFields: data.customFields,
+                    locationId: data.locationId,
+                    locationRole: data.locationRole,
+                    isActive: false,
+                  });
+                  toast.success(t("common.created"));
+                  void queryClient.invalidateQueries({
+                    queryKey: supabaseKeys.gabinetEmployees.list(organizationId),
+                  });
+                } else if (data.accessMode === "password" && data.accessEmail && data.password) {
                   await createWithPassword({
                     organizationId,
                     email: data.accessEmail,
@@ -667,6 +897,7 @@ function CreateEmployeeSheet({
                     teamRole: data.accessRole ?? "member",
                     firstName: data.firstName,
                     lastName: data.lastName,
+                    hireDate: data.hireDate,
                     role: data.role,
                     specialization: data.specialization,
                     licenseNumber: data.licenseNumber,
@@ -684,30 +915,62 @@ function CreateEmployeeSheet({
                     queryKey: supabaseKeys.gabinetEmployees.list(organizationId),
                   });
                 } else if (data.grantSystemAccess && data.accessEmail) {
-                  await createInvitation({
-                    organizationId,
-                    email: data.accessEmail,
-                    role: data.accessRole ?? "member",
-                    module: "gabinet",
-                    moduleData: {
+                  try {
+                    // Try to link an existing account first (creates membership if missing).
+                    // Falls back to invitation email only when no account exists yet.
+                    await createForExistingMember({
+                      organizationId,
+                      email: data.accessEmail,
+                      teamRole: data.accessRole ?? "member",
                       firstName: data.firstName,
                       lastName: data.lastName,
                       role: data.role,
                       specialization: data.specialization,
                       color: data.color,
                       showInCalendar: data.showInCalendar,
-                      qualifiedTreatmentIds: data.qualifiedTreatmentIds,
-                      tagIds: data.tagIds,
-                      categoryId: data.categoryId,
+                      qualifiedTreatmentIds: data.qualifiedTreatmentIds as string[] | undefined,
+                      tagIds: data.tagIds as string[] | undefined,
+                      categoryId: data.categoryId as string | undefined,
                       customFields: data.customFields,
                       locationId: data.locationId,
                       locationRole: data.locationRole,
-                    },
-                  });
-                  toast.success(t("team.invitationSent"));
-                  void queryClient.invalidateQueries({
-                    queryKey: supabaseKeys.invitations.list(organizationId),
-                  });
+                    });
+                    toast.success(t("gabinet.employees.linkedAsMember"));
+                    void queryClient.invalidateQueries({
+                      queryKey: supabaseKeys.gabinetEmployees.list(organizationId),
+                    });
+                  } catch (linkErr) {
+                    const msg = linkErr instanceof Error ? linkErr.message : String(linkErr);
+                    if (msg.includes("No user account found")) {
+                      // No account exists yet — send an invitation email.
+                      await createInvitation({
+                        organizationId,
+                        email: data.accessEmail,
+                        role: data.accessRole ?? "member",
+                        module: "gabinet",
+                        moduleData: {
+                          firstName: data.firstName,
+                          lastName: data.lastName,
+                          role: data.role,
+                          specialization: data.specialization,
+                          color: data.color,
+                          showInCalendar: data.showInCalendar,
+                          qualifiedTreatmentIds: data.qualifiedTreatmentIds,
+                          tagIds: data.tagIds,
+                          categoryId: data.categoryId,
+                          customFields: data.customFields,
+                          locationId: data.locationId,
+                          locationRole: data.locationRole,
+                        },
+                      });
+                      toast.success(t("team.invitationSent"));
+                      void queryClient.invalidateQueries({
+                        queryKey: supabaseKeys.invitations.list(organizationId),
+                      });
+                    } else {
+                      throw linkErr;
+                    }
+                  }
                 } else {
                   await createEmployee({
                     organizationId,

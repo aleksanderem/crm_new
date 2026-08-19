@@ -23,7 +23,7 @@ async function verify(ctx: any, organizationId: string) {
 
 // --- Insights nudges ---
 export const getInsightsNudges = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -67,7 +67,7 @@ export const getInsightsNudges = action({
 
 // --- Deals nudges ---
 export const getDealsNudges = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -110,7 +110,7 @@ export const getDealsNudges = action({
 
 // --- Contacts nudges ---
 export const getContactsNudges = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -146,7 +146,7 @@ export const getContactsNudges = action({
 
 // --- Inbox nudges ---
 export const getInboxNudges = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -177,7 +177,7 @@ export const getInboxNudges = action({
 
 // --- Activities nudges (user-specific) ---
 export const getActivitiesNudges = action({
-  args: { organizationId: v.id("organizations"), userId: v.string() },
+  args: { organizationId: v.string(), userId: v.string() },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -211,7 +211,7 @@ export const getActivitiesNudges = action({
 
 // --- Documents nudges ---
 export const getDocumentsNudges = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -238,7 +238,7 @@ export const getDocumentsNudges = action({
 
 // --- Calendar nudges ---
 export const getCalendarNudges = action({
-  args: { organizationId: v.id("organizations"), userId: v.string() },
+  args: { organizationId: v.string(), userId: v.string() },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -277,7 +277,7 @@ export const getCalendarNudges = action({
 
 // --- Companies nudges ---
 export const getCompaniesNudges = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -330,7 +330,7 @@ export const getCompaniesNudges = action({
 
 // --- Calls nudges ---
 export const getCallsNudges = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -361,7 +361,7 @@ export const getCallsNudges = action({
 
 // --- Products nudges ---
 export const getProductsNudges = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -394,7 +394,7 @@ export const getProductsNudges = action({
 
 // --- Get all CRM nudges ---
 export const getAll = action({
-  args: { organizationId: v.id("organizations"), userId: v.optional(v.string()) },
+  args: { organizationId: v.string(), userId: v.optional(v.string()) },
   handler: async (ctx, args): Promise<NudgeData[]> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();

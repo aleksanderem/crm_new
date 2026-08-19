@@ -1,6 +1,5 @@
 import { QueryCtx, internalQuery, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { createSupabaseDb } from "./supabaseDb";
 
@@ -18,7 +17,7 @@ import { createSupabaseDb } from "./supabaseDb";
 export async function checkSeatLimit(
   ctx: QueryCtx,
   args: {
-    organizationId: Id<"organizations">;
+    organizationId: string;
     skipPendingInvitations?: boolean;
   }
 ): Promise<{
@@ -44,15 +43,25 @@ export async function checkSeatLimit(
 
   const currentSeats = members.length + pendingCount;
 
-  const org = await ctx.db.get(args.organizationId);
-  if (!org) throw new Error("Organization not found");
+  // Derive the owner's userId from teamMemberships so that the lookup works
+  // with both Convex _ids (tests) and Supabase UUID strings (production).
+  // ctx.db.get(organizationId) would fail for post-migration orgs where
+  // organizationId is a Supabase UUID, not a Convex document _id.
+  const ownerMembership = await ctx.db
+    .query("teamMemberships")
+    .withIndex("by_organizationId", (q) =>
+      q.eq("organizationId", args.organizationId)
+    )
+    .filter((q) => q.eq(q.field("role"), "owner"))
+    .first();
+  if (!ownerMembership) throw new Error("Organization not found");
 
   // Find all active or trialing subscriptions for org owner and take the
   // highest seatLimit ("max wins") so that orgs with multiple per-module
   // plans get the most generous limit. Matches _getSubscriptionAndPlanData.
   const subscriptions = await ctx.db
     .query("subscriptions")
-    .withIndex("userId", (q) => q.eq("userId", org.ownerId))
+    .withIndex("userId", (q) => q.eq("userId", ownerMembership.userId))
     .filter((q) =>
       q.or(
         q.eq(q.field("status"), "active"),
@@ -65,7 +74,7 @@ export async function checkSeatLimit(
   let seatLimit = 20; // Default free tier
   if (subscriptions.length === 0) {
     console.warn(
-      `[seatLimits] No active subscription found for org owner ${org.ownerId} (org: ${args.organizationId}). Using default free tier limit.`
+      `[seatLimits] No active subscription found for org owner ${ownerMembership.userId} (org: ${args.organizationId}). Using default free tier limit.`
     );
   } else {
     let maxSeatLimit: number | null = null;
@@ -144,7 +153,7 @@ export const _getSubscriptionAndPlanData = internalQuery({
 // this check to the outer action layer instead.
 export const checkSeatLimitAction = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     skipPendingInvitations: v.optional(v.boolean()),
   },
   handler: async (

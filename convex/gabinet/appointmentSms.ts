@@ -63,7 +63,7 @@ function buildConfirmationMessage(args: {
 async function logSmsSharedActivities(
   ctx: MutationCtx,
   args: {
-    organizationId: Id<"organizations">;
+    organizationId: string;
     appointmentId?: Id<"gabinetAppointments">;
     patientId?: Id<"gabinetPatients">;
     action: "sms_sent" | "sms_received";
@@ -119,7 +119,7 @@ async function logSmsSharedActivities(
     ? `gabinet:sms:${semanticEventId}:${args.action}`
     : `gabinet:sms:${args.organizationId}:${occurredAt}:${args.action}`;
 
-  await publishActivityEnvelope(ctx, {
+  await publishActivityEnvelope({
     organizationId: args.organizationId,
     action: args.action,
     performedBy: args.performedBy,
@@ -163,7 +163,7 @@ async function logSmsSharedActivities(
 
 export const listByAppointment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -189,7 +189,7 @@ export const listByAppointment = action({
 
 export const queueAutomationSms = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
     phone: v.string(),
     message: v.string(),
@@ -277,9 +277,9 @@ export const queueAutomationSms = internalMutation({
 
 export const queueConfirmationRequest = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
-    reminderId: v.optional(v.id("appointmentReminders")),
+    reminderId: v.optional(v.string()),
     trigger: v.optional(v.union(v.literal("reminder"), v.literal("manual"), v.literal("booking"))),
   },
   handler: async (ctx, args) => {
@@ -531,7 +531,7 @@ export const processIncomingMessage = internalMutation({
       (matchingAppointmentId || matchingPatientId)
     ) {
       await logSmsSharedActivities(ctx, {
-        organizationId: args.organizationId as Id<"organizations">,
+        organizationId: args.organizationId,
         appointmentId: matchingAppointmentId,
         patientId: matchingPatientId,
         action: "sms_received",
@@ -551,8 +551,8 @@ export const processIncomingMessage = internalMutation({
       });
     }
 
-    await ctx.runMutation(internal.automation.emitEvent, {
-      organizationId: args.organizationId as Id<"organizations">,
+    await ctx.scheduler.runAfter(0, internal.automation.emitEvent, {
+      organizationId: args.organizationId,
       module: "gabinet",
       eventType: "gabinet.appointment.sms_reply_received",
       entityType: matchingOutbound?.appointmentId ? "gabinetAppointment" : undefined,
@@ -605,7 +605,7 @@ export const processIncomingMessage = internalMutation({
       processingStatus: "processed" | "ignored";
       reason?: string;
     } = await ctx.runMutation(internal.gabinet.appointments.applySmsReplyTransition, {
-      organizationId: args.organizationId as Id<"organizations">,
+      organizationId: args.organizationId,
       appointmentId: String(matchingOutbound.appointmentId),
       intent: parsedIntent,
       smsEventId: eventId,

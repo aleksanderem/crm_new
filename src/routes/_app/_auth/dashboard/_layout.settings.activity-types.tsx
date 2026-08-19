@@ -66,7 +66,7 @@ function ActivityTypesSettings() {
   // Set initial field tab when types load
   useEffect(() => {
     if (sortedTypes.length > 0 && !activeFieldTab) {
-      setActiveFieldTab(sortedTypes[0].key);
+      setActiveFieldTab(sortedTypes[0]!.key);
     }
   }, [sortedTypes.length, activeFieldTab]);
 

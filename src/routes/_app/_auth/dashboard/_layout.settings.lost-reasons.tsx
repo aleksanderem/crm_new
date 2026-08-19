@@ -38,9 +38,9 @@ function LostReasonsSettings() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
 
-  const createReason = useAction(api.lostReasons.create);
-  const updateReason = useAction(api.lostReasons.update);
-  const removeReason = useAction(api.lostReasons.remove);
+  const createReason = useAction(api.crm.lostReasons.create);
+  const updateReason = useAction(api.crm.lostReasons.update);
+  const removeReason = useAction(api.crm.lostReasons.remove);
   const upsertSettings = useAction(api.orgSettings.upsert);
 
   const { data: reasons } = useSupabaseLostReasonsList(organizationId);

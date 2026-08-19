@@ -18,13 +18,18 @@ import {
 
 export const listAll = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     status: v.optional(formDocumentStatusValidator),
   },
   handler: async (ctx, args): Promise<FormDocumentRow[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "view" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
     let q = db
       .query("formDocuments")
@@ -40,7 +45,7 @@ export const listAll = action({
 
 export const listByEntity = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
   },
@@ -48,6 +53,11 @@ export const listByEntity = action({
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "view" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
     const docs = (await db
       .query("formDocuments")
@@ -72,7 +82,7 @@ export const listByEntity = action({
 // desired display order. Writes are scoped to the caller's organization.
 export const reorderByEntity = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
     documentIds: v.array(v.string()),
@@ -81,6 +91,11 @@ export const reorderByEntity = action({
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     const now = Date.now();
@@ -106,13 +121,18 @@ export const reorderByEntity = action({
 
 export const getById = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     documentId: v.string(),
   },
   handler: async (ctx, args): Promise<FormDocumentRow> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "view" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
     const doc = await db.get("formDocuments", args.documentId);
     if (!doc || String(doc.organizationId) !== String(args.organizationId))
@@ -142,16 +162,20 @@ export const getBySigningToken = action({
     // Return document data for any active status — the frontend decides
     // what to render based on status (fill form, sign, or show success).
 
-    // Also fetch template for rendering, with components resolved
+    // Also fetch template for rendering (needed for signatureConfig, requiresSignature, etc.).
+    // For the TipTap contentJson, prefer the document's stored snapshot so that
+    // later template edits never change what a patient fills out or signs.
+    // Pre-migration documents (contentJsonSnapshot is null) fall back to the
+    // current template's contentJson.
     const template = await db.get("formTemplates", String(doc.templateId));
-    if (template?.contentJson) {
-      const resolved = await resolveComponentsInContent(
-        db,
-        template.contentJson,
-      );
+    const contentToRender =
+      (doc.contentJsonSnapshot as string | null | undefined) ??
+      template?.contentJson;
+    if (contentToRender) {
+      const resolved = await resolveComponentsInContent(db, contentToRender);
       return {
         document: doc,
-        template: { ...template, contentJson: resolved },
+        template: template ? { ...template, contentJson: resolved } : null,
       };
     }
     return { document: doc, template };
@@ -160,13 +184,18 @@ export const getBySigningToken = action({
 
 export const listByTemplate = action({
   args: {
-    organizationId: v.id("organizations"),
-    templateId: v.id("formTemplates"),
+    organizationId: v.string(),
+    templateId: v.string(),
   },
   handler: async (ctx, args): Promise<FormDocumentRow[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "view" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
     return (await db
       .query("formDocuments")
@@ -178,13 +207,18 @@ export const listByTemplate = action({
 
 export const listByStatus = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     status: formDocumentStatusValidator,
   },
   handler: async (ctx, args): Promise<FormDocumentRow[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "view" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
     return (await db
       .query("formDocuments")
@@ -205,7 +239,7 @@ export const listByStatus = action({
  */
 export const getLatestSignedIntakeByPatient = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
   },
   handler: async (ctx, args): Promise<{
@@ -220,6 +254,11 @@ export const getLatestSignedIntakeByPatient = action({
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "view" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     const orgIdStr = String(args.organizationId);
@@ -289,14 +328,18 @@ export const getLatestSignedIntakeByPatient = action({
       // Non-JSON responseData: formFieldValues stays empty
     }
 
-    // Extract field definitions from the template's TipTap contentJson
-    const matchedTemplate = intakeTemplates.find(
-      (t) => String(t._id) === String(latest.templateId),
-    );
+    // Use the contentJsonSnapshot captured at signing time so that later edits
+    // to the template never change the field layout seen for historical documents.
+    // Fall back to the live template contentJson only for pre-migration documents
+    // that were created before the snapshot column existed.
+    const contentJsonSource =
+      (latest.contentJsonSnapshot as string | null | undefined) ??
+      intakeTemplates.find((t) => String(t._id) === String(latest.templateId))
+        ?.contentJson;
     let fieldDefinitions: IntakeFieldDefinition[] = [];
-    if (matchedTemplate?.contentJson) {
+    if (contentJsonSource) {
       fieldDefinitions = extractFieldDefinitions(
-        JSON.parse(matchedTemplate.contentJson as string),
+        JSON.parse(contentJsonSource as string),
       );
     }
 
@@ -314,7 +357,7 @@ export const getLatestSignedIntakeByPatient = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.string(),
     title: v.string(),
     responseData: v.string(),
@@ -330,13 +373,27 @@ export const create = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "create" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const now = Date.now();
     const db = createSupabaseDb();
 
+    const template = await db.get("formTemplates", args.templateId);
+
+    const rawContentJson = (template?.contentJson as string | null | undefined) ?? null;
+    const resolvedContentJson = rawContentJson
+      ? (await resolveComponentsInContent(db, rawContentJson)) ?? null
+      : null;
+
     const docId = await db.insert("formDocuments", {
       organizationId: String(args.organizationId),
       templateId: args.templateId,
+      templateVersion: (template?.version as number | null | undefined) ?? null,
+      contentJsonSnapshot: resolvedContentJson,
       title: args.title,
       responseData: args.responseData,
       entityType: args.entityType,
@@ -350,26 +407,63 @@ export const create = action({
       updatedAt: now,
     });
 
+    // Audit trail: record document creation with template version snapshot.
+    try {
+      await db.insert("auditLog", {
+        organizationId: String(args.organizationId),
+        userId: String(authResult.userId),
+        action: "document.created",
+        entityType: "formDocument",
+        entityId: String(docId),
+        details: JSON.stringify({
+          title: args.title,
+          templateVersion: (template?.version as number | null | undefined) ?? null,
+          status: args.status,
+        }),
+        createdAt: now,
+      });
+    } catch (err) {
+      console.error("[create] audit log write failed", err);
+    }
+
     return docId;
   },
 });
 
 export const updateStatus = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     documentId: v.string(),
     status: formDocumentStatusValidator,
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(
+    if (args.status === "voided") {
+      throw new Error(
+        "Use voidDocument to void a document — updateStatus cannot set status to 'voided'",
+      );
+    }
+    if (args.status === "signed") {
+      throw new Error(
+        "Use recordSignature to sign a document — updateStatus cannot set status to 'signed'",
+      );
+    }
+
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
-    );
+    ) as { userId: string };
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     const doc = await db.get("formDocuments", args.documentId);
     if (!doc || String(doc.organizationId) !== String(args.organizationId))
       throw new Error("Document not found");
+    if (perm.scope === "own" && String(doc.createdBy) !== String(authResult.userId))
+      throw new Error("Permission denied: you can only update your own documents");
 
     await db.patch("formDocuments", args.documentId, {
       status: args.status,
@@ -381,20 +475,27 @@ export const updateStatus = action({
 
 export const updateResponseData = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     documentId: v.string(),
     responseData: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
-    );
+    ) as { userId: string };
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     const doc = await db.get("formDocuments", args.documentId);
     if (!doc || String(doc.organizationId) !== String(args.organizationId))
       throw new Error("Document not found");
+    if (perm.scope === "own" && String(doc.createdBy) !== String(authResult.userId))
+      throw new Error("Permission denied: you can only update your own documents");
     if (doc.status !== "draft")
       throw new Error("Can only update response data on draft documents");
 
@@ -453,10 +554,12 @@ export const submitDocumentFormFields = action({
       responseObj.scopeData = scopeData;
     }
 
+    const now = Date.now();
     await db.patch("formDocuments", doc._id as string, {
       responseData: JSON.stringify(responseObj),
       status: "pending_signature",
-      updatedAt: Date.now(),
+      signingTokenExpiresAt: now + 48 * 60 * 60 * 1000,
+      updatedAt: now,
     });
     return doc._id as string;
   },
@@ -468,22 +571,29 @@ export const submitDocumentFormFields = action({
 
 export const submitEmployeeFormFields = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     documentId: v.string(),
     renderedHtml: v.string(),
     formFieldValues: v.string(),
     scopeData: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
-    );
+    ) as { userId: string };
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_documents", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     const doc = await db.get("formDocuments", args.documentId);
     if (!doc || String(doc.organizationId) !== String(args.organizationId))
       throw new Error("Document not found");
+    if (perm.scope === "own" && String(doc.createdBy) !== String(authResult.userId))
+      throw new Error("Permission denied: you can only update your own documents");
     if (doc.status !== "draft")
       throw new Error("Document is not in draft status");
 
@@ -512,17 +622,11 @@ export const submitEmployeeFormFields = action({
       responseObj.scopeData = scopeData;
     }
 
-    await db.patch("formDocuments", args.documentId, {
-      responseData: JSON.stringify(responseObj),
-      status: "pending_signature",
-      updatedAt: Date.now(),
-    });
-
-    // Send signing email to patient — resolve recipient via Supabase
-    // (entity IDs are Supabase UUIDs, not Convex IDs, so ctx.db.get won't work)
+    // Resolve the signing recipient before patching — we need to know whether
+    // we can deliver the email to decide the correct target status.
+    let recipientEmail: string | undefined;
+    let recipientName: string | undefined;
     if (doc.signingToken) {
-      let recipientEmail: string | undefined;
-      let recipientName: string | undefined;
       const entityType = doc.entityType as string | undefined;
       const entityId = doc.entityId as string | undefined;
 
@@ -547,17 +651,59 @@ export const submitEmployeeFormFields = action({
           recipientName = [p.firstName, p.lastName].filter(Boolean).join(" ") || undefined;
         }
       }
+    }
 
-      if (recipientEmail) {
-        await ctx.scheduler.runAfter(
-          0,
-          internal.documents.signing.sendSigningEmailInternal,
-          {
-            documentId: args.documentId as Id<"formDocuments">,
+    // Without an email address we cannot deliver the signing link. Keep the
+    // document as draft so it stays visible to staff without expiring, and
+    // clear signingTokenExpiresAt so the hourly expiry job doesn't fire before
+    // the patient can be reached. When staff later adds an email and clicks
+    // "Wyślij ponownie", resendSigningEmail sets the 48-hour window from that
+    // moment and the flow continues normally.
+    const nextStatus: "draft" | "pending_signature" =
+      doc.signingToken && !recipientEmail ? "draft" : "pending_signature";
+
+    const nowMs = Date.now();
+    const patchPayload: Record<string, unknown> = {
+      responseData: JSON.stringify(responseObj),
+      status: nextStatus,
+      updatedAt: nowMs,
+    };
+    if (doc.signingToken && !recipientEmail) {
+      patchPayload.signingTokenExpiresAt = null;
+    }
+    if (recipientEmail) {
+      patchPayload.sentByUserId = String(authResult.userId);
+    }
+
+    await db.patch("formDocuments", args.documentId, patchPayload);
+
+    if (recipientEmail) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.documents.signing.sendSigningEmailInternal,
+        {
+          documentId: args.documentId as Id<"formDocuments">,
+          recipientEmail,
+          recipientName,
+        },
+      );
+
+      // Audit trail: record that staff triggered the signing email.
+      try {
+        await db.insert("auditLog", {
+          organizationId: String(args.organizationId),
+          userId: String(authResult.userId),
+          action: "document.sent",
+          entityType: "formDocument",
+          entityId: args.documentId,
+          details: JSON.stringify({
             recipientEmail,
-            recipientName,
-          },
-        );
+            recipientName: recipientName ?? undefined,
+          }),
+          createdAt: nowMs,
+        });
+      } catch (err) {
+        console.error("[submitEmployeeFormFields] audit log write failed", err);
       }
     }
 
@@ -574,7 +720,7 @@ export const recordSignature = action({
     signedByIp: v.optional(v.string()),
     resolvedHtml: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     const db = createSupabaseDb();
 
     const doc = await db.query("formDocuments")
@@ -614,6 +760,14 @@ export const recordSignature = action({
     }
 
     const now = Date.now();
+    // Compute expiresAt from the snapshotted validityDays (D27).
+    // documentValidityDays is set at document creation from the treatment rule;
+    // computing it here rather than at creation ensures the clock starts at signing.
+    const documentValidityDays = (doc as Record<string, unknown>).documentValidityDays as number | null | undefined;
+    const expiresAt = documentValidityDays != null
+      ? now + documentValidityDays * 24 * 60 * 60 * 1000
+      : null;
+
     const patchData: Record<string, unknown> = {
       status: "signed",
       signatureData: args.signatureData,
@@ -623,6 +777,7 @@ export const recordSignature = action({
       signedByIp: args.signedByIp ?? null,
       updatedAt: now,
     };
+    if (expiresAt != null) patchData.expiresAt = expiresAt;
 
     // For document-type templates without form fields: store the resolved HTML
     if (args.resolvedHtml) {
@@ -670,8 +825,7 @@ export const recordSignature = action({
     // When createdBy is null (auto-generated / system documents) we still
     // write the entry with userId omitted so all signing events are auditable.
     try {
-      await ctx.scheduler.runAfter(0, internal.supabase.auditLog.writeAuditLogToSupabase, {
-        auditLogId: crypto.randomUUID(),
+      await db.insert("auditLog", {
         organizationId: String(doc.organizationId),
         userId: doc.createdBy ? String(doc.createdBy) : undefined,
         action: "document.signed",
@@ -698,20 +852,33 @@ export const recordSignature = action({
 
 export const resendSigningEmail = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     documentId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(
+    const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
-    );
+    ) as { userId: string };
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_documents",
+        action: "edit",
+      },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     const doc = await db.get("formDocuments", args.documentId);
     if (!doc || String(doc.organizationId) !== String(args.organizationId))
       throw new Error("Document not found");
-    if (doc.status !== "draft" && doc.status !== "pending_signature")
+    if (
+      doc.status !== "draft" &&
+      doc.status !== "pending_signature" &&
+      doc.status !== "expired"
+    )
       throw new Error("Document is not awaiting signature");
     if (!doc.signingToken)
       throw new Error("Document has no signing token");
@@ -747,6 +914,20 @@ export const resendSigningEmail = action({
       throw new Error("Nie znaleziono adresu e-mail pacjenta");
     }
 
+    const now = Date.now();
+
+    // Expired documents must be reset to pending_signature so the document gate
+    // passes once the patient re-signs. sendSigningEmailInternal bumps the token
+    // expiry on its own, so we only need to fix the status here.
+    const patchPayload: Record<string, unknown> = {
+      sentByUserId: String(authResult.userId),
+      updatedAt: now,
+    };
+    if (doc.status === "expired") {
+      patchPayload.status = "pending_signature";
+    }
+    await db.patch("formDocuments", args.documentId, patchPayload);
+
     // Call the send action directly (not via scheduler) so failures
     // propagate back to the UI instead of being silently swallowed.
     await ctx.runAction(internal.documents.signing.sendSigningEmailInternal, {
@@ -755,13 +936,31 @@ export const resendSigningEmail = action({
       recipientName,
     });
 
+    // Audit trail: record send event after successful delivery.
+    try {
+      await db.insert("auditLog", {
+        organizationId: String(args.organizationId),
+        userId: String(authResult.userId),
+        action: "document.sent",
+        entityType: "formDocument",
+        entityId: args.documentId,
+        details: JSON.stringify({
+          recipientEmail,
+          recipientName: recipientName ?? undefined,
+        }),
+        createdAt: now,
+      });
+    } catch (err) {
+      console.error("[resendSigningEmail] audit log write failed", err);
+    }
+
     return { sent: true };
   },
 });
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     documentId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -773,7 +972,7 @@ export const remove = action({
       internal._helpers.authAction.checkPermission,
       {
         organizationId: args.organizationId,
-        feature: "documents",
+        feature: "gabinet_documents",
         action: "delete",
       },
     ) as { allowed: boolean; scope: string };
@@ -789,6 +988,68 @@ export const remove = action({
     }
 
     await db.delete("formDocuments", args.documentId);
+    return args.documentId;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Void document (D31) — transitions a signed/completed document to "voided",
+// records who voided it and when, and writes a document.voided audit log entry.
+// Uses the gabinet_documents edit permission so the same staff who can edit
+// documents can void them; owner-scoped staff can only void their own.
+// ---------------------------------------------------------------------------
+
+export const voidDocument = action({
+  args: {
+    organizationId: v.string(),
+    documentId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    ) as { userId: string };
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_documents",
+        action: "edit",
+      },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+    const doc = await db.get("formDocuments", args.documentId);
+    if (!doc || String(doc.organizationId) !== String(args.organizationId))
+      throw new Error("Document not found");
+    if (perm.scope === "own" && String(doc.createdBy) !== String(authResult.userId))
+      throw new Error("Permission denied: you can only void your own documents");
+    if (doc.status === "voided")
+      throw new Error("Document is already voided");
+
+    const now = Date.now();
+    await db.patch("formDocuments", args.documentId, {
+      status: "voided",
+      voidedByUserId: String(authResult.userId),
+      voidedAt: now,
+      updatedAt: now,
+    });
+
+    try {
+      await db.insert("auditLog", {
+        organizationId: String(args.organizationId),
+        userId: String(authResult.userId),
+        action: "document.voided",
+        entityType: "formDocument",
+        entityId: args.documentId,
+        details: JSON.stringify({ previousStatus: doc.status }),
+        createdAt: now,
+      });
+    } catch (err) {
+      console.error("[voidDocument] audit log write failed", err);
+    }
+
     return args.documentId;
   },
 });
@@ -832,12 +1093,12 @@ export const expireSigningTokens = internalAction({
 // ---------------------------------------------------------------------------
 
 export const listByPatientToken = action({
-  args: { tokenHash: v.string() },
+  args: { token: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const { patientId, organizationId } = await validatePortalSessionSupabase(
       db,
-      args.tokenHash,
+      args.token,
     );
 
     // 1. Documents linked directly to the patient
@@ -905,7 +1166,7 @@ export const listByPatientToken = action({
         updatedAt: doc.updatedAt as number,
         templateName: (template?.name as string | undefined) ?? "",
         category: (template?.category as string | undefined) ?? "custom",
-        formJson: (template?.formJson as string | undefined) ?? "{}",
+        formJson: ((doc as unknown as Record<string, unknown>).formJson as string | undefined) ?? (template?.formJson as string | undefined) ?? "{}",
         requiresSignature:
           (template?.requiresSignature as boolean | undefined) ?? false,
       };

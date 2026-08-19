@@ -43,7 +43,7 @@ const ALL_FIELDS: Record<EntityType, string[]> = {
   contacts: ["firstName", "lastName", "email", "phone", "title", "source", "tags", "notes"],
   companies: ["name", "domain", "industry", "size", "website", "phone", "street", "city", "state", "zip", "country", "notes"],
   leads: ["title", "value", "currency", "status", "priority", "source", "notes", "tags"],
-  products: ["name", "sku", "unitPrice", "taxRate", "isActive", "description"],
+  products: ["name", "sku", "unitPrice", "taxRate", "isActive", "description", "purchasePrice", "salePrice", "trackStock", "stockUnit", "minStock", "productSection", "manufacturer", "catalogNumber", "stockNote", "tags", "category"],
 };
 
 function downloadTemplate(entityType: EntityType) {
@@ -68,10 +68,10 @@ export function CsvImportDialog({
 }: CsvImportDialogProps) {
   const { t } = useTranslation();
 
-  const batchCreateContacts = useAction(api.csvImport.batchCreateContacts);
-  const batchCreateCompanies = useAction(api.csvImport.batchCreateCompanies);
-  const batchCreateLeads = useAction(api.csvImport.batchCreateLeads);
-  const batchCreateProducts = useAction(api.csvImport.batchCreateProducts);
+  const batchCreateContacts = useAction(api.crm.csvImport.batchCreateContacts);
+  const batchCreateCompanies = useAction(api.crm.csvImport.batchCreateCompanies);
+  const batchCreateLeads = useAction(api.crm.csvImport.batchCreateLeads);
+  const batchCreateProducts = useAction(api.crm.csvImport.batchCreateProducts);
 
   const [step, setStep] = useState<Step>("upload");
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
@@ -150,10 +150,10 @@ export function CsvImportDialog({
         mapped[crmField] = value.split(";").map((t: string) => t.trim()).filter(Boolean);
       } else if (crmField === "taxRate" && value.trim().toUpperCase() === "ZW") {
         mapped.taxExempt = true;
-      } else if (crmField === "value" || crmField === "unitPrice" || crmField === "taxRate") {
+      } else if (crmField === "value" || crmField === "unitPrice" || crmField === "taxRate" || crmField === "purchasePrice" || crmField === "salePrice" || crmField === "minStock") {
         const num = parseFloat(value);
         if (!isNaN(num)) mapped[crmField] = num;
-      } else if (crmField === "isActive") {
+      } else if (crmField === "isActive" || crmField === "trackStock") {
         mapped[crmField] = value.toLowerCase() === "yes" || value.toLowerCase() === "true";
       } else {
         mapped[crmField] = value;
@@ -377,7 +377,7 @@ export function CsvImportDialog({
             {results.errors.length > 0 && (
               <div className="max-h-[200px] overflow-y-auto rounded-md border p-3">
                 <p className="mb-2 text-xs font-medium text-destructive">
-                  {t("csv.errors")} ({results.errors.length})
+                  {t("csv.errorsLabel")} ({results.errors.length})
                 </p>
                 {results.errors.slice(0, 20).map((e, i) => (
                   <p key={i} className="text-xs text-muted-foreground">

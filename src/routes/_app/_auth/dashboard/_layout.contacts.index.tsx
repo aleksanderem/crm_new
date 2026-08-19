@@ -54,8 +54,8 @@ function ContactsIndex() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const { nudge: nudgeFilter } = useSearch({ from: Route.id });
-  const createContact = useAction(api.contacts.create);
-  const removeContact = useAction(api.contacts.remove);
+  const createContact = useAction(api.crm.contacts.create);
+  const removeContact = useAction(api.crm.contacts.remove);
   const setCustomFieldValues = useAction(api.customFields.setValues);
 
   const [panelOpen, setPanelOpen] = useState(false);

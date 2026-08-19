@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
+import type { GabinetEmployeeRole } from "@cvx/schema";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseCustomFieldDefinitions } from "@/hooks/use-supabase-custom-fields";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -22,9 +24,7 @@ import { TagsPicker } from "@/components/categories-tags/tags-picker";
 import { CategoryPicker } from "@/components/categories-tags/category-picker";
 import { CustomFieldFormSection } from "@/components/custom-fields/custom-field-form-section";
 import { Eye, Search } from "@/lib/ez-icons";
-
-const ROLES = ["doctor", "cosmetologist", "nurse", "therapist", "receptionist", "manager", "admin", "other"] as const;
-type EmployeeRole = (typeof ROLES)[number];
+import { EMPLOYEE_ROLES } from "@/lib/options";
 
 interface TagDef {
   _id: Id<"tagDefinitions">;
@@ -54,22 +54,25 @@ export interface EmployeeFormData {
   userId?: Id<"users">;
   firstName?: string;
   lastName?: string;
-  role: EmployeeRole;
+  hireDate?: string;
+  role: GabinetEmployeeRole;
   specialization?: string;
   licenseNumber?: string;
   color?: string;
   showInCalendar?: boolean;
+  performsServices?: boolean;
   qualifiedTreatmentIds: Id<"gabinetTreatments">[];
   tagIds?: Id<"tagDefinitions">[];
   categoryId?: Id<"categoryDefinitions">;
   customFields?: Array<{ fieldDefinitionId: string; value: unknown }>;
+  workScope?: "clinic" | "office" | "both";
   grantSystemAccess?: boolean;
-  accessMode?: "invite" | "password";
+  accessMode?: "invite" | "password" | "inactive";
   accessEmail?: string;
   accessRole?: "admin" | "member" | "viewer";
   password?: string;
   locationId?: string;
-  locationRole?: EmployeeRole;
+  locationRole?: GabinetEmployeeRole;
 }
 
 interface EmployeeFormProps {
@@ -79,6 +82,15 @@ interface EmployeeFormProps {
   isSubmitting?: boolean;
   tagDefinitions?: TagDef[];
   categoryDefinitions?: CategoryDef[];
+}
+
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <div className="space-y-1.5 pt-1">
+      <Separator />
+      <p className="text-sm font-medium text-muted-foreground pt-1">{title}</p>
+    </div>
+  );
 }
 
 export function EmployeeForm({
@@ -108,12 +120,16 @@ export function EmployeeForm({
 
   const [firstName, setFirstName] = useState(initialData?.firstName ?? "");
   const [lastName, setLastName] = useState(initialData?.lastName ?? "");
-  const [role, setRole] = useState<EmployeeRole>(initialData?.role ?? "doctor");
+  const [hireDate, setHireDate] = useState(initialData?.hireDate ?? "");
+  const [role, setRole] = useState<GabinetEmployeeRole>(initialData?.role ?? "doctor");
   const [specialization, setSpecialization] = useState(initialData?.specialization ?? "");
   const [licenseNumber, setLicenseNumber] = useState(initialData?.licenseNumber ?? "");
   const [color, setColor] = useState(initialData?.color ?? "#3b82f6");
   const [showInCalendar, setShowInCalendar] = useState<boolean>(
     initialData?.showInCalendar ?? true,
+  );
+  const [performsServices, setPerformsServices] = useState<boolean>(
+    initialData?.performsServices ?? true,
   );
   const [selectedTreatments, setSelectedTreatments] = useState<string[]>(
     initialData?.qualifiedTreatmentIds?.map((id) => id as string) ?? []
@@ -123,11 +139,14 @@ export function EmployeeForm({
   const [treatmentSearch, setTreatmentSearch] = useState("");
   const [accessEmail, setAccessEmail] = useState("");
   const [accessRole, setAccessRole] = useState<"admin" | "member" | "viewer">("member");
-  const [accessMode, setAccessMode] = useState<"invite" | "password">("invite");
+  const [accessMode, setAccessMode] = useState<"invite" | "password" | "inactive">("invite");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [workScope, setWorkScope] = useState<"clinic" | "office" | "both" | undefined>(
+    initialData?.workScope,
+  );
   const [locationId, setLocationId] = useState<string | undefined>(undefined);
-  const [locationRole, setLocationRole] = useState<EmployeeRole | undefined>(undefined);
+  const [locationRole, setLocationRole] = useState<GabinetEmployeeRole | undefined>(undefined);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -165,8 +184,6 @@ export function EmployeeForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const isClinicalRole = role !== "receptionist" && role !== "manager";
-
     const customFields = (customFieldDefs ?? [])
       .map((def) => ({
         fieldDefinitionId: def._id,
@@ -177,24 +194,27 @@ export function EmployeeForm({
     onSubmit({
       firstName: firstName || undefined,
       lastName: lastName || undefined,
+      hireDate: hireDate || undefined,
       role,
-      specialization: specialization || undefined,
-      licenseNumber: licenseNumber || undefined,
+      specialization: performsServices ? specialization || undefined : undefined,
+      licenseNumber: performsServices ? licenseNumber || undefined : undefined,
       color: color || undefined,
       showInCalendar,
-      qualifiedTreatmentIds: isClinicalRole
+      performsServices,
+      qualifiedTreatmentIds: performsServices
         ? (selectedTreatments as Id<"gabinetTreatments">[])
         : [],
+      workScope: workScope || undefined,
       tagIds: tagIds.length > 0 ? tagIds : undefined,
       categoryId: categoryId || undefined,
       customFields: customFields.length > 0 ? customFields : undefined,
-      grantSystemAccess: true,
+      grantSystemAccess: accessMode !== "inactive",
       accessMode,
-      accessEmail: accessEmail.trim() || undefined,
-      accessRole: accessRole,
+      accessEmail: accessMode !== "inactive" ? accessEmail.trim() || undefined : undefined,
+      accessRole: accessMode !== "inactive" ? accessRole : undefined,
       password: accessMode === "password" ? password : undefined,
-      locationId: locationId,
-      locationRole: locationRole,
+      locationId: locationId || undefined,
+      locationRole: locationRole || undefined,
     });
   };
 
@@ -208,7 +228,8 @@ export function EmployeeForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {/* Name fields */}
+
+      {/* ── 1. Dane podstawowe ── */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label>{t("gabinet.employees.firstName")}</Label>
@@ -228,17 +249,16 @@ export function EmployeeForm({
         </div>
       </div>
 
-      {/* Role */}
       <div className="space-y-1.5">
         <Label>
           {t("gabinet.employees.role")} <span className="text-destructive">*</span>
         </Label>
-        <Select value={role} onValueChange={(v) => setRole(v as EmployeeRole)}>
+        <Select value={role} onValueChange={(v) => setRole(v as GabinetEmployeeRole)}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {ROLES.map((r) => (
+            {EMPLOYEE_ROLES.map((r) => (
               <SelectItem key={r} value={r}>
                 {t(`gabinet.employees.roles.${r}`)}
               </SelectItem>
@@ -247,48 +267,125 @@ export function EmployeeForm({
         </Select>
       </div>
 
-      {/* Specialization */}
       <div className="space-y-1.5">
-        <Label>{t("gabinet.employees.specialization")}</Label>
+        <Label>{t("gabinet.employees.hireDate")}</Label>
         <Input
-          value={specialization}
-          onChange={(e) => setSpecialization(e.target.value)}
-          placeholder={t("gabinet.employees.specializationPlaceholder")}
+          type="date"
+          value={hireDate}
+          onChange={(e) => setHireDate(e.target.value)}
         />
       </div>
 
-      {/* License number */}
-      <div className="space-y-1.5">
-        <Label>{t("gabinet.employees.license")}</Label>
-        <Input
-          value={licenseNumber}
-          onChange={(e) => setLicenseNumber(e.target.value)}
-          placeholder={t("gabinet.employees.licensePlaceholder")}
-        />
-      </div>
+      {/* ── 2. Gabinety i lokalizacje ── */}
+      {locations && locations.length > 0 && (
+        <>
+          <SectionHeader title={t("gabinet.employees.officesAndLocations", { defaultValue: "Gabinety i lokalizacje" })} />
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.employees.location", { defaultValue: "Lokalizacja" })}</Label>
+            <Select
+              value={locationId ?? ""}
+              onValueChange={(v) => {
+                setLocationId(v || undefined);
+                if (!v) setLocationRole(undefined);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={t("gabinet.employees.locationPlaceholder", { defaultValue: "Wybierz lokalizację" })} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">{t("gabinet.employees.noLocation", { defaultValue: "Brak lokalizacji" })}</SelectItem>
+                {locations.map((loc) => (
+                  <SelectItem key={loc._id} value={loc._id}>
+                    {loc.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {locationId && (
+            <div className="space-y-1.5">
+              <Label>{t("gabinet.employees.locationRole", { defaultValue: "Rola w tej lokalizacji (opcjonalne nadpisanie)" })}</Label>
+              <Select
+                value={locationRole ?? ""}
+                onValueChange={(v) => setLocationRole(v ? (v as GabinetEmployeeRole) : undefined)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("gabinet.employees.locationRolePlaceholder", { defaultValue: "Taka sama jak rola główna" })} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">{t("gabinet.employees.locationRoleNone", { defaultValue: "Taka sama jak rola główna" })}</SelectItem>
+                  {EMPLOYEE_ROLES.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {t(`gabinet.employees.roles.${r}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </>
+      )}
 
-      {/* Color picker */}
-      <div className="space-y-2">
-        <Label>{t("gabinet.employees.color")}</Label>
-        <div className="flex gap-2">
-          {COLOR_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              className={`h-7 w-7 rounded-full border-2 transition-all ${
-                color === opt.value
-                  ? "border-foreground scale-110"
-                  : "border-transparent hover:border-muted-foreground/40"
-              }`}
-              style={{ backgroundColor: opt.value }}
-              onClick={() => setColor(color === opt.value ? "" : opt.value)}
-              title={opt.label}
+      {/* ── 3. Zakres pracy i dostępu ── */}
+      <SectionHeader title={t("gabinet.employees.workAndAccessScope", { defaultValue: "Zakres pracy i dostępu" })} />
+
+      <div className="space-y-1.5">
+        <Label>{t("gabinet.employees.workScope", { defaultValue: "Zakres pracy" })}</Label>
+        <div className="flex flex-col gap-1.5">
+          <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+            <input
+              type="radio"
+              name="workScope"
+              value="clinic"
+              checked={workScope === "clinic"}
+              onChange={() => setWorkScope("clinic")}
+              className="accent-primary"
             />
-          ))}
+            {t("gabinet.employees.workScopeClinic", { defaultValue: "Obsługa gabinetu" })}
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+            <input
+              type="radio"
+              name="workScope"
+              value="office"
+              checked={workScope === "office"}
+              onChange={() => setWorkScope("office")}
+              className="accent-primary"
+            />
+            {t("gabinet.employees.workScopeOffice", { defaultValue: "Praca biurowa i CRM" })}
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+            <input
+              type="radio"
+              name="workScope"
+              value="both"
+              checked={workScope === "both"}
+              onChange={() => setWorkScope("both")}
+              className="accent-primary"
+            />
+            {t("gabinet.employees.workScopeBoth", { defaultValue: "Obsługa gabinetu i praca biurowa" })}
+          </label>
         </div>
       </div>
 
-      {/* Show in calendar */}
+      <div className="space-y-1.5">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <Checkbox
+            className="mt-0.5 h-5 w-5"
+            checked={performsServices}
+            onCheckedChange={(checked) => setPerformsServices(checked === true)}
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium leading-none">
+              {t("gabinet.employees.performsServices", { defaultValue: "Czy pracownik wykonuje usługi lub zabiegi?" })}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {t("gabinet.employees.performsServicesHint", { defaultValue: "Przy Tak wyświetlane są pola: specjalizacja, numer licencji, kwalifikacje i lista usług." })}
+            </span>
+          </span>
+        </label>
+      </div>
+
       <div className="space-y-1.5">
         <label className="flex items-start gap-3 cursor-pointer">
           <Checkbox
@@ -307,8 +404,59 @@ export function EmployeeForm({
         </label>
       </div>
 
-      {/* Qualified treatments — hidden for non-clinical roles */}
-      {role !== "receptionist" && role !== "manager" && (
+      {/* ── 4. Wykonywanie usług (conditional on performsServices) ── */}
+      {performsServices && (
+        <>
+          <SectionHeader title={t("gabinet.employees.performingServicesSection", { defaultValue: "Wykonywanie usług" })} />
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.employees.specialization")}</Label>
+            <Input
+              value={specialization}
+              onChange={(e) => setSpecialization(e.target.value)}
+              placeholder={t("gabinet.employees.specializationPlaceholder")}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.employees.license")}</Label>
+            <Input
+              value={licenseNumber}
+              onChange={(e) => setLicenseNumber(e.target.value)}
+              placeholder={t("gabinet.employees.licensePlaceholder")}
+            />
+          </div>
+        </>
+      )}
+
+      {/* ── 5. Kalendarz (conditional on showInCalendar) ── */}
+      {showInCalendar && (
+        <>
+          <SectionHeader title={t("gabinet.employees.calendarSection", { defaultValue: "Kalendarz" })} />
+          <div className="space-y-2">
+            <Label>{t("gabinet.employees.color")}</Label>
+            <div className="flex gap-2">
+              {COLOR_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`h-7 w-7 rounded-full border-2 transition-all ${
+                    color === opt.value
+                      ? "border-foreground scale-110"
+                      : "border-transparent hover:border-muted-foreground/40"
+                  }`}
+                  style={{ backgroundColor: opt.value }}
+                  onClick={() => setColor(color === opt.value ? "" : opt.value)}
+                  title={opt.label}
+                />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── 6. Kwalifikacje ── */}
+      <SectionHeader title={t("gabinet.employees.qualificationsSection", { defaultValue: "Kwalifikacje" })} />
+
+      {performsServices && (
         <div className="space-y-2">
           <Label>{t("gabinet.employees.qualifiedTreatments")}</Label>
           {treatments && treatments.length > 0 && (
@@ -391,13 +539,13 @@ export function EmployeeForm({
       )}
 
       {tagDefinitions.length > 0 && (
-        <div className="space-y-1.5 sm:col-span-2">
+        <div className="space-y-1.5">
           <Label>{t('common.tags', { defaultValue: "Tagi" })}</Label>
           <TagsPicker tags={tagDefinitions} selectedIds={tagIds} onChange={setTagIds} />
         </div>
       )}
       {organizationId && (
-        <div className="space-y-1.5 sm:col-span-2">
+        <div className="space-y-1.5">
           <Label>{t('common.category', { defaultValue: "Kategoria" })}</Label>
           <CategoryPicker
             categories={categoryDefinitions}
@@ -410,7 +558,7 @@ export function EmployeeForm({
       )}
 
       {customFieldDefs && customFieldDefs.length > 0 && (
-        <div className="space-y-2 pt-2 border-t">
+        <div className="space-y-2">
           <CustomFieldFormSection
             definitions={customFieldDefs as any}
             values={customFieldValues}
@@ -421,195 +569,178 @@ export function EmployeeForm({
         </div>
       )}
 
-      {/* System access */}
-      <div className="space-y-2 rounded-md border p-4">
-        <p className="text-sm font-medium">
-          {t("gabinet.employees.systemAccess", { defaultValue: "Dostęp do systemu" })}
-        </p>
+      {/* ── 7. Aktywacja konta ── */}
+      <SectionHeader title={t("gabinet.employees.accountActivationSection", { defaultValue: "Aktywacja konta" })} />
 
-        <div className="space-y-3">
-            {/* Access mode toggle */}
-            <div className="space-y-1.5">
-              <Label>{t("gabinet.employees.accessMethod", { defaultValue: "Sposób aktywacji konta" })}</Label>
-              <div className="flex gap-2">
-                <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
-                  <input
-                    type="radio"
-                    name="accessMode"
-                    value="invite"
-                    checked={accessMode === "invite"}
-                    onChange={() => setAccessMode("invite")}
-                    className="accent-primary"
-                  />
-                  {t("gabinet.employees.accessModeInvite", { defaultValue: "Wyślij zaproszenie e-mailem" })}
-                </label>
-                <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
-                  <input
-                    type="radio"
-                    name="accessMode"
-                    value="password"
-                    checked={accessMode === "password"}
-                    onChange={() => setAccessMode("password")}
-                    className="accent-primary"
-                  />
-                  {t("gabinet.employees.accessModePassword", { defaultValue: "Ustaw hasło ręcznie" })}
-                </label>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>
-                {t("gabinet.employees.accessEmail", { defaultValue: "Adres e-mail" })} <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                type="email"
-                value={accessEmail}
-                onChange={(e) => setAccessEmail(e.target.value)}
-                placeholder={t("gabinet.employees.accessEmailPlaceholder", { defaultValue: "np. jan.kowalski@firma.pl" })}
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <Label>{t("gabinet.employees.accessMethod", { defaultValue: "Sposób aktywacji konta" })}</Label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex cursor-pointer items-start gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+              <input
+                type="radio"
+                name="accessMode"
+                value="invite"
+                checked={accessMode === "invite"}
+                onChange={() => setAccessMode("invite")}
+                className="accent-primary mt-0.5"
               />
+              <span className="flex flex-col gap-0.5">
+                <span>{t("gabinet.employees.accessModeInvite", { defaultValue: "Wyślij zaproszenie e-mailem" })}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t("gabinet.employees.accessModeInviteDesc", { defaultValue: "Pracownik otrzyma link aktywacyjny na wskazany adres e-mail." })}
+                </span>
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+              <input
+                type="radio"
+                name="accessMode"
+                value="password"
+                checked={accessMode === "password"}
+                onChange={() => setAccessMode("password")}
+                className="accent-primary mt-0.5"
+              />
+              <span className="flex flex-col gap-0.5">
+                <span>{t("gabinet.employees.accessModePassword", { defaultValue: "Utwórz hasło startowe" })}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t("gabinet.employees.accessModePasswordDesc", { defaultValue: "Administrator ustawia hasło startowe, które pracownik może samodzielnie zmienić po zalogowaniu." })}
+                </span>
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/60">
+              <input
+                type="radio"
+                name="accessMode"
+                value="inactive"
+                checked={accessMode === "inactive"}
+                onChange={() => setAccessMode("inactive")}
+                className="accent-primary mt-0.5"
+              />
+              <span className="flex flex-col gap-0.5">
+                <span>{t("gabinet.employees.accessModeInactive", { defaultValue: "Utwórz konto jako nieaktywne" })}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t("gabinet.employees.accessModeInactiveDesc", { defaultValue: "Pracownik zostanie dodany bez dostępu do systemu — konto można aktywować później." })}
+                </span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {accessMode !== "inactive" && (
+          <div className="space-y-1.5">
+            <Label>
+              {t("gabinet.employees.accessEmail", { defaultValue: "Adres e-mail" })} <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              type="email"
+              value={accessEmail}
+              onChange={(e) => setAccessEmail(e.target.value)}
+              placeholder={t("gabinet.employees.accessEmailPlaceholder", { defaultValue: "np. jan.kowalski@firma.pl" })}
+            />
+          </div>
+        )}
+
+        {accessMode === "password" && (
+          <div className="space-y-3 pt-1">
+            <div className="space-y-1.5">
+              <Label>
+                {t("gabinet.employees.password", { defaultValue: "Hasło" })} <span className="text-destructive">*</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  className="pr-9"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? t("common.hidePassword", { defaultValue: "Ukryj hasło" }) : t("common.showPassword", { defaultValue: "Pokaż hasło" })}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <Eye className="h-4 w-4" variant="stroke" />
+                  {showPassword && (
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      <span className="block h-px w-4 rotate-45 bg-current" />
+                    </span>
+                  )}
+                </button>
+              </div>
+              {passwordError && (
+                <p className="text-xs text-destructive">{passwordError}</p>
+              )}
+              {!passwordError && (
+                <p className="text-xs text-muted-foreground">
+                  {t("gabinet.employees.passwordHint", { defaultValue: "Min. 8 znaków, 1 wielka litera, 1 cyfra." })}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>
-                {t("gabinet.employees.accessRole", { defaultValue: "Rola dostępu" })} <span className="text-destructive">*</span>
+                {t("gabinet.employees.confirmPassword", { defaultValue: "Powtórz hasło" })} <span className="text-destructive">*</span>
               </Label>
-              <Select value={accessRole} onValueChange={(v) => setAccessRole(v as "admin" | "member" | "viewer")}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">
-                    {t("gabinet.employees.accessRoles.admin", { defaultValue: "Administrator" })}
-                  </SelectItem>
-                  <SelectItem value="member">
-                    {t("gabinet.employees.accessRoles.member", { defaultValue: "Pracownik" })}
-                  </SelectItem>
-                  <SelectItem value="viewer">
-                    {t("gabinet.employees.accessRoles.viewer", { defaultValue: "Tylko podgląd" })}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="relative">
+                <Input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  className="pr-9"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  aria-label={showConfirmPassword ? t("common.hidePassword", { defaultValue: "Ukryj hasło" }) : t("common.showPassword", { defaultValue: "Pokaż hasło" })}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <Eye className="h-4 w-4" variant="stroke" />
+                  {showConfirmPassword && (
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      <span className="block h-px w-4 rotate-45 bg-current" />
+                    </span>
+                  )}
+                </button>
+              </div>
+              {confirmPasswordError && (
+                <p className="text-xs text-destructive">{confirmPasswordError}</p>
+              )}
             </div>
-
-            {/* Password fields — only shown in manual password mode */}
-            {accessMode === "password" && (
-              <div className="space-y-3 pt-1">
-                <div className="space-y-1.5">
-                  <Label>
-                    {t("gabinet.employees.password", { defaultValue: "Hasło" })} <span className="text-destructive">*</span>
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      autoComplete="new-password"
-                      className="pr-9"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      aria-label={showPassword ? t("common.hidePassword", { defaultValue: "Ukryj hasło" }) : t("common.showPassword", { defaultValue: "Pokaż hasło" })}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <Eye className="h-4 w-4" variant="stroke" />
-                      {showPassword && (
-                        <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                          <span className="block h-px w-4 rotate-45 bg-current" />
-                        </span>
-                      )}
-                    </button>
-                  </div>
-                  {passwordError && (
-                    <p className="text-xs text-destructive">{passwordError}</p>
-                  )}
-                  {!passwordError && (
-                    <p className="text-xs text-muted-foreground">
-                      {t("gabinet.employees.passwordHint", { defaultValue: "Min. 8 znaków, 1 wielka litera, 1 cyfra." })}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  <Label>
-                    {t("gabinet.employees.confirmPassword", { defaultValue: "Powtórz hasło" })} <span className="text-destructive">*</span>
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="••••••••"
-                      autoComplete="new-password"
-                      className="pr-9"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword((v) => !v)}
-                      aria-label={showConfirmPassword ? t("common.hidePassword", { defaultValue: "Ukryj hasło" }) : t("common.showPassword", { defaultValue: "Pokaż hasło" })}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <Eye className="h-4 w-4" variant="stroke" />
-                      {showConfirmPassword && (
-                        <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                          <span className="block h-px w-4 rotate-45 bg-current" />
-                        </span>
-                      )}
-                    </button>
-                  </div>
-                  {confirmPasswordError && (
-                    <p className="text-xs text-destructive">{confirmPasswordError}</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {locations && locations.filter((l) => l.isActive).length > 0 && (
-              <div className="space-y-1.5">
-                <Label>{t("settings.team.gabinetLocation")}</Label>
-                <Select
-                  value={locationId ?? "none"}
-                  onValueChange={(v) => {
-                    setLocationId(v === "none" ? undefined : v);
-                    if (v === "none") setLocationRole(undefined);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("settings.team.gabinetLocationPlaceholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">{t("settings.team.gabinetLocationNone")}</SelectItem>
-                    {locations.filter((l) => l.isActive).map((loc) => (
-                      <SelectItem key={loc._id} value={loc._id}>
-                        {loc.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            {locationId && (
-              <div className="space-y-1.5">
-                <Label>{t("settings.team.gabinetLocationRole")}</Label>
-                <Select
-                  value={locationRole ?? "none"}
-                  onValueChange={(v) => setLocationRole(v === "none" ? undefined : v as EmployeeRole)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("settings.team.gabinetLocationRolePlaceholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">{t("settings.team.gabinetLocationRoleNone")}</SelectItem>
-                    {ROLES.map((r) => (
-                      <SelectItem key={r} value={r}>
-                        {t(`gabinet.employees.roles.${r}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-        </div>
+          </div>
+        )}
       </div>
+
+      {/* ── 8. Uprawnienia ── */}
+      {accessMode !== "inactive" && (
+        <>
+          <SectionHeader title={t("gabinet.employees.permissionsSection", { defaultValue: "Uprawnienia" })} />
+          <div className="space-y-1.5">
+            <Label>
+              {t("gabinet.employees.accessRole", { defaultValue: "Rola dostępu" })} <span className="text-destructive">*</span>
+            </Label>
+            <Select value={accessRole} onValueChange={(v) => setAccessRole(v as "admin" | "member" | "viewer")}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">
+                  {t("gabinet.employees.accessRoles.admin", { defaultValue: "Administrator" })}
+                </SelectItem>
+                <SelectItem value="member">
+                  {t("gabinet.employees.accessRoles.member", { defaultValue: "Pracownik" })}
+                </SelectItem>
+                <SelectItem value="viewer">
+                  {t("gabinet.employees.accessRoles.viewer", { defaultValue: "Tylko podgląd" })}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </>
+      )}
 
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="outline" onClick={onCancel}>
@@ -619,7 +750,7 @@ export function EmployeeForm({
           type="submit"
           disabled={
             isSubmitting ||
-            !accessEmail.trim() ||
+            (accessMode !== "inactive" && !accessEmail.trim()) ||
             !isPasswordValid
           }
         >

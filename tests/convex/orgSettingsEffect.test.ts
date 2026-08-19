@@ -160,12 +160,12 @@ describe("reminderEnabled: controls whether appointment creation schedules a rem
       employeeId: userId,
     });
 
-    const reminders = await t.run(async (ctx) =>
-      ctx.db.query("appointmentReminders").collect(),
-    );
+    const reminders = await createSupabaseDb()
+      .query("appointmentReminders")
+      .collect();
     expect(reminders.length).toBeGreaterThan(0);
     expect(reminders[0].status).toBe("pending");
-    expect(reminders[0].organizationId).toStrictEqual(organizationId);
+    expect(reminders[0].organizationId).toStrictEqual(String(organizationId));
   });
 
   test("reminderEnabled=false prevents any appointmentReminders entry from being created", async () => {
@@ -186,9 +186,9 @@ describe("reminderEnabled: controls whether appointment creation schedules a rem
       employeeId: userId,
     });
 
-    const reminders = await t.run(async (ctx) =>
-      ctx.db.query("appointmentReminders").collect(),
-    );
+    const reminders = await createSupabaseDb()
+      .query("appointmentReminders")
+      .collect();
     expect(reminders).toHaveLength(0);
   });
 });
@@ -218,9 +218,9 @@ describe("reminderHoursBefore: controls legacy single-reminder offset", () => {
       sendReminder: true,
     });
 
-    const reminders = await t.run(async (ctx) =>
-      ctx.db.query("appointmentReminders").collect(),
-    );
+    const reminders = await createSupabaseDb()
+      .query("appointmentReminders")
+      .collect();
     expect(reminders).toHaveLength(1);
     const expected48h = APPOINTMENT_MS - 48 * 60 * 60 * 1000;
     expect(reminders[0].scheduledFor).toBe(expected48h);
@@ -245,9 +245,9 @@ describe("reminderHoursBefore: controls legacy single-reminder offset", () => {
       sendReminder: true,
     });
 
-    const reminders = await t.run(async (ctx) =>
-      ctx.db.query("appointmentReminders").collect(),
-    );
+    const reminders = await createSupabaseDb()
+      .query("appointmentReminders")
+      .collect();
     expect(reminders).toHaveLength(1);
     const expected24h = APPOINTMENT_MS - 24 * 60 * 60 * 1000;
     expect(reminders[0].scheduledFor).toBe(expected24h);
@@ -290,9 +290,9 @@ describe("4-toggle channel settings: control which reminder timing slots get sch
       sendReminder: true,
     });
 
-    const reminders = await t.run(async (ctx) =>
-      ctx.db.query("appointmentReminders").collect(),
-    );
+    const reminders = await createSupabaseDb()
+      .query("appointmentReminders")
+      .collect();
     expect(reminders).toHaveLength(1);
     const expected24h = APPOINTMENT_MS - 24 * 60 * 60 * 1000;
     expect(reminders[0].scheduledFor).toBe(expected24h);
@@ -322,9 +322,9 @@ describe("4-toggle channel settings: control which reminder timing slots get sch
       sendReminder: true,
     });
 
-    const reminders = await t.run(async (ctx) =>
-      ctx.db.query("appointmentReminders").collect(),
-    );
+    const reminders = await createSupabaseDb()
+      .query("appointmentReminders")
+      .collect();
     expect(reminders).toHaveLength(1);
     const expected48h = APPOINTMENT_MS - 48 * 60 * 60 * 1000;
     expect(reminders[0].scheduledFor).toBe(expected48h);
@@ -354,11 +354,11 @@ describe("4-toggle channel settings: control which reminder timing slots get sch
       sendReminder: true,
     });
 
-    const reminders = await t.run(async (ctx) =>
-      ctx.db.query("appointmentReminders").collect(),
-    );
+    const reminders = await createSupabaseDb()
+      .query("appointmentReminders")
+      .collect();
     expect(reminders).toHaveLength(2);
-    const times = reminders.map((r) => r.scheduledFor).sort((a, b) => a - b);
+    const times = reminders.map((r) => r.scheduledFor).sort((a, b) => (a as number) - (b as number));
     expect(times[0]).toBe(APPOINTMENT_MS - 48 * 60 * 60 * 1000);
     expect(times[1]).toBe(APPOINTMENT_MS - 24 * 60 * 60 * 1000);
   });
@@ -387,9 +387,9 @@ describe("4-toggle channel settings: control which reminder timing slots get sch
       sendReminder: true,
     });
 
-    const reminders = await t.run(async (ctx) =>
-      ctx.db.query("appointmentReminders").collect(),
-    );
+    const reminders = await createSupabaseDb()
+      .query("appointmentReminders")
+      .collect();
     expect(reminders).toHaveLength(0);
   });
 });
@@ -452,10 +452,10 @@ describe("allowCustomLostReason: controls whether lostReasons.create is permitte
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    await seedConvexOrgSettings(t, organizationId, { allowCustomLostReason: true });
+    await seedSupabaseOrgSettings(String(organizationId), { allowCustomLostReason: true });
 
     await expect(
-      t.withIdentity(identity).action(api.lostReasons.create, {
+      t.withIdentity(identity).action(api.crm.lostReasons.create, {
         organizationId,
         label: "Custom reason",
       }),
@@ -469,7 +469,7 @@ describe("allowCustomLostReason: controls whether lostReasons.create is permitte
     await seedSupabaseOrgSettings(String(organizationId), { allowCustomLostReason: false });
 
     await expect(
-      t.withIdentity(identity).action(api.lostReasons.create, {
+      t.withIdentity(identity).action(api.crm.lostReasons.create, {
         organizationId,
         label: "Blocked reason",
       }),
@@ -483,7 +483,7 @@ describe("allowCustomLostReason: controls whether lostReasons.create is permitte
     // No orgSettings row — lostReasons.create should succeed (settings?.allowCustomLostReason === false is false when settings is null)
 
     await expect(
-      t.withIdentity(identity).action(api.lostReasons.create, {
+      t.withIdentity(identity).action(api.crm.lostReasons.create, {
         organizationId,
         label: "Default allow reason",
       }),
@@ -517,7 +517,7 @@ describe("lostReasonRequired: blocks leads.update to 'lost' status when no lostR
     const leadId = await seedLead(String(organizationId), String(userId));
 
     await expect(
-      t.withIdentity(identity).action(api.leads.update, {
+      t.withIdentity(identity).action(api.crm.leads.update, {
         organizationId,
         leadId,
         status: "lost",
@@ -529,11 +529,11 @@ describe("lostReasonRequired: blocks leads.update to 'lost' status when no lostR
     const t = createTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
 
-    await seedConvexOrgSettings(t, organizationId, { lostReasonRequired: true });
+    await seedSupabaseOrgSettings(String(organizationId), { lostReasonRequired: true });
     const leadId = await seedLead(String(organizationId), String(userId));
 
     await expect(
-      t.withIdentity(identity).action(api.leads.update, {
+      t.withIdentity(identity).action(api.crm.leads.update, {
         organizationId,
         leadId,
         status: "lost",
@@ -546,11 +546,11 @@ describe("lostReasonRequired: blocks leads.update to 'lost' status when no lostR
     const t = createTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
 
-    await seedConvexOrgSettings(t, organizationId, { lostReasonRequired: false });
+    await seedSupabaseOrgSettings(String(organizationId), { lostReasonRequired: false });
     const leadId = await seedLead(String(organizationId), String(userId));
 
     await expect(
-      t.withIdentity(identity).action(api.leads.update, {
+      t.withIdentity(identity).action(api.crm.leads.update, {
         organizationId,
         leadId,
         status: "lost",
@@ -566,10 +566,122 @@ describe("lostReasonRequired: blocks leads.update to 'lost' status when no lostR
     const leadId = await seedLead(String(organizationId), String(userId));
 
     await expect(
-      t.withIdentity(identity).action(api.leads.update, {
+      t.withIdentity(identity).action(api.crm.leads.update, {
         organizationId,
         leadId,
         status: "lost",
+      }),
+    ).resolves.toBeDefined();
+  });
+});
+
+// =============================================================================
+// lostReasonRequired (via moveToStage)
+// =============================================================================
+
+describe("lostReasonRequired: blocks moveToStage to a lost pipeline stage when no lostReason provided", () => {
+  async function seedLeadAndLostStage(
+    organizationId: string,
+    userId: string,
+  ): Promise<{ leadId: string; lostStageId: string }> {
+    const db = createSupabaseDb();
+    const now = Date.now();
+    const leadId = await db.insert("leads", {
+      organizationId,
+      title: "Test Lead",
+      status: "open",
+      createdBy: userId,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const lostStageId = await db.insert("pipelineStages", {
+      organizationId,
+      name: "Lost",
+      isLostStage: true,
+      order: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return { leadId, lostStageId };
+  }
+
+  test("lostReasonRequired=true blocks moveToStage to a lost stage without a reason", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+
+    await seedSupabaseOrgSettings(String(organizationId), { lostReasonRequired: true });
+    const { leadId, lostStageId } = await seedLeadAndLostStage(
+      String(organizationId),
+      String(userId),
+    );
+
+    await expect(
+      t.withIdentity(identity).action(api.crm.leads.moveToStage, {
+        organizationId,
+        leadId,
+        pipelineStageId: lostStageId,
+        stageOrder: 0,
+      }),
+    ).rejects.toThrow("A lost reason is required");
+  });
+
+  test("lostReasonRequired=true allows moveToStage to a lost stage when lostReason is provided", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+
+    await seedSupabaseOrgSettings(String(organizationId), { lostReasonRequired: true });
+    const { leadId, lostStageId } = await seedLeadAndLostStage(
+      String(organizationId),
+      String(userId),
+    );
+
+    await expect(
+      t.withIdentity(identity).action(api.crm.leads.moveToStage, {
+        organizationId,
+        leadId,
+        pipelineStageId: lostStageId,
+        stageOrder: 0,
+        lostReason: "Price too high",
+      }),
+    ).resolves.toBeDefined();
+  });
+
+  test("lostReasonRequired=false allows moveToStage to a lost stage without a reason", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+
+    await seedSupabaseOrgSettings(String(organizationId), { lostReasonRequired: false });
+    const { leadId, lostStageId } = await seedLeadAndLostStage(
+      String(organizationId),
+      String(userId),
+    );
+
+    await expect(
+      t.withIdentity(identity).action(api.crm.leads.moveToStage, {
+        organizationId,
+        leadId,
+        pipelineStageId: lostStageId,
+        stageOrder: 0,
+      }),
+    ).resolves.toBeDefined();
+  });
+
+  test("lostReasonRequired defaults to not required (fail-open) when orgSettings not configured", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+
+    // No orgSettings row — moveToStage to a lost stage should succeed without a reason
+    const { leadId, lostStageId } = await seedLeadAndLostStage(
+      String(organizationId),
+      String(userId),
+    );
+
+    await expect(
+      t.withIdentity(identity).action(api.crm.leads.moveToStage, {
+        organizationId,
+        leadId,
+        pipelineStageId: lostStageId,
+        stageOrder: 0,
       }),
     ).resolves.toBeDefined();
   });

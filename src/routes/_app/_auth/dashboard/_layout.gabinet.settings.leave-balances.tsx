@@ -106,7 +106,7 @@ function LeaveBalancesPage() {
       <div className="space-y-4">
         {employees?.map((emp) => {
           const empBalances = balancesByEmployee.get(emp._id) ?? [];
-          const userName = userMap.get(emp.userId) ?? t("common.unknown");
+          const userName = userMap.get(emp.userId ?? "") ?? t("common.unknown");
 
           return (
             <Card key={emp._id}>

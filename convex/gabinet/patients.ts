@@ -15,7 +15,7 @@ import type { GabinetLoyaltyTier } from "../schema";
 
 export const list = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paginationOpts: paginationOptsValidator,
     search: v.optional(v.string()),
   },
@@ -94,7 +94,7 @@ const PREDEFINED_REFERRAL_SOURCES = new Set([
 
 export const listCustomReferralSources = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args): Promise<string[]> => {
     const authResult = await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
@@ -153,7 +153,7 @@ export const listCustomReferralSources = action({
 
 export const getById = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetPatientRow> => {
@@ -190,7 +190,7 @@ export const getById = action({
 
 export const searchUnlinkedContacts = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     search: v.string(),
   },
   handler: async (ctx, args): Promise<Array<{
@@ -252,6 +252,55 @@ export const searchUnlinkedContacts = action({
   },
 });
 
+export const searchPatients = action({
+  args: {
+    organizationId: v.string(),
+    search: v.string(),
+    excludePatientId: v.optional(v.string()),
+  },
+  handler: async (ctx, args): Promise<Array<{
+    _id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  }>> => {
+    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+    const perm = await ctx.runAction(internal._helpers.authAction.checkPermission, {
+      organizationId: args.organizationId,
+      feature: "gabinet_patients",
+      action: "view",
+    }) as { allowed: boolean; scope: string };
+    if (!perm.allowed) return [];
+
+    if (!args.search.trim()) return [];
+    const term = args.search.trim();
+
+    const db = createSupabaseDb();
+    const orgIdStr = String(args.organizationId);
+    const pattern = `%${term}%`;
+
+    const matched = (await db
+      .query("gabinetPatients")
+      .eq("organizationId", orgIdStr)
+      .eq("isActive", true)
+      .or(`first_name.ilike.${pattern},last_name.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern}`)
+      .take(10)
+      .collect()) as Array<Record<string, unknown>>;
+
+    return matched
+      .filter((p) => !args.excludePatientId || String(p.id ?? p._id) !== args.excludePatientId)
+      .map((p) => ({
+        _id: String(p.id ?? p._id),
+        firstName: String(p.firstName ?? ""),
+        lastName: String(p.lastName ?? ""),
+        email: String(p.email ?? ""),
+      }));
+  },
+});
+
 function normalizePhone(phone: string | null | undefined): string | null {
   if (!phone) return null;
   const digits = phone.replace(/\D/g, "");
@@ -260,7 +309,7 @@ function normalizePhone(phone: string | null | undefined): string | null {
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     contactId: v.optional(v.union(v.string(), v.null())),
     firstName: v.string(),
     lastName: v.string(),
@@ -286,6 +335,7 @@ export const create = action({
     customFields: v.optional(v.any()),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),
+    smsConsent: v.optional(v.union(v.boolean(), v.null())),
   },
   handler: async (ctx, args) => {
     try {
@@ -401,6 +451,7 @@ export const create = action({
       customFields: args.customFields ?? null,
       tagIds: args.tagIds ?? null,
       categoryId: args.categoryId ?? null,
+      smsConsent: args.smsConsent ?? null,
       createdBy: String(authResult.userId),
       createdAt: now,
       updatedAt: now,
@@ -455,7 +506,7 @@ export const create = action({
 export const _createSideEffects = internalMutation({
   args: {
     patientId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     contactId: v.optional(v.string()),
     firstName: v.string(),
     lastName: v.string(),
@@ -467,9 +518,9 @@ export const _createSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const createdByUserId = args.createdBy as Id<"users">;
+    const createdByUserId = args.createdBy;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetPatient",
       entityId: args.patientId as Id<"gabinetPatients">,
@@ -488,7 +539,7 @@ export const _createSideEffects = internalMutation({
       details: `Created patient ${args.firstName} ${args.lastName}`,
     });
 
-    await ctx.runMutation(internal.automation.emitEvent, {
+    await ctx.scheduler.runAfter(0, internal.automation.emitEvent, {
       organizationId: args.organizationId,
       module: "gabinet",
       eventType: "gabinet.patient.created",
@@ -516,7 +567,7 @@ export const _createSideEffects = internalMutation({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
     contactId: v.optional(v.union(v.string(), v.null())),
     firstName: v.optional(v.string()),
@@ -543,6 +594,7 @@ export const update = action({
     customFields: v.optional(v.any()),
     tagIds: v.optional(v.array(v.string())),
     categoryId: v.optional(v.union(v.string(), v.null())),
+    smsConsent: v.optional(v.union(v.boolean(), v.null())),
   },
   handler: async (ctx, args) => {
     try {
@@ -624,21 +676,24 @@ export const update = action({
 export const _updateSideEffects = internalMutation({
   args: {
     patientId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     firstName: v.string(),
     lastName: v.string(),
     updatedBy: v.string(),
     actorLabel: v.optional(v.string()),
+    auditAction: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const updatedByUserId = args.updatedBy as Id<"users">;
+    const updatedByUserId = args.updatedBy;
+    const auditAction = args.auditAction ?? "patient_updated";
+    const fullName = `${args.firstName} ${args.lastName}`;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetPatient",
       entityId: args.patientId as Id<"gabinetPatients">,
       action: "updated",
-      description: `Updated patient ${args.firstName} ${args.lastName}`,
+      description: `Updated patient ${fullName}`,
       performedBy: updatedByUserId,
       actorLabel: args.actorLabel,
     });
@@ -646,17 +701,17 @@ export const _updateSideEffects = internalMutation({
     await logAudit(ctx, {
       organizationId: args.organizationId,
       userId: updatedByUserId,
-      action: "patient_updated",
+      action: auditAction,
       entityType: "gabinetPatient",
       entityId: args.patientId,
-      details: `Updated patient ${args.firstName} ${args.lastName}`,
+      details: `Updated patient ${fullName}`,
     });
   },
 });
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -720,16 +775,16 @@ export const remove = action({
 export const _removeSideEffects = internalMutation({
   args: {
     patientId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     firstName: v.string(),
     lastName: v.string(),
     deletedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const deletedByUserId = args.deletedBy as Id<"users">;
+    const deletedByUserId = args.deletedBy;
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetPatient",
       entityId: args.patientId as Id<"gabinetPatients">,
@@ -752,7 +807,7 @@ export const _removeSideEffects = internalMutation({
 
 export const merge = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     targetPatientId: v.string(),
     sourcePatientId: v.string(),
     // Per-field overrides to apply to the target patient before deactivating
@@ -795,10 +850,10 @@ export const merge = action({
   },
   handler: async (ctx, args): Promise<{
     movedAppointments: number;
-    movedDocuments: number;
     movedPackageUsage: number;
     movedLoyaltyTransactions: number;
     movedPayments: number;
+    movedReceipts: number;
     movedNotes: number;
     movedActivities: number;
     movedRelationships: number;
@@ -806,6 +861,8 @@ export const merge = action({
     movedSmsEvents: number;
     movedReferrals: number;
     movedBookedBy: number;
+    movedEmails: number;
+    movedWaitlist: number;
     consolidatedLoyaltyBalance: number;
   }> => {
     if (args.targetPatientId === args.sourcePatientId) {
@@ -872,13 +929,13 @@ export const merge = action({
     // Bulk reassign foreign keys pointing at the source patient over to the target.
     const movedAppointments = await reassignByColumn("gabinet_appointments", "patient_id");
     const movedBookedBy = await reassignByColumn("gabinet_appointments", "booked_by_patient_id");
-    const movedDocuments = await reassignByColumn("gabinet_documents", "patient_id");
     const movedPackageUsage = await reassignByColumn("gabinet_package_usage", "patient_id");
     const movedLoyaltyTransactions = await reassignByColumn(
       "gabinet_loyalty_transactions",
       "patient_id",
     );
     const movedPayments = await reassignByColumn("payments", "patient_id");
+    const movedReceipts = await reassignByColumn("gabinet_receipts", "patient_id");
     const movedPortalSessions = await reassignByColumn(
       "gabinet_portal_sessions",
       "patient_id",
@@ -891,6 +948,8 @@ export const merge = action({
       "gabinet_patients",
       "referred_by_patient_id",
     );
+    const movedEmails = await reassignByColumn("emails", "patient_id");
+    const movedWaitlist = await reassignByColumn("gabinet_waitlist", "patient_id");
 
     // Polymorphic reassignment: activities/notes/object_relationships scope by
     // entity_type so we filter on both the type discriminator and the patient id.
@@ -1015,6 +1074,16 @@ export const merge = action({
       });
     }
 
+    // Transfer the CRM contact link from source to target when the target has
+    // no linked contact. contactId is not a user-selectable override field, so
+    // this implicit fallback is the only place it gets propagated.
+    if (!target.contactId && source.contactId) {
+      await db.patch("gabinetPatients", args.targetPatientId, {
+        contactId: String(source.contactId),
+        updatedAt: Date.now(),
+      });
+    }
+
     // Soft-delete the source patient and annotate why it was deactivated.
     const now = Date.now();
     const sourceNotesPrefix = `[Merged into patient ${args.targetPatientId} at ${new Date(now).toISOString()}]`;
@@ -1047,10 +1116,10 @@ export const merge = action({
 
     return {
       movedAppointments,
-      movedDocuments,
       movedPackageUsage,
       movedLoyaltyTransactions,
       movedPayments,
+      movedReceipts,
       movedNotes,
       movedActivities,
       movedRelationships,
@@ -1058,6 +1127,8 @@ export const merge = action({
       movedSmsEvents,
       movedReferrals,
       movedBookedBy,
+      movedEmails,
+      movedWaitlist,
       consolidatedLoyaltyBalance,
     };
   },
@@ -1065,7 +1136,7 @@ export const merge = action({
 
 export const _mergeSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     targetPatientId: v.string(),
     sourcePatientId: v.string(),
     targetName: v.string(),
@@ -1074,9 +1145,7 @@ export const _mergeSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const performedByUserId = args.performedBy as Id<"users">;
-
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetPatient",
       entityId: args.targetPatientId as Id<"gabinetPatients">,
@@ -1085,11 +1154,11 @@ export const _mergeSideEffects = internalMutation({
       metadata: {
         merge: { sourcePatientId: args.sourcePatientId },
       },
-      performedBy: performedByUserId,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetPatient",
       entityId: args.sourcePatientId as Id<"gabinetPatients">,
@@ -1098,15 +1167,75 @@ export const _mergeSideEffects = internalMutation({
       metadata: {
         merge: { targetPatientId: args.targetPatientId },
       },
-      performedBy: performedByUserId,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
 });
 
+export const reactivate = action({
+  args: {
+    organizationId: v.string(),
+    patientId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    );
+    await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      {
+        organizationId: args.organizationId,
+        feature: "gabinet_patients",
+        action: "edit",
+      },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    const db = createSupabaseDb();
+
+    const patient = await db.get("gabinetPatients", args.patientId);
+    if (!patient || String(patient.organizationId) !== String(args.organizationId)) {
+      throw new Error("Patient not found");
+    }
+    if (perm.scope === "own") {
+      const hasAppt = await db
+        .query("gabinetAppointments")
+        .eq("organizationId", String(args.organizationId))
+        .eq("employeeId", String(authResult.userId))
+        .eq("patientId", args.patientId)
+        .first();
+      if (!hasAppt) throw new Error("Permission denied: you can only edit your own records");
+    }
+
+    await db.patch("gabinetPatients", args.patientId, {
+      isActive: true,
+      updatedAt: Date.now(),
+    });
+
+    try {
+      await ctx.runMutation(internal.gabinet.patients._updateSideEffects, {
+        patientId: args.patientId,
+        organizationId: args.organizationId,
+        firstName: (patient.firstName as string) ?? "",
+        lastName: (patient.lastName as string) ?? "",
+        updatedBy: String(authResult.userId),
+        actorLabel: authResult.userName ?? authResult.userEmail,
+        auditAction: "patient_reactivated",
+      });
+    } catch (e) {
+      console.error("[patients.reactivate] Side effects FAILED for patient", args.patientId, ":", e);
+    }
+
+    return args.patientId;
+  },
+});
+
 export const gdprErase = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -1211,54 +1340,17 @@ export const gdprErase = action({
 export const _gdprEraseSideEffects = internalMutation({
   args: {
     patientId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     originalName: v.string(),
     erasedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const erasedByUserId = args.erasedBy as Id<"users">;
-    const GDPR_REDACTED = "[RODO: dane usunięte]";
+    const erasedByUserId = args.erasedBy;
 
-    // Anonymize all existing Convex activity descriptions for this patient
-    const existingActivities = await ctx.db
-      .query("activities")
-      .withIndex("by_entity", (q) =>
-        q.eq("entityType", "gabinetPatient").eq("entityId", args.patientId)
-      )
-      .collect();
-    for (const activity of existingActivities) {
-      await ctx.db.patch(activity._id, { description: GDPR_REDACTED });
-    }
-
-    // Anonymize all existing Convex note contents for this patient
-    const existingNotes = await ctx.db
-      .query("notes")
-      .withIndex("by_entity", (q) =>
-        q.eq("entityType", "gabinetPatient").eq("entityId", args.patientId)
-      )
-      .collect();
-    for (const note of existingNotes) {
-      await ctx.db.patch(note._id, { content: GDPR_REDACTED, updatedAt: Date.now() });
-    }
-
-    // Null out free-text clinical fields on all appointments linked to this patient
-    const existingAppointments = await ctx.db
-      .query("gabinetAppointments")
-      .withIndex("by_orgAndPatient", (q) =>
-        q.eq("organizationId", args.organizationId).eq("patientId", args.patientId as Id<"gabinetPatients">)
-      )
-      .collect();
-    for (const appointment of existingAppointments) {
-      await ctx.db.patch(appointment._id, {
-        interviewNotes: undefined,
-        notes: undefined,
-        internalNotes: undefined,
-        clinicalRemarks: undefined,
-        bodyChartData: undefined,
-        treatmentParameterValues: undefined,
-      });
-    }
+    // Supabase-side erasure of activities, notes, and appointment clinical
+    // fields is handled by the caller (gdprErase action / _purgeExpiredPatients)
+    // via createSupabaseDb() / db.raw() before this side-effect mutation runs.
 
     // Audit log retains original name as compliance record
     await logAudit(ctx, {
@@ -1271,7 +1363,7 @@ export const _gdprEraseSideEffects = internalMutation({
     });
 
     // Activity entry without PII marks the erasure in the patient timeline
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetPatient",
       entityId: args.patientId as Id<"gabinetPatients">,
@@ -1324,75 +1416,96 @@ export const _purgeExpiredPatients = internalAction({
       const GDPR_REDACTED = "[RODO: dane usunięte]";
 
       for (const patient of expiredPatients) {
-        const anonSuffix = patient.id.slice(-6).toUpperCase();
-
-        await db.patch("gabinetPatients", patient.id, {
-          firstName: "ANONIMOWY",
-          lastName: `#${anonSuffix}`,
-          email: `deleted-${anonSuffix}@gdpr.invalid`,
-          phone: null,
-          pesel: null,
-          dateOfBirth: null,
-          address: null,
-          medicalNotes: null,
-          allergies: null,
-          bloodType: null,
-          emergencyContactName: null,
-          emergencyContactPhone: null,
-          referralSource: null,
-          referredByPatientId: null,
-          contactId: null,
-          tags: null,
-          tagIds: null,
-          categoryId: null,
-          customFields: null,
-          updatedAt: nowMs,
-        });
-
-        await client
-          .from("gabinet_portal_sessions")
-          .delete()
-          .eq("organization_id", orgId)
-          .eq("patient_id", patient.id);
-
-        await client
-          .from("activities")
-          .update({ description: GDPR_REDACTED })
-          .eq("organization_id", orgId)
-          .eq("entity_type", "gabinetPatient")
-          .eq("entity_id", patient.id);
-
-        await client
-          .from("notes")
-          .update({ content: GDPR_REDACTED, updated_at: nowMs })
-          .eq("organization_id", orgId)
-          .eq("entity_type", "gabinetPatient")
-          .eq("entity_id", patient.id);
-
-        await client
-          .from("gabinet_appointments")
-          .update({
-            interview_notes: null,
-            notes: null,
-            internal_notes: null,
-            clinical_remarks: null,
-            body_chart_data: null,
-            treatment_parameter_values: null,
-          })
-          .eq("organization_id", orgId)
-          .eq("patient_id", patient.id);
-
-        const originalName = `${patient.firstName} ${patient.lastName}`.trim();
         try {
-          await ctx.runMutation(internal.gabinet.patients._gdprEraseSideEffects, {
-            patientId: patient.id,
-            organizationId: orgId as Id<"organizations">,
-            originalName,
-            erasedBy: performedBy,
+          const anonSuffix = patient.id.slice(-6).toUpperCase();
+
+          await db.patch("gabinetPatients", patient.id, {
+            firstName: "ANONIMOWY",
+            lastName: `#${anonSuffix}`,
+            email: `deleted-${anonSuffix}@gdpr.invalid`,
+            phone: null,
+            pesel: null,
+            dateOfBirth: null,
+            address: null,
+            medicalNotes: null,
+            allergies: null,
+            bloodType: null,
+            emergencyContactName: null,
+            emergencyContactPhone: null,
+            referralSource: null,
+            referredByPatientId: null,
+            contactId: null,
+            tags: null,
+            tagIds: null,
+            categoryId: null,
+            customFields: null,
+            updatedAt: nowMs,
           });
+
+          await client
+            .from("gabinet_portal_sessions")
+            .delete()
+            .eq("organization_id", orgId)
+            .eq("patient_id", patient.id);
+
+          await client
+            .from("activities")
+            .update({ description: GDPR_REDACTED })
+            .eq("organization_id", orgId)
+            .eq("entity_type", "gabinetPatient")
+            .eq("entity_id", patient.id);
+
+          await client
+            .from("notes")
+            .update({ content: GDPR_REDACTED, updated_at: nowMs })
+            .eq("organization_id", orgId)
+            .eq("entity_type", "gabinetPatient")
+            .eq("entity_id", patient.id);
+
+          await client
+            .from("gabinet_appointments")
+            .update({
+              interview_notes: null,
+              notes: null,
+              internal_notes: null,
+              clinical_remarks: null,
+              body_chart_data: null,
+              treatment_parameter_values: null,
+            })
+            .eq("organization_id", orgId)
+            .eq("patient_id", patient.id);
+
+          const originalName = `${patient.firstName} ${patient.lastName}`.trim();
+          try {
+            await ctx.runMutation(internal.gabinet.patients._gdprEraseSideEffects, {
+              patientId: patient.id,
+              organizationId: orgId,
+              originalName,
+              erasedBy: performedBy,
+            });
+          } catch (e) {
+            await logError(ctx, e, {
+              scope: "gabinet.patients",
+              fnName: "_purgeExpiredPatients._gdprEraseSideEffects",
+              organizationId: orgId,
+              argsJson: JSON.stringify({ patientId: patient.id }),
+            });
+            console.error(
+              "[patients._purgeExpiredPatients] Side effects failed for patient",
+              patient.id,
+              ":",
+              e,
+            );
+          }
         } catch (e) {
+          await logError(ctx, e, {
+            scope: "gabinet.patients",
+            fnName: "_purgeExpiredPatients",
+            organizationId: orgId,
+            argsJson: JSON.stringify({ patientId: patient.id }),
+          });
           console.error(
-            "[patients._purgeExpiredPatients] Side effects failed for patient",
+            "[patients._purgeExpiredPatients] Anonymization FAILED for patient",
             patient.id,
             ":",
             e,
@@ -1405,7 +1518,7 @@ export const _purgeExpiredPatients = internalAction({
 
 export const getByContact = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     contactId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetPatientRow[]> => {

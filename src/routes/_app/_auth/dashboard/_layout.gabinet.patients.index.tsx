@@ -8,6 +8,7 @@ import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-pat
 import { useSupabaseGabinetRecentVisitPatientIds, useSupabaseGabinetNextAppointmentByPatient } from "@/hooks/use-supabase-gabinet-appointments";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { useOrganization } from "@/components/org-context";
+import { useActiveLocation } from "@/contexts/gabinet-location-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { CrmDataTable, useColumnVisibility, useAllColumns, type CrmColumn } from "@/components/crm/enhanced-data-table";
 import { DataListFilterBar } from "@/components/crm/data-list-filter-bar";
@@ -33,6 +34,7 @@ import type { MiniChartData } from "@/components/crm/mini-charts";
 import { useSavedViews, applyFilterConditions } from "@/hooks/use-saved-views";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
+import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import { TagsManagerSlideout } from "@/components/categories-tags/tags-manager-slideout";
 import { CategoriesManagerSlideout } from "@/components/categories-tags/categories-manager-slideout";
 import { formatPhoneNumber } from "@/lib/phone";
@@ -64,18 +66,24 @@ function PatientListSkeleton() {
   );
 }
 
-export const Route = createFileRoute(
-  "/_app/_auth/dashboard/_layout/gabinet/patients/",
-)({
-  component: () => (
+function PatientsIndexRoute() {
+  const { activeLocationId } = useActiveLocation();
+  return (
     <PermissionGate
       feature="gabinet_patients"
       action="view"
+      locationId={(activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined}
       loadingFallback={<PatientListSkeleton />}
     >
       <PatientsIndex />
     </PermissionGate>
-  ),
+  );
+}
+
+export const Route = createFileRoute(
+  "/_app/_auth/dashboard/_layout/gabinet/patients/",
+)({
+  component: PatientsIndexRoute,
   validateSearch: (search: Record<string, unknown>): { nudge?: PatientNudgeFilter } => {
     const nudge =
       search.nudge === "missing-contact" ||
@@ -100,12 +108,13 @@ type Patient = MappedGabinetPatient;
 function PatientsIndex() {
   const { t } = useTranslation();
   const { organizationId } = useOrganization();
+  const { activeLocationId } = useActiveLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { nudge: nudgeFilter } = useSearch({ from: Route.id });
-  const { allowed: _canCreate } = usePermission("gabinet_patients", "create");
-  const { allowed: canEdit } = usePermission("gabinet_patients", "edit");
-  const { allowed: canDelete } = usePermission("gabinet_patients", "delete");
+  const { allowed: _canCreate } = usePermission("gabinet_patients", "create", (activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined);
+  const { allowed: canEdit } = usePermission("gabinet_patients", "edit", (activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined);
+  const { allowed: canDelete } = usePermission("gabinet_patients", "delete", (activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined);
 
   const createPatient = useAction(api.gabinet.patients.create);
   const removePatient = useAction(api.gabinet.patients.remove);
@@ -124,6 +133,7 @@ function PatientsIndex() {
 
   const { tags } = useTagDefinitions(organizationId);
   const { categories } = useCategoryDefinitions(organizationId, "gabinetPatient");
+  const { data: locations = [] } = useSupabaseGabinetLocationsList(organizationId, { activeOnly: true });
   const [tagsSlideoutOpen, setTagsSlideoutOpen] = useState(false);
   const [categoriesSlideoutOpen, setCategoriesSlideoutOpen] = useState(false);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor | undefined>({
@@ -285,6 +295,11 @@ function PatientsIndex() {
     } else if (nudgeFilter === "duplicates") {
       data = data.filter((p) => duplicatePatientIds.has(p._id));
     }
+    if (activeLocationId) {
+      data = data.filter(
+        (p) => !p.preferredLocationId || p.preferredLocationId === activeLocationId,
+      );
+    }
     const q = searchValue.trim().toLowerCase();
     if (q) {
       const tokens = q.split(/\s+/).filter(Boolean);
@@ -297,7 +312,7 @@ function PatientsIndex() {
       });
     }
     return data;
-  }, [patients, activeViewId, applyFilters, activeFilters, searchValue, nudgeFilter, recentVisitPatientIds, duplicatePatientIds]);
+  }, [patients, activeViewId, applyFilters, activeFilters, searchValue, nudgeFilter, recentVisitPatientIds, duplicatePatientIds, activeLocationId]);
 
   const patientsByDay = useMemo<MiniChartData[]>(() => {
     const dayMap = new Map<string, number>();
@@ -470,6 +485,7 @@ function PatientsIndex() {
 
   const handleCreate = useCallback(
     async (formData: {
+      contactId?: string | null;
       firstName: string;
       lastName: string;
       email: string;
@@ -484,6 +500,9 @@ function PatientsIndex() {
       emergencyContactName?: string | null;
       emergencyContactPhone?: string | null;
       referralSource?: string | null;
+      referredByPatientId?: string | null;
+      preferredLocationId?: string | null;
+      smsConsent?: boolean | null;
       tagIds?: Id<"tagDefinitions">[];
       categoryId?: Id<"categoryDefinitions">;
     }) => {
@@ -493,7 +512,11 @@ function PatientsIndex() {
           organizationId,
           ...formData,
         });
+        void queryClient.invalidateQueries({
+          queryKey: supabaseKeys.gabinetPatients.list(organizationId),
+        });
         setPanelOpen(false);
+        toast.success(t("gabinet.patients.created", { defaultValue: "Klient utworzony" }));
       } catch (e) {
         const inner = extractActionErrorMessage(e);
         if (/duplicate patient detected/i.test(inner)) {
@@ -514,7 +537,7 @@ function PatientsIndex() {
         setIsCreating(false);
       }
     },
-    [createPatient, organizationId, t],
+    [createPatient, organizationId, queryClient, t],
   );
 
   const handleBulkAction = useCallback(
@@ -601,7 +624,7 @@ function PatientsIndex() {
         title={t("gabinet.patients.title")}
         description={t("gabinet.patients.description")}
         actions={
-          <PermissionGate feature="gabinet_patients" action="create">
+          <PermissionGate feature="gabinet_patients" action="create" locationId={(activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined}>
             <Button onClick={() => setPanelOpen(true)}>
               <Plus className="mr-2 h-4 w-4" variant="stroke" />
               {t("gabinet.patients.addPatient")}
@@ -762,6 +785,7 @@ function PatientsIndex() {
           organizationId={organizationId}
           tagDefinitions={tags}
           categoryDefinitions={categories}
+          locations={locations.map((l) => ({ id: l.id, name: l.name }))}
         />
       </SidePanel>
 

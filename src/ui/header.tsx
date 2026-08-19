@@ -3,7 +3,7 @@ import { useRouteContext, useRouter } from "@tanstack/react-router";
 export function Header() {
   const router = useRouter();
   const routeContext = useRouteContext({
-    from: router.state.matches.slice(-1)[0].id,
+    from: router.state.matches.slice(-1)[0]!.id,
   });
 
   return (

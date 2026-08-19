@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
+import { FEATURES, ACTIONS, type Action } from "@cvx/_helpers/permissionTypes";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseOrgSettings } from "@/hooks/use-supabase-organizations";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
@@ -27,35 +28,42 @@ export const Route = createFileRoute(
   component: PermissionsSettings,
 });
 
-const FEATURES = [
-  { key: "leads", labelKey: "permissions.features.leads", label: "Leads" },
-  { key: "contacts", labelKey: "permissions.features.contacts", label: "Contacts" },
-  { key: "companies", labelKey: "permissions.features.companies", label: "Companies" },
-  { key: "documents", labelKey: "permissions.features.documents", label: "Documents" },
-  { key: "activities", labelKey: "permissions.features.activities", label: "Activities" },
-  { key: "calls", labelKey: "permissions.features.calls", label: "Calls" },
-  { key: "email", labelKey: "permissions.features.email", label: "Email" },
-  { key: "products", labelKey: "permissions.features.products", label: "Products" },
-  { key: "pipelines", labelKey: "permissions.features.pipelines", label: "Pipelines" },
-  { key: "gabinet_patients", labelKey: "permissions.features.gabinet_patients", label: "Gabinet: Patients" },
-  { key: "gabinet_appointments", labelKey: "permissions.features.gabinet_appointments", label: "Gabinet: Appointments" },
-  { key: "gabinet_treatments", labelKey: "permissions.features.gabinet_treatments", label: "Gabinet: Treatments" },
-  { key: "gabinet_packages", labelKey: "permissions.features.gabinet_packages", label: "Gabinet: Packages" },
-  { key: "gabinet_employees", labelKey: "permissions.features.gabinet_employees", label: "Gabinet: Employees" },
-  { key: "gabinet_payments", labelKey: "permissions.features.gabinet_payments", label: "Gabinet: Payments" },
-  { key: "gabinet_receipts", labelKey: "permissions.features.gabinet_receipts", label: "Gabinet: Receipts" },
-  { key: "gabinet_reports", labelKey: "permissions.features.gabinet_reports", label: "Gabinet: Reports" },
-  { key: "gabinet_financial_reports", labelKey: "permissions.features.gabinet_financial_reports", label: "Gabinet: Financial Reports" },
-  { key: "gabinet_purchase_prices", labelKey: "permissions.features.gabinet_purchase_prices", label: "Gabinet: Purchase Prices" },
-  { key: "gabinet_photos", labelKey: "permissions.features.gabinet_photos", label: "Gabinet: Patient Photos" },
-  { key: "gabinet_online_booking", labelKey: "permissions.features.gabinet_online_booking", label: "Gabinet: Online Booking" },
-  { key: "gabinet_inventory", labelKey: "permissions.features.gabinet_inventory", label: "Gabinet: Inventory" },
-  { key: "settings", labelKey: "permissions.features.settings", label: "Settings" },
-  { key: "team", labelKey: "permissions.features.team", label: "Team" },
-] as const;
+// Label map for display in the permission matrix — single place to update when features are added.
+// Keys must match the FEATURES array in convex/_helpers/permissionTypes.ts.
+const FEATURE_LABELS: Record<string, { labelKey: string; label: string }> = {
+  leads: { labelKey: "permissions.features.leads", label: "Leads" },
+  contacts: { labelKey: "permissions.features.contacts", label: "Contacts" },
+  companies: { labelKey: "permissions.features.companies", label: "Companies" },
+  documents: { labelKey: "permissions.features.documents", label: "Documents" },
+  activities: { labelKey: "permissions.features.activities", label: "Activities" },
+  calls: { labelKey: "permissions.features.calls", label: "Calls" },
+  email: { labelKey: "permissions.features.email", label: "Email" },
+  products: { labelKey: "permissions.features.products", label: "Products" },
+  pipelines: { labelKey: "permissions.features.pipelines", label: "Pipelines" },
+  gabinet_dashboard: { labelKey: "permissions.features.gabinet_dashboard", label: "Gabinet: Dashboard" },
+  gabinet_patients: { labelKey: "permissions.features.gabinet_patients", label: "Gabinet: Patients" },
+  gabinet_appointments: { labelKey: "permissions.features.gabinet_appointments", label: "Gabinet: Appointments" },
+  gabinet_treatments: { labelKey: "permissions.features.gabinet_treatments", label: "Gabinet: Treatments" },
+  gabinet_packages: { labelKey: "permissions.features.gabinet_packages", label: "Gabinet: Packages" },
+  gabinet_employees: { labelKey: "permissions.features.gabinet_employees", label: "Gabinet: Employees" },
+  gabinet_documents: { labelKey: "permissions.features.gabinet_documents", label: "Gabinet: Documents" },
+  gabinet_payments: { labelKey: "permissions.features.gabinet_payments", label: "Gabinet: Payments" },
+  gabinet_receipts: { labelKey: "permissions.features.gabinet_receipts", label: "Gabinet: Receipts" },
+  gabinet_salary: { labelKey: "permissions.features.gabinet_salary", label: "Gabinet: Salary" },
+  gabinet_reports: { labelKey: "permissions.features.gabinet_reports", label: "Gabinet: Reports" },
+  gabinet_financial_reports: { labelKey: "permissions.features.gabinet_financial_reports", label: "Gabinet: Financial Reports" },
+  gabinet_purchase_prices: { labelKey: "permissions.features.gabinet_purchase_prices", label: "Gabinet: Purchase Prices" },
+  gabinet_photos: { labelKey: "permissions.features.gabinet_photos", label: "Gabinet: Patient Photos" },
+  gabinet_online_booking: { labelKey: "permissions.features.gabinet_online_booking", label: "Gabinet: Online Booking" },
+  gabinet_inventory: { labelKey: "permissions.features.gabinet_inventory", label: "Gabinet: Inventory" },
+  gabinet_settings: { labelKey: "permissions.features.gabinet_settings", label: "Gabinet: Settings" },
+  settings: { labelKey: "permissions.features.settings", label: "Settings" },
+  team: { labelKey: "permissions.features.team", label: "Team" },
+  document_templates: { labelKey: "permissions.features.document_templates", label: "Document Templates" },
+  tagDefinitions: { labelKey: "permissions.features.tagDefinitions", label: "Tags" },
+  categoryDefinitions: { labelKey: "permissions.features.categoryDefinitions", label: "Categories" },
+};
 
-const ACTIONS = ["view", "create", "edit", "delete"] as const;
-type Action = (typeof ACTIONS)[number];
 type PermissionLevel = "none" | "own" | "all";
 
 type PermissionsMap = Record<string, Record<Action, PermissionLevel>>;
@@ -65,18 +73,20 @@ const DEFAULT_PERMISSION: Record<Action, PermissionLevel> = {
   create: "all",
   edit: "all",
   delete: "all",
+  approve: "none",
+  sign: "none",
+  refund: "none",
 };
 
 function buildPermissionsMap(overrides: Record<string, Record<string, string>> | null): PermissionsMap {
   const map: PermissionsMap = {};
-  for (const feature of FEATURES) {
-    const featureOverrides = overrides?.[feature.key];
-    map[feature.key] = {
-      view: (featureOverrides?.view as PermissionLevel) ?? DEFAULT_PERMISSION.view,
-      create: (featureOverrides?.create as PermissionLevel) ?? DEFAULT_PERMISSION.create,
-      edit: (featureOverrides?.edit as PermissionLevel) ?? DEFAULT_PERMISSION.edit,
-      delete: (featureOverrides?.delete as PermissionLevel) ?? DEFAULT_PERMISSION.delete,
-    };
+  for (const featureKey of FEATURES) {
+    const featureOverrides = overrides?.[featureKey];
+    const featurePerms = {} as Record<Action, PermissionLevel>;
+    for (const action of ACTIONS) {
+      featurePerms[action] = (featureOverrides?.[action] as PermissionLevel) ?? DEFAULT_PERMISSION[action];
+    }
+    map[featureKey] = featurePerms;
   }
   return map;
 }
@@ -111,8 +121,8 @@ function PermissionsSettings() {
 
   useEffect(() => {
     if (overrides) {
-      setMemberPerms(buildPermissionsMap(overrides.member));
-      setViewerPerms(buildPermissionsMap(overrides.viewer));
+      setMemberPerms(buildPermissionsMap(overrides.member as Record<string, Record<string, string>> | null));
+      setViewerPerms(buildPermissionsMap(overrides.viewer as Record<string, Record<string, string>> | null));
       setDirty(false);
     }
   }, [overrides]);
@@ -224,57 +234,63 @@ function PermissionsSettings() {
               </tr>
             </thead>
             <tbody>
-              {FEATURES.map((feature) => (
-                <tr key={feature.key} className="border-b last:border-0">
-                  <td className="py-3 pr-4 font-medium whitespace-nowrap">
-                    {t(feature.labelKey, feature.label)}
-                  </td>
-                  {/* Owner — always All */}
-                  <td className="px-2 py-3">
-                    <div className="flex flex-wrap justify-center gap-1">
-                      {ACTIONS.map((action) => (
-                        <span
-                          key={action}
-                          className="inline-block rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"
-                        >
-                          {t(`permissions.actions.${action}`, action)}: {t("permissions.levels.all", "All")}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  {/* Admin — always All */}
-                  <td className="px-2 py-3">
-                    <div className="flex flex-wrap justify-center gap-1">
-                      {ACTIONS.map((action) => (
-                        <span
-                          key={action}
-                          className="inline-block rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"
-                        >
-                          {t(`permissions.actions.${action}`, action)}: {t("permissions.levels.all", "All")}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  {/* Member — editable */}
-                  <td className="px-2 py-3">
-                    <PermissionCell
-                      perms={memberPerms[feature.key]}
-                      onChange={(action, value) =>
-                        handlePermChange("member", feature.key, action, value)
-                      }
-                    />
-                  </td>
-                  {/* Viewer — editable */}
-                  <td className="px-2 py-3">
-                    <PermissionCell
-                      perms={viewerPerms[feature.key]}
-                      onChange={(action, value) =>
-                        handlePermChange("viewer", feature.key, action, value)
-                      }
-                    />
-                  </td>
-                </tr>
-              ))}
+              {FEATURES.map((featureKey) => {
+                const featureLabel = FEATURE_LABELS[featureKey] ?? {
+                  labelKey: `permissions.features.${featureKey}`,
+                  label: featureKey,
+                };
+                return (
+                  <tr key={featureKey} className="border-b last:border-0">
+                    <td className="py-3 pr-4 font-medium whitespace-nowrap">
+                      {t(featureLabel.labelKey, featureLabel.label)}
+                    </td>
+                    {/* Owner — always All */}
+                    <td className="px-2 py-3">
+                      <div className="flex flex-wrap justify-center gap-1">
+                        {ACTIONS.map((action) => (
+                          <span
+                            key={action}
+                            className="inline-block rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"
+                          >
+                            {t(`permissions.actions.${action}`, action)}: {t("permissions.levels.all", "All")}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    {/* Admin — always All */}
+                    <td className="px-2 py-3">
+                      <div className="flex flex-wrap justify-center gap-1">
+                        {ACTIONS.map((action) => (
+                          <span
+                            key={action}
+                            className="inline-block rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"
+                          >
+                            {t(`permissions.actions.${action}`, action)}: {t("permissions.levels.all", "All")}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    {/* Member — editable */}
+                    <td className="px-2 py-3">
+                      <PermissionCell
+                        perms={memberPerms[featureKey]}
+                        onChange={(action, value) =>
+                          handlePermChange("member", featureKey, action, value)
+                        }
+                      />
+                    </td>
+                    {/* Viewer — editable */}
+                    <td className="px-2 py-3">
+                      <PermissionCell
+                        perms={viewerPerms[featureKey]}
+                        onChange={(action, value) =>
+                          handlePermChange("viewer", featureKey, action, value)
+                        }
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </CardContent>

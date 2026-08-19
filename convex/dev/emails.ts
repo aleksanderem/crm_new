@@ -97,7 +97,7 @@ export const findSignableDocument = action({
 
 export const triggerSigningEmail = action({
   args: {
-    documentId: v.id("formDocuments"),
+    documentId: v.string(),
     recipientEmail: v.string(),
     recipientName: v.optional(v.string()),
   },

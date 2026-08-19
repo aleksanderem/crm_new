@@ -1,12 +1,14 @@
-import { query } from "../_generated/server";
+import { action } from "../_generated/server";
 import { v } from "convex/values";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 /** Get first org + user IDs for dev/seed scripts */
-export const getDevIds = query({
+export const getDevIds = action({
   args: {},
-  handler: async (ctx) => {
-    const org = await ctx.db.query("organizations").first();
-    const user = await ctx.db.query("users").first();
+  handler: async (_ctx) => {
+    const db = createSupabaseDb();
+    const org = await db.query("organizations").first();
+    const user = await db.query("users").first();
     return {
       organizationId: org?._id ?? null,
       userId: user?._id ?? null,
@@ -15,16 +17,17 @@ export const getDevIds = query({
 });
 
 /** Count templates + components for a given org (no auth required) */
-export const countDocs = query({
-  args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args) => {
-    const templates = await ctx.db
+export const countDocs = action({
+  args: { organizationId: v.string() },
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    const templates = await db
       .query("formTemplates")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", String(args.organizationId))
       .collect();
-    const components = await ctx.db
+    const components = await db
       .query("documentComponents")
-      .withIndex("by_scope", (q) => q.eq("scope", "system"))
+      .eq("scope", "system")
       .collect();
     return {
       templateCount: templates.length,

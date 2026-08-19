@@ -11,7 +11,7 @@ import { v } from "convex/values";
 
 export const upsertBinding = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     eventType: v.string(),
     templateId: v.string(),
     enabled: v.optional(v.boolean()),
@@ -68,7 +68,7 @@ export const upsertBinding = action({
 
 export const toggleBinding = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     bindingId: v.string(),
     enabled: v.boolean(),
   },
@@ -94,7 +94,7 @@ export const toggleBinding = action({
 
 export const deleteBinding = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     bindingId: v.string(),
   },
   handler: async (ctx, args) => {

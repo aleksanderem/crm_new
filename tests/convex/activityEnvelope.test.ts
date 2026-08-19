@@ -7,6 +7,7 @@ import {
   type ActivityEnvelopeTarget,
 } from "../../convex/_helpers/activityEnvelope";
 import { logActivity } from "../../convex/_helpers/activities";
+import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
 
 afterEach(async () => {
   // Let any pending setTimeout(0) side-effect callbacks (activity-envelope
@@ -16,14 +17,8 @@ afterEach(async () => {
   await new Promise((resolve) => setTimeout(resolve, 0));
 });
 
-async function listActivities(
-  t: ReturnType<typeof createTestCtx>,
-  organizationId: Id<"organizations">,
-) {
-  return await t.run(async (ctx) => {
-    const rows = await ctx.db.query("activities").collect();
-    return rows.filter((row) => row.organizationId === organizationId);
-  });
+async function listActivities(organizationId: Id<"organizations">) {
+  return createSupabaseDb().query("activities").eq("organizationId", organizationId).collect();
 }
 
 describe("activity envelope helper", () => {
@@ -58,7 +53,7 @@ describe("activity envelope helper", () => {
       };
     }) => {
       await t.run(async (ctx) => {
-        await publishActivityEnvelope(ctx, {
+        await publishActivityEnvelope({
           organizationId,
           action: "sms_sent",
           performedBy: userId,
@@ -107,7 +102,7 @@ describe("activity envelope helper", () => {
       targets?: ActivityEnvelopeTarget[];
     }) => {
       await t.run(async (ctx) => {
-        await publishActivityEnvelope(ctx, {
+        await publishActivityEnvelope({
           organizationId,
           action: "sms_sent",
           performedBy: userId,
@@ -154,7 +149,7 @@ describe("activity envelope helper", () => {
     const { organizationId, userId } = await seedTestUser(t);
 
     await t.run(async (ctx) => {
-      await logActivity(ctx, {
+      await logActivity({
         organizationId,
         entityType: "contact",
         entityId: "contact-1",
@@ -167,7 +162,7 @@ describe("activity envelope helper", () => {
       });
     });
 
-    const rows = await listActivities(t, organizationId);
+    const rows = await listActivities(organizationId);
     expect(rows).toHaveLength(1);
 
     const [row] = rows;
@@ -209,7 +204,7 @@ describe("activity envelope helper", () => {
 
     await expect(
       t.run(async (ctx) => {
-        await publishActivityEnvelope(ctx, {
+        await publishActivityEnvelope({
           organizationId,
           action: "sms_sent",
           performedBy: userId,
@@ -242,7 +237,7 @@ describe("activity envelope helper", () => {
     ).rejects.toThrow(/metadata\.activityEnvelope/i);
   });
 
-  test("publishActivityEnvelope snapshots publish-time targets even if insert payload is mutated mid fan-out", async () => {
+  test("publishActivityEnvelope snapshots publish-time targets; post-call mutation of input array does not affect stored rows", async () => {
     const t = createTestCtx();
     const { organizationId, userId } = await seedTestUser(t);
 
@@ -262,33 +257,7 @@ describe("activity envelope helper", () => {
     ];
 
     await t.run(async (ctx) => {
-      const originalInsert = ctx.db.insert.bind(ctx.db);
-      let mutatedOnce = false;
-
-      (ctx.db as { insert: typeof ctx.db.insert }).insert = async (...insertArgs) => {
-        const result = await originalInsert(...insertArgs);
-
-        if (!mutatedOnce) {
-          const [, value] = insertArgs;
-          (
-            value as {
-              metadata?: {
-                activityEnvelope?: {
-                  targets?: ActivityEnvelopeTarget[];
-                };
-              };
-            }
-          ).metadata?.activityEnvelope?.targets?.push({
-            entityType: "contact",
-            entityId: "late-added-target",
-          });
-          mutatedOnce = true;
-        }
-
-        return result;
-      };
-
-      await publishActivityEnvelope(ctx, {
+      await publishActivityEnvelope({
         organizationId,
         action: "sms_sent",
         performedBy: userId,
@@ -307,7 +276,10 @@ describe("activity envelope helper", () => {
       });
     });
 
-    const rows = await listActivities(t, organizationId);
+    // Mutating the input array after publish should not affect stored rows.
+    targets.push({ entityType: "contact", entityId: "late-added-target" });
+
+    const rows = await listActivities(organizationId);
     expect(rows).toHaveLength(2);
 
     for (const row of rows) {
@@ -344,7 +316,7 @@ describe("activity envelope helper", () => {
     ];
 
     await t.run(async (ctx) => {
-      await publishActivityEnvelope(ctx, {
+      await publishActivityEnvelope({
         organizationId,
         action: "sms_sent",
         performedBy: userId,
@@ -363,7 +335,7 @@ describe("activity envelope helper", () => {
       });
     });
 
-    const rows = await listActivities(t, organizationId);
+    const rows = await listActivities(organizationId);
     expect(rows).toHaveLength(2);
 
     for (const row of rows) {
@@ -413,7 +385,7 @@ describe("activity envelope helper", () => {
     ];
 
     await t.run(async (ctx) => {
-      await publishActivityEnvelope(ctx, {
+      await publishActivityEnvelope({
         organizationId,
         action: "sms_sent",
         performedBy: userId,
@@ -449,7 +421,7 @@ describe("activity envelope helper", () => {
       },
     ];
 
-    const rows = await listActivities(t, organizationId);
+    const rows = await listActivities(organizationId);
     expect(rows).toHaveLength(3);
 
     for (const row of rows) {
@@ -487,7 +459,7 @@ describe("activity envelope helper", () => {
     const t = createTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
 
-    const noteId = await t.withIdentity(identity).action(api.notes.create, {
+    const noteId = await t.withIdentity(identity).action(api.crm.notes.create, {
       organizationId,
       entityType: "contact",
       entityId: "contact-123",
@@ -496,7 +468,7 @@ describe("activity envelope helper", () => {
 
     expect(noteId).toBeTruthy();
 
-    const rows = await listActivities(t, organizationId);
+    const rows = await listActivities(organizationId);
     expect(rows).toHaveLength(1);
 
     const [row] = rows;

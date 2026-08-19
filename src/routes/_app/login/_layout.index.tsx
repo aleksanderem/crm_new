@@ -1,9 +1,7 @@
-// @ts-nocheck
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { z } from "zod";
-import { Loader2 } from "@/lib/ez-icons";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { Loader2, EyeIcon, EyeOffIcon } from "@/lib/ez-icons";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -335,7 +333,7 @@ function PasswordForm({ onBack, onForgotPassword }: { onBack: () => void; onForg
                   onClick={() => setIsVisible((prev) => !prev)}
                   className="text-muted-foreground absolute inset-y-0 right-0 rounded-l-none hover:bg-transparent"
                 >
-                  {isVisible ? <EyeOffIcon className="h-4 w-4" variant="stroke" /> : <EyeIcon className="h-4 w-4" variant="stroke" />}
+                  {isVisible ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
                 </Button>
               </div>
               {field.state.meta?.errors.length > 0 && (
@@ -394,6 +392,7 @@ function OtpEmailForm({
   initialEmail?: string;
   lockEmail?: boolean;
 }) {
+  const { t } = useTranslation();
   const { signIn } = useAuthActions();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -474,6 +473,7 @@ function OtpEmailForm({
 
 /* ─── OTP: verify code (verify-email-03 style) ─── */
 function OtpVerifyForm({ email, onBack }: { email: string; onBack: () => void }) {
+  const { t } = useTranslation();
   const { signIn } = useAuthActions();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -586,6 +586,7 @@ function ForgotPasswordForm({
   onSubmit: (email: string) => void;
   onBack: () => void;
 }) {
+  const { t } = useTranslation();
   const { signIn } = useAuthActions();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -670,6 +671,7 @@ function ResetPasswordForm({
   onBack: () => void;
   onSuccess: () => void;
 }) {
+  const { t } = useTranslation();
   const { signIn } = useAuthActions();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -768,7 +770,7 @@ function ResetPasswordForm({
                   onClick={() => setIsPasswordVisible((prev) => !prev)}
                   className="text-muted-foreground absolute inset-y-0 right-0 rounded-l-none hover:bg-transparent"
                 >
-                  {isPasswordVisible ? <EyeOffIcon className="h-4 w-4" variant="stroke" /> : <EyeIcon className="h-4 w-4" variant="stroke" />}
+                  {isPasswordVisible ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
                 </Button>
               </div>
               {field.state.meta?.errors.length > 0 && (
@@ -802,7 +804,7 @@ function ResetPasswordForm({
                   onClick={() => setIsConfirmVisible((prev) => !prev)}
                   className="text-muted-foreground absolute inset-y-0 right-0 rounded-l-none hover:bg-transparent"
                 >
-                  {isConfirmVisible ? <EyeOffIcon className="h-4 w-4" variant="stroke" /> : <EyeIcon className="h-4 w-4" variant="stroke" />}
+                  {isConfirmVisible ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
                 </Button>
               </div>
               {field.state.meta?.errors.length > 0 && (

@@ -1,10 +1,5 @@
-import type { Id } from "../_generated/dataModel";
-import type { MutationCtx } from "../_generated/server";
 import type { ActivityAction } from "@cvx/schema";
-import { internal } from "../_generated/api";
-
-// @ts-ignore — TS2589: deep type instantiation in Convex codegen (known, non-deterministic)
-const writeActivityRef = internal.supabase.activities.writeActivityToSupabase;
+import { createSupabaseDb } from "./supabaseDb";
 
 export type ActivityEnvelopeTarget = {
   entityType: string;
@@ -13,7 +8,7 @@ export type ActivityEnvelopeTarget = {
 
 export type ActivityEnvelopeActor = {
   type: string;
-  userId?: Id<"users">;
+  userId?: string;
   label?: string;
 };
 
@@ -123,12 +118,10 @@ export function createActivityEnvelope(args: BuildActivityEnvelopeArgs): Activit
   };
 }
 
-export async function publishActivityEnvelope(
-  ctx: MutationCtx,
-  args: {
-    organizationId: Id<"organizations">;
+export async function publishActivityEnvelope(args: {
+    organizationId: string;
     action: ActivityAction;
-    performedBy: Id<"users">;
+    performedBy: string;
     module: string;
     summary: string;
     occurredAt: number;
@@ -143,6 +136,7 @@ export async function publishActivityEnvelope(
   const envelope = createActivityEnvelope(args);
   const resolvedTargets = envelope.targets.map((target) => ({ ...target }));
 
+  const db = createSupabaseDb();
   for (const target of resolvedTargets) {
     const metadata = {
       ...(args.metadata ?? {}),
@@ -152,7 +146,7 @@ export async function publishActivityEnvelope(
       },
     };
 
-    const activityDocId = await ctx.db.insert("activities", {
+    await db.insert("activities", {
       organizationId: args.organizationId,
       entityType: target.entityType,
       entityId: target.entityId,
@@ -160,19 +154,6 @@ export async function publishActivityEnvelope(
       description: envelope.summary,
       metadata,
       performedBy: args.performedBy,
-      createdAt: args.occurredAt,
-    });
-
-    // Dual-write: replicate activity to Supabase (write-only, no update/delete)
-    await ctx.scheduler.runAfter(0, writeActivityRef, {
-      activityId: activityDocId as string,
-      organizationId: args.organizationId as string,
-      entityType: target.entityType,
-      entityId: target.entityId,
-      action: args.action,
-      description: envelope.summary,
-      metadata,
-      performedBy: args.performedBy as string,
       createdAt: args.occurredAt,
     });
   }

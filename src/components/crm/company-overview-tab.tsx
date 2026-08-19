@@ -253,7 +253,7 @@ export function CompanyOverviewTab({
                 <div key={a._id} className="flex items-start gap-3">
                   <Avatar className="h-7 w-7 shrink-0 mt-0.5">
                     <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                      {(a.action ?? "A")[0].toUpperCase()}
+                      {(a.action ?? "A")[0]!.toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">

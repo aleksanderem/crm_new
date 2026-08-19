@@ -6,7 +6,7 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
@@ -49,6 +49,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import { TimePicker5Min } from "@/components/gabinet/calendar/time-picker-5min";
@@ -65,6 +66,7 @@ import { Calendar } from "@/components/ui/calendar";
 import {
   Clock,
   ChevronsUpDown,
+  DollarSign,
   Stethoscope,
   StickyNote,
   User,
@@ -161,6 +163,7 @@ function generateRecurringDates(
   }
   const dates: string[] = [];
   const d = new Date(startDate + "T00:00:00");
+  const origDay = d.getDate();
   for (let i = 1; i < count; i++) {
     switch (frequency) {
       case "daily":
@@ -172,9 +175,13 @@ function generateRecurringDates(
       case "biweekly":
         d.setDate(d.getDate() + 14);
         break;
-      case "monthly":
+      case "monthly": {
+        d.setDate(1);
         d.setMonth(d.getMonth() + 1);
+        const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+        d.setDate(Math.min(origDay, lastDay));
         break;
+      }
       default:
         return dates;
     }
@@ -314,6 +321,10 @@ export function AppointmentDialog({
   // are filtered out of the slot list — the user must opt in deliberately
   // before they can pick a time in the past. Issue #1406.
   const [recordWalkIn, setRecordWalkIn] = useState(false);
+
+  // Prepayment fields (#4489)
+  const [prepaymentRequired, setPrepaymentRequired] = useState(false);
+  const [prepaymentAmount, setPrepaymentAmount] = useState("");
 
   // Drag-to-reposition state — users want to peek at the calendar underneath
   // without closing the dialog (issue #977). Offset resets when the dialog
@@ -541,12 +552,19 @@ export function AppointmentDialog({
   const [nowDate, nowTimeFull] = _nowInClinic.split(" ");
   const nowTime = nowTimeFull.slice(0, 5);
 
-  // Variants query — load variants for the selected treatment
-  const { data: variants } = useQuery({
-    queryKey: ["gabinet.treatments.listVariants", organizationId, treatmentId],
-    queryFn: () => listVariantsAction({ organizationId, treatmentId }),
-    enabled: !!organizationId && !!treatmentId,
-  }) as { data: any[] | undefined };
+  // Variants queries — one per selected treatment so the reduce can honour
+  // per-treatment variantId values even when multi-treatment mode gains a
+  // variant picker (issue #4502).
+  const variantQueryResults = useQueries({
+    queries: selectedTreatments.map((t) => ({
+      queryKey: ["gabinet.treatments.listVariants", organizationId, t.treatmentId],
+      queryFn: () => listVariantsAction({ organizationId, treatmentId: t.treatmentId }),
+      enabled: !!organizationId && !!t.treatmentId,
+    })),
+  });
+
+  // Variants for the primary treatment (backward-compat for single-treatment UI).
+  const variants = variantQueryResults[0]?.data as any[] | undefined;
 
   const selectedVariant = useMemo(
     () => variants?.find((v) => v._id === variantId),
@@ -561,10 +579,16 @@ export function AppointmentDialog({
       return selectedVariant?.resolvedDuration ?? selectedTreatment?.duration ?? 30;
     }
     return selectedTreatments.reduce((sum, t) => {
+      if (t.variantId) {
+        for (const q of variantQueryResults) {
+          const variant = (q.data as any[] | undefined)?.find((v: any) => v._id === t.variantId);
+          if (variant) return sum + variant.resolvedDuration;
+        }
+      }
       const tr = treatments?.find((tr) => tr._id === t.treatmentId);
       return sum + (tr?.duration ?? 30);
     }, 0);
-  }, [selectedTreatments, selectedVariant, selectedTreatment, treatments]);
+  }, [selectedTreatments, selectedVariant, selectedTreatment, treatments, variantQueryResults]);
 
   // Available slots — action reading from Supabase
   const getAvailableSlots = useAction(api.gabinet.appointments.getAvailableSlotsQuery);
@@ -580,6 +604,7 @@ export function AppointmentDialog({
       employeeId,
       dateStr,
       effectiveDuration,
+      locationId || null,
       // Bucket by the hour so the query is cached but still refreshes as the
       // clock advances past past-slot boundaries. Walk-in mode disables the
       // filter so it must also key the cache.
@@ -592,6 +617,7 @@ export function AppointmentDialog({
         userId: employeeId as string,
         date: dateStr,
         duration: effectiveDuration,
+        locationId: locationId || undefined,
         nowDate: recordWalkIn ? undefined : nowDate,
         nowTime: recordWalkIn ? undefined : nowTime,
       }),
@@ -641,7 +667,7 @@ export function AppointmentDialog({
 
   useEffect(() => {
     if (qualifiedEmployees.length === 1 && !employeeId) {
-      setEmployeeId(qualifiedEmployees[0].userId);
+      setEmployeeId(qualifiedEmployees[0]!.userId);
     }
   }, [qualifiedEmployees, employeeId]);
 
@@ -982,6 +1008,11 @@ export function AppointmentDialog({
         packageTreatmentId: packageTreatmentId ?? undefined,
         allowPast: recordWalkIn || undefined,
         allowConflict: hasBookingConflict || undefined,
+        prepaymentRequired: prepaymentRequired || undefined,
+        prepaymentAmount:
+          prepaymentRequired && prepaymentAmount
+            ? parseFloat(prepaymentAmount)
+            : undefined,
       });
       // Refresh the calendar immediately — Convex actions don't invalidate
       // the Supabase React Query cache automatically.
@@ -1023,6 +1054,8 @@ export function AppointmentDialog({
     packageTreatmentId,
     recordWalkIn,
     hasBookingConflict,
+    prepaymentRequired,
+    prepaymentAmount,
     onOpenChange,
     queryClient,
     t,
@@ -1074,6 +1107,8 @@ export function AppointmentDialog({
       setAddPatientOpen(false);
       setPendingPatientLabel(null);
       setRecordWalkIn(false);
+      setPrepaymentRequired(false);
+      setPrepaymentAmount("");
     }
   }, [open, defaultDate, defaultTime, defaultEndTime, defaultUserId]);
 
@@ -1306,6 +1341,10 @@ export function AppointmentDialog({
                       {selectedTreatments.map((sel, idx) => {
                         const tr = treatments?.find((t) => t._id === sel.treatmentId);
                         const isFirst = idx === 0;
+                        const displayPrice =
+                          isFirst && sel.variantId && selectedVariant?.resolvedPrice != null
+                            ? selectedVariant.resolvedPrice
+                            : tr?.price;
                         return (
                           <div
                             key={sel.treatmentId}
@@ -1325,9 +1364,9 @@ export function AppointmentDialog({
                                       <Clock className="size-3" />
                                       {tr.duration} min
                                     </Badge>
-                                    {tr.price != null && (
+                                    {displayPrice != null && (
                                       <Badge variant="secondary" className="text-xs">
-                                        {formatPrice(tr.price)}
+                                        {formatPrice(displayPrice)}
                                       </Badge>
                                     )}
                                   </div>
@@ -1597,6 +1636,46 @@ export function AppointmentDialog({
                           "gabinet.appointments.notesPlaceholder",
                         )}
                       />
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+
+                {/* Prepayment (#4489) */}
+                <Accordion type="single" collapsible>
+                  <AccordionItem value="prepayment" className="border-none">
+                    <AccordionTrigger className="py-0 text-xs text-muted-foreground hover:text-foreground hover:no-underline gap-1.5">
+                      <span className="flex items-center gap-1.5">
+                        <DollarSign className="size-3" />
+                        {t("gabinet.appointments.prepayment")}
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-0 pt-1.5 space-y-2">
+                      <Label
+                        htmlFor="prepayment-required"
+                        className="-mx-1 flex min-h-9 select-none items-center gap-3 rounded-md px-1 py-1.5 text-sm cursor-pointer transition-colors hover:bg-accent/40 active:bg-accent"
+                      >
+                        <Checkbox
+                          id="prepayment-required"
+                          checked={prepaymentRequired}
+                          onCheckedChange={(c) =>
+                            setPrepaymentRequired(c as boolean)
+                          }
+                        />
+                        {t("gabinet.appointments.prepaymentRequired")}
+                      </Label>
+                      {prepaymentRequired && (
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder={t(
+                            "gabinet.appointments.prepaymentAmount",
+                          )}
+                          value={prepaymentAmount}
+                          onChange={(e) => setPrepaymentAmount(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      )}
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>

@@ -582,6 +582,114 @@ describe("gabinet/patients.merge", () => {
     });
   });
 
+  describe("emails reassignment", () => {
+    test("reassigns emails.patient_id from source to target during merge", async () => {
+      const t = createTestCtx();
+      const { organizationId, userId, identity } = await seedTestUser(t);
+      const { patientId: targetId } = await seedGabinetPrereqs(
+        t,
+        organizationId,
+        userId,
+      );
+      const sourceId = "patient_emails_source";
+      await seedSecondPatient(String(organizationId), String(userId), sourceId);
+
+      const db = createSupabaseDb();
+      const orgIdStr = String(organizationId);
+
+      // Email linked to source patient — should move.
+      await db.insert("emails", {
+        _id: "email_source_patient",
+        organizationId: orgIdStr,
+        patientId: sourceId,
+        subject: "Follow-up from source patient",
+        direction: "inbound",
+      });
+      // Email linked to a different patient — must NOT move.
+      await db.insert("emails", {
+        _id: "email_other_patient",
+        organizationId: orgIdStr,
+        patientId: "patient_unrelated",
+        subject: "Other patient email",
+        direction: "inbound",
+      });
+
+      const result = await t
+        .withIdentity(identity)
+        .action(api.gabinet.patients.merge, {
+          organizationId,
+          targetPatientId: String(targetId),
+          sourcePatientId: sourceId,
+        });
+
+      expect(result.movedEmails).toBe(1);
+
+      const movedEmail = await db.get<{ patientId: string }>(
+        "emails",
+        "email_source_patient",
+      );
+      expect(movedEmail?.patientId).toBe(String(targetId));
+
+      const untouchedEmail = await db.get<{ patientId: string }>(
+        "emails",
+        "email_other_patient",
+      );
+      expect(untouchedEmail?.patientId).toBe("patient_unrelated");
+    });
+  });
+
+  describe("waitlist reassignment", () => {
+    test("reassigns gabinet_waitlist.patient_id from source to target during merge", async () => {
+      const t = createTestCtx();
+      const { organizationId, userId, identity } = await seedTestUser(t);
+      const { patientId: targetId } = await seedGabinetPrereqs(t, organizationId, userId);
+      const sourceId = "patient_waitlist_source";
+      await seedSecondPatient(String(organizationId), String(userId), sourceId);
+
+      const db = createSupabaseDb();
+      const orgIdStr = String(organizationId);
+
+      // Waitlist entry for source patient — should move.
+      await db.insert("gabinetWaitlist", {
+        _id: "waitlist_source",
+        organizationId: orgIdStr,
+        patientId: sourceId,
+        status: "waiting",
+        priority: 0,
+        createdBy: String(userId),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      // Waitlist entry for an unrelated patient — must NOT move.
+      await db.insert("gabinetWaitlist", {
+        _id: "waitlist_other",
+        organizationId: orgIdStr,
+        patientId: "patient_unrelated",
+        status: "waiting",
+        priority: 0,
+        createdBy: String(userId),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+
+      const result = await t
+        .withIdentity(identity)
+        .action(api.gabinet.patients.merge, {
+          organizationId,
+          targetPatientId: String(targetId),
+          sourcePatientId: sourceId,
+        });
+
+      expect(result.movedWaitlist).toBe(1);
+
+      const movedEntry = await db.get<{ patientId: string }>("gabinetWaitlist", "waitlist_source");
+      expect(movedEntry?.patientId).toBe(String(targetId));
+
+      const untouched = await db.get<{ patientId: string }>("gabinetWaitlist", "waitlist_other");
+      expect(untouched?.patientId).toBe("patient_unrelated");
+    });
+  });
+
   describe("source patient deactivation", () => {
     test("marks source patient inactive and annotates medicalNotes", async () => {
       const t = createTestCtx();

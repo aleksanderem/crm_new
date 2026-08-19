@@ -23,12 +23,21 @@ const REASON_VALIDATOR = v.union(
   v.literal("inventory_adjustment"),
   v.literal("appointment_use"),
   v.literal("appointment_return"),
+  v.literal("reserved"),
+  v.literal("reservation_release"),
+  v.literal("direct_sale"),
   v.literal("deal_close"),
   v.literal("deal_reopen"),
   v.literal("transfer_in"),
   v.literal("transfer_out"),
   v.literal("other"),
 );
+
+// Informational-only movement reasons: written to the audit trail but do NOT
+// update product_stock_levels (on-hand balance is unchanged). Used for
+// reservation tracking so warehouse reports can see stock committed to
+// future appointments without affecting the available quantity.
+const INFORMATIONAL_REASONS = new Set(["reserved", "reservation_release"]);
 
 export interface ProductStockSummary {
   productId: string;
@@ -43,7 +52,7 @@ export interface ProductStockSummary {
 
 export const getStockSummary = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     productId: v.string(),
   },
   handler: async (ctx, args): Promise<ProductStockSummary> => {
@@ -62,7 +71,7 @@ export const getStockSummary = action({
 
 export const listMovements = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     productId: v.optional(v.string()),
     reason: v.optional(REASON_VALIDATOR),
     limit: v.optional(v.number()),
@@ -98,9 +107,9 @@ export const listMovements = action({
 
 export const adjustStock = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     productId: v.string(),
-    locationId: v.optional(v.union(v.id("gabinetLocations"), v.null())),
+    locationId: v.optional(v.union(v.string(), v.null())),
     delta: v.optional(v.number()),
     setTo: v.optional(v.number()),
     reason: v.optional(REASON_VALIDATOR),
@@ -153,9 +162,11 @@ interface ApplyMovementParams {
   sourceType?: string | null;
   sourceId?: string | null;
   note?: string | null;
+  paymentMethod?: string | null;
   unitPrice?: number | null;
   lotNumber?: string | null;
   expiryDate?: string | null;
+  treatmentId?: string | null;
   performedBy: string;
 }
 
@@ -189,8 +200,10 @@ export async function applyMovementInternal(
     newBalance = previousBalance + resolvedDelta;
   }
 
+  const isInformational = INFORMATIONAL_REASONS.has(params.reason);
+
   let warning: string | null = null;
-  if (trackStock && newBalance < 0) {
+  if (!isInformational && trackStock && newBalance < 0) {
     // Warn-and-allow (#1700): negative stock is permitted but the caller is
     // expected to surface this in the UI so staff can correct it.
     warning = "negative_stock";
@@ -220,7 +233,7 @@ export async function applyMovementInternal(
 
   const now = Date.now();
 
-  if (trackStock) {
+  if (trackStock && !isInformational) {
     if (level) {
       await db.patch("productStockLevels", String(level._id), {
         quantity: newBalance,
@@ -239,25 +252,24 @@ export async function applyMovementInternal(
     }
   }
 
-  const snapshotPrice =
-    params.unitPrice != null
-      ? params.unitPrice
-      : product.purchasePrice ?? null;
+  const snapshotPrice = params.unitPrice ?? null;
 
   const movementId = await db.insert("productStockMovements", {
     organizationId: params.organizationId,
     productId: params.productId,
     locationId: params.locationId,
     delta: resolvedDelta,
-    balanceAfter: trackStock ? newBalance : null,
+    balanceAfter: (trackStock && !isInformational) ? newBalance : null,
     reason: params.reason,
     sourceType: params.sourceType ?? null,
     sourceId: params.sourceId ?? null,
     note: params.note ?? null,
+    paymentMethod: params.paymentMethod ?? null,
     unitPrice: snapshotPrice,
     ...(newAvgCost !== null ? { avgCostAfter: newAvgCost } : {}),
     ...(params.lotNumber ? { lotNumber: params.lotNumber } : {}),
     ...(params.expiryDate ? { expiryDate: params.expiryDate } : {}),
+    ...(params.treatmentId ? { treatmentId: params.treatmentId } : {}),
     performedBy: params.performedBy,
     createdAt: now,
   });

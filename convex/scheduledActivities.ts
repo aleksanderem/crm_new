@@ -5,6 +5,7 @@ import { logActivity } from "./_helpers/activities";
 import { createNotificationDirect } from "./notifications";
 import { v } from "convex/values";
 import { activityTypeValidator } from "@cvx/schema";
+import { Id } from "./_generated/dataModel";
 
 // Supabase is primary for scheduledActivities. Writes go through
 // createSupabaseDb() in the actions below; the frontend reads via
@@ -19,23 +20,23 @@ import { activityTypeValidator } from "@cvx/schema";
 
 export const _createSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityId: v.string(),
     activityType: v.string(),
     title: v.string(),
     userId: v.string(),
-    ownerId: v.string(),
+    ownerId: v.id("users"),
     description: v.optional(v.string()),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "scheduledActivity",
       entityId: args.activityId as any,
       action: "created",
       description: `Created ${args.activityType} "${args.title}"`,
-      performedBy: args.userId as any,
+      performedBy: args.userId,
       actorLabel: args.actorLabel,
     });
 
@@ -43,7 +44,7 @@ export const _createSideEffects = internalMutation({
     if (args.ownerId !== args.userId) {
       await createNotificationDirect(ctx, {
         organizationId: args.organizationId,
-        userId: args.ownerId as any,
+        userId: args.ownerId,
         type: "assigned",
         title: "Activity assigned",
         message: `You have been assigned to ${args.activityType} "${args.title}"`,
@@ -60,25 +61,25 @@ export const _createSideEffects = internalMutation({
 
 export const _updateSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityId: v.string(),
     activityType: v.string(),
     title: v.string(),
     userId: v.string(),
-    newOwnerId: v.optional(v.string()),
+    newOwnerId: v.optional(v.id("users")),
     oldOwnerId: v.optional(v.string()),
     googleEventId: v.optional(v.string()),
     description: v.optional(v.string()),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "scheduledActivity",
       entityId: args.activityId as any,
       action: "updated",
       description: args.description ?? `Updated ${args.activityType} "${args.title}"`,
-      performedBy: args.userId as any,
+      performedBy: args.userId,
       actorLabel: args.actorLabel,
     });
 
@@ -86,7 +87,7 @@ export const _updateSideEffects = internalMutation({
     if (args.newOwnerId && args.newOwnerId !== args.oldOwnerId && args.newOwnerId !== args.userId) {
       await createNotificationDirect(ctx, {
         organizationId: args.organizationId,
-        userId: args.newOwnerId as any,
+        userId: args.newOwnerId,
         type: "assigned",
         title: "Activity assigned",
         message: `You have been assigned to ${args.activityType} "${args.title}"`,
@@ -105,7 +106,7 @@ export const _updateSideEffects = internalMutation({
 
 export const _deleteSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityId: v.string(),
     activityType: v.string(),
     title: v.string(),
@@ -122,13 +123,13 @@ export const _deleteSideEffects = internalMutation({
       });
     }
 
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "scheduledActivity",
       entityId: args.activityId as any,
       action: "deleted",
       description: `Deleted ${args.activityType} "${args.title}"`,
-      performedBy: args.userId as any,
+      performedBy: args.userId,
       actorLabel: args.actorLabel,
     });
   },
@@ -138,7 +139,7 @@ export const _deleteSideEffects = internalMutation({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     title: v.string(),
     activityType: activityTypeValidator,
     dueDate: v.number(),
@@ -203,7 +204,7 @@ export const create = action({
         activityType: args.activityType,
         title: args.title,
         userId: String(authResult.userId),
-        ownerId: args.ownerId,
+        ownerId: args.ownerId as Id<"users">,
         actorLabel: authResult.userName ?? authResult.userEmail,
       });
     } catch (e) {
@@ -216,7 +217,7 @@ export const create = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityId: v.string(),
     title: v.optional(v.string()),
     activityType: v.optional(activityTypeValidator),
@@ -274,7 +275,7 @@ export const update = action({
         activityType: (updates.activityType ?? activity.activityType) as string,
         title: (updates.title ?? activity.title) as string,
         userId: String(authResult.userId),
-        newOwnerId: updates.ownerId,
+        newOwnerId: updates.ownerId as Id<"users"> | undefined,
         oldOwnerId: activity.ownerId as string | undefined,
         googleEventId: activity.googleEventId as string | undefined,
         actorLabel: authResult.userName ?? authResult.userEmail,
@@ -289,7 +290,7 @@ export const update = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -334,7 +335,7 @@ export const remove = action({
 
 export const markComplete = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -385,7 +386,7 @@ export const markComplete = action({
 
 export const markIncomplete = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityId: v.string(),
   },
   handler: async (ctx, args) => {

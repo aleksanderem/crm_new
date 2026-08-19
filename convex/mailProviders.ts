@@ -20,7 +20,7 @@ const capabilitiesValidator = v.object({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     providerType: providerTypeValidator,
     fromName: v.string(),
@@ -89,7 +89,7 @@ export const create = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     providerId: v.string(),
     name: v.optional(v.string()),
     fromName: v.optional(v.string()),
@@ -144,7 +144,7 @@ export const update = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     providerId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -182,7 +182,7 @@ export const remove = action({
 
 export const setDefault = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     providerId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -226,7 +226,7 @@ export const setDefault = action({
 
 export const testConnection = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     providerId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -293,7 +293,7 @@ export const testConnection = action({
  * Reads from Supabase since mail_providers is the source of truth there now.
  */
 export const _getActiveDefaultForOrg = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const rows = (await db

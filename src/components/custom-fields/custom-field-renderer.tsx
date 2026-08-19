@@ -219,14 +219,14 @@ function FileFieldRenderer({
   readonly: boolean;
 }) {
   const { organizationId } = useOrganization();
-  const generateUploadUrl = useMutation(api.documents.generateUploadUrl);
+  const generateUploadUrl = useMutation(api.crm.documents.generateUploadUrl);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fileVal = isFileValue(value) ? value : null;
 
   const { data: fileUrl } = useQuery({
-    ...convexQuery(api.documents.getFileUrl, {
+    ...convexQuery(api.crm.documents.getFileUrl, {
       organizationId,
       storageId: (fileVal?.storageId ?? "") as Id<"_storage">,
     }),

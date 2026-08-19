@@ -7,14 +7,17 @@ import { getEffectivePermissions } from "./_helpers/permissions";
 import { logAudit } from "./auditLog";
 
 export const getMyPermissions = query({
-  args: { organizationId: v.id("organizations") },
+  args: {
+    organizationId: v.string(),
+    locationId: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
-    return await getEffectivePermissions(ctx, args.organizationId);
+    return await getEffectivePermissions(ctx, args.organizationId, args.locationId);
   },
 });
 
 export const getMyRole = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     const { membership } = await verifyOrgAccess(ctx, args.organizationId);
     return { role: membership.role };
@@ -22,7 +25,7 @@ export const getMyRole = query({
 });
 
 export const getMyGabinetRole = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     const membership = await ctx.db
@@ -36,8 +39,38 @@ export const getMyGabinetRole = query({
   },
 });
 
+export const getMyGabinetContext = query({
+  args: { organizationId: v.string() },
+  handler: async (ctx, args) => {
+    const { user } = await verifyOrgAccess(ctx, args.organizationId);
+    const membership = await ctx.db
+      .query("gabinetMemberships")
+      .withIndex("by_orgAndUser", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", user._id)
+      )
+      .unique();
+    if (!membership) {
+      return { gabinetRole: null, isActive: null, assignedLocations: [] };
+    }
+    const locationMemberships = await ctx.db
+      .query("gabinetLocationMemberships")
+      .withIndex("by_orgAndUser", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", user._id)
+      )
+      .collect();
+    return {
+      gabinetRole: membership.gabinetRole,
+      isActive: membership.isActive,
+      assignedLocations: locationMemberships.map((lm) => ({
+        locationId: lm.locationId,
+        role: lm.role ?? null,
+      })),
+    };
+  },
+});
+
 export const getOrgPermissionOverrides = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     const { role } = await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
@@ -73,7 +106,7 @@ export const getOrgPermissionOverrides = action({
 // temporary migration shim; it is a permanent necessity for the query path.
 export const _writeOrgPermissionsToConvex = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     role: v.union(v.literal("member"), v.literal("viewer")),
     permissions: v.any(),
     userId: v.id("users"),
@@ -114,7 +147,7 @@ export const _writeOrgPermissionsToConvex = internalMutation({
 
 export const updateOrgPermissions = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     role: v.union(v.literal("member"), v.literal("viewer")),
     permissions: v.any(),
   },
@@ -161,7 +194,7 @@ export const updateOrgPermissions = action({
 });
 
 export const getResourceSharingEnabled = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
@@ -179,7 +212,7 @@ export const getResourceSharingEnabled = action({
 
 export const setResourceSharingEnabled = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     enabled: v.boolean(),
   },
   handler: async (ctx, args) => {

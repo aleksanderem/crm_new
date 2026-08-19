@@ -38,6 +38,10 @@ export interface GabinetDayClose {
   cashExpected: number;
   cashCounted: number;
   cashDiscrepancy: number;
+  /** R2B: amount staying in register as next-day opening balance. NULL for historical records. */
+  cashNextOpening: number | null;
+  /** R2B: amount transferred to the safe (Sejf). NULL for historical records. */
+  cashToSafe: number | null;
   notes: string | null;
   closedBy: string;
   closedAt: number;
@@ -80,6 +84,8 @@ function mapDayClose(row: Record<string, unknown>): GabinetDayClose {
     cashExpected: Number(row.cash_expected),
     cashCounted: Number(row.cash_counted),
     cashDiscrepancy: Number(row.cash_discrepancy),
+    cashNextOpening: row.cash_next_opening != null ? Number(row.cash_next_opening) : null,
+    cashToSafe: row.cash_to_safe != null ? Number(row.cash_to_safe) : null,
     notes: (row.notes as string | null) ?? null,
     closedBy: row.closed_by as string,
     closedAt: Number(row.closed_at),
@@ -153,6 +159,50 @@ export function useSupabaseGabinetDayCloseByDate(
         .select("*")
         .eq("organization_id", organizationId)
         .eq("date", date);
+
+      if (locationId) {
+        q = q.eq("location_id", locationId);
+      } else {
+        q = q.is("location_id", null);
+      }
+
+      const { data, error } = await q.limit(1).maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return mapDayClose(data as Record<string, unknown>);
+    },
+    enabled: enabled && isReady && !!organizationId && !!date,
+  } satisfies UseQueryOptions<GabinetDayClose | null, Error>);
+}
+
+// ---------------------------------------------------------------------------
+// Most recent Day Close before a given date (used to pre-fill opening balance)
+// ---------------------------------------------------------------------------
+
+export function useSupabaseGabinetPreviousDayClose(
+  organizationId: string,
+  date: string,
+  options: { enabled?: boolean; locationId?: string } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true, locationId } = options;
+
+  return useQuery<GabinetDayClose | null, Error>({
+    queryKey: [
+      ...supabaseKeys.gabinetDayCloses.list(organizationId),
+      "previous",
+      date,
+      locationId ?? "",
+    ],
+    queryFn: async (): Promise<GabinetDayClose | null> => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      let q = client
+        .from("gabinet_day_closes")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .lt("date", date)
+        .order("date", { ascending: false });
 
       if (locationId) {
         q = q.eq("location_id", locationId);

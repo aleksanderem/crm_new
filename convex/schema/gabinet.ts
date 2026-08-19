@@ -38,7 +38,7 @@ export function createGabinetTables({
   // --- Gabinet (Medical Office) ---
 
   gabinetPatients: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     contactId: v.optional(v.id("contacts")),
     firstName: v.string(),
     lastName: v.string(),
@@ -80,7 +80,7 @@ export function createGabinetTables({
     .index("by_orgAndSmsConsent", ["organizationId", "smsConsent"]),
 
   gabinetTreatments: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     // Legacy free-text category. Superseded by `categoryId` (see below) which
@@ -95,7 +95,7 @@ export function createGabinetTables({
     // numeric taxRate is ignored. Replaces a legacy -1 sentinel in taxRate.
     taxExempt: v.optional(v.boolean()),
     requiredEquipment: v.optional(v.array(v.string())),
-    requiredEquipmentIds: v.optional(v.array(v.id("gabinetEquipment"))),
+    requiredEquipmentIds: v.optional(v.array(v.string())),
     contraindications: v.optional(v.string()),
     preparationInstructions: v.optional(v.string()),
     aftercareInstructions: v.optional(v.string()),
@@ -129,7 +129,7 @@ export function createGabinetTables({
         }),
       ),
     ),
-    // Treatment detail: required form templates with timing
+    // Treatment detail: required form templates with timing and frequency rules (D27)
     requiredFormTemplates: v.optional(v.array(v.object({
       templateId: v.id("formTemplates"),
       timing: v.union(
@@ -137,8 +137,27 @@ export function createGabinetTables({
         v.literal("during_visit"),
         v.literal("after_completion"),
       ),
-      // When true, skip generation if the patient already has a signed copy of
-      // this template (e.g. RODO, terms — signed once per patient, not per visit)
+      // Whether the document is required (blocks completion) or optional.
+      // Defaults to true when absent (pre-D27 entries are all required).
+      isRequired: v.optional(v.boolean()),
+      // Frequency rule — replaces the legacy isOneTime boolean.
+      // "once"              — signed once per patient lifetime
+      // "first_visit_only"  — only at the patient's first appointment for this treatment
+      // "before_each_visit" — generated for every appointment (default)
+      // "every_n_days"      — generate if no valid signed copy within the last validityDays
+      // "on_expiry"         — generate when the last signed copy has expired
+      // Absent means "before_each_visit" (backward compat with isOneTime: false / undefined).
+      frequency: v.optional(v.union(
+        v.literal("once"),
+        v.literal("first_visit_only"),
+        v.literal("before_each_visit"),
+        v.literal("every_n_days"),
+        v.literal("on_expiry"),
+      )),
+      // Number of days a signed copy remains valid. Required when frequency is
+      // "every_n_days" or "on_expiry". Ignored for other frequencies.
+      validityDays: v.optional(v.number()),
+      // Legacy field — kept for backward compat. New entries use frequency="once".
       isOneTime: v.optional(v.boolean()),
     }))),
     shortDescription: v.optional(v.string()),
@@ -153,7 +172,7 @@ export function createGabinetTables({
     .index("by_orgAndActive", ["organizationId", "isActive"]),
 
   gabinetTreatmentVariants: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.id("gabinetTreatments"),
     name: v.string(),
     price: v.optional(v.number()),
@@ -173,7 +192,7 @@ export function createGabinetTables({
   // product_section mirrors products.productSection: "treatment" | "disposable".
   // unit is a snapshot of products.stockUnit at link time.
   gabinetTreatmentProducts: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.id("gabinetTreatments"),
     productId: v.id("products"),
     productSection: v.string(), // "treatment" | "disposable"
@@ -189,14 +208,14 @@ export function createGabinetTables({
   // --- Gabinet: Employee Scheduling (Phase 2) ---
 
   gabinetWorkingHours: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     dayOfWeek: v.number(), // 0-6
     startTime: v.string(), // "HH:MM"
     endTime: v.string(),
     isOpen: v.boolean(),
     breakStart: v.optional(v.string()),
     breakEnd: v.optional(v.string()),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -206,7 +225,7 @@ export function createGabinetTables({
     .index("by_orgAndLocation", ["organizationId", "locationId"]),
 
   gabinetEmployeeSchedules: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     dayOfWeek: v.number(),
     startTime: v.string(),
@@ -216,7 +235,7 @@ export function createGabinetTables({
     breakEnd: v.optional(v.string()),
     effectiveFrom: v.optional(v.string()),
     effectiveTo: v.optional(v.string()),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -226,7 +245,7 @@ export function createGabinetTables({
     .index("by_orgUserAndDay", ["organizationId", "userId", "dayOfWeek"]),
 
   gabinetLeaves: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     type: gabinetLeaveTypeValidator,
     leaveTypeId: v.optional(v.id("gabinetLeaveTypes")),
@@ -248,7 +267,7 @@ export function createGabinetTables({
     .index("by_orgAndDate", ["organizationId", "startDate"]),
 
   gabinetOvertime: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     date: v.string(),
     hours: v.number(),
@@ -266,9 +285,10 @@ export function createGabinetTables({
   // --- Gabinet: Employees (HR) ---
 
   gabinetEmployees: defineTable({
-    organizationId: v.id("organizations"),
-    // Nullable: employees can exist without a linked system user account.
-    // Migration 00042 dropped the NOT NULL constraint in Postgres to support this.
+    organizationId: v.string(),
+    // Application policy: new employees must always have a linked user account.
+    // The DB column is nullable (migration 00042) only to preserve historical rows;
+    // the `create` action and CSV import both reject writes with userId = null.
     userId: v.optional(v.id("users")),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
@@ -278,6 +298,10 @@ export function createGabinetTables({
     licenseNumber: v.optional(v.string()),
     hireDate: v.optional(v.string()),
     isActive: v.boolean(),
+    // Explicit block flag — true when an admin has blocked this account.
+    // Separate from isActive so that inactive (deactivated) records are not
+    // automatically treated as blocked. Old rows default to false.
+    isBlocked: v.optional(v.boolean()),
     color: v.optional(v.string()),
     notes: v.optional(v.string()),
     // Detailed employee data (beauty salon context)
@@ -332,6 +356,14 @@ export function createGabinetTables({
     // calendar view. Defaults to true at the DB level; optional here so legacy
     // rows without the field don't fail validation.
     showInCalendar: v.optional(v.boolean()),
+    // Whether this employee performs treatments/services. Controls visibility
+    // of specialization, licenseNumber, and qualifiedTreatmentIds in the UI.
+    // Independent from showInCalendar. Defaults to true for legacy rows.
+    performsServices: v.optional(v.boolean()),
+    // Describes the employee's work area: clinic only, office/CRM only, or both.
+    workScope: v.optional(
+      v.union(v.literal("clinic"), v.literal("office"), v.literal("both")),
+    ),
     tagIds: v.optional(v.array(v.id("tagDefinitions"))),
     categoryId: v.optional(v.id("categoryDefinitions")),
     bio: v.optional(v.string()),
@@ -352,9 +384,9 @@ export function createGabinetTables({
   // role: optional override — when set, the employee acts in this role at this
   // location instead of their default role from gabinetEmployees.role.
   gabinetEmployeeLocations: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.id("gabinetEmployees"),
-    locationId: v.id("gabinetLocations"),
+    locationId: v.string(),
     isPrimary: v.boolean(),
     role: v.optional(gabinetEmployeeRoleValidator),
     createdAt: v.number(),
@@ -367,7 +399,7 @@ export function createGabinetTables({
   // --- Gabinet: Leave Types & Balances (HR) ---
 
   gabinetLeaveTypes: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     color: v.optional(v.string()),
     isPaid: v.boolean(),
@@ -382,7 +414,7 @@ export function createGabinetTables({
     .index("by_orgAndActive", ["organizationId", "isActive"]),
 
   gabinetPaymentMethods: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     key: v.string(),
     name: v.string(),
     isSystem: v.boolean(),
@@ -402,7 +434,7 @@ export function createGabinetTables({
     .index("by_orgAndKey", ["organizationId", "key"]),
 
   gabinetLeaveBalances: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.id("gabinetEmployees"),
     leaveTypeId: v.id("gabinetLeaveTypes"),
     year: v.number(),
@@ -423,7 +455,7 @@ export function createGabinetTables({
   // --- Gabinet: Appointments (Phase 3) ---
 
   gabinetAppointments: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.id("gabinetPatients"),
     employeeId: v.id("users"),
     // DEPRECATED (#3399): replaced by gabinetAppointmentTreatments junction
@@ -481,8 +513,8 @@ export function createGabinetTables({
     cancellationReason: v.optional(v.string()),
     bookedFromPortal: v.optional(v.boolean()),
     bookedByPatientId: v.optional(v.id("gabinetPatients")),
-    locationId: v.optional(v.id("gabinetLocations")),
-    roomId: v.optional(v.id("gabinetRooms")),
+    locationId: v.optional(v.string()),
+    roomId: v.optional(v.string()),
     tagIds: v.optional(v.array(v.id("tagDefinitions"))),
     categoryId: v.optional(v.id("categoryDefinitions")),
     requiresCompletion: v.optional(v.boolean()),
@@ -504,7 +536,7 @@ export function createGabinetTables({
   // Junction table: appointment → treatment(s) (#3360).
   // Canonical multi-treatment model introduced in #3356.
   gabinetAppointmentTreatments: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.id("gabinetAppointments"),
     treatmentId: v.optional(v.id("gabinetTreatments")),
     variantId: v.optional(v.id("gabinetTreatmentVariants")),
@@ -525,7 +557,7 @@ export function createGabinetTables({
   // --- Gabinet: Packages & Loyalty (Phase 4) ---
 
   gabinetTreatmentPackages: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     treatments: v.array(
@@ -553,7 +585,7 @@ export function createGabinetTables({
     .index("by_orgAndAutoTreatment", ["organizationId", "autoGeneratedForTreatmentId"]),
 
   gabinetPackageUsage: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.optional(v.id("gabinetPatients")),
     packageId: v.id("gabinetTreatmentPackages"),
     purchasedAt: v.number(),
@@ -586,7 +618,7 @@ export function createGabinetTables({
     .index("by_package", ["packageId"]),
 
   gabinetLoyaltyPoints: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.id("gabinetPatients"),
     balance: v.number(),
     lifetimeEarned: v.number(),
@@ -599,7 +631,7 @@ export function createGabinetTables({
     .index("by_orgAndPatient", ["organizationId", "patientId"]),
 
   gabinetLoyaltyTransactions: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.id("gabinetPatients"),
     type: gabinetLoyaltyTxTypeValidator,
     points: v.number(),
@@ -614,7 +646,7 @@ export function createGabinetTables({
     .index("by_orgAndPatient", ["organizationId", "patientId"]),
 
   gabinetLoyaltyTiers: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     tier: gabinetLoyaltyTierValidator,
     name: v.string(),
     threshold: v.number(),
@@ -626,183 +658,11 @@ export function createGabinetTables({
     .index("by_org", ["organizationId"])
     .index("by_orgAndTier", ["organizationId", "tier"]),
 
-  // --- Platform: Document Templates ---
-
-  documentTemplates: defineTable({
-    organizationId: v.id("organizations"),
-    name: v.string(),
-    description: v.optional(v.string()),
-    category: v.union(
-      v.literal("contract"),
-      v.literal("invoice"),
-      v.literal("consent"),
-      v.literal("referral"),
-      v.literal("prescription"),
-      v.literal("report"),
-      v.literal("protocol"),
-      v.literal("custom"),
-    ),
-    content: v.string(),
-    module: v.string(),
-    requiredSources: v.array(v.string()),
-    requiresSignature: v.boolean(),
-    signatureSlots: v.array(
-      v.object({
-        id: v.string(),
-        role: v.union(
-          v.literal("author"),
-          v.literal("client"),
-          v.literal("patient"),
-          v.literal("employee"),
-          v.literal("witness"),
-          v.literal("custom"),
-        ),
-        label: v.string(),
-        verificationMethod: v.optional(
-          v.union(v.literal("click"), v.literal("sms"), v.literal("email_otp")),
-        ),
-        signerType: v.optional(
-          v.union(v.literal("internal"), v.literal("external")),
-        ),
-      }),
-    ),
-    accessControl: v.object({
-      mode: v.union(v.literal("all"), v.literal("roles"), v.literal("users")),
-      roles: v.array(v.string()),
-      userIds: v.array(v.id("users")),
-    }),
-    version: v.number(),
-    parentTemplateId: v.optional(v.id("documentTemplates")),
-    status: v.union(
-      v.literal("draft"),
-      v.literal("active"),
-      v.literal("archived"),
-    ),
-    createdBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_org", ["organizationId"])
-    .index("by_orgAndModule", ["organizationId", "module"])
-    .index("by_orgAndStatus", ["organizationId", "status"])
-    .index("by_orgAndCategory", ["organizationId", "category"])
-    .index("by_parent", ["parentTemplateId"]),
-
-  documentTemplateFields: defineTable({
-    templateId: v.id("documentTemplates"),
-    fieldKey: v.string(),
-    label: v.string(),
-    type: v.union(
-      v.literal("text"),
-      v.literal("textarea"),
-      v.literal("number"),
-      v.literal("date"),
-      v.literal("select"),
-      v.literal("checkbox"),
-      v.literal("signature"),
-      v.literal("currency"),
-      v.literal("phone"),
-      v.literal("email"),
-      v.literal("pesel"),
-    ),
-    sortOrder: v.number(),
-    group: v.optional(v.string()),
-    options: v.optional(
-      v.array(v.object({ label: v.string(), value: v.string() })),
-    ),
-    defaultValue: v.optional(v.string()),
-    binding: v.optional(
-      v.object({
-        source: v.string(),
-        field: v.string(),
-      }),
-    ),
-    validation: v.optional(
-      v.object({
-        required: v.optional(v.boolean()),
-        min: v.optional(v.number()),
-        max: v.optional(v.number()),
-        pattern: v.optional(v.string()),
-        minLength: v.optional(v.number()),
-        maxLength: v.optional(v.number()),
-      }),
-    ),
-    placeholder: v.optional(v.string()),
-    helpText: v.optional(v.string()),
-    width: v.union(v.literal("full"), v.literal("half")),
-  })
-    .index("by_template", ["templateId"])
-    .index("by_templateAndKey", ["templateId", "fieldKey"]),
-
-  documentInstances: defineTable({
-    organizationId: v.id("organizations"),
-    // Type discriminator
-    type: v.optional(v.union(v.literal("template"), v.literal("file"))),
-    // Template fields (optional for file type)
-    templateId: v.optional(v.id("documentTemplates")),
-    templateVersion: v.optional(v.number()),
-    renderedContent: v.optional(v.string()),
-    fieldValues: v.optional(v.any()),
-    resolvedSources: v.optional(v.any()),
-    // File fields (optional for template type)
-    fileId: v.optional(v.id("_storage")),
-    fileUrl: v.optional(v.string()),
-    fileName: v.optional(v.string()),
-    mimeType: v.optional(v.string()),
-    fileSize: v.optional(v.number()),
-    category: v.optional(v.string()),
-    // Common fields
-    title: v.string(),
-    status: v.union(
-      v.literal("draft"),
-      v.literal("pending_review"),
-      v.literal("approved"),
-      v.literal("pending_signature"),
-      v.literal("signed"),
-      v.literal("archived"),
-    ),
-    module: v.optional(v.string()),
-    signatures: v.array(
-      v.object({
-        slotId: v.string(),
-        slotLabel: v.string(),
-        verificationMethod: v.optional(
-          v.union(v.literal("click"), v.literal("sms"), v.literal("email_otp")),
-        ),
-        signerType: v.optional(
-          v.union(v.literal("internal"), v.literal("external")),
-        ),
-        signerUserId: v.optional(v.id("users")),
-        signerEmail: v.optional(v.string()),
-        signerName: v.optional(v.string()),
-        signerPhone: v.optional(v.string()),
-        signatureData: v.optional(v.string()),
-        signedByUserId: v.optional(v.id("users")),
-        signedByName: v.optional(v.string()),
-        signedAt: v.optional(v.number()),
-      }),
-    ),
-    pdfFileId: v.optional(v.id("_storage")),
-    createdBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-    assignedReviewerId: v.optional(v.id("users")),
-    assignedReviewerName: v.optional(v.string()),
-    reviewedBy: v.optional(v.id("users")),
-    reviewedAt: v.optional(v.number()),
-    approvedBy: v.optional(v.id("users")),
-    approvedAt: v.optional(v.number()),
-  })
-    .index("by_org", ["organizationId"])
-    .index("by_orgAndStatus", ["organizationId", "status"])
-    .index("by_orgAndModule", ["organizationId", "module"])
-    .index("by_template", ["templateId"]),
-
   // --- Document Signing ---
 
   signatureRequests: defineTable({
-    organizationId: v.id("organizations"),
-    instanceId: v.id("documentInstances"),
+    organizationId: v.string(),
+    instanceId: v.string(),
     slotId: v.string(),
     token: v.string(),
     signerEmail: v.optional(v.string()),
@@ -831,7 +691,7 @@ export function createGabinetTables({
     .index("by_org", ["organizationId"]),
 
   orgSmsConfig: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     provider: v.union(v.literal("smsapi"), v.literal("twilio")),
     apiToken: v.string(),
     apiSecret: v.optional(v.string()),
@@ -846,7 +706,7 @@ export function createGabinetTables({
     .index("by_providerAndSenderId", ["provider", "senderId"]),
 
   appointmentSmsEvents: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.optional(v.string()),
     patientId: v.optional(v.string()),
     normalizedPhone: v.string(),
@@ -880,7 +740,7 @@ export function createGabinetTables({
 
   gabinetPortalSessions: defineTable({
     patientId: v.id("gabinetPatients"),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     tokenHash: v.string(),
     otpHash: v.optional(v.string()),
     otpExpiresAt: v.optional(v.number()),
@@ -902,7 +762,7 @@ export function createGabinetTables({
   // --- Gabinet: Appointment Reminders ---
 
   appointmentReminders: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
     type: v.union(
       v.literal("email"),
@@ -925,7 +785,7 @@ export function createGabinetTables({
     .index("by_orgAndStatus", ["organizationId", "status"]),
 
   appointmentWorkflowHistory: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
     workflowEvent: appointmentWorkflowEventValidator,
     channel: appointmentWorkflowChannelValidator,
@@ -950,7 +810,7 @@ export function createGabinetTables({
   // --- Gabinet: Locations, Rooms & Equipment ---
 
   gabinetLocations: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     address: v.optional(v.object({
       street: v.optional(v.string()),
@@ -970,8 +830,8 @@ export function createGabinetTables({
     .index("by_org", ["organizationId"]),
 
   gabinetRooms: defineTable({
-    organizationId: v.id("organizations"),
-    locationId: v.id("gabinetLocations"),
+    organizationId: v.string(),
+    locationId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     floor: v.optional(v.string()),
@@ -982,12 +842,12 @@ export function createGabinetTables({
     .index("by_location", ["locationId"]),
 
   gabinetEquipment: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     serialNumber: v.optional(v.string()),
-    currentLocationId: v.optional(v.id("gabinetLocations")),
-    currentRoomId: v.optional(v.id("gabinetRooms")),
+    currentLocationId: v.optional(v.string()),
+    currentRoomId: v.optional(v.string()),
     status: v.union(
       v.literal("available"),
       v.literal("in_use"),
@@ -1007,11 +867,11 @@ export function createGabinetTables({
     .index("by_room", ["organizationId", "currentRoomId"]),
 
   gabinetEquipmentTransfers: defineTable({
-    organizationId: v.id("organizations"),
-    equipmentId: v.id("gabinetEquipment"),
-    fromLocationId: v.optional(v.id("gabinetLocations")),
-    toLocationId: v.id("gabinetLocations"),
-    toRoomId: v.optional(v.id("gabinetRooms")),
+    organizationId: v.string(),
+    equipmentId: v.string(),
+    fromLocationId: v.optional(v.string()),
+    toLocationId: v.string(),
+    toRoomId: v.optional(v.string()),
     transferredBy: v.id("users"),
     transferredAt: v.number(),
     notes: v.optional(v.string()),
@@ -1023,11 +883,11 @@ export function createGabinetTables({
   // --- Gabinet: PDF Receipts (issue #3739) ---
 
   gabinetReceipts: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paymentId: v.string(),
     appointmentId: v.optional(v.string()),
     patientId: v.optional(v.string()),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
     receiptNumber: v.string(), // e.g. 2026/001/LOC
     issuedAt: v.number(),
     // Receipt lifecycle: issued (default) | void
@@ -1066,8 +926,8 @@ export function createGabinetTables({
   // lastNumber is incremented inside a Convex mutation (serialised by Convex's
   // OCC) so no two receipts can get the same number within an org+location+year.
   gabinetReceiptSequences: defineTable({
-    organizationId: v.id("organizations"),
-    locationId: v.optional(v.id("gabinetLocations")),
+    organizationId: v.string(),
+    locationId: v.optional(v.string()),
     year: v.number(),
     lastNumber: v.number(),
     updatedAt: v.number(),
@@ -1080,8 +940,8 @@ export function createGabinetTables({
   // (not tied to patient payments). Feeds the cash_expected calculation in the
   // end-of-day close.
   gabinetCashTransactions: defineTable({
-    organizationId: v.id("organizations"),
-    locationId: v.optional(v.id("gabinetLocations")),
+    organizationId: v.string(),
+    locationId: v.optional(v.string()),
     date: v.string(), // YYYY-MM-DD
     type: v.union(v.literal("deposit"), v.literal("withdrawal")),
     amount: v.float64(),
@@ -1097,8 +957,8 @@ export function createGabinetTables({
   // End-of-day cash register closure snapshots. One per (org, optional-location,
   // date). Immutable once created — corrections must open the next day.
   gabinetDayCloses: defineTable({
-    organizationId: v.id("organizations"),
-    locationId: v.optional(v.id("gabinetLocations")),
+    organizationId: v.string(),
+    locationId: v.optional(v.string()),
     date: v.string(), // YYYY-MM-DD
     paymentSummary: v.string(), // JSON: { method: totalAmount }
     totalCollected: v.float64(),
@@ -1109,6 +969,9 @@ export function createGabinetTables({
     cashExpected: v.float64(),
     cashCounted: v.float64(),
     cashDiscrepancy: v.float64(),
+    // R2B (issue #5575): cash split at day close. NULL for historical records.
+    cashNextOpening: v.optional(v.float64()),
+    cashToSafe: v.optional(v.float64()),
     notes: v.optional(v.string()),
     closedBy: v.id("users"),
     closedAt: v.number(),
@@ -1123,7 +986,7 @@ export function createGabinetTables({
   // employee preference, flexible preferred-date/time arrays, and priority
   // ordering within the queue.
   gabinetWaitlist: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.id("gabinetPatients"),
     treatmentId: v.optional(v.id("gabinetTreatments")),
     employeeId: v.optional(v.id("gabinetEmployees")),
@@ -1141,5 +1004,23 @@ export function createGabinetTables({
     .index("by_orgAndStatus", ["organizationId", "status"])
     .index("by_orgAndPatient", ["organizationId", "patientId"])
     .index("by_orgAndPriority", ["organizationId", "priority"]),
+
+  // --- Gabinet: Safe (Sejf) Movements (issue #5573) ---
+  // Immutable ledger of cash movements in/out of the physical safe per
+  // location. Balance = SUM(transfer_in amounts) − SUM(withdrawal amounts).
+  // Movements are never edited or deleted — corrections are new rows.
+  gabinetSafeMovements: defineTable({
+    organizationId: v.string(),
+    locationId: v.string(), // required — safe is per location, never global
+    type: v.union(v.literal("transfer_in"), v.literal("withdrawal")),
+    amount: v.float64(),
+    description: v.optional(v.string()),
+    referenceDayCloseId: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndLocation", ["organizationId", "locationId"])
+    .index("by_orgAndLocationAndCreatedAt", ["organizationId", "locationId", "createdAt"]),
   };
 }

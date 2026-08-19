@@ -40,7 +40,7 @@ const paymentStatusValidator = v.union(
 
 export const list = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paginationOpts: paginationOptsValidator,
     status: v.optional(paymentStatusValidator),
   },
@@ -80,7 +80,7 @@ export const list = action({
 
 export const getByAppointment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -99,7 +99,7 @@ export const getByAppointment = action({
 
 export const listByPackageUsage = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     packageUsageId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -120,7 +120,7 @@ export const listByPackageUsage = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.optional(v.string()),
     appointmentId: v.optional(v.string()),
     packageUsageId: v.optional(v.string()),
@@ -278,7 +278,7 @@ async function computePatientCreditBalance(
 
 export const getPatientCredit = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -339,7 +339,7 @@ export const getPatientCredit = action({
  */
 export const refundCredit = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
     amount: v.number(),
     paymentMethod: paymentMethodValidator,
@@ -428,7 +428,7 @@ export const refundCredit = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paymentId: v.string(),
     amount: v.optional(v.number()),
     paymentMethod: v.optional(paymentMethodValidator),
@@ -491,7 +491,7 @@ export const update = action({
 
 export const markPaid = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paymentId: v.string(),
     paymentMethod: v.optional(paymentMethodValidator),
   },
@@ -553,7 +553,7 @@ export const markPaid = action({
 
 export const splitMarkPaid = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paymentId: v.string(),
     firstMethod: paymentMethodValidator,
     firstAmount: v.number(),
@@ -670,7 +670,7 @@ export const splitMarkPaid = action({
 
 export const refund = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paymentId: v.string(),
     reason: v.optional(v.string()),
   },
@@ -757,7 +757,7 @@ export const refund = action({
 export const _scheduleReceiptForPayment = internalMutation({
   args: {
     paymentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     isRefund: v.optional(v.boolean()),
   },
@@ -782,7 +782,7 @@ export const _scheduleReceiptForPayment = internalMutation({
 export const _scheduleSplitReceipt = internalMutation({
   args: {
     primaryPaymentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     firstMethod: paymentMethodValidator,
     firstAmount: v.number(),
@@ -809,7 +809,7 @@ export const _scheduleSplitReceipt = internalMutation({
 export const _createPaymentSideEffects = internalMutation({
   args: {
     paymentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     amount: v.number(),
     currency: v.string(),
@@ -829,7 +829,7 @@ export const _createPaymentSideEffects = internalMutation({
 export const _updatePaymentSideEffects = internalMutation({
   args: {
     paymentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     changes: v.string(),
   },
@@ -848,7 +848,7 @@ export const _updatePaymentSideEffects = internalMutation({
 export const _markPaidSideEffects = internalMutation({
   args: {
     paymentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     amount: v.number(),
     currency: v.string(),
@@ -856,7 +856,7 @@ export const _markPaidSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetAppointment",
       entityId: (args.appointmentId ?? args.paymentId) as any,
@@ -880,7 +880,7 @@ export const _markPaidSideEffects = internalMutation({
 export const _refundSideEffects = internalMutation({
   args: {
     paymentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     amount: v.number(),
     reason: v.optional(v.string()),
@@ -900,7 +900,7 @@ export const _refundSideEffects = internalMutation({
 export const _refundCreditSideEffects = internalMutation({
   args: {
     paymentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     amount: v.number(),
   },
@@ -926,7 +926,7 @@ export const _refundCreditSideEffects = internalMutation({
  */
 export const cancel = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paymentId: v.string(),
     reason: v.optional(v.string()),
   },
@@ -986,7 +986,7 @@ export const cancel = action({
 export const _cancelPaymentSideEffects = internalMutation({
   args: {
     paymentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     amount: v.number(),
     reason: v.optional(v.string()),
@@ -1012,7 +1012,7 @@ export const _cancelPaymentSideEffects = internalMutation({
  */
 export const requestRefundAuthorization = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
     amount: v.number(),
     notes: v.optional(v.string()),
@@ -1081,7 +1081,7 @@ export const requestRefundAuthorization = action({
 
 export const _requestRefundAuthSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     requesterId: v.id("users"),
     requesterName: v.string(),
     patientId: v.string(),
@@ -1119,7 +1119,7 @@ export const _requestRefundAuthSideEffects = internalMutation({
       status: "pending" as const,
     };
 
-    const adminContacts: Array<{ userId: string; email: string; name: string | null }> = [];
+    const adminContacts: Array<{ userId: Id<"users">; email: string; name: string | null }> = [];
 
     for (const m of admins) {
       await createNotificationDirect(ctx, {
@@ -1134,7 +1134,7 @@ export const _requestRefundAuthSideEffects = internalMutation({
       const user = await ctx.db.get(m.userId);
       if (user?.email) {
         adminContacts.push({
-          userId: String(m.userId),
+          userId: m.userId,
           email: user.email,
           name: (user.name as string | undefined) ?? null,
         });
@@ -1166,7 +1166,7 @@ export const _requestRefundAuthSideEffects = internalMutation({
  */
 export const _sendRefundAuthEmails = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     admins: v.array(
       v.object({
         userId: v.string(),
@@ -1295,7 +1295,7 @@ function mapPaymentMethodToFiscal(
  */
 export const generateReceipt = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paymentId: v.string(),
     // NIP (tax ID) of the issuing organization. Required by Polish fiscal law.
     organizationNip: v.optional(v.string()),
@@ -1431,7 +1431,7 @@ export const generateReceipt = action({
 export const _scheduleFiscalRetry = internalMutation({
   args: {
     paymentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     fiscalError: v.string(),
     attemptNumber: v.number(),
     organizationNip: v.optional(v.string()),
@@ -1462,7 +1462,7 @@ export const _scheduleFiscalRetry = internalMutation({
 export const _retryFiscal = internalAction({
   args: {
     paymentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     organizationNip: v.optional(v.string()),
     items: v.optional(v.array(fiscalItemValidator)),
   },
@@ -1563,7 +1563,7 @@ export const _retryFiscal = internalAction({
 export const _fiscalReceiptSideEffects = internalMutation({
   args: {
     paymentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     fiscalReceiptId: v.string(),
     // Present when triggered by a user action; absent for scheduled retries.
     userId: v.optional(v.id("users")),
@@ -1628,7 +1628,7 @@ export const _loadRefundAuthNotification = internalQuery({
 
 export const approveRefundAuth = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     notificationId: v.id("notifications"),
     paymentMethod: v.optional(paymentMethodValidator),
   },
@@ -1745,7 +1745,7 @@ export const approveRefundAuth = action({
 
 export const rejectRefundAuth = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     notificationId: v.id("notifications"),
     reason: v.optional(v.string()),
   },
@@ -1823,7 +1823,7 @@ export const rejectRefundAuth = action({
  */
 export const _claimRefundAuthRequest = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     callerId: v.id("users"),
     requestId: v.string(),
     decision: v.union(v.literal("approved"), v.literal("rejected")),
@@ -1865,11 +1865,11 @@ export const _claimRefundAuthRequest = internalMutation({
 
 export const _resolveRefundAuthSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     approverId: v.id("users"),
     approverName: v.string(),
     requestId: v.string(),
-    requesterId: v.string(),
+    requesterId: v.id("users"),
     patientId: v.string(),
     patientLabel: v.string(),
     amount: v.number(),
@@ -1884,7 +1884,7 @@ export const _resolveRefundAuthSideEffects = internalMutation({
 
     // Tell the requester what happened so they don't keep refreshing the
     // patient page wondering whether their request landed.
-    const requesterUserId = args.requesterId as Id<"users">;
+    const requesterUserId = args.requesterId;
     const amountLabel = formatCurrencyPLN(args.amount, "zł");
     const title =
       args.decision === "approved"

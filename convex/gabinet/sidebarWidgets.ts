@@ -20,7 +20,7 @@ async function verify(ctx: any, organizationId: string) {
 
 // --- Dashboard KPIs ---
 export const getDashboardKpis = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{
     todayAppointments: number;
     confirmedToday: number;
@@ -49,7 +49,7 @@ export const getDashboardKpis = action({
 
 // --- Calendar KPIs ---
 export const getCalendarKpis = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{
     todayCount: number;
     confirmed: number;
@@ -77,7 +77,7 @@ export const getCalendarKpis = action({
 
 // --- Patients KPIs ---
 export const getPatientsKpis = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{ total: number; newThisMonth: number }> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -101,7 +101,7 @@ export const getPatientsKpis = action({
 
 // --- Treatments KPIs ---
 export const getTreatmentsKpis = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{
     totalTreatments: number;
     completedThisMonth: number;
@@ -156,7 +156,7 @@ export const getTreatmentsKpis = action({
 
 // --- Employees KPIs ---
 export const getEmployeesKpis = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{
     activeCount: number;
     onLeave: number;
@@ -185,7 +185,7 @@ export const getEmployeesKpis = action({
 
 // --- Packages KPIs ---
 export const getPackagesKpis = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{
     totalPackages: number;
     activePackages: number;
@@ -219,7 +219,7 @@ export const getPackagesKpis = action({
 
 // --- Staff Load ---
 export const getStaffLoad = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<Array<{ name: string; appointmentCount: number; maxCapacity: number }>> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -250,7 +250,7 @@ export const getStaffLoad = action({
 
 // --- Today's Schedule ---
 export const getTodaySchedule = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<Array<{ name: string; startTime: string; endTime: string; status: "working" | "break" | "off" }>> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -321,7 +321,7 @@ export const getTodaySchedule = action({
 
 // --- Reports KPIs ---
 export const getReportsKpis = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{
     thisMonthAppointments: number;
     visitTrend: number;
@@ -385,7 +385,7 @@ export interface DayAgendaAppointment {
 }
 
 export const getDayAgenda = action({
-  args: { organizationId: v.id("organizations"), date: v.string() },
+  args: { organizationId: v.string(), date: v.string() },
   handler: async (ctx, args): Promise<{
     date: string;
     appointments: DayAgendaAppointment[];
@@ -458,7 +458,7 @@ export const getDayAgenda = action({
 
 // --- Weekly Appointments ---
 export const getWeeklyAppointments = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<Array<{ day: string; appointments: number }>> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -496,7 +496,7 @@ export const getWeeklyAppointments = action({
 
 // --- Monthly New Patients ---
 export const getMonthlyNewPatients = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<Array<{ month: string; patients: number }>> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -530,7 +530,7 @@ export const getMonthlyNewPatients = action({
 
 // --- Weekly Completed Treatments ---
 export const getWeeklyCompletedTreatments = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<Array<{ day: string; completed: number }>> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -571,7 +571,7 @@ export const getWeeklyCompletedTreatments = action({
 
 // --- Top Treatments Ranking ---
 export const getTopTreatments = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<Array<{ label: string; value: number }>> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -611,7 +611,7 @@ export const getTopTreatments = action({
 
 // --- Monthly Appointments ---
 export const getMonthlyAppointments = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<Array<{ month: string; appointments: number; completed: number }>> => {
     await verify(ctx, args.organizationId);
     const db = createSupabaseDb();
@@ -654,7 +654,7 @@ export const getMonthlyAppointments = action({
 
 // --- Appointment Status Distribution ---
 export const getAppointmentStatusDistribution = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{
     total: number;
     statuses: Array<{ status: string; count: number }>;

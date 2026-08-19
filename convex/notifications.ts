@@ -6,7 +6,7 @@ import { requireUser } from "./_helpers/auth";
 
 export const list = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -25,7 +25,7 @@ export const list = query({
 
 export const getUnreadCount = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, _args) => {
     const user = await requireUser(ctx);
@@ -56,15 +56,24 @@ export const markAsRead = action({
 export const _markAsReadInternal = internalMutation({
   args: { notificationId: v.id("notifications") },
   handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
     const notification = await ctx.db.get(args.notificationId);
     if (!notification) return;
+    if (notification.userId !== user._id) {
+      throw new Error("Not authorized");
+    }
     await ctx.db.patch(args.notificationId, { isRead: true });
   },
 });
 
 export const markAllRead = action({
   args: {
-    organizationId: v.id("organizations"),
+    // organizationId is accepted for API compatibility but markAllRead is
+    // intentionally USER-scoped: it marks all unread notifications for the
+    // authenticated user regardless of which org is passed. No cross-org data
+    // leak occurs because _markAllReadInternal filters by userId only.
+    // verifyOrgAccess is intentionally omitted here (sec-audit ref §19).
+    organizationId: v.string(),
   },
   handler: async (ctx, args): Promise<number> => {
     return await ctx.runMutation(internal.notifications._markAllReadInternal, {
@@ -74,7 +83,7 @@ export const markAllRead = action({
 });
 
 export const _markAllReadInternal = internalMutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, _args) => {
     const user = await requireUser(ctx);
     const unread = await ctx.db
@@ -92,7 +101,7 @@ export const _markAllReadInternal = internalMutation({
 
 export const _createNotification = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     type: v.string(),
     title: v.string(),
@@ -112,7 +121,7 @@ export const _createNotification = internalMutation({
 export async function createNotificationDirect(
   ctx: MutationCtx,
   data: {
-    organizationId: Id<"organizations">;
+    organizationId: string;
     userId: Id<"users">;
     type: string;
     title: string;

@@ -46,9 +46,8 @@ describe("admin/entitlements.setEntitlement", () => {
     expect(row?.source).toBe("manual");
     expect(String(row?.grantedByUserId)).toBe(String(userId));
 
-    const audit = await t.run(async (ctx) =>
-      ctx.db.query("auditLog").collect(),
-    );
+    const db = createSupabaseDb();
+    const audit = await db.query("auditLog").collect();
     expect(audit.some((a) => a.action === "product_access_granted")).toBe(true);
   });
 

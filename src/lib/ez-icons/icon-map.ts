@@ -222,6 +222,7 @@ export const ICON_MAP: Record<string, string> = {
   DatabaseIcon: "database",
   DownloadIcon: "download-01",
   EyeIcon: "eye",
+  EyeOffIcon: "eye-off",
   FileSpreadsheetIcon: "file-spreadsheet",
   Gamepad2Icon: "gamepad",
   HeadphonesIcon: "headphones",

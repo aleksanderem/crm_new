@@ -33,7 +33,7 @@ export const record = mutation({
     userAgent: v.optional(v.string()),
     argsJson: v.optional(v.string()),
     requestId: v.optional(v.string()),
-    organizationId: v.optional(v.id("organizations")),
+    organizationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -67,7 +67,7 @@ export const _recordInternal = internalMutation({
     stack: v.optional(v.string()),
     argsJson: v.optional(v.string()),
     userId: v.optional(v.id("users")),
-    organizationId: v.optional(v.id("organizations")),
+    organizationId: v.optional(v.string()),
     requestId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {

@@ -7,13 +7,42 @@
  *
  * Write path: Convex actions → Supabase via service-role client.
  * Read path: React Query hooks → Supabase RLS client (see use-supabase-day-close.ts).
+ *
+ * R2B extension (issue #5575): createDayClose now accepts an optional cash
+ * split — cashNextOpening (stays in register) + cashToSafe (moved to Sejf).
+ * If cashToSafe > 0 and a locationId is provided, exactly one transfer_in
+ * movement is written to gabinet_safe_movements, linked via
+ * reference_day_close_id for idempotency.
  */
 
 import { action } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { logAudit } from "../auditLog";
 import { nanoid } from "nanoid";
+
+// Returns the UTC timestamp (ms) of midnight on the given YYYY-MM-DD date in
+// Europe/Warsaw. Handles both CET (UTC+1) and CEST (UTC+2) automatically so
+// payment queries use local-day boundaries, not UTC-day boundaries.
+function warsawMidnightToUtcMs(dateStr: string): number {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const utcMidnight = Date.UTC(year, month - 1, day);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Warsaw",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(utcMidnight));
+  const pMap = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  const h = parseInt(pMap.hour) % 24; // guard against "24" at midnight
+  const m = parseInt(pMap.minute);
+  const s = parseInt(pMap.second);
+  // UTC midnight is (h hours + m min + s sec) ahead of Warsaw midnight, so
+  // Warsaw midnight = UTC midnight minus that offset.
+  return utcMidnight - (h * 3_600_000 + m * 60_000 + s * 1_000);
+}
 
 // ---------------------------------------------------------------------------
 // Cash Transactions
@@ -21,7 +50,7 @@ import { nanoid } from "nanoid";
 
 export const createCashTransaction = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     locationId: v.optional(v.string()),
     date: v.string(), // YYYY-MM-DD
     type: v.union(v.literal("deposit"), v.literal("withdrawal")),
@@ -67,19 +96,30 @@ export const createCashTransaction = action({
     });
 
     if (error) throw new Error(`createCashTransaction: ${error.message}`);
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: authResult.userId,
+      action: "cash_transaction_created",
+      entityType: "gabinetCashTransaction",
+      entityId: id,
+      details: `Created ${args.type} of ${args.amount}${args.reason ? `: ${args.reason}` : ""}`,
+    });
+
     return { id };
   },
 });
 
 export const deleteCashTransaction = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     transactionId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
-      organizationId: args.organizationId,
-    });
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    ) as { userId: string };
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
       organizationId: args.organizationId,
     });
@@ -103,6 +143,15 @@ export const deleteCashTransaction = action({
       .eq("organization_id", String(args.organizationId));
 
     if (error) throw new Error(`deleteCashTransaction: ${error.message}`);
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: authResult.userId,
+      action: "cash_transaction_deleted",
+      entityType: "gabinetCashTransaction",
+      entityId: args.transactionId,
+      details: `Deleted cash transaction`,
+    });
   },
 });
 
@@ -112,11 +161,17 @@ export const deleteCashTransaction = action({
 
 export const createDayClose = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     locationId: v.optional(v.string()),
     date: v.string(), // YYYY-MM-DD
     cashOpeningBalance: v.float64(),
     cashCounted: v.float64(),
+    // R2B: optional cash split. If provided, cashNextOpening + cashToSafe must
+    // equal cashCounted. Both must be non-negative. cashToSafe must not exceed
+    // cashCounted. If cashToSafe > 0, a transfer_in movement is created in the
+    // safe for the given location (locationId is required in this case).
+    cashNextOpening: v.optional(v.float64()),
+    cashToSafe: v.optional(v.float64()),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -137,6 +192,33 @@ export const createDayClose = action({
     ) as { allowed: boolean };
     if (!perm.allowed) throw new Error("Permission denied");
 
+    // Validate cash split when provided.
+    const hasSplit =
+      args.cashNextOpening !== undefined || args.cashToSafe !== undefined;
+    if (hasSplit) {
+      const nextOpening = args.cashNextOpening ?? 0;
+      const toSafe = args.cashToSafe ?? 0;
+
+      if (nextOpening < 0 || toSafe < 0) {
+        throw new Error("cashNextOpening and cashToSafe must be non-negative");
+      }
+      if (toSafe > args.cashCounted) {
+        throw new Error("cashToSafe cannot exceed cashCounted");
+      }
+      const splitSum = Math.round((nextOpening + toSafe) * 100) / 100;
+      const counted = Math.round(args.cashCounted * 100) / 100;
+      if (splitSum !== counted) {
+        throw new Error(
+          `cashNextOpening (${nextOpening}) + cashToSafe (${toSafe}) must equal cashCounted (${counted})`,
+        );
+      }
+      if (toSafe > 0 && !args.locationId) {
+        throw new Error(
+          "locationId is required when cashToSafe > 0 (safe is per-location)",
+        );
+      }
+    }
+
     const db = createSupabaseDb();
     const client = db.raw();
 
@@ -152,12 +234,39 @@ export const createDayClose = action({
     const { data: existing } = await existingQuery.limit(1).maybeSingle();
 
     if (existing) {
+      // Idempotency: if day was already closed, check if the safe transfer
+      // still needs to be created (e.g. action was interrupted after writing
+      // the day close but before writing the safe movement).
+      const dayCloseId = (existing as { id: string }).id;
+      if (args.cashToSafe && args.cashToSafe > 0 && args.locationId) {
+        const { data: existingMovement } = await client
+          .from("gabinet_safe_movements")
+          .select("id")
+          .eq("reference_day_close_id", dayCloseId)
+          .maybeSingle();
+        if (!existingMovement) {
+          await createSafeMovement(
+            ctx,
+            client,
+            dayCloseId,
+            args.organizationId,
+            args.locationId,
+            args.cashToSafe,
+            authResult.userId,
+            args.date,
+          );
+        }
+      }
       throw new Error("Day already closed for this date and location");
     }
 
-    // Fetch completed payments for the day.
-    const startTs = new Date(args.date + "T00:00:00.000Z").getTime();
-    const endTs = new Date(args.date + "T23:59:59.999Z").getTime();
+    // Fetch completed payments for the day using Europe/Warsaw midnight boundaries
+    // so clinics running past local midnight are correctly captured regardless of
+    // the UTC+1/UTC+2 offset.
+    const startTs = warsawMidnightToUtcMs(args.date);
+    const [yr, mo, dy] = args.date.split("-").map(Number);
+    const nextDate = new Date(Date.UTC(yr, mo - 1, dy + 1)).toISOString().slice(0, 10);
+    const endTs = warsawMidnightToUtcMs(nextDate) - 1;
 
     let paymentsQuery = client
       .from("payments")
@@ -250,6 +359,8 @@ export const createDayClose = action({
       cash_expected: cashExpected,
       cash_counted: args.cashCounted,
       cash_discrepancy: cashDiscrepancy,
+      cash_next_opening: args.cashNextOpening ?? null,
+      cash_to_safe: args.cashToSafe ?? null,
       notes: args.notes ?? null,
       closed_by: authResult.userId,
       closed_at: now,
@@ -258,6 +369,85 @@ export const createDayClose = action({
     });
 
     if (error) throw new Error(`createDayClose: ${error.message}`);
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: authResult.userId,
+      action: "day_close_created",
+      entityType: "gabinetDayClose",
+      entityId: id,
+      details: `Day closed for ${args.date}, total collected: ${totalCollected}, discrepancy: ${cashDiscrepancy}` +
+        (args.cashNextOpening !== undefined
+          ? `; cashNextOpening: ${args.cashNextOpening}, cashToSafe: ${args.cashToSafe ?? 0}`
+          : ""),
+    });
+
+    // Create safe movement if cashToSafe > 0 (idempotent: checked by
+    // reference_day_close_id before inserting).
+    if (args.cashToSafe && args.cashToSafe > 0 && args.locationId) {
+      // Guard: verify no movement already exists (handles concurrent retries).
+      const { data: existingMovement } = await client
+        .from("gabinet_safe_movements")
+        .select("id")
+        .eq("reference_day_close_id", id)
+        .maybeSingle();
+      if (!existingMovement) {
+        await createSafeMovement(
+          ctx,
+          client,
+          id,
+          args.organizationId,
+          args.locationId,
+          args.cashToSafe,
+          authResult.userId,
+          args.date,
+        );
+      }
+    }
+
     return { id, cashExpected, cashDiscrepancy, totalCollected, paymentSummary: summary };
   },
 });
+
+// ---------------------------------------------------------------------------
+// Internal helper — creates one transfer_in movement in gabinet_safe_movements
+// and writes the corresponding audit log entry.
+// ---------------------------------------------------------------------------
+
+async function createSafeMovement(
+  ctx: Parameters<typeof logAudit>[0],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  dayCloseId: string,
+  organizationId: string,
+  locationId: string,
+  amount: number,
+  userId: string,
+  date: string,
+): Promise<void> {
+  const movementId = nanoid();
+  const now = Date.now();
+
+  const { error } = await client.from("gabinet_safe_movements").insert({
+    id: movementId,
+    organization_id: String(organizationId),
+    location_id: locationId,
+    type: "transfer_in",
+    amount,
+    description: `Zamknięcie dnia ${date} — transfer do Sejfu`,
+    reference_day_close_id: dayCloseId,
+    created_by: userId,
+    created_at: now,
+  });
+
+  if (error) throw new Error(`createSafeMovement: ${error.message}`);
+
+  await logAudit(ctx, {
+    organizationId,
+    userId,
+    action: "safe_transfer_in",
+    entityType: "gabinetSafeMovement",
+    entityId: movementId,
+    details: `Day-close safe transfer: ${amount} PLN; location: ${locationId}; dayClose: ${dayCloseId}; date: ${date}`,
+  });
+}

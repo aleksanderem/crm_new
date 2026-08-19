@@ -39,7 +39,7 @@ export function EmailEntityTab({
     }
   }, [autoCompose]);
 
-  const listEmailsByEntity = useAction(api.emails.listByEntity);
+  const listEmailsByEntity = useAction(api.crm.emails.listByEntity);
   const { data: emailsData } = useQuery({
     queryKey: ["emails.listByEntity", organizationId, entityType, entityId],
     queryFn: () =>

@@ -5,19 +5,19 @@ import { getValidAccessToken } from "./_helpers";
 
 export const sendViaGmail = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     to: v.array(v.string()),
     cc: v.optional(v.array(v.string())),
     bcc: v.optional(v.array(v.string())),
     subject: v.string(),
     bodyHtml: v.optional(v.string()),
     bodyText: v.optional(v.string()),
-    contactId: v.optional(v.id("contacts")),
-    companyId: v.optional(v.id("companies")),
-    leadId: v.optional(v.id("leads")),
+    contactId: v.optional(v.string()),
+    companyId: v.optional(v.string()),
+    leadId: v.optional(v.string()),
     inReplyTo: v.optional(v.string()),
     threadId: v.optional(v.string()),
-    sentBy: v.id("users"),
+    sentBy: v.string(),
     fromEmail: v.string(),
   },
   handler: async (ctx, args) => {
@@ -68,7 +68,7 @@ export const sendViaGmail = action({
     const result = await response.json();
 
     // Store email record
-    await ctx.runMutation(internal.emails_internal.insertOutboundGmail, {
+    await ctx.runAction(internal.crm.emails_internal.insertOutboundGmail, {
       organizationId: args.organizationId,
       to: args.to,
       cc: args.cc,
@@ -93,7 +93,7 @@ export const sendViaGmail = action({
 
 export const syncInbox = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     const token = await getValidAccessToken(ctx, args.organizationId);
@@ -114,9 +114,20 @@ export const syncInbox = action({
     const listData = await listResponse.json();
     const messages = (listData.messages ?? []) as { id: string; threadId: string }[];
 
+    // Batch pre-check: fetch all already-synced IDs in one query so we don't
+    // fire 50 individual Supabase dedup queries inside insertInboundGmail.
+    const existingIds = new Set(
+      await ctx.runAction(internal.crm.emails_internal.findExistingGmailMessageIds, {
+        organizationId: args.organizationId,
+        gmailMessageIds: messages.map((m) => m.id),
+      })
+    );
+
     let synced = 0;
 
     for (const msg of messages) {
+      if (existingIds.has(msg.id)) continue;
+
       // Fetch full message
       const msgResponse = await fetch(
         `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date`,
@@ -154,7 +165,7 @@ export const syncInbox = action({
         })
         .filter(Boolean);
 
-      await ctx.runMutation(internal.emails_internal.insertInboundGmail, {
+      await ctx.runAction(internal.crm.emails_internal.insertInboundGmail, {
         organizationId: args.organizationId,
         gmailMessageId: msg.id,
         gmailThreadId: msg.threadId,

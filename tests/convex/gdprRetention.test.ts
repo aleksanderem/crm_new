@@ -87,12 +87,9 @@ describe("gabinet/patients._purgeExpiredPatients — GDPR retention cron", () =>
 
     await t.action(internal.gabinet.patients._purgeExpiredPatients, {});
 
-    const auditEntries = await t.run(async (ctx) =>
-      ctx.db
-        .query("auditLog")
-        .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
-        .collect(),
-    );
+    const auditEntries = await db.query("auditLog")
+      .eq("organizationId", orgIdStr)
+      .collect();
 
     const erasureEntry = auditEntries.find((e) => e.action === "gdpr_patient_erased");
     expect(erasureEntry).toBeDefined();

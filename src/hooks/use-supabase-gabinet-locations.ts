@@ -70,6 +70,70 @@ export function useSupabaseGabinetLocationsList(
 }
 
 // ---------------------------------------------------------------------------
+// Current User's Employee Location Assignments (with isPrimary)
+//
+// Resolves: gabinet_employees (by user_id) → gabinet_employee_locations
+// Used by GabinetLocationContext to determine the user's accessible locations
+// and which one carries the isPrimary flag for default selection.
+// ---------------------------------------------------------------------------
+
+export interface MyGabinetEmployeeLocation {
+  locationId: string;
+  isPrimary: boolean;
+}
+
+interface UseSupabaseMyGabinetEmployeeLocationsOptions {
+  enabled?: boolean;
+}
+
+export function useSupabaseMyGabinetEmployeeLocations(
+  organizationId: string,
+  userId: string | null | undefined,
+  options: UseSupabaseMyGabinetEmployeeLocationsOptions = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  return useQuery<MyGabinetEmployeeLocation[], Error>({
+    queryKey: [
+      "supabase",
+      "gabinetMyEmployeeLocations",
+      "list",
+      organizationId,
+      userId ?? "",
+    ],
+    queryFn: async (): Promise<MyGabinetEmployeeLocation[]> => {
+      if (!client) throw new Error("Supabase client not ready");
+      if (!userId) return [];
+
+      const { data: employees, error: empError } = await client
+        .from("gabinet_employees")
+        .select("id")
+        .eq("organization_id", organizationId)
+        .eq("user_id", userId);
+      if (empError) throw empError;
+      if (!employees || employees.length === 0) return [];
+
+      const { data: assignments, error: asgError } = await client
+        .from("gabinet_employee_locations")
+        .select("location_id, is_primary")
+        .eq("organization_id", organizationId)
+        .in(
+          "employee_id",
+          employees.map((e) => e.id),
+        );
+      if (asgError) throw asgError;
+
+      return (assignments ?? []).map((a) => ({
+        locationId: a.location_id,
+        isPrimary: a.is_primary,
+      }));
+    },
+    enabled: enabled && isReady && !!organizationId && !!userId,
+  } satisfies UseQueryOptions<MyGabinetEmployeeLocation[], Error>);
+}
+
+// ---------------------------------------------------------------------------
 // Single Location with Rooms
 // ---------------------------------------------------------------------------
 

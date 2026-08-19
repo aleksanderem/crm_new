@@ -170,6 +170,7 @@ export async function getAvailableSlotsSupabase(
         .query("gabinetWorkingHours")
         .eq("organizationId", args.organizationId)
         .eq("dayOfWeek", dayOfWeek)
+        .or("location_id.is.null")
         .take(1)
         .collect();
       clinicHours = rows[0];
@@ -336,6 +337,7 @@ export async function checkConflictSupabase(
       .query("gabinetWorkingHours")
       .eq("organizationId", args.organizationId)
       .eq("dayOfWeek", dayOfWeek)
+      .or("location_id.is.null")
       .take(1)
       .collect();
     const clinicHours = rows[0] as any;

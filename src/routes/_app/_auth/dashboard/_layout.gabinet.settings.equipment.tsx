@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { useAction, useQuery as useConvexQuery } from "convex/react";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import { useSupabaseGabinetEquipmentList } from "@/hooks/use-supabase-gabinet-equipment";
@@ -177,9 +177,10 @@ function TransferHistoryPanel({
   locations: LocationItem[];
 }) {
   const { t } = useTranslation();
-  const transfers = useConvexQuery(api.gabinet.equipment.listTransfers, {
-    organizationId,
-    equipmentId,
+  const listTransfersAction = useAction(api.gabinet.equipment.listTransfers);
+  const { data: transfers, isLoading: transfersLoading } = useQuery({
+    queryKey: ["gabinet.equipment.listTransfers", organizationId, equipmentId],
+    queryFn: () => listTransfersAction({ organizationId, equipmentId: String(equipmentId) }),
   });
 
   const getLocationName = (id?: Id<"gabinetLocations">) => {
@@ -187,7 +188,7 @@ function TransferHistoryPanel({
     return locations.find((l) => l._id === id)?.name ?? id;
   };
 
-  if (!transfers) {
+  if (transfersLoading) {
     return (
       <p className="text-xs text-muted-foreground py-1">
         {t("common.loading")}...
@@ -195,7 +196,7 @@ function TransferHistoryPanel({
     );
   }
 
-  if (transfers.length === 0) {
+  if (!transfers || transfers.length === 0) {
     return (
       <p className="text-xs text-muted-foreground py-1">
         {t("gabinet.equipment.transferHistory")} — none

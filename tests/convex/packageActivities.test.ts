@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
 import { createTestCtx, seedGabinetPrereqs, seedTestUser } from "../../convex/_test_helpers";
+import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
 
 afterEach(async () => {
   // Let any pending setTimeout(0) side-effect callbacks from the test fire
@@ -43,12 +44,11 @@ describe("package activities", () => {
       },
     );
 
-    const rows = await t.run(async (ctx) => {
-      const all = await ctx.db.query("activities").collect();
-      return all.filter(
-        (row) => row.organizationId === organizationId && row.action === "package_assigned",
-      );
-    });
+    const rows = await createSupabaseDb()
+      .query("activities")
+      .eq("organizationId", organizationId)
+      .eq("action", "package_assigned")
+      .collect();
 
     expect(usageId).toBeTruthy();
     expect(rows).toHaveLength(2);

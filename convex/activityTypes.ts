@@ -12,7 +12,7 @@ export const DEFAULT_ACTIVITY_TYPES = [
 
 export const list = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
@@ -28,7 +28,7 @@ export const list = action({
 
 export const seedDefaults = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
@@ -62,7 +62,7 @@ export const seedDefaults = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     key: v.string(),
     name: v.string(),
     icon: v.string(),
@@ -108,7 +108,7 @@ export const create = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityTypeId: v.string(),
     name: v.optional(v.string()),
     icon: v.optional(v.string()),
@@ -137,7 +137,7 @@ export const update = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityTypeId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -161,7 +161,7 @@ export const remove = action({
 
 export const reorder = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activityTypeIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {

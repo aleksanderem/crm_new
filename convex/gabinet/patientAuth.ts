@@ -6,6 +6,7 @@ import { validatePortalSessionSupabase } from "../_helpers/portalSession";
 import { v } from "convex/values";
 import { sendEmail } from "@cvx/email";
 import { AUTH_RESEND_KEY } from "@cvx/env";
+import type { Id } from "../_generated/dataModel";
 
 // ---------------------------------------------------------------------------
 // Crypto helpers
@@ -45,7 +46,7 @@ const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 min
 export const sendPortalOtp = action({
   args: {
     email: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
@@ -142,7 +143,7 @@ export const sendPortalOtp = action({
 export const _sendOtpEmail = internalAction({
   args: {
     email: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     otp: v.string(),
     patientId: v.string(),
     patientName: v.string(),
@@ -173,7 +174,7 @@ export const _sendOtpEmail = internalAction({
         text: `Twój kod weryfikacyjny: ${args.otp}\n\nKod jest ważny przez 10 minut.`,
         log: {
           ctx,
-          organizationId: args.organizationId,
+          organizationId: args.organizationId as Id<"organizations">,
           source: "system",
           recipientName: args.patientName,
           relatedEntityType: "gabinetPatient",
@@ -195,7 +196,7 @@ export const _sendOtpEmail = internalAction({
 export const verifyPortalOtp = action({
   args: {
     email: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     otp: v.string(),
   },
   handler: async (ctx, args) => {

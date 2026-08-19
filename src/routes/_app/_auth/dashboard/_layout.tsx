@@ -97,6 +97,7 @@ import { DateRangePicker } from "@/components/crm/date-range-picker";
 import { AgendaStrip } from "@/components/layout/agenda-strip";
 import type { Id } from "@cvx/_generated/dataModel";
 import { NudgesProvider } from "@/contexts/nudges-context";
+import { GabinetLocationProvider } from "@/contexts/gabinet-location-context";
 import { toast } from "sonner";
 import { formatActionError } from "@/lib/format-action-error";
 
@@ -229,18 +230,19 @@ function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
-  const createContact = useAction(api.contacts.create);
-  const createCompany = useAction(api.companies.create);
-  const createLead = useAction(api.leads.create);
+  const createContact = useAction(api.crm.contacts.create);
+  const createCompany = useAction(api.crm.companies.create);
+  const createLead = useAction(api.crm.leads.create);
   const createPatient = useAction(api.gabinet.patients.create);
   const createTreatment = useAction(api.gabinet.treatments.create);
   const setTreatmentProducts = useAction(api.gabinet.treatments.setTreatmentProducts);
   const createPackage = useAction(api.gabinet.packages.create);
   const createEmployee = useAction(api.gabinet.employees.create);
+  const createWithPassword = useAction(api.gabinet.employees.createWithPassword);
   const createActivity = useAction(api.scheduledActivities.create);
   const createLeave = useAction(api.gabinet.scheduling.createLeave);
-  const createProduct = useAction(api.products.create);
-  const createCall = useAction(api.calls.create);
+  const createProduct = useAction(api.crm.products.create);
+  const createCall = useAction(api.crm.calls.create);
   const createInvitation = useAction(api.invitations.create);
   const updateActivity = useAction(api.scheduledActivities.update);
   const removeActivity = useAction(api.scheduledActivities.remove);
@@ -626,15 +628,32 @@ function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
             <EmployeeForm
               onSubmit={async (data) => {
                 setIsCreating(true);
-                const shouldInvite = !!(data.grantSystemAccess && data.accessEmail);
                 try {
-                  if (!shouldInvite) {
-                    await createEmployee({ organizationId: orgId, ...data, userId: data.userId });
+                  if (data.accessMode === "password" && data.accessEmail && data.password) {
+                    await createWithPassword({
+                      organizationId: orgId,
+                      email: data.accessEmail,
+                      password: data.password,
+                      teamRole: data.accessRole ?? "member",
+                      firstName: data.firstName,
+                      lastName: data.lastName,
+                      role: data.role,
+                      specialization: data.specialization,
+                      licenseNumber: data.licenseNumber,
+                      color: data.color,
+                      showInCalendar: data.showInCalendar,
+                      qualifiedTreatmentIds: data.qualifiedTreatmentIds as string[],
+                      tagIds: data.tagIds as string[] | undefined,
+                      categoryId: data.categoryId as string | undefined,
+                      customFields: data.customFields,
+                      locationId: data.locationId,
+                      locationRole: data.locationRole,
+                    });
                     void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(orgId) });
-                  } else {
+                  } else if (data.grantSystemAccess && data.accessEmail) {
                     await createInvitation({
                       organizationId: orgId,
-                      email: data.accessEmail!,
+                      email: data.accessEmail,
                       role: data.accessRole ?? "member",
                       module: "gabinet",
                       moduleData: {
@@ -648,9 +667,14 @@ function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
                         tagIds: data.tagIds,
                         categoryId: data.categoryId,
                         customFields: data.customFields,
+                        locationId: data.locationId,
+                        locationRole: data.locationRole,
                       },
                     });
                     void queryClient.invalidateQueries({ queryKey: supabaseKeys.invitations.list(orgId) });
+                  } else {
+                    await createEmployee({ organizationId: orgId, ...data, userId: data.userId });
+                    void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetEmployees.list(orgId) });
                   }
                   opts.onSuccess();
                 } catch (e) {
@@ -932,7 +956,7 @@ function DashboardLayoutInner({ user, orgs }: DashboardLayoutInnerProps) {
                             />
                           )}
                           <AvatarFallback className="rounded-md bg-gradient-to-br from-primary/80 to-primary text-xs font-medium text-primary-foreground">
-                            {(user.name ?? user.username ?? user.email ?? "U")[0].toUpperCase()}
+                            {(user.name ?? user.username ?? user.email ?? "U")[0]!.toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div className="hidden flex-col items-start gap-0.5 sm:flex">
@@ -1095,9 +1119,10 @@ function DashboardLayout() {
 
   return (
     <DateRangeProvider>
-      <OrgProvider initialOrgId={firstOrg._id} userId={user._id}>
+      <OrgProvider initialOrgId={firstOrg._id as Id<"organizations">} userId={user._id}>
         <SupabaseProvider>
           <NudgesProvider>
+            <GabinetLocationProvider>
             <MiniCalendarProvider>
               <SidebarSlotProvider>
                 <HeaderSlotProvider>
@@ -1105,6 +1130,7 @@ function DashboardLayout() {
                 </HeaderSlotProvider>
               </SidebarSlotProvider>
             </MiniCalendarProvider>
+            </GabinetLocationProvider>
           </NudgesProvider>
         </SupabaseProvider>
       </OrgProvider>

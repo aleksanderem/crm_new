@@ -124,7 +124,7 @@ const ALL_FEATURES = [
   "gabinet_treatments", "gabinet_packages", "gabinet_employees", "gabinet_payments",
   "gabinet_reports", "gabinet_financial_reports", "gabinet_purchase_prices", "gabinet_photos",
   "gabinet_online_booking", "gabinet_inventory", "gabinet_settings", "settings", "team",
-  "document_templates", "document_instances", "tagDefinitions", "categoryDefinitions",
+  "document_templates", "tagDefinitions", "categoryDefinitions",
 ] as const;
 
 const ALL_ACTIONS = ["view", "create", "edit", "delete", "approve", "sign", "refund"] as const;
@@ -355,7 +355,7 @@ function GabinetRolesSettingsPage() {
 
   useEffect(() => {
     if (definitions && definitions.length > 0 && !selectedKey) {
-      setSelectedKey(definitions[0].key);
+      setSelectedKey(definitions[0]!.key);
     }
   }, [definitions, selectedKey]);
 

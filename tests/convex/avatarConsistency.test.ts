@@ -13,7 +13,7 @@ describe("updateUserImage", () => {
     });
 
     // Call updateUserImage
-    await t.withIdentity(identity).mutation(api.app.updateUserImage, {
+    await t.withIdentity(identity).action(api.app.updateUserImage, {
       imageId: storageId,
     });
 
@@ -32,12 +32,12 @@ describe("updateUserImage", () => {
     const storageId = await t.run(async (ctx) => {
       return await ctx.storage.store(new Blob(["fake-image"]));
     });
-    await t.withIdentity(identity).mutation(api.app.updateUserImage, {
+    await t.withIdentity(identity).action(api.app.updateUserImage, {
       imageId: storageId,
     });
 
     // Remove it
-    await t.withIdentity(identity).mutation(api.app.removeUserImage, {});
+    await t.withIdentity(identity).action(api.app.removeUserImage, {});
 
     const user = await t.run(async (ctx) => ctx.db.get(userId));
     expect(user!.imageId).toBeUndefined();

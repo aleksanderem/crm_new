@@ -50,6 +50,10 @@ import {
   type DayByEmployeeColumn,
 } from "@/components/gabinet/calendar/calendar-day-by-employee-view";
 import { CalendarWeekView } from "@/components/gabinet/calendar/calendar-week-view";
+import {
+  CalendarWeekByEmployeeView,
+  type WeekByEmployeeColumn,
+} from "@/components/gabinet/calendar/calendar-week-by-employee-view";
 import { CalendarMonthView } from "@/components/gabinet/calendar/calendar-month-view";
 import { AppointmentDialog } from "@/components/gabinet/calendar/appointment-dialog";
 import { AppointmentCard } from "@/components/gabinet/calendar/appointment-card";
@@ -65,6 +69,7 @@ import {
   useSupabaseGabinetAppointmentPaymentTotals,
 } from "@/hooks/use-supabase-gabinet-appointments";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
+import type { MappedGabinetEmployee } from "@/lib/supabase/mappers/gabinet/employees";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseGabinetTreatmentsList, useSupabaseGabinetAllTreatmentVariants } from "@/hooks/use-supabase-gabinet-treatments";
@@ -82,6 +87,7 @@ import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { formatAppointmentError } from "@/lib/format-action-error";
 import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useActiveLocation } from "@/contexts/gabinet-location-context";
 
 function CalendarSkeleton() {
   return (
@@ -95,14 +101,24 @@ function CalendarSkeleton() {
   );
 }
 
+function CalendarRoute() {
+  const { activeLocationId } = useActiveLocation();
+  return (
+    <PermissionGate
+      feature="gabinet_appointments"
+      action="view"
+      locationId={(activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined}
+      loadingFallback={<CalendarSkeleton />}
+    >
+      <GabinetCalendarPage />
+    </PermissionGate>
+  );
+}
+
 export const Route = createLazyFileRoute(
   "/_app/_auth/dashboard/_layout/gabinet/calendar/",
 )({
-  component: () => (
-    <PermissionGate feature="gabinet_appointments" action="view" loadingFallback={<CalendarSkeleton />}>
-      <GabinetCalendarPage />
-    </PermissionGate>
-  ),
+  component: CalendarRoute,
 });
 
 type ViewMode = "day" | "week" | "month";
@@ -136,12 +152,14 @@ function formatDateStr(d: Date): string {
 function GabinetCalendarPage() {
   const { t, i18n } = useTranslation();
   const { organizationId } = useOrganization();
-  const { allowed: canCreate } = usePermission("gabinet_appointments", "create");
-  const { allowed: canUpdate } = usePermission("gabinet_appointments", "edit");
+  const { activeLocationId, setActiveLocationId } = useActiveLocation();
+  const { allowed: canCreate } = usePermission("gabinet_appointments", "create", (activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined);
+  const { allowed: canUpdate } = usePermission("gabinet_appointments", "edit", (activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined);
   const search = useSearch({ from: "/_app/_auth/dashboard/_layout/gabinet/calendar/" });
   const routeNavigate = useNavigate();
   const nudgeFilter = search.nudge;
   const actionParam = search.action;
+  const initialEmployeeId = search.employeeId;
 
   // Indicate this page has wide content (hides Column 2 on 1024-1400px screens)
   useWideContent(true);
@@ -158,12 +176,11 @@ function GabinetCalendarPage() {
     }
   }, []);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [employeeFilter, setEmployeeFilter] = useState<string>("all");
+  const [employeeFilter, setEmployeeFilter] = useState<string>(initialEmployeeId ?? "all");
   const [treatmentFilter, setTreatmentFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>(
     nudgeFilter === "unconfirmed-today" ? "scheduled" : "all",
   );
-  const [locationFilter, setLocationFilter] = useState<string>("all");
   const [clientSearch, setClientSearch] = useState("");
 
   // Filter dialog
@@ -324,7 +341,7 @@ function GabinetCalendarPage() {
   // Fetch patients from Supabase (flat list, replaces paginated Convex query)
   const { data: patients } = useSupabaseGabinetPatientsList(
     organizationId,
-    { limit: 200 },
+    { limit: 200, activeOnly: true },
   );
   // Fetch treatments from Supabase (flat list, replaces paginated Convex query)
   const { data: treatments } = useSupabaseGabinetTreatmentsList(
@@ -431,7 +448,7 @@ function GabinetCalendarPage() {
   const employeeColorMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const emp of employees ?? []) {
-      if (emp.color) map.set(emp.userId, emp.color);
+      if (emp.color && emp.userId) map.set(emp.userId, emp.color);
     }
     return map;
   }, [employees]);
@@ -509,9 +526,10 @@ function GabinetCalendarPage() {
   // per employee, so we need leaves for every employee on the visible day.
   // Issue #1013.
   const isDayByEmployeeView = viewMode === "day" && employeeFilter === "all";
+  const isWeekByEmployeeView = viewMode === "week" && employeeFilter === "all";
   const { data: allLeavesRaw } = useSupabaseGabinetLeavesList(organizationId, {
     status: "approved",
-    enabled: isDayByEmployeeView,
+    enabled: isDayByEmployeeView || isWeekByEmployeeView,
   });
 
   // Build date -> leave info map for the visible range. A multi-day leave is
@@ -591,7 +609,10 @@ function GabinetCalendarPage() {
       if (a.recurringGroupId) recurringGroupIds.add(a.recurringGroupId);
       // Only payable appointments contribute to the paid/unpaid indicator
       // lookup. Cancelled appointments can't be paid by definition.
-      if (a.status !== "cancelled" && a.treatmentId) appointmentIds.add(a._id);
+      // treatment_id was dropped from gabinet_appointments (migration 00076);
+      // all treatment data lives in the junction table — the old scalar guard
+      // was incorrectly excluding new appointments that have no scalar treatmentId.
+      if (a.status !== "cancelled") appointmentIds.add(a._id);
     }
     return {
       patientIds: Array.from(patientIds),
@@ -708,7 +729,7 @@ function GabinetCalendarPage() {
       for (const a of rawAppointments) {
         if (treatmentFilter !== "all" && a.treatmentId !== treatmentFilter) continue;
         if (statusFilter !== "all" && a.status !== statusFilter) continue;
-        if (locationFilter !== "all" && a.locationId !== locationFilter) continue;
+        if (activeLocationId !== null && a.locationId !== activeLocationId) continue;
         if (searchLower) {
           const name = patientMap.get(a.patientId) ?? "";
           if (!name.toLowerCase().includes(searchLower)) continue;
@@ -760,8 +781,9 @@ function GabinetCalendarPage() {
             kind: "count",
             label: `${pkgPos.position}/${pkgPos.total}`,
             title: t(
-              "gabinet.calendar.indicators.packageVisit",
-              "Wizyta pakietowa",
+              "gabinet.calendar.indicators.packageVisitPosition",
+              "Numer wizyty w pakiecie: {{position}} z {{total}}",
+              { position: pkgPos.position, total: pkgPos.total },
             ),
           });
         } else if (a.isRecurring && a.recurringRule) {
@@ -914,7 +936,7 @@ function GabinetCalendarPage() {
     }
 
     return items;
-  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, variantMap, tagMap, employeeColorMap, eventTypeColorMap, firstAppointmentIds, packagePositions, recurringPositions, appointmentPaymentTotals, creditByAppointmentId, treatmentFilter, statusFilter, locationFilter, clientSearch, t]);
+  }, [rawAppointments, blockedTimeActivities, patientMap, treatmentMap, variantMap, tagMap, employeeColorMap, eventTypeColorMap, firstAppointmentIds, packagePositions, recurringPositions, appointmentPaymentTotals, creditByAppointmentId, treatmentFilter, statusFilter, activeLocationId, clientSearch, t]);
 
   // Collapse blocked-time events that target multiple employees into a single
   // tile for views that don't break the day into per-employee columns
@@ -1040,6 +1062,9 @@ function GabinetCalendarPage() {
       setSellPackageOpen(true);
     } else if (actionParam === "create-appointment") {
       openCreateDialog();
+      if (initialEmployeeId) {
+        setCreateDefaultUserId(initialEmployeeId);
+      }
     } else {
       return;
     }
@@ -1048,7 +1073,7 @@ function GabinetCalendarPage() {
       search: { nudge: nudgeFilter, action: undefined },
       replace: true,
     });
-  }, [actionParam, nudgeFilter, routeNavigate, openCreateDialog]);
+  }, [actionParam, nudgeFilter, routeNavigate, openCreateDialog, initialEmployeeId]);
 
   // Click-to-create handler
   const handleSlotClick = useCallback(
@@ -1229,6 +1254,48 @@ function GabinetCalendarPage() {
             }),
           );
         }
+      } else if (dropData?.type === "date-slot") {
+        // Month view drop: change the date but preserve the appointment's
+        // original time (the slot carries no meaningful time value).
+        const newDate = dropData.date as string;
+
+        const originalAppt = viewAppointments.find(
+          (a) => a._id === appointmentId,
+        );
+        if (!originalAppt) return;
+
+        if (originalAppt.status === "blocked") {
+          toast.error(
+            t(
+              "gabinet.appointments.errors.blockedNotDraggable",
+              "Wydarzeń z Google nie można przesuwać w kalendarzu.",
+            ),
+          );
+          return;
+        }
+
+        if (newDate === originalAppt.date) return;
+
+        try {
+          await updateAppointment({
+            organizationId,
+            appointmentId: appointmentId as Id<"gabinetAppointments">,
+            date: newDate,
+            startTime: originalAppt.startTime,
+            endTime: originalAppt.endTime,
+          });
+          toast.success(
+            t("gabinet.appointments.rescheduled", "Appointment rescheduled"),
+          );
+          void queryClient.invalidateQueries({ queryKey: supabaseKeys.gabinetAppointments.all });
+        } catch (e) {
+          toast.error(
+            formatAppointmentError(e, t, {
+              key: "gabinet.appointments.rescheduleFailed",
+              defaultValue: "Nie udało się przenieść wizyty.",
+            }),
+          );
+        }
       }
     },
     [organizationId, updateAppointment, viewAppointments, queryClient, t, canUpdate],
@@ -1262,16 +1329,14 @@ function GabinetCalendarPage() {
     let count = 0;
     if (treatmentFilter !== "all") count++;
     if (statusFilter !== "all") count++;
-    if (locationFilter !== "all") count++;
     if (clientSearch.trim()) count++;
     return count;
-  }, [treatmentFilter, statusFilter, locationFilter, clientSearch]);
+  }, [treatmentFilter, statusFilter, clientSearch]);
 
   const clearAllFilters = useCallback(() => {
     setEmployeeFilter("all");
     setTreatmentFilter("all");
     setStatusFilter("all");
-    setLocationFilter("all");
     setClientSearch("");
   }, []);
 
@@ -1287,7 +1352,7 @@ function GabinetCalendarPage() {
   function getEmployeeName(emp: {
     firstName?: string;
     lastName?: string;
-    userId: string;
+    userId?: string;
     specialization?: string;
     role: string;
   }) {
@@ -1317,7 +1382,10 @@ function GabinetCalendarPage() {
     // Hide employees flagged as not visible in the calendar (issue #1859).
     // Older rows without the column default to true at the DB level, so
     // anything strictly === false is the only thing to exclude.
-    const list = (employees ?? []).filter((e) => e.showInCalendar !== false);
+    const list = (employees ?? []).filter(
+      (e): e is MappedGabinetEmployee & { userId: string } =>
+        e.showInCalendar !== false && e.userId !== undefined,
+    );
     return list.map((emp) => {
       const name = getEmployeeName(emp);
       const initials = getEmployeeInitials(name);
@@ -1350,6 +1418,61 @@ function GabinetCalendarPage() {
     dayLeaveByEmployee,
     userMap,
   ]);
+
+  // employeeId → dayOfWeek → schedule (for the week-by-employee view)
+  const weekByEmployeeScheduleMap = useMemo(() => {
+    const map = new Map<string, Map<string, { startTime: string; endTime: string; breakStart?: string; breakEnd?: string }>>();
+    if (!isWeekByEmployeeView || !employeeSchedulesRaw) return map;
+    for (const s of employeeSchedulesRaw) {
+      if (!s.isWorking) continue;
+      if (!map.has(s.userId)) map.set(s.userId, new Map());
+      map.get(s.userId)!.set(`${s.dayOfWeek}`, {
+        startTime: s.startTime,
+        endTime: s.endTime,
+        breakStart: s.breakStart,
+        breakEnd: s.breakEnd,
+      });
+    }
+    return map;
+  }, [isWeekByEmployeeView, employeeSchedulesRaw]);
+
+  // employeeId → date → leave window (for the week-by-employee view)
+  const weekByEmployeeLeaveMap = useMemo(() => {
+    const map = new Map<string, Map<string, { startTime?: string; endTime?: string }>>();
+    if (!isWeekByEmployeeView || !allLeavesRaw) return map;
+    for (const leave of allLeavesRaw) {
+      if (leave.endDate < startDate || leave.startDate > endDate) continue;
+      if (!map.has(leave.userId)) map.set(leave.userId, new Map());
+      const dateMap = map.get(leave.userId)!;
+      const from = leave.startDate < startDate ? startDate : leave.startDate;
+      const to = leave.endDate > endDate ? endDate : leave.endDate;
+      const d = new Date(from + "T00:00:00");
+      const e = new Date(to + "T00:00:00");
+      while (d.getTime() <= e.getTime()) {
+        const ds = formatDateStr(d);
+        if (!dateMap.has(ds)) {
+          dateMap.set(ds, { startTime: leave.startTime, endTime: leave.endTime });
+        }
+        d.setDate(d.getDate() + 1);
+      }
+    }
+    return map;
+  }, [isWeekByEmployeeView, allLeavesRaw, startDate, endDate]);
+
+  // Employee list for the week-by-employee view (same filter as dayByEmployeeColumns)
+  const weekByEmployeeColumns = useMemo<WeekByEmployeeColumn[]>(() => {
+    if (!isWeekByEmployeeView) return [];
+    const list = (employees ?? []).filter(
+      (e): e is MappedGabinetEmployee & { userId: string } =>
+        e.showInCalendar !== false && e.userId !== undefined,
+    );
+    return list.map((emp) => {
+      const name = getEmployeeName(emp);
+      return { userId: emp.userId, name, initials: getEmployeeInitials(name) };
+    });
+    // userMap captured by getEmployeeName via closure
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isWeekByEmployeeView, employees, userMap]);
 
   return (
     <DndContext
@@ -1440,7 +1563,7 @@ function GabinetCalendarPage() {
                 </Button>
                 <h2 className="ml-2 truncate text-xs font-semibold">{title}</h2>
               </div>
-              <PermissionGate feature="gabinet_appointments" action="create">
+              <PermissionGate feature="gabinet_appointments" action="create" locationId={(activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined}>
                 <Button
                   size="sm"
                   className="h-7 shrink-0 text-xs md:hidden"
@@ -1495,7 +1618,7 @@ function GabinetCalendarPage() {
 
               {/* Create button — hidden on mobile where it lives next to the
                   date nav (above) to avoid wrapping onto its own row. */}
-              <PermissionGate feature="gabinet_appointments" action="create">
+              <PermissionGate feature="gabinet_appointments" action="create" locationId={(activeLocationId ?? undefined) as Id<"gabinetLocations"> | undefined}>
                 <Button
                   size="sm"
                   className="hidden h-7 text-xs md:inline-flex"
@@ -1578,7 +1701,7 @@ function GabinetCalendarPage() {
                             <Check className="h-3.5 w-3.5 shrink-0" variant="stroke" />
                           )}
                         </button>
-                        {(employees ?? []).map((emp) => {
+                        {(employees ?? []).filter((e): e is MappedGabinetEmployee & { userId: string } => e.userId !== undefined).map((emp) => {
                           const name = getEmployeeName(emp);
                           const initials = getEmployeeInitials(name);
                           const selected = employeeFilter === emp.userId;
@@ -1633,7 +1756,7 @@ function GabinetCalendarPage() {
                     <Users className="h-3.5 w-3.5" variant="stroke" />
                     {t("gabinet.calendar.allEmployees", "Wszyscy pracownicy")}
                   </button>
-                  {(employees ?? []).map((emp) => {
+                  {(employees ?? []).filter((e): e is MappedGabinetEmployee & { userId: string } => e.userId !== undefined).map((emp) => {
                     const name = getEmployeeName(emp);
                     const initials = getEmployeeInitials(name);
                     const selected = employeeFilter === emp.userId;
@@ -1723,7 +1846,7 @@ function GabinetCalendarPage() {
                       <SelectItem value="all">
                         {t("gabinet.calendar.allEmployees", "Wszyscy pracownicy")}
                       </SelectItem>
-                      {(employees ?? []).map((emp) => (
+                      {(employees ?? []).filter((e): e is MappedGabinetEmployee & { userId: string } => e.userId !== undefined).map((emp) => (
                         <SelectItem key={emp._id} value={emp.userId}>
                           {getEmployeeName(emp)}
                         </SelectItem>
@@ -1758,7 +1881,10 @@ function GabinetCalendarPage() {
                 {locations.length > 0 && (
                   <div className="space-y-1.5">
                     <Label>{t("gabinet.locations.title", "Lokalizacja")}</Label>
-                    <Select value={locationFilter} onValueChange={setLocationFilter}>
+                    <Select
+                      value={activeLocationId ?? "all"}
+                      onValueChange={(v) => setActiveLocationId(v === "all" ? null : v)}
+                    >
                       <SelectTrigger>
                         <SelectValue
                           placeholder={t("gabinet.calendar.allLocations", "Wszystkie lokalizacje")}
@@ -1851,7 +1977,22 @@ function GabinetCalendarPage() {
               slotMinutes={slotMinutes}
             />
           )}
-          {viewMode === "week" && (
+          {viewMode === "week" && isWeekByEmployeeView && (
+            <CalendarWeekByEmployeeView
+              weekStart={formatDateStr(getMonday(currentDate))}
+              appointments={viewAppointments}
+              employees={weekByEmployeeColumns}
+              scheduleByEmployee={weekByEmployeeScheduleMap}
+              leaveByEmployeeAndDate={weekByEmployeeLeaveMap}
+              onSlotClick={handleEmployeeSlotClick}
+              onSlotDragSelect={handleEmployeeSlotDragSelect}
+              onAppointmentResize={handleAppointmentResize}
+              onDayHeaderClick={handleDayClick}
+              selectedDate={formatDateStr(currentDate)}
+              slotMinutes={slotMinutes}
+            />
+          )}
+          {viewMode === "week" && !isWeekByEmployeeView && (
             <CalendarWeekView
               weekStart={formatDateStr(getMonday(currentDate))}
               appointments={aggregatedAppointments}
@@ -1871,6 +2012,12 @@ function GabinetCalendarPage() {
               month={currentDate.getMonth()}
               appointments={aggregatedAppointments}
               onDayClick={handleDayClick}
+              onAppointmentClick={(appointmentId) =>
+                routeNavigate({
+                  to: "/_app/_auth/dashboard/_layout/gabinet/appointments/$appointmentId",
+                  params: { appointmentId },
+                })
+              }
               selectedDate={formatDateStr(currentDate)}
               leaveDates={leaveDates}
               paymentDueDates={paymentDueDates}

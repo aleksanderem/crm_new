@@ -15,6 +15,7 @@
  *   • CREATE TYPE ... AS ENUM (...)
  *   • CREATE TABLE [IF NOT EXISTS] <name> ( ... )
  *   • ALTER TABLE [IF EXISTS] <name> ADD COLUMN [IF NOT EXISTS] <col> <type> ...
+ *   • ALTER TABLE [IF EXISTS] <name> DROP COLUMN [IF EXISTS] <col>
  *   • ALTER TABLE [IF EXISTS] <name> ALTER COLUMN <col> DROP NOT NULL
  *
  * SQL column → TypeScript mapping rules:
@@ -25,6 +26,8 @@
  *   NUMERIC             → number
  *   BOOLEAN             → boolean
  *   JSONB               → unknown  (caller casts as needed)
+ *                          Override with inline annotation: -- type:<ts-type>
+ *                          e.g.  JSONB  -- type:string[]  emits string[] instead
  *   TSVECTOR            → (skipped — generated column)
  *   <enum_name>         → string   (union of literal values would be ideal but
  *                                    the enum definitions are complex; string is
@@ -107,6 +110,12 @@ function mapSqlType(rawType) {
  * @returns {Col | null}
  */
 function parseColumnLine(rawLine) {
+  // Extract per-column type override before stripping the comment.
+  // Syntax:  -- type:<ts-type>   e.g.  JSONB  -- type:string[]
+  let typeHint = null;
+  const hintMatch = rawLine.match(/--\s*type:(\S+)/);
+  if (hintMatch) typeHint = hintMatch[1];
+
   const line = rawLine.replace(/--.*$/, "").trim();
   if (!line) return null;
   // Skip table-level constraints
@@ -124,7 +133,7 @@ function parseColumnLine(rawLine) {
 
   if (rest.includes("GENERATED ALWAYS")) return null;
 
-  const tsType = mapSqlType(rawType);
+  const tsType = typeHint ?? mapSqlType(rawType);
   if (tsType === null) return null;
 
   const isPk = rest.includes("PRIMARY KEY");
@@ -334,6 +343,16 @@ function applyMigration(sql) {
         if (newTsType !== null) col.tsType = newTsType;
       }
     }
+
+    const dropColRe = /DROP\s+COLUMN\s+(?:IF\s+EXISTS\s+)?"?(\w+)"?/gi;
+    for (const a of actions.matchAll(dropColRe)) {
+      const colName = a[1];
+      const idx = table.columns.findIndex((c) => c.name === colName);
+      if (idx !== -1) {
+        table.columns.splice(idx, 1);
+        table.relationships = table.relationships.filter((r) => !r.columns.includes(colName));
+      }
+    }
   }
 
   // ─── ALTER TABLE <name> ADD CONSTRAINT <name> FOREIGN KEY (<cols>) REFERENCES <table>(<cols>) ──
@@ -357,6 +376,17 @@ function applyMigration(sql) {
         referencedRelation: refTable,
         referencedColumns: refCols,
       });
+    }
+  }
+
+  // ─── DROP TABLE [IF EXISTS] <name> [, <name> ...] ──
+  // Removes tables that were dropped by a migration so they don't appear in
+  // the generated types.  Handles both single-table and comma-separated forms.
+  const dropTableRe = /DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?([^\n;]+)/gi;
+  for (const m of sql.matchAll(dropTableRe)) {
+    for (const raw of m[1].split(",")) {
+      const tableName = raw.trim().replace(/^"|"$/g, "").split(/\s/)[0];
+      if (tableName) tables.delete(tableName);
     }
   }
 
@@ -587,8 +617,6 @@ const entityAliases = [
   { table: "gabinet_appointments", singular: "GabinetAppointment" },
   { table: "gabinet_leaves", singular: "GabinetLeave" },
   { table: "gabinet_overtime", singular: "GabinetOvertime" },
-  { table: "gabinet_document_templates", singular: "GabinetDocumentTemplate" },
-  { table: "gabinet_documents", singular: "GabinetDocument" },
   { table: "gabinet_treatment_packages", singular: "GabinetTreatmentPackage" },
   { table: "gabinet_package_usage", singular: "GabinetPackageUsage" },
   { table: "gabinet_loyalty_points", singular: "GabinetLoyaltyPoints" },

@@ -1,16 +1,20 @@
-import { action, internalMutation } from "../_generated/server";
+import { action, internalMutation, internalQuery } from "../_generated/server";
+import type { ActionCtx } from "../_generated/server";
 import { v } from "convex/values";
-import { Id } from "../_generated/dataModel";
+import { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import type { SupabaseDb } from "../_helpers/supabaseDb";
 import { logError } from "../_helpers/logged";
 import { logActivity } from "../_helpers/activities";
 import { logAudit } from "../auditLog";
+import { createNotificationDirect } from "../notifications";
 import { gabinetLeaveTypeValidator, gabinetLeaveStatusValidator } from "../schema";
 import { getAvailableSlotsSupabase } from "./_availability_supabase";
 import type {
   GabinetEmployeeScheduleRow,
   GabinetLeaveRow,
+  GabinetLeaveTypeRow,
   GabinetWorkingHoursRow,
 } from "../_helpers/supabaseRows";
 
@@ -19,7 +23,7 @@ import type {
 // --- Working Hours (clinic-level defaults) ---
 
 export const getWorkingHours = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<GabinetWorkingHoursRow[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
@@ -35,7 +39,7 @@ export const getWorkingHours = action({
 
 export const setWorkingHours = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     dayOfWeek: v.number(),
     startTime: v.string(),
     endTime: v.string(),
@@ -58,11 +62,16 @@ export const setWorkingHours = action({
     const now = Date.now();
     const db = createSupabaseDb();
 
-    // Check if entry already exists for this org+day
-    const existing = await db.query("gabinetWorkingHours")
+    // Check if entry already exists for this org+day+locationId
+    const whQuery = db.query("gabinetWorkingHours")
       .eq("organizationId", String(args.organizationId))
-      .eq("dayOfWeek", args.dayOfWeek)
-      .first();
+      .eq("dayOfWeek", args.dayOfWeek);
+    if (args.locationId) {
+      whQuery.eq("locationId", args.locationId);
+    } else {
+      whQuery.isNull("locationId");
+    }
+    const existing = await whQuery.first();
 
     let whId: string;
     if (existing) {
@@ -110,7 +119,7 @@ export const setWorkingHours = action({
 
 export const bulkSetWorkingHours = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     hours: v.array(v.object({
       dayOfWeek: v.number(),
       startTime: v.string(),
@@ -136,10 +145,15 @@ export const bulkSetWorkingHours = action({
     const db = createSupabaseDb();
 
     for (const h of args.hours) {
-      const existing = await db.query("gabinetWorkingHours")
+      const hQuery = db.query("gabinetWorkingHours")
         .eq("organizationId", String(args.organizationId))
-        .eq("dayOfWeek", h.dayOfWeek)
-        .first();
+        .eq("dayOfWeek", h.dayOfWeek);
+      if (h.locationId) {
+        hQuery.eq("locationId", h.locationId);
+      } else {
+        hQuery.isNull("locationId");
+      }
+      const existing = await hQuery.first();
 
       if (existing) {
         await db.patch("gabinetWorkingHours", existing._id as string, {
@@ -184,7 +198,7 @@ export const bulkSetWorkingHours = action({
 
 export const getEmployeeSchedule = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetEmployeeScheduleRow[]> => {
@@ -203,7 +217,7 @@ export const getEmployeeSchedule = action({
 
 export const setEmployeeSchedule = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     dayOfWeek: v.number(),
     startTime: v.string(),
@@ -287,7 +301,7 @@ export const setEmployeeSchedule = action({
 
 export const bulkSetEmployeeSchedule = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     hours: v.array(v.object({
       dayOfWeek: v.number(),
@@ -374,7 +388,7 @@ export const bulkSetEmployeeSchedule = action({
  */
 export const saveSchedulePeriod = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     effectiveFrom: v.optional(v.string()),
     effectiveTo: v.optional(v.string()),
@@ -462,7 +476,7 @@ export const saveSchedulePeriod = action({
  */
 export const removeSchedulePeriod = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     effectiveFrom: v.optional(v.string()),
   },
@@ -507,7 +521,7 @@ export const removeSchedulePeriod = action({
 });
 
 export const listEmployeeSchedules = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<GabinetEmployeeScheduleRow[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
@@ -525,7 +539,7 @@ export const listEmployeeSchedules = action({
 
 export const listLeaves = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     status: v.optional(gabinetLeaveStatusValidator),
   },
   handler: async (ctx, args): Promise<GabinetLeaveRow[]> => {
@@ -547,9 +561,36 @@ export const listLeaves = action({
   },
 });
 
+async function resolveInitialLeaveStatus(
+  db: SupabaseDb,
+  leaveTypeId: string | undefined,
+): Promise<"pending" | "approved"> {
+  if (!leaveTypeId) return "pending";
+  const leaveType = (await db.get("gabinetLeaveTypes", leaveTypeId)) as GabinetLeaveTypeRow | null;
+  return leaveType && !leaveType.requiresApproval ? "approved" : "pending";
+}
+
+async function autoApproveLeaveIfNeeded(
+  db: SupabaseDb,
+  initialStatus: "pending" | "approved",
+  leaveId: string,
+  organizationId: string,
+  approvedBy: string,
+  now: number,
+): Promise<void> {
+  if (initialStatus !== "approved") return;
+  const { error: rpcError } = await db.raw().rpc("approve_gabinet_leave", {
+    p_leave_id:    leaveId,
+    p_org_id:      organizationId,
+    p_approved_by: approvedBy,
+    p_now:         now,
+  });
+  if (rpcError) throw new Error(`Auto-approve RPC failed: ${rpcError.message}`);
+}
+
 export const createLeave = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     type: gabinetLeaveTypeValidator,
     leaveTypeId: v.optional(v.string()),
@@ -574,6 +615,8 @@ export const createLeave = action({
     const now = Date.now();
     const db = createSupabaseDb();
 
+    const initialStatus = await resolveInitialLeaveStatus(db, args.leaveTypeId);
+
     const leaveId = await db.insert("gabinetLeaves", {
       organizationId: String(args.organizationId),
       userId: args.userId,
@@ -590,11 +633,15 @@ export const createLeave = action({
       updatedAt: now,
     });
 
+    // Auto-approve atomically when requiresApproval=false so balance is
+    // updated in the same Postgres transaction as the status change.
+    await autoApproveLeaveIfNeeded(db, initialStatus, leaveId, String(args.organizationId), String(authResult.userId), now);
+
     try {
       await ctx.runMutation(internal.gabinet.scheduling._createLeaveSideEffects, {
         organizationId: args.organizationId,
         leaveId,
-        userId: args.userId,
+        userId: args.userId as Id<"users">,
         type: args.type,
         startDate: args.startDate,
         endDate: args.endDate,
@@ -618,9 +665,239 @@ export const createLeave = action({
   },
 });
 
+// Self-service: employee submits a leave request for themselves.
+// userId is derived from the authenticated session — not accepted from the client.
+export const requestLeave = action({
+  args: {
+    organizationId: v.string(),
+    type: gabinetLeaveTypeValidator,
+    leaveTypeId: v.optional(v.string()),
+    startDate: v.string(),
+    endDate: v.string(),
+    startTime: v.optional(v.string()),
+    endTime: v.optional(v.string()),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const authResult = await ctx.runAction(
+        internal._helpers.authAction.verifyOrgAccess,
+        { organizationId: args.organizationId },
+      );
+      await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+      const userId = authResult.userId;
+      const now = Date.now();
+      const db = createSupabaseDb();
+
+      const employeeProfile = await db
+        .query("gabinetEmployees")
+        .eq("organizationId", String(args.organizationId))
+        .eq("userId", userId)
+        .eq("isActive", true)
+        .collect();
+      if (employeeProfile.length === 0) {
+        throw new Error("Brak profilu pracownika. Tylko pracownicy z aktywnym profilem mogą składać wnioski urlopowe.");
+      }
+
+      const initialStatus = await resolveInitialLeaveStatus(db, args.leaveTypeId);
+
+      const leaveId = await db.insert("gabinetLeaves", {
+        organizationId: String(args.organizationId),
+        userId,
+        type: args.type,
+        leaveTypeId: args.leaveTypeId ?? null,
+        startDate: args.startDate,
+        endDate: args.endDate,
+        startTime: args.startTime ?? null,
+        endTime: args.endTime ?? null,
+        status: "pending",
+        reason: args.reason ?? null,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      // Auto-approve atomically when requiresApproval=false so balance is
+      // updated in the same Postgres transaction as the status change.
+      await autoApproveLeaveIfNeeded(db, initialStatus, leaveId, String(args.organizationId), userId, now);
+
+      try {
+        await ctx.runMutation(internal.gabinet.scheduling._createLeaveSideEffects, {
+          organizationId: args.organizationId,
+          leaveId,
+          userId,
+          type: args.type,
+          startDate: args.startDate,
+          endDate: args.endDate,
+          performedBy: userId,
+          actorLabel: authResult.userName ?? authResult.userEmail,
+        });
+      } catch (e) {
+        console.error("[scheduling.requestLeave] Side effects FAILED:", e);
+      }
+
+      return leaveId;
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.scheduling",
+        fnName: "requestLeave",
+        argsJson: JSON.stringify(args),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
+  },
+});
+
+// Self-service: employee withdraws their own pending leave request.
+// Only the leave owner can withdraw, and only while the status is "pending".
+// Reuses the existing delete_gabinet_leave RPC — for pending leaves the RPC
+// skips balance rollback (v_prev_status != 'approved'), so no migration is needed.
+export const withdrawLeave = action({
+  args: {
+    organizationId: v.string(),
+    leaveId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const authResult = await ctx.runAction(
+        internal._helpers.authAction.verifyOrgAccess,
+        { organizationId: args.organizationId },
+      );
+      await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
+      const userId = authResult.userId;
+      const db = createSupabaseDb();
+
+      const leave = await db.get("gabinetLeaves", args.leaveId);
+      if (!leave || String(leave.organizationId) !== String(args.organizationId)) {
+        throw new Error("Leave not found");
+      }
+      if (String(leave.userId) !== userId) {
+        throw new Error("Permission denied");
+      }
+      if (leave.status !== "pending") {
+        throw new Error("Only pending leave requests can be withdrawn");
+      }
+
+      const { error: rpcError } = await db.raw().rpc("delete_gabinet_leave", {
+        p_leave_id: args.leaveId,
+        p_org_id:   String(args.organizationId),
+        p_now:      Date.now(),
+      });
+      if (rpcError) throw new Error(`withdrawLeave RPC failed: ${rpcError.message}`);
+
+      try {
+        await ctx.runMutation(internal.gabinet.scheduling._leaveSideEffects, {
+          organizationId: args.organizationId,
+          leaveId: args.leaveId,
+          userId,
+          action: "deleted",
+          description: `Leave request withdrawn by employee`,
+          performedBy: userId,
+          actorLabel: authResult.userName ?? authResult.userEmail,
+          auditAction: "leave_withdrawn",
+        });
+      } catch (e) {
+        console.error("[scheduling.withdrawLeave] Side effects FAILED:", e);
+      }
+    } catch (err) {
+      await logError(ctx, err, {
+        scope: "gabinet.scheduling",
+        fnName: "withdrawLeave",
+        argsJson: JSON.stringify(args),
+        organizationId: args.organizationId,
+      });
+      throw err;
+    }
+  },
+});
+
+// Fetches the gabinet membership and location assignments needed to evaluate
+// manager-scoped leave approval. Convex-only tables — must run in a query ctx.
+export const _leaveApprovalData = internalQuery({
+  args: {
+    organizationId: v.string(),
+    approverUserId: v.id("users"),
+    employeeUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const [approverMembership, approverLocations, employeeLocations] = await Promise.all([
+      ctx.db
+        .query("gabinetMemberships")
+        .withIndex("by_orgAndUser", (q) =>
+          q.eq("organizationId", args.organizationId).eq("userId", args.approverUserId),
+        )
+        .unique(),
+      ctx.db
+        .query("gabinetLocationMemberships")
+        .withIndex("by_orgAndUser", (q) =>
+          q.eq("organizationId", args.organizationId).eq("userId", args.approverUserId),
+        )
+        .collect(),
+      ctx.db
+        .query("gabinetLocationMemberships")
+        .withIndex("by_orgAndUser", (q) =>
+          q.eq("organizationId", args.organizationId).eq("userId", args.employeeUserId),
+        )
+        .collect(),
+    ]);
+    return { approverMembership, approverLocations, employeeLocations };
+  },
+});
+
+// Returns true if the acting user may approve or reject the given employee's leave.
+// Priority order:
+//   1. org owner / org admin → always allowed
+//   2. gabinet admin (global gabinetRole) → always allowed
+//   3. gabinet manager: allowed only when there is ≥1 shared location where the
+//      approver holds the manager role (global or per-location override) AND the
+//      employee also has an assignment
+//   4. everything else → denied
+async function canApproveOrRejectLeave(
+  ctx: ActionCtx,
+  organizationId: string,
+  orgRole: string,
+  approverUserId: Id<"users">,
+  employeeUserId: Id<"users">,
+): Promise<boolean> {
+  if (orgRole === "owner" || orgRole === "admin") return true;
+
+  const { approverMembership, approverLocations, employeeLocations } =
+    await ctx.runQuery(internal.gabinet.scheduling._leaveApprovalData, {
+      organizationId,
+      approverUserId,
+      employeeUserId,
+    });
+
+  if (!approverMembership?.isActive) return false;
+
+  const globalRole = approverMembership.gabinetRole as string;
+
+  if (globalRole === "admin") return true;
+
+  // Not a manager in any capacity → deny immediately
+  if (globalRole !== "manager" && !approverLocations.some((lm: Doc<"gabinetLocationMemberships">) => lm.role === "manager")) {
+    return false;
+  }
+
+  // Employee must have at least one location assignment for shared-location check
+  if (employeeLocations.length === 0) return false;
+
+  const employeeLocationIds = new Set(employeeLocations.map((lm: Doc<"gabinetLocationMemberships">) => String(lm.locationId)));
+
+  for (const approverLoc of approverLocations) {
+    const effectiveRole = (approverLoc.role as string | undefined) ?? globalRole;
+    if (effectiveRole === "manager" && employeeLocationIds.has(String(approverLoc.locationId))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export const approveLeave = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -629,11 +906,6 @@ export const approveLeave = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runAction(
-      internal._helpers.authAction.checkPermission,
-      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
-    ) as { allowed: boolean; scope: string };
-    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     const db = createSupabaseDb();
 
@@ -642,18 +914,30 @@ export const approveLeave = action({
       throw new Error("Leave not found");
     }
 
-    await db.patch("gabinetLeaves", args.leaveId, {
-      status: "approved",
-      approvedBy: authResult.userId,
-      approvedAt: now,
-      updatedAt: now,
+    const allowed = await canApproveOrRejectLeave(
+      ctx,
+      args.organizationId,
+      authResult.role,
+      authResult.userId,
+      leave.userId as Id<"users">,
+    );
+    if (!allowed) throw new Error("Permission denied");
+
+    // Atomic: approve status + balance increment happen in one Postgres
+    // transaction via RPC (issue #4771 — two separate patches were non-atomic).
+    const { error: rpcError } = await db.raw().rpc("approve_gabinet_leave", {
+      p_leave_id:    args.leaveId,
+      p_org_id:      String(args.organizationId),
+      p_approved_by: String(authResult.userId),
+      p_now:         now,
     });
+    if (rpcError) throw new Error(`approveLeave RPC failed: ${rpcError.message}`);
 
     try {
       await ctx.runMutation(internal.gabinet.scheduling._leaveSideEffects, {
         organizationId: args.organizationId,
         leaveId: args.leaveId,
-        userId: leave.userId as string,
+        userId: leave.userId as Id<"users">,
         action: "status_changed",
         description: `Leave request approved`,
         performedBy: String(authResult.userId),
@@ -663,42 +947,12 @@ export const approveLeave = action({
     } catch (e) {
       console.error("[scheduling.approveLeave] Side effects FAILED:", e);
     }
-
-    // Update leave balance if leaveTypeId is set
-    if (leave.leaveTypeId) {
-      const startD = new Date(leave.startDate as string);
-      const endD = new Date(leave.endDate as string);
-      const days = Math.max(1, Math.ceil((endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-      const year = startD.getFullYear();
-
-      // Find employee record from Supabase
-      const employee = await db.query("gabinetEmployees")
-        .eq("organizationId", String(args.organizationId))
-        .eq("userId", leave.userId as string)
-        .first();
-
-      if (employee) {
-        const balance = await db.query("gabinetLeaveBalances")
-          .eq("organizationId", String(args.organizationId))
-          .eq("employeeId", employee._id as string)
-          .eq("leaveTypeId", leave.leaveTypeId as string)
-          .eq("year", year)
-          .first();
-
-        if (balance) {
-          await db.patch("gabinetLeaveBalances", balance._id as string, {
-            usedDays: (balance.usedDays as number) + days,
-            updatedAt: now,
-          });
-        }
-      }
-    }
   },
 });
 
 export const rejectLeave = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -707,11 +961,6 @@ export const rejectLeave = action({
       { organizationId: args.organizationId },
     );
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-    const perm = await ctx.runAction(
-      internal._helpers.authAction.checkPermission,
-      { organizationId: args.organizationId, feature: "gabinet_settings", action: "edit" },
-    ) as { allowed: boolean; scope: string };
-    if (!perm.allowed) throw new Error("Permission denied");
     const now = Date.now();
     const db = createSupabaseDb();
 
@@ -720,18 +969,30 @@ export const rejectLeave = action({
       throw new Error("Leave not found");
     }
 
-    await db.patch("gabinetLeaves", args.leaveId, {
-      status: "rejected",
-      approvedBy: authResult.userId,
-      approvedAt: now,
-      updatedAt: now,
+    const allowed = await canApproveOrRejectLeave(
+      ctx,
+      args.organizationId,
+      authResult.role,
+      authResult.userId,
+      leave.userId as Id<"users">,
+    );
+    if (!allowed) throw new Error("Permission denied");
+
+    // Atomic: reject status + balance rollback (if previously approved) happen
+    // in one Postgres transaction via RPC (issue #4782 — bare patch was non-atomic).
+    const { error: rpcError } = await db.raw().rpc("reject_gabinet_leave", {
+      p_leave_id:    args.leaveId,
+      p_org_id:      String(args.organizationId),
+      p_rejected_by: String(authResult.userId),
+      p_now:         now,
     });
+    if (rpcError) throw new Error(`rejectLeave RPC failed: ${rpcError.message}`);
 
     try {
       await ctx.runMutation(internal.gabinet.scheduling._leaveSideEffects, {
         organizationId: args.organizationId,
         leaveId: args.leaveId,
-        userId: leave.userId as string,
+        userId: leave.userId as Id<"users">,
         action: "status_changed",
         description: `Leave request rejected`,
         performedBy: String(authResult.userId),
@@ -746,7 +1007,7 @@ export const rejectLeave = action({
 
 export const deleteLeave = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -762,47 +1023,26 @@ export const deleteLeave = action({
     if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
 
+    // Capture leave metadata before deletion for the side-effects call below.
     const leave = await db.get("gabinetLeaves", args.leaveId);
     if (!leave || String(leave.organizationId) !== String(args.organizationId)) {
       throw new Error("Leave not found");
     }
 
-    // If the leave was approved and had a leave type, reverse the balance deduction
-    if (leave.status === "approved" && leave.leaveTypeId) {
-      const startD = new Date(leave.startDate as string);
-      const endD = new Date(leave.endDate as string);
-      const days = Math.max(1, Math.ceil((endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-      const year = startD.getFullYear();
-
-      const employee = await db.query("gabinetEmployees")
-        .eq("organizationId", String(args.organizationId))
-        .eq("userId", leave.userId as string)
-        .first();
-
-      if (employee) {
-        const balance = await db.query("gabinetLeaveBalances")
-          .eq("organizationId", String(args.organizationId))
-          .eq("employeeId", employee._id as string)
-          .eq("leaveTypeId", leave.leaveTypeId as string)
-          .eq("year", year)
-          .first();
-
-        if (balance) {
-          await db.patch("gabinetLeaveBalances", balance._id as string, {
-            usedDays: Math.max(0, (balance.usedDays as number) - days),
-            updatedAt: Date.now(),
-          });
-        }
-      }
-    }
-
-    await db.delete("gabinetLeaves", args.leaveId);
+    // Atomic: balance rollback (if approved) + delete happen in one Postgres
+    // transaction via RPC (issue #4783 — two separate patches were non-atomic).
+    const { error: rpcError } = await db.raw().rpc("delete_gabinet_leave", {
+      p_leave_id: args.leaveId,
+      p_org_id:   String(args.organizationId),
+      p_now:      Date.now(),
+    });
+    if (rpcError) throw new Error(`deleteLeave RPC failed: ${rpcError.message}`);
 
     try {
       await ctx.runMutation(internal.gabinet.scheduling._leaveSideEffects, {
         organizationId: args.organizationId,
         leaveId: args.leaveId,
-        userId: leave.userId as string,
+        userId: leave.userId as Id<"users">,
         action: "deleted",
         description: `Leave request deleted`,
         performedBy: String(authResult.userId),
@@ -816,7 +1056,7 @@ export const deleteLeave = action({
 
 export const getLeavesByDateRange = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     startDate: v.string(),
     endDate: v.string(),
   },
@@ -834,8 +1074,8 @@ export const getLeavesByDateRange = action({
     const leaves = (await db
       .query("gabinetLeaves")
       .eq("organizationId", String(args.organizationId))
-      .gte("startDate", args.startDate)
       .lte("startDate", args.endDate)
+      .gte("endDate", args.startDate)
       .collect()) as GabinetLeaveRow[];
 
     return leaves.filter((l) => l.status === "approved");
@@ -846,7 +1086,7 @@ export const getLeavesByDateRange = action({
 
 export const removeEmployeeSchedule = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     scheduleId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -887,7 +1127,7 @@ export const removeEmployeeSchedule = action({
 
 export const findNextAvailableSlot = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
     durationMinutes: v.number(),
     fromDate: v.optional(v.string()), // YYYY-MM-DD, defaults to today
@@ -948,7 +1188,7 @@ export const findNextAvailableSlot = action({
 
 export const _workingHoursSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     workingHoursId: v.string(),
     dayOfWeek: v.number(),
     performedBy: v.string(),
@@ -956,14 +1196,14 @@ export const _workingHoursSideEffects = internalMutation({
   },
   handler: async (ctx, args) => {
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetWorkingHours",
       entityId: args.workingHoursId,
       action: "updated",
       description: `Updated working hours for ${days[args.dayOfWeek] ?? `day ${args.dayOfWeek}`}`,
       metadata: { dayOfWeek: args.dayOfWeek },
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -971,18 +1211,18 @@ export const _workingHoursSideEffects = internalMutation({
 
 export const _bulkWorkingHoursSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetWorkingHours",
       entityId: String(args.organizationId),
       action: "updated",
       description: `Updated organization working hours`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -990,21 +1230,21 @@ export const _bulkWorkingHoursSideEffects = internalMutation({
 
 export const _employeeScheduleSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     scheduleId: v.string(),
     userId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetEmployeeSchedule",
       entityId: args.scheduleId,
       action: "updated",
       description: `Updated employee schedule`,
       metadata: { userId: args.userId },
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -1012,20 +1252,20 @@ export const _employeeScheduleSideEffects = internalMutation({
 
 export const _bulkEmployeeScheduleSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetEmployeeSchedule",
       entityId: args.userId,
       action: "updated",
       description: `Updated employee weekly schedule`,
       metadata: { userId: args.userId },
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -1033,14 +1273,14 @@ export const _bulkEmployeeScheduleSideEffects = internalMutation({
 
 export const _saveSchedulePeriodSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     effectiveFrom: v.optional(v.string()),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetEmployeeSchedule",
       entityId: args.userId,
@@ -1049,7 +1289,7 @@ export const _saveSchedulePeriodSideEffects = internalMutation({
         ? `Saved schedule period from ${args.effectiveFrom}`
         : `Saved default schedule period`,
       metadata: { userId: args.userId, effectiveFrom: args.effectiveFrom },
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -1057,14 +1297,14 @@ export const _saveSchedulePeriodSideEffects = internalMutation({
 
 export const _removeSchedulePeriodSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.string(),
     effectiveFrom: v.optional(v.string()),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetEmployeeSchedule",
       entityId: args.userId,
@@ -1073,7 +1313,7 @@ export const _removeSchedulePeriodSideEffects = internalMutation({
         ? `Removed schedule period from ${args.effectiveFrom}`
         : `Removed default schedule period`,
       metadata: { userId: args.userId, effectiveFrom: args.effectiveFrom },
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -1081,9 +1321,9 @@ export const _removeSchedulePeriodSideEffects = internalMutation({
 
 export const _createLeaveSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveId: v.string(),
-    userId: v.string(),
+    userId: v.id("users"),
     type: v.string(),
     startDate: v.string(),
     endDate: v.string(),
@@ -1091,24 +1331,98 @@ export const _createLeaveSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetLeave",
       entityId: args.userId,
       action: "created",
       description: `Leave request created (${args.type}: ${args.startDate} – ${args.endDate})`,
       metadata: { leaveId: args.leaveId, type: args.type, startDate: args.startDate, endDate: args.endDate },
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
+
+    // Notify managers who share a location with the requesting employee.
+    try {
+      const [requesterLocations, orgMemberships, allOrgLocations] = await Promise.all([
+        ctx.db
+          .query("gabinetLocationMemberships")
+          .withIndex("by_orgAndUser", (q) =>
+            q.eq("organizationId", args.organizationId).eq("userId", args.userId)
+          )
+          .collect(),
+        ctx.db
+          .query("gabinetMemberships")
+          .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+          .collect(),
+        ctx.db
+          .query("gabinetLocationMemberships")
+          .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+          .collect(),
+      ]);
+
+      if (requesterLocations.length > 0) {
+        const requesterLocationIds = new Set(requesterLocations.map((l) => String(l.locationId)));
+
+        // Build a map of userId → global gabinet role for active members
+        const globalRoleMap = new Map(
+          orgMemberships
+            .filter((m) => m.isActive)
+            .map((m) => [String(m.userId), m.gabinetRole])
+        );
+
+        const managerUserIds = new Set<Id<"users">>();
+        for (const loc of allOrgLocations) {
+          if (String(loc.userId) === args.userId) continue;
+          if (!requesterLocationIds.has(String(loc.locationId))) continue;
+
+          const globalRole = globalRoleMap.get(String(loc.userId));
+          if (!globalRole) continue; // not an active member
+
+          // Location-level role override takes priority over the global role
+          const effectiveRole = loc.role ?? globalRole;
+          if (effectiveRole === "manager" || effectiveRole === "admin") {
+            managerUserIds.add(loc.userId);
+          }
+        }
+
+        const requesterName = args.actorLabel ?? "An employee";
+        for (const managerId of managerUserIds) {
+          await createNotificationDirect(ctx, {
+            organizationId: args.organizationId,
+            userId: managerId,
+            type: "leave_request",
+            title: "New leave request",
+            message: `${requesterName} submitted a leave request (${args.type}: ${args.startDate} – ${args.endDate}).`,
+          });
+        }
+      } else {
+        // Fallback: employee has no location assignments — notify active gabinet managers/admins.
+        const requesterName = args.actorLabel ?? "An employee";
+        for (const membership of orgMemberships) {
+          if (!membership.isActive) continue;
+          if (membership.gabinetRole !== "manager" && membership.gabinetRole !== "admin") continue;
+          if (String(membership.userId) === args.userId) continue;
+          await createNotificationDirect(ctx, {
+            organizationId: args.organizationId,
+            userId: membership.userId,
+            type: "leave_request",
+            title: "New leave request",
+            message: `${requesterName} submitted a leave request (${args.type}: ${args.startDate} – ${args.endDate}).`,
+          });
+        }
+      }
+    } catch (e) {
+      console.error("[scheduling._createLeaveSideEffects] Manager notifications FAILED:", e);
+    }
   },
 });
 
 export const _leaveSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveId: v.string(),
-    userId: v.string(),
+    userId: v.id("users"),
     action: v.union(v.literal("status_changed"), v.literal("deleted")),
     description: v.string(),
     performedBy: v.string(),
@@ -1116,25 +1430,36 @@ export const _leaveSideEffects = internalMutation({
     auditAction: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetLeave",
       entityId: args.userId,
       action: args.action,
       description: args.description,
       metadata: { leaveId: args.leaveId },
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
 
     if (args.auditAction) {
       await logAudit(ctx, {
         organizationId: args.organizationId,
-        userId: args.performedBy as Id<"users">,
+        userId: args.performedBy,
         action: args.auditAction,
         entityType: "gabinetLeave",
         entityId: args.leaveId,
         details: args.description,
+      });
+    }
+
+    if (args.action === "status_changed" && args.userId !== args.performedBy) {
+      const actorSuffix = args.actorLabel ? ` by ${args.actorLabel}` : "";
+      await createNotificationDirect(ctx, {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        type: "leave_decision",
+        title: args.description,
+        message: `${args.description}${actorSuffix}.`,
       });
     }
   },

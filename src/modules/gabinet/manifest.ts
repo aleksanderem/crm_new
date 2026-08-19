@@ -55,6 +55,7 @@ export const gabinetManifest: ModuleManifest = {
     { labelKey: "nav.gabinet.packages", href: "/dashboard/gabinet/packages", icon: Gift },
     { labelKey: "nav.products", href: "/dashboard/products", icon: Package, crossModule: true },
     { labelKey: "nav.gabinet.employees", href: "/dashboard/gabinet/employees", icon: UserCog },
+    { labelKey: "nav.gabinet.myLeaves", href: "/dashboard/gabinet/my-leaves", icon: CalendarCheck },
     { labelKey: "nav.gabinet.documents", href: "/dashboard/gabinet/documents", icon: ClipboardList },
     { labelKey: "nav.gabinet.deliveries", href: "/dashboard/gabinet/deliveries", icon: TruckIcon },
     { labelKey: "nav.gabinet.cash", href: "/dashboard/gabinet/cash", icon: DollarSign },

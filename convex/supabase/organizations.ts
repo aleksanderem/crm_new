@@ -179,6 +179,88 @@ export const deleteTeamMembershipFromSupabase = internalAction({
   },
 });
 
+export const writeProductSubscriptionToSupabase = internalAction({
+  args: {
+    subscriptionId: v.string(),
+    organizationId: v.string(),
+    productId: v.string(),
+    status: v.string(),
+    cancelAtPeriodEnd: v.boolean(),
+    source: v.optional(v.string()),
+    grantedByUserId: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  },
+  returns: v.object({ success: v.boolean(), id: v.string() }),
+  handler: async (ctx, args) => {
+    const client = createServiceRoleClient();
+
+    // Ensure org row exists in Supabase — the create action writes it
+    // synchronously before scheduled actions run, but defend against races.
+    const { data: existingOrg } = await client
+      .from("organizations")
+      .select("id")
+      .eq("id", args.organizationId)
+      .maybeSingle();
+    if (!existingOrg) {
+      const org = await ctx.runQuery(internal.supabase.backfill._getOrganization, {
+        organizationId: args.organizationId,
+      });
+      if (org) {
+        await client.from("organizations").upsert(
+          {
+            id: String(org._id),
+            name: org.name,
+            slug: org.slug,
+            owner_id: String(org.ownerId),
+            logo: org.logo ?? null,
+            website: org.website ?? null,
+            created_at: org.createdAt ?? Date.now(),
+            updated_at: org.updatedAt ?? Date.now(),
+          },
+          { onConflict: "id" },
+        );
+      }
+    }
+
+    // granted_by_user_id is an optional FK (ON DELETE SET NULL). Skip it if the
+    // user row isn't in Supabase yet to avoid a FK violation.
+    let grantedByUserIdForRow: string | null = args.grantedByUserId ?? null;
+    if (grantedByUserIdForRow) {
+      const { data: existingUser } = await client
+        .from("users")
+        .select("id")
+        .eq("id", grantedByUserIdForRow)
+        .maybeSingle();
+      if (!existingUser) {
+        grantedByUserIdForRow = null;
+      }
+    }
+
+    const row = {
+      id: args.subscriptionId,
+      organization_id: args.organizationId,
+      product_id: args.productId,
+      status: args.status,
+      cancel_at_period_end: args.cancelAtPeriodEnd,
+      source: args.source ?? null,
+      granted_by_user_id: grantedByUserIdForRow,
+      created_at: args.createdAt,
+      updated_at: args.updatedAt,
+    };
+
+    const data = await upsertWithFkRetry(client, "product_subscriptions", row).catch(
+      (err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`supabaseDb.insert(product_subscriptions): ${msg}`);
+      },
+    );
+
+    console.info(`ProductSubscription written to Supabase id=${data.id}`);
+    return { success: true, id: data.id };
+  },
+});
+
 export const writeTeamMembershipToSupabase = internalAction({
   args: {
     membershipId: v.string(),
@@ -192,11 +274,9 @@ export const writeTeamMembershipToSupabase = internalAction({
   handler: async (ctx, args) => {
     const client = createServiceRoleClient();
 
-    // Self-heal: writeUserToSupabase, writeOrganizationToSupabase, and
-    // writeTeamMembershipToSupabase are all scheduled with runAfter(0) from
-    // org.create / completeOnboarding / invitations._acceptInternal. If this
-    // action fires first, either FK may not exist yet. Ensure both parent rows
-    // are present before attempting the team_memberships upsert.
+    // Self-heal: the user and organization rows may not yet exist in Supabase
+    // (e.g. if org creation and membership creation race, or during backfill).
+    // Ensure both FK parent rows are present before the team_memberships upsert.
     const { data: existingUser } = await client
       .from("users")
       .select("id")

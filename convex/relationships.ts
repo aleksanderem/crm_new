@@ -3,13 +3,12 @@ import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 import { v } from "convex/values";
 import { logActivity } from "./_helpers/activities";
-import { Id } from "./_generated/dataModel";
 
 // Dual-write refs removed — Supabase is now primary for relationship writes
 
 export const getForSources = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     sourceType: v.string(),
     sourceIds: v.array(v.string()),
   },
@@ -96,7 +95,7 @@ export const getForSources = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     sourceType: v.string(),
     sourceId: v.string(),
     targetType: v.string(),
@@ -163,7 +162,7 @@ export const create = action({
 
 export const _createSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     sourceType: v.string(),
     sourceId: v.string(),
     targetType: v.string(),
@@ -172,14 +171,14 @@ export const _createSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: args.sourceType,
       entityId: args.sourceId,
       action: "relationship_added",
       description: `Added relationship to ${args.targetType} entity`,
       metadata: { targetType: args.targetType, targetId: args.targetId },
-      performedBy: args.createdBy as Id<"users">,
+      performedBy: args.createdBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -187,7 +186,7 @@ export const _createSideEffects = internalMutation({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     relationshipId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -226,7 +225,7 @@ export const remove = action({
 
 export const _removeSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     sourceType: v.string(),
     sourceId: v.string(),
     targetType: v.string(),
@@ -235,14 +234,14 @@ export const _removeSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: args.sourceType,
       entityId: args.sourceId,
       action: "relationship_removed",
       description: `Removed relationship to ${args.targetType} entity`,
       metadata: { targetType: args.targetType, targetId: args.targetId },
-      performedBy: args.deletedBy as Id<"users">,
+      performedBy: args.deletedBy,
       actorLabel: args.actorLabel,
     });
   },

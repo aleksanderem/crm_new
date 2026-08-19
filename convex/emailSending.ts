@@ -92,7 +92,7 @@ function buildHtml(
 export const getTemplateAndLayout = internalQuery({
   args: {
     templateId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
@@ -116,7 +116,7 @@ export const sendTemplateEmail = internalAction({
   args: {
     logId: v.string(),
     templateId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     recipientEmail: v.string(),
     recipientName: v.optional(v.string()),
     /** JSON string: Record<string, string> of variable key → value */

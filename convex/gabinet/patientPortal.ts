@@ -59,10 +59,10 @@ function appendPlateNotes(existing: string | undefined, text: string): string {
 }
 
 export const getMyProfile = action({
-  args: { tokenHash: v.string() },
+  args: { token: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
-    const { patientId } = await validatePortalSessionSupabase(db, args.tokenHash);
+    const { patientId } = await validatePortalSessionSupabase(db, args.token);
 
     const patient = await db.get("gabinetPatients", patientId);
     if (!patient) throw new Error("Patient not found");
@@ -93,7 +93,7 @@ export const getMyProfile = action({
 
 export const updateMyProfile = action({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     phone: v.optional(v.string()),
     address: v.optional(
       v.object({
@@ -108,9 +108,9 @@ export const updateMyProfile = action({
   handler: async (ctx, args) => {
     try {
     const db = createSupabaseDb();
-    const { patientId } = await validatePortalSessionSupabase(db, args.tokenHash);
+    const { patientId } = await validatePortalSessionSupabase(db, args.token);
 
-    const { tokenHash, ...updates } = args;
+    const { token, ...updates } = args;
     await db.patch("gabinetPatients", patientId, { ...updates, updatedAt: Date.now() });
     } catch (err) {
       await logError(ctx, err, {
@@ -119,7 +119,7 @@ export const updateMyProfile = action({
         argsJson: JSON.stringify({
           // Do not log the session token; only log which fields the caller
           // tried to change.
-          updatedFields: Object.keys(args).filter((k) => k !== "tokenHash"),
+          updatedFields: Object.keys(args).filter((k) => k !== "token"),
           hasAddress: !!args.address,
         }),
       });
@@ -129,12 +129,12 @@ export const updateMyProfile = action({
 });
 
 export const getMyAppointments = action({
-  args: { tokenHash: v.string() },
+  args: { token: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const { patientId, organizationId } = await validatePortalSessionSupabase(
       db,
-      args.tokenHash,
+      args.token,
     );
 
     const appointments = await db
@@ -182,12 +182,12 @@ export const getMyAppointments = action({
 });
 
 export const getMyPackages = action({
-  args: { tokenHash: v.string() },
+  args: { token: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const { patientId, organizationId } = await validatePortalSessionSupabase(
       db,
-      args.tokenHash,
+      args.token,
     );
 
     const usages = await db
@@ -228,12 +228,12 @@ export const getMyPackages = action({
 });
 
 export const getMyLoyaltyBalance = action({
-  args: { tokenHash: v.string() },
+  args: { token: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const { patientId, organizationId } = await validatePortalSessionSupabase(
       db,
-      args.tokenHash,
+      args.token,
     );
 
     const row = await db
@@ -253,12 +253,12 @@ export const getMyLoyaltyBalance = action({
 });
 
 export const getMyLoyaltyTransactions = action({
-  args: { tokenHash: v.string() },
+  args: { token: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const { patientId, organizationId } = await validatePortalSessionSupabase(
       db,
-      args.tokenHash,
+      args.token,
     );
 
     const transactions = await db
@@ -285,12 +285,12 @@ export const getMyLoyaltyTransactions = action({
 
 /** List active treatments available for booking. */
 export const getBookableTreatments = action({
-  args: { tokenHash: v.string() },
+  args: { token: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const { organizationId } = await validatePortalSessionSupabase(
       db,
-      args.tokenHash,
+      args.token,
     );
 
     const treatments = await db
@@ -337,14 +337,14 @@ export const getBookableTreatments = action({
 /** List active employees qualified for a given treatment. */
 export const getQualifiedEmployees = action({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     treatmentId: v.string(),
   },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const { organizationId } = await validatePortalSessionSupabase(
       db,
-      args.tokenHash,
+      args.token,
     );
 
     const employees = await db
@@ -355,7 +355,10 @@ export const getQualifiedEmployees = action({
 
     // Filter to those qualified for the treatment (empty list ⇒ qualified
     // for everything, matching the original Convex behaviour).
+    // Also exclude employees without a linked user account — slot lookup
+    // requires a userId and they cannot participate in the booking flow.
     const qualified = employees.filter((e) => {
+      if (!e.userId) return false;
       const qualifiedIds = (e.qualifiedTreatmentIds as string[] | undefined) ?? [];
       return qualifiedIds.length === 0 || qualifiedIds.includes(args.treatmentId);
     });
@@ -385,7 +388,7 @@ export const getQualifiedEmployees = action({
 /** Get available time slots for portal booking. */
 export const getPublicAvailableSlots = action({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     employeeId: v.string(),
     date: v.string(),
     duration: v.number(),
@@ -396,7 +399,7 @@ export const getPublicAvailableSlots = action({
     const db = createSupabaseDb();
     const { organizationId } = await validatePortalSessionSupabase(
       db,
-      args.tokenHash,
+      args.token,
     );
 
     return await getAvailableSlotsSupabase(db, {
@@ -414,7 +417,7 @@ export const getPublicAvailableSlots = action({
 /** Book an appointment from the patient portal. */
 export const bookFromPortal = action({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     treatmentId: v.string(),
     employeeId: v.optional(v.string()),
     preferredDate: v.string(),
@@ -423,8 +426,8 @@ export const bookFromPortal = action({
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
     const { patientId, organizationId: orgIdStr } =
-      await validatePortalSessionSupabase(db, args.tokenHash);
-    const organizationId = orgIdStr as Id<"organizations">;
+      await validatePortalSessionSupabase(db, args.token);
+    const organizationId = orgIdStr;
 
     // Past-time guard (issue #1415). The portal slot picker already hides
     // past slots client-side, but a crafted request could send any
@@ -474,6 +477,7 @@ export const bookFromPortal = action({
 
       let foundEmployee: string | null = null;
       for (const emp of qualifiedEmployees) {
+        if (!emp.userId) continue;
         const { slots } = await getAvailableSlotsSupabase(db, {
           organizationId: String(organizationId),
           userId: String(emp.userId),
@@ -547,13 +551,80 @@ export const bookFromPortal = action({
       updatedAt: now,
     });
 
-    // Delegate notifications to internalMutation
+    // Create calendar entry (scheduledActivity) so the appointment appears on
+    // the employee calendar and satisfies the scheduledActivityId arg in
+    // _createSideEffects.
+    const calendarTitle = `${treatment.name as string} — ${patientName}`;
+    const dueDateMs = new Date(`${args.preferredDate}T${args.preferredTime}:00`).getTime();
+    const endDateMs = new Date(`${args.preferredDate}T${endTime}:00`).getTime();
+    let scheduledActivityId = "";
+    try {
+      scheduledActivityId = await db.insert("scheduledActivities", {
+        organizationId: String(organizationId),
+        title: calendarTitle,
+        activityType: "gabinet:appointment",
+        dueDate: dueDateMs,
+        endDate: endDateMs,
+        isCompleted: false,
+        ownerId: ownerUserId,
+        description: `Rezerwacja online — ${patientName}`,
+        linkedEntityType: "gabinetAppointment",
+        linkedEntityId: appointmentId,
+        moduleRef: {
+          moduleId: "gabinet",
+          entityType: "gabinetAppointment",
+          entityId: appointmentId,
+        },
+        resourceId: employeeId,
+        createdBy: ownerUserId,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await db.patch("gabinetAppointments", appointmentId, { scheduledActivityId });
+    } catch (e) {
+      console.error("[bookFromPortal] scheduledActivity creation failed (non-fatal):", e);
+    }
+
+    // Run post-write side effects: automation event, document generation
+    // (RODO / org-required / treatment-required), audit log, and reminders.
+    try {
+      await ctx.runMutation(
+        internal.gabinet.appointments._createSideEffects,
+        {
+          appointmentId,
+          organizationId: String(organizationId),
+          patientId,
+          treatmentId: args.treatmentId,
+          employeeId,
+          date: args.preferredDate,
+          startTime: args.preferredTime,
+          endTime,
+          notes: `Rezerwacja online — ${patientName}`,
+          status: "pending_confirmation",
+          isRecurring: false,
+          sendReminder: true,
+          createdBy: ownerUserId,
+          createdAt: now,
+          patientName,
+          treatmentName: treatment.name as string,
+          patientEmail: (patient.email as string) ?? undefined,
+          patientPhone: (patient.phone as string) ?? undefined,
+          scheduledActivityId,
+          recurActivityIds: [],
+        },
+      );
+    } catch (e) {
+      console.error("[bookFromPortal] Side effects FAILED for appointment", appointmentId, ":", e);
+    }
+
+    // Notify staff (owners/admins) and the assigned employee about the new
+    // portal booking request — this is separate from the automation event above.
     try {
       await ctx.runMutation(
         internal.gabinet.patientPortal._bookingNotifications,
         {
           organizationId,
-          employeeId,
+          employeeId: employeeId as Id<"users">,
           patientName,
           treatmentName: treatment.name as string,
           date: args.preferredDate,
@@ -572,7 +643,7 @@ export const bookFromPortal = action({
  * Internal: find org owner user ID.
  */
 export const _findOrgOwner = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (_ctx, args) => {
     const db = createSupabaseDb();
     const ownerMembership = await db
@@ -594,8 +665,8 @@ export const _findOrgOwner = internalAction({
  */
 export const _bookingNotifications = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
-    employeeId: v.string(),
+    organizationId: v.string(),
+    employeeId: v.id("users"),
     patientName: v.string(),
     treatmentName: v.string(),
     date: v.string(),
@@ -625,11 +696,10 @@ export const _bookingNotifications = internalMutation({
     }
 
     // Also notify the assigned employee if not already notified
-    const employeeUserId = args.employeeId as Id<"users">;
-    if (!staffToNotify.some((s) => s.userId === employeeUserId)) {
+    if (!staffToNotify.some((s) => s.userId === args.employeeId)) {
       await createNotificationDirect(ctx, {
         organizationId: args.organizationId,
-        userId: employeeUserId,
+        userId: args.employeeId,
         type: "portal_booking_request",
         title: "Nowa rezerwacja online",
         message,
@@ -644,7 +714,7 @@ export const _bookingNotifications = internalMutation({
 
 export const requestReschedule = action({
   args: {
-    tokenHash: v.string(),
+    token: v.string(),
     appointmentId: v.string(),
     requestedDate: v.string(), // YYYY-MM-DD
     requestedTime: v.string(), // HH:MM
@@ -653,8 +723,8 @@ export const requestReschedule = action({
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
     const { patientId, organizationId: orgIdStr } =
-      await validatePortalSessionSupabase(db, args.tokenHash);
-    const organizationId = orgIdStr as Id<"organizations">;
+      await validatePortalSessionSupabase(db, args.token);
+    const organizationId = orgIdStr;
 
     // Read appointment from Supabase
     const appt = await db.get("gabinetAppointments", args.appointmentId);
@@ -708,7 +778,7 @@ export const requestReschedule = action({
         internal.gabinet.patientPortal._rescheduleNotifications,
         {
           organizationId,
-          employeeId: String(appt.employeeId),
+          employeeId: appt.employeeId as Id<"users">,
           patientName,
           treatmentName,
           requestedDate: args.requestedDate,
@@ -728,8 +798,8 @@ export const requestReschedule = action({
  */
 export const _rescheduleNotifications = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
-    employeeId: v.string(),
+    organizationId: v.string(),
+    employeeId: v.id("users"),
     patientName: v.string(),
     treatmentName: v.string(),
     requestedDate: v.string(),
@@ -759,11 +829,10 @@ export const _rescheduleNotifications = internalMutation({
     }
 
     // Also notify the appointment's employee if not already notified
-    const employeeUserId = args.employeeId as Id<"users">;
-    if (!staffToNotify.some((s) => s.userId === employeeUserId)) {
+    if (!staffToNotify.some((s) => s.userId === args.employeeId)) {
       await createNotificationDirect(ctx, {
         organizationId: args.organizationId,
-        userId: employeeUserId,
+        userId: args.employeeId,
         type: "portal_booking_request",
         title: "Reschedule Request",
         message: notifyMessage,

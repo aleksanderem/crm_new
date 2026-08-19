@@ -7,7 +7,7 @@ import { entityTypeValidator, customFieldTypeValidator } from "@cvx/schema";
 
 export const getDefinitions = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: entityTypeValidator,
     activityTypeKey: v.optional(v.string()),
   },
@@ -37,7 +37,7 @@ export const getDefinitions = query({
 
 export const createDefinition = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: entityTypeValidator,
     name: v.string(),
     fieldKey: v.string(),
@@ -93,7 +93,7 @@ export const createDefinition = action({
  */
 export const ensureDefinition = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: entityTypeValidator,
     name: v.string(),
     fieldKey: v.string(),
@@ -156,7 +156,7 @@ export const ensureDefinition = action({
 
 export const updateDefinition = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     definitionId: v.string(),
     name: v.optional(v.string()),
     options: v.optional(v.array(v.string())),
@@ -189,7 +189,7 @@ export const updateDefinition = action({
 
 export const deleteDefinition = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     definitionId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -219,7 +219,7 @@ export const deleteDefinition = action({
 
 export const reorderDefinitions = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     definitionIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {
@@ -242,7 +242,7 @@ export const reorderDefinitions = action({
 
 export const getValues = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: entityTypeValidator,
     entityId: v.string(),
   },
@@ -263,7 +263,7 @@ export const getValues = query({
 
 export const getValuesBulk = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: entityTypeValidator,
     entityIds: v.array(v.string()),
   },
@@ -293,7 +293,7 @@ export const getValuesBulk = query({
 
 export const setValues = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: entityTypeValidator,
     entityId: v.string(),
     fields: v.array(v.object({

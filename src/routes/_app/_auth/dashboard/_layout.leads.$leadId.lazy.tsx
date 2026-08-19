@@ -24,7 +24,7 @@ import {
   useSupabaseRelationshipsByEntity,
   type MappedRelationship,
 } from "@/hooks/use-supabase-relationships";
-import { useSupabaseLostReasonsList } from "@/hooks/use-supabase-lost-reasons";
+import { LostReasonDialog } from "@/components/crm/lost-reason-dialog";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
 import { useCategoryDefinitions } from "@/hooks/use-category-definitions";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
@@ -49,21 +49,6 @@ import { activitiesToFeedEntries } from "@/components/crm/activity-feed-adapter"
 import { ScheduledActivitiesList } from "@/components/shared/scheduled-activities-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { RichTextEditor, plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import {
   DropdownMenu,
@@ -151,83 +136,6 @@ function PipelineProgressBar({
   );
 }
 
-// --- LostReasonDialog ---
-
-function LostReasonDialog({
-  open,
-  onOpenChange,
-  onConfirm,
-  organizationId,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onConfirm: (reason: string) => void;
-  organizationId: string;
-}) {
-  const { data: lostReasons } = useSupabaseLostReasonsList(organizationId);
-  const { t } = useTranslation();
-  const [selectedReason, setSelectedReason] = useState("");
-  const [customReason, setCustomReason] = useState("");
-
-  const handleSubmit = () => {
-    const reason = selectedReason === "__custom__" ? customReason : selectedReason;
-    if (reason.trim()) {
-      onConfirm(reason.trim());
-      setSelectedReason("");
-      setCustomReason("");
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[400px]">
-        <DialogHeader>
-          <DialogTitle>{t('detail.lostDialog.title')}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <Select value={selectedReason} onValueChange={setSelectedReason}>
-            <SelectTrigger>
-              <SelectValue placeholder={t('detail.lostDialog.selectReason')} />
-            </SelectTrigger>
-            <SelectContent>
-              {lostReasons?.map((r) => (
-                <SelectItem key={r._id} value={r.label}>
-                  {r.label}
-                </SelectItem>
-              ))}
-              <SelectItem value="__custom__">{t('detail.lostDialog.customReason')}</SelectItem>
-            </SelectContent>
-          </Select>
-          {selectedReason === "__custom__" && (
-            <Input
-              value={customReason}
-              onChange={(e) => setCustomReason(e.target.value)}
-              placeholder={t('detail.lostDialog.customPlaceholder')}
-              autoFocus
-            />
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            {t('common.cancel')}
-          </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            disabled={
-              !selectedReason ||
-              (selectedReason === "__custom__" && !customReason.trim())
-            }
-            onClick={handleSubmit}
-          >
-            {t('detail.lostDialog.confirm')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 // --- Main Component ---
 
 function LeadDetail() {
@@ -238,23 +146,23 @@ function LeadDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   // @ts-ignore — TS2589 excessive depth in useMutation type instantiation (pre-existing)
-  const updateLead = useAction(api.leads.update);
-  const removeLead = useAction(api.leads.remove);
-  const moveToStage = useAction(api.leads.moveToStage);
+  const updateLead = useAction(api.crm.leads.update);
+  const removeLead = useAction(api.crm.leads.remove);
+  const moveToStage = useAction(api.crm.leads.moveToStage);
   const createRelationship = useAction(api.relationships.create);
   const removeRelationship = useAction(api.relationships.remove);
-  const createContactMutation = useAction(api.contacts.create);
-  const createCompanyMutation = useAction(api.companies.create);
+  const createContactMutation = useAction(api.crm.contacts.create);
+  const createCompanyMutation = useAction(api.crm.companies.create);
   const setCustomFields = useAction(api.customFields.setValues);
   const trackView = useAction(api.recentlyViewed.track);
-  const createNote = useAction(api.notes.create);
+  const createNote = useAction(api.crm.notes.create);
   const createScheduledActivity = useAction(api.scheduledActivities.create);
   const markActivityComplete = useAction(api.scheduledActivities.markComplete);
   const markActivityIncomplete = useAction(api.scheduledActivities.markIncomplete);
   const updateScheduledActivity = useAction(api.scheduledActivities.update);
   const removeScheduledActivity = useAction(api.scheduledActivities.remove);
-  const addProductToDeal = useAction(api.products.addToDeal);
-  const removeProductFromDeal = useAction(api.products.removeFromDeal);
+  const addProductToDeal = useAction(api.crm.products.addToDeal);
+  const removeProductFromDeal = useAction(api.crm.products.removeFromDeal);
   const listDocumentsByEntity = useAction(api.documents.documents.listByEntity);
 
   const { data: leadDocuments } = useQuery({
@@ -345,6 +253,7 @@ function LeadDetail() {
   const [createContactDrawerOpen, setCreateContactDrawerOpen] = useState(false);
   const [createCompanyDrawerOpen, setCreateCompanyDrawerOpen] = useState(false);
   const [lostDialogOpen, setLostDialogOpen] = useState(false);
+  const [pendingLostStageId, setPendingLostStageId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activityDrawerOpen, setActivityDrawerOpen] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
@@ -412,7 +321,7 @@ function LeadDetail() {
   );
   const relationships = relationshipsQuery.data;
 
-  const listProductsByDeal = useAction(api.products.listByDeal);
+  const listProductsByDeal = useAction(api.crm.products.listByDeal);
   const dealProductsQueryKey = useMemo(
     () => ["products.listByDeal", organizationId, leadId] as const,
     [organizationId, leadId],
@@ -504,7 +413,7 @@ function LeadDetail() {
     try {
       await updateLead({
         organizationId,
-        leadId: leadId as Id<"leads">,
+        leadId,
         title: formData.title,
         value: formData.value,
         status: formData.status as any,
@@ -517,8 +426,8 @@ function LeadDetail() {
       if (formData.pipelineStageId) {
         await moveToStage({
           organizationId,
-          leadId: leadId as Id<"leads">,
-          pipelineStageId: formData.pipelineStageId as Id<"pipelineStages">,
+          leadId,
+          pipelineStageId: formData.pipelineStageId,
           stageOrder: 0,
         });
       }
@@ -526,7 +435,7 @@ function LeadDetail() {
         const fieldsToSave = leadCfDefs
           .filter((d) => customFieldRecord[d.fieldKey] !== undefined && customFieldRecord[d.fieldKey] !== "")
           .map((d) => ({
-            fieldDefinitionId: d._id as Id<"customFieldDefinitions">,
+            fieldDefinitionId: d._id,
             value: customFieldRecord[d.fieldKey],
           }));
         if (fieldsToSave.length > 0) {
@@ -556,19 +465,30 @@ function LeadDetail() {
   const handleMarkWon = async () => {
     await updateLead({
       organizationId,
-      leadId: leadId as Id<"leads">,
+      leadId,
       status: "won",
     });
     queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
   };
 
   const handleMarkLost = async (reason: string) => {
-    await updateLead({
-      organizationId,
-      leadId: leadId as Id<"leads">,
-      status: "lost",
-      lostReason: reason,
-    });
+    if (pendingLostStageId) {
+      await moveToStage({
+        organizationId,
+        leadId,
+        pipelineStageId: pendingLostStageId,
+        stageOrder: 0,
+        lostReason: reason,
+      });
+      setPendingLostStageId(null);
+    } else {
+      await updateLead({
+        organizationId,
+        leadId,
+        status: "lost",
+        lostReason: reason,
+      });
+    }
     queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
     setLostDialogOpen(false);
   };
@@ -577,7 +497,7 @@ function LeadDetail() {
     if (window.confirm(t('detail.confirmDeleteDeal'))) {
       await removeLead({
         organizationId,
-        leadId: leadId as Id<"leads">,
+        leadId,
       });
       queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
       navigate({ to: "/dashboard/leads" });
@@ -585,10 +505,16 @@ function LeadDetail() {
   };
 
   const handleStageClick = async (stageId: string) => {
+    const stage = allStages?.find((s) => s._id === stageId);
+    if (stage?.isLostStage) {
+      setPendingLostStageId(stageId);
+      setLostDialogOpen(true);
+      return;
+    }
     await moveToStage({
       organizationId,
-      leadId: leadId as Id<"leads">,
-      pipelineStageId: stageId as Id<"pipelineStages">,
+      leadId,
+      pipelineStageId: stageId,
       stageOrder: 0,
     });
     queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
@@ -644,7 +570,7 @@ function LeadDetail() {
       );
 
       try {
-        await removeRelationship({ organizationId, relationshipId: rel._id as Id<"objectRelationships"> });
+        await removeRelationship({ organizationId, relationshipId: rel._id });
       } catch (error) {
         void queryClient.invalidateQueries({ queryKey: relationshipsQueryKey });
         throw error;
@@ -704,7 +630,7 @@ function LeadDetail() {
       );
 
       try {
-        await removeRelationship({ organizationId, relationshipId: rel._id as Id<"objectRelationships"> });
+        await removeRelationship({ organizationId, relationshipId: rel._id });
       } catch (error) {
         void queryClient.invalidateQueries({ queryKey: relationshipsQueryKey });
         throw error;
@@ -895,7 +821,7 @@ function LeadDetail() {
       dueDate: data.dueDate,
       endDate: data.endDate,
       description: data.description,
-      ownerId: currentUser._id as Id<"users">,
+      ownerId: currentUser._id,
       linkedEntityType: "lead",
       linkedEntityId: leadId,
     });
@@ -914,7 +840,7 @@ function LeadDetail() {
       const fieldsToSave = activityCustomFieldDefs
         .filter((d) => data.customFieldValues![d.fieldKey] !== undefined && data.customFieldValues![d.fieldKey] !== "")
         .map((d) => ({
-          fieldDefinitionId: d._id as Id<"customFieldDefinitions">,
+          fieldDefinitionId: d._id,
           value: data.customFieldValues![d.fieldKey],
         }));
       if (fieldsToSave.length > 0) {
@@ -939,7 +865,7 @@ function LeadDetail() {
   }) => {
     await updateScheduledActivity({
       organizationId,
-      activityId: data.activityId as Id<"scheduledActivities">,
+      activityId: data.activityId,
       title: data.title,
       activityType: data.activityType,
       dueDate: data.dueDate,
@@ -951,7 +877,7 @@ function LeadDetail() {
   const handleDeleteActivity = async (activityId: string) => {
     await removeScheduledActivity({
       organizationId,
-      activityId: activityId as Id<"scheduledActivities">,
+      activityId,
     });
     setActivityDrawerOpen(false);
     setSelectedActivityId(null);
@@ -959,9 +885,9 @@ function LeadDetail() {
 
   const handleToggleActivityComplete = async (activityId: string, isCompleted: boolean) => {
     if (isCompleted) {
-      await markActivityComplete({ organizationId, activityId: activityId as Id<"scheduledActivities"> });
+      await markActivityComplete({ organizationId, activityId });
     } else {
-      await markActivityIncomplete({ organizationId, activityId: activityId as Id<"scheduledActivities"> });
+      await markActivityIncomplete({ organizationId, activityId });
     }
   };
 
@@ -970,7 +896,7 @@ function LeadDetail() {
     const fieldsToSave = activityCustomFieldDefs
       .filter((d) => values[d.fieldKey] !== undefined && values[d.fieldKey] !== "")
       .map((d) => ({
-        fieldDefinitionId: d._id as Id<"customFieldDefinitions">,
+        fieldDefinitionId: d._id,
         value: values[d.fieldKey],
       }));
     if (fieldsToSave.length > 0) {

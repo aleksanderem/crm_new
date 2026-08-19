@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Id } from "@cvx/_generated/dataModel";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -192,7 +193,7 @@ const STANDARD_EDITABLE_FIELDS: Record<
 
 function getEventLabel(
   eventType: AutomationBuilderEventCatalogEntry["eventType"],
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TFunction,
 ) {
   switch (eventType) {
     case "gabinet.appointment.created":
@@ -224,7 +225,7 @@ function getEventLabel(
 
 function getReplyIntentLabel(
   replyIntent: (typeof AUTOMATION_PLAYGROUND_REPLY_INTENTS)[number],
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TFunction,
 ) {
   switch (replyIntent) {
     case "confirm":
@@ -244,7 +245,7 @@ function getReplyIntentLabel(
 
 function getGroupLabel(
   group: string | undefined,
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TFunction,
 ) {
   switch (group) {
     case "patient":
@@ -272,7 +273,7 @@ function getGroupLabel(
 
 function getOperatorLabel(
   operator: AutomationPlaygroundConditionOperator,
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TFunction,
 ) {
   switch (operator) {
     case "equals":
@@ -290,7 +291,7 @@ function getOperatorLabel(
 
 function getActionTypeLabel(
   actionType: AutomationPlaygroundActionType,
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TFunction,
 ) {
   return t(`settings.automationActionTypes.${actionType}`, {
     defaultValue: actionType,
@@ -299,7 +300,7 @@ function getActionTypeLabel(
 
 function getTargetEntityLabel(
   entityType: AutomationUpdateFieldTargetEntityType,
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TFunction,
 ) {
   switch (entityType) {
     case "gabinetPatient":
@@ -345,7 +346,7 @@ function mapCustomFieldValueType(
 function createDefaultForm(
   eventCatalog: AutomationBuilderEventCatalogEntry[],
   actionCapabilities: AutomationActionCapability[],
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TFunction,
 ): AutomationPlaygroundFormValue | null {
   const events = getAvailableAutomationPlaygroundEvents(eventCatalog);
   const availableActionCapabilities = getAvailableAutomationPlaygroundActionCapabilities(
@@ -412,7 +413,7 @@ function isValidActionDraft(action: AutomationPlaygroundActionDraft) {
 function getActionSummary(
   action: AutomationPlaygroundActionDraft,
   emailTemplates: AutomationEmailTemplateRecord[],
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TFunction,
 ) {
   switch (action.type) {
     case "send_sms":
@@ -449,17 +450,16 @@ function getActionSummary(
       });
     case "update_field":
       return t("settings.automationPlayground.summary.updateField", {
-        entity: getTargetEntityLabel(action.targetEntityType, t),
+        entity: getTargetEntityLabel(action.targetEntityType, t) ?? "",
         field: action.fieldKey,
         value: action.valueTemplate,
-        defaultValue: `It updates ${action.fieldKey} on ${getTargetEntityLabel(action.targetEntityType, t)} to ${action.valueTemplate}.`,
       });
   }
 }
 
 function getTriggerSummary(
   form: AutomationPlaygroundFormValue,
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TFunction,
 ) {
   const eventLabel = getEventLabel(form.eventType, t);
   if (form.eventType === "gabinet.appointment.status_changed" && form.eventStatus) {
@@ -472,8 +472,7 @@ function getTriggerSummary(
   if (form.eventType === "gabinet.appointment.sms_reply_received" && form.replyIntent) {
     return t("settings.automationPlayground.summary.triggerWithReplyIntent", {
       event: eventLabel,
-      replyIntent: getReplyIntentLabel(form.replyIntent, t),
-      defaultValue: `This runs when ${eventLabel} and the reply matches ${getReplyIntentLabel(form.replyIntent, t)}.`,
+      replyIntent: getReplyIntentLabel(form.replyIntent, t) ?? "",
     });
   }
 
@@ -538,7 +537,7 @@ function VariableInsertRow({
 }: {
   sources: AutomationVariableSource[];
   onInsert: (token: string) => void;
-  t: (key: string, options?: Record<string, unknown>) => string;
+  t: TFunction;
 }) {
   if (sources.length === 0) return null;
 
@@ -597,7 +596,7 @@ export function AutomationSimpleMode({
     const defaultForm = createDefaultForm(eventCatalog, actionCapabilities, t);
     setForm(defaultForm);
     if (defaultForm?.actions[0]) {
-      setNextActionType(defaultForm.actions[0].type);
+      setNextActionType(defaultForm.actions[0]!.type);
     }
   }, [actionCapabilities, eventCatalog, initialValue, t]);
 
@@ -1938,8 +1937,7 @@ export function AutomationSimpleMode({
               <p key={action.id}>
                 {t("settings.automationPlayground.summary.actionLine", {
                   index: index + 1,
-                  summary: getActionSummary(action, emailTemplates, t),
-                  defaultValue: `${index + 1}. ${getActionSummary(action, emailTemplates, t)}`,
+                  summary: getActionSummary(action, emailTemplates, t) ?? "",
                 })}
               </p>
             ))}

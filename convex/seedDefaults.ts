@@ -204,7 +204,7 @@ async function seedOrganizationDefaultsHandler(
  * Public wrapper — call from frontend to seed an existing org.
  */
 export const seedAll = mutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     await seedOrganizationDefaultsHandler(ctx, {
@@ -219,7 +219,7 @@ export const seedAll = mutation({
  */
 export const seedOrganizationDefaults = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {

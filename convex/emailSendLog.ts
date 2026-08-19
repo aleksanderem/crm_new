@@ -35,7 +35,7 @@ const EXPORT_ROW_CAP = 5000;
 
 export const record = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     source: sourceValidator,
     templateId: v.optional(v.string()),
     provider: v.optional(providerValidator),
@@ -48,7 +48,7 @@ export const record = internalMutation({
     relatedEntityType: v.optional(v.string()),
     relatedEntityId: v.optional(v.string()),
     idempotencyKey: v.optional(v.string()),
-    triggeredBy: v.optional(v.id("users")),
+    triggeredBy: v.optional(v.string()),
     sentAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -62,7 +62,7 @@ export const record = internalMutation({
 
 export const list = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paginationOpts: paginationOptsValidator,
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
@@ -119,7 +119,7 @@ export const list = query({
 // returned array length equals the cap (export was truncated).
 export const exportRows = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
     status: v.optional(statusValidator),

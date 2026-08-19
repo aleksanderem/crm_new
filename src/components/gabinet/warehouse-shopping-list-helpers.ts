@@ -39,7 +39,7 @@ export function groupShoppingItems<T extends { supplier: string | null }>(
       named.push([key, groupItems]);
     }
   }
-  named.sort((a, b) => a[0].localeCompare(b[0], "pl"));
+  named.sort((a, b) => a[0]!.localeCompare(b[0]!, "pl"));
   const result: GroupedItems<T>[] = named.map(([s, groupItems]) => ({
     supplier: s,
     items: groupItems,

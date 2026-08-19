@@ -14,6 +14,7 @@ interface CrmSchemaDeps {
   emailDirectionValidator: typeof import("../schema").emailDirectionValidator;
   orgRoleValidator: typeof import("../schema").orgRoleValidator;
   invitationStatusValidator: typeof import("../schema").invitationStatusValidator;
+  gabinetEmployeeRoleValidator: typeof import("../schema").gabinetEmployeeRoleValidator;
 }
 
 export function createCrmTables({
@@ -29,6 +30,7 @@ export function createCrmTables({
   emailDirectionValidator,
   orgRoleValidator,
   invitationStatusValidator,
+  gabinetEmployeeRoleValidator,
 }: CrmSchemaDeps) {
   return {
   // --- CRM Tables ---
@@ -48,7 +50,7 @@ export function createCrmTables({
 
   teamMemberships: defineTable({
     userId: v.id("users"),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     role: orgRoleValidator,
     invitedBy: v.optional(v.id("users")),
     joinedAt: v.number(),
@@ -58,7 +60,7 @@ export function createCrmTables({
     .index("by_orgAndUser", ["organizationId", "userId"]),
 
   contacts: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     firstName: v.string(),
     lastName: v.optional(v.string()),
     email: v.optional(v.string()),
@@ -78,7 +80,7 @@ export function createCrmTables({
     .index("by_orgAndEmail", ["organizationId", "email"]),
 
   companies: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     domain: v.optional(v.string()),
     industry: v.optional(v.string()),
@@ -106,7 +108,7 @@ export function createCrmTables({
     .index("by_orgAndDomain", ["organizationId", "domain"]),
 
   leads: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     title: v.string(),
     value: v.optional(v.number()),
     currency: v.optional(v.string()),
@@ -136,7 +138,7 @@ export function createCrmTables({
     .index("by_companyId", ["companyId"]),
 
   documents: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     fileId: v.optional(v.string()),
@@ -160,7 +162,7 @@ export function createCrmTables({
     .index("by_orgAndStatus", ["organizationId", "status"]),
 
   pipelines: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     type: v.optional(v.string()),
@@ -172,7 +174,7 @@ export function createCrmTables({
 
   pipelineStages: defineTable({
     pipelineId: v.id("pipelines"),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     color: v.optional(v.string()),
     order: v.number(),
@@ -185,7 +187,7 @@ export function createCrmTables({
     .index("by_org", ["organizationId"]),
 
   pipelineStageActions: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     stageId: v.id("pipelineStages"),
     actionType: v.literal("create_activity"),
     config: v.object({
@@ -202,7 +204,7 @@ export function createCrmTables({
     .index("by_org", ["organizationId"]),
 
   leadStageHistory: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leadId: v.id("leads"),
     stageId: v.id("pipelineStages"),
     enteredAt: v.number(),
@@ -212,7 +214,7 @@ export function createCrmTables({
     .index("by_org_stage", ["organizationId", "stageId"]),
 
   customFieldDefinitions: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: entityTypeValidator,
     name: v.string(),
     fieldKey: v.string(),
@@ -235,7 +237,7 @@ export function createCrmTables({
     ]),
 
   customFieldValues: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     fieldDefinitionId: v.id("customFieldDefinitions"),
     entityType: entityTypeValidator,
     entityId: v.string(),
@@ -253,7 +255,7 @@ export function createCrmTables({
     ]),
 
   activityTypeDefinitions: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     key: v.string(),
     name: v.string(),
     icon: v.string(),
@@ -267,7 +269,7 @@ export function createCrmTables({
     .index("by_orgAndKey", ["organizationId", "key"]),
 
   objectRelationships: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     sourceType: v.string(),
     sourceId: v.string(),
     targetType: v.string(),
@@ -287,7 +289,7 @@ export function createCrmTables({
     ]),
 
   activities: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
     action: activityActionValidator,
@@ -303,9 +305,13 @@ export function createCrmTables({
   // --- Products ---
 
   products: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     sku: v.string(),
+    // Net purchase price per unit. In the product form this is the primary
+    // price input ("Cena zakupu netto"). The gross purchase price is stored
+    // separately in purchasePrice and is derived via unitPrice × (1 + taxRate/100).
+    // For the selling price, see salePrice below.
     unitPrice: v.number(),
     taxRate: v.optional(v.number()),
     // True when the product is VAT-exempt ("zwolniony" / ZW). When set, the
@@ -329,8 +335,8 @@ export function createCrmTables({
     manufacturer: v.optional(v.string()),
     catalogNumber: v.optional(v.string()),
     stockNote: v.optional(v.string()),
-    // Net purchase price per unit (#2956, migration 00050). Used to calculate
-    // warehouse value. Distinct from unitPrice (the selling price).
+    // Gross purchase price per unit (#2956, migration 00050). Used to calculate
+    // warehouse value. Derived from unitPrice (net purchase price) × (1 + taxRate/100).
     purchasePrice: v.optional(v.number()),
     // Optional retail sale price per unit (#3201/#3203, migration 00066).
     // Data-layer only for now — form/columns/validation wiring is a follow-up
@@ -347,9 +353,9 @@ export function createCrmTables({
   // (product, location). locationId is optional so CRM-only orgs (no
   // gabinetLocations) can keep a single null-location row per product.
   productStockLevels: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     productId: v.id("products"),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
     quantity: v.number(),
     avgCost: v.optional(v.number()),
     updatedAt: v.number(),
@@ -364,9 +370,9 @@ export function createCrmTables({
   // the per-(product, location) running balance after this movement so we can
   // render history without recomputing.
   productStockMovements: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     productId: v.id("products"),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
     delta: v.number(),
     balanceAfter: v.optional(v.number()),
     reason: v.union(
@@ -376,6 +382,11 @@ export function createCrmTables({
       v.literal("inventory_adjustment"),
       v.literal("appointment_use"),
       v.literal("appointment_return"),
+      // Informational-only reservation movements added by #5532.
+      // Do not update productStockLevels — written for warehouse reports only.
+      v.literal("reserved"),
+      v.literal("reservation_release"),
+      v.literal("direct_sale"),
       v.literal("deal_close"),
       v.literal("deal_reopen"),
       v.literal("transfer_in"),
@@ -385,10 +396,12 @@ export function createCrmTables({
     sourceType: v.optional(v.string()),
     sourceId: v.optional(v.string()),
     note: v.optional(v.string()),
+    paymentMethod: v.optional(v.string()),
     unitPrice: v.optional(v.number()),
     avgCostAfter: v.optional(v.number()),
     lotNumber: v.optional(v.string()),        // LOT/batch number (#2989)
     expiryDate: v.optional(v.string()),       // ISO date YYYY-MM-DD (#2989)
+    treatmentId: v.optional(v.string()),      // which treatment drove the deduction (#5198)
     performedBy: v.id("users"),
     createdAt: v.number(),
   })
@@ -402,11 +415,11 @@ export function createCrmTables({
   // are still editable; 'posted' means stock movements have been created and
   // the record is read-only.
   warehouseDeliveries: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     supplierName: v.optional(v.string()),
     invoiceNumber: v.optional(v.string()),
     deliveryDate: v.optional(v.string()),
-    locationId: v.optional(v.id("gabinetLocations")),
+    locationId: v.optional(v.string()),
     notes: v.optional(v.string()),
     status: v.union(v.literal("draft"), v.literal("posted")),
     // Denormalized SUM(quantity × unit_price) across all items (#2968).
@@ -453,7 +466,7 @@ export function createCrmTables({
   // in when the parent delivery is posted and links this line back to the
   // product_stock_movements audit trail.
   warehouseDeliveryItems: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     deliveryId: v.id("warehouseDeliveries"),
     productId: v.id("products"),
     quantity: v.number(),
@@ -477,7 +490,7 @@ export function createCrmTables({
   // exact-name matches.  One mapping per (org, invoiceName) — enforced by the
   // unique index in the Supabase migration.
   deliveryNameMappings: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     invoiceName: v.string(),
     productId: v.id("products"),
     createdAt: v.number(),
@@ -486,7 +499,7 @@ export function createCrmTables({
     .index("by_org_and_name", ["organizationId", "invoiceName"]),
 
   dealProducts: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     dealId: v.id("leads"),
     productId: v.id("products"),
     quantity: v.number(),
@@ -501,7 +514,7 @@ export function createCrmTables({
   // --- Calls ---
 
   calls: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     outcome: callOutcomeValidator,
     callDate: v.number(),
     note: v.optional(v.string()),
@@ -519,7 +532,7 @@ export function createCrmTables({
   // --- Scheduled Activities ---
 
   scheduledActivities: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     title: v.string(),
     activityType: activityTypeValidator,
     dueDate: v.number(),
@@ -571,7 +584,7 @@ export function createCrmTables({
   // --- Payments ---
 
   payments: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.optional(v.id("gabinetPatients")),
     appointmentId: v.optional(v.id("gabinetAppointments")),
     packageUsageId: v.optional(v.id("gabinetPackageUsage")),
@@ -643,7 +656,7 @@ export function createCrmTables({
   // --- Saved Views ---
 
   savedViews: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     name: v.string(),
     filters: v.any(),
@@ -661,7 +674,7 @@ export function createCrmTables({
   // --- Lost Reasons ---
 
   lostReasons: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     label: v.string(),
     order: v.number(),
     isActive: v.boolean(),
@@ -673,7 +686,7 @@ export function createCrmTables({
   // --- Org Settings ---
 
   orgSettings: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     allowCustomLostReason: v.boolean(),
     lostReasonRequired: v.boolean(),
     defaultCurrency: v.optional(v.string()),
@@ -697,7 +710,7 @@ export function createCrmTables({
   // --- RBAC: Permission Overrides ---
 
   orgPermissions: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     role: v.union(v.literal("member"), v.literal("viewer")),
     // Record<Feature, Record<Action, Scope>> stored as JSON
     // Feature: leads, contacts, companies, documents, activities, calls, email, products, pipelines,
@@ -717,7 +730,7 @@ export function createCrmTables({
   // / therapist / receptionist / admin / other — isSystem=true) seeded on
   // first use; tenants can add custom roles on top (isSystem=false).
   gabinetRoleDefinitions: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     key: v.string(), // stable identifier used in gabinetEmployees.role
     labelPl: v.string(),
     labelEn: v.string(),
@@ -738,7 +751,7 @@ export function createCrmTables({
   // gabinetRoleScope). An absent row means use the baked-in default for the
   // role key (or "none" for custom roles, until the admin fills it in).
   gabinetRolePermissions: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     gabinetRole: v.string(), // FK to gabinetRoleDefinitions.key (per org)
     permissions: v.any(), // FeaturePermissions JSON
     updatedBy: v.id("users"),
@@ -754,7 +767,7 @@ export function createCrmTables({
   // financial reports) and restriction (e.g. doctor cannot view payments).
   // Missing entries inherit from the role. Absent row → role-level applies.
   gabinetMembershipPermissions: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     permissions: v.any(), // FeaturePermissions JSON
     updatedBy: v.id("users"),
@@ -769,9 +782,9 @@ export function createCrmTables({
   // resolve the gabinet-role for the current user. Maintained alongside the
   // Supabase row writes in convex/gabinet/employees.ts.
   gabinetMemberships: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
-    gabinetRole: v.string(),
+    gabinetRole: gabinetEmployeeRoleValidator,
     isActive: v.boolean(),
     updatedAt: v.number(),
   })
@@ -779,10 +792,28 @@ export function createCrmTables({
     .index("by_orgAndUser", ["organizationId", "userId"])
     .index("by_user", ["userId"]),
 
+  // --- RBAC: Gabinet Location Role Mirror ---
+  // Convex mirror of gabinetEmployeeLocations so that checkPermission
+  // (which runs in QueryCtx and cannot reach Supabase) can resolve both which
+  // locations the current user is assigned to and any per-location role override.
+  // A row exists for every location assignment; role is absent when there is no
+  // override (global gabinetMemberships role wins). Maintained alongside the
+  // Supabase row writes in convex/gabinet/employees.ts.
+  gabinetLocationMemberships: defineTable({
+    organizationId: v.string(),
+    userId: v.id("users"),
+    locationId: v.string(),
+    role: v.optional(gabinetEmployeeRoleValidator),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndUser", ["organizationId", "userId"])
+    .index("by_orgAndUserAndLocation", ["organizationId", "userId", "locationId"]),
+
   // --- RBAC: Resource Invites (External Guests) ---
 
   resourceInvites: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     email: v.string(),
     userId: v.optional(v.id("users")),
     resourceType: v.string(),
@@ -811,7 +842,7 @@ export function createCrmTables({
   // --- Notifications ---
 
   notifications: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     type: v.string(),
     title: v.string(),
@@ -833,8 +864,8 @@ export function createCrmTables({
   // --- Audit Log ---
 
   auditLog: defineTable({
-    organizationId: v.id("organizations"),
-    userId: v.id("users"),
+    organizationId: v.string(),
+    userId: v.string(),
     action: v.string(),
     entityType: v.optional(v.string()),
     entityId: v.optional(v.string()),
@@ -849,7 +880,7 @@ export function createCrmTables({
   // --- Sources ---
 
   sources: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     order: v.number(),
     isActive: v.boolean(),
@@ -861,7 +892,7 @@ export function createCrmTables({
   // --- Emails ---
 
   emails: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     threadId: v.string(),
     messageId: v.string(),
     inReplyTo: v.optional(v.string()),
@@ -891,7 +922,7 @@ export function createCrmTables({
     mailProviderId: v.optional(v.id("mailProviders")),
     gmailMessageId: v.optional(v.string()),
     gmailThreadId: v.optional(v.string()),
-    sentBy: v.optional(v.id("users")),
+    sentBy: v.optional(v.string()),
     templateId: v.optional(v.id("emailTemplates")),
     patientId: v.optional(v.id("gabinetPatients")),
     appointmentId: v.optional(v.id("gabinetAppointments")),
@@ -914,7 +945,7 @@ export function createCrmTables({
     .index("by_org_provider", ["organizationId", "mailProviderId", "sentAt"]),
 
   emailAccounts: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     fromName: v.string(),
     fromEmail: v.string(),
     isDefault: v.boolean(),
@@ -925,7 +956,7 @@ export function createCrmTables({
   // --- Mail Providers ---
 
   mailProviders: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     providerType: v.union(
       v.literal("google"),
@@ -983,7 +1014,7 @@ export function createCrmTables({
   // --- Email Templates ---
 
   emailTemplates: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     subject: v.string(),
     body: v.string(), // kept for backward compat
@@ -1016,7 +1047,7 @@ export function createCrmTables({
   // --- Email Layouts (global wrapper per org) ---
 
   emailLayouts: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     headerBlocks: v.string(),
     footerBlocks: v.string(),
     backgroundColor: v.string(),
@@ -1032,7 +1063,7 @@ export function createCrmTables({
   // --- Invitations ---
 
   invitations: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     email: v.string(),
     role: orgRoleValidator,
     token: v.string(),
@@ -1058,7 +1089,7 @@ export function createCrmTables({
   // --- OAuth Connections ---
 
   oauthConnections: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     provider: v.literal("google"),
     providerAccountId: v.string(),
     userId: v.optional(v.id("users")),
@@ -1081,7 +1112,7 @@ export function createCrmTables({
   // --- Notes ---
 
   notes: defineTable({
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
     content: v.string(),

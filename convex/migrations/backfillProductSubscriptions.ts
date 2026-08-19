@@ -27,7 +27,7 @@ export const getOrgByOwner = internalQuery({
 });
 
 export const getExistingProductSub = internalQuery({
-  args: { organizationId: v.id("organizations"), productId: v.string() },
+  args: { organizationId: v.string(), productId: v.string() },
   handler: async (ctx, args) =>
     ctx.db
       .query("productSubscriptions")
@@ -151,7 +151,7 @@ export const backfillProductSubscriptions = internalAction({
       }
 
       if (!dryRun) {
-        await ctx.runMutation(internal.stripe.PREAUTH_upsertProductSubscription, {
+        await ctx.runAction(internal.stripe.PREAUTH_upsertProductSubscription, {
           organizationId: org._id,
           productId: plan.productKey,
           stripeSubscriptionId: sub.stripeId,

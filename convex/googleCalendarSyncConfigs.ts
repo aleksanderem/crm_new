@@ -5,7 +5,7 @@ import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     connectionId: v.string(),
     googleCalendarId: v.string(),
     googleCalendarName: v.string(),

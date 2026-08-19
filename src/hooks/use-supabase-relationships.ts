@@ -141,12 +141,13 @@ export function useSupabaseRelationshipsByEntity(
         if (!cfg) continue;
         const ids = [...group.ids];
         const { data: rows } = await client
-          .from(cfg.table)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .from(cfg.table as any)
           .select(`id, ${cfg.cols.join(", ")}`)
           .in("id", ids);
         if (!rows) continue;
         const lookup = new Map<string, { name?: string; sub?: string }>();
-        for (const r of rows as Record<string, unknown>[]) {
+        for (const r of (rows as unknown) as Record<string, unknown>[]) {
           const name = cfg.nameJoin?.(r) ?? "";
           const sub = cfg.subFmt?.(r);
           lookup.set(r.id as string, { name: name || undefined, sub });

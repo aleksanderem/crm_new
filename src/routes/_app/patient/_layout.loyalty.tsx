@@ -11,24 +11,24 @@ export const Route = createFileRoute("/_app/patient/_layout/loyalty")({
 
 function PatientLoyalty() {
   const { t } = useTranslation();
-  const tokenHash = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") ?? "" : "";
+  const token = typeof window !== "undefined" ? localStorage.getItem("patientPortalToken") ?? "" : "";
 
   const getMyLoyaltyBalance = useAction(
     api.gabinet.patientPortal.getMyLoyaltyBalance,
   );
   const { data: balance } = useQuery({
-    queryKey: ["gabinet.patientPortal.getMyLoyaltyBalance", tokenHash],
-    queryFn: () => getMyLoyaltyBalance({ tokenHash }),
-    enabled: !!tokenHash,
+    queryKey: ["gabinet.patientPortal.getMyLoyaltyBalance", token],
+    queryFn: () => getMyLoyaltyBalance({ token }),
+    enabled: !!token,
   });
 
   const getMyLoyaltyTransactions = useAction(
     api.gabinet.patientPortal.getMyLoyaltyTransactions,
   );
   const { data: transactions } = useQuery({
-    queryKey: ["gabinet.patientPortal.getMyLoyaltyTransactions", tokenHash],
-    queryFn: () => getMyLoyaltyTransactions({ tokenHash }),
-    enabled: !!tokenHash,
+    queryKey: ["gabinet.patientPortal.getMyLoyaltyTransactions", token],
+    queryFn: () => getMyLoyaltyTransactions({ token }),
+    enabled: !!token,
   });
 
   const tierColor = (tier?: string) => {

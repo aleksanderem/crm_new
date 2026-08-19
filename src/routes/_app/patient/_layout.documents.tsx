@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_app/patient/_layout/documents")({
 
 function PatientDocuments() {
   const { t } = useTranslation();
-  const tokenHash =
+  const token =
     typeof window !== "undefined"
       ? (localStorage.getItem("patientPortalToken") ?? "")
       : "";
@@ -33,16 +33,16 @@ function PatientDocuments() {
     api.documents.documents.listByPatientToken,
   );
   const { data: formDocuments } = useQuery({
-    queryKey: ["documents.documents.listByPatientToken", tokenHash],
-    queryFn: () => listByPatientToken({ tokenHash }),
-    enabled: !!tokenHash,
+    queryKey: ["documents.documents.listByPatientToken", token],
+    queryFn: () => listByPatientToken({ token }),
+    enabled: !!token,
   });
 
   const getPortalSession = useAction(api.gabinet.patientAuth.getPortalSession);
   const { data: portalSession } = useQuery({
-    queryKey: ["gabinet.patientAuth.getPortalSession", tokenHash],
-    queryFn: () => getPortalSession({ token: tokenHash }),
-    enabled: !!tokenHash,
+    queryKey: ["gabinet.patientAuth.getPortalSession", token],
+    queryFn: () => getPortalSession({ token: token }),
+    enabled: !!token,
   });
 
   const recordSignature = useAction(

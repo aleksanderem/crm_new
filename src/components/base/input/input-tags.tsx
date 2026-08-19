@@ -177,7 +177,7 @@ export const InputTags = ({
     const focusLastTag = useCallback(() => {
         const tagEls = tagGroupRef.current?.querySelectorAll<HTMLElement>('[role="row"]');
         if (tagEls && tagEls.length > 0) {
-            tagEls[tagEls.length - 1].focus();
+            tagEls[tagEls.length - 1]!.focus();
         }
     }, []);
 

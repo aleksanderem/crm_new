@@ -62,4 +62,13 @@ crons.daily(
   internal.signingStubs._cleanupExpiredStubs,
 );
 
+// Mark automationRuns rows stuck in "pending" for >30 min as "failed".
+// A row can get permanently stuck when emitEvent crashes between inserting
+// the Supabase row and scheduling processRun (issue #4358).
+crons.hourly(
+  "cleanup-stuck-pending-automation-runs",
+  { minuteUTC: 45 },
+  internal.automation._cleanupStuckPendingRuns,
+);
+
 export default crons;

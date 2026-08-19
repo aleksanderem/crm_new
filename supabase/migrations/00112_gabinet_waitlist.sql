@@ -9,8 +9,8 @@ CREATE TABLE IF NOT EXISTS gabinet_waitlist (
   patient_id        TEXT NOT NULL REFERENCES gabinet_patients(id) ON DELETE CASCADE,
   treatment_id      TEXT REFERENCES gabinet_treatments(id) ON DELETE SET NULL,
   employee_id       TEXT REFERENCES gabinet_employees(id) ON DELETE SET NULL,
-  preferred_dates   JSONB,    -- array of YYYY-MM-DD strings
-  preferred_times   JSONB,    -- array of HH:MM strings
+  preferred_dates   JSONB,    -- type:string[] array of YYYY-MM-DD strings
+  preferred_times   JSONB,    -- type:string[] array of HH:MM strings
   notes             TEXT,
   status            TEXT NOT NULL DEFAULT 'waiting'
                     CHECK (status IN ('waiting', 'notified', 'booked', 'cancelled', 'expired')),

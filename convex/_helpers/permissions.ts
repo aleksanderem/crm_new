@@ -1,5 +1,12 @@
 import { QueryCtx, MutationCtx } from "../_generated/server";
-import { Id } from "../_generated/dataModel";
+// verifyOrgAccess is intentionally imported from auth.ts (Convex ctx.db path)
+// rather than authAction.ts (Supabase internalAction path). This MUST NOT be
+// changed as part of the Supabase migration. Reason: checkPermission and
+// getEffectivePermissions below accept QueryCtx | MutationCtx so they can be
+// called from both queries and mutations. Convex queries cannot invoke
+// internalActions, making the authAction.ts version unusable in this context.
+// teamMemberships is dual-written to Convex (TABLE_MAP primary → Supabase,
+// mirror → Convex ctx.db), so ctx.db reads here remain correct. (#3893, #3896)
 import { verifyOrgAccess } from "./auth";
 import { OrgRole } from "../schema";
 import {
@@ -33,6 +40,38 @@ export const DEFAULT_PERMISSIONS: Record<OrgRole, FeaturePermissions> = {
   member: buildDefaults({ view: "all", create: "all", edit: "own", delete: "own", approve: "none", sign: "none", refund: "none" }),
   viewer: buildDefaults({ view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none" }),
 };
+
+// --- Per-feature overrides for gabinet_patients and gabinet_treatments ---
+// Gabinet clinical data requires an explicit gabinet role; org members without
+// one must not see patient records or touch the treatment catalog. The gabinet-role
+// layer (maxScope) then grants access to doctors, therapists, receptionists, etc.
+// Without these overrides, buildDefaults would leave member=view:all/create:all,
+// meaning a plain org member could list patients and create treatments — the
+// gabinetRoleWorkdays tests explicitly verify this is denied.
+const GABINET_NONE: Record<Action, Scope> = {
+  view: "none", create: "none", edit: "none", delete: "none",
+  approve: "none", sign: "none", refund: "none",
+};
+DEFAULT_PERMISSIONS.member.gabinet_patients = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.viewer.gabinet_patients = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.member.gabinet_appointments = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.viewer.gabinet_appointments = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.member.gabinet_treatments = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.viewer.gabinet_treatments = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.member.gabinet_packages = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.viewer.gabinet_packages = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.member.gabinet_employees = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.viewer.gabinet_employees = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.member.gabinet_documents = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.viewer.gabinet_documents = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.member.gabinet_photos = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.viewer.gabinet_photos = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.member.gabinet_inventory = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.viewer.gabinet_inventory = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.member.gabinet_salary = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.viewer.gabinet_salary = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.member.gabinet_dashboard = { ...GABINET_NONE };
+DEFAULT_PERMISSIONS.viewer.gabinet_dashboard = { ...GABINET_NONE };
 
 // --- Per-feature overrides for gabinet_payments ---
 // owner/admin: full incl. refund; member: view/create/edit (no delete, no
@@ -171,23 +210,6 @@ DEFAULT_PERMISSIONS.member.document_templates = {
   view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
 };
 
-// --- Per-feature overrides for document_instances ---
-// owner/admin: all actions allowed
-DEFAULT_PERMISSIONS.owner.document_instances = {
-  view: "all", create: "all", edit: "all", delete: "all", approve: "all", sign: "all", refund: "none",
-};
-DEFAULT_PERMISSIONS.admin.document_instances = {
-  view: "all", create: "all", edit: "all", delete: "all", approve: "all", sign: "all", refund: "none",
-};
-// member: view, create, edit, sign; NO approve or delete
-DEFAULT_PERMISSIONS.member.document_instances = {
-  view: "all", create: "all", edit: "own", delete: "none", approve: "none", sign: "all", refund: "none",
-};
-// viewer: view only
-DEFAULT_PERMISSIONS.viewer.document_instances = {
-  view: "all", create: "none", edit: "none", delete: "none", approve: "none", sign: "none", refund: "none",
-};
-
 // --- Per-feature overrides for tagDefinitions ---
 // member: create only (no edit/delete)
 DEFAULT_PERMISSIONS.member.tagDefinitions = {
@@ -218,9 +240,10 @@ DEFAULT_PERMISSIONS.viewer.categoryDefinitions = {
 // architecture for the query read path. See #3893 and #3896.
 export async function checkPermission(
   ctx: QueryCtx | MutationCtx,
-  orgId: Id<"organizations">,
+  orgId: string,
   feature: Feature,
   action: Action,
+  locationId?: string,
 ): Promise<PermissionResult> {
   const { user, membership } = await verifyOrgAccess(ctx, orgId);
   const role = membership.role as OrgRole;
@@ -236,11 +259,17 @@ export async function checkPermission(
     .unique();
 
   let orgScope: Scope;
+  // Use optional chaining + "none" fallback so features not in the FEATURES
+  // registry (e.g. from a new zero-touch module) default to deny rather than
+  // throwing TypeError. Mirrors authAction.checkPermission (#4397).
   if (override) {
     const perms = override.permissions as FeaturePermissions;
-    orgScope = perms?.[feature]?.[action] ?? DEFAULT_PERMISSIONS[role][feature][action];
+    orgScope = (perms?.[feature]?.[action]
+      ?? (DEFAULT_PERMISSIONS[role] as Record<string, Record<Action, Scope> | undefined>)[feature]?.[action]
+      ?? "none") as Scope;
   } else {
-    orgScope = DEFAULT_PERMISSIONS[role][feature][action];
+    orgScope = ((DEFAULT_PERMISSIONS[role] as Record<string, Record<Action, Scope> | undefined>)[feature]?.[action]
+      ?? "none") as Scope;
   }
 
   // MAX-merge gabinet-role permissions for gabinet_* features, mirroring
@@ -254,7 +283,22 @@ export async function checkPermission(
       )
       .unique();
     if (gabinetMembership && gabinetMembership.isActive) {
-      const gRole = gabinetMembership.gabinetRole;
+      let gRole = gabinetMembership.gabinetRole;
+
+      // Location-scoped role override: when locationId is provided, check the
+      // Convex mirror for a per-location role that replaces the global gabinet role.
+      if (locationId) {
+        const locationMembership = await ctx.db
+          .query("gabinetLocationMemberships")
+          .withIndex("by_orgAndUserAndLocation", (q) =>
+            q.eq("organizationId", orgId).eq("userId", user._id).eq("locationId", locationId),
+          )
+          .unique();
+        if (locationMembership?.role) {
+          gRole = locationMembership.role;
+        }
+      }
+
       const gOverride = await ctx.db
         .query("gabinetRolePermissions")
         .withIndex("by_orgAndRole", (q) =>
@@ -294,7 +338,8 @@ export async function checkPermission(
 // for query callers. (#3893 / #3896)
 export async function getEffectivePermissions(
   ctx: QueryCtx | MutationCtx,
-  orgId: Id<"organizations">,
+  orgId: string,
+  locationId?: string,
 ): Promise<FeaturePermissions> {
   const { membership, user } = await verifyOrgAccess(ctx, orgId);
   const role = membership.role as OrgRole;
@@ -314,7 +359,7 @@ export async function getEffectivePermissions(
   const merged = {} as FeaturePermissions;
 
   for (const feature of ALL_FEATURES) {
-    const defaultActions = defaults[feature];
+    const defaultActions = defaults[feature]!;
     const overrideActions = overridePerms?.[feature];
     if (overrideActions) {
       const mergedActions = {} as Record<Action, Scope>;
@@ -337,7 +382,22 @@ export async function getEffectivePermissions(
     .unique();
 
   if (gabinetMembership && gabinetMembership.isActive) {
-    const gRole = gabinetMembership.gabinetRole;
+    let gRole = gabinetMembership.gabinetRole;
+
+    // Location-scoped role override: when locationId is provided, check the
+    // Convex mirror for a per-location role that replaces the global gabinet role.
+    if (locationId) {
+      const locationMembership = await ctx.db
+        .query("gabinetLocationMemberships")
+        .withIndex("by_orgAndUserAndLocation", (q) =>
+          q.eq("organizationId", orgId).eq("userId", user._id).eq("locationId", locationId),
+        )
+        .unique();
+      if (locationMembership?.role) {
+        gRole = locationMembership.role;
+      }
+    }
+
     const gOverride = await ctx.db
       .query("gabinetRolePermissions")
       .withIndex("by_orgAndRole", (q) =>
@@ -348,7 +408,7 @@ export async function getEffectivePermissions(
 
     for (const feature of ALL_FEATURES) {
       if (!feature.startsWith("gabinet_")) continue;
-      const mergedActions = { ...merged[feature] };
+      const mergedActions = { ...merged[feature]! };
       for (const action of ACTIONS) {
         const gabinetScope: Scope = gPerms?.[feature as Feature]?.[action]
           ?? defaultGabinetScope(gRole, feature as Feature, action);
@@ -369,7 +429,7 @@ export async function getEffectivePermissions(
       const mPerms = membershipOverride.permissions as Partial<FeaturePermissions>;
       for (const feature of ALL_FEATURES) {
         if (!feature.startsWith("gabinet_")) continue;
-        const mergedActions = { ...merged[feature] };
+        const mergedActions = { ...merged[feature]! };
         for (const action of ACTIONS) {
           const membershipScope = mPerms?.[feature as Feature]?.[action];
           if (membershipScope !== undefined) {

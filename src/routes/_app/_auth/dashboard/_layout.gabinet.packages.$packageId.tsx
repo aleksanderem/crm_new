@@ -102,7 +102,7 @@ function PackageDetail() {
     useSupabaseGabinetTreatmentPackagesList(organizationId);
   const { data: treatmentsData } =
     useSupabaseGabinetTreatmentsList(organizationId);
-  const { data: patientsData } = useSupabaseGabinetPatientsList(organizationId);
+  const { data: patientsData } = useSupabaseGabinetPatientsList(organizationId, { activeOnly: true });
   const { data: activeUsagesData } =
     useSupabaseGabinetPackageUsageActive(organizationId);
   const { data: unassignedUsagesData } =

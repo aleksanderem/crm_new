@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { changeLanguage } from "i18next";
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { convexQuery, useConvexAction, useConvexMutation } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "~/convex/_generated/api";
 import { Input } from "@/components/ui/input";
@@ -121,12 +121,12 @@ function ProfileSettings() {
   });
 
   const { mutateAsync: updateProfile } = useMutation({
-    mutationFn: useConvexMutation(api.app.updateProfile),
+    mutationFn: useConvexAction(api.app.updateProfile),
   });
   const generateUploadUrl = useConvexMutation(api.app.generateUploadUrl);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { mutateAsync: removeUserImage } = useMutation({
-    mutationFn: useConvexMutation(api.app.removeUserImage),
+    mutationFn: useConvexAction(api.app.removeUserImage),
   });
 
   const { startUpload } = useConvexUpload(generateUploadUrl, {
@@ -136,7 +136,7 @@ function ProfileSettings() {
       }
       await updateProfile({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        imageId: (uploaded[0].response as any).storageId,
+        imageId: (uploaded[0]!.response as any).storageId,
       });
       toast.success(t("profilePage.avatarUpdated", "Avatar updated"));
     },

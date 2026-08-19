@@ -44,6 +44,7 @@ import { useSupabase } from "@/components/supabase-provider";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 import { mapProductFromSupabase, type MappedProduct } from "@/lib/supabase/mappers";
 import type { Database } from "@/lib/supabase/database.types";
+import { getExpiryStatus } from "@/lib/expiry-utils";
 
 // ---------------------------------------------------------------------------
 // Products List
@@ -375,4 +376,148 @@ export function useSupabaseProductsLastDeliveryInfo(
   }, [query.data]);
 
   return { ...query, lastDeliveryByProductId };
+}
+
+// ---------------------------------------------------------------------------
+// Org-wide Expiring LOT Batches (#5183)
+//
+// Fetches all product_stock_movements with a lot_number and expiry_date for the
+// entire org, aggregates by (product_id, location_id, lot_number, expiry_date),
+// and returns the Set of product IDs that have at least one active batch (qty>0)
+// expiring within the next 30 days. Used by the "Wygasa w 30 dni" stat tile.
+// ---------------------------------------------------------------------------
+
+export function useSupabaseOrgExpiringLotBatches(
+  organizationId: string,
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  return useQuery<Set<string>, Error>({
+    queryKey: ["supabase", "orgExpiringLotBatches", organizationId],
+    queryFn: async (): Promise<Set<string>> => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      const { data, error } = await client
+        .from("product_stock_movements")
+        .select("product_id, location_id, lot_number, expiry_date, delta")
+        .eq("organization_id", organizationId)
+        .not("lot_number", "is", null)
+        .not("expiry_date", "is", null);
+
+      if (error) throw error;
+
+      type Row = {
+        product_id: string;
+        location_id: string | null;
+        lot_number: string;
+        expiry_date: string;
+        delta: number;
+      };
+      const rows = (data ?? []) as Row[];
+
+      const batchMap = new Map<string, { productId: string; expiryDate: string; quantity: number }>();
+      for (const row of rows) {
+        const key = `${row.product_id}::${row.location_id ?? ""}::${row.lot_number}::${row.expiry_date}`;
+        const existing = batchMap.get(key);
+        if (existing) {
+          existing.quantity += Number(row.delta);
+        } else {
+          batchMap.set(key, {
+            productId: row.product_id,
+            expiryDate: row.expiry_date,
+            quantity: Number(row.delta),
+          });
+        }
+      }
+
+      const expiringProductIds = new Set<string>();
+      for (const batch of batchMap.values()) {
+        if (batch.quantity <= 0) continue;
+        if (getExpiryStatus(batch.expiryDate) === "expiring_soon") {
+          expiringProductIds.add(batch.productId);
+        }
+      }
+
+      return expiringProductIds;
+    },
+    enabled: enabled && isReady && !!organizationId,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Appointment Used Products (#5484)
+//
+// Fetches all appointment_use stock movements for a given appointment,
+// joining products to get the name and unit. Used in the appointment history
+// tab to show which products (and LOT batches) were actually consumed.
+// ---------------------------------------------------------------------------
+
+export interface AppointmentUsedProduct {
+  _id: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  stockUnit: string | null;
+  lotNumber: string | null;
+  expiryDate: string | null;
+  treatmentId: string | null;
+}
+
+export function useSupabaseAppointmentStockMovements(
+  organizationId: string,
+  appointmentId: string | null | undefined,
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+
+  return useQuery<AppointmentUsedProduct[], Error>({
+    queryKey: [
+      "supabase",
+      "appointmentStockMovements",
+      organizationId,
+      appointmentId ?? "",
+    ],
+    queryFn: async (): Promise<AppointmentUsedProduct[]> => {
+      if (!client || !appointmentId) return [];
+
+      const { data, error } = await client
+        .from("product_stock_movements")
+        .select(
+          `id, product_id, delta, lot_number, expiry_date, treatment_id,
+           products!product_stock_movements_product_id_fkey(name, stock_unit)`,
+        )
+        .eq("organization_id", organizationId)
+        .eq("source_type", "appointment")
+        .eq("source_id", appointmentId)
+        .eq("reason", "appointment_use")
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+
+      type Row = {
+        id: string;
+        product_id: string;
+        delta: number;
+        lot_number: string | null;
+        expiry_date: string | null;
+        treatment_id: string | null;
+        products: { name: string; stock_unit: string | null } | null;
+      };
+
+      return ((data ?? []) as Row[]).map((row) => ({
+        _id: row.id,
+        productId: row.product_id,
+        productName: row.products?.name ?? row.product_id,
+        quantity: Math.abs(Number(row.delta)),
+        stockUnit: row.products?.stock_unit ?? null,
+        lotNumber: row.lot_number,
+        expiryDate: row.expiry_date,
+        treatmentId: row.treatment_id,
+      }));
+    },
+    enabled: enabled && isReady && !!organizationId && !!appointmentId,
+  });
 }

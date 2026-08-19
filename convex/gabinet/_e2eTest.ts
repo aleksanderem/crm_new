@@ -16,7 +16,7 @@ interface TestResult {
 
 export const runAll = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {

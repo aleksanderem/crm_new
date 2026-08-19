@@ -6,6 +6,7 @@ import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import type { MappedGabinetEmployeeSchedule } from "@/lib/supabase/mappers/gabinet/employee-schedules";
+import { usePermission } from "@/hooks/use-permission";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -231,6 +232,7 @@ export function FlexibleScheduleEditor({
 }) {
   const { t, i18n } = useTranslation();
   const { data: locations } = useSupabaseGabinetLocationsList(organizationId);
+  const { allowed: canEdit } = usePermission("gabinet_employees", "edit");
   const [saving, setSaving] = useState(false);
   const [editingPeriodKey, setEditingPeriodKey] = useState<string | null>(null);
   const [addingNew, setAddingNew] = useState(false);
@@ -516,7 +518,7 @@ export function FlexibleScheduleEditor({
               {t("gabinet.employees.schedule.manageLeaves")}
             </Button>
           )}
-          {!isEditing && (
+          {!isEditing && canEdit && (
             <Button size="sm" onClick={openNewPeriod}>
               <Plus className="mr-1 h-4 w-4" variant="stroke" />
               {t("gabinet.employees.schedule.addPeriod")}
@@ -548,25 +550,27 @@ export function FlexibleScheduleEditor({
                       </Badge>
                     )}
                   </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openEditPeriod(period)}
-                    >
-                      <Pencil className="mr-1 h-3.5 w-3.5" variant="stroke" />
-                      {t("common.edit")}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => handleDeletePeriod(period.effectiveFrom)}
-                    >
-                      <Trash2 className="mr-1 h-3.5 w-3.5" variant="stroke" />
-                      {t("common.delete")}
-                    </Button>
-                  </div>
+                  {canEdit && (
+                    <div className="flex gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEditPeriod(period)}
+                      >
+                        <Pencil className="mr-1 h-3.5 w-3.5" variant="stroke" />
+                        {t("common.edit")}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => handleDeletePeriod(period.effectiveFrom)}
+                      >
+                        <Trash2 className="mr-1 h-3.5 w-3.5" variant="stroke" />
+                        {t("common.delete")}
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 {renderPeriodPreview(period)}
               </Card>
@@ -584,10 +588,12 @@ export function FlexibleScheduleEditor({
           <p className="text-sm text-muted-foreground mb-3">
             {t("gabinet.employees.schedule.usingClinicDefaults")}
           </p>
-          <Button size="sm" onClick={openNewPeriod}>
-            <Plus className="mr-1 h-4 w-4" variant="stroke" />
-            {t("gabinet.employees.schedule.addPeriod")}
-          </Button>
+          {canEdit && (
+            <Button size="sm" onClick={openNewPeriod}>
+              <Plus className="mr-1 h-4 w-4" variant="stroke" />
+              {t("gabinet.employees.schedule.addPeriod")}
+            </Button>
+          )}
         </div>
       )}
 

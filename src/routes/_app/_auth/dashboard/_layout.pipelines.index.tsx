@@ -9,12 +9,15 @@ import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
 import { KanbanBoard, KanbanLead } from "@/components/kanban/kanban-board";
 import { KanbanCardDetailSheet } from "@/components/kanban/kanban-card-detail-sheet";
+import { LostReasonDialog } from "@/components/crm/lost-reason-dialog";
 import { api } from "@cvx/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Kanban, TableIcon, KanbanIcon } from "@/lib/ez-icons";
 import { useState } from "react";
 import { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/pipelines/"
@@ -27,9 +30,9 @@ function PipelinesIndex() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   // @ts-ignore — Convex type instantiation too deep (pre-existing)
-  const moveToStage = useAction(api.leads.moveToStage);
-  const updateLead = useAction(api.leads.update);
-  const removeLead = useAction(api.leads.remove);
+  const moveToStage = useAction(api.crm.leads.moveToStage);
+  const updateLead = useAction(api.crm.leads.update);
+  const removeLead = useAction(api.crm.leads.remove);
   const queryClient = useQueryClient();
 
   const { data: pipelines } = useSupabasePipelinesList(organizationId);
@@ -39,6 +42,10 @@ function PipelinesIndex() {
   );
   const [selectedLead, setSelectedLead] = useState<KanbanLead | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [lostDialogOpen, setLostDialogOpen] = useState(false);
+  type PendingMove = { leadId: Id<"leads">; stageId: Id<"pipelineStages">; order: number };
+  const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
+  const [pendingMarkLostId, setPendingMarkLostId] = useState<Id<"leads"> | null>(null);
 
   const activePipeline =
     pipelines?.find((p) => p._id === selectedPipelineId) ??
@@ -76,6 +83,12 @@ function PipelinesIndex() {
     stageId: Id<"pipelineStages">,
     order: number
   ) => {
+    const targetStage = stagesWithLeads?.find((s) => s._id === stageId);
+    if (targetStage?.isLostStage) {
+      setPendingMove({ leadId, stageId, order });
+      setLostDialogOpen(true);
+      return;
+    }
     await moveToStage({
       organizationId,
       leadId,
@@ -95,13 +108,44 @@ function PipelinesIndex() {
     queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
   };
 
-  const handleMarkLost = async (leadId: Id<"leads">) => {
-    await updateLead({
-      organizationId,
-      leadId,
-      status: "lost",
-    });
-    queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
+  const handleMarkLost = (leadId: Id<"leads">) => {
+    setPendingMarkLostId(leadId);
+    setLostDialogOpen(true);
+  };
+
+  const handleLostConfirm = async (reason: string) => {
+    try {
+      if (pendingMove) {
+        await moveToStage({
+          organizationId,
+          leadId: pendingMove.leadId,
+          pipelineStageId: pendingMove.stageId,
+          stageOrder: pendingMove.order,
+          lostReason: reason,
+        });
+        queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
+        queryClient.invalidateQueries({ queryKey: supabaseKeys.pipelineStages.all });
+      } else if (pendingMarkLostId) {
+        await updateLead({
+          organizationId,
+          leadId: pendingMarkLostId,
+          status: "lost",
+          lostReason: reason,
+        });
+        queryClient.invalidateQueries({ queryKey: supabaseKeys.leads.all });
+      }
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "leads.errors.updateFailed",
+          defaultValue: "Nie udało się oznaczyć szansy jako przegranej.",
+        }),
+      );
+    } finally {
+      setLostDialogOpen(false);
+      setPendingMove(null);
+      setPendingMarkLostId(null);
+    }
   };
 
   const handleDelete = async (leadId: Id<"leads">) => {
@@ -183,6 +227,19 @@ function PipelinesIndex() {
         lead={selectedLead}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
+      />
+
+      <LostReasonDialog
+        open={lostDialogOpen}
+        onOpenChange={(open) => {
+          setLostDialogOpen(open);
+          if (!open) {
+            setPendingMove(null);
+            setPendingMarkLostId(null);
+          }
+        }}
+        onConfirm={handleLostConfirm}
+        organizationId={organizationId}
       />
     </div>
   );

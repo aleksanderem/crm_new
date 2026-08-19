@@ -101,9 +101,9 @@ function LeadsIndex() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
   const { nudge: nudgeFilter } = useSearch({ from: Route.id });
-  const updateLead = useAction(api.leads.update);
-  const removeLead = useAction(api.leads.remove);
-  const createLead = useAction(api.leads.create);
+  const updateLead = useAction(api.crm.leads.update);
+  const removeLead = useAction(api.crm.leads.remove);
+  const createLead = useAction(api.crm.leads.create);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -497,7 +497,16 @@ function LeadsIndex() {
   };
 
   const handleMarkLost = async (lead: LeadRow) => {
-    await updateLead({ organizationId, leadId: lead._id, status: "lost" });
+    try {
+      await updateLead({ organizationId, leadId: lead._id, status: "lost" });
+    } catch (e) {
+      toast.error(
+        formatActionError(e, t, {
+          key: "leads.errors.updateFailed",
+          defaultValue: "Nie udało się oznaczyć szansy jako przegranej.",
+        }),
+      );
+    }
   };
 
   const handleDelete = async (lead: LeadRow) => {
@@ -518,11 +527,20 @@ function LeadsIndex() {
           break;
         case "markLost":
           for (const row of selectedRows) {
-            await updateLead({
-              organizationId,
-              leadId: row._id,
-              status: "lost",
-            });
+            try {
+              await updateLead({
+                organizationId,
+                leadId: row._id,
+                status: "lost",
+              });
+            } catch (e) {
+              toast.error(
+                formatActionError(e, t, {
+                  key: "leads.errors.updateFailed",
+                  defaultValue: "Nie udało się oznaczyć szansy jako przegranej.",
+                }),
+              );
+            }
           }
           break;
         case "delete":

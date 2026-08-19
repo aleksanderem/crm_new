@@ -1,17 +1,16 @@
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery } from "../_generated/server";
+import { action, internalAction, internalMutation, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { logAudit } from "../auditLog";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 const productIdValidator = v.union(v.literal("crm"), v.literal("gabinet"));
 
-// Convex-side upsert of a per-org product entitlement. Convex-only table.
 const statusValidator = v.union(v.literal("active"), v.literal("canceled"));
 
 export const _upsertEntitlement = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     productId: productIdValidator,
     grant: v.boolean(),
     grantedByUserId: v.id("users"),
@@ -81,17 +80,31 @@ const orgEntitlementRowValidator = v.object({
   gabinet: entStatusValidator,
 });
 
-export const _listEntitlementsInternal = internalQuery({
+export const _listEntitlementsInternal = internalAction({
   args: {},
   returns: v.array(entitlementRowValidator),
-  handler: async (
-    ctx,
-  ): Promise<Array<{ organizationId: string; productId: string; status: string }>> => {
+  handler: async (): Promise<Array<{ organizationId: string; productId: string; status: string }>> => {
+    const db = createSupabaseDb();
+    const rows = await db.query("productSubscriptions").collect();
+    return rows.map((r) => ({
+      organizationId: String(r.organizationId),
+      productId: String(r.productId),
+      status: String(r.status),
+    }));
+  },
+});
+
+// Reads productSubscriptions from Convex ctx.db — used by the backfill migration
+// for idempotency checks, since _upsertEntitlement writes to Convex, not Supabase.
+export const _listEntitlementsFromConvex = internalQuery({
+  args: {},
+  returns: v.array(entitlementRowValidator),
+  handler: async (ctx): Promise<Array<{ organizationId: string; productId: string; status: string }>> => {
     const rows = await ctx.db.query("productSubscriptions").collect();
     return rows.map((r) => ({
       organizationId: String(r.organizationId),
-      productId: r.productId,
-      status: r.status,
+      productId: String(r.productId),
+      status: String(r.status),
     }));
   },
 });
@@ -112,12 +125,16 @@ export const listOrgEntitlements = action({
   > => {
     await ctx.runAction(internal._helpers.authAction.verifyPlatformAdmin, {});
     const db = createSupabaseDb();
-    const orgs = await db.query("organizations").collect();
-    const memberships = await db.query("teamMemberships").collect();
-    const ents = await ctx.runQuery(
-      internal.admin.entitlements._listEntitlementsInternal,
-      {},
-    );
+    const [orgs, memberships, entRows] = await Promise.all([
+      db.query("organizations").collect(),
+      db.query("teamMemberships").collect(),
+      db.query("productSubscriptions").collect(),
+    ]);
+    const ents = entRows.map((r) => ({
+      organizationId: String(r.organizationId),
+      productId: String(r.productId),
+      status: String(r.status),
+    }));
 
     const statusFor = (orgId: string, productId: string): EntStatus => {
       const e = ents.find(
@@ -147,7 +164,7 @@ export const listOrgEntitlements = action({
 // Platform-admin: grant or revoke a module for an org.
 export const setEntitlement = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     productId: productIdValidator,
     grant: v.boolean(),
   },
@@ -157,11 +174,49 @@ export const setEntitlement = action({
       internal._helpers.authAction.verifyPlatformAdmin,
       {},
     );
-    return await ctx.runMutation(internal.admin.entitlements._upsertEntitlement, {
+    const result = await ctx.runMutation(internal.admin.entitlements._upsertEntitlement, {
       organizationId: args.organizationId,
       productId: args.productId,
       grant: args.grant,
       grantedByUserId: userId,
     });
+
+    // Mirror to Supabase (primary store for reads).
+    const db = createSupabaseDb();
+    try {
+      const now = Date.now();
+      const status = args.grant ? "active" : "canceled";
+      const orgIdStr = String(args.organizationId);
+
+      const existing = await db
+        .query("productSubscriptions")
+        .eq("organizationId", orgIdStr)
+        .eq("productId", args.productId)
+        .unique();
+
+      if (existing) {
+        await db.patch("productSubscriptions", String(existing._id), {
+          status,
+          source: "manual",
+          grantedByUserId: String(userId),
+          updatedAt: now,
+        });
+      } else {
+        await db.insert("productSubscriptions", {
+          organizationId: orgIdStr,
+          productId: args.productId,
+          status,
+          cancelAtPeriodEnd: false,
+          source: "manual",
+          grantedByUserId: String(userId),
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    } catch (e) {
+      console.error("[entitlements.setEntitlement] Supabase write failed:", e);
+    }
+
+    return result;
   },
 });

@@ -1,11 +1,12 @@
 import { action, internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 type OrgSmsConfigRow = {
   _id: string;
-  organizationId: string;
+  organizationId: Id<"organizations">;
   provider: "smsapi" | "twilio";
   apiToken: string;
   apiSecret?: string | null;
@@ -21,7 +22,7 @@ type OrgSmsConfigRow = {
 // ---------------------------------------------------------------------------
 
 export const getConfig = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
@@ -47,7 +48,7 @@ export const getConfig = action({
 
 export const saveConfig = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     provider: v.union(v.literal("smsapi"), v.literal("twilio")),
     apiToken: v.string(),
     apiSecret: v.optional(v.string()),
@@ -101,7 +102,7 @@ export const saveConfig = action({
 
 export const toggleActive = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     isActive: v.boolean(),
   },
   handler: async (ctx, args) => {
@@ -129,7 +130,7 @@ export const toggleActive = action({
 
 export const sendOtpSms = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     phone: v.string(),
     code: v.string(),
   },
@@ -157,7 +158,7 @@ export const sendOtpSms = internalAction({
 
 /** Internal action to get full SMS config (with secrets) — only callable from internal functions. */
 export const getConfigInternal = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (_ctx, args): Promise<OrgSmsConfigRow | null> => {
     const db = createSupabaseDb();
     return await db
@@ -314,7 +315,7 @@ async function sendViaTwilio(
 
 export const sendSigningLinkSms = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     phone: v.string(),
     signerName: v.string(),
     documentTitle: v.string(),
@@ -363,7 +364,7 @@ export const sendSigningLinkSms = internalAction({
 
 export const sendAppointmentSms = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     phone: v.string(),
     message: v.string(),
     eventId: v.optional(v.string()),

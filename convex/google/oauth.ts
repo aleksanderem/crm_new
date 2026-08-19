@@ -108,7 +108,7 @@ export const callback = httpAction(async (ctx, request) => {
 
     // Store the connection
     await ctx.runMutation(internal.oauthConnections.createOrUpdate, {
-      organizationId: state.organizationId as Id<"organizations">,
+      organizationId: state.organizationId,
       providerAccountId: userInfo.email as string,
       accessToken: tokens.access_token as string,
       refreshToken: tokens.refresh_token as string,

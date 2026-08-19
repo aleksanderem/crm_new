@@ -1,8 +1,23 @@
-import { crmManifest } from "@/modules/crm/manifest";
-import { gabinetManifest } from "@/modules/gabinet/manifest";
 import type { ModuleManifest, ModuleId, ProductKey } from "@/modules/types";
 
-export const moduleRegistry: ModuleManifest[] = [gabinetManifest, crmManifest];
+const manifestModules = import.meta.glob<Record<string, unknown>>(
+  "./*/manifest.ts",
+  { eager: true },
+);
+
+function isManifest(value: unknown): value is ModuleManifest {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "id" in value &&
+    "productKey" in value &&
+    "workspaceRoot" in value
+  );
+}
+
+export const moduleRegistry: ModuleManifest[] = Object.values(manifestModules).flatMap(
+  (mod) => Object.values(mod).filter(isManifest),
+);
 
 export function getModuleById(id: ModuleId) {
   return moduleRegistry.find((module) => module.id === id);

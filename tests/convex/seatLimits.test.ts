@@ -462,3 +462,82 @@ describe("member removal frees seat", () => {
     expect(usage.canAddMore).toBe(true);
   });
 });
+
+describe("getSeatLimit max-wins with multiple subscriptions", () => {
+  test("returns highest seatLimit across multiple active subscriptions", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+
+    await t.run(async (ctx) => {
+      const planLow = await ctx.db.insert("plans", {
+        key: "free",
+        stripeId: "price_crm_multi",
+        name: "CRM",
+        description: "CRM module plan",
+        seatLimit: 15,
+        prices: {
+          month: {
+            usd: { stripeId: "price_crm_m_usd", amount: 1900 },
+            eur: { stripeId: "price_crm_m_eur", amount: 1900 },
+            pln: { stripeId: "price_crm_m_pln", amount: 7900 },
+          },
+          year: {
+            usd: { stripeId: "price_crm_y_usd", amount: 19000 },
+            eur: { stripeId: "price_crm_y_eur", amount: 19000 },
+            pln: { stripeId: "price_crm_y_pln", amount: 79000 },
+          },
+        },
+      });
+      const planHigh = await ctx.db.insert("plans", {
+        key: "pro",
+        stripeId: "price_gabinet_multi",
+        name: "Gabinet",
+        description: "Gabinet module plan",
+        seatLimit: 40,
+        prices: {
+          month: {
+            usd: { stripeId: "price_gab_m_usd", amount: 3900 },
+            eur: { stripeId: "price_gab_m_eur", amount: 3900 },
+            pln: { stripeId: "price_gab_m_pln", amount: 15900 },
+          },
+          year: {
+            usd: { stripeId: "price_gab_y_usd", amount: 39000 },
+            eur: { stripeId: "price_gab_y_eur", amount: 39000 },
+            pln: { stripeId: "price_gab_y_pln", amount: 159000 },
+          },
+        },
+      });
+
+      await ctx.db.insert("subscriptions", {
+        userId,
+        planId: planLow,
+        priceStripeId: "price_crm_m_usd",
+        stripeId: "sub_crm",
+        currency: "usd",
+        interval: "month",
+        status: "active",
+        currentPeriodStart: Date.now(),
+        currentPeriodEnd: Date.now() + 30 * 24 * 60 * 60 * 1000,
+        cancelAtPeriodEnd: false,
+      });
+      await ctx.db.insert("subscriptions", {
+        userId,
+        planId: planHigh,
+        priceStripeId: "price_gab_m_usd",
+        stripeId: "sub_gabinet",
+        currency: "usd",
+        interval: "month",
+        status: "active",
+        currentPeriodStart: Date.now(),
+        currentPeriodEnd: Date.now() + 30 * 24 * 60 * 60 * 1000,
+        cancelAtPeriodEnd: false,
+      });
+    });
+
+    const result = await t
+      .withIdentity(identity)
+      .query(api.organizations.getSeatLimit, { organizationId });
+
+    expect(result.seatLimit).toBe(40);
+  });
+});

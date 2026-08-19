@@ -85,7 +85,9 @@
       "invalidArguments": "Invalid data. Please check the form and try again.",
       "invalidField": "Invalid data: {{field}} — {{reason}}.",
       "schemaCache": "Database schema is missing a column — a migration likely wasn't applied. Run `npm run migrations:apply` and refresh.",
-      "storage": "Storage error. Please try again."
+      "storage": "Storage error. Please try again.",
+      "connectionLost": "A temporary connection issue occurred. Please try again in a moment.",
+      "saveFailed": "Data storage error. Please try again."
     },
     "previous": "Previous",
     "next": "Next",
@@ -134,6 +136,7 @@
       "reports": "Reports",
       "scheduling": "Working Hours",
       "leaves": "Leaves",
+      "myLeaves": "My Leave Requests",
       "documentTemplates": "Document Templates",
       "cash": "Cash Register"
     },
@@ -572,7 +575,8 @@
       "notes": "Notes"
     },
     "errors": {
-      "createFailed": "Could not create the contact."
+      "createFailed": "Could not create the contact.",
+      "updateFailed": "Failed to update contact."
     }
   },
   "companies": {
@@ -620,7 +624,8 @@
       "notes": "Notes"
     },
     "errors": {
-      "createFailed": "Could not create the company."
+      "createFailed": "Could not create the company.",
+      "updateFailed": "Failed to update company."
     }
   },
   "activities": {
@@ -668,7 +673,12 @@
       "showCompleted": "Show completed",
       "hideCompleted": "Hide completed"
     },
-    "pageTitle": "Activities"
+    "pageTitle": "Activities",
+    "errors": {
+      "createFailed": "Failed to create activity.",
+      "updateFailed": "Failed to update activity.",
+      "deleteFailed": "Failed to delete activity."
+    }
   },
   "documents": {
     "title": "Documents",
@@ -753,7 +763,11 @@
       "errorGeneric": "An unexpected error occurred",
       "formTitle": "Form",
       "fillPrompt": "Fill in the required fields, then proceed to sign.",
-      "renderError": "Could not render the document. Please contact the clinic."
+      "renderError": "Could not render the document. Please contact the clinic.",
+      "otpSendError": "Failed to send verification code. Please try again.",
+      "otpVerifyError": "Invalid code or connection error. Please try again.",
+      "signError": "Failed to sign document. Check your internet connection and try again.",
+      "submitError": "Failed to complete document signing. Check your internet connection and try again."
     },
     "document": "Document",
     "generate": "Generate",
@@ -868,6 +882,19 @@
       "filled": "Document filled in and sent to the client for signing.",
       "sent": "Document sent to the client for signing.",
       "later": "Fill in later"
+    },
+    "void": "Void",
+    "voided": "Document voided",
+    "voidFailed": "Failed to void document",
+    "voidDialogTitle": "Void document",
+    "voidDialogDescription": "Are you sure you want to void this document? This cannot be undone.",
+    "resend": "Resend",
+    "view": "View",
+    "audit": {
+      "created": "Created",
+      "sent": "Sent for signing",
+      "signed": "Signed",
+      "voided": "Voided"
     }
   },
   "products": {
@@ -882,7 +909,7 @@
     "productName": "Product name",
     "productDescription": "Product description...",
     "sku": "SKU",
-    "unitPrice": "Unit Price",
+    "unitPrice": "Net Purchase Price",
     "taxRate": "Tax Rate (%)",
     "activate": "Activate",
     "deactivate": "Deactivate",
@@ -908,14 +935,17 @@
       "namePlaceholder": "Enter product name",
       "sku": "SKU",
       "skuPlaceholder": "e.g. PROD-001",
-      "unitPrice": "Unit Price",
+      "unitPrice": "Net Purchase Price",
       "taxRate": "Tax Rate (%)",
       "isActive": "Active",
       "description": "Description",
       "descriptionPlaceholder": "Product description..."
     },
     "errors": {
-      "saveFailed": "Could not save the product."
+      "saveFailed": "Could not save the product.",
+      "createFailed": "Failed to create product.",
+      "deleteFailed": "Failed to delete product.",
+      "toggleFailed": "Failed to toggle product status."
     },
     "stock": {
       "column": "Stock",
@@ -941,6 +971,9 @@
         "success": "Stock updated.",
         "negativeWarning": "Stock went negative. Review the movement history and correct shortages.",
         "error": "Could not update stock."
+      },
+      "correction": {
+        "error": "Failed to save stock correction."
       }
     },
     "simpleFilter": {
@@ -1026,6 +1059,9 @@
       "note": "Notes",
       "notePlaceholder": "Add call notes...",
       "logCall": "Log Call"
+    },
+    "errors": {
+      "createFailed": "Failed to log call."
     }
   },
   "pipelines": {
@@ -1595,6 +1631,8 @@
       "requiresSignature": "Requires Signature",
       "signatureMethodLabel": "Signature Method",
       "signerRoleLabel": "Signer Role",
+      "isOrgRequired": "Required for entire organization",
+      "isOrgRequiredHint": "The document will be automatically required for every client regardless of the selected treatment. Once signed, it will not be required again.",
       "variableBindingsTitle": "Variable Bindings",
       "variableBindingsDescription": "Map form variables to entity fields for auto-fill.",
       "colName": "Name",
@@ -1646,15 +1684,25 @@
       },
       "categories": {
         "intake": "Health Questionnaire",
-        "consent": "Consent",
+        "consent": "Treatment Consent",
         "protocol": "Treatment Protocol",
         "medical_record": "Medical Record",
         "prescription": "Prescription",
         "referral": "Referral",
         "contract": "Contract",
         "invoice": "Invoice",
-        "custom": "Custom"
+        "aftercare": "Aftercare Instructions",
+        "consent_photo": "Photo Consent",
+        "consent_marketing": "Marketing Consent",
+        "declaration": "Declaration",
+        "custom": "Other"
       },
+      "filterAll": "All",
+      "filterActive": "Active",
+      "filterInactive": "Inactive",
+      "preview": "Preview",
+      "assignToTreatment": "Assign to Treatment",
+      "assignToTreatmentSoon": "Available in D25",
       "signatureMethods": {
         "click": "Click",
         "sms": "SMS Code",
@@ -2195,14 +2243,22 @@
     "emptyReasons": "No lost reasons defined.",
     "confirmDelete": "Delete this reason?",
     "reasonRequired": "Require a reason when losing a deal",
-    "allowCustom": "Allow custom (free-text) reasons"
+    "allowCustom": "Allow custom (free-text) reasons",
+    "errors": {
+      "createFailed": "Failed to create lost reason.",
+      "updateFailed": "Failed to update lost reason."
+    }
   },
   "sources": {
     "title": "Sources",
     "description": "Manage contact and deal acquisition sources.",
     "addSource": "Add Source",
     "emptySources": "No sources defined.",
-    "confirmDelete": "Delete this source?"
+    "confirmDelete": "Delete this source?",
+    "errors": {
+      "createFailed": "Failed to create source.",
+      "updateFailed": "Failed to update source."
+    }
   },
   "globalSearch": {
     "placeholder": "Search contacts, companies, deals...",
@@ -2423,7 +2479,11 @@
     "sentDate": "Sent",
     "joinedDate": "Joined",
     "upgrade": "Upgrade Plan",
-    "remainingSeats": "{{count}} seat(s) remaining"
+    "remainingSeats": "{{count}} seat(s) remaining",
+    "errors": {
+      "resendFailed": "Failed to resend invitation.",
+      "cancelFailed": "Failed to cancel invitation."
+    }
   },
   "orgSettings": {
     "title": "Organization",
@@ -2464,7 +2524,10 @@
     "syncNow": "Sync Now",
     "syncing": "Syncing...",
     "oauthSuccess": "Google account connected successfully.",
-    "oauthError": "Failed to connect Google account. Please try again."
+    "oauthError": "Failed to connect Google account. Please try again.",
+    "errors": {
+      "disconnectFailed": "Failed to disconnect integration."
+    }
   },
   "csv": {
     "import": "Import",
@@ -2476,7 +2539,6 @@
     "importing": "Importing...",
     "importComplete": "Import complete",
     "importSuccess": "Successfully imported {{count}} records.",
-    "errors": "{{count}} error(s) occurred during import.",
     "downloadTemplate": "Download Template",
     "dragOrClick": "Drag & drop a CSV file or click to browse",
     "csvFilesOnly": "CSV files only",
@@ -2491,7 +2553,11 @@
     "close": "Close",
     "startImport": "Start Import",
     "next": "Next",
-    "back": "Back"
+    "back": "Back",
+    "errorsLabel": "{{count}} error(s) occurred during import.",
+    "errors": {
+      "exportFailed": "Failed to export data to CSV."
+    }
   },
   "gabinet": {
     "patients": {
@@ -2567,6 +2633,8 @@
       "referralSourceCustomGroup": "Custom sources",
       "referredBy": "Referred By",
       "linkedContact": "Linked CRM Contact",
+      "contactSearchPlaceholder": "Search CRM contact...",
+      "contactSearchHint": "Optional: link the new client to an existing CRM contact.",
       "address": "Address",
       "street": "Street",
       "city": "City",
@@ -2580,7 +2648,8 @@
         "loyalty": "Loyalty",
         "credit": "Credit",
         "activity": "Activity",
-        "billing": "Billing"
+        "billing": "Billing",
+        "notes": "Notes"
       },
       "billing": {
         "title": "Billing",
@@ -2626,7 +2695,8 @@
       "noMedicalInfo": "No medical information",
       "errors": {
         "createFailed": "Could not add the client.",
-        "saveFailed": "Could not save client changes."
+        "saveFailed": "Could not save client changes.",
+        "deleteFailed": "Failed to delete patient."
       },
       "merge": {
         "action": "Merge with...",
@@ -2667,7 +2737,12 @@
           "medicalNotes": "Medical notes",
           "referralSource": "Referral source"
         }
-      }
+      },
+      "preferredLocation": "Preferred location",
+      "smsConsent": "SMS consent",
+      "smsConsentHint": "The patient has consented to receive appointment reminders and information via SMS to the provided phone number.",
+      "reactivate": "Reactivate Client",
+      "reactivateSuccess": "Client has been reactivated."
     },
     "treatments": {
       "title": "Treatments",
@@ -2742,7 +2817,10 @@
         "invalidField": "Could not save the treatment: {{field}} — {{reason}}.",
         "schemaCache": "Database schema is missing a column — a migration likely wasn't applied. Run `npm run migrations:apply` and refresh.",
         "storage": "Could not save the treatment — storage error. Please try again.",
-        "purchaseFailed": "Could not sell the treatment."
+        "purchaseFailed": "Could not sell the treatment.",
+        "productsSaveFailed": "Failed to save products.",
+        "productsSaveFailedDetail": "Failed to save treatment products.",
+        "deleteFailed": "Failed to delete treatment."
       },
       "patientTreatments": "Treatments",
       "addOrSell": "Add / Sell",
@@ -2946,6 +3024,7 @@
       "title": "Leave Management",
       "description": "Manage employee leaves and time off",
       "requestLeave": "Request Leave",
+      "addLeaveRequest": "Add Leave Request",
       "type": "Type",
       "startDate": "Start Date",
       "endDate": "End Date",
@@ -2981,10 +3060,13 @@
       "confirmRejectDesc": "Are you sure you want to reject this leave request? The employee will be notified.",
       "confirmDeleteTitle": "Delete Leave Request",
       "confirmDeleteDesc": "Are you sure you want to delete this leave request? This action cannot be undone.",
+      "withdraw": "Withdraw Request",
+      "withdrawn": "Leave request withdrawn",
       "errors": {
         "createFailed": "Could not create the leave request.",
         "statusChangeFailed": "Could not update the leave request status.",
-        "deleteFailed": "Could not delete the leave request."
+        "deleteFailed": "Could not delete the leave request.",
+        "withdrawFailed": "Could not withdraw the leave request."
       }
     },
     "overtime": {
@@ -3052,6 +3134,15 @@
       "confirmDeactivate": "Are you sure you want to deactivate this employee?",
       "deactivated": "Employee deactivated",
       "hireDate": "Hire Date",
+      "performsServices": "Does the employee perform services or treatments?",
+      "officesAndLocations": "Offices and Locations",
+      "location": "Location",
+      "locationPlaceholder": "Select a location",
+      "noLocation": "No location",
+      "locationRole": "Role at this location (optional override)",
+      "locationRolePlaceholder": "Same as primary role",
+      "locationRoleNone": "Same as primary role",
+      "calendarSettings": "Calendar Settings",
       "notes": "Notes",
       "editEmployee": "Edit Employee",
       "editEmployeeDesc": "Edit employee data and settings",
@@ -3072,6 +3163,17 @@
       "accountStatus": "Account status",
       "accountActive": "Active",
       "accountInactive": "Inactive",
+      "activateAccount": "Activate account",
+      "blockAccount": "Block account",
+      "unblockAccount": "Unblock account",
+      "activated": "Account activated.",
+      "blocked": "Account blocked.",
+      "unblocked": "Account unblocked.",
+      "confirmBlock": "Are you sure you want to block this employee's account?",
+      "confirmUnblock": "Are you sure you want to unblock this employee's account?",
+      "confirmActivate": "Are you sure you want to activate this employee's account?",
+      "confirmCancelInvitation": "Are you sure you want to cancel this invitation?",
+      "invitationExpired": "Expired",
       "details": "Details",
       "activity": "Activity",
       "qualifications": "Treatment Qualifications",
@@ -3170,6 +3272,7 @@
         "certifications": "Certifications / Courses",
         "certNamePlaceholder": "Certificate name",
         "noQualificationsYet": "No qualifications or skills added yet.",
+        "notPerformingServicesNotice": "The employee currently does not perform services or treatments. Qualification data is available below in read-only mode.",
         "assignedTreatments": "Assigned Treatments",
         "compensation": "Compensation",
         "baseSalary": "Base Salary",
@@ -3217,10 +3320,17 @@
       "active": "Active",
       "confirmDelete": "Are you sure you want to delete this employee?",
       "searchPlaceholder": "Search employees...",
+      "linkedAsMember": "Employee profile created and linked to existing account.",
       "errors": {
         "createFailed": "Could not add the employee.",
         "saveFailed": "Could not save employee changes.",
-        "noteFailed": "Could not add the note."
+        "noteFailed": "Could not add the note.",
+        "changePasswordFailed": "Failed to change password.",
+        "photoUploadFailed": "Failed to upload photo.",
+        "activateFailed": "Failed to activate account.",
+        "blockFailed": "Failed to block account.",
+        "unblockFailed": "Failed to unblock account.",
+        "deleteFailed": "Failed to delete employee."
       },
       "navGroups": {
         "clientsAndVisits": "Clients and Visits",
@@ -3228,6 +3338,10 @@
         "employeeData": "Employee Data",
         "documentsAndAssets": "Documents and Assets",
         "accountAndAccess": "Account and Access"
+      },
+      "permissions": {
+        "saveError": "Failed to save permissions.",
+        "resetError": "Failed to reset permissions."
       }
     },
     "leaveTypes": {
@@ -3328,6 +3442,7 @@
       },
       "actions": {
         "cancel": "Cancel appointment",
+        "cancelSeries": "Cancel series",
         "complete": "Complete",
         "confirm": "Confirm",
         "noShow": "No show",
@@ -3337,14 +3452,21 @@
       "cancelDesc": "Provide a reason for cancelling the appointment",
       "cancelReasonPlaceholder": "Enter cancellation reason...",
       "cancelReasonRequired": "Cancellation reason is required",
+      "cancelScope": {
+        "single": "Only this appointment",
+        "series": "This and all following"
+      },
+      "cancelSeriesTitle": "Cancel appointment series",
       "cancelTitle": "Cancel appointment",
       "cancelled": "Appointment cancelled",
+      "seriesCancelled": "Appointment series cancelled",
       "details": "Appointment details",
       "internalNotes": "Staff notes",
       "internalNotesDesc": "Visible to staff only. The client cannot see this information.",
       "internalNotesPlaceholder": "Add description",
       "prepayment": "Prepayment",
       "prepaymentAmount": "Prepayment amount",
+      "prepaymentPaid": "Prepayment paid",
       "prepaymentPending": "Prepayment pending",
       "prepaymentRequired": "Prepayment required",
       "scheduling": "Scheduling",
@@ -3411,10 +3533,14 @@
       "addTreatment": "Add treatment",
       "removeTreatment": "Remove treatment",
       "totalDuration": "Total",
-      "packageTreatment": "Treatment covered by package"
+      "packageTreatment": "Treatment covered by package",
+      "createFailed": "Failed to create appointment."
     },
     "events": {
-      "create": "New Event"
+      "create": "New Event",
+      "errors": {
+        "createFailed": "Failed to add event."
+      }
     },
     "appointmentDetail": {
       "title": "Appointment Details",
@@ -3440,6 +3566,23 @@
       "packageNotSelected": "Choose the package to deduct units from.",
       "packageQuantityMin": "Unit count must be at least 1.",
       "packageQuantityExceeds": "Unit count exceeds the remaining package usage.",
+      "documentStatus": {
+        "title": "Documentation status",
+        "complete": "Documentation complete",
+        "missingRequired": "Missing required documents",
+        "needsAttention": "Needs attention",
+        "progress": "{{satisfied}} / {{total}} satisfied",
+        "optional": "optional",
+        "showAll": "Show all",
+        "showLess": "Hide non-applicable",
+        "statuses": {
+          "satisfied": "Satisfied",
+          "expired": "Expired",
+          "pending": "Pending",
+          "missing": "Missing",
+          "notApplicable": "Not applicable"
+        }
+      },
       "markContraindicationAsDiscussed": "Mark as discussed",
       "contraindicationDiscussed": "Discussed",
       "contraindicationMarked": "Marked as discussed",
@@ -3683,7 +3826,10 @@
       "errors": {
         "saveFailed": "Could not save the package.",
         "deleteFailed": "Could not delete the package.",
-        "purchaseFailed": "Could not sell the package."
+        "purchaseFailed": "Could not sell the package.",
+        "createFailed": "Failed to create package.",
+        "toggleActiveFailed": "Failed to toggle package status.",
+        "assignFailed": "Failed to assign package."
       }
     },
     "documents": {
@@ -4230,7 +4376,51 @@
       "dayClosed": "Day closed successfully",
       "dayAlreadyClosed": "Day already closed",
       "totalCollected": "Total collected",
-      "history": "Closure history"
+      "history": "Closure history",
+      "cashSplit": "Cash split",
+      "cashNextOpening": "Stays in register for next day",
+      "cashToSafe": "To Safe (Sejf)",
+      "cashSplitRequired": "Sum must equal counted cash",
+      "openingBalancePreFilled": "Auto-filled from previous day close",
+      "tabKasa": "Cash Register",
+      "tabSejf": "Safe (Sejf)"
+    },
+    "safe": {
+      "title": "Safe (Sejf)",
+      "noLocation": "Select a location to view safe data",
+      "balance": "Safe Balance",
+      "balanceDescription": "Balance is calculated from movement history",
+      "totalIn": "Total in",
+      "totalOut": "Total out",
+      "movements": "Movement History",
+      "noMovements": "No safe movements",
+      "typeTransferIn": "Transfer to Safe",
+      "typeWithdrawal": "Withdrawal from Safe",
+      "withdrawButton": "Safe Withdrawal",
+      "withdrawForm": "Safe Withdrawal",
+      "withdrawAmount": "Amount",
+      "withdrawReason": "Reason",
+      "withdrawReasonPlaceholder": "e.g. expenses, supplies",
+      "withdraw": "Withdraw",
+      "withdrawSuccess": "Withdrawal recorded",
+      "invalidAmount": "Amount must be greater than 0",
+      "insufficientBalance": "Amount exceeds available safe balance ({{balance}} PLN)",
+      "dayCloseRef": "Day close reference",
+      "description": "Description"
+    },
+    "deliveries": {
+      "loadError": "Failed to load delivery.",
+      "analyzeError": "Failed to analyze invoice.",
+      "matchError": "Failed to match items.",
+      "postError": "Failed to post delivery.",
+      "cancelError": "Failed to cancel delivery.",
+      "invoiceImport": {
+        "error": "Failed to create delivery."
+      },
+      "decisions": {
+        "saveError": "Failed to save decisions.",
+        "postError": "Failed to approve delivery."
+      }
     }
   },
   "customFields": {
@@ -4834,6 +5024,11 @@
       "errors": {
         "roleUpdateFailed": "Could not update the user's role."
       }
+    },
+    "entitlements": {
+      "errors": {
+        "setFailed": "Failed to update module access."
+      }
     }
   },
   "login": {
@@ -5018,6 +5213,57 @@
       "funnelSpeed": "Funnel Speed",
       "funnelVelocity": "Funnel Velocity",
       "avgDaysPerStage": "Avg. days per stage"
+    }
+  },
+  "notes": {
+    "errors": {
+      "createFailed": "Failed to add note."
+    }
+  },
+  "associations": {
+    "errors": {
+      "linkFailed": "Failed to link records."
+    }
+  },
+  "search": {
+    "errors": {
+      "searchFailed": "Search failed."
+    }
+  },
+  "email": {
+    "errors": {
+      "sendFailed": "Failed to send message."
+    }
+  },
+  "inventory": {
+    "confirm": {
+      "error": "Failed to confirm inventory."
+    }
+  },
+  "leads": {
+    "errors": {
+      "createFailed": "Failed to create lead.",
+      "updateFailed": "Failed to update lead."
+    }
+  },
+  "gdpr": {
+    "exportFailed": "Failed to export data.",
+    "eraseFailed": "Failed to erase data."
+  },
+  "invitations": {
+    "errors": {
+      "createFailed": "Failed to send invitation."
+    }
+  },
+  "activityTypes": {
+    "errors": {
+      "createFailed": "Failed to create activity type.",
+      "updateFailed": "Failed to update activity type."
+    }
+  },
+  "organization": {
+    "errors": {
+      "saveFailed": "Failed to save organization settings."
     }
   }
 }

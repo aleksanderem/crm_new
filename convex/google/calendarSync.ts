@@ -254,7 +254,7 @@ async function resolveCrmEvents(
 }
 
 async function resolveGabinetEvents(
-  _ctx: any,
+  ctx: any,
   config: Record<string, unknown>,
   events: GoogleCalendarEvent[]
 ): Promise<number> {
@@ -353,7 +353,7 @@ async function resolveGabinetEvents(
 
     const requiresCompletion = !treatmentId || patientIsNew;
 
-    await createAppointmentFromSyncSupabase(db, {
+    const syncResult = await createAppointmentFromSyncSupabase(db, {
       organizationId: orgId,
       patientId,
       treatmentId,
@@ -374,6 +374,42 @@ async function resolveGabinetEvents(
       syncConfigId: String(config._id),
       visibilityOverride: config.visibility,
     });
+
+    if (syncResult.type === "created") {
+      // Automation event + reminder scheduling (#5358).
+      const patientName = attendee.displayName ?? attendee.email.split("@")[0];
+      await ctx.runMutation(
+        internal.gabinet.appointments._syncCreatedSideEffects,
+        {
+          organizationId: orgId,
+          appointmentId: syncResult.appointmentId,
+          patientId,
+          treatmentId,
+          employeeId: employee.id,
+          date,
+          startTime,
+          endTime,
+          createdBy: ownerId,
+          patientName,
+          patientEmail: attendee.email,
+        },
+      );
+
+      // Treatment documents: prevent document gate bypass on sync path (#5353).
+      if (treatmentId) {
+        await ctx.runMutation(
+          internal.gabinet.appointments._generateDocsOnSync,
+          {
+            organizationId: orgId,
+            appointmentId: syncResult.appointmentId,
+            treatmentId,
+            patientId,
+            createdBy: ownerId,
+          },
+        );
+      }
+    }
+
     synced++;
   }
 
@@ -402,7 +438,7 @@ export const syncAll = internalAction({
 });
 
 export const syncMyCalendars = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{ calendarName: string | null; scheduled: boolean }[]> => {
     const userId = await auth.getUserId(ctx);
     if (!userId) throw new Error("Not authenticated");

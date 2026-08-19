@@ -1,24 +1,21 @@
-import { MutationCtx } from "../_generated/server";
-import { Id } from "../_generated/dataModel";
 import { ActivityAction } from "@cvx/schema";
 import { publishActivityEnvelope } from "./activityEnvelope";
 
 export async function logActivity(
-  ctx: MutationCtx,
   args: {
-    organizationId: Id<"organizations">;
+    organizationId: string;
     entityType: string;
     entityId: string;
     action: ActivityAction;
     description: string;
     metadata?: any;
-    performedBy: Id<"users">;
+    performedBy: string;
     actorLabel?: string;
   }
 ) {
   const occurredAt = Date.now();
 
-  await publishActivityEnvelope(ctx, {
+  await publishActivityEnvelope({
     organizationId: args.organizationId,
     action: args.action,
     performedBy: args.performedBy,

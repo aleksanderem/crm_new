@@ -24,7 +24,7 @@ export function ThreadView({
 }: ThreadViewProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const markRead = useAction(api.emails.markRead);
+  const markRead = useAction(api.crm.emails.markRead);
 
   const { data: thread } = useSupabaseEmailThread(
     organizationId,

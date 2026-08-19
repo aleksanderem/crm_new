@@ -12,6 +12,7 @@ import { api } from "../../convex/_generated/api";
 import {
   createTestCtx,
   seedGabinetPrereqs,
+  seedGabinetRole,
   seedSecondUser,
   seedTestUser,
 } from "../../convex/_test_helpers";
@@ -104,7 +105,7 @@ describe("gabinet_appointments RBAC", () => {
   test("member without gabinet role cannot create an appointment (gabinet_appointments default=none)", async () => {
     const t = createTestCtx();
     const { organizationId, userId } = await seedTestUser(t);
-    const { identity: memberIdentity } = await seedSecondUser(
+    const { userId: memberId, identity: memberIdentity } = await seedSecondUser(
       t,
       organizationId,
       { role: "member" },
@@ -114,6 +115,7 @@ describe("gabinet_appointments RBAC", () => {
       organizationId,
       userId,
     );
+    // No seedGabinetRole call — member has no gabinetMemberships row.
 
     // DEFAULT_PERMISSIONS.member.gabinet_appointments is now all-"none".
     // A plain member with no gabinetMemberships row must be denied.
@@ -193,12 +195,13 @@ describe("gabinet_patients RBAC", () => {
   test("member without gabinet role cannot create a patient (gabinet_patients default=none)", async () => {
     const t = createTestCtx();
     const { organizationId, userId } = await seedTestUser(t);
-    const { identity: memberIdentity } = await seedSecondUser(
+    const { userId: memberId, identity: memberIdentity } = await seedSecondUser(
       t,
       organizationId,
       { role: "member" },
     );
     await seedGabinetPrereqs(t, organizationId, userId);
+    // No seedGabinetRole call — member has no gabinetMemberships row.
 
     // DEFAULT_PERMISSIONS.member.gabinet_patients is now all-"none".
     // A plain member with no gabinetMemberships row must be denied.
@@ -319,19 +322,20 @@ describe("gabinet_packages RBAC", () => {
   test("member without gabinet role cannot create a package (gabinet_packages default=none)", async () => {
     const t = createTestCtx();
     const { organizationId, userId } = await seedTestUser(t);
-    const { identity: memberIdentity } = await seedSecondUser(
+    const { userId: memberId, identity: memberIdentity } = await seedSecondUser(
       t,
       organizationId,
       { role: "member" },
     );
     const { treatmentId } = await seedGabinetPrereqs(t, organizationId, userId);
+    // No seedGabinetRole call — member has no gabinetMemberships row.
 
     // DEFAULT_PERMISSIONS.member.gabinet_packages is now all-"none".
     // A plain member with no gabinetMemberships row must be denied.
     await expect(
       t.withIdentity(memberIdentity).action(api.gabinet.packages.create, {
         organizationId,
-        name: "Member Package",
+        name: "Manager Package",
         treatments: [{ treatmentId: String(treatmentId), quantity: 2 }],
         totalPrice: 200,
       }),

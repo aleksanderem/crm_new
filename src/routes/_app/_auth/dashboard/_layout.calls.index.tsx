@@ -166,9 +166,9 @@ function CallsPage() {
     return filtered.filter((c: any) => c.note?.toLowerCase().includes(q));
   }, [allCalls, activeFilters, applyFilters, searchValue, nudgeFilter]);
 
-  const createCall = useAction(api.calls.create);
-  const updateCall = useAction(api.calls.update);
-  const removeCall = useAction(api.calls.remove);
+  const createCall = useAction(api.crm.calls.create);
+  const updateCall = useAction(api.crm.calls.update);
+  const removeCall = useAction(api.crm.calls.remove);
 
   const resetForm = () => {
     setOutcome("noAnswer");

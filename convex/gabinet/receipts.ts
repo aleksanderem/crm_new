@@ -348,9 +348,9 @@ async function buildReceiptPdf(params: {
 // ---------------------------------------------------------------------------
 
 export const _getOrgName = internalQuery({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
-    const org = await ctx.db.get(args.organizationId);
+    const org = await ctx.db.get(args.organizationId as Id<"organizations">);
     return (org as Record<string, unknown> | null)?.name as string | undefined;
   },
 });
@@ -363,7 +363,7 @@ export const _getOrgName = internalQuery({
 
 export const _storePdfAndCreateReceipt = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paymentId: v.string(),
     appointmentId: v.optional(v.string()),
     patientId: v.optional(v.string()),
@@ -483,7 +483,7 @@ export const _storePdfAndCreateReceipt = internalAction({
 
 export const _auditReceiptGenerated = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     receiptId: v.string(),
     paymentId: v.string(),
@@ -520,7 +520,7 @@ export const _auditReceiptGenerated = internalMutation({
  */
 export const generatePdfReceipt = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paymentId: v.string(),
     /** NIP (tax ID) of the issuing organisation. Printed on the PDF. */
     organizationNip: v.optional(v.string()),
@@ -794,7 +794,7 @@ export const _backfillOrphanedPdfReceipts = internalAction({
 export const _createReceiptRowForPayment = internalMutation({
   args: {
     paymentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     createdBy: v.id("users"),
     // When true: void the existing issued receipt and create a KOR correction.
     isRefund: v.optional(v.boolean()),
@@ -821,7 +821,7 @@ export const _createReceiptRowForPayment = internalMutation({
     const amount = payment.amount as number;
     if (!args.isRefund && amount <= 0) return;
 
-    const orgDoc = await ctx.db.get(args.organizationId);
+    const orgDoc = await ctx.db.get(args.organizationId as Id<"organizations">);
     const orgName =
       (orgDoc as Record<string, unknown> | null)?.name as string ??
       "Placówka medyczna";
@@ -964,7 +964,7 @@ export const _createReceiptRowForPayment = internalMutation({
 export const _createSplitReceiptRow = internalMutation({
   args: {
     primaryPaymentId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     createdBy: v.id("users"),
     firstMethod: v.string(),
     firstAmount: v.number(),
@@ -988,7 +988,7 @@ export const _createSplitReceiptRow = internalMutation({
     const primaryPayment = await db.get("payments", args.primaryPaymentId);
     if (!primaryPayment) return;
 
-    const orgDoc = await ctx.db.get(args.organizationId);
+    const orgDoc = await ctx.db.get(args.organizationId as Id<"organizations">);
     const orgName =
       (orgDoc as Record<string, unknown> | null)?.name as string ??
       "Placówka medyczna";

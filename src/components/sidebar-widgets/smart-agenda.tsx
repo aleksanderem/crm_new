@@ -94,7 +94,7 @@ export function SmartAgenda({ organizationId, userId }: SmartAgendaProps) {
         groups.push({ label, events: [] });
         currentLabel = label;
       }
-      groups[groups.length - 1].events.push(event);
+      groups[groups.length - 1]!.events.push(event);
     }
     return groups;
   }, [dayLabels, events, i18n.language]);
@@ -146,7 +146,7 @@ export function SmartAgenda({ organizationId, userId }: SmartAgendaProps) {
                     tabItem.value === tab
                       ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground/70",
-                    tabItem.value !== tabs[0].value && "ml-4",
+                    tabItem.value !== tabs[0]!.value && "ml-4",
                   )}
                 >
                   {tabItem.label}

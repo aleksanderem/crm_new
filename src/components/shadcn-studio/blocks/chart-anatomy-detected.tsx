@@ -33,7 +33,7 @@ const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className='bg-primary text-primary-foreground mx-2 space-y-1 rounded-md px-3 py-1.5 shadow-lg'>
-        <div className='text-xs'>{payload[0].value.toLocaleString()}</div>
+        <div className='text-xs'>{payload[0]!.value.toLocaleString()}</div>
         <div className='text-xs opacity-70'>new user viewed</div>
       </div>
     )

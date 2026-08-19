@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation, useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
+import { usePermission } from "@/hooks/use-permission";
 import { useTranslation } from "react-i18next";
 import { SectionHeader } from "@untitled/app/section-headers/section-headers";
 import { UntitledAlert } from "@/components/ui/untitled-alert";
@@ -63,10 +64,26 @@ import {
   FolderPlus,
   GripVertical,
   ChevronDown,
+  Eye,
 } from "@/lib/ez-icons";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
 import { TemplateScanDialog } from "@/components/documents/template-scan-dialog";
+import { TemplatePreviewSheet } from "@/components/documents/template-preview-sheet";
+import type { EntityType } from "@/components/documents/template-settings-sheet";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/settings/form-templates/",
@@ -87,7 +104,13 @@ type FormCategory =
   | "invoice"
   | "protocol"
   | "intake"
+  | "aftercare"
+  | "consent_photo"
+  | "consent_marketing"
+  | "declaration"
   | "custom";
+
+type StatusFilter = "all" | "active" | "inactive";
 
 interface FormTemplateRecord {
   _id: Id<"formTemplates">;
@@ -103,6 +126,8 @@ interface FormTemplateRecord {
   requiresSignature: boolean;
   createdAt: number;
   updatedAt: number;
+  updatedBy?: string;
+  updatedByName?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -249,17 +274,22 @@ function TemplateTree({
   templates,
   search,
   onEditTemplate,
+  onPreviewTemplate,
   onDeleteTemplate,
   onDuplicateTemplate,
   onToggleActive,
   onMoveTemplate,
   onRenameFolder,
   onDeleteFolder,
+  canEdit,
+  canDelete,
+  canCreate,
   t,
 }: {
   templates: FormTemplateRecord[];
   search: string;
   onEditTemplate: (id: Id<"formTemplates">) => void;
+  onPreviewTemplate: (id: Id<"formTemplates">) => void;
   onDeleteTemplate: (tpl: FormTemplateRecord) => void;
   onDuplicateTemplate: (tpl: FormTemplateRecord) => void;
   onToggleActive: (tpl: FormTemplateRecord, active: boolean) => void;
@@ -269,6 +299,9 @@ function TemplateTree({
   ) => void;
   onRenameFolder: (oldPath: string, newName: string) => void;
   onDeleteFolder: (folderPath: string) => void;
+  canEdit: boolean;
+  canDelete: boolean;
+  canCreate: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   t: any;
 }) {
@@ -348,7 +381,7 @@ function TemplateTree({
                       </span>
                     </span>
                   </TreeItemLabel>
-                  {data.folderFullPath && (
+                  {(canEdit || canDelete) && data.folderFullPath && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         {/* Rendered as a <div> rather than <Button> because
@@ -365,36 +398,40 @@ function TemplateTree({
                         </div>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const currentName =
-                              data.folderFullPath!.split("/").pop() ?? "";
-                            const newName = window.prompt(
-                              t(
-                                "settings.formTemplates.renameFolderPrompt",
-                                "Nowa nazwa folderu:",
-                              ),
-                              currentName,
-                            );
-                            if (newName && newName !== currentName) {
-                              onRenameFolder(data.folderFullPath!, newName);
-                            }
-                          }}
-                        >
-                          <Pencil className="mr-2 h-4 w-4" />
-                          {t("settings.formTemplates.renameFolder", "Zmień nazwę")}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteFolder(data.folderFullPath!);
-                          }}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          {t("settings.formTemplates.deleteFolder", "Usuń folder")}
-                        </DropdownMenuItem>
+                        {canEdit && (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const currentName =
+                                data.folderFullPath!.split("/").pop() ?? "";
+                              const newName = window.prompt(
+                                t(
+                                  "settings.formTemplates.renameFolderPrompt",
+                                  "Nowa nazwa folderu:",
+                                ),
+                                currentName,
+                              );
+                              if (newName && newName !== currentName) {
+                                onRenameFolder(data.folderFullPath!, newName);
+                              }
+                            }}
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            {t("settings.formTemplates.renameFolder", "Zmień nazwę")}
+                          </DropdownMenuItem>
+                        )}
+                        {canDelete && (
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteFolder(data.folderFullPath!);
+                            }}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            {t("settings.formTemplates.deleteFolder", "Usuń folder")}
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}
@@ -427,13 +464,15 @@ function TemplateTree({
                     className="flex-1 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onEditTemplate(tpl._id);
+                      if (canEdit) onEditTemplate(tpl._id);
+                      else onPreviewTemplate(tpl._id);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
                         e.stopPropagation();
-                        onEditTemplate(tpl._id);
+                        if (canEdit) onEditTemplate(tpl._id);
+                        else onPreviewTemplate(tpl._id);
                       }
                     }}
                   >
@@ -448,35 +487,55 @@ function TemplateTree({
                 <span className="text-[10px] text-muted-foreground shrink-0">
                   v{tpl.version}
                 </span>
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:inline cursor-default">
+                        {new Date(tpl.updatedAt).toLocaleDateString(undefined, {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "2-digit",
+                        })}
+                      </span>
+                    </TooltipTrigger>
+                    {tpl.updatedByName && (
+                      <TooltipContent>
+                        {t("settings.formTemplates.updatedBy", "Zmodyfikował: {{name}}", { name: tpl.updatedByName })}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
                 {/* Rendered as a <div role="switch"> rather than the Radix
                     Switch component because Switch renders as
                     <button role="switch"> and the outer TreeItem wrapper is
                     already a <button>. Nested buttons are invalid HTML
                     (#1912, same pattern as #1907, #1910). */}
-                <div
-                  role="switch"
-                  tabIndex={0}
-                  aria-checked={tpl.isActive}
-                  aria-label={t("settings.formTemplates.toggleActive")}
-                  data-state={tpl.isActive ? "checked" : "unchecked"}
-                  className="peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleActive(tpl, !tpl.isActive);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === " " || e.key === "Enter") {
-                      e.preventDefault();
+                {canEdit && (
+                  <div
+                    role="switch"
+                    tabIndex={0}
+                    aria-checked={tpl.isActive}
+                    aria-label={t("settings.formTemplates.toggleActive")}
+                    data-state={tpl.isActive ? "checked" : "unchecked"}
+                    className="peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
+                    onClick={(e) => {
                       e.stopPropagation();
                       onToggleActive(tpl, !tpl.isActive);
-                    }
-                  }}
-                >
-                  <span
-                    data-state={tpl.isActive ? "checked" : "unchecked"}
-                    className="pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-4 data-[state=unchecked]:translate-x-0"
-                  />
-                </div>
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === " " || e.key === "Enter") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onToggleActive(tpl, !tpl.isActive);
+                      }
+                    }}
+                  >
+                    <span
+                      data-state={tpl.isActive ? "checked" : "unchecked"}
+                      className="pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-4 data-[state=unchecked]:translate-x-0"
+                    />
+                  </div>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     {/* Rendered as a <div> rather than <Button> because the
@@ -493,35 +552,69 @@ function TemplateTree({
                     </div>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {canEdit && (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditTemplate(tpl._id);
+                        }}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        {t("common.edit")}
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation();
-                        onEditTemplate(tpl._id);
+                        onPreviewTemplate(tpl._id);
                       }}
                     >
-                      <Pencil className="mr-2 h-4 w-4" />
-                      {t("common.edit")}
+                      <Eye className="mr-2 h-4 w-4" />
+                      {t("settings.formTemplates.preview", "Podgląd")}
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDuplicateTemplate(tpl);
-                      }}
-                    >
-                      <CopyIcon className="mr-2 h-4 w-4" />
-                      {t("settings.formTemplates.duplicate")}
-                    </DropdownMenuItem>
+                    {canCreate && (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDuplicateTemplate(tpl);
+                        }}
+                      >
+                        <CopyIcon className="mr-2 h-4 w-4" />
+                        {t("settings.formTemplates.duplicate")}
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteTemplate(tpl);
-                      }}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      {t("common.delete")}
-                    </DropdownMenuItem>
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div>
+                            <DropdownMenuItem
+                              disabled
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <FileText className="mr-2 h-4 w-4" />
+                              {t("settings.formTemplates.assignToTreatment", "Przypisz do zabiegu")}
+                            </DropdownMenuItem>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {t("settings.formTemplates.assignToTreatmentSoon", "Dostępne w D25")}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    {canDelete && <DropdownMenuSeparator />}
+                    {canDelete && (
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteTemplate(tpl);
+                        }}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {t("common.delete")}
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -543,10 +636,18 @@ export function FormTemplatesListPage() {
   const { organizationId } = useOrganization();
   const navigate = useNavigate();
 
+  const { allowed: canCreateTemplate } = usePermission("document_templates", "create");
+  const { allowed: canEditTemplate } = usePermission("document_templates", "edit");
+  const { allowed: canDeleteTemplate } = usePermission("document_templates", "delete");
+
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [scanOpen, setScanOpen] = useState(false);
   const [deletingTemplate, setDeletingTemplate] =
     useState<FormTemplateRecord | null>(null);
+  const [previewTemplateId, setPreviewTemplateId] = useState<Id<"formTemplates"> | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [seedConfirmOpen, setSeedConfirmOpen] = useState(false);
   const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -570,6 +671,13 @@ export function FormTemplatesListPage() {
     [queryClient, templatesQueryKey],
   );
 
+  const getTemplateByIdAction = useAction(api.documents.templates.getById);
+  const { data: previewTemplate } = useQuery({
+    queryKey: ["documents.templates.getById", organizationId, previewTemplateId],
+    queryFn: () => getTemplateByIdAction({ organizationId, templateId: previewTemplateId! }),
+    enabled: !!previewTemplateId,
+  });
+
   const updateTemplate = useAction(api.documents.templates.update);
   const createTemplate = useAction(api.documents.templates.create);
   const duplicateTemplate = useAction(api.documents.templates.duplicate);
@@ -580,6 +688,19 @@ export function FormTemplatesListPage() {
   const allTemplates = useMemo<FormTemplateRecord[]>(
     () => templates ?? [],
     [templates],
+  );
+
+  const filteredTemplates = useMemo<FormTemplateRecord[]>(() => {
+    let result = allTemplates;
+    if (statusFilter === "active") result = result.filter((t) => t.isActive);
+    else if (statusFilter === "inactive") result = result.filter((t) => !t.isActive);
+    if (categoryFilter !== "all") result = result.filter((t) => t.category === categoryFilter);
+    return result;
+  }, [allTemplates, statusFilter, categoryFilter]);
+
+  const uniqueCategories = useMemo(
+    () => Array.from(new Set(allTemplates.map((t) => t.category))).sort(),
+    [allTemplates],
   );
 
   const handleToggleActive = useCallback(
@@ -798,14 +919,14 @@ export function FormTemplatesListPage() {
   const templateTreeKey = useMemo(() => {
     const searchLower = search.toLowerCase().trim();
     const visible = searchLower
-      ? allTemplates.filter(
+      ? filteredTemplates.filter(
           (tpl) =>
             tpl.name.toLowerCase().includes(searchLower) ||
             (tpl.description ?? "").toLowerCase().includes(searchLower),
         )
-      : allTemplates;
+      : filteredTemplates;
     return visible.map((tpl) => tpl._id).join(",");
-  }, [allTemplates, search]);
+  }, [filteredTemplates, search]);
 
   return (
     <div className="flex h-full w-full flex-col gap-6">
@@ -854,15 +975,19 @@ export function FormTemplatesListPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button size="sm" variant="outline" onClick={() => setScanOpen(true)}>
-              {t("settings.formTemplates.scanNew", "Nowy ze skanu")}
-            </Button>
-            <Button size="sm" variant="outline" asChild>
-              <Link to="/dashboard/document-editor/new">
-                <Plus className="mr-2 h-4 w-4" variant="stroke" />
-                {t("settings.formTemplates.newTemplate")}
-              </Link>
-            </Button>
+            {canCreateTemplate && (
+              <Button size="sm" variant="outline" onClick={() => setScanOpen(true)}>
+                {t("settings.formTemplates.scanNew", "Nowy ze skanu")}
+              </Button>
+            )}
+            {canCreateTemplate && (
+              <Button size="sm" variant="outline" asChild>
+                <Link to="/dashboard/document-editor/new">
+                  <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                  {t("settings.formTemplates.newTemplate")}
+                </Link>
+              </Button>
+            )}
           </SectionHeader.Actions>
         </SectionHeader.Group>
         <UntitledAlert>{t("settings.formTemplates.description")}</UntitledAlert>
@@ -879,8 +1004,35 @@ export function FormTemplatesListPage() {
             className="pl-9"
           />
         </div>
+        {/* Status filter */}
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+          <SelectTrigger className="w-[130px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("settings.formTemplates.filterAll", "Wszystkie")}</SelectItem>
+            <SelectItem value="active">{t("settings.formTemplates.filterActive", "Aktywne")}</SelectItem>
+            <SelectItem value="inactive">{t("settings.formTemplates.filterInactive", "Nieaktywne")}</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Category filter */}
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder={t("settings.formTemplates.allCategories")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("settings.formTemplates.allCategories")}</SelectItem>
+            {uniqueCategories.map((cat) => (
+              <SelectItem key={cat} value={cat}>
+                {t(`settings.formTemplates.categories.${cat}`, cat)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <span className="text-sm text-muted-foreground">
-          {allTemplates.length}{" "}
+          {filteredTemplates.length}/{allTemplates.length}{" "}
           {t("settings.formTemplates.templateCount", "szablonów")}
         </span>
       </div>
@@ -892,12 +1044,14 @@ export function FormTemplatesListPage() {
           title={t("settings.formTemplates.emptyTitle")}
           description={t("settings.formTemplates.emptyDescription")}
           action={
-            <Button asChild>
-              <Link to="/dashboard/document-editor/new">
-                <Plus className="mr-2 h-4 w-4" variant="stroke" />
-                {t("settings.formTemplates.newTemplate")}
-              </Link>
-            </Button>
+            canCreateTemplate ? (
+              <Button asChild>
+                <Link to="/dashboard/document-editor/new">
+                  <Plus className="mr-2 h-4 w-4" variant="stroke" />
+                  {t("settings.formTemplates.newTemplate")}
+                </Link>
+              </Button>
+            ) : undefined
           }
         />
       ) : (
@@ -905,10 +1059,14 @@ export function FormTemplatesListPage() {
           <div className="rounded-lg border bg-card p-4">
             <TemplateTree
               key={templateTreeKey}
-              templates={allTemplates}
+              templates={filteredTemplates}
               search={search}
               onEditTemplate={(id) => {
                 navigate({ to: "/dashboard/document-editor/$id", params: { id } });
+              }}
+              onPreviewTemplate={(id) => {
+                setPreviewTemplateId(id);
+                setPreviewOpen(true);
               }}
               onDeleteTemplate={setDeletingTemplate}
               onDuplicateTemplate={handleDuplicate}
@@ -916,6 +1074,9 @@ export function FormTemplatesListPage() {
               onMoveTemplate={handleMoveTemplate}
               onRenameFolder={handleRenameFolder}
               onDeleteFolder={handleDeleteFolder}
+              canEdit={canEditTemplate}
+              canDelete={canDeleteTemplate}
+              canCreate={canCreateTemplate}
               t={t}
             />
           </div>
@@ -1058,6 +1219,18 @@ export function FormTemplatesListPage() {
 
       {/* Scan dialog */}
       <TemplateScanDialog open={scanOpen} onOpenChange={setScanOpen} />
+
+      {/* Read-only preview sheet */}
+      <TemplatePreviewSheet
+        open={previewOpen}
+        onOpenChange={(open) => {
+          setPreviewOpen(open);
+          if (!open) setPreviewTemplateId(null);
+        }}
+        organizationId={organizationId}
+        contentJson={previewTemplate?.contentJson ?? "{}"}
+        entityTypes={(previewTemplate?.entityTypes ?? []) as EntityType[]}
+      />
     </div>
   );
 }

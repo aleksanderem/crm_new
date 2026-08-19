@@ -107,16 +107,66 @@ describe("tenant isolation — permissions", () => {
 });
 
 // ─── Contacts ─────────────────────────────────────────────────────────────────
-//
-// api.contacts.getById does NOT exist — the endpoint was removed as part of the
-// Supabase migration (contacts are read via use-supabase-contacts.ts / RLS).
-// Test deleted per audit recommendation. Production isolation guarantee is
-// provided by Supabase RLS (audit ref #3709).
+
+describe("tenant isolation — contacts", () => {
+  // crm/contacts reads moved to Supabase (RLS-enforced). No Convex getById query exists.
+  // Tenant isolation for reads is validated by RLS coverage audit (#3709).
+  test.skip("getById: org A user cannot fetch an org B contact by ID", async () => {
+    const t = createTestCtx();
+    const { organizationId: orgAId, identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId, userId: userBId } = await seedOrgB(t);
+
+    // Create a contact in Org B
+    const contactBId = await t.run(async (ctx) => {
+      return ctx.db.insert("contacts", {
+        organizationId: orgBId,
+        firstName: "B",
+        lastName: "Contact",
+        email: "b@example.com",
+        createdBy: userBId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    // Org A user with Org A's orgId but Org B's contactId
+    await expect(
+      t.withIdentity(identityA).query(api.crm.contacts.getById, {
+        organizationId: orgAId,
+        contactId: contactBId,
+      }),
+    ).rejects.toThrow("Contact not found");
+  });
+});
 
 // ─── Companies ────────────────────────────────────────────────────────────────
-//
-// api.companies.getById does NOT exist — removed in Supabase migration.
-// Test deleted per audit recommendation.
+
+describe("tenant isolation — companies", () => {
+  // crm/companies reads moved to Supabase (RLS-enforced). No Convex getById query exists.
+  // Tenant isolation for reads is validated by RLS coverage audit (#3709).
+  test.skip("getById: org A user cannot fetch an org B company by ID", async () => {
+    const t = createTestCtx();
+    const { organizationId: orgAId, identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId, userId: userBId } = await seedOrgB(t);
+
+    const companyBId = await t.run(async (ctx) => {
+      return ctx.db.insert("companies", {
+        organizationId: orgBId,
+        name: "B Corp",
+        createdBy: userBId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    await expect(
+      t.withIdentity(identityA).query(api.crm.companies.getById, {
+        organizationId: orgAId,
+        companyId: companyBId,
+      }),
+    ).rejects.toThrow("Company not found");
+  });
+});
 
 // ─── Leads ────────────────────────────────────────────────────────────────────
 
@@ -127,22 +177,114 @@ describe("tenant isolation — leads", () => {
     const { organizationId: orgBId } = await seedOrgB(t);
 
     await expect(
-      t.withIdentity(identityA).action(api.leads.list, {
+      t.withIdentity(identityA).action(api.crm.leads.list, {
         organizationId: orgBId,
         paginationOpts: PAGINATION,
       }),
     ).rejects.toThrow("Not a member of this organization");
   });
 
-  // api.leads.getById does NOT exist — removed in Supabase migration.
-  // Test deleted per audit recommendation.
+  // crm/leads reads moved to Supabase (RLS-enforced). No Convex getById query exists.
+  // Tenant isolation for reads is validated by RLS coverage audit (#3709).
+  test.skip("getById: org A user cannot fetch an org B lead by ID", async () => {
+    const t = createTestCtx();
+    const { organizationId: orgAId, identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId, userId: userBId } = await seedOrgB(t);
+
+    const leadBId = await t.run(async (ctx) => {
+      return ctx.db.insert("leads", {
+        organizationId: orgBId,
+        title: "Org B Deal",
+        status: "open" as const,
+        createdBy: userBId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    await expect(
+      t.withIdentity(identityA).query(api.crm.leads.getById, {
+        organizationId: orgAId,
+        leadId: leadBId,
+      }),
+    ).rejects.toThrow("Lead not found");
+  });
 });
 
 // ─── Notes ────────────────────────────────────────────────────────────────────
-//
-// api.notes.listByEntity and api.notes.getById do NOT exist — both were removed
-// as part of the Supabase migration (notes are read via use-supabase-notes.ts /
-// RLS). All three note tests deleted per audit recommendation.
+
+describe("tenant isolation — notes", () => {
+  // crm/notes reads moved to Supabase (RLS-enforced). No Convex listByEntity/getById queries exist.
+  // Tenant isolation for reads is validated by RLS coverage audit (#3709).
+  test.skip("listByEntity: org A user cannot query using org B's organizationId", async () => {
+    const t = createTestCtx();
+    const { identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    await expect(
+      t.withIdentity(identityA).query(api.crm.notes.listByEntity, {
+        organizationId: orgBId,
+        entityType: "contact",
+        entityId: "some-id",
+      }),
+    ).rejects.toThrow("Not a member of this organization");
+  });
+
+  test.skip("listByEntity: org A user cannot read org B notes sharing the same entityId", async () => {
+    const t = createTestCtx();
+    const { organizationId: orgAId, userId: userAId, identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId, userId: userBId } = await seedOrgB(t);
+
+    const sharedEntityId = "contact-shared-id";
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("notes", {
+        organizationId: orgBId,
+        entityType: "contact",
+        entityId: sharedEntityId,
+        content: "Secret note from Org B",
+        isPinned: false,
+        createdBy: userBId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    const results = await t.withIdentity(identityA).query(api.crm.notes.listByEntity, {
+      organizationId: orgAId,
+      entityType: "contact",
+      entityId: sharedEntityId,
+    });
+
+    expect(results).toHaveLength(0);
+  });
+
+  test.skip("getById: org A user cannot fetch an org B note by ID", async () => {
+    const t = createTestCtx();
+    const { organizationId: orgAId, identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId, userId: userBId } = await seedOrgB(t);
+
+    const noteBId = await t.run(async (ctx) => {
+      return ctx.db.insert("notes", {
+        organizationId: orgBId,
+        entityType: "contact",
+        entityId: "some-contact-id",
+        content: "Secret note from Org B",
+        isPinned: false,
+        createdBy: userBId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    await expect(
+      t.withIdentity(identityA).query(api.crm.notes.getById, {
+        organizationId: orgAId,
+        noteId: noteBId,
+      }),
+    ).rejects.toThrow("Note not found");
+  });
+});
 
 // ─── Activities ───────────────────────────────────────────────────────────────
 
@@ -176,11 +318,23 @@ describe("tenant isolation — activities", () => {
 });
 
 // ─── Audit log ────────────────────────────────────────────────────────────────
-//
-// api.auditLog.list does NOT exist — convex/auditLog.ts only exports the
-// logAudit helper function, not a public query. The endpoint was never a
-// Convex public query; audit log reads go via use-supabase-audit-log.ts / RLS.
-// Test deleted per audit recommendation.
+
+describe("tenant isolation — auditLog", () => {
+  // auditLog reads moved to Supabase (use-supabase-audit-log.ts, RLS-enforced).
+  // No Convex auditLog.list query exists. Tenant isolation validated by RLS audit (#3709).
+  test.skip("list: org A admin cannot read org B audit log", async () => {
+    const t = createTestCtx();
+    // seedTestUser creates owner role which is also admin
+    const { identity: identityA } = await seedTestUser(t);
+    const { organizationId: orgBId } = await seedOrgB(t);
+
+    await expect(
+      t.withIdentity(identityA).query(api.auditLog.list, {
+        organizationId: orgBId,
+      }),
+    ).rejects.toThrow("Not a member of this organization");
+  });
+});
 
 // ─── Pipelines (action-based, Supabase-primary) ───────────────────────────────
 //
@@ -195,7 +349,7 @@ describe("tenant isolation — pipelines (actions)", () => {
     const { organizationId: orgBId } = await seedOrgB(t);
 
     await expect(
-      t.withIdentity(identityA).action(api.pipelines.list, {
+      t.withIdentity(identityA).action(api.crm.pipelines.list, {
         organizationId: orgBId,
       }),
     ).rejects.toThrow("Not a member of this organization");
@@ -207,7 +361,7 @@ describe("tenant isolation — pipelines (actions)", () => {
     const { organizationId: orgBId } = await seedOrgB(t);
 
     await expect(
-      t.withIdentity(identityA).action(api.pipelines.getById, {
+      t.withIdentity(identityA).action(api.crm.pipelines.getById, {
         organizationId: orgBId,
         pipelineId: "some-pipeline-id",
       }),
@@ -232,7 +386,7 @@ describe("tenant isolation — pipelines (actions)", () => {
     // verifyOrgAccess passes (user is in Org A), but the pipeline ownership
     // check (pipeline.organizationId !== orgAId) must throw.
     await expect(
-      t.withIdentity(identityA).action(api.pipelines.getById, {
+      t.withIdentity(identityA).action(api.crm.pipelines.getById, {
         organizationId: orgAId,
         pipelineId: pipelineBId,
       }),
@@ -245,7 +399,7 @@ describe("tenant isolation — pipelines (actions)", () => {
     const { organizationId: orgBId } = await seedOrgB(t);
 
     await expect(
-      t.withIdentity(identityA).action(api.pipelines.getStages, {
+      t.withIdentity(identityA).action(api.crm.pipelines.getStages, {
         organizationId: orgBId,
         pipelineId: "some-pipeline-id",
       }),
@@ -258,7 +412,7 @@ describe("tenant isolation — pipelines (actions)", () => {
     const { organizationId: orgBId } = await seedOrgB(t);
 
     await expect(
-      t.withIdentity(identityA).action(api.pipelines.getAllStages, {
+      t.withIdentity(identityA).action(api.crm.pipelines.getAllStages, {
         organizationId: orgBId,
       }),
     ).rejects.toThrow("Not a member of this organization");
@@ -573,7 +727,7 @@ describe("tenant isolation — savedViews (actions)", () => {
     const { organizationId: orgBId } = await seedOrgB(t);
 
     await expect(
-      t.withIdentity(identityA).action(api.savedViews.listByEntityType, {
+      t.withIdentity(identityA).action(api.crm.savedViews.listByEntityType, {
         organizationId: orgBId,
         entityType: "contact",
       }),
@@ -586,7 +740,7 @@ describe("tenant isolation — savedViews (actions)", () => {
     const { organizationId: orgBId } = await seedOrgB(t);
 
     await expect(
-      t.withIdentity(identityA).action(api.savedViews.getById, {
+      t.withIdentity(identityA).action(api.crm.savedViews.getById, {
         organizationId: orgBId,
         viewId: "some-view-id",
       }),
@@ -612,7 +766,7 @@ describe("tenant isolation — savedViews (actions)", () => {
     });
 
     await expect(
-      t.withIdentity(identityA).action(api.savedViews.getById, {
+      t.withIdentity(identityA).action(api.crm.savedViews.getById, {
         organizationId: orgAId,
         viewId: viewBId,
       }),

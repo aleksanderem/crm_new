@@ -5,13 +5,13 @@ import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { logError } from "../_helpers/logged";
 import { logActivity } from "../_helpers/activities";
-import type { GabinetLeaveTypeRow } from "../_helpers/supabaseRows";
+import type { GabinetLeaveBalanceRow, GabinetLeaveTypeRow } from "../_helpers/supabaseRows";
 
 // Dual-write refs removed — Supabase is now primary for leaveType writes
 
 export const list = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     activeOnly: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<GabinetLeaveTypeRow[]> => {
@@ -35,7 +35,7 @@ export const list = action({
 
 export const getById = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveTypeId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetLeaveTypeRow> => {
@@ -61,7 +61,7 @@ export const getById = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     color: v.optional(v.string()),
     isPaid: v.boolean(),
@@ -154,7 +154,7 @@ export const create = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveTypeId: v.string(),
     name: v.optional(v.string()),
     color: v.optional(v.string()),
@@ -222,7 +222,7 @@ export const update = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveTypeId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -266,11 +266,11 @@ export const remove = action({
 
 export const getBalances = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
     year: v.number(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<GabinetLeaveBalanceRow[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -282,21 +282,21 @@ export const getBalances = action({
     if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
-    return await db
+    return (await db
       .query("gabinetLeaveBalances")
       .eq("organizationId", String(args.organizationId))
       .eq("employeeId", args.employeeId)
       .eq("year", args.year)
-      .collect();
+      .collect()) as GabinetLeaveBalanceRow[];
   },
 });
 
 export const getAllBalances = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     year: v.number(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<GabinetLeaveBalanceRow[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -308,17 +308,17 @@ export const getAllBalances = action({
     if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
-    return await db
+    return (await db
       .query("gabinetLeaveBalances")
       .eq("organizationId", String(args.organizationId))
       .eq("year", args.year)
-      .collect();
+      .collect()) as GabinetLeaveBalanceRow[];
   },
 });
 
 export const initializeBalance = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     employeeId: v.string(),
     leaveTypeId: v.string(),
     year: v.number(),
@@ -339,12 +339,12 @@ export const initializeBalance = action({
     const db = createSupabaseDb();
 
     // Check if balance already exists
-    const existing = await db.query("gabinetLeaveBalances")
+    const existing = (await db.query("gabinetLeaveBalances")
       .eq("organizationId", String(args.organizationId))
       .eq("employeeId", args.employeeId)
       .eq("leaveTypeId", args.leaveTypeId)
       .eq("year", args.year)
-      .first();
+      .first()) as GabinetLeaveBalanceRow | null;
 
     if (existing) {
       if (args.totalDays !== undefined) {
@@ -403,7 +403,7 @@ export const initializeBalance = action({
 
 export const adjustBalance = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     balanceId: v.string(),
     totalDays: v.optional(v.number()),
     usedDays: v.optional(v.number()),
@@ -421,7 +421,7 @@ export const adjustBalance = action({
     if (!perm.allowed) throw new Error("Permission denied");
     const db = createSupabaseDb();
 
-    const balance = await db.get("gabinetLeaveBalances", args.balanceId);
+    const balance = (await db.get("gabinetLeaveBalances", args.balanceId)) as GabinetLeaveBalanceRow | null;
     if (!balance || String(balance.organizationId) !== String(args.organizationId)) {
       throw new Error("Balance not found");
     }
@@ -448,20 +448,20 @@ export const adjustBalance = action({
 
 export const _createSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveTypeId: v.string(),
     name: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetLeaveType",
       entityId: args.leaveTypeId,
       action: "created",
       description: `Created leave type "${args.name}"`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -469,19 +469,19 @@ export const _createSideEffects = internalMutation({
 
 export const _updateSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveTypeId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetLeaveType",
       entityId: args.leaveTypeId,
       action: "updated",
       description: `Updated leave type`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -489,19 +489,19 @@ export const _updateSideEffects = internalMutation({
 
 export const _removeSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     leaveTypeId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetLeaveType",
       entityId: args.leaveTypeId,
       action: "deleted",
       description: `Deactivated leave type`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -509,19 +509,19 @@ export const _removeSideEffects = internalMutation({
 
 export const _adjustBalanceSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     balanceId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetLeaveBalance",
       entityId: args.balanceId,
       action: "updated",
       description: `Adjusted leave balance`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -529,7 +529,7 @@ export const _adjustBalanceSideEffects = internalMutation({
 
 export const _initializeBalanceSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     balanceId: v.string(),
     year: v.number(),
     action: v.union(v.literal("created"), v.literal("updated")),
@@ -537,7 +537,7 @@ export const _initializeBalanceSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetLeaveBalance",
       entityId: args.balanceId,
@@ -545,7 +545,7 @@ export const _initializeBalanceSideEffects = internalMutation({
       description: args.action === "created"
         ? `Initialized leave balance for year ${args.year}`
         : `Updated leave balance for year ${args.year}`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -554,7 +554,7 @@ export const _initializeBalanceSideEffects = internalMutation({
 /** Initialize balances for all active employees for a given year */
 export const initializeAllBalances = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     year: v.number(),
   },
   handler: async (ctx, args) => {
@@ -586,12 +586,12 @@ export const initializeAllBalances = action({
       for (const lt of leaveTypes) {
         if ((lt.annualQuotaDays as number | undefined) === undefined) continue;
 
-        const existing = await db.query("gabinetLeaveBalances")
+        const existing = (await db.query("gabinetLeaveBalances")
           .eq("organizationId", String(args.organizationId))
           .eq("employeeId", emp._id as string)
           .eq("leaveTypeId", lt._id as string)
           .eq("year", args.year)
-          .first();
+          .first()) as GabinetLeaveBalanceRow | null;
 
         if (!existing) {
           const balanceId = await db.insert("gabinetLeaveBalances", {

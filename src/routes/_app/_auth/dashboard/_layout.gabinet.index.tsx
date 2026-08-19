@@ -122,7 +122,7 @@ function GabinetDashboard() {
     organizationId, today, today,
   );
 
-  const { data: patientsData } = useSupabaseGabinetPatientsList(organizationId);
+  const { data: patientsData } = useSupabaseGabinetPatientsList(organizationId, { activeOnly: true });
   const { data: treatmentsData } = useSupabaseGabinetTreatmentsList(organizationId);
   const { data: leavesData } = useSupabaseGabinetLeavesList(organizationId);
   const { data: employeesData } = useSupabaseGabinetEmployeesList(organizationId, { activeOnly: true });

@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useSupabase } from "@/components/supabase-provider";
 import { toast } from "sonner";
 import type { Id } from "@cvx/_generated/dataModel";
+import { useActiveLocation } from "@/contexts/gabinet-location-context";
 import {
   Dialog,
   DialogContent,
@@ -106,15 +107,15 @@ export function WarehouseInventoryDialog({
   // after midnight don't drift todayStr away from the selectedDate initial value.
   const todayStr = useMemo(() => toLocalDateStr(new Date()), [open]);
 
+  const { activeLocationId, setActiveLocationId } = useActiveLocation();
+
   const [step, setStep] = useState<Step>("count");
   const [counts, setCounts] = useState<Map<string, string>>(new Map());
-  const [locationId, setLocationId] = useState<string>(NO_LOCATION_VALUE);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
 
-  const resolvedLocationId: string | null =
-    locationId === NO_LOCATION_VALUE ? null : locationId;
+  const resolvedLocationId = activeLocationId;
 
   const isHistoricalMode = selectedDate < todayStr;
 
@@ -208,7 +209,6 @@ export function WarehouseInventoryDialog({
     if (nextOpen) {
       setStep("count");
       setCounts(new Map());
-      setLocationId(NO_LOCATION_VALUE);
       setSelectedDate(toLocalDateStr(new Date()));
     }
     onOpenChange(nextOpen);
@@ -466,7 +466,7 @@ export function WarehouseInventoryDialog({
                   defaultValue: "Lokalizacja",
                 })}
               </Label>
-              <Select value={locationId} onValueChange={(v) => { setLocationId(v); setCounts(new Map()); }}>
+              <Select value={activeLocationId ?? NO_LOCATION_VALUE} onValueChange={(v) => { setActiveLocationId(v === NO_LOCATION_VALUE ? null : v); setCounts(new Map()); }}>
                 <SelectTrigger id="inventory-location">
                   <SelectValue />
                 </SelectTrigger>
@@ -532,7 +532,7 @@ export function WarehouseInventoryDialog({
                     const unit = product.stockUnit?.trim() ?? "";
                     const u = unit ? ` ${unit}` : "";
                     const rawAvgCost = historicalStockQuery.data?.avgCostMap.get(product._id) ?? avgCostByProductId.get(product._id) ?? null;
-                    const avgCost = rawAvgCost ?? (product.purchasePrice != null && product.purchasePrice > 0 ? product.purchasePrice : null);
+                    const avgCost = rawAvgCost ?? (product.unitPrice != null && product.unitPrice > 0 ? product.unitPrice : null);
                     const isEstimatedCost = rawAvgCost == null && avgCost != null;
                     const valueNet = avgCost != null ? qty * avgCost : null;
                     return (
@@ -641,7 +641,7 @@ export function WarehouseInventoryDialog({
                   const unit = product.stockUnit?.trim() ?? "";
                   const u = unit ? ` ${unit}` : "";
                   const rawAvgCost = avgCostByProductId.get(product._id) ?? null;
-                  const avgCost = rawAvgCost ?? (product.purchasePrice != null && product.purchasePrice > 0 ? product.purchasePrice : null);
+                  const avgCost = rawAvgCost ?? (product.unitPrice != null && product.unitPrice > 0 ? product.unitPrice : null);
                   const isEstimatedCost = rawAvgCost == null && avgCost != null;
                   const valueNet = avgCost != null ? systemStock * avgCost : null;
                   return (
@@ -784,13 +784,13 @@ export function WarehouseInventoryDialog({
           ? new Map(
               trackedProducts.map((p) => [
                 p._id,
-                historicalStockQuery.data!.avgCostMap.get(p._id) ?? avgCostByProductId.get(p._id) ?? (p.purchasePrice != null && p.purchasePrice > 0 ? p.purchasePrice : null),
+                historicalStockQuery.data!.avgCostMap.get(p._id) ?? avgCostByProductId.get(p._id) ?? (p.unitPrice != null && p.unitPrice > 0 ? p.unitPrice : null),
               ]),
             )
           : new Map(
               trackedProducts.map((p) => [
                 p._id,
-                avgCostByProductId.get(p._id) ?? (p.purchasePrice != null && p.purchasePrice > 0 ? p.purchasePrice : null),
+                avgCostByProductId.get(p._id) ?? (p.unitPrice != null && p.unitPrice > 0 ? p.unitPrice : null),
               ]),
             )
       }

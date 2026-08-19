@@ -3,7 +3,7 @@ import {
   internalMutation,
   action,
   query,
-  MutationCtx,
+  ActionCtx,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
@@ -57,13 +57,13 @@ const automationConditionValidator = v.object({
 
 
 const automationEventArgsValidator = {
-  organizationId: v.id("organizations"),
+  organizationId: v.string(),
   module: automationModuleValidator,
   eventType: v.string(),
   entityType: v.optional(v.string()),
   entityId: v.optional(v.string()),
   payload: v.string(),
-  actorUserId: v.optional(v.id("users")),
+  actorUserId: v.optional(v.string()),
   occurredAt: v.optional(v.number()),
   eventIdempotencyKey: v.string(),
   correlationKey: v.optional(v.string()),
@@ -164,7 +164,7 @@ type AutomationUpdateFieldDescriptor = {
     | undefined;
   canEditOwn: (
     entity: Record<string, unknown>,
-    actorUserId: Id<"users"> | undefined,
+    actorUserId: string | undefined,
   ) => boolean;
 };
 
@@ -334,9 +334,9 @@ function resolveAutomationTargetId(
 }
 
 async function getAutomationEditPermission(
-  ctx: MutationCtx,
+  ctx: ActionCtx,
   organizationId: Id<"organizations">,
-  actorUserId: Id<"users"> | undefined,
+  actorUserId: string | undefined,
   feature: Feature,
   options?: { requireAdmin?: boolean },
 ): Promise<{ allowed: boolean; scope: Scope; reason?: string }> {
@@ -348,17 +348,12 @@ async function getAutomationEditPermission(
     };
   }
 
-  // teamMemberships and orgPermissions are dual-written to Convex
-  // (_writeOrgPermissionsToConvex, ctx.db.insert in teams/invitations).
-  // ctx.db reads are the permanent pattern for mutation callers — identical
-  // to checkPermission in _helpers/permissions.ts. Do NOT replace with
-  // createSupabaseDb(): mutations cannot use fetch in the Convex runtime.
-  const membership = await ctx.db
+  const permDb = createSupabaseDb();
+  const membership = await permDb
     .query("teamMemberships")
-    .withIndex("by_orgAndUser", (q) =>
-      q.eq("organizationId", organizationId).eq("userId", actorUserId),
-    )
-    .unique();
+    .eq("organizationId", String(organizationId))
+    .eq("userId", String(actorUserId))
+    .first();
 
   if (!membership) {
     return {
@@ -382,13 +377,11 @@ async function getAutomationEditPermission(
     };
   }
 
-  // orgPermissions is kept in sync via dual-write; ctx.db is permanent here.
-  const override = await ctx.db
+  const override = await permDb
     .query("orgPermissions")
-    .withIndex("by_orgAndRole", (q) =>
-      q.eq("organizationId", organizationId).eq("role", role),
-    )
-    .unique();
+    .eq("organizationId", String(organizationId))
+    .eq("role", role)
+    .first();
 
   let orgScope: Scope;
   if (override) {
@@ -405,7 +398,7 @@ async function getAutomationEditPermission(
   if (feature.startsWith("gabinet_")) {
     const gabinetData = await ctx.runQuery(
       internal._helpers.authAction._getGabinetPermissionData,
-      { organizationId, userId: actorUserId },
+      { organizationId, userId: actorUserId as Id<"users"> },
     );
     if (gabinetData.membership) {
       const gRole = gabinetData.membership.gabinetRole;
@@ -437,20 +430,20 @@ async function getAutomationEditPermission(
   };
 }
 
-// Thin internalMutation wrappers called via ctx.runMutation from processRun
-// (now an internalAction). These keep the mutation context for Convex writes.
+// Thin wrappers called from processRun (internalAction). These either need
+// Convex write access (internalMutation) or Supabase read access (internalAction).
 
-export const _getAutomationPermission = internalMutation({
+export const _getAutomationPermission = internalAction({
   args: {
-    organizationId: v.id("organizations"),
-    actorUserId: v.optional(v.id("users")),
+    organizationId: v.string(),
+    actorUserId: v.optional(v.string()),
     feature: v.string(),
     requireAdmin: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     return await getAutomationEditPermission(
       ctx,
-      args.organizationId,
+      args.organizationId as Id<"organizations">,
       args.actorUserId,
       args.feature as Feature,
       args.requireAdmin ? { requireAdmin: true } : undefined,
@@ -460,7 +453,7 @@ export const _getAutomationPermission = internalMutation({
 
 export const _createNotificationForRun = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     userId: v.id("users"),
     type: v.string(),
     title: v.string(),
@@ -474,7 +467,7 @@ export const _createNotificationForRun = internalMutation({
 
 export const _logActivityForRun = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
     entityId: v.string(),
     activityAction: v.string(),
@@ -482,10 +475,10 @@ export const _logActivityForRun = internalMutation({
     automationRunId: v.string(),
     automationRuleId: v.string(),
     sourceEventType: v.string(),
-    performedBy: v.id("users"),
+    performedBy: v.string(),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: args.entityType,
       entityId: args.entityId,
@@ -510,7 +503,7 @@ export const _logActivityForRun = internalMutation({
 // "No default email account configured".
 export const _sendAutomationEmail = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     runId: v.optional(v.string()),
     stepId: v.string(),
     recipient: v.string(),
@@ -518,7 +511,8 @@ export const _sendAutomationEmail = internalAction({
     subject: v.string(),
     bodyHtml: v.string(),
     bodyText: v.string(),
-    sentBy: v.optional(v.id("users")),
+    // Supabase UUID; users moved off Convex ids (same migration as appointmentId in #353).
+    sentBy: v.optional(v.string()),
     // Supabase UUID; gabinet appointments moved off Convex ids in #353.
     appointmentId: v.optional(v.string()),
     actionType: v.string(),
@@ -693,7 +687,7 @@ export const _patchAutomationRunStep = internalAction({
 
 export const _recordAutomationEmailResult = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     runId: v.optional(v.string()),
     stepId: v.string(),
     success: v.boolean(),
@@ -704,7 +698,8 @@ export const _recordAutomationEmailResult = internalMutation({
     subject: v.string(),
     bodyHtml: v.string(),
     bodyText: v.string(),
-    sentBy: v.optional(v.id("users")),
+    // Supabase UUID; users moved off Convex ids (same migration as appointmentId in #353).
+    sentBy: v.optional(v.string()),
     // Supabase UUID; gabinet appointments moved off Convex ids in #353.
     appointmentId: v.optional(v.string()),
     actionType: v.string(),
@@ -744,8 +739,9 @@ export const _recordAutomationEmailResult = internalMutation({
       return;
     }
 
-    const emailId = await ctx.db.insert("emails", {
-      organizationId: args.organizationId,
+    const db = createSupabaseDb();
+    const emailId = await db.insert("emails", {
+      organizationId: String(args.organizationId),
       threadId: `<${crypto.randomUUID()}@crm.app>`,
       messageId: `<${crypto.randomUUID()}@crm.app>`,
       direction: "outbound",
@@ -757,14 +753,14 @@ export const _recordAutomationEmailResult = internalMutation({
       snippet: args.bodyText.slice(0, 200),
       isRead: true,
       isStarred: false,
-      sentBy: args.sentBy,
+      sentBy: args.sentBy ? String(args.sentBy) : null,
       sentAt: now,
       createdAt: now,
       updatedAt: now,
     });
 
     if (args.sentBy) {
-      await logActivity(ctx, {
+      await logActivity({
         organizationId: args.organizationId,
         entityType: "email",
         entityId: emailId,
@@ -809,10 +805,10 @@ export const _recordAutomationEmailResult = internalMutation({
 // which does the Convex mirror write, activity log, and step status patch.
 export const _applyUpdateFieldAction = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     runId: v.string(),
     stepId: v.string(),
-    actorUserId: v.optional(v.id("users")),
+    actorUserId: v.optional(v.string()),
     targetEntityType: v.union(
       v.literal("gabinetPatient"),
       v.literal("gabinetAppointment"),
@@ -895,10 +891,10 @@ export const _applyUpdateFieldAction = internalAction({
 
 export const _recordUpdateFieldResult = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     runId: v.optional(v.string()),
     stepId: v.string(),
-    actorUserId: v.optional(v.id("users")),
+    actorUserId: v.optional(v.string()),
     success: v.boolean(),
     errorMessage: v.optional(v.string()),
     targetEntityType: v.optional(v.union(
@@ -934,20 +930,6 @@ export const _recordUpdateFieldResult = internalMutation({
       return;
     }
 
-    // Mirror to Convex if a doc with this id still exists there (gabinet
-    // entities seeded by tests, or legacy data not yet migrated). For
-    // Supabase-only ids, normalizeId returns null and we silently skip.
-    if (args.targetEntityType && args.targetId && args.updates) {
-      const descriptor = AUTOMATION_UPDATE_FIELD_DESCRIPTORS[args.targetEntityType];
-      const convexId = ctx.db.normalizeId(descriptor.table, args.targetId);
-      if (convexId) {
-        const convexDoc = await ctx.db.get(convexId);
-        if (convexDoc) {
-          await ctx.db.patch(convexId, args.updates as never);
-        }
-      }
-    }
-
     if (args.actorUserId && args.linkedEntityType && args.targetId && args.fieldKey) {
       const activityLabelByEntity: Record<AutomationTargetEntityType, string> = {
         gabinetPatient: "patient",
@@ -958,7 +940,7 @@ export const _recordUpdateFieldResult = internalMutation({
       const entityLabel = args.targetEntityType
         ? (activityLabelByEntity[args.targetEntityType] ?? args.targetEntityType)
         : args.linkedEntityType;
-      await logActivity(ctx, {
+      await logActivity({
         organizationId: args.organizationId,
         entityType: args.linkedEntityType,
         entityId: args.targetId,
@@ -1080,7 +1062,7 @@ async function patchLegacyAppointmentWorkflowHistory(args: {
 // createSupabaseDb() makes HTTP calls which are forbidden inside mutations.
 export const _patchLegacyAppointmentWorkflowHistory = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     appointmentId: v.optional(v.string()),
     actionType: v.string(),
     recipient: v.optional(v.string()),
@@ -1098,7 +1080,10 @@ export const _patchLegacyAppointmentWorkflowHistory = internalAction({
     processedAt: v.optional(v.number()),
   },
   handler: async (_ctx, args) => {
-    await patchLegacyAppointmentWorkflowHistory(args);
+    await patchLegacyAppointmentWorkflowHistory({
+      ...args,
+      organizationId: args.organizationId as Id<"organizations">,
+    });
   },
 });
 
@@ -1107,7 +1092,7 @@ export const _patchLegacyAppointmentWorkflowHistory = internalAction({
 // hooks directly; these actions serve the test suite and e2e tests.
 export const listRules = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     module: v.optional(automationModuleValidator),
   },
   handler: async (ctx, args) => {
@@ -1155,7 +1140,7 @@ export const listRules = action({
 
 export const listRuns = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     module: v.optional(automationModuleValidator),
     entityType: v.optional(v.string()),
     entityId: v.optional(v.string()),
@@ -1182,7 +1167,7 @@ export const listRuns = action({
 
 export const getRunSteps = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     runId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -1198,7 +1183,7 @@ export const getRunSteps = action({
 
 export const createRule = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     module: automationModuleValidator,
@@ -1249,7 +1234,7 @@ export const createRule = action({
 
 export const updateRule = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     ruleId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
@@ -1296,7 +1281,7 @@ export const updateRule = action({
 
 export const deleteRule = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     ruleId: v.string(),
   },
   handler: async (ctx, args): Promise<string> => {
@@ -1318,7 +1303,7 @@ export const deleteRule = action({
 
 export const listEventCatalog = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
@@ -1335,7 +1320,7 @@ export const listEventCatalog = query({
 // from Supabase, so these are exposed as actions instead.
 export const listActionCapabilities = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
@@ -1360,7 +1345,7 @@ export const listActionCapabilities = action({
 
 export const listActionTypes = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args): Promise<string[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
@@ -1385,12 +1370,43 @@ export const listActionTypes = action({
   },
 });
 
-export const emitEvent = internalMutation({
+export const emitEvent = internalAction({
   args: automationEventArgsValidator,
   handler: async (ctx, args) => {
     const now = Date.now();
     const runId = crypto.randomUUID();
     const occurredAt = args.occurredAt ?? now;
+
+    const db = createSupabaseDb();
+
+    // Idempotency guard: if another emitEvent with the same key already ran
+    // (e.g. a retry or duplicate call), return the existing run ID without
+    // scheduling a second processRun.
+    const existing = await db
+      .query("automationRuns")
+      .eq("eventIdempotencyKey", args.eventIdempotencyKey)
+      .first();
+    if (existing) return existing._id as string;
+
+    await db.insert("automationRuns", {
+      _id: runId,
+      organizationId: args.organizationId as string,
+      ruleId: null,
+      module: args.module,
+      eventType: args.eventType,
+      entityType: args.entityType ?? null,
+      entityId: args.entityId ?? null,
+      eventIdempotencyKey: args.eventIdempotencyKey,
+      correlationKey: args.correlationKey ?? null,
+      payloadSnapshot: args.payload,
+      actorUserId: (args.actorUserId as string | undefined) ?? null,
+      status: "pending",
+      errorMessage: null,
+      occurredAt,
+      processedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
 
     // @ts-ignore -- TS2589: type instantiation depth in generated Convex API types
     const processRunRef = internal.automation.processRun;
@@ -1415,7 +1431,7 @@ export const emitEvent = internalMutation({
 export const processRun = internalAction({
   args: {
     runId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     module: automationModuleValidator,
     eventType: v.string(),
     entityType: v.optional(v.string()),
@@ -1423,7 +1439,7 @@ export const processRun = internalAction({
     eventIdempotencyKey: v.string(),
     correlationKey: v.optional(v.string()),
     payloadSnapshot: v.string(),
-    actorUserId: v.optional(v.id("users")),
+    actorUserId: v.optional(v.string()),
     occurredAt: v.number(),
     createdAt: v.number(),
   },
@@ -1448,37 +1464,14 @@ export const processRun = internalAction({
     const payload = JSON.parse(run.payloadSnapshot) as Record<string, unknown>;
     const processRunDb = createSupabaseDb();
 
-    // Idempotency guard: if another processRun already claimed this eventIdempotencyKey
-    // (e.g. emitEvent was called twice due to a Convex mutation retry), skip silently.
-    // The Supabase UNIQUE constraint on event_idempotency_key is the last-line defence,
-    // but relying on it alone means the second action throws a 23505 error rather than
-    // returning cleanly. This explicit check restores the graceful early-exit behaviour
-    // that the old ctx.db dedup provided.
+    // Idempotency guard: emitEvent writes the row to Supabase (status "pending") before
+    // scheduling this action. If the row is missing the event was never properly initiated;
+    // if it already has a terminal status, processRun ran a second time — either way, bail.
     const existingRun = await processRunDb
       .query("automationRuns")
       .eq("eventIdempotencyKey", args.eventIdempotencyKey)
       .first();
-    if (existingRun) return;
-
-    await processRunDb.insert("automationRuns", {
-      _id: args.runId,
-      organizationId: args.organizationId as string,
-      ruleId: null,
-      module: args.module,
-      eventType: args.eventType,
-      entityType: args.entityType ?? null,
-      entityId: args.entityId ?? null,
-      eventIdempotencyKey: args.eventIdempotencyKey,
-      correlationKey: args.correlationKey ?? null,
-      payloadSnapshot: args.payloadSnapshot,
-      actorUserId: (args.actorUserId as string | undefined) ?? null,
-      status: "pending",
-      errorMessage: null,
-      occurredAt: args.occurredAt,
-      processedAt: null,
-      createdAt: args.createdAt,
-      updatedAt: args.createdAt,
-    });
+    if (!existingRun || existingRun.status !== "pending") return;
 
     const rules = await processRunDb
       .query("automationRules")
@@ -1742,7 +1735,7 @@ export const processRun = internalAction({
           }
 
           if (action.type === "create_notification") {
-            const userId = getPathValue(payload, action.userIdPath) as Id<"users"> | undefined;
+            const userId = getPathValue(payload, action.userIdPath) as string | undefined;
             const title = applyTemplate(action.titleTemplate, payload);
             const message = applyTemplate(action.messageTemplate, payload);
             const link = action.linkTemplate
@@ -1761,7 +1754,7 @@ export const processRun = internalAction({
 
             await ctx.runMutation(internal.automation._createNotificationForRun, {
               organizationId: run.organizationId,
-              userId,
+              userId: userId as Id<"users">,
               type: "automation_rule",
               title,
               message,
@@ -1794,7 +1787,7 @@ export const processRun = internalAction({
               continue;
             }
 
-            const permission = await ctx.runMutation(
+            const permission = await ctx.runAction(
               internal.automation._getAutomationPermission,
               {
                 organizationId: run.organizationId,
@@ -1905,6 +1898,48 @@ export const processRun = internalAction({
       processedAt,
       updatedAt: processedAt,
     });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Scheduled cleanup — marks automationRuns rows that have been stuck in
+// "pending" status for more than 30 minutes as "failed".
+//
+// A row can get permanently stuck when emitEvent crashes between inserting
+// the Supabase row and calling ctx.scheduler.runAfter (the processRun call
+// is never enqueued, so the row never transitions out of "pending"). Any
+// legitimate processRun completes in seconds; 30 minutes is a safe cutoff.
+// Runs hourly (see convex/crons.ts). Processes up to 100 rows per run to
+// bound execution time.
+// ---------------------------------------------------------------------------
+const STUCK_PENDING_CUTOFF_MS = 30 * 60 * 1000; // 30 minutes
+const STUCK_PENDING_BATCH_SIZE = 100;
+
+export const _cleanupStuckPendingRuns = internalAction({
+  args: {},
+  handler: async (_ctx, _args): Promise<void> => {
+    const db = createSupabaseDb();
+    const cutoff = Date.now() - STUCK_PENDING_CUTOFF_MS;
+
+    const stuck = await db
+      .query("automationRuns")
+      .eq("status", "pending")
+      .lt("createdAt", cutoff)
+      .take(STUCK_PENDING_BATCH_SIZE)
+      .collect();
+
+    if (stuck.length === 0) return;
+
+    const now = Date.now();
+    for (const run of stuck) {
+      await db.patch("automationRuns", String(run._id), {
+        status: "failed",
+        errorMessage: "Stuck pending run: processRun was never scheduled",
+        updatedAt: now,
+      });
+    }
+
+    console.info(`[_cleanupStuckPendingRuns] Marked ${stuck.length} stuck run(s) as failed`);
   },
 });
 

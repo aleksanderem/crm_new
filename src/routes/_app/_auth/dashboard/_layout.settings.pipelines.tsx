@@ -52,10 +52,10 @@ function PipelinesSettings() {
   const { allowed: canCreate } = usePermission("pipelines", "create");
 
   // @ts-ignore — TS2589 excessive depth in useAction type instantiation (pre-existing)
-  const createPipeline = useAction(api.pipelines.create);
-  const removePipeline = useAction(api.pipelines.remove);
-  const addStage = useAction(api.pipelines.addStage);
-  const removeStage = useAction(api.pipelines.removeStage);
+  const createPipeline = useAction(api.crm.pipelines.create);
+  const removePipeline = useAction(api.crm.pipelines.remove);
+  const addStage = useAction(api.crm.pipelines.addStage);
+  const removeStage = useAction(api.crm.pipelines.removeStage);
 
   const { data: pipelines } = useSupabasePipelinesList(organizationId);
 
@@ -320,8 +320,8 @@ function StageActions({
   const { allowed: canEdit } = usePermission("pipelines", "edit");
   const { allowed: canDelete } = usePermission("pipelines", "delete");
 
-  const createAction = useAction(api.pipelineStageActions.create);
-  const removeAction = useAction(api.pipelineStageActions.remove);
+  const createAction = useAction(api.crm.pipelineStageActions.create);
+  const removeAction = useAction(api.crm.pipelineStageActions.remove);
 
   const { data: actions } = useSupabasePipelineStageActions(
     organizationId,

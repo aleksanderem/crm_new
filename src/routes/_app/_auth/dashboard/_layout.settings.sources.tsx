@@ -36,9 +36,9 @@ function SourcesSettings() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
-  const createSource = useAction(api.sources.create);
-  const updateSource = useAction(api.sources.update);
-  const removeSource = useAction(api.sources.remove);
+  const createSource = useAction(api.crm.sources.create);
+  const updateSource = useAction(api.crm.sources.update);
+  const removeSource = useAction(api.crm.sources.remove);
 
   const { data: sources } = useSupabaseSourcesList(organizationId);
 

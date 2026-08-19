@@ -2,12 +2,14 @@ import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useOrganization } from "@/components/org-context";
 import type { Feature, Action, Scope } from "@cvx/_helpers/permissionTypes";
+import type { Id } from "@cvx/_generated/dataModel";
 
 export type { Feature, Action, Scope };
 
 export function usePermission(
   feature: Feature,
-  action: Action
+  action: Action,
+  locationId?: Id<"gabinetLocations">
 ): {
   allowed: boolean;
   scope: Scope;
@@ -17,7 +19,7 @@ export function usePermission(
 
   const permissions = useQuery(
     api.permissions.getMyPermissions,
-    organizationId ? { organizationId } : "skip"
+    organizationId ? { organizationId, ...(locationId ? { locationId } : {}) } : "skip"
   );
 
   if (permissions === undefined) {
@@ -102,20 +104,47 @@ export function useGabinetRole(): {
   return { gabinetRole: result.gabinetRole, isActive: result.isActive, loading: false };
 }
 
+export function useMyGabinetContext(): {
+  gabinetRole: string | null;
+  isActive: boolean | null;
+  assignedLocations: Array<{ locationId: string; role: string | null }>;
+  loading: boolean;
+} {
+  const { organizationId } = useOrganization();
+
+  const result = useQuery(
+    api.permissions.getMyGabinetContext,
+    organizationId ? { organizationId } : "skip"
+  );
+
+  if (result === undefined) {
+    return { gabinetRole: null, isActive: null, assignedLocations: [], loading: true };
+  }
+
+  return {
+    gabinetRole: result.gabinetRole,
+    isActive: result.isActive,
+    assignedLocations: result.assignedLocations,
+    loading: false,
+  };
+}
+
 export function PermissionGate({
   feature,
   action,
+  locationId,
   children,
   fallback,
   loadingFallback,
 }: {
   feature: Feature;
   action: Action;
+  locationId?: Id<"gabinetLocations">;
   children: React.ReactNode;
   fallback?: React.ReactNode;
   loadingFallback?: React.ReactNode;
 }): React.ReactNode {
-  const { allowed, loading } = usePermission(feature, action);
+  const { allowed, loading } = usePermission(feature, action, locationId);
   if (loading) return loadingFallback ?? null;
   if (!allowed) return fallback ?? null;
   return children;

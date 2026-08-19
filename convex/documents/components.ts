@@ -1,4 +1,4 @@
-import { action, internalMutation } from "../_generated/server";
+import { action, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
@@ -16,7 +16,7 @@ import {
  * system-scope + org-scope + user-scope (filtered by createdBy).
  */
 export const list = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<Array<Record<string, unknown>>> => {
     const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
@@ -46,7 +46,7 @@ export const list = action({
 
 export const getById = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     componentId: v.string(),
   },
   handler: async (ctx, args): Promise<Record<string, unknown>> => {
@@ -73,7 +73,7 @@ export const getById = action({
  */
 export const getContent = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     componentId: v.string(),
   },
   handler: async (ctx, args): Promise<{
@@ -119,7 +119,7 @@ export const getContent = action({
  */
 export const resolveContentJson = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     contentJson: v.string(),
   },
   handler: async (ctx, args): Promise<string> => {
@@ -137,7 +137,7 @@ export const resolveContentJson = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     scope: v.union(v.literal("org"), v.literal("user")),
     name: v.string(),
     description: v.optional(v.string()),
@@ -184,7 +184,7 @@ export const create = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     componentId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
@@ -235,7 +235,7 @@ export const update = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     componentId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -272,7 +272,7 @@ export const remove = action({
 
 export const duplicate = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     componentId: v.string(),
     scope: v.optional(v.union(v.literal("org"), v.literal("user"))),
   },
@@ -313,7 +313,7 @@ export const duplicate = action({
     // Auto-relink: when copying a system component to org, update templates
     if (source.scope === "system") {
       try {
-        await ctx.runMutation(internal.documents.components._relinkTemplateComponents, {
+        await ctx.runAction(internal.documents.components._relinkTemplateComponents, {
           organizationId: args.organizationId,
           oldComponentId: args.componentId,
           newComponentId: newId,
@@ -327,26 +327,27 @@ export const duplicate = action({
   },
 });
 
-export const _relinkTemplateComponents = internalMutation({
+export const _relinkTemplateComponents = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     oldComponentId: v.string(),
     newComponentId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const templates = await ctx.db
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+    const templates = await db
       .query("formTemplates")
-      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .eq("organizationId", String(args.organizationId))
       .collect();
 
     const oldIdStr = args.oldComponentId;
     const newIdStr = args.newComponentId;
 
     for (const tmpl of templates) {
-      if (!tmpl.contentJson || !tmpl.contentJson.includes(oldIdStr)) continue;
+      if (!tmpl.contentJson || !(tmpl.contentJson as string).includes(oldIdStr)) continue;
 
       try {
-        const doc = JSON.parse(tmpl.contentJson);
+        const doc = JSON.parse(tmpl.contentJson as string);
         let changed = false;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -365,7 +366,7 @@ export const _relinkTemplateComponents = internalMutation({
         walkAndReplace(doc);
 
         if (changed) {
-          await ctx.db.patch(tmpl._id, {
+          await db.patch("formTemplates", String(tmpl._id), {
             contentJson: JSON.stringify(doc),
             updatedAt: Date.now(),
           });
@@ -379,14 +380,13 @@ export const _relinkTemplateComponents = internalMutation({
 
 // ── Internal: Seed system components ─────────────────────────────────────────
 
-export const seedSystemComponents = internalMutation({
+export const seedSystemComponents = internalAction({
   args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
+    const db = createSupabaseDb();
+
     // Check if system components already exist
-    const existing = await ctx.db
-      .query("documentComponents")
-      .withIndex("by_scope", (q) => q.eq("scope", "system"))
-      .collect();
+    const existing = await db.query("documentComponents").eq("scope", "system").collect();
     if (existing.length > 0) {
       return { skipped: true, count: 0, message: "System components already seeded" };
     }
@@ -395,9 +395,10 @@ export const seedSystemComponents = internalMutation({
     const components = buildSystemComponents();
     let count = 0;
     for (const comp of components) {
-      await ctx.db.insert("documentComponents", {
+      await db.insert("documentComponents", {
         ...comp,
-        createdBy: args.userId,
+        organizationId: comp.organizationId ?? null,
+        createdBy: String(args.userId),
         createdAt: now,
         updatedAt: now,
       });

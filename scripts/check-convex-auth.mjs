@@ -36,7 +36,6 @@ const GUARD_PATTERNS = [
   "verifyOrgAccess(",
   "checkPermission(",
   "requireOrgAdmin(",
-  "requirePlatformAdmin(",
   // Patient-portal session token guard
   "validatePortalSessionSupabase(",
   // Basic user identity checks
@@ -46,6 +45,7 @@ const GUARD_PATTERNS = [
   // Action-context org-membership variants (internalQuery helpers)
   "authAction.verifyOrgAccess",
   "authAction.checkPermission",
+  "authAction.verifyPlatformAdmin",
   // Known project-level auth wrappers that themselves call a guard above.
   // getEffectivePermissions: calls verifyOrgAccess internally (_helpers/permissions.ts)
   "getEffectivePermissions(",
@@ -141,10 +141,24 @@ const WHITELIST = new Set([
   //   public so the template editor can be loaded before org selection.
   "emailTemplates:listVariableSources",
 
-  // ── Document data sources ─────────────────────────────────────────────────
-  // listAvailableSources: returns the static registry of document data-source
-  //   types. No org data; hard-coded list used by the template builder UI.
-  "documentDataSources:listAvailableSources",
+  // ── Application health & public marketing endpoints ──────────────────────
+  // getPublicStatus: returns { ts: Date.now() } proving Convex is alive.
+  //   Used by the /status page to verify backend health. No user or org data.
+  "app:getPublicStatus",
+
+  // getPublicPricingPlans: returns PLN monthly/yearly prices for CRM Pro and
+  //   Gabinet Pro plans so the public pricing page can display live prices.
+  //   Only exposes price amounts (numbers). Returns null when plans are not
+  //   seeded (Stripe not configured). No user or org data exposed.
+  "app:getPublicPricingPlans",
+
+  // ── Signing link stub resolution ──────────────────────────────────────────
+  // resolveStub: browser receives an opaque stubId via SMS URL and calls this
+  //   to exchange it for the real signing token. The stubId IS the auth — it
+  //   is single-use, time-limited (≤48 h), and burned on first use by
+  //   _consumeStub. This is the same token-as-auth pattern as
+  //   signatureRequests:getByToken.
+  "signingStubs:resolveStub",
 
   // ── Dev / seed utilities ──────────────────────────────────────────────────
   // These are only deployed in non-production environments (dev namespace).

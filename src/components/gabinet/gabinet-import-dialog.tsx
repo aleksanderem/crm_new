@@ -422,7 +422,7 @@ export function GabinetImportDialog({
             {results.errors.length > 0 && (
               <div className="max-h-[200px] overflow-y-auto rounded-md border p-3">
                 <p className="mb-2 text-xs font-medium text-destructive">
-                  {t("csv.errors")} ({results.errors.length})
+                  {t("csv.errorsLabel")} ({results.errors.length})
                 </p>
                 {results.errors.slice(0, 20).map((e, i) => (
                   <p key={i} className="text-xs text-muted-foreground">

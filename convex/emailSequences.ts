@@ -25,7 +25,7 @@ import { createSupabaseDb } from "./_helpers/supabaseDb";
  */
 export const createSequence = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     triggerEventType: v.string(),
     isActive: v.optional(v.boolean()),
@@ -58,7 +58,7 @@ export const createSequence = action({
  */
 export const updateSequence = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     sequenceId: v.string(),
     name: v.optional(v.string()),
     triggerEventType: v.optional(v.string()),
@@ -93,7 +93,7 @@ export const updateSequence = action({
  */
 export const deleteSequence = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     sequenceId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -143,7 +143,7 @@ export const deleteSequence = action({
  */
 export const upsertStep = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     sequenceId: v.string(),
     stepId: v.optional(v.string()),
     order: v.number(),
@@ -199,7 +199,7 @@ export const upsertStep = action({
  */
 export const deleteStep = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     stepId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -225,7 +225,7 @@ export const deleteStep = action({
  */
 export const cancelEnrollment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     enrollmentId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -262,7 +262,7 @@ export const cancelEnrollment = action({
  */
 export const enrollForEvent = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     eventType: v.string(),
     recipientEmail: v.string(),
     recipientName: v.optional(v.string()),
@@ -296,7 +296,7 @@ export const enrollForEvent = internalAction({
 export const enrollRecipient = internalAction({
   args: {
     sequenceId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     recipientEmail: v.string(),
     recipientName: v.optional(v.string()),
     payload: v.optional(v.string()),
@@ -419,7 +419,7 @@ export const processNextStep = internalAction({
 
 export const insertSequenceLog = internalAction({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     sequenceId: v.string(),
     templateId: v.string(),
     recipientEmail: v.string(),

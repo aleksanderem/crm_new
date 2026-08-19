@@ -57,7 +57,7 @@ export function ActivityTypeForm({
 
   const [name, setName] = useState(initialData?.name ?? "");
   const [icon, setIcon] = useState(initialData?.icon ?? "phone");
-  const [color, setColor] = useState(initialData?.color ?? colorOptions[0].value);
+  const [color, setColor] = useState(initialData?.color ?? colorOptions[0]!.value);
 
   const key = useMemo(() => initialData?.key ?? generateKey(name), [name, initialData?.key]);
 

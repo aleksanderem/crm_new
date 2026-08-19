@@ -33,7 +33,7 @@ export function InboxList({
 
   // @ts-ignore — TS2589: Convex mutation type instantiation depth exceeded
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const toggleStar: any = useAction(api.emails.toggleStar);
+  const toggleStar: any = useAction(api.crm.emails.toggleStar);
 
   const { data: emailsData } = useSupabaseEmailsList(organizationId, {
     search: search.trim() || undefined,

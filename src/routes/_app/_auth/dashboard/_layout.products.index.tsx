@@ -12,6 +12,7 @@ import {
   useSupabaseUsedProductIds,
   useSupabaseProductStockTotals,
   useSupabaseProductLotBatches,
+  useSupabaseOrgExpiringLotBatches,
   type LotBatch,
 } from "@/hooks/use-supabase-products";
 import { useOrganization } from "@/components/org-context";
@@ -57,7 +58,7 @@ import {
   type StockStatus,
 } from "./products-filters";
 
-type ProductsNudgeFilter = "unused" | "low_stock";
+type ProductsNudgeFilter = "unused" | "low_stock" | "expiring_soon";
 
 export const Route = createFileRoute(
   "/_app/_auth/dashboard/_layout/products/"
@@ -67,7 +68,7 @@ export const Route = createFileRoute(
     search: Record<string, unknown>,
   ): { nudge?: ProductsNudgeFilter } => {
     const nudge =
-      search.nudge === "unused" || search.nudge === "low_stock"
+      search.nudge === "unused" || search.nudge === "low_stock" || search.nudge === "expiring_soon"
         ? (search.nudge as ProductsNudgeFilter)
         : undefined;
     return { nudge };
@@ -601,10 +602,9 @@ function ProductsPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
 
   const { data: allProducts = [], isLoading } = useSupabaseProductsList(organizationId);
-  const { data: usedProductIds } = useSupabaseUsedProductIds(organizationId, {
-    enabled: nudgeFilter === "unused",
-  });
+  const { data: usedProductIds } = useSupabaseUsedProductIds(organizationId);
   const { totalsByProductId } = useSupabaseProductStockTotals(organizationId);
+  const { data: expiringProductIds } = useSupabaseOrgExpiringLotBatches(organizationId);
   const { data: locations = [] } = useSupabaseGabinetLocationsList(String(organizationId), { activeOnly: false });
   const { data: lotBatches = [], isLoading: lotBatchesLoading } = useSupabaseProductLotBatches(
     organizationId,
@@ -641,6 +641,11 @@ function ProductsPage() {
     return { total, bySale, byTreatment, byDisposable, belowMin };
   }, [allProducts, productStockStatus]);
 
+  const unusedCount = useMemo(
+    () => (usedProductIds ? allProducts.filter((p) => !usedProductIds.has(p._id)).length : 0),
+    [allProducts, usedProductIds],
+  );
+
   const products = useMemo(() => {
     let data = allProducts;
     if (activeViewId === "active") {
@@ -648,6 +653,9 @@ function ProductsPage() {
     }
     if (nudgeFilter === "unused" && usedProductIds) {
       data = data.filter((p) => !usedProductIds.has(p._id));
+    }
+    if (nudgeFilter === "expiring_soon" && expiringProductIds) {
+      data = data.filter((p) => expiringProductIds.has(p._id));
     }
     if (nudgeFilter === "low_stock") {
       data = data.filter((p) => {
@@ -679,12 +687,12 @@ function ProductsPage() {
       );
     }
     return data;
-  }, [activeViewId, allProducts, applyFilters, activeFilters, simpleFilters, simpleFilterConditions, searchValue, nudgeFilter, usedProductIds, productStockStatus, totalsByProductId]);
+  }, [activeViewId, allProducts, applyFilters, activeFilters, simpleFilters, simpleFilterConditions, searchValue, nudgeFilter, usedProductIds, expiringProductIds, productStockStatus, totalsByProductId]);
 
-  const createProduct = useAction(api.products.create);
-  const updateProduct = useAction(api.products.update);
-  const removeProduct = useAction(api.products.remove);
-  const toggleActive = useAction(api.products.toggleActive);
+  const createProduct = useAction(api.crm.products.create);
+  const updateProduct = useAction(api.crm.products.update);
+  const removeProduct = useAction(api.crm.products.remove);
+  const toggleActive = useAction(api.crm.products.toggleActive);
 
   // @ts-ignore — TS2589: deep type instantiation in Convex codegen
   const getPlannedUsage = useAction(api.gabinet.inventory.getPlannedUsage);
@@ -1067,7 +1075,13 @@ function ProductsPage() {
     d.add("salePriceNet");
     return d;
   }, [autoDefaultHidden]);
-  const { hiddenColumnIds, toggleColumn, setHiddenColumns: _setHiddenColumns } = useColumnVisibility(defaultHidden, "products");
+  const { hiddenColumnIds: rawHiddenColumnIds, toggleColumn, setHiddenColumns: _setHiddenColumns } = useColumnVisibility(defaultHidden, "products");
+  const hiddenColumnIds = useMemo(() => {
+    if (!rawHiddenColumnIds.has("name")) return rawHiddenColumnIds;
+    const next = new Set(rawHiddenColumnIds);
+    next.delete("name");
+    return next;
+  }, [rawHiddenColumnIds]);
 
   const rowActions = (row: Product) => {
     const actions = [];
@@ -1147,7 +1161,7 @@ function ProductsPage() {
       />
 
       {/* Inventory stats widget */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
         <StatCard
           label={t("products.stats.total", { defaultValue: "Wszystkie pozycje" })}
           value={inventoryStats.total}
@@ -1189,12 +1203,29 @@ function ProductsPage() {
           value={inventoryStats.belowMin}
           highlight={inventoryStats.belowMin > 0}
           active={nudgeFilter === "low_stock"}
-          onClick={inventoryStats.belowMin > 0
-            ? () => {
-                onViewChange("all");
-                navigate({ to: "/dashboard/products", search: { nudge: "low_stock" } });
-              }
-            : undefined}
+          onClick={() => {
+            onViewChange("all");
+            navigate({ to: "/dashboard/products", search: { nudge: "low_stock" } });
+          }}
+        />
+        <StatCard
+          label={t("products.stats.unused", { defaultValue: "Nieużywane" })}
+          value={unusedCount}
+          active={nudgeFilter === "unused"}
+          onClick={() => {
+            onViewChange("all");
+            navigate({ to: "/dashboard/products", search: { nudge: "unused" } });
+          }}
+        />
+        <StatCard
+          label={t("products.stats.expiringSoon", { defaultValue: "Wygasa w 30 dni" })}
+          value={expiringProductIds?.size ?? 0}
+          highlight={(expiringProductIds?.size ?? 0) > 0}
+          active={nudgeFilter === "expiring_soon"}
+          onClick={() => {
+            onViewChange("all");
+            navigate({ to: "/dashboard/products", search: { nudge: "expiring_soon" } });
+          }}
         />
       </div>
 
@@ -1211,7 +1242,13 @@ function ProductsPage() {
               const unitStr = item.unit?.trim() ? ` ${item.unit.trim()}` : "";
               return (
                 <li key={item.productId} className="text-sm text-amber-900 dark:text-amber-100">
-                  <span className="font-medium">{item.productName}</span>
+                  <button
+                    type="button"
+                    className="font-medium underline underline-offset-2 hover:opacity-75"
+                    onClick={() => setSearchValue(item.productName)}
+                  >
+                    {item.productName}
+                  </button>
                   <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-amber-800 dark:text-amber-200">
                     <span>{t("products.actionRequired.stock", { defaultValue: "Stan:" })} {item.currentStock}{unitStr}</span>
                     <span>{t("products.actionRequired.planned", { defaultValue: "Planowane:" })} {item.plannedUsage}{unitStr}</span>
@@ -1258,6 +1295,32 @@ function ProductsPage() {
             {t("products.nudgeFilter.lowStock", {
               defaultValue:
                 "Pokazywane są pozycje poniżej minimalnego stanu magazynowego.",
+            })}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            onClick={() =>
+              navigate({
+                to: "/dashboard/products",
+                search: { nudge: undefined },
+              })
+            }
+          >
+            <X className="h-3.5 w-3.5" variant="stroke" />
+            {t("common.clearFilters")}
+          </Button>
+        </div>
+      )}
+
+      {nudgeFilter === "expiring_soon" && (
+        <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          <span className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0" variant="stroke" />
+            {t("products.nudgeFilter.expiringSoon", {
+              defaultValue:
+                "Pokazywane są produkty z partiami wygasającymi w ciągu 30 dni.",
             })}
           </span>
           <Button
@@ -1409,15 +1472,21 @@ function ProductsPage() {
               </p>
               {sectionCols.map((col) => {
                 const isVisible = !hiddenColumnIds.has(col.id);
+                const isLocked = col.id === "name";
                 return (
                   <button
                     key={col.id}
                     type="button"
-                    className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left hover:bg-muted/50 transition-colors"
-                    onClick={() => toggleColumn(col.id)}
+                    disabled={isLocked}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors",
+                      isLocked ? "cursor-default opacity-60" : "hover:bg-muted/50",
+                    )}
+                    onClick={() => !isLocked && toggleColumn(col.id)}
                   >
                     <Checkbox
                       checked={isVisible}
+                      disabled={isLocked}
                       className="pointer-events-none"
                       aria-hidden
                     />

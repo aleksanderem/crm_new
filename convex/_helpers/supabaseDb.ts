@@ -40,9 +40,6 @@ const TABLE_MAP: Record<string, string> = {
   sources: "sources",
   lostReasons: "lost_reasons",
   documents: "documents",
-  documentTemplates: "document_templates",
-  documentTemplateFields: "document_template_fields",
-  documentInstances: "document_instances",
   documentComponents: "document_components",
   documentAnalysisJobs: "document_analysis_jobs",
   formTemplates: "form_templates",
@@ -94,10 +91,12 @@ const TABLE_MAP: Record<string, string> = {
   automationRunSteps: "automation_run_steps",
   organizations: "organizations",
   teamMemberships: "team_memberships",
+  productSubscriptions: "product_subscriptions",
   gabinetReceipts: "gabinet_receipts",
   gabinetReceiptSequences: "gabinet_receipt_sequences",
   gabinetCashTransactions: "gabinet_cash_transactions",
   gabinetDayCloses: "gabinet_day_closes",
+  gabinetSafeMovements: "gabinet_safe_movements",
   gabinetWaitlist: "gabinet_waitlist",
 };
 
@@ -419,6 +418,11 @@ class SupabaseQueryBuilder<T = Record<string, unknown>> {
 
   in(field: string, values: unknown[]) {
     this.filters.push((q) => q.in(toSnakeCase(field), values));
+    return this;
+  }
+
+  isNull(field: string) {
+    this.filters.push((q) => q.is(toSnakeCase(field), null));
     return this;
   }
 

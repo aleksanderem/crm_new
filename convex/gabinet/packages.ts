@@ -19,7 +19,7 @@ import type {
 
 export const list = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     paginationOpts: paginationOptsValidator,
   },
   handler: async (
@@ -60,7 +60,7 @@ export const list = action({
 });
 
 export const listActive = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<GabinetTreatmentPackageRow[]> => {
     const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
@@ -97,7 +97,7 @@ export const listActive = action({
 
 export const getById = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     packageId: v.string(),
   },
   handler: async (ctx, args): Promise<GabinetTreatmentPackageRow> => {
@@ -136,7 +136,7 @@ export const getById = action({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.union(v.string(), v.null())),
     treatments: v.array(
@@ -271,19 +271,19 @@ export const create = action({
 export const _createSideEffects = internalMutation({
   args: {
     packageId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     createdBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetPackage",
       entityId: args.packageId as Id<"gabinetTreatmentPackages">,
       action: "created",
       description: `Created package ${args.name}`,
-      performedBy: args.createdBy as Id<"users">,
+      performedBy: args.createdBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -291,7 +291,7 @@ export const _createSideEffects = internalMutation({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     packageId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.union(v.string(), v.null())),
@@ -373,7 +373,7 @@ export const update = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     packageId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -424,7 +424,7 @@ export const remove = action({
 
 export const updatePackageUsage = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     usageId: v.string(),
     expiresAt: v.optional(v.union(v.number(), v.null())),
     status: v.optional(
@@ -477,7 +477,7 @@ export const updatePackageUsage = action({
 
 export const purchaseTreatment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
     treatmentId: v.string(),
     sessionCount: v.number(),
@@ -547,6 +547,18 @@ export const purchaseTreatment = action({
       if (!autoPackage) throw new Error("Failed to create treatment package");
     }
 
+    // Idempotency guard: if an active usage already exists for this patient ×
+    // auto-package (same treatmentId), return it rather than creating a
+    // duplicate on double-click / network retry.
+    const existingUsage = await db
+      .query("gabinetPackageUsage")
+      .eq("organizationId", orgIdStr)
+      .eq("patientId", args.patientId)
+      .eq("packageId", String(autoPackage._id))
+      .eq("status", "active")
+      .first();
+    if (existingUsage) return String(existingUsage._id);
+
     const usageId = await db.insert("gabinetPackageUsage", {
       organizationId: orgIdStr,
       patientId: args.patientId,
@@ -599,7 +611,7 @@ export const purchaseTreatment = action({
 export const _purchaseTreatmentSideEffects = internalMutation({
   args: {
     usageId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     treatmentId: v.string(),
     treatmentName: v.string(),
     patientId: v.string(),
@@ -609,16 +621,16 @@ export const _purchaseTreatmentSideEffects = internalMutation({
     createdAt: v.number(),
   },
   handler: async (ctx, args) => {
-    await publishActivityEnvelope(ctx, {
+    await publishActivityEnvelope({
       organizationId: args.organizationId,
       action: "package_assigned",
-      performedBy: args.createdBy as Id<"users">,
+      performedBy: args.createdBy,
       module: "gabinet",
       summary: `Sold treatment ${args.treatmentName} to patient`,
       occurredAt: args.createdAt,
       actor: {
         type: "user",
-        userId: args.createdBy as Id<"users">,
+        userId: args.createdBy,
       },
       payload: {
         usageId: args.usageId,
@@ -642,7 +654,7 @@ export const _purchaseTreatmentSideEffects = internalMutation({
 
     await logAudit(ctx, {
       organizationId: args.organizationId,
-      userId: args.createdBy as Id<"users">,
+      userId: args.createdBy,
       action: "package_treatment_sold",
       entityType: "gabinetPatient",
       entityId: args.patientId,
@@ -668,7 +680,7 @@ function generateVoucherCode(): string {
 
 export const purchasePackage = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.optional(v.string()),
     packageId: v.string(),
     paidAmount: v.number(),
@@ -742,6 +754,20 @@ export const purchasePackage = action({
       }
       if (!voucherCode)
         throw new Error("Could not generate unique voucher code");
+    }
+
+    // Idempotency guard for regular (non-gift) purchases: if an active usage
+    // already exists for this patient × package, return it instead of creating
+    // a duplicate. Guards against double-click / network-retry scenarios.
+    if (!isGift && args.patientId) {
+      const existing = await db
+        .query("gabinetPackageUsage")
+        .eq("organizationId", String(args.organizationId))
+        .eq("patientId", args.patientId)
+        .eq("packageId", args.packageId)
+        .in("status", ["active", "unassigned"])
+        .first();
+      if (existing) return String(existing._id);
     }
 
     const usageId = await db.insert("gabinetPackageUsage", {
@@ -845,7 +871,7 @@ export const purchasePackage = action({
 export const _purchaseSideEffects = internalMutation({
   args: {
     usageId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     packageId: v.string(),
     packageName: v.string(),
     patientId: v.optional(v.string()),
@@ -863,10 +889,10 @@ export const _purchaseSideEffects = internalMutation({
       targets.push({ entityType: "gabinetPatient", entityId: args.patientId });
     }
 
-    await publishActivityEnvelope(ctx, {
+    await publishActivityEnvelope({
       organizationId: args.organizationId,
       action: "package_assigned",
-      performedBy: args.createdBy as Id<"users">,
+      performedBy: args.createdBy,
       module: "gabinet",
       summary: args.patientId
         ? `Assigned package ${args.packageName} to patient`
@@ -874,7 +900,7 @@ export const _purchaseSideEffects = internalMutation({
       occurredAt: args.createdAt,
       actor: {
         type: "user",
-        userId: args.createdBy as Id<"users">,
+        userId: args.createdBy,
       },
       payload: {
         usageId: args.usageId,
@@ -889,7 +915,7 @@ export const _purchaseSideEffects = internalMutation({
 
     await logAudit(ctx, {
       organizationId: args.organizationId,
-      userId: args.createdBy as Id<"users">,
+      userId: args.createdBy,
       action: "package_purchased",
       entityType: args.patientId ? "gabinetPatient" : "gabinetPackage",
       entityId: args.patientId ?? args.packageId,
@@ -908,7 +934,7 @@ export const _purchaseSideEffects = internalMutation({
     if (args.loyaltyPointsAwarded > 0 && args.patientId) {
       await logAudit(ctx, {
         organizationId: args.organizationId,
-        userId: args.createdBy as Id<"users">,
+        userId: args.createdBy,
         action: "loyalty_points_earned",
         entityType: "gabinetPatient",
         entityId: args.patientId,
@@ -925,7 +951,7 @@ export const _purchaseSideEffects = internalMutation({
 
 export const usePackageTreatment = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     usageId: v.string(),
     treatmentId: v.string(),
     variantId: v.optional(v.string()),
@@ -1015,7 +1041,7 @@ export const usePackageTreatment = action({
 
 export const _usePackageTreatmentSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     usageId: v.string(),
     treatmentId: v.string(),
     variantId: v.optional(v.string()),
@@ -1026,7 +1052,7 @@ export const _usePackageTreatmentSideEffects = internalMutation({
   handler: async (ctx, args) => {
     await logAudit(ctx, {
       organizationId: args.organizationId,
-      userId: args.performedBy as Id<"users">,
+      userId: args.performedBy,
       action: "package_treatment_used",
       entityType: "gabinetPatient",
       entityId: args.patientId,
@@ -1044,7 +1070,7 @@ export const _usePackageTreatmentSideEffects = internalMutation({
 
 export const usePackageTreatmentsBatch = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     usageId: v.string(),
     items: v.array(
       v.object({
@@ -1147,7 +1173,11 @@ export const usePackageTreatmentsBatch = action({
     try {
       await ctx.runMutation(internal.gabinet.packages._batchUsageSideEffects, {
         organizationId: args.organizationId,
+        usageId: args.usageId,
         packageId: String(usage.packageId),
+        patientId: String(usage.patientId ?? ""),
+        items: args.items,
+        appointmentId: args.appointmentId,
         totalUsed: args.items.reduce((sum, i) => sum + i.quantity, 0),
         createdBy: String(authResult.userId),
         actorLabel: authResult.userName ?? authResult.userEmail,
@@ -1163,8 +1193,18 @@ export const usePackageTreatmentsBatch = action({
 
 export const _batchUsageSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
+    usageId: v.string(),
     packageId: v.string(),
+    patientId: v.string(),
+    items: v.array(
+      v.object({
+        treatmentId: v.string(),
+        variantId: v.optional(v.string()),
+        quantity: v.number(),
+      }),
+    ),
+    appointmentId: v.optional(v.string()),
     totalUsed: v.number(),
     createdBy: v.string(),
     actorLabel: v.optional(v.string()),
@@ -1172,20 +1212,34 @@ export const _batchUsageSideEffects = internalMutation({
   handler: async (ctx, args) => {
     const db = createSupabaseDb();
     const pkg = await db.get("gabinetTreatmentPackages", args.packageId);
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetPackage",
       entityId: args.packageId as Id<"gabinetTreatmentPackages">,
       action: "updated",
       description: `Used ${args.totalUsed} treatment(s) from package ${pkg?.name ?? ""}`,
-      performedBy: args.createdBy as Id<"users">,
+      performedBy: args.createdBy,
       actorLabel: args.actorLabel,
+    });
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: args.createdBy,
+      action: "package_treatment_used",
+      entityType: "gabinetPatient",
+      entityId: args.patientId,
+      details: JSON.stringify({
+        usageId: args.usageId,
+        packageId: args.packageId,
+        appointmentId: args.appointmentId ?? null,
+        items: args.items,
+      }),
     });
   },
 });
 
 export const getActiveUsageCounts = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<Record<string, number>> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
@@ -1220,12 +1274,24 @@ export const getActiveUsageCounts = action({
   },
 });
 
+type TreatmentEntryWithScheduled = {
+  treatmentId: string;
+  variantId?: string;
+  usedCount: number;
+  totalCount: number;
+  scheduledCount: number;
+};
+
+export type PatientPackageUsage = Omit<GabinetPackageUsageRow, "treatmentsUsed"> & {
+  treatmentsUsed: TreatmentEntryWithScheduled[];
+};
+
 export const getPatientPackages = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
   },
-  handler: async (ctx, args): Promise<GabinetPackageUsageRow[]> => {
+  handler: async (ctx, args): Promise<PatientPackageUsage[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
@@ -1243,11 +1309,53 @@ export const getPatientPackages = action({
     if (!perm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
-    return (await db
+    const usages = (await db
       .query("gabinetPackageUsage")
       .eq("organizationId", String(args.organizationId))
       .eq("patientId", args.patientId)
       .collect()) as GabinetPackageUsageRow[];
+
+    // Count non-terminal appointments per (package_usage_id, treatment_id, variant_id)
+    // so the selector can display effective remaining = totalCount - usedCount - scheduledCount.
+    const scheduledCountMap: Record<string, number> = {};
+    const usageIds = usages.map(u => String(u._id));
+    if (usageIds.length > 0) {
+      const client = db.raw();
+      const { data: scheduledAppts } = await client
+        .from("gabinet_appointments")
+        .select("package_usage_id, gabinet_appointment_treatments(treatment_id, variant_id)")
+        .in("package_usage_id", usageIds)
+        .in("status", ["scheduled", "confirmed", "in_progress"]);
+
+      for (const appt of (scheduledAppts ?? [])) {
+        const usageId = (appt as { package_usage_id: string }).package_usage_id;
+        const treatments = (appt as {
+          gabinet_appointment_treatments?: Array<{ treatment_id: string | null; variant_id: string | null }>;
+        }).gabinet_appointment_treatments ?? [];
+        for (const at of treatments) {
+          if (!at.treatment_id) continue;
+          const key = `${usageId}|${at.treatment_id}|${at.variant_id ?? ""}`;
+          scheduledCountMap[key] = (scheduledCountMap[key] ?? 0) + 1;
+        }
+      }
+    }
+
+    return usages.map(u => {
+      const usageId = String(u._id);
+      const entries = ((u.treatmentsUsed ?? []) as Array<{
+        treatmentId: string;
+        variantId?: string;
+        usedCount: number;
+        totalCount: number;
+      }>);
+      return {
+        ...u,
+        treatmentsUsed: entries.map(e => ({
+          ...e,
+          scheduledCount: scheduledCountMap[`${usageId}|${e.treatmentId}|${e.variantId ?? ""}`] ?? 0,
+        })),
+      };
+    });
   },
 });
 
@@ -1255,7 +1363,7 @@ export const getPatientPackages = action({
 
 export const getPatientPackagesEnriched = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -1330,7 +1438,7 @@ export const getPatientPackagesEnriched = action({
 
 export const assignGiftPackage = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     usageId: v.string(),
     patientId: v.string(),
   },
@@ -1365,17 +1473,24 @@ export const assignGiftPackage = action({
       throw new Error("Package is already assigned");
 
     const now = Date.now();
-    await db.patch("gabinetPackageUsage", args.usageId, {
-      patientId: args.patientId,
-      status: "active",
-      updatedAt: now,
-    });
 
     // Award loyalty points that were deferred at purchase time
     const pkg = await db.get(
       "gabinetTreatmentPackages",
       String(usage.packageId),
     );
+
+    const pkgValidityDays = pkg?.validityDays as number | null | undefined;
+    const expiresAt = pkgValidityDays
+      ? now + pkgValidityDays * 24 * 60 * 60 * 1000
+      : null;
+
+    await db.patch("gabinetPackageUsage", args.usageId, {
+      patientId: args.patientId,
+      status: "active",
+      expiresAt,
+      updatedAt: now,
+    });
     const loyaltyPointsAwarded =
       (pkg?.loyaltyPointsAwarded as number | undefined) ?? 0;
     if (loyaltyPointsAwarded > 0) {
@@ -1424,24 +1539,22 @@ export const assignGiftPackage = action({
       });
     }
 
-    if (loyaltyPointsAwarded > 0) {
-      try {
-        await ctx.runMutation(internal.gabinet.packages._assignGiftSideEffects, {
-          usageId: args.usageId,
-          organizationId: args.organizationId,
-          patientId: args.patientId,
-          packageName: (pkg?.name as string) ?? "",
-          loyaltyPointsAwarded,
-          performedBy: String(authResult.userId),
-        });
-      } catch (e) {
-        console.error(
-          "[packages.assignGiftPackage] Side effects FAILED for usage",
-          args.usageId,
-          ":",
-          e,
-        );
-      }
+    try {
+      await ctx.runMutation(internal.gabinet.packages._assignGiftSideEffects, {
+        usageId: args.usageId,
+        organizationId: args.organizationId,
+        patientId: args.patientId,
+        packageName: (pkg?.name as string) ?? "",
+        loyaltyPointsAwarded,
+        performedBy: String(authResult.userId),
+      });
+    } catch (e) {
+      console.error(
+        "[packages.assignGiftPackage] Side effects FAILED for usage",
+        args.usageId,
+        ":",
+        e,
+      );
     }
   },
 });
@@ -1449,7 +1562,7 @@ export const assignGiftPackage = action({
 export const _assignGiftSideEffects = internalMutation({
   args: {
     usageId: v.string(),
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     patientId: v.string(),
     packageName: v.string(),
     loyaltyPointsAwarded: v.number(),
@@ -1458,22 +1571,36 @@ export const _assignGiftSideEffects = internalMutation({
   handler: async (ctx, args) => {
     await logAudit(ctx, {
       organizationId: args.organizationId,
-      userId: args.performedBy as Id<"users">,
-      action: "loyalty_points_earned",
+      userId: args.performedBy,
+      action: "gift_package_assigned",
       entityType: "gabinetPatient",
       entityId: args.patientId,
       details: JSON.stringify({
-        points: args.loyaltyPointsAwarded,
-        reason: `Gift package assigned: ${args.packageName}`,
+        packageName: args.packageName,
         referenceType: "packageUsage",
         referenceId: args.usageId,
       }),
     });
+    if (args.loyaltyPointsAwarded > 0) {
+      await logAudit(ctx, {
+        organizationId: args.organizationId,
+        userId: args.performedBy,
+        action: "loyalty_points_earned",
+        entityType: "gabinetPatient",
+        entityId: args.patientId,
+        details: JSON.stringify({
+          points: args.loyaltyPointsAwarded,
+          reason: `Gift package assigned: ${args.packageName}`,
+          referenceType: "packageUsage",
+          referenceId: args.usageId,
+        }),
+      });
+    }
   },
 });
 
 export const getActiveUsageDetails = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (
     ctx,
     args,

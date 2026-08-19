@@ -1,6 +1,5 @@
 import { action, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
-import { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 import { logError } from "../_helpers/logged";
@@ -10,7 +9,7 @@ import type { GabinetLocationRow } from "../_helpers/supabaseRows";
 // Dual-write refs removed — Supabase is now primary for location/room writes
 
 export const listLocations = action({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<GabinetLocationRow[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
@@ -28,7 +27,7 @@ export const listLocations = action({
 
 export const createLocation = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     address: v.optional(v.union(
       v.object({
@@ -138,7 +137,7 @@ export const createLocation = action({
 
 export const updateLocation = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     locationId: v.string(),
     name: v.optional(v.string()),
     address: v.optional(v.union(
@@ -212,7 +211,7 @@ export const updateLocation = action({
 
 export const deleteLocation = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     locationId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -270,7 +269,7 @@ export const deleteLocation = action({
 
 export const createRoom = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     locationId: v.string(),
     name: v.string(),
     description: v.optional(v.union(v.string(), v.null())),
@@ -372,7 +371,7 @@ export const createRoom = action({
 
 export const updateRoom = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     roomId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.union(v.string(), v.null())),
@@ -434,7 +433,7 @@ export const updateRoom = action({
 
 export const deleteRoom = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     roomId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -489,20 +488,20 @@ export const deleteRoom = action({
 
 export const _createLocationSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     locationId: v.string(),
     name: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetLocation",
       entityId: args.locationId,
       action: "created",
       description: `Created location "${args.name}"`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -510,19 +509,19 @@ export const _createLocationSideEffects = internalMutation({
 
 export const _updateLocationSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     locationId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetLocation",
       entityId: args.locationId,
       action: "updated",
       description: `Updated location`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -530,19 +529,19 @@ export const _updateLocationSideEffects = internalMutation({
 
 export const _deleteLocationSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     locationId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetLocation",
       entityId: args.locationId,
       action: "deleted",
       description: `Deactivated location`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -550,7 +549,7 @@ export const _deleteLocationSideEffects = internalMutation({
 
 export const _createRoomSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     roomId: v.string(),
     name: v.string(),
     locationId: v.string(),
@@ -558,14 +557,14 @@ export const _createRoomSideEffects = internalMutation({
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetRoom",
       entityId: args.roomId,
       action: "created",
       description: `Created room "${args.name}"`,
       metadata: { locationId: args.locationId },
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -573,19 +572,19 @@ export const _createRoomSideEffects = internalMutation({
 
 export const _updateRoomSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     roomId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetRoom",
       entityId: args.roomId,
       action: "updated",
       description: `Updated room`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },
@@ -593,19 +592,19 @@ export const _updateRoomSideEffects = internalMutation({
 
 export const _deleteRoomSideEffects = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     roomId: v.string(),
     performedBy: v.string(),
     actorLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await logActivity(ctx, {
+    await logActivity({
       organizationId: args.organizationId,
       entityType: "gabinetRoom",
       entityId: args.roomId,
       action: "deleted",
       description: `Deactivated room`,
-      performedBy: args.performedBy as Id<"users">,
+      performedBy: args.performedBy,
       actorLabel: args.actorLabel,
     });
   },

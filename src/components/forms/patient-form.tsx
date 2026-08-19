@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAction } from "convex/react";
+import { useSupabaseGabinetPatient } from "@/hooks/use-supabase-gabinet-patients";
 import { api } from "@cvx/_generated/api";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { isPhoneNumberValid } from "@/lib/phone";
+import { Search, X } from "@/lib/ez-icons";
 import { RichTextEditor } from "@/components/gabinet/rich-text-editor";
 import {
   Select,
@@ -38,6 +41,7 @@ interface CategoryDef {
 }
 
 interface PatientFormData {
+  contactId?: string | null;
   firstName: string;
   lastName: string;
   email: string;
@@ -56,8 +60,16 @@ interface PatientFormData {
   emergencyContactName?: string | null;
   emergencyContactPhone?: string | null;
   referralSource?: string | null;
+  referredByPatientId?: string | null;
+  preferredLocationId?: string | null;
+  smsConsent?: boolean | null;
   tagIds?: Id<"tagDefinitions">[];
   categoryId?: Id<"categoryDefinitions">;
+}
+
+interface LocationOption {
+  id: string;
+  name: string;
 }
 
 interface PatientFormProps {
@@ -69,6 +81,7 @@ interface PatientFormProps {
   tagDefinitions?: TagDef[];
   categoryDefinitions?: CategoryDef[];
   organizationId?: Id<"organizations">;
+  locations?: LocationOption[];
 }
 
 const ADD_NEW_REFERRAL_SOURCE = "__add_new__";
@@ -82,6 +95,7 @@ export function PatientForm({
   tagDefinitions = [],
   categoryDefinitions = [],
   organizationId,
+  locations = [],
 }: PatientFormProps) {
   const isEditMode = mode === "edit" || (!mode && !!initialData);
   const { t } = useTranslation();
@@ -113,8 +127,34 @@ export function PatientForm({
   const referralOptions = patientReferralSourceOptions(t).filter((opt) => opt.value !== "other");
   const [tagIds, setTagIds] = useState<Id<"tagDefinitions">[]>(initialData?.tagIds ?? []);
   const [categoryId, setCategoryId] = useState<Id<"categoryDefinitions"> | undefined>(initialData?.categoryId);
+  const [preferredLocationId, setPreferredLocationId] = useState<string>(initialData?.preferredLocationId ?? "");
+  const [smsConsent, setSmsConsent] = useState<boolean>(initialData?.smsConsent ?? false);
 
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [selectedContactLabel, setSelectedContactLabel] = useState<string | null>(null);
+  const [contactQuery, setContactQuery] = useState("");
+  const [contactResults, setContactResults] = useState<Array<{ _id: string; firstName: string; lastName: string; email: string; phone: string }>>([]);
+  const [isSearchingContacts, setIsSearchingContacts] = useState(false);
+  const [contactDropdownOpen, setContactDropdownOpen] = useState(false);
+  const contactSearchRef = useRef<HTMLDivElement>(null);
+
+  const [referredByPatientId, setReferredByPatientId] = useState<string | null>(initialData?.referredByPatientId ?? null);
+  const [referredByPatientLabel, setReferredByPatientLabel] = useState<string | null>(null);
+  const [referralPatientQuery, setReferralPatientQuery] = useState("");
+  const [referralPatientResults, setReferralPatientResults] = useState<Array<{ _id: string; firstName: string; lastName: string; email: string }>>([]);
+  const [isSearchingReferralPatient, setIsSearchingReferralPatient] = useState(false);
+  const [referralPatientDropdownOpen, setReferralPatientDropdownOpen] = useState(false);
+  const referralPatientSearchRef = useRef<HTMLDivElement>(null);
+
+  const searchUnlinkedContacts = useAction(api.gabinet.patients.searchUnlinkedContacts);
   const listCustomReferralSources = useAction(api.gabinet.patients.listCustomReferralSources);
+  const searchPatientsAction = useAction(api.gabinet.patients.searchPatients);
+
+  const orgIdString = organizationId ? String(organizationId) : "";
+  const { data: referredByPatientData } = useSupabaseGabinetPatient(
+    orgIdString,
+    referredByPatientId ?? undefined,
+  );
 
   useEffect(() => {
     if (!organizationId) return;
@@ -135,6 +175,117 @@ export function PatientForm({
       cancelled = true;
     };
   }, [organizationId, listCustomReferralSources]);
+
+  useEffect(() => {
+    if (!organizationId || isEditMode || !contactQuery.trim()) {
+      setContactResults([]);
+      setContactDropdownOpen(false);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      setIsSearchingContacts(true);
+      searchUnlinkedContacts({ organizationId, search: contactQuery })
+        .then((results) => {
+          if (cancelled) return;
+          setContactResults(results);
+          setContactDropdownOpen(results.length > 0);
+        })
+        .catch(() => {
+          if (!cancelled) setContactResults([]);
+        })
+        .finally(() => {
+          if (!cancelled) setIsSearchingContacts(false);
+        });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [organizationId, isEditMode, contactQuery, searchUnlinkedContacts]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (contactSearchRef.current && !contactSearchRef.current.contains(e.target as Node)) {
+        setContactDropdownOpen(false);
+      }
+      if (referralPatientSearchRef.current && !referralPatientSearchRef.current.contains(e.target as Node)) {
+        setReferralPatientDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (referredByPatientData) {
+      setReferredByPatientLabel(
+        `${referredByPatientData.firstName} ${referredByPatientData.lastName}${referredByPatientData.email ? ` (${referredByPatientData.email})` : ""}`,
+      );
+    }
+  }, [referredByPatientData]);
+
+  useEffect(() => {
+    if (!organizationId || !referralPatientQuery.trim()) {
+      setReferralPatientResults([]);
+      setReferralPatientDropdownOpen(false);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      setIsSearchingReferralPatient(true);
+      searchPatientsAction({ organizationId: String(organizationId), search: referralPatientQuery })
+        .then((results) => {
+          if (cancelled) return;
+          setReferralPatientResults(results);
+          setReferralPatientDropdownOpen(results.length > 0);
+        })
+        .catch(() => {
+          if (!cancelled) setReferralPatientResults([]);
+        })
+        .finally(() => {
+          if (!cancelled) setIsSearchingReferralPatient(false);
+        });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [organizationId, referralPatientQuery, searchPatientsAction]);
+
+  const handleSelectContact = (contact: { _id: string; firstName: string; lastName: string; email: string; phone: string }) => {
+    setSelectedContactId(contact._id);
+    setSelectedContactLabel(`${contact.firstName} ${contact.lastName}${contact.email ? ` (${contact.email})` : ""}`);
+    setContactQuery("");
+    setContactDropdownOpen(false);
+    setFirstName(contact.firstName);
+    setLastName(contact.lastName);
+    setEmail(contact.email);
+    if (contact.phone) setPhone(contact.phone);
+  };
+
+  const handleClearContact = () => {
+    setSelectedContactId(null);
+    setSelectedContactLabel(null);
+    setContactQuery("");
+    setContactResults([]);
+    setContactDropdownOpen(false);
+  };
+
+  const handleSelectReferralPatient = (patient: { _id: string; firstName: string; lastName: string; email: string }) => {
+    setReferredByPatientId(patient._id);
+    setReferredByPatientLabel(`${patient.firstName} ${patient.lastName}${patient.email ? ` (${patient.email})` : ""}`);
+    setReferralPatientQuery("");
+    setReferralPatientDropdownOpen(false);
+  };
+
+  const handleClearReferralPatient = () => {
+    setReferredByPatientId(null);
+    setReferredByPatientLabel(null);
+    setReferralPatientQuery("");
+    setReferralPatientResults([]);
+    setReferralPatientDropdownOpen(false);
+  };
 
   const handleReferralSourceChange = (value: string) => {
     if (value === ADD_NEW_REFERRAL_SOURCE) {
@@ -172,6 +323,7 @@ export function PatientForm({
     const referralSource = referralSourceKey || null;
 
     onSubmit({
+      contactId: selectedContactId || null,
       firstName,
       lastName,
       email,
@@ -186,6 +338,9 @@ export function PatientForm({
       emergencyContactName: emergencyContactName || null,
       emergencyContactPhone: emergencyContactPhone || null,
       referralSource,
+      referredByPatientId: referredByPatientId || null,
+      preferredLocationId: preferredLocationId || null,
+      smsConsent,
       tagIds: tagIds.length > 0 ? tagIds : undefined,
       categoryId: categoryId || undefined,
     });
@@ -193,6 +348,60 @@ export function PatientForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {!isEditMode && (
+        <div className="space-y-1.5" ref={contactSearchRef}>
+          <Label>{t("gabinet.patients.linkedContact")}</Label>
+          {selectedContactId ? (
+            <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 text-sm">
+              <span className="flex-1 truncate">{selectedContactLabel}</span>
+              <button
+                type="button"
+                onClick={handleClearContact}
+                className="shrink-0 text-muted-foreground hover:text-foreground"
+                aria-label={t("common.clear", { defaultValue: "Wyczyść" })}
+              >
+                <X className="h-4 w-4" variant="stroke" />
+              </button>
+            </div>
+          ) : (
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" variant="stroke" />
+              <Input
+                value={contactQuery}
+                onChange={(e) => setContactQuery(e.target.value)}
+                placeholder={t("gabinet.patients.contactSearchPlaceholder", { defaultValue: "Szukaj kontaktu CRM..." })}
+                className="pl-8"
+              />
+              {isSearchingContacts && (
+                <span className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-foreground" />
+              )}
+              {contactDropdownOpen && contactResults.length > 0 && (
+                <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md">
+                  <ul className="max-h-48 overflow-y-auto py-1 text-sm">
+                    {contactResults.map((contact) => (
+                      <li key={contact._id}>
+                        <button
+                          type="button"
+                          className="w-full px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground"
+                          onClick={() => handleSelectContact(contact)}
+                        >
+                          <span className="font-medium">{contact.firstName} {contact.lastName}</span>
+                          {contact.email && <span className="ml-2 text-muted-foreground">{contact.email}</span>}
+                          {contact.phone && <span className="ml-2 text-muted-foreground">{contact.phone}</span>}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            {t("gabinet.patients.contactSearchHint", { defaultValue: "Opcjonalnie: powiąż nowego klienta z istniejącym kontaktem CRM." })}
+          </p>
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label>
@@ -263,15 +472,13 @@ export function PatientForm({
             </SelectContent>
           </Select>
         </div>
-        {isEditMode && (
-          <div className="space-y-1.5">
-            <Label>{t("gabinet.patients.bloodType")}</Label>
-            <Input
-              value={bloodType}
-              onChange={(e) => setBloodType(e.target.value)}
-            />
-          </div>
-        )}
+        <div className="space-y-1.5">
+          <Label>{t("gabinet.patients.bloodType")}</Label>
+          <Input
+            value={bloodType}
+            onChange={(e) => setBloodType(e.target.value)}
+          />
+        </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("gabinet.patients.allergies")}</Label>
           <Input
@@ -390,6 +597,68 @@ export function PatientForm({
             </div>
           )}
         </div>
+        <div className="space-y-1.5" ref={referralPatientSearchRef}>
+          <Label>{t("gabinet.patients.referredByPatient", { defaultValue: "Polecony przez pacjenta" })}</Label>
+          {referredByPatientId && referredByPatientLabel ? (
+            <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 text-sm">
+              <span className="flex-1 truncate">{referredByPatientLabel}</span>
+              <button
+                type="button"
+                onClick={handleClearReferralPatient}
+                className="shrink-0 text-muted-foreground hover:text-foreground"
+                aria-label={t("common.clear", { defaultValue: "Wyczyść" })}
+              >
+                <X className="h-4 w-4" variant="stroke" />
+              </button>
+            </div>
+          ) : (
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" variant="stroke" />
+              <Input
+                value={referralPatientQuery}
+                onChange={(e) => setReferralPatientQuery(e.target.value)}
+                placeholder={t("gabinet.patients.referredByPatientPlaceholder", { defaultValue: "Szukaj pacjenta..." })}
+                className="pl-8"
+              />
+              {isSearchingReferralPatient && (
+                <span className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-foreground" />
+              )}
+              {referralPatientDropdownOpen && referralPatientResults.length > 0 && (
+                <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md">
+                  <ul className="max-h-48 overflow-y-auto py-1 text-sm">
+                    {referralPatientResults.map((patient) => (
+                      <li key={patient._id}>
+                        <button
+                          type="button"
+                          className="w-full px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground"
+                          onClick={() => handleSelectReferralPatient(patient)}
+                        >
+                          <span className="font-medium">{patient.firstName} {patient.lastName}</span>
+                          {patient.email && <span className="ml-2 text-muted-foreground">{patient.email}</span>}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        {locations.length > 0 && (
+          <div className="space-y-1.5">
+            <Label>{t("gabinet.patients.preferredLocation")}</Label>
+            <Select value={preferredLocationId} onValueChange={setPreferredLocationId}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {locations.map((loc) => (
+                  <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("gabinet.patients.medicalNotes")}</Label>
           <RichTextEditor
@@ -398,6 +667,24 @@ export function PatientForm({
             minHeight="80px"
           />
         </div>
+      </div>
+
+      <div className="border-t pt-4">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <Checkbox
+            className="mt-0.5 h-5 w-5"
+            checked={smsConsent}
+            onCheckedChange={(checked) => setSmsConsent(checked === true)}
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium leading-none">
+              {t("gabinet.patients.smsConsent")}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {t("gabinet.patients.smsConsentHint")}
+            </span>
+          </span>
+        </label>
       </div>
 
       {tagDefinitions.length > 0 && (

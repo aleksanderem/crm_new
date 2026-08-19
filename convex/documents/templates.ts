@@ -9,22 +9,37 @@ import { formCategoryValidator } from "../schema/documents";
 // Dual-write refs removed — Supabase is now primary for template writes
 
 export const list = action({
-  args: { organizationId: v.id("organizations") },
-  handler: async (ctx, args): Promise<FormTemplateRow[]> => {
+  args: { organizationId: v.string() },
+  handler: async (ctx, args): Promise<(FormTemplateRow & { updatedByName: string | null })[]> => {
     await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
       organizationId: args.organizationId,
     });
     const db = createSupabaseDb();
-    return (await db
+    const templates = (await db
       .query("formTemplates")
       .eq("organizationId", String(args.organizationId))
       .collect()) as FormTemplateRow[];
+
+    const userIds = [
+      ...new Set(
+        templates
+          .map((t) => (t.updatedBy ? String(t.updatedBy) : null))
+          .filter((id): id is string => id !== null),
+      ),
+    ];
+    const users = userIds.length > 0 ? await db.getMany("users", userIds) : [];
+    const userById = new Map(users.map((u) => [String(u._id), (u.name as string | null) ?? null]));
+
+    return templates.map((t) => ({
+      ...t,
+      updatedByName: t.updatedBy ? (userById.get(String(t.updatedBy)) ?? null) : null,
+    }));
   },
 });
 
 export const getById = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.string(),
   },
   handler: async (ctx, args): Promise<FormTemplateRow> => {
@@ -41,7 +56,7 @@ export const getById = action({
 
 export const listByCategory = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     category: formCategoryValidator,
   },
   handler: async (ctx, args) => {
@@ -59,7 +74,7 @@ export const listByCategory = query({
 
 export const listByEntityType = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     entityType: v.string(),
   },
   handler: async (ctx, args): Promise<FormTemplateRow[]> => {
@@ -79,7 +94,7 @@ export const listByEntityType = action({
 
 export const listDocumentTemplates = query({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
@@ -93,7 +108,7 @@ export const listDocumentTemplates = query({
 
 export const create = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     category: formCategoryValidator,
@@ -124,16 +139,18 @@ export const create = action({
       }),
     ),
     accessRoles: v.optional(v.array(v.string())),
+    isOrgRequired: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    // requireOrgAdmin via authAction
     const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const createPerm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "document_templates", action: "create" },
+    ) as { allowed: boolean; scope: string };
+    if (!createPerm.allowed) throw new Error("Permission denied");
 
     const now = Date.now();
     const db = createSupabaseDb();
@@ -153,6 +170,7 @@ export const create = action({
       requiresSignature: args.requiresSignature,
       signatureConfig: args.signatureConfig ? JSON.stringify(args.signatureConfig) : null,
       accessRoles: args.accessRoles ?? null,
+      isOrgRequired: args.isOrgRequired ?? false,
       version: 1,
       isActive: true,
       createdBy: String(authResult.userId),
@@ -166,7 +184,7 @@ export const create = action({
 
 export const duplicate = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -174,9 +192,11 @@ export const duplicate = action({
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const createPerm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "document_templates", action: "create" },
+    ) as { allowed: boolean; scope: string };
+    if (!createPerm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     const source = await db.get("formTemplates", args.templateId);
@@ -200,6 +220,7 @@ export const duplicate = action({
       requiresSignature: source.requiresSignature ?? false,
       signatureConfig: source.signatureConfig ? (typeof source.signatureConfig === "string" ? source.signatureConfig : JSON.stringify(source.signatureConfig)) : null,
       accessRoles: source.accessRoles ?? null,
+      isOrgRequired: false,
       version: 1,
       isActive: true,
       createdBy: String(authResult.userId),
@@ -213,7 +234,7 @@ export const duplicate = action({
 
 export const update = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
@@ -246,15 +267,18 @@ export const update = action({
     ),
     isActive: v.optional(v.boolean()),
     accessRoles: v.optional(v.array(v.string())),
+    isOrgRequired: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const editPerm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "document_templates", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!editPerm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     const tmpl = await db.get("formTemplates", args.templateId);
@@ -268,7 +292,7 @@ export const update = action({
       (updates.contentJson && updates.contentJson !== tmpl.contentJson);
     const newVersion = contentChanged ? (tmpl.version as number ?? 1) + 1 : (tmpl.version as number ?? 1);
 
-    const patchData: Record<string, unknown> = { ...updates, version: newVersion, updatedAt: Date.now() };
+    const patchData: Record<string, unknown> = { ...updates, version: newVersion, updatedAt: Date.now(), updatedBy: String(authResult.userId) };
     // Serialize signatureConfig for Supabase
     if (patchData.signatureConfig && typeof patchData.signatureConfig !== "string") {
       patchData.signatureConfig = JSON.stringify(patchData.signatureConfig);
@@ -282,17 +306,19 @@ export const update = action({
 
 export const remove = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.string(),
     templateId: v.string(),
   },
   handler: async (ctx, args) => {
-    const authResult = await ctx.runAction(
+    await ctx.runAction(
       internal._helpers.authAction.verifyOrgAccess,
       { organizationId: args.organizationId },
     );
-    if (authResult.role !== "owner" && authResult.role !== "admin") {
-      throw new Error("Admin access required");
-    }
+    const deletePerm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "document_templates", action: "delete" },
+    ) as { allowed: boolean; scope: string };
+    if (!deletePerm.allowed) throw new Error("Permission denied");
 
     const db = createSupabaseDb();
     const tmpl = await db.get("formTemplates", args.templateId);

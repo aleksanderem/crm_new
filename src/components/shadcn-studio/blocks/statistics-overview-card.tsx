@@ -39,7 +39,7 @@ const StatisticsCardData = {
                   return (
                     <text x={viewBox.cx} y={viewBox.cy} textAnchor='middle' dominantBaseline='middle'>
                       <tspan x={viewBox.cx} y={viewBox.cy} className='fill-foreground text-xl font-semibold'>
-                        {overviewChartData[0].visitors.toLocaleString()}%
+                        {overviewChartData[0]!.visitors.toLocaleString()}%
                       </tspan>
                     </text>
                   )

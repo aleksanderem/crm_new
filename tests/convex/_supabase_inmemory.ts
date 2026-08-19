@@ -189,10 +189,10 @@ function createInMemoryRawClient() {
         const formatted = `${prefix}/${year}/${String(next).padStart(5, "0")}`;
         return { data: formatted, error: null };
       }
+      // Atomic receipt insert used by insertReceiptWithAtomicNumber (issue #3793).
+      // Mirrors the production Postgres function: increments the sequence counter,
+      // inserts a gabinet_receipts row, and returns { receipt_id, receipt_number }.
       if (fn === "insert_gabinet_receipt_with_number") {
-        // Atomic receipt insert stub: allocates the next receipt number for the
-        // (org, location, year, prefix) combination, then stores a minimal row in
-        // the in-memory gabinetReceipts table and returns { receipt_id, receipt_number }.
         const orgId = String(params.p_org_id ?? "");
         const year = Number(params.p_year ?? new Date().getFullYear());
         const prefix = String(params.p_prefix ?? "REC");
@@ -203,26 +203,257 @@ function createInMemoryRawClient() {
         const receiptNumber = `${prefix}/${year}/${String(next).padStart(5, "0")}`;
         const receiptId = randomId();
         const now = Number(params.p_now ?? Date.now());
+        // Store with camelCase keys — InMemoryRawQuery.eq() converts snake_case
+        // field names to camelCase before filtering against the in-memory rows.
         // Insert the receipt row so subsequent reads via raw().from("gabinet_receipts")
         // find it (used by the split-payment refund guard in payments.ts).
         getTable("gabinetReceipts").set(receiptId, {
           id: receiptId,
           organizationId: orgId,
-          receiptNumber,
           paymentId: String(params.p_payment_id ?? ""),
           appointmentId: params.p_appointment_id ? String(params.p_appointment_id) : null,
           patientId: params.p_patient_id ? String(params.p_patient_id) : null,
-          receiptType: String(params.p_receipt_type ?? "receipt"),
+          issuedAt: Number(params.p_issued_at ?? now),
+          organizationName: String(params.p_organization_name ?? ""),
+          organizationNip: params.p_organization_nip ?? null,
+          organizationAddress: params.p_organization_address ?? null,
           totalNet: Number(params.p_total_net ?? 0),
           totalVat: Number(params.p_total_vat ?? 0),
           totalGross: Number(params.p_total_gross ?? 0),
           paymentMethod: String(params.p_payment_method ?? "cash"),
-          issuedAt: Number(params.p_issued_at ?? now),
+          itemsJson: String(params.p_items_json ?? "[]"),
+          fiscalReceiptId: params.p_fiscal_receipt_id ?? null,
+          receiptType: String(params.p_receipt_type ?? "original"),
+          pdfStorageId: params.p_pdf_storage_id ?? null,
+          pdfUrl: params.p_pdf_url ?? null,
           createdBy: String(params.p_created_by ?? ""),
+          locationId: params.p_location_id ?? null,
+          receiptNumber,
+          status: "issued",
           createdAt: now,
           updatedAt: now,
         });
-        return { data: [{ receipt_id: receiptId, receipt_number: receiptNumber }], error: null };
+        return {
+          data: { receipt_id: receiptId, receipt_number: receiptNumber },
+          error: null,
+        };
+      }
+      // Atomic package entry deduction (closes #5208).
+      // Mirrors the PL/pgSQL SELECT FOR UPDATE logic in the production function.
+      if (fn === "deduct_package_entry") {
+        const usageId     = String(params.p_usage_id ?? "");
+        const treatmentId = String(params.p_treatment_id ?? "");
+        const variantId   = params.p_variant_id != null ? String(params.p_variant_id) : null;
+        const now         = Number(params.p_now ?? Date.now());
+        const t = getTable("gabinetPackageUsage");
+        const row = t.get(usageId);
+        if (!row || row.status !== "active") {
+          return { data: null, error: null };
+        }
+        const treatments = (row.treatmentsUsed ?? []) as Array<Record<string, unknown>>;
+        const matchesTreatment = (e: Record<string, unknown>) =>
+          e.treatmentId === treatmentId &&
+          (variantId === null || e.variantId === variantId);
+        const entry = treatments.find(
+          (e) => matchesTreatment(e) && (e.usedCount as number) < (e.totalCount as number),
+        );
+        if (!entry) return { data: null, error: null };
+        const updated = treatments.map((e) =>
+          matchesTreatment(e)
+            ? { ...e, usedCount: (e.usedCount as number) + 1 }
+            : e,
+        );
+        const allUsed = updated.every((e) => (e.usedCount as number) >= (e.totalCount as number));
+        t.set(usageId, {
+          ...row,
+          treatmentsUsed: updated,
+          status: allUsed ? "completed" : "active",
+          updatedAt: now,
+        });
+        return { data: null, error: null };
+      }
+      // Atomic package entry return (closes #5208).
+      if (fn === "return_package_entry") {
+        const usageId     = String(params.p_usage_id ?? "");
+        const treatmentId = String(params.p_treatment_id ?? "");
+        const variantId   = params.p_variant_id != null ? String(params.p_variant_id) : null;
+        const now         = Number(params.p_now ?? Date.now());
+        const t = getTable("gabinetPackageUsage");
+        const row = t.get(usageId);
+        if (!row) return { data: null, error: null };
+        const treatments = (row.treatmentsUsed ?? []) as Array<Record<string, unknown>>;
+        const matchesTreatment = (e: Record<string, unknown>) =>
+          e.treatmentId === treatmentId &&
+          (variantId === null || e.variantId === variantId);
+        const entry = treatments.find(
+          (e) => matchesTreatment(e) && (e.usedCount as number) > 0,
+        );
+        if (!entry) return { data: null, error: null };
+        const updated = treatments.map((e) =>
+          matchesTreatment(e)
+            ? { ...e, usedCount: Math.max(0, (e.usedCount as number) - 1) }
+            : e,
+        );
+        t.set(usageId, {
+          ...row,
+          treatmentsUsed: updated,
+          status: row.status === "completed" ? "active" : row.status,
+          updatedAt: now,
+        });
+        return { data: null, error: null };
+      }
+      // Overbooking guard for package-linked appointments (closes #5227, #5232).
+      // Mirrors the PL/pgSQL SELECT FOR UPDATE logic in the production function.
+      if (fn === "check_package_overbooking") {
+        const usageId     = String(params.p_usage_id ?? "");
+        const treatmentId = String(params.p_treatment_id ?? "");
+        const variantId   = params.p_variant_id != null ? String(params.p_variant_id) : null;
+        const appointmentPkgTreatmentId =
+          params.p_appointment_package_treatment_id != null
+            ? String(params.p_appointment_package_treatment_id)
+            : null;
+        const newCount = typeof params.p_new_count === "number" ? params.p_new_count : 1;
+
+        const t = getTable("gabinetPackageUsage");
+        const row = t.get(usageId);
+        if (!row || row.status !== "active") return { data: null, error: null };
+
+        const treatments = (row.treatmentsUsed ?? []) as Array<Record<string, unknown>>;
+        const entry = treatments.find(
+          (e) =>
+            e.treatmentId === treatmentId &&
+            (variantId === null || e.variantId === variantId),
+        );
+        if (!entry) return { data: null, error: null };
+
+        const usedCount  = entry.usedCount as number;
+        const totalCount = entry.totalCount as number;
+
+        // Count non-terminal appointments for this package+slot.
+        const apptTable = getTable("gabinetAppointments");
+        let pendingCount = 0;
+        for (const appt of apptTable.values()) {
+          if (
+            appt.packageUsageId === usageId &&
+            (appt.status === "scheduled" || appt.status === "confirmed" || appt.status === "in_progress") &&
+            (appt.packageTreatmentId ?? null) === appointmentPkgTreatmentId
+          ) {
+            pendingCount++;
+          }
+        }
+
+        if (usedCount + pendingCount + newCount > totalCount) {
+          return {
+            data: null,
+            error: {
+              message: `package_overbooking: ${usedCount + pendingCount} sessions used/pending + ${newCount} new out of ${totalCount} total`,
+            },
+          };
+        }
+        return { data: null, error: null };
+      }
+      // Atomic CAS + package deduction in one transaction (closes #5239).
+      // Mirrors cas_deduct_package_entry: flips package_deducted false→true on
+      // the junction row, then increments usedCount if the flip succeeded.
+      if (fn === "cas_deduct_package_entry") {
+        const appointmentId = String(params.p_appointment_id ?? "");
+        const treatmentId   = String(params.p_treatment_id ?? "");
+        const usageId       = String(params.p_usage_id ?? "");
+        const variantId     = params.p_variant_id != null ? String(params.p_variant_id) : null;
+        const now           = Number(params.p_now ?? Date.now());
+
+        // Step 1: CAS flip on junction row.
+        const junctionTable = getTable("gabinetAppointmentTreatments");
+        let casWon = false;
+        for (const [id, row] of junctionTable.entries()) {
+          if (
+            row.appointmentId === appointmentId &&
+            row.treatmentId === treatmentId &&
+            row.packageDeducted === false
+          ) {
+            junctionTable.set(id, { ...row, packageDeducted: true, updatedAt: now });
+            casWon = true;
+            break;
+          }
+        }
+        if (!casWon) return { data: false, error: null };
+
+        // Step 2: Deduct from package usage.
+        const t = getTable("gabinetPackageUsage");
+        const usageRow = t.get(usageId);
+        if (!usageRow || usageRow.status !== "active") return { data: true, error: null };
+        const treatments = (usageRow.treatmentsUsed ?? []) as Array<Record<string, unknown>>;
+        const matchesTreatment = (e: Record<string, unknown>) =>
+          e.treatmentId === treatmentId &&
+          (variantId === null || e.variantId === variantId);
+        const entry = treatments.find(
+          (e) => matchesTreatment(e) && (e.usedCount as number) < (e.totalCount as number),
+        );
+        if (!entry) return { data: true, error: null };
+        const updated = treatments.map((e) =>
+          matchesTreatment(e)
+            ? { ...e, usedCount: (e.usedCount as number) + 1 }
+            : e,
+        );
+        const allUsed = updated.every((e) => (e.usedCount as number) >= (e.totalCount as number));
+        t.set(usageId, {
+          ...usageRow,
+          treatmentsUsed: updated,
+          status: allUsed ? "completed" : "active",
+          updatedAt: now,
+        });
+        return { data: true, error: null };
+      }
+      // Atomic CAS + package return in one transaction (closes #5239).
+      // Mirrors cas_return_package_entry: flips package_deducted true→false on
+      // the junction row, then decrements usedCount if the flip succeeded.
+      if (fn === "cas_return_package_entry") {
+        const appointmentId = String(params.p_appointment_id ?? "");
+        const treatmentId   = String(params.p_treatment_id ?? "");
+        const usageId       = String(params.p_usage_id ?? "");
+        const variantId     = params.p_variant_id != null ? String(params.p_variant_id) : null;
+        const now           = Number(params.p_now ?? Date.now());
+
+        // Step 1: CAS flip on junction row.
+        const junctionTable = getTable("gabinetAppointmentTreatments");
+        let casWon = false;
+        for (const [id, row] of junctionTable.entries()) {
+          if (
+            row.appointmentId === appointmentId &&
+            row.treatmentId === treatmentId &&
+            row.packageDeducted === true
+          ) {
+            junctionTable.set(id, { ...row, packageDeducted: false, updatedAt: now });
+            casWon = true;
+            break;
+          }
+        }
+        if (!casWon) return { data: false, error: null };
+
+        // Step 2: Return to package usage.
+        const t = getTable("gabinetPackageUsage");
+        const usageRow = t.get(usageId);
+        if (!usageRow) return { data: true, error: null };
+        const treatments = (usageRow.treatmentsUsed ?? []) as Array<Record<string, unknown>>;
+        const matchesTreatment = (e: Record<string, unknown>) =>
+          e.treatmentId === treatmentId &&
+          (variantId === null || e.variantId === variantId);
+        const entry = treatments.find(
+          (e) => matchesTreatment(e) && (e.usedCount as number) > 0,
+        );
+        if (!entry) return { data: true, error: null };
+        const updated = treatments.map((e) =>
+          matchesTreatment(e)
+            ? { ...e, usedCount: Math.max(0, (e.usedCount as number) - 1) }
+            : e,
+        );
+        t.set(usageId, {
+          ...usageRow,
+          treatmentsUsed: updated,
+          status: usageRow.status === "completed" ? "active" : usageRow.status,
+          updatedAt: now,
+        });
+        return { data: true, error: null };
       }
       return { data: null, error: { message: `rpc stub: unknown function ${fn}` } };
     },
@@ -272,6 +503,29 @@ class InMemoryRawQuery {
     return this;
   }
 
+  /** Inserts one or more rows into the table. Each row with snake_case keys is
+   *  converted to camelCase before storage (mirroring how other write paths
+   *  work in InMemoryRawQuery). Returns PostgREST-style { data, error }. */
+  async insert(
+    payload: Record<string, unknown> | Record<string, unknown>[],
+  ): Promise<{ data: Row[] | null; error: null | { message: string } }> {
+    const rows = Array.isArray(payload) ? payload : [payload];
+    const t = getTable(this.table);
+    const inserted: Row[] = [];
+    for (const rawRow of rows) {
+      const camel: Row = {};
+      for (const [k, v] of Object.entries(rawRow)) {
+        camel[snakeToCamel(k)] = v as unknown;
+      }
+      const id = camel.id ? String(camel.id) : randomId();
+      const stored: Row = { ...camel, id };
+      delete (stored as any)._id;
+      t.set(id, stored);
+      inserted.push({ ...convertKeysToSnake(stored) });
+    }
+    return { data: inserted, error: null };
+  }
+
   /** Builder step — records that columns should be projected (or switches to
    *  read-after-write for update/delete). Does NOT execute the query. */
   select(_cols?: string) {
@@ -305,6 +559,28 @@ class InMemoryRawQuery {
       }
       return r[camelField] !== value;
     });
+    return this;
+  }
+
+  is(field: string, value: unknown) {
+    const camelField = snakeToCamel(field);
+    if (value === null) {
+      this.filters.push((r) => r[camelField] == null);
+    } else {
+      this.filters.push((r) => r[camelField] === value);
+    }
+    return this;
+  }
+
+  gte(field: string, value: unknown) {
+    const camelField = snakeToCamel(field);
+    this.filters.push((r) => (r[camelField] as any) >= (value as any));
+    return this;
+  }
+
+  lte(field: string, value: unknown) {
+    const camelField = snakeToCamel(field);
+    this.filters.push((r) => (r[camelField] as any) <= (value as any));
     return this;
   }
 

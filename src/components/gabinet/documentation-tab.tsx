@@ -5,6 +5,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import type { Id } from "@cvx/_generated/dataModel";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import {
   Card,
   CardContent,
@@ -618,7 +619,7 @@ export function DocumentationTab({
         onRemove={handleRemovePhoto}
         uploadFile={uploadFile}
         uploadingFiles={uploadingFiles}
-        t={t as (key: string, fallback?: string) => string}
+        t={t}
       />
 
     </div>
@@ -644,7 +645,7 @@ function PhotosSection({
   onRemove: (storageId: Id<"_storage">) => void;
   uploadFile: (file: File, type: "before" | "after") => void;
   uploadingFiles: UploadingFile[];
-  t: (key: string, fallback?: string) => string;
+  t: TFunction;
 }) {
   const orderedPhotos = useMemo(
     () => [...beforePhotos, ...afterPhotos],
@@ -744,7 +745,7 @@ function PhotoColumn({
   onPreview: (globalIndex: number) => void;
   uploadFile: (file: File, type: "before" | "after") => void;
   uploadingFiles: UploadingFile[];
-  t: (key: string, fallback?: string) => string;
+  t: TFunction;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -949,7 +950,7 @@ function PhotoPreviewDialog({
   compareMode: boolean;
   onToggleCompare: (next: boolean) => void;
   onClose: () => void;
-  t: (key: string, fallback?: string) => string;
+  t: TFunction;
 }) {
   const open = index !== null;
   const photo = index !== null ? photos[index] : undefined;
@@ -1153,7 +1154,7 @@ function ComparePane({
   label: string;
   url: string | null | undefined;
   photo: Photo | undefined;
-  t: (key: string, fallback?: string) => string;
+  t: TFunction;
 }) {
   return (
     <div className="flex flex-col gap-2">

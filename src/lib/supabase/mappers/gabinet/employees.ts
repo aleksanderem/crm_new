@@ -9,7 +9,7 @@ export interface MappedGabinetEmployee {
   _id: string;
   _creationTime: number;
   organizationId: string;
-  userId: string;
+  userId?: string;
   firstName?: string;
   lastName?: string;
   role: string;
@@ -18,6 +18,7 @@ export interface MappedGabinetEmployee {
   licenseNumber?: string;
   hireDate?: string;
   isActive: boolean;
+  isBlocked?: boolean;
   color?: string;
   notes?: string;
   phone?: string;
@@ -43,6 +44,8 @@ export interface MappedGabinetEmployee {
   commissionPercent?: number;
   bankAccount?: string;
   showInCalendar?: boolean;
+  performsServices?: boolean;
+  workScope?: "clinic" | "office" | "both";
   tagIds?: string[];
   categoryId?: string;
   bio?: string;

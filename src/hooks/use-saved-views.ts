@@ -97,9 +97,9 @@ export function useSavedViews({
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
 
   // @ts-ignore — Convex useMutation hits TS2589 deep instantiation limit; runtime works fine
-  const createViewMut = useAction(api.savedViews.create);
-  const updateViewMut = useAction(api.savedViews.update);
-  const removeViewMut = useAction(api.savedViews.remove);
+  const createViewMut = useAction(api.crm.savedViews.create);
+  const updateViewMut = useAction(api.crm.savedViews.update);
+  const removeViewMut = useAction(api.crm.savedViews.remove);
   const queryClient = useQueryClient();
 
   const { data: convexViews } = useSupabaseSavedViewsList(
@@ -169,7 +169,7 @@ export function useSavedViews({
         filters: filters ?? null,
         columns: visibleCols,
         sortField: sorting[0]?.id,
-        sortDirection: sorting[0] ? (sorting[0].desc ? "desc" : "asc") : undefined,
+        sortDirection: sorting[0] ? (sorting[0]!.desc ? "desc" : "asc") : undefined,
         selectedId: selectedId,
         isSystem: false,
       });

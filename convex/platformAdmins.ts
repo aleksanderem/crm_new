@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
+import type { UserRow } from "./_helpers/supabaseRows";
 
 // List all users with their platform-admin flag. Used by the /admin/users
 // page to render the toggle. Platform admin only — this exposes user emails
@@ -11,7 +12,7 @@ export const list = action({
   handler: async (ctx) => {
     await ctx.runAction(internal._helpers.authAction.verifyPlatformAdmin, {});
     const db = createSupabaseDb();
-    const users = await db.query("users").collect();
+    const users = (await db.query("users").collect()) as UserRow[];
     return users
       .map((u) => ({
         _id: u._id,
@@ -45,7 +46,7 @@ export const setRole = action({
     if (!args.isPlatformAdmin) {
       // About to demote someone — ensure at least one platform admin remains.
       const db = createSupabaseDb();
-      const allUsers = await db.query("users").collect();
+      const allUsers = (await db.query("users").collect()) as UserRow[];
       const remainingAdmins = allUsers.filter(
         (u) => u.isPlatformAdmin && String(u._id) !== String(args.userId),
       );

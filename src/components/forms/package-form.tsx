@@ -81,7 +81,7 @@ export function PackageForm({
     if (treatments && treatments.length > 0) {
       setSelectedTreatments((prev) => [
         ...prev,
-        { treatmentId: treatments[0]._id, quantity: 1 },
+        { treatmentId: treatments[0]!._id, quantity: 1 },
       ]);
     }
   };

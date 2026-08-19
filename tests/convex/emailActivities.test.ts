@@ -2,6 +2,10 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import { createTestCtx, seedTestUser } from "../../convex/_test_helpers";
 import { createSupabaseDb } from "../../convex/_helpers/supabaseDb";
+
+async function listActivitiesForOrg(organizationId: string) {
+  return createSupabaseDb().query("activities").eq("organizationId", organizationId).collect();
+}
 import { sendEmail } from "@cvx/email";
 
 vi.mock("@cvx/email", () => ({
@@ -38,7 +42,7 @@ describe("email activities", () => {
       updatedAt: now,
     });
 
-    const emailId = await t.withIdentity(identity).action(api.emails.send, {
+    const emailId = await t.withIdentity(identity).action(api.crm.emails.send, {
       organizationId,
       to: ["client@example.com"],
       subject: "Welcome aboard",
@@ -54,10 +58,7 @@ describe("email activities", () => {
       }),
     );
 
-    const rows = await t.run(async (ctx) => {
-      const all = await ctx.db.query("activities").collect();
-      return all.filter((row) => row.organizationId === organizationId);
-    });
+    const rows = await listActivitiesForOrg(organizationId);
 
     expect(rows).toHaveLength(1);
 
@@ -102,7 +103,7 @@ describe("email activities", () => {
     const now = Date.now();
     const messageId = "inbound-message-42@example.com";
 
-    await t.mutation(internal.emails_internal.insertInbound, {
+    await t.action(internal.crm.emails_internal.insertInbound, {
       organizationId,
       threadId: "thread-42",
       messageId,
@@ -113,21 +114,15 @@ describe("email activities", () => {
       snippet: "Could you clarify my invoice?",
     });
 
-    const { email, rows } = await t.run(async (ctx) => {
-      const email = await ctx.db
-        .query("emails")
-        .withIndex("by_messageId", (q) => q.eq("messageId", messageId))
-        .unique();
-      const rows = await ctx.db.query("activities").collect();
-      return {
-        email,
-        rows: rows.filter((row) => row.organizationId === organizationId),
-      };
-    });
+    const [emailRow, rows] = await Promise.all([
+      createSupabaseDb().query("emails").eq("messageId", messageId).first() as Promise<(Record<string, unknown> & { _id: string }) | null>,
+      listActivitiesForOrg(organizationId),
+    ]);
 
-    expect(email).toBeTruthy();
+    expect(emailRow).toBeTruthy();
     expect(rows).toHaveLength(1);
 
+    const email = emailRow;
     const [row] = rows;
     expect(row.action).toBe("email_received");
     expect(row.entityType).toBe("email");
@@ -172,8 +167,11 @@ describe("email activities", () => {
     await t.run(async (ctx) => {
       await ctx.db.delete(organizationId);
     });
+    // insertInbound reads the org via createSupabaseDb() — delete from
+    // the Supabase mock too so the "organization missing" branch is exercised.
+    await createSupabaseDb().delete("organizations", String(organizationId));
 
-    await t.mutation(internal.emails_internal.insertInbound, {
+    await t.action(internal.crm.emails_internal.insertInbound, {
       organizationId,
       threadId: "orphan-thread",
       messageId,
@@ -184,17 +182,13 @@ describe("email activities", () => {
       snippet: "Inbound row should still persist",
     });
 
-    const { email, rows } = await t.run(async (ctx) => {
-      const email = await ctx.db
-        .query("emails")
-        .withIndex("by_messageId", (q) => q.eq("messageId", messageId))
-        .unique();
-      const rows = await ctx.db.query("activities").collect();
-      return { email, rows };
-    });
+    const [email, rows] = await Promise.all([
+      createSupabaseDb().query("emails").eq("messageId", messageId).first() as Promise<(Record<string, unknown> & { organizationId?: unknown }) | null>,
+      listActivitiesForOrg(organizationId),
+    ]);
 
     expect(email).toBeTruthy();
-    expect(email?.organizationId).toBe(organizationId);
+    expect(String(email?.organizationId ?? "")).toBe(String(organizationId));
     expect(rows).toHaveLength(0);
   });
 });

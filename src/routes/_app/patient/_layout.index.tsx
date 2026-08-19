@@ -13,40 +13,40 @@ export const Route = createFileRoute("/_app/patient/_layout/")({
 });
 
 function usePortalToken() {
-  const tokenHash =
+  const token =
     typeof window !== "undefined"
       ? (localStorage.getItem("patientPortalToken") ?? "")
       : "";
-  return { tokenHash };
+  return { token };
 }
 
 function PatientDashboard() {
   const { t } = useTranslation();
-  const { tokenHash } = usePortalToken();
+  const { token } = usePortalToken();
 
   const getMyProfile = useAction(api.gabinet.patientPortal.getMyProfile);
   const { data: profile } = useQuery({
-    queryKey: ["gabinet.patientPortal.getMyProfile", tokenHash],
-    queryFn: () => getMyProfile({ tokenHash }),
-    enabled: !!tokenHash,
+    queryKey: ["gabinet.patientPortal.getMyProfile", token],
+    queryFn: () => getMyProfile({ token }),
+    enabled: !!token,
   });
 
   const getMyAppointments = useAction(
     api.gabinet.patientPortal.getMyAppointments,
   );
   const { data: appointments } = useQuery({
-    queryKey: ["gabinet.patientPortal.getMyAppointments", tokenHash],
-    queryFn: () => getMyAppointments({ tokenHash }),
-    enabled: !!tokenHash,
+    queryKey: ["gabinet.patientPortal.getMyAppointments", token],
+    queryFn: () => getMyAppointments({ token }),
+    enabled: !!token,
   });
 
   const getMyLoyaltyBalance = useAction(
     api.gabinet.patientPortal.getMyLoyaltyBalance,
   );
   const { data: loyaltyBalance } = useQuery({
-    queryKey: ["gabinet.patientPortal.getMyLoyaltyBalance", tokenHash],
-    queryFn: () => getMyLoyaltyBalance({ tokenHash }),
-    enabled: !!tokenHash,
+    queryKey: ["gabinet.patientPortal.getMyLoyaltyBalance", token],
+    queryFn: () => getMyLoyaltyBalance({ token }),
+    enabled: !!token,
   });
 
   const upcoming = useMemo(() => {

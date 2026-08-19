@@ -302,8 +302,6 @@ async function seed() {
   console.log('\nPhase 8: Forms & documents');
   await seedTable('form_templates', 'formTemplates', forOrg);
   await seedTable('form_documents', 'formDocuments', forOrg);
-  await seedTable('document_templates', 'documentTemplates', forOrg);
-  await seedTable('document_instances', 'documentInstances', forOrg);
   await seedTable('signature_requests', 'signatureRequests', forOrg);
   
   // ── 12. Scheduled activities ──

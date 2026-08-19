@@ -15,6 +15,7 @@ import { mutation, internalMutation, query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOrgAdmin } from "../_helpers/auth";
 import { Id } from "../_generated/dataModel";
+import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 // ---------------------------------------------------------------------------
 // Queries
@@ -33,7 +34,7 @@ export const listOrgs = query({
 // ---------------------------------------------------------------------------
 
 export const seedAll = mutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     const { user } = await requireOrgAdmin(ctx, args.organizationId);
     return await doSeed(ctx, args.organizationId, user._id);
@@ -41,14 +42,14 @@ export const seedAll = mutation({
 });
 
 export const seedAllInternal = internalMutation({
-  args: { organizationId: v.id("organizations"), userId: v.id("users") },
+  args: { organizationId: v.string(), userId: v.id("users") },
   handler: async (ctx, args) => {
     return await doSeed(ctx, args.organizationId, args.userId);
   },
 });
 
 export const clearAll = mutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     await requireOrgAdmin(ctx, args.organizationId);
     return await doClear(ctx, args.organizationId);
@@ -56,7 +57,7 @@ export const clearAll = mutation({
 });
 
 export const clearAllInternal = internalMutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     return await doClear(ctx, args.organizationId);
   },
@@ -83,23 +84,25 @@ function randomBetween(min: number, max: number): number {
 // Seed implementation
 // ---------------------------------------------------------------------------
 
-async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">) {
+async function doSeed(_ctx: unknown, orgId: string, userId: Id<"users">) {
+  const supabaseDb = createSupabaseDb();
+
   // --- Guard ---
-  const existing = await ctx.db
+  const existing = await supabaseDb
     .query("contacts")
-    .withIndex("by_org", (q: any) => q.eq("organizationId", orgId))
+    .eq("organizationId", orgId)
     .first();
   if (existing) {
     throw new Error("CRM data already seeded for this organization. Run clearAll first.");
   }
 
   // Get pipeline stages for leads
-  const stages = await ctx.db
+  const stages = await supabaseDb
     .query("pipelineStages")
-    .withIndex("by_org", (q: any) => q.eq("organizationId", orgId))
+    .eq("organizationId", orgId)
     .collect();
   const stageMap: Record<string, Id<"pipelineStages">> = {};
-  for (const s of stages) stageMap[s.name] = s._id;
+  for (const s of stages) stageMap[s.name] = s._id as Id<"pipelineStages">;
 
   // ============================================================
   // 1. COMPANIES
@@ -119,9 +122,9 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
     { name: "LogiTrans", domain: "logitrans.pl", industry: "Logistyka", size: "201-500", website: "https://logitrans.pl", phone: "+48 71 234 56 78", city: "Poznań" },
   ];
 
-  const companyIds: Id<"companies">[] = [];
+  const companyIds: string[] = [];
   for (const c of companyData) {
-    const id = await ctx.db.insert("companies", {
+    const id = await supabaseDb.insert("companies", {
       organizationId: orgId,
       name: c.name,
       domain: c.domain,
@@ -164,9 +167,9 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
     { firstName: "Natalia", lastName: "Stępień", email: "n.stepien@pm.me", phone: "+48 700 800 900" },
   ];
 
-  const contactIds: Id<"contacts">[] = [];
+  const contactIds: string[] = [];
   for (const c of contactData) {
-    const id = await ctx.db.insert("contacts", {
+    const id = await supabaseDb.insert("contacts", {
       organizationId: orgId,
       firstName: c.firstName,
       lastName: c.lastName,
@@ -188,7 +191,7 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
   for (let i = 0; i < Math.min(contactData.length, companyIds.length); i++) {
     const cd = contactData[i];
     if (cd.companyIdx !== undefined) {
-      await ctx.db.insert("objectRelationships", {
+      await supabaseDb.insert("objectRelationships", {
         organizationId: orgId,
         sourceType: "company",
         sourceId: companyIds[cd.companyIdx],
@@ -221,12 +224,12 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
     { title: "Automatyzacja procesów", value: 42000, currency: "PLN", contactIdx: 18, stage: "Proposal" },
   ];
 
-  const leadIds: Id<"leads">[] = [];
+  const leadIds: string[] = [];
   for (const l of leadData) {
     const stageId = stageMap[l.stage];
     const stageOrder = stages.find((s: any) => s._id === stageId)?.order;
     const status = l.stage === "Won" ? "won" : l.stage === "Lost" ? "lost" : l.stage === "New" ? "open" : "open";
-    const id = await ctx.db.insert("leads", {
+    const id = await supabaseDb.insert("leads", {
       organizationId: orgId,
       title: l.title,
       value: l.value,
@@ -252,7 +255,7 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
   for (let i = 0; i < leadData.length; i++) {
     const ld = leadData[i];
     if (ld.companyIdx !== undefined) {
-      await ctx.db.insert("objectRelationships", {
+      await supabaseDb.insert("objectRelationships", {
         organizationId: orgId,
         sourceType: "company",
         sourceId: companyIds[ld.companyIdx],
@@ -272,7 +275,7 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
   for (let i = 0; i < Math.min(12, contactIds.length); i++) {
     const count = randomBetween(2, 5);
     for (let j = 0; j < count; j++) {
-      await ctx.db.insert("activities", {
+      await supabaseDb.insert("activities", {
         organizationId: orgId,
         entityType: "contact",
         entityId: contactIds[i],
@@ -298,7 +301,7 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
   for (let i = 0; i < Math.min(8, companyIds.length); i++) {
     const count = randomBetween(1, 4);
     for (let j = 0; j < count; j++) {
-      await ctx.db.insert("activities", {
+      await supabaseDb.insert("activities", {
         organizationId: orgId,
         entityType: "company",
         entityId: companyIds[i],
@@ -320,7 +323,7 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
   for (let i = 0; i < leadIds.length; i++) {
     const count = randomBetween(2, 6);
     for (let j = 0; j < count; j++) {
-      await ctx.db.insert("activities", {
+      await supabaseDb.insert("activities", {
         organizationId: orgId,
         entityType: "lead",
         entityId: leadIds[i],
@@ -358,7 +361,7 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
 
   // Notes on contacts
   for (let i = 0; i < Math.min(10, contactIds.length); i++) {
-    await ctx.db.insert("notes", {
+    await supabaseDb.insert("notes", {
       organizationId: orgId,
       entityType: "contact",
       entityId: contactIds[i],
@@ -371,7 +374,7 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
 
   // Notes on companies
   for (let i = 0; i < Math.min(6, companyIds.length); i++) {
-    await ctx.db.insert("notes", {
+    await supabaseDb.insert("notes", {
       organizationId: orgId,
       entityType: "company",
       entityId: companyIds[i],
@@ -383,7 +386,7 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
 
   // Notes on leads
   for (let i = 0; i < Math.min(8, leadIds.length); i++) {
-    await ctx.db.insert("notes", {
+    await supabaseDb.insert("notes", {
       organizationId: orgId,
       entityType: "lead",
       entityId: leadIds[i],
@@ -410,7 +413,7 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
   ];
 
   for (let i = 0; i < 12; i++) {
-    await ctx.db.insert("calls", {
+    await supabaseDb.insert("calls", {
       organizationId: orgId,
       outcome: randomPick([...callOutcomes]) as any,
       callDate: daysAgo(randomBetween(0, 20)),
@@ -451,7 +454,7 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
     const from = direction === "inbound" ? contactData[contactIdx].email : "sales@company.pl";
     const to = direction === "inbound" ? ["sales@company.pl"] : [contactData[contactIdx].email];
 
-    await ctx.db.insert("emails", {
+    await supabaseDb.insert("emails", {
       organizationId: orgId,
       threadId: `thread-${i}-${Date.now()}`,
       messageId: `<msg-${i}-${randomBetween(1000, 9999)}@company.pl>`,
@@ -492,7 +495,7 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
 
   for (const sa of scheduledActivityData) {
     const dueDate = daysFromNow(sa.dueOffset);
-    await ctx.db.insert("scheduledActivities", {
+    await supabaseDb.insert("scheduledActivities", {
       organizationId: orgId,
       title: sa.title,
       activityType: sa.type as any,
@@ -529,7 +532,8 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
 // Clear implementation
 // ---------------------------------------------------------------------------
 
-async function doClear(ctx: any, orgId: Id<"organizations">) {
+async function doClear(_ctx: any, orgId: string) {
+  const supabaseDb = createSupabaseDb();
   const tables = [
     "scheduledActivities",
     "emails",
@@ -540,16 +544,16 @@ async function doClear(ctx: any, orgId: Id<"organizations">) {
     "leads",
     "contacts",
     "companies",
-  ] as const;
+  ];
 
   let total = 0;
   for (const table of tables) {
-    const rows = await ctx.db
+    const rows = await supabaseDb
       .query(table)
-      .withIndex("by_org", (q: any) => q.eq("organizationId", orgId))
+      .eq("organizationId", orgId)
       .collect();
     for (const row of rows) {
-      await ctx.db.delete(row._id);
+      await supabaseDb.delete(table, (row as Record<string, unknown>)._id as string);
     }
     total += rows.length;
   }

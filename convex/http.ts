@@ -13,7 +13,7 @@ import {
   sendTrialWillEndEmail,
 } from "@cvx/email/templates/subscriptionEmail";
 import Stripe from "stripe";
-import { Doc, Id } from "@cvx/_generated/dataModel";
+import { Doc } from "@cvx/_generated/dataModel";
 import { createLogger } from "@cvx/_helpers/logger";
 
 function normalizeWebhookValue(value: FormDataEntryValue | unknown): string | undefined {
@@ -201,8 +201,8 @@ const handleCheckoutSessionCompleted = async (
   // the newly purchased module without requiring manual backfill.
   if (organizationId && productKey) {
     const normalizedStatus = toProductSubscriptionStatus(subscription.status);
-    await ctx.runMutation(internal.stripe.PREAUTH_upsertProductSubscription, {
-      organizationId: organizationId as Id<"organizations">,
+    await ctx.runAction(internal.stripe.PREAUTH_upsertProductSubscription, {
+      organizationId: organizationId,
       productId: productKey,
       stripeSubscriptionId: subscription.id,
       status: normalizedStatus,
@@ -280,8 +280,8 @@ const handleCustomerSubscriptionUpdated = async (
   const organizationId = subscription.metadata?.organizationId;
   if (organizationId && productKey) {
     const normalizedStatus = toProductSubscriptionStatus(subscription.status);
-    await ctx.runMutation(internal.stripe.PREAUTH_upsertProductSubscription, {
-      organizationId: organizationId as Id<"organizations">,
+    await ctx.runAction(internal.stripe.PREAUTH_upsertProductSubscription, {
+      organizationId: organizationId,
       productId: productKey,
       stripeSubscriptionId: subscription.id,
       status: normalizedStatus,
@@ -337,8 +337,8 @@ const handleCustomerSubscriptionCreated = async (
   const organizationId = subscription.metadata?.organizationId;
   if (organizationId && productKey) {
     const normalizedStatus = toProductSubscriptionStatus(subscription.status);
-    await ctx.runMutation(internal.stripe.PREAUTH_upsertProductSubscription, {
-      organizationId: organizationId as Id<"organizations">,
+    await ctx.runAction(internal.stripe.PREAUTH_upsertProductSubscription, {
+      organizationId: organizationId,
       productId: productKey,
       stripeSubscriptionId: subscription.id,
       status: normalizedStatus,
@@ -364,8 +364,8 @@ const handleCustomerSubscriptionDeleted = async (
   const productKey = subscription.metadata?.productKey;
   const organizationId = subscription.metadata?.organizationId;
   if (organizationId && productKey) {
-    await ctx.runMutation(internal.stripe.PREAUTH_upsertProductSubscription, {
-      organizationId: organizationId as Id<"organizations">,
+    await ctx.runAction(internal.stripe.PREAUTH_upsertProductSubscription, {
+      organizationId: organizationId,
       productId: productKey,
       stripeSubscriptionId: subscription.id,
       status: "canceled",
@@ -566,7 +566,7 @@ http.route({
       // Match to address to an email account to find the org.
       // emailAccounts is Supabase-primary, so this runs as an action.
       const emailAccount = await ctx.runAction(
-        internal.emails_internal.findEmailAccountByAddress,
+        internal.crm.emails_internal.findEmailAccountByAddress,
         { addresses: toAddresses }
       );
 
@@ -581,18 +581,18 @@ http.route({
       const inReplyTo = headers?.["In-Reply-To"] ?? headers?.["in-reply-to"];
       let threadId: string | undefined;
       if (inReplyTo) {
-        const existingEmail = await ctx.runQuery(
-          internal.emails_internal.findByMessageId,
+        const existingEmail = await ctx.runAction(
+          internal.crm.emails_internal.findByMessageId,
           { messageId: inReplyTo }
         );
         if (existingEmail) {
-          threadId = existingEmail.threadId;
+          threadId = existingEmail.threadId as string | undefined;
         }
       }
 
       // Auto-link to contact by from email
-      const contact = await ctx.runQuery(
-        internal.emails_internal.findContactByEmail,
+      const contact = await ctx.runAction(
+        internal.crm.emails_internal.findContactByEmail,
         { organizationId, email: fromEmail }
       );
 
@@ -604,7 +604,7 @@ http.route({
 
       const snippet = text ? text.slice(0, 200) : html ? html.replace(/<[^>]*>/g, "").slice(0, 200) : undefined;
 
-      await ctx.runMutation(internal.emails_internal.insertInbound, {
+      await ctx.runAction(internal.crm.emails_internal.insertInbound, {
         organizationId,
         threadId: finalThreadId,
         messageId,
@@ -615,7 +615,7 @@ http.route({
         bodyHtml: html,
         bodyText: text,
         snippet,
-        contactId: contact?._id,
+        contactId: contact?._id ? String(contact._id) : undefined,
       });
 
       return new Response("OK", { status: 200 });
@@ -678,7 +678,7 @@ http.route({
         : `${provider}:${to}:${from}:${body.trim()}`;
 
       await ctx.runMutation(internal.gabinet.appointmentSms.processIncomingMessage, {
-        organizationId: config.organizationId as string,
+        organizationId: config.organizationId,
         provider,
         to,
         from,

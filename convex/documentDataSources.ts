@@ -12,11 +12,8 @@
  * into `ALL_DATA_SOURCES` below.
  */
 
-import { query } from "./_generated/server";
-import { v } from "convex/values";
 import type { GenericQueryCtx } from "convex/server";
 import type { DataModel } from "./_generated/dataModel";
-import { auth } from "@cvx/auth";
 import { createSupabaseDb } from "./_helpers/supabaseDb";
 
 // ---------------------------------------------------------------------------
@@ -147,81 +144,8 @@ for (const src of ALL_DATA_SOURCES) {
   sourceMap.set(src.key, src);
 }
 
-export function getDataSource(key: string): DataSourceDefinition | undefined {
-  return sourceMap.get(key);
-}
-
 export function getDataSourcesForModule(module: string): DataSourceDefinition[] {
   return ALL_DATA_SOURCES.filter(
     (s) => s.module === "platform" || s.module === module,
   );
 }
-
-export async function resolveSource(
-  ctx: GenericQueryCtx<DataModel>,
-  sourceKey: string,
-  instanceId: string | null,
-  rctx: DataSourceResolverContext,
-): Promise<Record<string, string>> {
-  const src = sourceMap.get(sourceKey);
-  if (!src) return {};
-  return src.resolve(ctx, instanceId, rctx);
-}
-
-// ---------------------------------------------------------------------------
-// Query: list available sources for UI (field declarations only, no resolver)
-// ---------------------------------------------------------------------------
-
-export const listAvailableSources = query({
-  args: { module: v.optional(v.string()) },
-  handler: async (_ctx, args) => {
-    const sources = args.module
-      ? getDataSourcesForModule(args.module)
-      : ALL_DATA_SOURCES;
-
-    return sources.map((s) => ({
-      key: s.key,
-      label: s.label,
-      module: s.module,
-      fields: s.fields,
-    }));
-  },
-});
-
-/**
- * Resolve all sources and return a flat map of field values.
- * Used by the document-from-template preview to show real data.
- */
-export const resolveSourceValues = query({
-  args: {
-    organizationId: v.id("organizations"),
-    sources: v.any(), // Record<string, string | null>
-  },
-  handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
-    if (!userId) return {};
-
-    const rctx: DataSourceResolverContext = {
-      orgId: args.organizationId as string,
-      userId: userId as string,
-    };
-
-    const sources: Record<string, string | null> = args.sources ?? {};
-    const result: Record<string, Record<string, string>> = {};
-
-    // Always resolve platform sources
-    result.system = await resolveSource(ctx, "system", null, rctx);
-    result.current_user = await resolveSource(ctx, "current_user", null, rctx);
-    result.org = await resolveSource(ctx, "org", null, rctx);
-
-    // Resolve additional sources
-    for (const [key, instanceId] of Object.entries(sources)) {
-      if (key === "system" || key === "current_user" || key === "org") continue;
-      if (instanceId) {
-        result[key] = await resolveSource(ctx, key, instanceId, rctx);
-      }
-    }
-
-    return result;
-  },
-});

@@ -5,6 +5,7 @@ import type { Id } from "../_generated/dataModel";
 import type { Database } from "~/src/lib/supabase/database.types";
 import { createServiceRoleClient } from "./client";
 import { stripe } from "../stripe";
+import { isSystemGabinetRole } from "../_helpers/gabinetRolePermissions";
 
 const BATCH_SIZE = 50;
 
@@ -326,7 +327,7 @@ export const _listUsers = internalQuery({
 });
 
 export const _listPatients = internalQuery({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     return ctx.db
       .query("gabinetPatients")
@@ -336,7 +337,7 @@ export const _listPatients = internalQuery({
 });
 
 export const _listAppointments = internalQuery({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     return ctx.db
       .query("gabinetAppointments")
@@ -346,7 +347,7 @@ export const _listAppointments = internalQuery({
 });
 
 export const _listTreatments = internalQuery({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     return ctx.db
       .query("gabinetTreatments")
@@ -356,7 +357,7 @@ export const _listTreatments = internalQuery({
 });
 
 export const _listEmployees = internalQuery({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     return ctx.db
       .query("gabinetEmployees")
@@ -366,7 +367,7 @@ export const _listEmployees = internalQuery({
 });
 
 export const _listInvitations = internalQuery({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     return ctx.db
       .query("invitations")
@@ -380,7 +381,7 @@ export const _listInvitations = internalQuery({
 // ---------------------------------------------------------------------------
 
 export const backfillPatients = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{ synced: number; errors: string[] }> => {
     const patients = await ctx.runQuery(
       internal.supabase.backfill._listPatients,
@@ -426,7 +427,7 @@ export const backfillPatients = internalAction({
 });
 
 export const backfillAppointments = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{ synced: number; errors: string[] }> => {
     const appointments = await ctx.runQuery(
       internal.supabase.backfill._listAppointments,
@@ -489,7 +490,7 @@ export const backfillAppointments = internalAction({
 });
 
 export const backfillTreatments = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{ synced: number; errors: string[] }> => {
     const treatments = await ctx.runQuery(
       internal.supabase.backfill._listTreatments,
@@ -539,7 +540,7 @@ export const backfillTreatments = internalAction({
 });
 
 export const backfillInvitations = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{ synced: number; errors: string[] }> => {
     const invitations = await ctx.runQuery(
       internal.supabase.backfill._listInvitations,
@@ -570,7 +571,7 @@ export const backfillInvitations = internalAction({
 });
 
 export const backfillEmployees = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (ctx, args): Promise<{ synced: number; errors: string[] }> => {
     const employees = await ctx.runQuery(
       internal.supabase.backfill._listEmployees,
@@ -623,6 +624,105 @@ export const backfillEmployees = internalAction({
 });
 
 // ---------------------------------------------------------------------------
+// Backfill gabinetLocationMemberships from existing gabinet_employee_locations
+// rows in Supabase (closes #4688).
+//
+// Direction: Supabase → Convex (opposite of other backfills here).
+// gabinetLocationMemberships is a Convex-native mirror used by checkPermission
+// (QueryCtx, no Supabase access). It is only populated on forward writes, so
+// any gabinet_employee_locations rows that pre-date the mirror introduction
+// (#4685) silently fall back to the global role. This action is idempotent:
+// _upsertLocationMembership does a patch-or-insert.
+// ---------------------------------------------------------------------------
+
+export const backfillLocationMemberships = internalAction({
+  args: { organizationId: v.string() },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ synced: number; skipped: number; errors: string[] }> => {
+    const client = createServiceRoleClient();
+    const orgId = String(args.organizationId);
+    const errors: string[] = [];
+    let synced = 0;
+    let skipped = 0;
+
+    // Build employee_id → user_id map for this org (employees without a linked
+    // user account have no mirror entry — skip them).
+    const { data: employees, error: empError } = await client
+      .from("gabinet_employees")
+      .select("id, user_id")
+      .eq("organization_id", orgId)
+      .not("user_id", "is", null);
+
+    if (empError) {
+      return { synced: 0, skipped: 0, errors: [empError.message] };
+    }
+
+    const employeeToUser = new Map<string, string>();
+    for (const emp of employees ?? []) {
+      if (emp.user_id) employeeToUser.set(emp.id, emp.user_id);
+    }
+
+    // Paginate through gabinet_employee_locations and upsert each row into the
+    // Convex mirror table.
+    const PAGE = 100;
+    let from = 0;
+
+    while (true) {
+      const { data, error } = await client
+        .from("gabinet_employee_locations")
+        .select("id, employee_id, location_id, role")
+        .eq("organization_id", orgId)
+        .range(from, from + PAGE - 1);
+
+      if (error) {
+        errors.push(`Page at offset ${from}: ${error.message}`);
+        break;
+      }
+      if (!data || data.length === 0) break;
+
+      for (const row of data) {
+        const userId = employeeToUser.get(row.employee_id);
+        if (!userId) {
+          skipped++;
+          continue;
+        }
+
+        const role =
+          row.role && isSystemGabinetRole(row.role) ? row.role : undefined;
+
+        try {
+          await ctx.runMutation(
+            internal.gabinet.employees._upsertLocationMembership,
+            {
+              organizationId: args.organizationId,
+              userId,
+              locationId: row.location_id,
+              role,
+            },
+          );
+          synced++;
+        } catch (e) {
+          errors.push(
+            `row ${row.id}: ${e instanceof Error ? e.message : String(e)}`,
+          );
+        }
+      }
+
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+
+    console.info(
+      `backfillLocationMemberships: synced=${synced}, skipped=${skipped}, errors=${errors.length}`,
+    );
+    if (errors.length > 0) console.error("Errors:", errors);
+    return { synced, skipped, errors };
+  },
+});
+
+// ---------------------------------------------------------------------------
 // Run all backfills in dependency order
 // ---------------------------------------------------------------------------
 
@@ -652,7 +752,7 @@ type MovementForBackfill = {
 };
 
 export const backfillStockMovementAvgCost = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (
     _ctx,
     args,
@@ -879,7 +979,7 @@ export const backfillTrialEndDates = internalAction({
 });
 
 export const backfillAll = internalAction({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.string() },
   handler: async (
     ctx,
     args,

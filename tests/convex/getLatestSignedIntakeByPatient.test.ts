@@ -505,6 +505,119 @@ describe("documents.getLatestSignedIntakeByPatient", () => {
     ).rejects.toThrow(SyntaxError);
   });
 
+  test("uses contentJsonSnapshot on document instead of current template contentJson", async () => {
+    const { t, organizationId, userId, identity, patientId, db, now } = await setup();
+
+    // Template at signing time had field "allergies"
+    const snapshotContentJson = JSON.stringify({
+      type: "doc",
+      content: [
+        {
+          type: "formField",
+          attrs: { fieldId: "allergies", fieldType: "textarea", label: "Alergie" },
+        },
+      ],
+    });
+
+    // Template was later edited: field "allergies" renamed to "allergies_v2" with a different label
+    const updatedContentJson = JSON.stringify({
+      type: "doc",
+      content: [
+        {
+          type: "formField",
+          attrs: { fieldId: "allergies_v2", fieldType: "textarea", label: "Alergie (nowe)" },
+        },
+      ],
+    });
+
+    const richTemplateId = await t.run(async (ctx) => {
+      return await ctx.db.insert("formTemplates", {
+        organizationId,
+        name: "Wywiad ze snapshotem",
+        category: "intake",
+        formJson: "{}",
+        contentJson: updatedContentJson,
+        modules: ["gabinet"],
+        entityTypes: ["patient"],
+        requiresSignature: true,
+        version: 2,
+        isActive: true,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    await db.insert("formTemplates", {
+      _id: richTemplateId,
+      organizationId: String(organizationId),
+      name: "Wywiad ze snapshotem",
+      category: "intake",
+      formJson: "{}",
+      contentJson: updatedContentJson,
+      modules: ["gabinet"],
+      entityTypes: ["patient"],
+      requiresSignature: true,
+      version: 2,
+      isActive: true,
+      createdBy: String(userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const signedAt = now + 4000;
+    const responseData = JSON.stringify({
+      formFieldValues: { allergies: "penicylina" },
+    });
+
+    // Document was signed when version 1 (snapshotContentJson) was in effect
+    const docId = await t.run(async (ctx) => {
+      return await ctx.db.insert("formDocuments", {
+        organizationId,
+        templateId: richTemplateId,
+        contentJsonSnapshot: snapshotContentJson,
+        title: "Wywiad",
+        responseData,
+        entityType: "patient",
+        entityId: String(patientId),
+        status: "signed",
+        signedAt,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    await db.insert("formDocuments", {
+      _id: docId,
+      organizationId: String(organizationId),
+      templateId: String(richTemplateId),
+      contentJsonSnapshot: snapshotContentJson,
+      title: "Wywiad",
+      responseData,
+      entityType: "patient",
+      entityId: String(patientId),
+      status: "signed",
+      signedAt,
+      createdBy: String(userId),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const result = await t.withIdentity(identity).action(
+      api.documents.documents.getLatestSignedIntakeByPatient,
+      { organizationId, patientId: String(patientId) },
+    );
+
+    expect(result).not.toBeNull();
+    // Must reflect the snapshot field IDs/labels from the time of signing,
+    // not the current template which has "allergies_v2" / "Alergie (nowe)"
+    expect(result!.fieldDefinitions).toEqual([
+      { fieldId: "allergies", fieldType: "textarea", label: "Alergie" },
+    ]);
+    expect(result!.intakeSummary).toEqual(["Alergie: penicylina"]);
+  });
+
   test("ignores intake documents belonging to a different patient", async () => {
     const { t, organizationId, userId, identity, patientId, templateId, db, now } = await setup();
 

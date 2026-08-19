@@ -24,6 +24,10 @@ import {
   useSupabaseGabinetTreatmentPackagesList,
   useSupabaseGabinetPackageUsageByDateRange,
 } from "@/hooks/use-supabase-gabinet-packages";
+import {
+  useSupabaseDirectSalesByDateRange,
+  type DirectSaleMovement,
+} from "@/hooks/use-supabase-products";
 import type { MappedGabinetPackageUsage } from "@/lib/supabase/mappers/gabinet/package-usage";
 import type { MappedGabinetTreatmentPackage } from "@/lib/supabase/mappers/gabinet/treatment-packages";
 import { useOrganization } from "@/components/org-context";
@@ -1303,6 +1307,183 @@ function PackageSalesSection({
   );
 }
 
+/* ─── Product Sales Section ─── */
+
+function ProductSalesSection({
+  movements,
+  isLoading,
+  employeeMapById,
+  rangeLabel,
+  currency,
+}: {
+  movements: DirectSaleMovement[];
+  isLoading: boolean;
+  employeeMapById: Map<string, string>;
+  rangeLabel: string;
+  currency: string;
+}) {
+  const { t } = useTranslation();
+
+  const sales = useMemo(() => movements.filter((m) => m.reason === "direct_sale"), [movements]);
+  const returns = useMemo(() => movements.filter((m) => m.reason === "direct_sale_return"), [movements]);
+
+  const totalRevenue = useMemo(() => sales.reduce((s, m) => s + m.revenue, 0), [sales]);
+  const totalReturns = useMemo(() => returns.reduce((s, m) => s + m.revenue, 0), [returns]);
+  const netRevenue = totalRevenue - totalReturns;
+
+  const perProduct = useMemo(() => {
+    const m = new Map<string, { name: string; quantity: number; revenue: number }>();
+    for (const mv of sales) {
+      const prev = m.get(mv.productId) ?? { name: mv.productName, quantity: 0, revenue: 0 };
+      m.set(mv.productId, {
+        name: mv.productName,
+        quantity: prev.quantity + mv.quantity,
+        revenue: prev.revenue + mv.revenue,
+      });
+    }
+    return Array.from(m.values()).sort((a, b) => b.revenue - a.revenue);
+  }, [sales]);
+
+  const perEmployee = useMemo(() => {
+    const m = new Map<string, { quantity: number; revenue: number }>();
+    for (const mv of sales) {
+      const key = mv.employeeId ?? "__unknown__";
+      const prev = m.get(key) ?? { quantity: 0, revenue: 0 };
+      m.set(key, { quantity: prev.quantity + mv.quantity, revenue: prev.revenue + mv.revenue });
+    }
+    return Array.from(m.entries())
+      .map(([key, s]) => ({
+        name: key === "__unknown__" ? t("common.unknown", "Unknown") : (employeeMapById.get(key) ?? key),
+        quantity: s.quantity,
+        revenue: s.revenue,
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+  }, [sales, employeeMapById, t]);
+
+  const maxProductRevenue = useMemo(() => Math.max(...perProduct.map((p) => p.revenue), 1), [perProduct]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-7 w-48" />
+        <div className="grid gap-4 sm:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-lg" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold">{t("gabinet.reports.productSales")}</h2>
+        <p className="text-muted-foreground text-sm">{rangeLabel}</p>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-muted-foreground text-sm">{t("gabinet.reports.totalProductRevenue")}</p>
+            <p className="mt-1 text-2xl font-bold">
+              {formatCurrencyPLN(totalRevenue, currency, { fractionDigits: 0 })}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-muted-foreground text-sm">{t("gabinet.reports.totalProductReturns")}</p>
+            <p className="mt-1 text-2xl font-bold">
+              {formatCurrencyPLN(totalReturns, currency, { fractionDigits: 0 })}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-muted-foreground text-sm">{t("gabinet.reports.netProductRevenue")}</p>
+            <p className={`mt-1 text-2xl font-bold ${netRevenue < 0 ? "text-red-600" : ""}`}>
+              {formatCurrencyPLN(netRevenue, currency, { fractionDigits: 0 })}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {movements.length === 0 ? (
+        <Card>
+          <CardContent className="flex items-center justify-center py-12">
+            <span className="text-muted-foreground text-sm">{t("gabinet.reports.noProductSales")}</span>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Per product breakdown */}
+          <Card>
+            <CardHeader className="flex justify-between border-b">
+              <span className="font-semibold">{t("gabinet.reports.perProductBreakdown")}</span>
+              <CardMenu />
+            </CardHeader>
+            <CardContent className="space-y-3 pt-4">
+              {perProduct.length === 0 ? (
+                <span className="text-muted-foreground text-sm">{t("common.noResults")}</span>
+              ) : (
+                perProduct.map((item, i) => {
+                  const pct = Math.round((item.revenue / maxProductRevenue) * 100);
+                  return (
+                    <div key={i} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="max-w-[55%] truncate font-medium">{item.name}</span>
+                        <div className="ml-2 flex shrink-0 items-center gap-2">
+                          <span className="text-muted-foreground">{item.quantity}×</span>
+                          <span className="font-semibold">
+                            {formatCurrencyPLN(item.revenue, currency, { fractionDigits: 0 })}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="bg-muted h-1.5 overflow-hidden rounded-full">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${pct}%`, backgroundColor: "var(--chart-3)" }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Per employee breakdown */}
+          <Card>
+            <CardHeader className="flex justify-between border-b">
+              <span className="font-semibold">{t("gabinet.reports.perEmployeeProductSales")}</span>
+              <CardMenu />
+            </CardHeader>
+            <CardContent className="space-y-3 pt-4">
+              {perEmployee.length === 0 ? (
+                <span className="text-muted-foreground text-sm">{t("common.noResults")}</span>
+              ) : (
+                perEmployee.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm">
+                    <span className="max-w-[55%] truncate font-medium">{item.name}</span>
+                    <div className="ml-2 flex shrink-0 items-center gap-2">
+                      <span className="text-muted-foreground">{item.quantity}×</span>
+                      <span className="font-semibold">
+                        {formatCurrencyPLN(item.revenue, currency, { fractionDigits: 0 })}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Cash Register Report Section ─── */
 
 function CashRegisterReportSection({
@@ -1758,6 +1939,11 @@ function GabinetReports() {
       endDate,
     );
 
+  const { data: directSales, isLoading: loadingDirectSales } =
+    useSupabaseDirectSalesByDateRange(organizationId, startDate, endDate, {
+      locationId: activeLocationId ?? undefined,
+    });
+
   const isLoading =
     loadingAppointments || loadingTreatments || loadingPatients || loadingEmployees || loadingGratisBarter || loadingActualPayments;
 
@@ -2005,6 +2191,32 @@ function GabinetReports() {
         : (employeeMap.get(key) ?? key);
       rows.push({ section: "package_sales_by_employee", metric: name, value: stats.count, revenue: stats.revenue });
     }
+    // Product sales (direct_sale) — per product and per employee
+    const sales = (directSales ?? []).filter((m) => m.reason === "direct_sale");
+    const returns = (directSales ?? []).filter((m) => m.reason === "direct_sale_return");
+    const totalProductRevenue = sales.reduce((s, m) => s + m.revenue, 0);
+    const totalReturnsRevenue = returns.reduce((s, m) => s + m.revenue, 0);
+    rows.push({ section: "product_sales", metric: "totalRevenue", value: "", revenue: totalProductRevenue });
+    rows.push({ section: "product_sales", metric: "totalReturns", value: "", revenue: totalReturnsRevenue });
+    rows.push({ section: "product_sales", metric: "netRevenue", value: "", revenue: totalProductRevenue - totalReturnsRevenue });
+    const productSalesMap = new Map<string, { name: string; quantity: number; revenue: number }>();
+    for (const m of sales) {
+      const prev = productSalesMap.get(m.productId) ?? { name: m.productName, quantity: 0, revenue: 0 };
+      productSalesMap.set(m.productId, { name: m.productName, quantity: prev.quantity + m.quantity, revenue: prev.revenue + m.revenue });
+    }
+    for (const stats of productSalesMap.values()) {
+      rows.push({ section: "product_sales_by_product", metric: stats.name, value: stats.quantity, revenue: stats.revenue });
+    }
+    const empProductSalesMap = new Map<string, { quantity: number; revenue: number }>();
+    for (const m of sales) {
+      const key = m.employeeId ?? "__unknown__";
+      const prev = empProductSalesMap.get(key) ?? { quantity: 0, revenue: 0 };
+      empProductSalesMap.set(key, { quantity: prev.quantity + m.quantity, revenue: prev.revenue + m.revenue });
+    }
+    for (const [key, stats] of empProductSalesMap) {
+      const name = key === "__unknown__" ? "Unknown" : (employeeMapById.get(key) ?? key);
+      rows.push({ section: "product_sales_by_employee", metric: name, value: stats.quantity, revenue: stats.revenue });
+    }
     const csv = Papa.unparse(rows as unknown as Record<string, unknown>[]);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -2037,6 +2249,7 @@ function GabinetReports() {
     packageNameMap,
     employeeMap,
     employeeMapById,
+    directSales,
     startDate,
     endDate,
     t,
@@ -2219,6 +2432,15 @@ function GabinetReports() {
         currency={defaultCurrency}
         startDate={startDate}
         endDate={endDate}
+      />
+
+      {/* Product Sales (direct_sale) */}
+      <ProductSalesSection
+        movements={directSales ?? []}
+        isLoading={loadingDirectSales}
+        employeeMapById={employeeMapById}
+        rangeLabel={rangeLabel}
+        currency={defaultCurrency}
       />
 
       {/* Kasa — Cash Register Report */}

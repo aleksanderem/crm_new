@@ -4022,7 +4022,14 @@
       "safeInPeriod": "Wpłaty do Sejfu (okres)",
       "safeOutPeriod": "Wypłaty z Sejfu (okres)",
       "noSafeMovements": "Brak ruchów Sejfu w wybranym okresie",
-      "safeMovementType": "Typ ruchu"
+      "safeMovementType": "Typ ruchu",
+      "productSales": "Sprzedaż produktów",
+      "totalProductRevenue": "Przychód ze sprzedaży",
+      "totalProductReturns": "Zwroty",
+      "netProductRevenue": "Przychód netto",
+      "noProductSales": "Brak sprzedaży produktów w tym okresie",
+      "perProductBreakdown": "Wg. produktu",
+      "perEmployeeProductSales": "Wg. pracownika"
     },
     "bodyChart": {
       "description": "Zaznacz obszary ciała powiązane z wizytą",

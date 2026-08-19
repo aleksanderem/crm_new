@@ -169,6 +169,7 @@ interface ApplyMovementParams {
   expiryDate?: string | null;
   treatmentId?: string | null;
   appointmentId?: string | null;
+  employeeId?: string | null;
   performedBy: string;
 }
 
@@ -273,6 +274,7 @@ export async function applyMovementInternal(
     ...(params.expiryDate ? { expiryDate: params.expiryDate } : {}),
     ...(params.treatmentId ? { treatmentId: params.treatmentId } : {}),
     ...(params.appointmentId ? { appointmentId: params.appointmentId } : {}),
+    ...(params.employeeId ? { employeeId: params.employeeId } : {}),
     performedBy: params.performedBy,
     createdAt: now,
   });

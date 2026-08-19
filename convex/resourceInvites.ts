@@ -74,7 +74,7 @@ export const create = action({
         resourceType: args.resourceType,
         resourceId: args.resourceId,
         accessLevel: args.accessLevel,
-        orgOwnerId: (org?.ownerId as string | undefined) ?? undefined,
+        orgOwnerId: org?.ownerId ?? undefined,
       });
     } catch {
       // side effects are best-effort
@@ -166,13 +166,13 @@ export const _createSideEffects = internalMutation({
     resourceType: v.string(),
     resourceId: v.string(),
     accessLevel: v.string(),
-    orgOwnerId: v.optional(v.string()),
+    orgOwnerId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
     if (args.orgOwnerId) {
       await createNotificationDirect(ctx, {
         organizationId: args.organizationId,
-        userId: args.orgOwnerId as any,
+        userId: args.orgOwnerId,
         type: "resource_invite",
         title: "Resource shared",
         message: `${args.userName} shared a ${args.resourceType} with ${args.email}`,

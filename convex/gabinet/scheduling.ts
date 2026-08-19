@@ -1422,7 +1422,7 @@ export const _leaveSideEffects = internalMutation({
   args: {
     organizationId: v.string(),
     leaveId: v.string(),
-    userId: v.string(),
+    userId: v.id("users"),
     action: v.union(v.literal("status_changed"), v.literal("deleted")),
     description: v.string(),
     performedBy: v.string(),

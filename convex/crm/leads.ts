@@ -7,6 +7,7 @@ import { logActivity } from "../_helpers/activities";
 import { leadStatusValidator, leadPriorityValidator } from "@cvx/schema";
 import { logAudit } from "../auditLog";
 import { createNotificationDirect } from "../notifications";
+import { Id } from "../_generated/dataModel";
 // Dual-write refs removed — Supabase is now primary for lead writes
 
 export const list = action({
@@ -139,7 +140,7 @@ export const create = action({
         leadId,
         organizationId: args.organizationId,
         title: args.title,
-        assignedTo: args.assignedTo ?? undefined,
+        assignedTo: (args.assignedTo ?? undefined) as Id<"users"> | undefined,
         createdBy: String(authResult.userId),
         createdAt: now,
         actorLabel: authResult.userName ?? authResult.userEmail,
@@ -157,7 +158,7 @@ export const _createSideEffects = internalMutation({
     leadId: v.string(),
     organizationId: v.string(),
     title: v.string(),
-    assignedTo: v.optional(v.string()),
+    assignedTo: v.optional(v.id("users")),
     createdBy: v.string(),
     createdAt: v.number(),
     actorLabel: v.optional(v.string()),
@@ -307,8 +308,8 @@ export const update = action({
         oldStatus: (lead.status as string) ?? "",
         newStatus: updates.status,
         oldAssignedTo: lead.assignedTo ? String(lead.assignedTo) : undefined,
-        newAssignedTo: updates.assignedTo ?? undefined,
-        leadOwnerId: String(lead.assignedTo ?? lead.createdBy),
+        newAssignedTo: (updates.assignedTo ?? undefined) as Id<"users"> | undefined,
+        leadOwnerId: String(lead.assignedTo ?? lead.createdBy) as Id<"users">,
         updatedBy: String(authResult.userId),
         updatedAt: now,
         actorLabel: authResult.userName ?? authResult.userEmail,
@@ -329,8 +330,8 @@ export const _updateSideEffects = internalMutation({
     oldStatus: v.string(),
     newStatus: v.optional(v.string()),
     oldAssignedTo: v.optional(v.string()),
-    newAssignedTo: v.optional(v.string()),
-    leadOwnerId: v.string(),
+    newAssignedTo: v.optional(v.id("users")),
+    leadOwnerId: v.id("users"),
     updatedBy: v.string(),
     updatedAt: v.number(),
     actorLabel: v.optional(v.string()),
@@ -700,7 +701,7 @@ export const moveToStage = action({
     }
 
     // --- Execute pipeline stage auto-actions (create_activity → scheduledActivities) in Supabase ---
-    const createdActivities: Array<{ ownerId: string; title: string }> = [];
+    const createdActivities: Array<{ ownerId: Id<"users">; title: string }> = [];
     try {
       const stageActions = await db
         .query("pipelineStageActions")
@@ -716,9 +717,9 @@ export const moveToStage = action({
           assignToOwner?: boolean;
         };
         const dueDate = now + (config.dueInDays ?? 0) * 24 * 60 * 60 * 1000;
-        const ownerId = config.assignToOwner
+        const ownerId = (config.assignToOwner
           ? String(lead.assignedTo ?? lead.createdBy ?? authResult.userId)
-          : String(authResult.userId);
+          : String(authResult.userId)) as Id<"users">;
         await db.insert("scheduledActivities", {
           organizationId: String(args.organizationId),
           title: config.title,
@@ -751,8 +752,8 @@ export const moveToStage = action({
         oldStatus: (lead.status as string) ?? "",
         newStatus: updateData.status ?? null,
         oldStageId: lead.pipelineStageId ? String(lead.pipelineStageId) : null,
-        leadCreatedBy: String(lead.createdBy ?? ""),
-        leadAssignedTo: lead.assignedTo ? String(lead.assignedTo) : null,
+        leadCreatedBy: String(lead.createdBy ?? "") as Id<"users">,
+        leadAssignedTo: (lead.assignedTo ? String(lead.assignedTo) : null) as Id<"users"> | null,
         createdActivities,
         now,
         actorLabel: authResult.userName ?? authResult.userEmail,
@@ -965,10 +966,10 @@ export const _moveToStageSideEffects = internalMutation({
     oldStatus: v.string(),
     newStatus: v.union(v.string(), v.null()),
     oldStageId: v.union(v.string(), v.null()),
-    leadCreatedBy: v.string(),
-    leadAssignedTo: v.union(v.string(), v.null()),
+    leadCreatedBy: v.id("users"),
+    leadAssignedTo: v.union(v.id("users"), v.null()),
     createdActivities: v.optional(v.array(v.object({
-      ownerId: v.string(),
+      ownerId: v.id("users"),
       title: v.string(),
     }))),
     now: v.number(),

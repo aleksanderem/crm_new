@@ -1,6 +1,7 @@
 import { query, action, internalMutation, MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 import { requireUser } from "./_helpers/auth";
 
 export const list = query({
@@ -99,7 +100,7 @@ export const _markAllReadInternal = internalMutation({
 export const _createNotification = internalMutation({
   args: {
     organizationId: v.string(),
-    userId: v.string(),
+    userId: v.id("users"),
     type: v.string(),
     title: v.string(),
     message: v.string(),
@@ -119,7 +120,7 @@ export async function createNotificationDirect(
   ctx: MutationCtx,
   data: {
     organizationId: string;
-    userId: string;
+    userId: Id<"users">;
     type: string;
     title: string;
     message: string;

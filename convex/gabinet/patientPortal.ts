@@ -666,7 +666,7 @@ export const _findOrgOwner = internalAction({
 export const _bookingNotifications = internalMutation({
   args: {
     organizationId: v.string(),
-    employeeId: v.string(),
+    employeeId: v.id("users"),
     patientName: v.string(),
     treatmentName: v.string(),
     date: v.string(),
@@ -696,11 +696,10 @@ export const _bookingNotifications = internalMutation({
     }
 
     // Also notify the assigned employee if not already notified
-    const employeeUserId = args.employeeId as Id<"users">;
-    if (!staffToNotify.some((s) => s.userId === employeeUserId)) {
+    if (!staffToNotify.some((s) => s.userId === args.employeeId)) {
       await createNotificationDirect(ctx, {
         organizationId: args.organizationId,
-        userId: employeeUserId,
+        userId: args.employeeId,
         type: "portal_booking_request",
         title: "Nowa rezerwacja online",
         message,
@@ -800,7 +799,7 @@ export const requestReschedule = action({
 export const _rescheduleNotifications = internalMutation({
   args: {
     organizationId: v.string(),
-    employeeId: v.string(),
+    employeeId: v.id("users"),
     patientName: v.string(),
     treatmentName: v.string(),
     requestedDate: v.string(),
@@ -830,11 +829,10 @@ export const _rescheduleNotifications = internalMutation({
     }
 
     // Also notify the appointment's employee if not already notified
-    const employeeUserId = args.employeeId as Id<"users">;
-    if (!staffToNotify.some((s) => s.userId === employeeUserId)) {
+    if (!staffToNotify.some((s) => s.userId === args.employeeId)) {
       await createNotificationDirect(ctx, {
         organizationId: args.organizationId,
-        userId: employeeUserId,
+        userId: args.employeeId,
         type: "portal_booking_request",
         title: "Reschedule Request",
         message: notifyMessage,

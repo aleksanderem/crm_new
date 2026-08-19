@@ -1369,6 +1369,14 @@ function ProductSalesSection({
 
   const maxProductRevenue = useMemo(() => Math.max(...perProduct.map((p) => p.revenue), 1), [perProduct]);
 
+  const paymentMethodBreakdown = useMemo(
+    () =>
+      computePaymentMethodBreakdown(
+        sales.map((m) => ({ paymentMethod: m.paymentMethod ?? "other", amount: m.revenue })),
+      ),
+    [sales],
+  );
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -1486,6 +1494,10 @@ function ProductSalesSection({
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {movements.length > 0 && (
+        <PaymentMethodsCard data={paymentMethodBreakdown} currency={currency} rangeLabel={rangeLabel} />
       )}
     </div>
   );

@@ -387,6 +387,7 @@ export function createCrmTables({
       v.literal("reserved"),
       v.literal("reservation_release"),
       v.literal("direct_sale"),
+      v.literal("direct_sale_return"),
       v.literal("deal_close"),
       v.literal("deal_reopen"),
       v.literal("transfer_in"),

@@ -383,3 +383,49 @@ export const sellProductStandalone = action({
     return { negativeStock };
   },
 });
+
+// Return stock from a direct sale (reversal of sellProductStandalone).
+// Creates a positive-delta movement with reason `direct_sale_return` so the
+// audit trail shows a proper return rather than a manual adjustment.
+// clientId and paymentMethod are optional metadata stored for reporting.
+export const sellReturnStandalone = action({
+  args: {
+    organizationId: v.string(),
+    productId: v.string(),
+    quantity: v.number(),
+    salePrice: v.number(),
+    locationId: v.union(v.string(), v.null()),
+    clientId: v.optional(v.string()),
+    paymentMethod: v.optional(v.string()),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args): Promise<{ movementId: string; balanceAfter: number }> => {
+    const auth = await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
+      organizationId: args.organizationId,
+    });
+    const perm = await ctx.runAction(
+      internal._helpers.authAction.checkPermission,
+      { organizationId: args.organizationId, feature: "gabinet_inventory", action: "edit" },
+    ) as { allowed: boolean; scope: string };
+    if (!perm.allowed) throw new Error("Permission denied");
+
+    if (args.quantity <= 0) throw new Error("Quantity must be positive");
+    if (args.salePrice < 0) throw new Error("Sale price must be non-negative");
+
+    const result = await applyMovementInternal({
+      organizationId: String(args.organizationId),
+      productId: args.productId,
+      locationId: args.locationId,
+      delta: args.quantity,
+      reason: "direct_sale_return",
+      sourceType: "direct_sale_return",
+      sourceId: args.clientId ?? null,
+      unitPrice: args.salePrice,
+      paymentMethod: args.paymentMethod ?? null,
+      note: args.note ?? null,
+      performedBy: String(auth.userId),
+    });
+
+    return { movementId: result.movementId, balanceAfter: result.balanceAfter };
+  },
+});

@@ -350,7 +350,7 @@ async function buildReceiptPdf(params: {
 export const _getOrgName = internalQuery({
   args: { organizationId: v.string() },
   handler: async (ctx, args) => {
-    const org = await ctx.db.get(args.organizationId);
+    const org = await ctx.db.get(args.organizationId as Id<"organizations">);
     return (org as Record<string, unknown> | null)?.name as string | undefined;
   },
 });
@@ -821,7 +821,7 @@ export const _createReceiptRowForPayment = internalMutation({
     const amount = payment.amount as number;
     if (!args.isRefund && amount <= 0) return;
 
-    const orgDoc = await ctx.db.get(args.organizationId);
+    const orgDoc = await ctx.db.get(args.organizationId as Id<"organizations">);
     const orgName =
       (orgDoc as Record<string, unknown> | null)?.name as string ??
       "Placówka medyczna";
@@ -988,7 +988,7 @@ export const _createSplitReceiptRow = internalMutation({
     const primaryPayment = await db.get("payments", args.primaryPaymentId);
     if (!primaryPayment) return;
 
-    const orgDoc = await ctx.db.get(args.organizationId);
+    const orgDoc = await ctx.db.get(args.organizationId as Id<"organizations">);
     const orgName =
       (orgDoc as Record<string, unknown> | null)?.name as string ??
       "Placówka medyczna";

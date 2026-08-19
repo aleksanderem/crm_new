@@ -15,6 +15,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useSidebarActions } from "@/components/layout/sidebar-context";
@@ -44,6 +47,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DayTimeline } from "@/components/sidebar-widgets/day-timeline";
 import { getModuleById, getVisibleModules, moduleRegistry } from "@/modules/registry";
+import type { ModuleNavGroup, ModuleNavItem } from "@/modules/types";
+import { ChevronDown } from "@/lib/ez-icons";
 
 const routeAwareModules = [...moduleRegistry].sort(
   (left, right) => right.workspaceRoot.length - left.workspaceRoot.length,
@@ -55,7 +60,7 @@ export function AppSidebar() {
   const matchRoute = useMatchRoute();
   const { t } = useTranslation();
   const { openQuickCreate, navigateTo, dispatch } = useSidebarActions();
-  const { isMobile, setOpenMobile } = useSidebar();
+  const { isMobile, setOpenMobile, state: sidebarState } = useSidebar();
   const navigate = useNavigate();
   const [pendingNavHref, setPendingNavHref] = useState<string | null>(null);
   const [dontShowAgain, setDontShowAgain] = useState(false);
@@ -63,6 +68,20 @@ export function AppSidebar() {
   const closeMobile = () => {
     if (isMobile) setOpenMobile(false);
   };
+
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroup = (key: string) => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const isNavGroup = (item: ModuleNavItem | ModuleNavGroup): item is ModuleNavGroup =>
+    "children" in item;
 
   const handleCrossModuleClick = (href: string) => {
     const dismissed = localStorage.getItem(CROSS_MODULE_DISMISSED_KEY) === "true";
@@ -196,6 +215,65 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {navItems.map((item) => {
+                  if (isNavGroup(item)) {
+                    const hasActiveChild = item.children.some((child) =>
+                      !!matchRoute({ to: child.href, fuzzy: true }),
+                    );
+                    const isOpen = openGroups.has(item.labelKey) || hasActiveChild;
+                    const firstChild = item.children[0];
+                    return (
+                      <SidebarMenuItem key={item.labelKey}>
+                        {sidebarState === "collapsed" && firstChild ? (
+                          <SidebarMenuButton
+                            className="[&>svg]:text-primary [&>easier-icon]:text-primary group-data-[collapsible=icon]:size-10! [&>svg]:size-4 [&>easier-icon]:size-4"
+                            tooltip={t(item.labelKey)}
+                            isActive={hasActiveChild}
+                            asChild
+                          >
+                            <Link to={firstChild.href} onClick={closeMobile}>
+                              <item.icon variant="stroke" />
+                              <span>{t(item.labelKey)}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        ) : (
+                          <>
+                            <SidebarMenuButton
+                              className="[&>svg]:text-primary [&>easier-icon]:text-primary group-data-[collapsible=icon]:size-10! [&>svg]:size-4 [&>easier-icon]:size-4"
+                              tooltip={t(item.labelKey)}
+                              isActive={hasActiveChild}
+                              onClick={() => toggleGroup(item.labelKey)}
+                            >
+                              <item.icon variant="stroke" />
+                              <span className="flex-1">{t(item.labelKey)}</span>
+                              <ChevronDown
+                                className={cn(
+                                  "size-4 transition-transform duration-200",
+                                  isOpen && "rotate-180",
+                                )}
+                              />
+                            </SidebarMenuButton>
+                            {isOpen && (
+                              <SidebarMenuSub>
+                                {item.children.map((child) => {
+                                  const isChildActive = !!matchRoute({ to: child.href, fuzzy: true });
+                                  return (
+                                    <SidebarMenuSubItem key={child.href}>
+                                      <SidebarMenuSubButton asChild isActive={isChildActive}>
+                                        <Link to={child.href} onClick={closeMobile}>
+                                          {t(child.labelKey)}
+                                        </Link>
+                                      </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                  );
+                                })}
+                              </SidebarMenuSub>
+                            )}
+                          </>
+                        )}
+                      </SidebarMenuItem>
+                    );
+                  }
+
                   const isActive =
                     item.activeMatch === "exact"
                       ? !!matchRoute({ to: item.href })

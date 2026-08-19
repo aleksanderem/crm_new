@@ -138,7 +138,8 @@
       "leaves": "Urlopy",
       "myLeaves": "Moje urlopy",
       "documentTemplates": "Szablony dokumentów",
-      "cash": "Kasa"
+      "cash": "Kasa",
+      "additionalTools": "Narzędzia dodatkowe"
     },
     "sections": {
       "main": "Główne",

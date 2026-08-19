@@ -1001,5 +1001,23 @@ export function createGabinetTables({
     .index("by_orgAndStatus", ["organizationId", "status"])
     .index("by_orgAndPatient", ["organizationId", "patientId"])
     .index("by_orgAndPriority", ["organizationId", "priority"]),
+
+  // --- Gabinet: Safe (Sejf) Movements (issue #5573) ---
+  // Immutable ledger of cash movements in/out of the physical safe per
+  // location. Balance = SUM(transfer_in amounts) − SUM(withdrawal amounts).
+  // Movements are never edited or deleted — corrections are new rows.
+  gabinetSafeMovements: defineTable({
+    organizationId: v.string(),
+    locationId: v.string(), // required — safe is per location, never global
+    type: v.union(v.literal("transfer_in"), v.literal("withdrawal")),
+    amount: v.float64(),
+    description: v.optional(v.string()),
+    referenceDayCloseId: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_orgAndLocation", ["organizationId", "locationId"])
+    .index("by_orgAndLocationAndCreatedAt", ["organizationId", "locationId", "createdAt"]),
   };
 }

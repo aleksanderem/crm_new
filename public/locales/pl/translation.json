@@ -2698,7 +2698,9 @@
       },
       "preferredLocation": "Preferowana lokalizacja",
       "smsConsent": "Zgoda na kontakt SMS",
-      "smsConsentHint": "Klient wyraził zgodę na wysyłanie przypomnień i informacji przez SMS na podany numer telefonu."
+      "smsConsentHint": "Klient wyraził zgodę na wysyłanie przypomnień i informacji przez SMS na podany numer telefonu.",
+      "reactivate": "Przywróć klienta",
+      "reactivateSuccess": "Klient został przywrócony."
     },
     "treatments": {
       "title": "Zabiegi",
@@ -5102,6 +5104,11 @@
       "funnelSpeed": "Prędkość lejka",
       "funnelVelocity": "Prędkość lejka",
       "avgDaysPerStage": "Śr. dni na etap"
+    }
+  },
+  "notes": {
+    "errors": {
+      "createFailed": "Nie udało się dodać notatki."
     }
   }
 }

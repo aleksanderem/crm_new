@@ -2699,7 +2699,9 @@
       },
       "preferredLocation": "Preferred location",
       "smsConsent": "SMS consent",
-      "smsConsentHint": "The patient has consented to receive appointment reminders and information via SMS to the provided phone number."
+      "smsConsentHint": "The patient has consented to receive appointment reminders and information via SMS to the provided phone number.",
+      "reactivate": "Reactivate Client",
+      "reactivateSuccess": "Client has been reactivated."
     },
     "treatments": {
       "title": "Treatments",
@@ -5101,6 +5103,11 @@
       "funnelSpeed": "Funnel Speed",
       "funnelVelocity": "Funnel Velocity",
       "avgDaysPerStage": "Avg. days per stage"
+    }
+  },
+  "notes": {
+    "errors": {
+      "createFailed": "Failed to add note."
     }
   }
 }

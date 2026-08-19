@@ -28,13 +28,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Plus, Pencil, Trash2, Power, X, Package, AlertTriangle, History, Archive, RotateCcw } from "@/lib/ez-icons";
+import { Plus, Pencil, Trash2, Power, X, Package, AlertTriangle, History, Archive, RotateCcw, ShoppingCart } from "@/lib/ez-icons";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useCsvExport } from "@/components/csv/csv-export-button";
 import { CsvImportDialog } from "@/components/csv/csv-import-dialog";
 import { ProductStockAdjustDialog } from "@/components/forms/product-stock-adjust-dialog";
 import { ProductStockCorrectionDialog } from "@/components/forms/product-stock-correction-dialog";
 import { ProductStockHistoryDialog } from "@/components/forms/product-stock-history-dialog";
+import { ProductSellDialog } from "@/components/forms/product-sell-dialog";
 import type { SavedView, FieldDef, FilterCondition } from "@/components/crm/types";
 import { Id } from "@cvx/_generated/dataModel";
 import type { MappedProduct } from "@/lib/supabase/mappers/products";
@@ -597,6 +598,7 @@ function ProductsPage() {
   const [stockCorrectionProduct, setStockCorrectionProduct] = useState<Product | null>(null);
   const [stockHistoryProduct, setStockHistoryProduct] = useState<Product | null>(null);
   const [lotBatchesProduct, setLotBatchesProduct] = useState<Product | null>(null);
+  const [sellDialogProduct, setSellDialogProduct] = useState<Product | null>(null);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [shoppingListOpen, setShoppingListOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
@@ -1094,6 +1096,11 @@ function ProductsPage() {
     }
     if (row.trackStock) {
       actions.push({
+        label: t("products.sell.action", { defaultValue: "Sprzedaż bezpośrednia" }),
+        icon: <ShoppingCart className="h-4 w-4" variant="stroke" />,
+        onClick: () => setSellDialogProduct(row),
+      });
+      actions.push({
         label: t("products.stock.receive.action", { defaultValue: "Przyjęcie magazynowe" }),
         icon: <Package className="h-4 w-4" variant="stroke" />,
         onClick: () => setStockAdjustProduct(row),
@@ -1558,6 +1565,15 @@ function ProductsPage() {
         products={allProducts}
         totalsByProductId={totalsByProductId}
         plannedUsageByProductId={plannedUsageByProductId}
+      />
+
+      <ProductSellDialog
+        open={!!sellDialogProduct}
+        onOpenChange={(open) => {
+          if (!open) setSellDialogProduct(null);
+        }}
+        organizationId={organizationId}
+        product={sellDialogProduct}
       />
 
       <ProductStockAdjustDialog

@@ -6,6 +6,7 @@ import { validatePortalSessionSupabase } from "../_helpers/portalSession";
 import { v } from "convex/values";
 import { sendEmail } from "@cvx/email";
 import { AUTH_RESEND_KEY } from "@cvx/env";
+import type { Id } from "../_generated/dataModel";
 
 // ---------------------------------------------------------------------------
 // Crypto helpers
@@ -173,7 +174,7 @@ export const _sendOtpEmail = internalAction({
         text: `Twój kod weryfikacyjny: ${args.otp}\n\nKod jest ważny przez 10 minut.`,
         log: {
           ctx,
-          organizationId: args.organizationId,
+          organizationId: args.organizationId as Id<"organizations">,
           source: "system",
           recipientName: args.patientName,
           relatedEntityType: "gabinetPatient",

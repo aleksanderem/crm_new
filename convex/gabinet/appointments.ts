@@ -1647,6 +1647,25 @@ export const create = action({
       }
     }
 
+    // --- Write informational stock reservation movements (#5532) ---
+    // Non-blocking: failures do not prevent appointment creation.
+    {
+      const allAppointmentIds = [firstId, ...recurringAppointments.map((r) => r.appointmentId)];
+      const locationId = (args.locationId ?? null) as string | null;
+      for (const aptId of allAppointmentIds) {
+        try {
+          await ctx.runAction(internal.magazyn.movements.reserveStockForAppointment, {
+            organizationId: String(args.organizationId),
+            appointmentId: aptId,
+            locationId,
+            performedBy: String(authResult.userId),
+          });
+        } catch (e) {
+          console.warn("[create] stock reservation failed for appointment", aptId, ":", e);
+        }
+      }
+    }
+
     // --- Insert scheduledActivities directly to Supabase (primary) ---
     const dueDateMs = new Date(`${args.date}T${args.startTime}:00`).getTime();
     const endDateMs = new Date(`${args.date}T${args.endTime}:00`).getTime();
@@ -2672,6 +2691,44 @@ export const updateStatus = action({
       }
     }
 
+    // Re-reserve stock when reverting from completed to a planned status (#5532).
+    // Informational only: failures are non-blocking.
+    if (
+      appt.status === "completed" &&
+      args.status !== "cancelled" &&
+      args.status !== "no_show"
+    ) {
+      try {
+        await ctx.runAction(internal.magazyn.movements.reserveStockForAppointment, {
+          organizationId: String(args.organizationId),
+          appointmentId: args.appointmentId,
+          locationId: (appt.locationId ?? null) as string | null,
+          performedBy: authResult.userId,
+        });
+      } catch (e) {
+        console.warn("[updateStatus] re-reservation failed for appointment", args.appointmentId, ":", e);
+      }
+    }
+
+    // Release reservation when reverting from cancelled/no_show to a planned status (#5532).
+    if (
+      (appt.status === "cancelled" || appt.status === "no_show") &&
+      args.status !== "cancelled" &&
+      args.status !== "no_show" &&
+      args.status !== "completed"
+    ) {
+      try {
+        await ctx.runAction(internal.magazyn.movements.reserveStockForAppointment, {
+          organizationId: String(args.organizationId),
+          appointmentId: args.appointmentId,
+          locationId: (appt.locationId ?? null) as string | null,
+          performedBy: authResult.userId,
+        });
+      } catch (e) {
+        console.warn("[updateStatus] re-reservation (from cancelled/no_show) failed for appointment", args.appointmentId, ":", e);
+      }
+    }
+
     // Package return: when reverting from completed, restore one package entry
     // per junction treatment. cas_return_package_entry atomically flips the CAS
     // flag and decrements usedCount in a single Postgres transaction, preventing
@@ -2701,6 +2758,20 @@ export const updateStatus = action({
             pkgReturnError,
           );
         }
+      }
+    }
+
+    // Release stock reservation when appointment reaches a terminal state (#5532).
+    // Informational only: failures are non-blocking.
+    if (args.status === "completed" || args.status === "cancelled" || args.status === "no_show") {
+      try {
+        await ctx.runAction(internal.magazyn.movements.releaseReservationForAppointment, {
+          organizationId: String(args.organizationId),
+          appointmentId: args.appointmentId,
+          performedBy: authResult.userId,
+        });
+      } catch (e) {
+        console.warn("[updateStatus] reservation release failed for appointment", args.appointmentId, ":", e);
       }
     }
 

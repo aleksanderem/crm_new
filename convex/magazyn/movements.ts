@@ -165,6 +165,145 @@ export const returnStockForAppointment = internalAction({
   },
 });
 
+// Write informational `reserved` movements for all products consumed by the
+// appointment's treatments. These do NOT update product_stock_levels — they
+// exist purely so warehouse reports can see stock committed to future
+// appointments. Idempotent: skips products that already have a `reserved`
+// movement for this appointment with no matching `reservation_release`.
+export const reserveStockForAppointment = internalAction({
+  args: {
+    organizationId: v.string(),
+    appointmentId: v.string(),
+    locationId: v.union(v.string(), v.null()),
+    performedBy: v.string(),
+  },
+  handler: async (_ctx, args): Promise<void> => {
+    const db = createSupabaseDb();
+
+    const { data: junctionRows } = await db.raw()
+      .from("gabinet_appointment_treatments")
+      .select("treatment_id")
+      .eq("appointment_id", args.appointmentId);
+    const treatmentIds = (junctionRows ?? [])
+      .map((r: { treatment_id: string | null }) => r.treatment_id)
+      .filter((id): id is string => !!id);
+
+    for (const treatmentId of treatmentIds) {
+      const { data: links } = await db.raw()
+        .from("gabinet_treatment_products")
+        .select("product_id, quantity")
+        .eq("organization_id", args.organizationId)
+        .eq("treatment_id", treatmentId);
+      for (const link of (links ?? []) as Array<{ product_id: string; quantity: number }>) {
+        if (!link.quantity || Number(link.quantity) <= 0) continue;
+        const productId = link.product_id;
+
+        // Idempotency: skip if unreleased `reserved` movement already exists.
+        const { data: existing } = await db.raw()
+          .from("product_stock_movements")
+          .select("id")
+          .eq("source_type", "appointment")
+          .eq("source_id", args.appointmentId)
+          .eq("product_id", productId)
+          .eq("reason", "reserved")
+          .limit(1);
+        if (Array.isArray(existing) && existing.length > 0) {
+          const { data: released } = await db.raw()
+            .from("product_stock_movements")
+            .select("id")
+            .eq("source_type", "appointment")
+            .eq("source_id", args.appointmentId)
+            .eq("product_id", productId)
+            .eq("reason", "reservation_release")
+            .limit(1);
+          if (!Array.isArray(released) || released.length === 0) continue;
+        }
+
+        try {
+          await applyMovementInternal({
+            organizationId: args.organizationId,
+            productId,
+            locationId: args.locationId,
+            delta: -Number(link.quantity),
+            reason: "reserved",
+            sourceType: "appointment",
+            sourceId: args.appointmentId,
+            treatmentId,
+            performedBy: args.performedBy,
+          });
+        } catch (e) {
+          console.warn(
+            "[reserveStockForAppointment] failed for product",
+            productId,
+            ":",
+            e,
+          );
+        }
+      }
+    }
+  },
+});
+
+// Write informational `reservation_release` movements inverting the `reserved`
+// movements for this appointment. Idempotent: skips if release already exists.
+export const releaseReservationForAppointment = internalAction({
+  args: {
+    organizationId: v.string(),
+    appointmentId: v.string(),
+    performedBy: v.string(),
+  },
+  handler: async (_ctx, args): Promise<void> => {
+    const db = createSupabaseDb();
+
+    const { data: reservedMovements } = await db.raw()
+      .from("product_stock_movements")
+      .select("product_id, delta, location_id, treatment_id")
+      .eq("source_type", "appointment")
+      .eq("source_id", args.appointmentId)
+      .eq("reason", "reserved");
+    const movements = (reservedMovements ?? []) as Array<{
+      product_id: string;
+      delta: number;
+      location_id: string | null;
+      treatment_id: string | null;
+    }>;
+    if (movements.length === 0) return;
+
+    // Idempotency: skip if release movements already exist for this appointment.
+    const { data: existingReleases } = await db.raw()
+      .from("product_stock_movements")
+      .select("id")
+      .eq("source_type", "appointment")
+      .eq("source_id", args.appointmentId)
+      .eq("reason", "reservation_release")
+      .limit(1);
+    if (Array.isArray(existingReleases) && existingReleases.length > 0) return;
+
+    for (const mv of movements) {
+      try {
+        await applyMovementInternal({
+          organizationId: args.organizationId,
+          productId: mv.product_id,
+          locationId: mv.location_id ?? null,
+          delta: -Number(mv.delta), // original delta was negative; negating restores
+          reason: "reservation_release",
+          sourceType: "appointment",
+          sourceId: args.appointmentId,
+          treatmentId: mv.treatment_id ?? undefined,
+          performedBy: args.performedBy,
+        });
+      } catch (e) {
+        console.warn(
+          "[releaseReservationForAppointment] failed for product",
+          mv.product_id,
+          ":",
+          e,
+        );
+      }
+    }
+  },
+});
+
 // Sell a product directly without an appointment.
 // Applies FEFO lot selection exactly like consumeForAppointment: if tracked
 // lots exist they are drained in ascending expiry order; any remainder is

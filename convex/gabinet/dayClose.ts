@@ -13,6 +13,7 @@ import { action } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { logAudit } from "../auditLog";
 import { nanoid } from "nanoid";
 
 // Returns the UTC timestamp (ms) of midnight on the given YYYY-MM-DD date in
@@ -89,6 +90,16 @@ export const createCashTransaction = action({
     });
 
     if (error) throw new Error(`createCashTransaction: ${error.message}`);
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: authResult.userId,
+      action: "cash_transaction_created",
+      entityType: "gabinetCashTransaction",
+      entityId: id,
+      details: `Created ${args.type} of ${args.amount}${args.reason ? `: ${args.reason}` : ""}`,
+    });
+
     return { id };
   },
 });
@@ -99,9 +110,10 @@ export const deleteCashTransaction = action({
     transactionId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
-      organizationId: args.organizationId,
-    });
+    const authResult = await ctx.runAction(
+      internal._helpers.authAction.verifyOrgAccess,
+      { organizationId: args.organizationId },
+    ) as { userId: string };
     await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, {
       organizationId: args.organizationId,
     });
@@ -125,6 +137,15 @@ export const deleteCashTransaction = action({
       .eq("organization_id", String(args.organizationId));
 
     if (error) throw new Error(`deleteCashTransaction: ${error.message}`);
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: authResult.userId,
+      action: "cash_transaction_deleted",
+      entityType: "gabinetCashTransaction",
+      entityId: args.transactionId,
+      details: `Deleted cash transaction`,
+    });
   },
 });
 
@@ -284,6 +305,16 @@ export const createDayClose = action({
     });
 
     if (error) throw new Error(`createDayClose: ${error.message}`);
+
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: authResult.userId,
+      action: "day_close_created",
+      entityType: "gabinetDayClose",
+      entityId: id,
+      details: `Day closed for ${args.date}, total collected: ${totalCollected}, discrepancy: ${cashDiscrepancy}`,
+    });
+
     return { id, cashExpected, cashDiscrepancy, totalCollected, paymentSummary: summary };
   },
 });

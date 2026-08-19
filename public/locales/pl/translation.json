@@ -4012,7 +4012,17 @@
       "perPatientPackageSales": "Wg. pacjenta (top 10)",
       "filterByPackage": "Filtruj wg pakietu",
       "allPackages": "Wszystkie pakiety",
-      "packageRevenueOverTime": "Przychód z pakietów w czasie"
+      "packageRevenueOverTime": "Przychód z pakietów w czasie",
+      "cashRegisterReport": "Raport Kasy",
+      "noDayCloses": "Brak zamknięć dnia w wybranym okresie",
+      "cashToSafeNote": "Transfer nie jest przychodem",
+      "safeReport": "Raport Sejfu",
+      "safeSelectLocation": "Wybierz lokalizację, aby zobaczyć dane Sejfu",
+      "safePeriodSummary": "Podsumowanie okresu",
+      "safeInPeriod": "Wpłaty do Sejfu (okres)",
+      "safeOutPeriod": "Wypłaty z Sejfu (okres)",
+      "noSafeMovements": "Brak ruchów Sejfu w wybranym okresie",
+      "safeMovementType": "Typ ruchu"
     },
     "bodyChart": {
       "description": "Zaznacz obszary ciała powiązane z wizytą",

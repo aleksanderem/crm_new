@@ -4013,7 +4013,17 @@
       "perPatientPackageSales": "By Patient (top 10)",
       "filterByPackage": "Filter by package",
       "allPackages": "All packages",
-      "packageRevenueOverTime": "Package Revenue Over Time"
+      "packageRevenueOverTime": "Package Revenue Over Time",
+      "cashRegisterReport": "Cash Register Report",
+      "noDayCloses": "No day closes found for the selected period",
+      "cashToSafeNote": "Transfer is not revenue",
+      "safeReport": "Safe Report",
+      "safeSelectLocation": "Select a location to view safe data",
+      "safePeriodSummary": "Period Summary",
+      "safeInPeriod": "Deposits to Safe (period)",
+      "safeOutPeriod": "Withdrawals from Safe (period)",
+      "noSafeMovements": "No safe movements in the selected period",
+      "safeMovementType": "Movement Type"
     },
     "bodyChart": {
       "description": "Mark body areas related to the appointment",

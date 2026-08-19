@@ -7,6 +7,15 @@ import {
   useSupabaseGratisBarterAppointmentIds,
   useSupabasePaymentsRevenueByDateRange,
 } from "@/hooks/use-supabase-payments";
+import {
+  useSupabaseGabinetDayClosesInRange,
+  type GabinetDayClose,
+} from "@/hooks/use-supabase-day-close";
+import {
+  useSupabaseGabinetSafeMovements,
+  useSupabaseGabinetSafeMovementsInRange,
+  type GabinetSafeMovement,
+} from "@/hooks/use-supabase-safe";
 import { useSupabaseGabinetTreatmentsList } from "@/hooks/use-supabase-gabinet-treatments";
 import { useSupabaseGabinetPatientsList } from "@/hooks/use-supabase-gabinet-patients";
 import { useSupabaseGabinetEmployeesList } from "@/hooks/use-supabase-gabinet-employees";
@@ -1335,6 +1344,349 @@ function PackageSalesSection({
   );
 }
 
+/* ─── Cash Register Report Section ─── */
+
+function CashRegisterReportSection({
+  dayCloses,
+  isLoading,
+  rangeLabel,
+  currency,
+}: {
+  dayCloses: GabinetDayClose[];
+  isLoading: boolean;
+  rangeLabel: string;
+  currency: string;
+}) {
+  const { t } = useTranslation();
+
+  const totals = useMemo(() => {
+    let cashFromPayments = 0;
+    let deposits = 0;
+    let withdrawals = 0;
+    let discrepancy = 0;
+    let toSafe = 0;
+    for (const dc of dayCloses) {
+      cashFromPayments += dc.cashFromPayments;
+      deposits += dc.cashDeposits;
+      withdrawals += dc.cashWithdrawals;
+      discrepancy += dc.cashDiscrepancy;
+      toSafe += dc.cashToSafe ?? 0;
+    }
+    return { cashFromPayments, deposits, withdrawals, discrepancy, toSafe };
+  }, [dayCloses]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-7 w-48" />
+        <Skeleton className="h-40 rounded-lg" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-semibold">{t("gabinet.reports.cashRegisterReport")}</h2>
+        <p className="text-muted-foreground text-sm">{rangeLabel}</p>
+      </div>
+
+      {dayCloses.length === 0 ? (
+        <Card>
+          <CardContent className="flex items-center justify-center py-8">
+            <span className="text-muted-foreground text-sm">
+              {t("gabinet.reports.noDayCloses")}
+            </span>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Aggregate KPI cards */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-muted-foreground text-sm">{t("gabinet.cash.cashFromPayments")}</p>
+                <p className="mt-1 text-2xl font-bold">
+                  {formatCurrencyPLN(totals.cashFromPayments, currency, { fractionDigits: 2 })}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-muted-foreground text-sm">{t("gabinet.cash.deposits")}</p>
+                <p className="mt-1 text-2xl font-bold">
+                  {formatCurrencyPLN(totals.deposits, currency, { fractionDigits: 2 })}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-muted-foreground text-sm">{t("gabinet.cash.withdrawals")}</p>
+                <p className="mt-1 text-2xl font-bold">
+                  {formatCurrencyPLN(totals.withdrawals, currency, { fractionDigits: 2 })}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-muted-foreground text-sm">{t("gabinet.cash.cashToSafe")}</p>
+                <p className="mt-1 text-2xl font-bold">
+                  {formatCurrencyPLN(totals.toSafe, currency, { fractionDigits: 2 })}
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  {t("gabinet.reports.cashToSafeNote")}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Detailed table */}
+          <Card>
+            <CardHeader className="border-b">
+              <span className="font-semibold">{t("gabinet.cash.history")}</span>
+            </CardHeader>
+            <CardContent className="overflow-x-auto pt-0">
+              <table className="w-full min-w-[900px] text-sm">
+                <thead>
+                  <tr className="border-b text-left">
+                    <th className="py-3 pr-4 font-medium text-muted-foreground">{t("common.date")}</th>
+                    <th className="py-3 pr-4 text-right font-medium text-muted-foreground">{t("gabinet.cash.openingBalance")}</th>
+                    <th className="py-3 pr-4 text-right font-medium text-muted-foreground">{t("gabinet.cash.cashFromPayments")}</th>
+                    <th className="py-3 pr-4 text-right font-medium text-muted-foreground">{t("gabinet.cash.deposits")}</th>
+                    <th className="py-3 pr-4 text-right font-medium text-muted-foreground">{t("gabinet.cash.withdrawals")}</th>
+                    <th className="py-3 pr-4 text-right font-medium text-muted-foreground">{t("gabinet.cash.expectedCash")}</th>
+                    <th className="py-3 pr-4 text-right font-medium text-muted-foreground">{t("gabinet.cash.countedCash")}</th>
+                    <th className="py-3 pr-4 text-right font-medium text-muted-foreground">{t("gabinet.cash.discrepancy")}</th>
+                    <th className="py-3 pr-4 text-right font-medium text-muted-foreground">{t("gabinet.cash.cashNextOpening")}</th>
+                    <th className="py-3 text-right font-medium text-muted-foreground">{t("gabinet.cash.cashToSafe")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dayCloses.map((dc) => (
+                    <tr key={dc.id} className="border-b last:border-0 hover:bg-muted/50">
+                      <td className="py-3 pr-4 font-medium">{dc.date}</td>
+                      <td className="py-3 pr-4 text-right">{formatCurrencyPLN(dc.cashOpeningBalance, currency, { fractionDigits: 2 })}</td>
+                      <td className="py-3 pr-4 text-right">{formatCurrencyPLN(dc.cashFromPayments, currency, { fractionDigits: 2 })}</td>
+                      <td className="py-3 pr-4 text-right">{formatCurrencyPLN(dc.cashDeposits, currency, { fractionDigits: 2 })}</td>
+                      <td className="py-3 pr-4 text-right">{formatCurrencyPLN(dc.cashWithdrawals, currency, { fractionDigits: 2 })}</td>
+                      <td className="py-3 pr-4 text-right">{formatCurrencyPLN(dc.cashExpected, currency, { fractionDigits: 2 })}</td>
+                      <td className="py-3 pr-4 text-right">{formatCurrencyPLN(dc.cashCounted, currency, { fractionDigits: 2 })}</td>
+                      <td className={`py-3 pr-4 text-right font-medium ${dc.cashDiscrepancy === 0 ? "" : dc.cashDiscrepancy > 0 ? "text-green-600" : "text-red-600"}`}>
+                        {dc.cashDiscrepancy > 0 ? "+" : ""}{formatCurrencyPLN(dc.cashDiscrepancy, currency, { fractionDigits: 2 })}
+                      </td>
+                      <td className="py-3 pr-4 text-right">
+                        {dc.cashNextOpening != null
+                          ? formatCurrencyPLN(dc.cashNextOpening, currency, { fractionDigits: 2 })
+                          : <span className="text-muted-foreground">—</span>}
+                      </td>
+                      <td className="py-3 text-right">
+                        {dc.cashToSafe != null
+                          ? formatCurrencyPLN(dc.cashToSafe, currency, { fractionDigits: 2 })
+                          : <span className="text-muted-foreground">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                  {/* Totals row */}
+                  <tr className="border-t-2 bg-muted/30 font-semibold">
+                    <td className="py-3 pr-4">{t("gabinet.reports.periodTotal")}</td>
+                    <td className="py-3 pr-4 text-right text-muted-foreground">—</td>
+                    <td className="py-3 pr-4 text-right">{formatCurrencyPLN(totals.cashFromPayments, currency, { fractionDigits: 2 })}</td>
+                    <td className="py-3 pr-4 text-right">{formatCurrencyPLN(totals.deposits, currency, { fractionDigits: 2 })}</td>
+                    <td className="py-3 pr-4 text-right">{formatCurrencyPLN(totals.withdrawals, currency, { fractionDigits: 2 })}</td>
+                    <td className="py-3 pr-4 text-right text-muted-foreground">—</td>
+                    <td className="py-3 pr-4 text-right text-muted-foreground">—</td>
+                    <td className={`py-3 pr-4 text-right ${totals.discrepancy === 0 ? "" : totals.discrepancy > 0 ? "text-green-600" : "text-red-600"}`}>
+                      {totals.discrepancy > 0 ? "+" : ""}{formatCurrencyPLN(totals.discrepancy, currency, { fractionDigits: 2 })}
+                    </td>
+                    <td className="py-3 pr-4 text-right text-muted-foreground">—</td>
+                    <td className="py-3 text-right">{formatCurrencyPLN(totals.toSafe, currency, { fractionDigits: 2 })}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ─── Safe (Sejf) Report Section ─── */
+
+function SafeReportSection({
+  safeAll,
+  safeRange,
+  isLoadingAll,
+  isLoadingRange,
+  locationId,
+  rangeLabel,
+  currency,
+}: {
+  safeAll: { balance: number; totalIn: number; totalOut: number } | undefined;
+  safeRange: { movements: GabinetSafeMovement[]; totalIn: number; totalOut: number } | undefined;
+  isLoadingAll: boolean;
+  isLoadingRange: boolean;
+  locationId: string | null;
+  rangeLabel: string;
+  currency: string;
+}) {
+  const { t } = useTranslation();
+
+  if (!locationId) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold">{t("gabinet.reports.safeReport")}</h2>
+        </div>
+        <Card>
+          <CardContent className="flex items-center justify-center py-8">
+            <span className="text-muted-foreground text-sm">
+              {t("gabinet.reports.safeSelectLocation")}
+            </span>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isLoadingAll || isLoadingRange) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-7 w-48" />
+        <div className="grid gap-4 sm:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-lg" />
+          ))}
+        </div>
+        <Skeleton className="h-40 rounded-lg" />
+      </div>
+    );
+  }
+
+  const balance = safeAll?.balance ?? 0;
+  const totalIn = safeAll?.totalIn ?? 0;
+  const totalOut = safeAll?.totalOut ?? 0;
+  const rangeIn = safeRange?.totalIn ?? 0;
+  const rangeOut = safeRange?.totalOut ?? 0;
+  const movements = safeRange?.movements ?? [];
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-semibold">{t("gabinet.reports.safeReport")}</h2>
+        <p className="text-muted-foreground text-sm">{rangeLabel}</p>
+      </div>
+
+      {/* Current balance (all-time) */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-muted-foreground text-sm">{t("gabinet.safe.balance")}</p>
+            <p className="mt-1 text-2xl font-bold">
+              {formatCurrencyPLN(balance, currency, { fractionDigits: 2 })}
+            </p>
+            <p className="text-muted-foreground mt-1 text-xs">{t("gabinet.safe.balanceDescription")}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-muted-foreground text-sm">{t("gabinet.safe.totalIn")}</p>
+            <p className="mt-1 text-2xl font-bold">
+              {formatCurrencyPLN(totalIn, currency, { fractionDigits: 2 })}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-muted-foreground text-sm">{t("gabinet.safe.totalOut")}</p>
+            <p className="mt-1 text-2xl font-bold">
+              {formatCurrencyPLN(totalOut, currency, { fractionDigits: 2 })}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Period totals */}
+      <Card>
+        <CardHeader className="border-b">
+          <span className="font-semibold">{t("gabinet.reports.safePeriodSummary")}</span>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-4 pt-4 sm:grid-cols-2">
+          <div>
+            <p className="text-muted-foreground text-sm">{t("gabinet.reports.safeInPeriod")}</p>
+            <p className="mt-1 text-lg font-semibold">
+              {formatCurrencyPLN(rangeIn, currency, { fractionDigits: 2 })}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-sm">{t("gabinet.reports.safeOutPeriod")}</p>
+            <p className="mt-1 text-lg font-semibold">
+              {formatCurrencyPLN(rangeOut, currency, { fractionDigits: 2 })}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Movement history in period */}
+      <Card>
+        <CardHeader className="border-b">
+          <span className="font-semibold">{t("gabinet.safe.movements")}</span>
+        </CardHeader>
+        <CardContent className="overflow-x-auto pt-0">
+          {movements.length === 0 ? (
+            <div className="flex items-center justify-center py-8">
+              <span className="text-muted-foreground text-sm">
+                {t("gabinet.reports.noSafeMovements")}
+              </span>
+            </div>
+          ) : (
+            <table className="w-full min-w-[600px] text-sm">
+              <thead>
+                <tr className="border-b text-left">
+                  <th className="py-3 pr-4 font-medium text-muted-foreground">{t("common.date")}</th>
+                  <th className="py-3 pr-4 font-medium text-muted-foreground">{t("gabinet.reports.safeMovementType")}</th>
+                  <th className="py-3 pr-4 text-right font-medium text-muted-foreground">{t("gabinet.cash.amount")}</th>
+                  <th className="py-3 font-medium text-muted-foreground">{t("gabinet.safe.description")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {movements.map((m) => (
+                  <tr key={m.id} className="border-b last:border-0 hover:bg-muted/50">
+                    <td className="py-3 pr-4">
+                      {new Date(m.createdAt).toLocaleDateString("pl-PL", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })}
+                    </td>
+                    <td className="py-3 pr-4">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        m.type === "transfer_in"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                          : "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400"
+                      }`}>
+                        {m.type === "transfer_in"
+                          ? t("gabinet.safe.typeTransferIn")
+                          : t("gabinet.safe.typeWithdrawal")}
+                      </span>
+                    </td>
+                    <td className={`py-3 pr-4 text-right font-medium ${m.type === "transfer_in" ? "text-green-700 dark:text-green-400" : "text-orange-700 dark:text-orange-400"}`}>
+                      {m.type === "transfer_in" ? "+" : "−"}{formatCurrencyPLN(m.amount, currency, { fractionDigits: 2 })}
+                    </td>
+                    <td className="py-3 text-muted-foreground">
+                      {m.description ?? (m.referenceDayCloseId ? t("gabinet.safe.dayCloseRef") : "—")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 /* ─── Main Page ─── */
 
 function GabinetReports() {
@@ -1430,6 +1782,22 @@ function GabinetReports() {
 
   const { data: packagesListData, isLoading: loadingPackagesList } =
     useSupabaseGabinetTreatmentPackagesList(organizationId);
+
+  const { data: dayClosesInRange, isLoading: loadingDayCloses } =
+    useSupabaseGabinetDayClosesInRange(organizationId, startDate, endDate, {
+      locationId: activeLocationId ?? undefined,
+    });
+
+  const { data: safeAllData, isLoading: loadingSafeAll } =
+    useSupabaseGabinetSafeMovements(organizationId, activeLocationId ?? undefined);
+
+  const { data: safeRangeData, isLoading: loadingSafeRange } =
+    useSupabaseGabinetSafeMovementsInRange(
+      organizationId,
+      activeLocationId ?? undefined,
+      startDate,
+      endDate,
+    );
 
   const isLoading =
     loadingAppointments || loadingTreatments || loadingPatients || loadingEmployees || loadingGratisBarter || loadingActualPayments;
@@ -1950,6 +2318,25 @@ function GabinetReports() {
         currency={defaultCurrency}
         startDate={startDate}
         endDate={endDate}
+      />
+
+      {/* Kasa — Cash Register Report */}
+      <CashRegisterReportSection
+        dayCloses={dayClosesInRange ?? []}
+        isLoading={loadingDayCloses}
+        rangeLabel={rangeLabel}
+        currency={defaultCurrency}
+      />
+
+      {/* Sejf — Safe Report */}
+      <SafeReportSection
+        safeAll={safeAllData}
+        safeRange={safeRangeData}
+        isLoadingAll={loadingSafeAll}
+        isLoadingRange={loadingSafeRange}
+        locationId={activeLocationId}
+        rangeLabel={rangeLabel}
+        currency={defaultCurrency}
       />
 
       <SidePanel

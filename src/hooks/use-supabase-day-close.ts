@@ -220,6 +220,48 @@ export function useSupabaseGabinetPreviousDayClose(
 }
 
 // ---------------------------------------------------------------------------
+// Day Closes in date range (for reporting)
+// ---------------------------------------------------------------------------
+
+export function useSupabaseGabinetDayClosesInRange(
+  organizationId: string,
+  startDate: string,
+  endDate: string,
+  options: { enabled?: boolean; locationId?: string } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true, locationId } = options;
+
+  return useQuery<GabinetDayClose[], Error>({
+    queryKey: [
+      ...supabaseKeys.gabinetDayCloses.list(organizationId),
+      "range",
+      startDate,
+      endDate,
+      locationId ?? "",
+    ],
+    queryFn: async (): Promise<GabinetDayClose[]> => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      let q = client
+        .from("gabinet_day_closes")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .gte("date", startDate)
+        .lte("date", endDate)
+        .order("date", { ascending: true });
+
+      if (locationId) q = q.eq("location_id", locationId);
+
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []).map((r) => mapDayClose(r as Record<string, unknown>));
+    },
+    enabled: enabled && isReady && !!organizationId && !!startDate && !!endDate,
+  } satisfies UseQueryOptions<GabinetDayClose[], Error>);
+}
+
+// ---------------------------------------------------------------------------
 // Recent Day Closes list
 // ---------------------------------------------------------------------------
 

@@ -18,7 +18,7 @@ export const listOrgs = query({
  * Idempotent — checks if patients already exist before seeding.
  */
 export const seedAll = mutation({
-  args: { organizationId: v.string() },
+  args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
     const { user } = await requireOrgAdmin(ctx, args.organizationId);
     return await doSeed(ctx, args.organizationId, user._id);
@@ -29,7 +29,7 @@ export const seedAll = mutation({
  * Internal seed for CLI usage: `npx convex run gabinet/seed:seedAllInternal '{"organizationId":"...","userId":"..."}'`
  */
 export const seedAllInternal = internalMutation({
-  args: { organizationId: v.string(), userId: v.id("users") },
+  args: { organizationId: v.id("organizations"), userId: v.id("users") },
   handler: async (ctx, args) => {
     return await doSeed(ctx, args.organizationId, args.userId);
   },
@@ -687,7 +687,7 @@ async function doSeed(ctx: any, orgId: Id<"organizations">, userId: Id<"users">)
  * Use before re-seeding.
  */
 export const clearAll = mutation({
-  args: { organizationId: v.string() },
+  args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
     await requireOrgAdmin(ctx, args.organizationId);
     return await doClear(ctx, args.organizationId);
@@ -698,7 +698,7 @@ export const clearAll = mutation({
  * Internal clear for CLI usage.
  */
 export const clearAllInternal = internalMutation({
-  args: { organizationId: v.string() },
+  args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
     return await doClear(ctx, args.organizationId);
   },

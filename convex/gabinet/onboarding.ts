@@ -5,6 +5,7 @@
 import { action, internalMutation, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
+import type { Id } from "../_generated/dataModel";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
 
 /**
@@ -17,7 +18,7 @@ export const _getOnboardingFlag = internalQuery({
     organizationId: v.string(),
   },
   handler: async (ctx, args): Promise<boolean> => {
-    const org = await ctx.db.get(args.organizationId);
+    const org = await ctx.db.get(args.organizationId as Id<"organizations">);
     return org?.onboardingCompleted ?? false;
   },
 });
@@ -233,7 +234,7 @@ export const _completeSetupSideEffects = internalMutation({
     organizationId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.organizationId, {
+    await ctx.db.patch(args.organizationId as Id<"organizations">, {
       onboardingCompleted: true,
       updatedAt: Date.now(),
     });

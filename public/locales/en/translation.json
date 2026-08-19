@@ -4023,7 +4023,14 @@
       "safeInPeriod": "Deposits to Safe (period)",
       "safeOutPeriod": "Withdrawals from Safe (period)",
       "noSafeMovements": "No safe movements in the selected period",
-      "safeMovementType": "Movement Type"
+      "safeMovementType": "Movement Type",
+      "productSales": "Product Sales",
+      "totalProductRevenue": "Sales Revenue",
+      "totalProductReturns": "Returns",
+      "netProductRevenue": "Net Revenue",
+      "noProductSales": "No product sales in this period",
+      "perProductBreakdown": "By Product",
+      "perEmployeeProductSales": "By Employee"
     },
     "bodyChart": {
       "description": "Mark body areas related to the appointment",

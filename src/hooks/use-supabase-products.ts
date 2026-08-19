@@ -525,3 +525,103 @@ export function useSupabaseAppointmentStockMovements(
     enabled: enabled && isReady && !!organizationId && !!appointmentId,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Direct Sale Movements by Date Range (gabinet reports — #5615)
+//
+// Fetches all direct_sale and direct_sale_return stock movements for the org
+// within the given date range. Joins the products table to surface names and
+// units. Revenue per movement = unit_price * abs(delta) (unit_price is per-unit
+// sale price stored by sellProductStandalone / sellReturnStandalone).
+// ---------------------------------------------------------------------------
+
+export interface DirectSaleMovement {
+  _id: string;
+  productId: string;
+  productName: string;
+  stockUnit: string | null;
+  quantity: number;
+  unitPrice: number | null;
+  revenue: number;
+  paymentMethod: string | null;
+  employeeId: string | null;
+  reason: "direct_sale" | "direct_sale_return";
+  createdAt: number;
+}
+
+export function useSupabaseDirectSalesByDateRange(
+  organizationId: string,
+  startDate: string,
+  endDate: string,
+  options: { enabled?: boolean; locationId?: string } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true, locationId } = options;
+
+  return useQuery<DirectSaleMovement[], Error>({
+    queryKey: [
+      ...supabaseKeys.productStockMovements.list(organizationId),
+      "directSalesByDateRange",
+      startDate,
+      endDate,
+      locationId ?? "",
+    ],
+    queryFn: async (): Promise<DirectSaleMovement[]> => {
+      if (!client) throw new Error("Supabase client not ready");
+
+      const startTs = new Date(startDate + "T00:00:00.000Z").getTime();
+      const endTs = new Date(endDate + "T23:59:59.999Z").getTime();
+
+      let query = client
+        .from("product_stock_movements")
+        .select(
+          `id, product_id, delta, unit_price, payment_method, employee_id, reason, created_at,
+           products!product_stock_movements_product_id_fkey(name, stock_unit)`,
+        )
+        .eq("organization_id", organizationId)
+        .in("reason", ["direct_sale", "direct_sale_return"])
+        .gte("created_at", startTs)
+        .lte("created_at", endTs)
+        .order("created_at", { ascending: false });
+
+      if (locationId) {
+        query = query.eq("location_id", locationId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      type Row = {
+        id: string;
+        product_id: string;
+        delta: number;
+        unit_price: number | null;
+        payment_method: string | null;
+        employee_id: string | null;
+        reason: string;
+        created_at: number;
+        products: { name: string; stock_unit: string | null } | null;
+      };
+
+      return ((data ?? []) as Row[]).map((row) => {
+        const qty = Math.abs(Number(row.delta));
+        const unitPrice = row.unit_price != null ? Number(row.unit_price) : null;
+        return {
+          _id: row.id,
+          productId: row.product_id,
+          productName: row.products?.name ?? row.product_id,
+          stockUnit: row.products?.stock_unit ?? null,
+          quantity: qty,
+          unitPrice,
+          revenue: unitPrice != null ? unitPrice * qty : 0,
+          paymentMethod: row.payment_method,
+          employeeId: row.employee_id,
+          reason: row.reason as "direct_sale" | "direct_sale_return",
+          createdAt: Number(row.created_at),
+        };
+      });
+    },
+    enabled: enabled && isReady && !!organizationId && !!startDate && !!endDate,
+  } satisfies UseQueryOptions<DirectSaleMovement[], Error>);
+}

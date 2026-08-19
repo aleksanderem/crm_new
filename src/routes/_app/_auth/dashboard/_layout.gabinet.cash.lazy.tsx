@@ -16,6 +16,7 @@ import { Label as FieldLabel } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
@@ -30,9 +31,12 @@ import {
 } from "@/components/ui/select";
 import {
   AlertTriangle,
+  ArrowDownIcon,
+  ArrowUpIcon,
   CheckCircle,
   PlusCircle,
   Trash2Icon,
+  WalletIcon,
 } from "@/lib/ez-icons";
 import {
   useSupabaseGabinetCashTransactions,
@@ -42,6 +46,7 @@ import {
 } from "@/hooks/use-supabase-day-close";
 import { useSupabasePaymentsRevenueByDateRange } from "@/hooks/use-supabase-payments";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
+import { useSupabaseGabinetSafeMovements } from "@/hooks/use-supabase-safe";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 
 function GabinetCashSkeleton() {
@@ -961,6 +966,312 @@ function DayCloseHistoryCard({
 }
 
 // ---------------------------------------------------------------------------
+// Safe Balance Card
+// ---------------------------------------------------------------------------
+
+function SafeBalanceCard({
+  balance,
+  totalIn,
+  totalOut,
+  isLoading,
+}: {
+  balance: number;
+  totalIn: number;
+  totalOut: number;
+  isLoading: boolean;
+}) {
+  const { t } = useTranslation();
+
+  if (isLoading) return <Skeleton className="h-32 rounded-lg" />;
+
+  return (
+    <Card>
+      <CardHeader className="border-b">
+        <div className="flex items-center gap-2">
+          <WalletIcon className="h-5 w-5 text-muted-foreground" variant="stroke" />
+          <span className="text-lg font-semibold">{t("gabinet.safe.balance")}</span>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-4 space-y-3">
+        <div className="flex items-baseline gap-2">
+          <span className="text-3xl font-bold">
+            {formatCurrencyPLN(balance, "PLN", { fractionDigits: 2 })}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {t("gabinet.safe.balanceDescription")}
+        </p>
+        <div className="flex gap-6 text-sm border-t pt-3">
+          <div className="flex items-center gap-1.5">
+            <ArrowDownIcon className="h-3.5 w-3.5 text-green-600" variant="stroke" />
+            <span className="text-muted-foreground">{t("gabinet.safe.totalIn")}:</span>
+            <span className="font-medium text-green-600">
+              {formatCurrencyPLN(totalIn, "PLN", { fractionDigits: 2 })}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <ArrowUpIcon className="h-3.5 w-3.5 text-red-600" variant="stroke" />
+            <span className="text-muted-foreground">{t("gabinet.safe.totalOut")}:</span>
+            <span className="font-medium text-red-600">
+              {formatCurrencyPLN(totalOut, "PLN", { fractionDigits: 2 })}
+            </span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Safe Movements Card
+// ---------------------------------------------------------------------------
+
+function SafeMovementsCard({
+  movements,
+  isLoading,
+  canEdit,
+  safeBalance,
+  organizationId,
+  locationId,
+  onWithdrawn,
+}: {
+  movements: { id: string; type: "transfer_in" | "withdrawal"; amount: number; description: string | null; referenceDayCloseId: string | null; createdBy: string; createdAt: number }[];
+  isLoading: boolean;
+  canEdit: boolean;
+  safeBalance: number;
+  organizationId: string;
+  locationId: string;
+  onWithdrawn: () => void;
+}) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const withdrawFromSafe = useAction(api.gabinet.safe.withdrawFromSafe);
+
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawReason, setWithdrawReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleWithdraw = useCallback(async () => {
+    const amount = parseFloat(withdrawAmount.replace(",", "."));
+    if (isNaN(amount) || amount <= 0) {
+      toast.error(t("gabinet.safe.invalidAmount"));
+      return;
+    }
+    if (amount > safeBalance) {
+      toast.error(
+        t("gabinet.safe.insufficientBalance", {
+          balance: safeBalance.toFixed(2),
+        }),
+      );
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await withdrawFromSafe({
+        organizationId: organizationId as Id<"organizations">,
+        locationId,
+        amount,
+        description: withdrawReason || undefined,
+      });
+      toast.success(t("gabinet.safe.withdrawSuccess"));
+      setPanelOpen(false);
+      setWithdrawAmount("");
+      setWithdrawReason("");
+      qc.invalidateQueries({
+        queryKey: supabaseKeys.gabinetSafeMovements.list(organizationId),
+      });
+      onWithdrawn();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [withdrawFromSafe, organizationId, locationId, withdrawAmount, withdrawReason, safeBalance, t, qc, onWithdrawn]);
+
+  if (isLoading) return <Skeleton className="h-40 rounded-lg" />;
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="flex justify-between border-b">
+          <span className="text-lg font-semibold">{t("gabinet.safe.movements")}</span>
+          {canEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPanelOpen(true)}
+            >
+              <ArrowUpIcon className="mr-1.5 h-4 w-4" variant="stroke" />
+              {t("gabinet.safe.withdrawButton")}
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="pt-0">
+          {movements.length === 0 ? (
+            <p className="text-muted-foreground text-sm py-6 text-center">
+              {t("gabinet.safe.noMovements")}
+            </p>
+          ) : (
+            <div className="divide-y">
+              {movements.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-start justify-between py-3 text-sm gap-3"
+                >
+                  <div className="flex items-start gap-2 min-w-0">
+                    <span
+                      className={`mt-0.5 shrink-0 rounded-full p-1 ${
+                        m.type === "transfer_in"
+                          ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400"
+                          : "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400"
+                      }`}
+                    >
+                      {m.type === "transfer_in" ? (
+                        <ArrowDownIcon className="h-3 w-3" variant="stroke" />
+                      ) : (
+                        <ArrowUpIcon className="h-3 w-3" variant="stroke" />
+                      )}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-medium leading-none">
+                        {m.type === "transfer_in"
+                          ? t("gabinet.safe.typeTransferIn")
+                          : t("gabinet.safe.typeWithdrawal")}
+                      </p>
+                      {m.description && (
+                        <p className="text-muted-foreground text-xs mt-1 truncate">
+                          {m.description}
+                        </p>
+                      )}
+                      {m.referenceDayCloseId && (
+                        <p className="text-muted-foreground text-xs mt-0.5">
+                          {t("gabinet.safe.dayCloseRef")}
+                        </p>
+                      )}
+                      <p className="text-muted-foreground text-xs mt-1">
+                        {formatTs(m.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                  <span
+                    className={`shrink-0 font-semibold tabular-nums ${
+                      m.type === "transfer_in" ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {m.type === "transfer_in" ? "+" : "-"}
+                    {formatCurrencyPLN(m.amount, "PLN", { fractionDigits: 2 })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <SidePanel
+        open={panelOpen}
+        onOpenChange={setPanelOpen}
+        title={t("gabinet.safe.withdrawForm")}
+        onSubmit={handleWithdraw}
+        submitLabel={t("gabinet.safe.withdraw")}
+        isSubmitting={submitting}
+      >
+        <div className="space-y-4">
+          <div className="rounded-md border bg-muted/30 p-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t("gabinet.safe.balance")}</span>
+              <span className="font-semibold">
+                {formatCurrencyPLN(safeBalance, "PLN", { fractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <FieldLabel>{t("gabinet.safe.withdrawAmount")}</FieldLabel>
+            <Input
+              type="number"
+              min="0.01"
+              step="0.01"
+              max={safeBalance}
+              placeholder="0,00"
+              value={withdrawAmount}
+              onChange={(e) => setWithdrawAmount(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <FieldLabel>{t("gabinet.safe.withdrawReason")}</FieldLabel>
+            <Textarea
+              placeholder={t("gabinet.safe.withdrawReasonPlaceholder")}
+              value={withdrawReason}
+              onChange={(e) => setWithdrawReason(e.target.value)}
+              rows={2}
+            />
+          </div>
+        </div>
+      </SidePanel>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Safe Tab Content
+// ---------------------------------------------------------------------------
+
+function SafeTabContent({
+  organizationId,
+  locationId,
+  canEdit,
+}: {
+  organizationId: string;
+  locationId: string | undefined;
+  canEdit: boolean;
+}) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+
+  const { data: safeData, isLoading } = useSupabaseGabinetSafeMovements(
+    organizationId,
+    locationId,
+    { enabled: !!locationId },
+  );
+
+  const handleWithdrawn = useCallback(() => {
+    qc.invalidateQueries({
+      queryKey: supabaseKeys.gabinetSafeMovements.list(organizationId),
+    });
+  }, [qc, organizationId]);
+
+  if (!locationId) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+        <WalletIcon className="h-10 w-10 text-muted-foreground/40" variant="stroke" />
+        <p className="text-muted-foreground">{t("gabinet.safe.noLocation")}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4 sm:gap-6">
+      <SafeBalanceCard
+        balance={safeData?.balance ?? 0}
+        totalIn={safeData?.totalIn ?? 0}
+        totalOut={safeData?.totalOut ?? 0}
+        isLoading={isLoading}
+      />
+      <SafeMovementsCard
+        movements={safeData?.movements ?? []}
+        isLoading={isLoading}
+        canEdit={canEdit}
+        safeBalance={safeData?.balance ?? 0}
+        organizationId={organizationId}
+        locationId={locationId}
+        onWithdrawn={handleWithdrawn}
+      />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main Page
 // ---------------------------------------------------------------------------
 
@@ -975,6 +1286,7 @@ function GabinetCash() {
   );
   const { allowed: canEdit } = usePermission("gabinet_reports", "edit");
 
+  const [activeTab, setActiveTab] = useState<"kasa" | "sejf">("kasa");
   const [selectedDate, setSelectedDate] = useState(todayIso);
   const [selectedLocationId, setSelectedLocationId] = useState<
     string | undefined
@@ -1118,61 +1430,83 @@ function GabinetCash() {
               </SelectContent>
             </Select>
           )}
-          <Input
-            type="date"
-            className="w-40"
-            value={selectedDate}
-            max={todayIso()}
-            onChange={(e) => setSelectedDate(e.target.value)}
-          />
+          {activeTab === "kasa" && (
+            <Input
+              type="date"
+              className="w-40"
+              value={selectedDate}
+              max={todayIso()}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            />
+          )}
         </div>
       </div>
 
-      {/* Already closed banner / form */}
-      {loadingDayClose ? (
-        <Skeleton className="h-16 rounded-lg" />
-      ) : isAlreadyClosed ? (
-        <DayCloseSummaryCard dayClose={dayClose!} />
-      ) : null}
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as "kasa" | "sejf")}
+      >
+        <TabsList>
+          <TabsTrigger value="kasa">{t("gabinet.cash.tabKasa")}</TabsTrigger>
+          <TabsTrigger value="sejf">{t("gabinet.cash.tabSejf")}</TabsTrigger>
+        </TabsList>
 
-      {/* Payment Summary */}
-      <PaymentSummaryCard
-        summary={paymentSummary}
-        totalCollected={totalCollected}
-        currency="PLN"
-        isLoading={loadingPayments}
-      />
+        <TabsContent value="kasa" className="flex flex-col gap-4 sm:gap-6 mt-4">
+          {/* Already closed banner / form */}
+          {loadingDayClose ? (
+            <Skeleton className="h-16 rounded-lg" />
+          ) : isAlreadyClosed ? (
+            <DayCloseSummaryCard dayClose={dayClose!} />
+          ) : null}
 
-      {/* Cash Transactions */}
-      <CashTransactionsCard
-        organizationId={organizationId}
-        date={selectedDate}
-        locationId={selectedLocationId}
-        canEdit={canEdit && !isAlreadyClosed}
-        isLoading={loadingDayClose}
-      />
+          {/* Payment Summary */}
+          <PaymentSummaryCard
+            summary={paymentSummary}
+            totalCollected={totalCollected}
+            currency="PLN"
+            isLoading={loadingPayments}
+          />
 
-      {/* Day Close Form (only when not yet closed) */}
-      {!loadingDayClose && !isAlreadyClosed && (
-        <DayCloseFormCard
-          organizationId={organizationId}
-          date={selectedDate}
-          locationId={selectedLocationId}
-          cashFromPayments={cashFromPayments}
-          cashDeposits={cashDeposits}
-          cashWithdrawals={cashWithdrawals}
-          canEdit={canEdit}
-          isAlreadyClosed={isAlreadyClosed}
-          previousCashNextOpening={prevDayClose?.cashNextOpening ?? null}
-          onClosed={handleClosed}
-        />
-      )}
+          {/* Cash Transactions */}
+          <CashTransactionsCard
+            organizationId={organizationId}
+            date={selectedDate}
+            locationId={selectedLocationId}
+            canEdit={canEdit && !isAlreadyClosed}
+            isLoading={loadingDayClose}
+          />
 
-      {/* History */}
-      <DayCloseHistoryCard
-        organizationId={organizationId}
-        locationId={selectedLocationId}
-      />
+          {/* Day Close Form (only when not yet closed) */}
+          {!loadingDayClose && !isAlreadyClosed && (
+            <DayCloseFormCard
+              organizationId={organizationId}
+              date={selectedDate}
+              locationId={selectedLocationId}
+              cashFromPayments={cashFromPayments}
+              cashDeposits={cashDeposits}
+              cashWithdrawals={cashWithdrawals}
+              canEdit={canEdit}
+              isAlreadyClosed={isAlreadyClosed}
+              previousCashNextOpening={prevDayClose?.cashNextOpening ?? null}
+              onClosed={handleClosed}
+            />
+          )}
+
+          {/* History */}
+          <DayCloseHistoryCard
+            organizationId={organizationId}
+            locationId={selectedLocationId}
+          />
+        </TabsContent>
+
+        <TabsContent value="sejf" className="mt-4">
+          <SafeTabContent
+            organizationId={organizationId}
+            locationId={selectedLocationId}
+            canEdit={canEdit}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -47,6 +47,7 @@ import {
 import { useSupabasePaymentsRevenueByDateRange } from "@/hooks/use-supabase-payments";
 import { useSupabaseGabinetLocationsList } from "@/hooks/use-supabase-gabinet-locations";
 import { useSupabaseGabinetSafeMovements } from "@/hooks/use-supabase-safe";
+import { useSupabaseOrganizationMembers } from "@/hooks/use-supabase-organizations";
 import { supabaseKeys } from "@/lib/supabase/query-keys";
 
 function GabinetCashSkeleton() {
@@ -1033,6 +1034,7 @@ function SafeMovementsCard({
   safeBalance,
   organizationId,
   locationId,
+  memberNameById,
   onWithdrawn,
 }: {
   movements: { id: string; type: "transfer_in" | "withdrawal"; amount: number; description: string | null; referenceDayCloseId: string | null; createdBy: string; createdAt: number }[];
@@ -1041,6 +1043,7 @@ function SafeMovementsCard({
   safeBalance: number;
   organizationId: string;
   locationId: string;
+  memberNameById: Map<string, string>;
   onWithdrawn: () => void;
 }) {
   const { t } = useTranslation();
@@ -1151,6 +1154,7 @@ function SafeMovementsCard({
                       )}
                       <p className="text-muted-foreground text-xs mt-1">
                         {formatTs(m.createdAt)}
+                        {memberNameById.get(m.createdBy) && ` · ${memberNameById.get(m.createdBy)}`}
                       </p>
                     </div>
                   </div>
@@ -1235,6 +1239,15 @@ function SafeTabContent({
     { enabled: !!locationId },
   );
 
+  const { data: members } = useSupabaseOrganizationMembers(organizationId);
+  const memberNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of members ?? []) {
+      if (m.userId && m.user?.name) map.set(m.userId, m.user.name);
+    }
+    return map;
+  }, [members]);
+
   const handleWithdrawn = useCallback(() => {
     qc.invalidateQueries({
       queryKey: supabaseKeys.gabinetSafeMovements.list(organizationId),
@@ -1265,6 +1278,7 @@ function SafeTabContent({
         safeBalance={safeData?.balance ?? 0}
         organizationId={organizationId}
         locationId={locationId}
+        memberNameById={memberNameById}
         onWithdrawn={handleWithdrawn}
       />
     </div>

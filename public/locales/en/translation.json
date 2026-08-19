@@ -85,7 +85,9 @@
       "invalidArguments": "Invalid data. Please check the form and try again.",
       "invalidField": "Invalid data: {{field}} — {{reason}}.",
       "schemaCache": "Database schema is missing a column — a migration likely wasn't applied. Run `npm run migrations:apply` and refresh.",
-      "storage": "Storage error. Please try again."
+      "storage": "Storage error. Please try again.",
+      "connectionLost": "A temporary connection issue occurred. Please try again in a moment.",
+      "saveFailed": "Data storage error. Please try again."
     },
     "previous": "Previous",
     "next": "Next",
@@ -573,7 +575,8 @@
       "notes": "Notes"
     },
     "errors": {
-      "createFailed": "Could not create the contact."
+      "createFailed": "Could not create the contact.",
+      "updateFailed": "Failed to update contact."
     }
   },
   "companies": {
@@ -621,7 +624,8 @@
       "notes": "Notes"
     },
     "errors": {
-      "createFailed": "Could not create the company."
+      "createFailed": "Could not create the company.",
+      "updateFailed": "Failed to update company."
     }
   },
   "activities": {
@@ -669,7 +673,12 @@
       "showCompleted": "Show completed",
       "hideCompleted": "Hide completed"
     },
-    "pageTitle": "Activities"
+    "pageTitle": "Activities",
+    "errors": {
+      "createFailed": "Failed to create activity.",
+      "updateFailed": "Failed to update activity.",
+      "deleteFailed": "Failed to delete activity."
+    }
   },
   "documents": {
     "title": "Documents",
@@ -754,7 +763,11 @@
       "errorGeneric": "An unexpected error occurred",
       "formTitle": "Form",
       "fillPrompt": "Fill in the required fields, then proceed to sign.",
-      "renderError": "Could not render the document. Please contact the clinic."
+      "renderError": "Could not render the document. Please contact the clinic.",
+      "otpSendError": "Failed to send verification code. Please try again.",
+      "otpVerifyError": "Invalid code or connection error. Please try again.",
+      "signError": "Failed to sign document. Check your internet connection and try again.",
+      "submitError": "Failed to complete document signing. Check your internet connection and try again."
     },
     "document": "Document",
     "generate": "Generate",
@@ -929,7 +942,10 @@
       "descriptionPlaceholder": "Product description..."
     },
     "errors": {
-      "saveFailed": "Could not save the product."
+      "saveFailed": "Could not save the product.",
+      "createFailed": "Failed to create product.",
+      "deleteFailed": "Failed to delete product.",
+      "toggleFailed": "Failed to toggle product status."
     },
     "stock": {
       "column": "Stock",
@@ -955,6 +971,9 @@
         "success": "Stock updated.",
         "negativeWarning": "Stock went negative. Review the movement history and correct shortages.",
         "error": "Could not update stock."
+      },
+      "correction": {
+        "error": "Failed to save stock correction."
       }
     },
     "simpleFilter": {
@@ -1040,6 +1059,9 @@
       "note": "Notes",
       "notePlaceholder": "Add call notes...",
       "logCall": "Log Call"
+    },
+    "errors": {
+      "createFailed": "Failed to log call."
     }
   },
   "pipelines": {
@@ -2221,14 +2243,22 @@
     "emptyReasons": "No lost reasons defined.",
     "confirmDelete": "Delete this reason?",
     "reasonRequired": "Require a reason when losing a deal",
-    "allowCustom": "Allow custom (free-text) reasons"
+    "allowCustom": "Allow custom (free-text) reasons",
+    "errors": {
+      "createFailed": "Failed to create lost reason.",
+      "updateFailed": "Failed to update lost reason."
+    }
   },
   "sources": {
     "title": "Sources",
     "description": "Manage contact and deal acquisition sources.",
     "addSource": "Add Source",
     "emptySources": "No sources defined.",
-    "confirmDelete": "Delete this source?"
+    "confirmDelete": "Delete this source?",
+    "errors": {
+      "createFailed": "Failed to create source.",
+      "updateFailed": "Failed to update source."
+    }
   },
   "globalSearch": {
     "placeholder": "Search contacts, companies, deals...",
@@ -2449,7 +2479,11 @@
     "sentDate": "Sent",
     "joinedDate": "Joined",
     "upgrade": "Upgrade Plan",
-    "remainingSeats": "{{count}} seat(s) remaining"
+    "remainingSeats": "{{count}} seat(s) remaining",
+    "errors": {
+      "resendFailed": "Failed to resend invitation.",
+      "cancelFailed": "Failed to cancel invitation."
+    }
   },
   "orgSettings": {
     "title": "Organization",
@@ -2490,7 +2524,10 @@
     "syncNow": "Sync Now",
     "syncing": "Syncing...",
     "oauthSuccess": "Google account connected successfully.",
-    "oauthError": "Failed to connect Google account. Please try again."
+    "oauthError": "Failed to connect Google account. Please try again.",
+    "errors": {
+      "disconnectFailed": "Failed to disconnect integration."
+    }
   },
   "csv": {
     "import": "Import",
@@ -2502,7 +2539,6 @@
     "importing": "Importing...",
     "importComplete": "Import complete",
     "importSuccess": "Successfully imported {{count}} records.",
-    "errors": "{{count}} error(s) occurred during import.",
     "downloadTemplate": "Download Template",
     "dragOrClick": "Drag & drop a CSV file or click to browse",
     "csvFilesOnly": "CSV files only",
@@ -2517,7 +2553,11 @@
     "close": "Close",
     "startImport": "Start Import",
     "next": "Next",
-    "back": "Back"
+    "back": "Back",
+    "errorsLabel": "{{count}} error(s) occurred during import.",
+    "errors": {
+      "exportFailed": "Failed to export data to CSV."
+    }
   },
   "gabinet": {
     "patients": {
@@ -2655,7 +2695,8 @@
       "noMedicalInfo": "No medical information",
       "errors": {
         "createFailed": "Could not add the client.",
-        "saveFailed": "Could not save client changes."
+        "saveFailed": "Could not save client changes.",
+        "deleteFailed": "Failed to delete patient."
       },
       "merge": {
         "action": "Merge with...",
@@ -2776,7 +2817,10 @@
         "invalidField": "Could not save the treatment: {{field}} — {{reason}}.",
         "schemaCache": "Database schema is missing a column — a migration likely wasn't applied. Run `npm run migrations:apply` and refresh.",
         "storage": "Could not save the treatment — storage error. Please try again.",
-        "purchaseFailed": "Could not sell the treatment."
+        "purchaseFailed": "Could not sell the treatment.",
+        "productsSaveFailed": "Failed to save products.",
+        "productsSaveFailedDetail": "Failed to save treatment products.",
+        "deleteFailed": "Failed to delete treatment."
       },
       "patientTreatments": "Treatments",
       "addOrSell": "Add / Sell",
@@ -3280,7 +3324,13 @@
       "errors": {
         "createFailed": "Could not add the employee.",
         "saveFailed": "Could not save employee changes.",
-        "noteFailed": "Could not add the note."
+        "noteFailed": "Could not add the note.",
+        "changePasswordFailed": "Failed to change password.",
+        "photoUploadFailed": "Failed to upload photo.",
+        "activateFailed": "Failed to activate account.",
+        "blockFailed": "Failed to block account.",
+        "unblockFailed": "Failed to unblock account.",
+        "deleteFailed": "Failed to delete employee."
       },
       "navGroups": {
         "clientsAndVisits": "Clients and Visits",
@@ -3288,6 +3338,10 @@
         "employeeData": "Employee Data",
         "documentsAndAssets": "Documents and Assets",
         "accountAndAccess": "Account and Access"
+      },
+      "permissions": {
+        "saveError": "Failed to save permissions.",
+        "resetError": "Failed to reset permissions."
       }
     },
     "leaveTypes": {
@@ -3479,10 +3533,14 @@
       "addTreatment": "Add treatment",
       "removeTreatment": "Remove treatment",
       "totalDuration": "Total",
-      "packageTreatment": "Treatment covered by package"
+      "packageTreatment": "Treatment covered by package",
+      "createFailed": "Failed to create appointment."
     },
     "events": {
-      "create": "New Event"
+      "create": "New Event",
+      "errors": {
+        "createFailed": "Failed to add event."
+      }
     },
     "appointmentDetail": {
       "title": "Appointment Details",
@@ -3768,7 +3826,10 @@
       "errors": {
         "saveFailed": "Could not save the package.",
         "deleteFailed": "Could not delete the package.",
-        "purchaseFailed": "Could not sell the package."
+        "purchaseFailed": "Could not sell the package.",
+        "createFailed": "Failed to create package.",
+        "toggleActiveFailed": "Failed to toggle package status.",
+        "assignFailed": "Failed to assign package."
       }
     },
     "documents": {
@@ -4316,6 +4377,20 @@
       "dayAlreadyClosed": "Day already closed",
       "totalCollected": "Total collected",
       "history": "Closure history"
+    },
+    "deliveries": {
+      "loadError": "Failed to load delivery.",
+      "analyzeError": "Failed to analyze invoice.",
+      "matchError": "Failed to match items.",
+      "postError": "Failed to post delivery.",
+      "cancelError": "Failed to cancel delivery.",
+      "invoiceImport": {
+        "error": "Failed to create delivery."
+      },
+      "decisions": {
+        "saveError": "Failed to save decisions.",
+        "postError": "Failed to approve delivery."
+      }
     }
   },
   "customFields": {
@@ -4919,6 +4994,11 @@
       "errors": {
         "roleUpdateFailed": "Could not update the user's role."
       }
+    },
+    "entitlements": {
+      "errors": {
+        "setFailed": "Failed to update module access."
+      }
     }
   },
   "login": {
@@ -5108,6 +5188,52 @@
   "notes": {
     "errors": {
       "createFailed": "Failed to add note."
+    }
+  },
+  "associations": {
+    "errors": {
+      "linkFailed": "Failed to link records."
+    }
+  },
+  "search": {
+    "errors": {
+      "searchFailed": "Search failed."
+    }
+  },
+  "email": {
+    "errors": {
+      "sendFailed": "Failed to send message."
+    }
+  },
+  "inventory": {
+    "confirm": {
+      "error": "Failed to confirm inventory."
+    }
+  },
+  "leads": {
+    "errors": {
+      "createFailed": "Failed to create lead.",
+      "updateFailed": "Failed to update lead."
+    }
+  },
+  "gdpr": {
+    "exportFailed": "Failed to export data.",
+    "eraseFailed": "Failed to erase data."
+  },
+  "invitations": {
+    "errors": {
+      "createFailed": "Failed to send invitation."
+    }
+  },
+  "activityTypes": {
+    "errors": {
+      "createFailed": "Failed to create activity type.",
+      "updateFailed": "Failed to update activity type."
+    }
+  },
+  "organization": {
+    "errors": {
+      "saveFailed": "Failed to save organization settings."
     }
   }
 }

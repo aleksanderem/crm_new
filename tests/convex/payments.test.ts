@@ -151,6 +151,41 @@ describe("payments", () => {
     expect(result.page[0].notes).toContain("Refund: Patient request");
   });
 
+  test("refund stores refund_amount and refunded_at (issue #5591)", async () => {
+    const t = createTestCtx();
+    const { organizationId, identity } = await seedTestUser(t);
+
+    const paymentId = await t.withIdentity(identity).action(
+      api.payments.create,
+      {
+        organizationId,
+        amount: 150,
+        currency: "PLN",
+        paymentMethod: "cash",
+      },
+    );
+
+    const beforeRefund = Date.now();
+    await t.withIdentity(identity).action(api.payments.refund, {
+      organizationId,
+      paymentId,
+      reason: "Test",
+    });
+    const afterRefund = Date.now();
+
+    const result = await t.withIdentity(identity).action(api.payments.list, {
+      organizationId,
+      paginationOpts: { numItems: 10, cursor: null },
+    });
+
+    const refunded = result.page[0];
+    expect(refunded.status).toBe("refunded");
+    expect(refunded.refundAmount).toBe(150);
+    expect(typeof refunded.refundedAt).toBe("number");
+    expect(refunded.refundedAt).toBeGreaterThanOrEqual(beforeRefund);
+    expect(refunded.refundedAt).toBeLessThanOrEqual(afterRefund);
+  });
+
   test("cannot refund a pending payment", async () => {
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);

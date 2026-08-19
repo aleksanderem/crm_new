@@ -710,12 +710,15 @@ export const refund = action({
       }
     }
 
+    const now = Date.now();
     await db.patch("payments", args.paymentId, {
       status: "refunded",
+      refundAmount: payment.amount,
+      refundedAt: now,
       notes: args.reason
         ? `${payment.notes ? (payment.notes as string) + "\n" : ""}Refund: ${args.reason}`
         : (payment.notes as string) ?? null,
-      updatedAt: Date.now(),
+      updatedAt: now,
     });
 
     // Side effects via internal mutation

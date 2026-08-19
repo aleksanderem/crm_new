@@ -189,6 +189,41 @@ function createInMemoryRawClient() {
         const formatted = `${prefix}/${year}/${String(next).padStart(5, "0")}`;
         return { data: formatted, error: null };
       }
+      if (fn === "insert_gabinet_receipt_with_number") {
+        // Atomic receipt insert stub: allocates the next receipt number for the
+        // (org, location, year, prefix) combination, then stores a minimal row in
+        // the in-memory gabinetReceipts table and returns { receipt_id, receipt_number }.
+        const orgId = String(params.p_org_id ?? "");
+        const year = Number(params.p_year ?? new Date().getFullYear());
+        const prefix = String(params.p_prefix ?? "REC");
+        const locationId = params.p_location_id ? String(params.p_location_id) : "";
+        const key = `${orgId}:${locationId}:${year}:${prefix}`;
+        const next = (receiptSequenceCounters.get(key) ?? 0) + 1;
+        receiptSequenceCounters.set(key, next);
+        const receiptNumber = `${prefix}/${year}/${String(next).padStart(5, "0")}`;
+        const receiptId = randomId();
+        const now = Number(params.p_now ?? Date.now());
+        // Insert the receipt row so subsequent reads via raw().from("gabinet_receipts")
+        // find it (used by the split-payment refund guard in payments.ts).
+        getTable("gabinetReceipts").set(receiptId, {
+          id: receiptId,
+          organizationId: orgId,
+          receiptNumber,
+          paymentId: String(params.p_payment_id ?? ""),
+          appointmentId: params.p_appointment_id ? String(params.p_appointment_id) : null,
+          patientId: params.p_patient_id ? String(params.p_patient_id) : null,
+          receiptType: String(params.p_receipt_type ?? "receipt"),
+          totalNet: Number(params.p_total_net ?? 0),
+          totalVat: Number(params.p_total_vat ?? 0),
+          totalGross: Number(params.p_total_gross ?? 0),
+          paymentMethod: String(params.p_payment_method ?? "cash"),
+          issuedAt: Number(params.p_issued_at ?? now),
+          createdBy: String(params.p_created_by ?? ""),
+          createdAt: now,
+          updatedAt: now,
+        });
+        return { data: [{ receipt_id: receiptId, receipt_number: receiptNumber }], error: null };
+      }
       return { data: null, error: { message: `rpc stub: unknown function ${fn}` } };
     },
   };

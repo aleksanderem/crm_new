@@ -466,7 +466,7 @@ describe("allowCustomLostReason: controls whether lostReasons.create is permitte
     const t = createTestCtx();
     const { organizationId, identity } = await seedTestUser(t);
 
-    await seedConvexOrgSettings(t, organizationId, { allowCustomLostReason: false });
+    await seedSupabaseOrgSettings(String(organizationId), { allowCustomLostReason: false });
 
     await expect(
       t.withIdentity(identity).action(api.lostReasons.create, {
@@ -513,7 +513,7 @@ describe("lostReasonRequired: blocks leads.update to 'lost' status when no lostR
     const t = createTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
 
-    await seedConvexOrgSettings(t, organizationId, { lostReasonRequired: true });
+    await seedSupabaseOrgSettings(String(organizationId), { lostReasonRequired: true });
     const leadId = await seedLead(String(organizationId), String(userId));
 
     await expect(

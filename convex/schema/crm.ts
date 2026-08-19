@@ -382,6 +382,10 @@ export function createCrmTables({
       v.literal("inventory_adjustment"),
       v.literal("appointment_use"),
       v.literal("appointment_return"),
+      // Informational-only reservation movements added by #5532.
+      // Do not update productStockLevels — written for warehouse reports only.
+      v.literal("reserved"),
+      v.literal("reservation_release"),
       v.literal("direct_sale"),
       v.literal("deal_close"),
       v.literal("deal_reopen"),

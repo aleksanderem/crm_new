@@ -130,6 +130,13 @@ export function ProductStockHistoryDialog({
     (m) => m.reason === "warehouse_receive" || (m.delta > 0 && m.reason === "initial"),
   );
 
+  // Informational movements (reserved/reservation_release) track stock committed
+  // to future appointments without changing the on-hand balance. They add noise
+  // for end-users who care about actual stock changes, so we hide them here.
+  const displayMovements = movements.filter(
+    (m) => m.reason !== "reserved" && m.reason !== "reservation_release",
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
@@ -189,14 +196,14 @@ export function ProductStockHistoryDialog({
               {t("common.loading", { defaultValue: "Ładowanie…" })}
             </p>
           )}
-          {!isLoading && movements.length === 0 && (
+          {!isLoading && displayMovements.length === 0 && (
             <p className="py-8 text-center text-sm text-muted-foreground">
               {t("products.stock.history.empty", {
                 defaultValue: "Brak operacji magazynowych dla tego produktu.",
               })}
             </p>
           )}
-          {movements.map((m) => (
+          {displayMovements.map((m) => (
             <MovementRow key={m._id} movement={m} unit={unit} />
           ))}
         </div>

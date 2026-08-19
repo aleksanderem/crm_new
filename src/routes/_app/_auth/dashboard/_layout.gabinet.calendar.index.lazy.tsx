@@ -50,6 +50,10 @@ import {
   type DayByEmployeeColumn,
 } from "@/components/gabinet/calendar/calendar-day-by-employee-view";
 import { CalendarWeekView } from "@/components/gabinet/calendar/calendar-week-view";
+import {
+  CalendarWeekByEmployeeView,
+  type WeekByEmployeeColumn,
+} from "@/components/gabinet/calendar/calendar-week-by-employee-view";
 import { CalendarMonthView } from "@/components/gabinet/calendar/calendar-month-view";
 import { AppointmentDialog } from "@/components/gabinet/calendar/appointment-dialog";
 import { AppointmentCard } from "@/components/gabinet/calendar/appointment-card";
@@ -522,9 +526,10 @@ function GabinetCalendarPage() {
   // per employee, so we need leaves for every employee on the visible day.
   // Issue #1013.
   const isDayByEmployeeView = viewMode === "day" && employeeFilter === "all";
+  const isWeekByEmployeeView = viewMode === "week" && employeeFilter === "all";
   const { data: allLeavesRaw } = useSupabaseGabinetLeavesList(organizationId, {
     status: "approved",
-    enabled: isDayByEmployeeView,
+    enabled: isDayByEmployeeView || isWeekByEmployeeView,
   });
 
   // Build date -> leave info map for the visible range. A multi-day leave is
@@ -1414,6 +1419,61 @@ function GabinetCalendarPage() {
     userMap,
   ]);
 
+  // employeeId → dayOfWeek → schedule (for the week-by-employee view)
+  const weekByEmployeeScheduleMap = useMemo(() => {
+    const map = new Map<string, Map<string, { startTime: string; endTime: string; breakStart?: string; breakEnd?: string }>>();
+    if (!isWeekByEmployeeView || !employeeSchedulesRaw) return map;
+    for (const s of employeeSchedulesRaw) {
+      if (!s.isWorking) continue;
+      if (!map.has(s.userId)) map.set(s.userId, new Map());
+      map.get(s.userId)!.set(`${s.dayOfWeek}`, {
+        startTime: s.startTime,
+        endTime: s.endTime,
+        breakStart: s.breakStart,
+        breakEnd: s.breakEnd,
+      });
+    }
+    return map;
+  }, [isWeekByEmployeeView, employeeSchedulesRaw]);
+
+  // employeeId → date → leave window (for the week-by-employee view)
+  const weekByEmployeeLeaveMap = useMemo(() => {
+    const map = new Map<string, Map<string, { startTime?: string; endTime?: string }>>();
+    if (!isWeekByEmployeeView || !allLeavesRaw) return map;
+    for (const leave of allLeavesRaw) {
+      if (leave.endDate < startDate || leave.startDate > endDate) continue;
+      if (!map.has(leave.userId)) map.set(leave.userId, new Map());
+      const dateMap = map.get(leave.userId)!;
+      const from = leave.startDate < startDate ? startDate : leave.startDate;
+      const to = leave.endDate > endDate ? endDate : leave.endDate;
+      const d = new Date(from + "T00:00:00");
+      const e = new Date(to + "T00:00:00");
+      while (d.getTime() <= e.getTime()) {
+        const ds = formatDateStr(d);
+        if (!dateMap.has(ds)) {
+          dateMap.set(ds, { startTime: leave.startTime, endTime: leave.endTime });
+        }
+        d.setDate(d.getDate() + 1);
+      }
+    }
+    return map;
+  }, [isWeekByEmployeeView, allLeavesRaw, startDate, endDate]);
+
+  // Employee list for the week-by-employee view (same filter as dayByEmployeeColumns)
+  const weekByEmployeeColumns = useMemo<WeekByEmployeeColumn[]>(() => {
+    if (!isWeekByEmployeeView) return [];
+    const list = (employees ?? []).filter(
+      (e): e is MappedGabinetEmployee & { userId: string } =>
+        e.showInCalendar !== false && e.userId !== undefined,
+    );
+    return list.map((emp) => {
+      const name = getEmployeeName(emp);
+      return { userId: emp.userId, name, initials: getEmployeeInitials(name) };
+    });
+    // userMap captured by getEmployeeName via closure
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isWeekByEmployeeView, employees, userMap]);
+
   return (
     <DndContext
       sensors={sensors}
@@ -1917,7 +1977,22 @@ function GabinetCalendarPage() {
               slotMinutes={slotMinutes}
             />
           )}
-          {viewMode === "week" && (
+          {viewMode === "week" && isWeekByEmployeeView && (
+            <CalendarWeekByEmployeeView
+              weekStart={formatDateStr(getMonday(currentDate))}
+              appointments={viewAppointments}
+              employees={weekByEmployeeColumns}
+              scheduleByEmployee={weekByEmployeeScheduleMap}
+              leaveByEmployeeAndDate={weekByEmployeeLeaveMap}
+              onSlotClick={handleEmployeeSlotClick}
+              onSlotDragSelect={handleEmployeeSlotDragSelect}
+              onAppointmentResize={handleAppointmentResize}
+              onDayHeaderClick={handleDayClick}
+              selectedDate={formatDateStr(currentDate)}
+              slotMinutes={slotMinutes}
+            />
+          )}
+          {viewMode === "week" && !isWeekByEmployeeView && (
             <CalendarWeekView
               weekStart={formatDateStr(getMonday(currentDate))}
               appointments={aggregatedAppointments}

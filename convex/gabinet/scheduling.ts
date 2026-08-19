@@ -765,7 +765,7 @@ export const withdrawLeave = action({
         { organizationId: args.organizationId },
       );
       await ctx.runQuery(internal._helpers.products.verifyGabinetAccess, { organizationId: args.organizationId });
-      const userId = String(authResult.userId);
+      const userId = authResult.userId;
       const db = createSupabaseDb();
 
       const leave = await db.get("gabinetLeaves", args.leaveId);
@@ -937,7 +937,7 @@ export const approveLeave = action({
       await ctx.runMutation(internal.gabinet.scheduling._leaveSideEffects, {
         organizationId: args.organizationId,
         leaveId: args.leaveId,
-        userId: leave.userId as string,
+        userId: leave.userId as Id<"users">,
         action: "status_changed",
         description: `Leave request approved`,
         performedBy: String(authResult.userId),
@@ -992,7 +992,7 @@ export const rejectLeave = action({
       await ctx.runMutation(internal.gabinet.scheduling._leaveSideEffects, {
         organizationId: args.organizationId,
         leaveId: args.leaveId,
-        userId: leave.userId as string,
+        userId: leave.userId as Id<"users">,
         action: "status_changed",
         description: `Leave request rejected`,
         performedBy: String(authResult.userId),
@@ -1042,7 +1042,7 @@ export const deleteLeave = action({
       await ctx.runMutation(internal.gabinet.scheduling._leaveSideEffects, {
         organizationId: args.organizationId,
         leaveId: args.leaveId,
-        userId: leave.userId as string,
+        userId: leave.userId as Id<"users">,
         action: "deleted",
         description: `Leave request deleted`,
         performedBy: String(authResult.userId),

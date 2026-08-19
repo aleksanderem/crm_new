@@ -624,7 +624,7 @@ export const bookFromPortal = action({
         internal.gabinet.patientPortal._bookingNotifications,
         {
           organizationId,
-          employeeId,
+          employeeId: employeeId as Id<"users">,
           patientName,
           treatmentName: treatment.name as string,
           date: args.preferredDate,
@@ -778,7 +778,7 @@ export const requestReschedule = action({
         internal.gabinet.patientPortal._rescheduleNotifications,
         {
           organizationId,
-          employeeId: String(appt.employeeId),
+          employeeId: appt.employeeId as Id<"users">,
           patientName,
           treatmentName,
           requestedDate: args.requestedDate,

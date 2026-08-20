@@ -1,18 +1,18 @@
 {
-  "session_id": "S0130",
+  "session_id": "S0131",
   "started_at": "2026-08-20T00:00:00Z",
   "last_updated": "2026-08-20T00:00:00Z",
-  "status": "active",
-  "focus": "SYS1 — QUERA — przygotowanie kontrolowanego scenariusza przekrojowego E2E (#5645)",
+  "status": "completed",
+  "focus": "SYS1B — QUERA — korekta scenariusza E2E według rzeczywistego pokrycia testami (#5649)",
   "tasks_snapshot": {
     "total": 1,
     "not_started": 0,
-    "in_progress": 1,
-    "passing": 0,
+    "in_progress": 0,
+    "passing": 1,
     "failing": 0,
     "blocked": 0
   },
-  "active_task_ids": ["E2E-DOC-01"],
+  "active_task_ids": [],
   "blockers": [],
-  "notes": "Documentation-only task. No code changes. Writing controlled E2E scenario covering: inventory/LOTs/FEFO, treatments, patients, documents, packages, appointments (all statuses), payments, direct_sale, kasa/sejf, reports. All financial and inventory values pre-calculated."
+  "notes": "Documentation-only correction task. Updated docs/e2e-scenarios/quera-cross-module-e2e.md: added coverage status (COVERED/PARTIAL/UNIT/INTEGRATION ONLY/NOT COVERED) to all 48 SYS1 checkpoints, removed 4 non-existent spec files, added CHECKLISTA PO ODBLOKOWANIU ENV, added full 48-row summary table, verified 5+17+13+13=48 sum."
 }

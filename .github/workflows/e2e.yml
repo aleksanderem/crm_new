@@ -37,11 +37,13 @@ jobs:
 
       - name: Build
         run: npx vite build
+        env:
+          VITE_CONVEX_URL: ${{ secrets.VITE_CONVEX_URL }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Start preview server
         run: npx vite preview --port 5173 &
-        env:
-          VITE_CONVEX_URL: ${{ secrets.VITE_CONVEX_URL }}
 
       - name: Wait for server
         run: npx wait-on http://localhost:5173 --timeout 30000
@@ -50,8 +52,8 @@ jobs:
         run: npx playwright test
         env:
           CI: true
-          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
-          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+          PLAYWRIGHT_TEST_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+          PLAYWRIGHT_TEST_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
           # Some specs (e.g. e2e/gabinet/appointments.spec.ts) build a
           # ConvexHttpClient at module load and look up VITE_CONVEX_URL.
           # Without this the test discovery throws before any test runs.

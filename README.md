@@ -65,9 +65,12 @@ The app is available at `http://localhost:5173`.
 ```bash
 npm run test:unit       # Convex unit tests + frontend unit tests
 npm run typecheck       # TypeScript for frontend + Convex
+npx playwright test     # E2E tests (requires running app + .env.local)
 ```
 
 > **Note:** Convex unit tests must run via `npm run test:unit`, not bare `vitest`. See `TESTING.md` for details.
+>
+> **E2E setup:** E2E tests need `VITE_CONVEX_URL`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_ANON_KEY` in `.env.local`. Copy `.env.example` → `.env.local` and fill in those three values. See `TESTING.md` for the full E2E setup guide.
 
 ## Deployment
 

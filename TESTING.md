@@ -1,5 +1,55 @@
 # Testing
 
+## E2E tests (Playwright)
+
+E2E tests require a running app and a real Convex + Supabase backend. The fastest local workflow is to start the dev server with `npm start` (which runs Convex dev + Vite in parallel), then run Playwright against it.
+
+### Required `.env.local` variables
+
+Three `VITE_*` variables must be present in `.env.local` at the repo root before you can build or dev-serve the app for E2E:
+
+| Variable | Where to find it |
+|---|---|
+| `VITE_CONVEX_URL` | Written automatically by `npx convex dev` (e.g. `https://your-project.convex.cloud`) |
+| `VITE_SUPABASE_URL` | Your self-hosted or Supabase Cloud instance URL (same value as `SUPABASE_URL`) |
+| `VITE_SUPABASE_ANON_KEY` | The `anon` key from your Supabase project's API settings (same value as `SUPABASE_ANON_KEY`) |
+
+Copy `.env.example` to `.env.local` and fill in these three values. The other vars in `.env.example` are for Convex functions (set via `npx convex env set`) and for production deploys — they are not needed locally for E2E.
+
+Two Playwright-specific environment variables control test credentials and target URL:
+
+| Variable | Default | Description |
+|---|---|---|
+| `PLAYWRIGHT_TEST_EMAIL` | `amiesak@gmail.com` | Email of the test user account |
+| `PLAYWRIGHT_TEST_PASSWORD` | (hardcoded fallback) | Password for the test user |
+| `PLAYWRIGHT_BASE_URL` | `http://localhost:5173` | Override if your dev server runs on a different port |
+
+### Running E2E locally
+
+```sh
+# 1. Start the app (Convex dev + Vite)
+npm start
+
+# 2. In a separate terminal, run all E2E tests
+npx playwright test
+
+# Run a single file
+npx playwright test e2e/auth.spec.ts
+
+# Run with headed browser (useful for debugging)
+npx playwright test --headed
+```
+
+Some test specs (e.g. `e2e/gabinet/appointments.spec.ts`) construct a `ConvexHttpClient` and a Supabase client at module load time to seed or clean up test data. They read `VITE_CONVEX_URL`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_ANON_KEY` directly from the environment, falling back to `.env.local` when the env vars are not set. If any of those are missing you will see an error like `Missing VITE_CONVEX_URL — set the env var or add it to .env.local` before any test runs.
+
+### CI
+
+In CI the build step injects `VITE_CONVEX_URL`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_ANON_KEY` as environment variables (see `.github/workflows/e2e.yml`). `PLAYWRIGHT_TEST_EMAIL` and `PLAYWRIGHT_TEST_PASSWORD` are stored as GitHub Actions secrets (`E2E_USER_EMAIL` / `E2E_USER_PASSWORD`).
+
+---
+
+## Unit tests (Vitest)
+
 ## Canonical command
 
 Run the full unit-test suite (Convex + frontend) via the npm script:

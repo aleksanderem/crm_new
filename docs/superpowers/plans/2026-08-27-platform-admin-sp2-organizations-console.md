@@ -164,42 +164,44 @@ export const listOrganizations = action({
       db.query("teamMemberships").collect(),
       db.query("productSubscriptions").collect(),
     ]);
-    const ownerIds = [...new Set(orgs.map((o) => String(o.owner_id)))];
+    const ownerIds = [...new Set(orgs.map((o) => String(o.ownerId)))];
     const owners = await db.getMany("users", ownerIds);
-    const ownerById = new Map(owners.map((u) => [String(u._id ?? u.id), u]));
+    const ownerById = new Map(owners.map((u) => [String(u._id), u]));
     const memberCount = new Map<string, number>();
     for (const m of memberships) {
-      const k = String(m.organizationId ?? m.organization_id);
+      const k = String(m.organizationId);
       memberCount.set(k, (memberCount.get(k) ?? 0) + 1);
     }
     const entByOrg = new Map<string, Set<string>>();
     for (const e of entRows) {
-      if ((e.status as string) !== "active") continue;
-      const k = String(e.organizationId ?? e.organization_id);
+      if (String(e.status) !== "active") continue;
+      const k = String(e.organizationId);
       if (!entByOrg.has(k)) entByOrg.set(k, new Set());
-      entByOrg.get(k)!.add(String(e.productId ?? e.product_id));
+      entByOrg.get(k)!.add(String(e.productId));
     }
-    return orgs.map((o) => {
-      const id = String(o.id ?? o._id);
-      const owner = ownerById.get(String(o.owner_id));
-      const ents = entByOrg.get(id) ?? new Set();
-      return {
-        organizationId: id,
-        name: String(o.name ?? ""),
-        slug: String(o.slug ?? ""),
-        ownerEmail: (owner?.email as string | null) ?? null,
-        memberCount: memberCount.get(id) ?? 0,
-        status: ((o.status as string) ?? "active") as "active" | "suspended",
-        crm: ents.has("crm") ? "active" : "none",
-        gabinet: ents.has("gabinet") ? "active" : "none",
-        createdAt: Number(o.created_at ?? 0),
-      };
-    });
+    return orgs
+      .map((o) => {
+        const id = String(o._id);
+        const owner = ownerById.get(String(o.ownerId));
+        const ents = entByOrg.get(id) ?? new Set<string>();
+        return {
+          organizationId: id,
+          name: (o.name as string) ?? "",
+          slug: (o.slug as string) ?? "",
+          ownerEmail: (owner?.email as string | null) ?? null,
+          memberCount: memberCount.get(id) ?? 0,
+          status: ((o.status as string) ?? "active") as "active" | "suspended",
+          crm: ents.has("crm") ? "active" : "none",
+          gabinet: ents.has("gabinet") ? "active" : "none",
+          createdAt: Number(o.createdAt ?? 0),
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
   },
 });
 ```
 
-> NOTE for implementer: verify the exact Supabase column casing returned by the in-memory stub and real PostgREST for `organizations`/`team_memberships`/`product_subscriptions` (snake_case in Supabase). The reference `listOrgEntitlements` already reads these — copy its accessor style verbatim rather than guessing `o.organizationId` vs `o.organization_id`.
+> CRITICAL for implementer: the `createSupabaseDb().query(...).collect()` abstraction returns rows with **camelCase** keys and `_id` as the primary key (it maps DB snake_case→camelCase and `id`→`_id` on read). So read `o._id`, `o.ownerId`, `o.status`, `o.seatLimitOverride`, `o.createdAt`, `m.organizationId`, `e.organizationId`, `e.productId`; and `users` rows expose `u._id`, `u.email`, `u.name`. This exactly mirrors `convex/admin/entitlements.ts` `listOrgEntitlements` — open that function and copy its accessor style verbatim. Do NOT use snake_case accessors. Seed your test rows through the SAME harness the existing `entitlements.test.ts` uses so the read keys line up.
 
 - [ ] **Step 4: Implement `getOrganizationDetail`.** `action({ args: { organizationId: v.string() } })`, guard first. Read the org row, its memberships (`db.query("teamMemberships").eq("organizationId", id).collect()`), member users via `getMany`, active entitlements, and seat usage via `ctx.runAction(internal._helpers.seatLimits.checkSeatLimitAction, { organizationId: id })`. Compose the detail object per the Interfaces block. Plan is best-effort from `subscriptions` (may be `null`).
 

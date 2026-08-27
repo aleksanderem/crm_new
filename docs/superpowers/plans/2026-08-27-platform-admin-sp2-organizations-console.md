@@ -230,9 +230,9 @@ export const listOrganizations = action({
 
 - [ ] **Step 2: Run** — expect FAIL.
 
-- [ ] **Step 3: Add the Convex mirror mutation.** In `convex/admin/organizations.ts`, add an `internalMutation` `_patchOrg` that patches the Convex `organizations` row when it exists (prod orgs are Supabase-UUID keyed and may not resolve as Convex `_id` — guard with a `by_slug`/lookup or a try/no-op; follow how `admin/entitlements._upsertEntitlement` handles the Convex side). Keep it best-effort: the Supabase patch is the source of truth for reads.
+- [ ] **Step 3: (No Convex mirror for these fields.)** The new admin-only fields (`status`, `suspended_reason`, `seat_limit_override`) are read ONLY via Supabase — `verifyOrgAccess`/`mintSupabaseToken` (T2) and `checkSeatLimitAction` (T4) all `createSupabaseDb().get("organizations", …)`. No QueryCtx path reads them from `ctx.db`, and prod orgs are Supabase-UUID keyed (not Convex `_id` addressable), so a Convex `organizations` mirror patch would be a prod no-op. Write Supabase only, with a one-line code comment noting this. (The permanent dual-write constraint concerns `teamMemberships`, which this task does not touch.)
 
-- [ ] **Step 4: Implement the three write actions.** Each: guard `verifyPlatformAdmin` (capture `userId`), validate, `createSupabaseDb().patch("organizations", organizationId, {...})`, run `_patchOrg` mirror, then `logAudit`. Example:
+- [ ] **Step 4: Implement the three write actions.** Each: guard `verifyPlatformAdmin` (capture `userId`), validate, `createSupabaseDb().patch("organizations", organizationId, {...})`, then `logAudit`. Pass **camelCase** keys to `db.patch` — its implementation runs `mapRowToSnake(updates)` internally, so `suspendedReason` → `suspended_reason`, `seatLimitOverride` → `seat_limit_override`, `updatedAt` → `updated_at`, `ownerId` → `owner_id`. Example:
 
 ```ts
 export const setOrganizationStatus = action({
@@ -241,18 +241,16 @@ export const setOrganizationStatus = action({
     status: v.union(v.literal("active"), v.literal("suspended")),
     reason: v.optional(v.string()),
   },
+  returns: v.object({ status: v.union(v.literal("active"), v.literal("suspended")) }),
   handler: async (ctx, args) => {
     const { userId } = await ctx.runAction(internal._helpers.authAction.verifyPlatformAdmin, {});
+    // Supabase-only: these admin fields are read exclusively via createSupabaseDb
+    // (verifyOrgAccess / checkSeatLimitAction). No Convex ctx.db mirror is consulted.
     const db = createSupabaseDb();
     await db.patch("organizations", args.organizationId, {
       status: args.status,
-      suspended_reason: args.status === "suspended" ? (args.reason ?? null) : null,
-      updated_at: Date.now(),
-    });
-    await ctx.runMutation(internal.admin.organizations._patchOrg, {
-      organizationId: args.organizationId,
-      status: args.status,
-      suspendedReason: args.status === "suspended" ? args.reason : undefined,
+      suspendedReason: args.status === "suspended" ? (args.reason ?? null) : null,
+      updatedAt: Date.now(),
     });
     await logAudit(ctx, {
       organizationId: args.organizationId,
@@ -266,12 +264,15 @@ export const setOrganizationStatus = action({
 });
 ```
 
+> CASING RULE (both directions): `.query().collect()`/`.get()` RETURN camelCase (snake→camel on read); `.patch()`/`.insert()` ACCEPT camelCase and convert camel→snake on write (`mapRowToSnake`). So use camelCase everywhere at the `createSupabaseDb` boundary. `updateOrganizationProfile` patches `{ name?, website?, ownerId? }` (camelCase); `setSeatLimitOverride` patches `{ seatLimitOverride: number | null, updatedAt }`.
+
 `updateOrganizationProfile`: if `ownerId` provided, first verify it appears in the org's `teamMemberships` (Supabase query) and throw `"New owner must be a member of the organization"` otherwise; patch `name`/`website`/`owner_id` (only provided fields). `setSeatLimitOverride`: patch `seat_limit_override` to the number or `null`; audit `organization_seat_override_set`.
 
 - [ ] **Step 5: Honor the override in `checkSeatLimitAction`.** In `convex/_helpers/seatLimits.ts` `checkSeatLimitAction`, after fetching `org` and computing `seatLimit` from the subscription/plan lookup, apply:
 
 ```ts
-    const override = (org as { seat_limit_override?: number | null }).seat_limit_override;
+    // db.get returns camelCase (snake→camel on read), so read seatLimitOverride.
+    const override = (org as { seatLimitOverride?: number | null }).seatLimitOverride;
     const effectiveLimit = typeof override === "number"
       ? Math.max(seatLimit, override)
       : seatLimit;

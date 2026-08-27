@@ -4,6 +4,7 @@ import { action } from "@cvx/_generated/server";
 import { auth } from "@cvx/auth";
 import { internal } from "@cvx/_generated/api";
 import { SUPABASE_JWT_SECRET } from "@cvx/env";
+import { createSupabaseDb } from "@cvx/_helpers/supabaseDb";
 
 export const mintSupabaseToken = action({
   args: { organizationId: v.string() },
@@ -17,6 +18,12 @@ export const mintSupabaseToken = action({
       await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
         organizationId: args.organizationId,
       });
+
+    const db = createSupabaseDb();
+    const org = await db.get("organizations", String(args.organizationId));
+    if (org && (org as { status?: string }).status === "suspended") {
+      throw new Error("Organization suspended");
+    }
 
     if (!SUPABASE_JWT_SECRET) {
       throw new Error("SUPABASE_JWT_SECRET not configured");

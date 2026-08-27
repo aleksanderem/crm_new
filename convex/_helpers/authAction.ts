@@ -121,6 +121,11 @@ export const verifyOrgAccess = internalAction({
 
     if (!membership) throw new Error("Not a member of this organization");
 
+    const org = await db.get("organizations", String(args.organizationId));
+    if (org && (org as { status?: string }).status === "suspended") {
+      throw new Error("Organization suspended");
+    }
+
     return {
       userId: userId as Id<"users">,
       userName: user.name as string | undefined,

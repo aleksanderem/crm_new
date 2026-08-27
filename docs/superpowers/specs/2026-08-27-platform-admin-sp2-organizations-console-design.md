@@ -1,7 +1,7 @@
 # Platform Admin Console — SP2: Organizations Console (Design Spec)
 
 **Date:** 2026-08-27
-**Status:** Design — awaiting approval
+**Status:** Implemented (branch feat/admin-sp2-organizations) — awaiting merge + Convex deploy
 **Sub-project:** SP2 of the Platform Admin Console (SP1 Module access ✅ → **SP2 Organizations console** → SP4 Plans/pricing → SP3 Users → SP5 Billing/Stripe → SP6 Settings/observability).
 
 ## Goal
@@ -45,7 +45,7 @@ The admin console itself is unaffected (it uses `verifyPlatformAdmin`, never `ve
 
 New action `mintImpersonationToken` action(`organizationId`): guarded by `verifyPlatformAdmin` (NOT membership), mints a Supabase JWT with `sub = adminUserId`, `org_id = targetOrg`, and an `imp: true` claim; `logAudit` (`organization_impersonation_started`). The frontend stores the impersonation token + target org, renders a persistent banner ("Podgląd jako operator — tryb tylko-do-odczytu. Wyjdź."), and routes Supabase reads through this token. Because the app's read path is overwhelmingly Supabase-direct (RLS filters by the `org_id` claim), the operator sees a faithful read-only view.
 
-Read-only is enforced structurally: write mutations call `verifyOrgAccess`, and the impersonating admin is not a member of the target org, so writes throw naturally. To make Convex-*action* reads that also call `verifyOrgAccess` (e.g. `getMembers`) work during impersonation, `verifyOrgAccess` grants access when the caller is a platform admin (read context) — this is the one deliberate widening, scoped to reads and audit-logged at mint time. Exiting impersonation clears the stored token/org.
+Read-only is enforced structurally: write mutations call `verifyOrgAccess`, and the impersonating admin is not a member of the target org, so writes throw naturally. **As shipped, `verifyOrgAccess` is NOT widened** (a deliberate refinement over the original design for ironclad read-only): the impersonation token carries only the `org_id` claim, so Supabase-direct reads (the app's overwhelming read path, RLS-filtered) work, while both write mutations and Convex-*action* reads that call `verifyOrgAccess` (e.g. `getMembers`) fail for the impersonating admin. This means a few action-backed screens are unavailable in the preview — an accepted trade for guaranteeing no write path can leak. The impersonation state is bound to the admin's `adminUserId` (persisted in sessionStorage, discarded on user mismatch and cleared on sign-out) so the token cannot leak into another user's session on a shared tab. Exiting impersonation clears the stored token/org and reloads the normal session.
 
 Impersonation is the heaviest, most security-sensitive piece and is sequenced **last** in the plan, so the console ships fully usable even if impersonation needs a follow-up hardening pass.
 

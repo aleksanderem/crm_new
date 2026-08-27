@@ -1,10 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { api } from "@cvx/_generated/api";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { useImpersonation } from "@/components/impersonation-context";
 import {
   Card,
   CardContent,
@@ -51,6 +52,8 @@ function AdminOrganizationDetail() {
   const { orgId } = Route.useParams();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { startImpersonation } = useImpersonation();
 
   // Admin gate
   const getIsPlatformAdmin = useAction(api.app.getIsPlatformAdmin);
@@ -120,6 +123,9 @@ function AdminOrganizationDetail() {
         }),
       ),
   });
+
+  const mintImpersonationAction = useAction(api.supabase.jwt.mintImpersonationToken);
+  const [impersonating, setImpersonating] = useState(false);
 
   const setSeatOverrideAction = useAction(api.admin.organizations.setSeatLimitOverride);
   const seatMutation = useMutation({
@@ -229,6 +235,25 @@ function AdminOrganizationDetail() {
     statusMutation.mutate({ organizationId: orgId, status: "active" });
   }
 
+  async function handleEnterAs() {
+    if (!detail) return;
+    setImpersonating(true);
+    try {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore -- TS2589: type instantiation depth in generated api types
+      const result = await mintImpersonationAction({ organizationId: orgId });
+      startImpersonation({ token: result.token, orgId, orgName: detail.name });
+      toast.success(`Podgląd jako ${detail.name} — tryb tylko-do-odczytu`);
+      void navigate({ to: "/dashboard" });
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Nie udało się uruchomić podglądu.",
+      );
+    } finally {
+      setImpersonating(false);
+    }
+  }
+
   const isActive = detail.status === "active";
 
   return (
@@ -298,6 +323,28 @@ function AdminOrganizationDetail() {
             disabled={profileMutation.isPending}
           >
             {profileMutation.isPending ? "Zapisywanie…" : "Zapisz"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Podgląd operatora (impersonation) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Podgląd jako operator</CardTitle>
+          <CardDescription>
+            Wejdź w tryb tylko-do-odczytu tej organizacji. Zobaczysz dane
+            filtrowane przez RLS tak, jak widzi je członek tej org. Zapis
+            i akcje Convex są niedostępne — to jest podgląd wsparcia, nie
+            pełny dostęp.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            onClick={() => void handleEnterAs()}
+            disabled={impersonating}
+            variant="outline"
+          >
+            {impersonating ? "Uruchamianie podglądu…" : "Wejdź jako"}
           </Button>
         </CardContent>
       </Card>

@@ -23,6 +23,7 @@ import {
 } from "@/lib/supabase/client";
 import { useSupabaseToken } from "@/hooks/use-supabase-token";
 import { useOrganization } from "@/components/org-context";
+import { useImpersonation } from "@/components/impersonation-context";
 
 // ---------------------------------------------------------------------------
 // Context
@@ -49,14 +50,26 @@ const SupabaseContext = createContext<SupabaseContextValue | null>(null);
  */
 export function SupabaseProvider({ children }: { children: ReactNode }) {
   const { organizationId } = useOrganization();
+  // useSupabaseToken runs unconditionally to satisfy the Rules of Hooks.
   const { token, isLoading, error } = useSupabaseToken(organizationId);
 
-  // Recreate the client only when the token string changes.
+  // When a platform admin is in impersonation mode, prefer the impersonation
+  // token so Supabase-direct reads (RLS-filtered by org_id) return the target
+  // org's rows. When impersonation is null this is byte-identical to the
+  // normal path (activeToken === token).
+  //
+  // NOTE: write mutations are still blocked — they go through Convex actions
+  // that call verifyOrgAccess, which checks the REAL user's membership and
+  // rejects because the admin is not a member of the target org.
+  const { impersonation } = useImpersonation();
+  const activeToken = impersonation?.token ?? token;
+
+  // Recreate the client only when the active token string changes.
   // `createSupabaseClient` is cheap — it just builds config, no network call.
   const client = useMemo(() => {
-    if (!token) return null;
-    return createSupabaseClient(SUPABASE_URL, token);
-  }, [token]);
+    if (!activeToken) return null;
+    return createSupabaseClient(SUPABASE_URL, activeToken);
+  }, [activeToken]);
 
   const isReady = client !== null && !isLoading;
 

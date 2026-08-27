@@ -15,6 +15,8 @@ import { AppFooter } from "@/components/layout/app-footer";
 import { RouteErrorBoundary } from "@/components/layout/route-error-boundary";
 import { OrgProvider, getOrgStorageKey } from "@/components/org-context";
 import { SupabaseProvider } from "@/components/supabase-provider";
+import { ImpersonationProvider } from "@/components/impersonation-context";
+import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -1120,19 +1122,22 @@ function DashboardLayout() {
   return (
     <DateRangeProvider>
       <OrgProvider initialOrgId={firstOrg._id as Id<"organizations">} userId={user._id}>
-        <SupabaseProvider>
-          <NudgesProvider>
-            <GabinetLocationProvider>
-            <MiniCalendarProvider>
-              <SidebarSlotProvider>
-                <HeaderSlotProvider>
-                  <DashboardLayoutInner user={user} orgs={orgs} />
-                </HeaderSlotProvider>
-              </SidebarSlotProvider>
-            </MiniCalendarProvider>
-            </GabinetLocationProvider>
-          </NudgesProvider>
-        </SupabaseProvider>
+        <ImpersonationProvider>
+          <SupabaseProvider>
+            <ImpersonationBanner />
+            <NudgesProvider>
+              <GabinetLocationProvider>
+              <MiniCalendarProvider>
+                <SidebarSlotProvider>
+                  <HeaderSlotProvider>
+                    <DashboardLayoutInner user={user} orgs={orgs} />
+                  </HeaderSlotProvider>
+                </SidebarSlotProvider>
+              </MiniCalendarProvider>
+              </GabinetLocationProvider>
+            </NudgesProvider>
+          </SupabaseProvider>
+        </ImpersonationProvider>
       </OrgProvider>
     </DateRangeProvider>
   );

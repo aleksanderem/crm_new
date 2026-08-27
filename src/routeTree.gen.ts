@@ -36,6 +36,7 @@ import { Route as AppPatientLayoutAppointmentsRouteImport } from './routes/_app/
 import { Route as AppAuthOnboardingLayoutRouteImport } from './routes/_app/_auth/onboarding/_layout'
 import { Route as AppAuthDashboardLayoutRouteImport } from './routes/_app/_auth/dashboard/_layout'
 import { Route as AppAuthAdminUsersRouteImport } from './routes/_app/_auth/admin.users'
+import { Route as AppAuthAdminOrganizationsRouteImport } from './routes/_app/_auth/admin.organizations'
 import { Route as AppAuthAdminErrorsRouteImport } from './routes/_app/_auth/admin.errors'
 import { Route as AppAuthAdminEntitlementsRouteImport } from './routes/_app/_auth/admin.entitlements'
 import { Route as AppAuthAdminEmailConfigRouteImport } from './routes/_app/_auth/admin.email-config'
@@ -86,6 +87,7 @@ import { Route as AppAuthDashboardLayoutSettingsAuditLogRouteImport } from './ro
 import { Route as AppAuthDashboardLayoutSettingsActivityTypesRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.activity-types'
 import { Route as AppAuthDashboardLayoutLeadsLeadIdRouteImport } from './routes/_app/_auth/dashboard/_layout.leads.$leadId'
 import { Route as AppAuthDashboardLayoutGabinetReportsRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.reports'
+import { Route as AppAuthDashboardLayoutGabinetMyLeavesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.my-leaves'
 import { Route as AppAuthDashboardLayoutGabinetDocumentsRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.documents'
 import { Route as AppAuthDashboardLayoutGabinetDocumentTemplatesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.document-templates'
 import { Route as AppAuthDashboardLayoutGabinetDeliveriesRouteImport } from './routes/_app/_auth/dashboard/_layout.gabinet.deliveries'
@@ -265,6 +267,12 @@ const AppAuthAdminUsersRoute = AppAuthAdminUsersRouteImport.update({
   path: '/admin/users',
   getParentRoute: () => AppAuthRoute,
 } as any)
+const AppAuthAdminOrganizationsRoute =
+  AppAuthAdminOrganizationsRouteImport.update({
+    id: '/admin/organizations',
+    path: '/admin/organizations',
+    getParentRoute: () => AppAuthRoute,
+  } as any)
 const AppAuthAdminErrorsRoute = AppAuthAdminErrorsRouteImport.update({
   id: '/admin/errors',
   path: '/admin/errors',
@@ -575,6 +583,12 @@ const AppAuthDashboardLayoutGabinetReportsRoute =
       (d) => d.Route,
     ),
   )
+const AppAuthDashboardLayoutGabinetMyLeavesRoute =
+  AppAuthDashboardLayoutGabinetMyLeavesRouteImport.update({
+    id: '/gabinet/my-leaves',
+    path: '/gabinet/my-leaves',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
 const AppAuthDashboardLayoutGabinetDocumentsRoute =
   AppAuthDashboardLayoutGabinetDocumentsRouteImport.update({
     id: '/gabinet/documents',
@@ -861,6 +875,7 @@ export interface FileRoutesByFullPath {
   '/admin/email-config': typeof AppAuthAdminEmailConfigRoute
   '/admin/entitlements': typeof AppAuthAdminEntitlementsRoute
   '/admin/errors': typeof AppAuthAdminErrorsRoute
+  '/admin/organizations': typeof AppAuthAdminOrganizationsRoute
   '/admin/users': typeof AppAuthAdminUsersRoute
   '/dashboard': typeof AppAuthDashboardLayoutRouteWithChildren
   '/onboarding': typeof AppAuthOnboardingLayoutRouteWithChildren
@@ -894,6 +909,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/gabinet/deliveries': typeof AppAuthDashboardLayoutGabinetDeliveriesRoute
   '/dashboard/gabinet/document-templates': typeof AppAuthDashboardLayoutGabinetDocumentTemplatesRoute
   '/dashboard/gabinet/documents': typeof AppAuthDashboardLayoutGabinetDocumentsRouteWithChildren
+  '/dashboard/gabinet/my-leaves': typeof AppAuthDashboardLayoutGabinetMyLeavesRoute
   '/dashboard/gabinet/reports': typeof AppAuthDashboardLayoutGabinetReportsRoute
   '/dashboard/leads/$leadId': typeof AppAuthDashboardLayoutLeadsLeadIdRoute
   '/dashboard/settings/activity-types': typeof AppAuthDashboardLayoutSettingsActivityTypesRoute
@@ -978,6 +994,7 @@ export interface FileRoutesByTo {
   '/admin/email-config': typeof AppAuthAdminEmailConfigRoute
   '/admin/entitlements': typeof AppAuthAdminEntitlementsRoute
   '/admin/errors': typeof AppAuthAdminErrorsRoute
+  '/admin/organizations': typeof AppAuthAdminOrganizationsRoute
   '/admin/users': typeof AppAuthAdminUsersRoute
   '/onboarding': typeof AppAuthOnboardingLayoutRouteWithChildren
   '/patient/appointments': typeof AppPatientLayoutAppointmentsRoute
@@ -1007,6 +1024,7 @@ export interface FileRoutesByTo {
   '/dashboard/gabinet/cash': typeof AppAuthDashboardLayoutGabinetCashRoute
   '/dashboard/gabinet/deliveries': typeof AppAuthDashboardLayoutGabinetDeliveriesRoute
   '/dashboard/gabinet/document-templates': typeof AppAuthDashboardLayoutGabinetDocumentTemplatesRoute
+  '/dashboard/gabinet/my-leaves': typeof AppAuthDashboardLayoutGabinetMyLeavesRoute
   '/dashboard/gabinet/reports': typeof AppAuthDashboardLayoutGabinetReportsRoute
   '/dashboard/leads/$leadId': typeof AppAuthDashboardLayoutLeadsLeadIdRoute
   '/dashboard/settings/activity-types': typeof AppAuthDashboardLayoutSettingsActivityTypesRoute
@@ -1093,6 +1111,7 @@ export interface FileRoutesById {
   '/_app/_auth/admin/email-config': typeof AppAuthAdminEmailConfigRoute
   '/_app/_auth/admin/entitlements': typeof AppAuthAdminEntitlementsRoute
   '/_app/_auth/admin/errors': typeof AppAuthAdminErrorsRoute
+  '/_app/_auth/admin/organizations': typeof AppAuthAdminOrganizationsRoute
   '/_app/_auth/admin/users': typeof AppAuthAdminUsersRoute
   '/_app/_auth/dashboard/_layout': typeof AppAuthDashboardLayoutRouteWithChildren
   '/_app/_auth/onboarding/_layout': typeof AppAuthOnboardingLayoutRouteWithChildren
@@ -1126,6 +1145,7 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/gabinet/deliveries': typeof AppAuthDashboardLayoutGabinetDeliveriesRoute
   '/_app/_auth/dashboard/_layout/gabinet/document-templates': typeof AppAuthDashboardLayoutGabinetDocumentTemplatesRoute
   '/_app/_auth/dashboard/_layout/gabinet/documents': typeof AppAuthDashboardLayoutGabinetDocumentsRouteWithChildren
+  '/_app/_auth/dashboard/_layout/gabinet/my-leaves': typeof AppAuthDashboardLayoutGabinetMyLeavesRoute
   '/_app/_auth/dashboard/_layout/gabinet/reports': typeof AppAuthDashboardLayoutGabinetReportsRoute
   '/_app/_auth/dashboard/_layout/leads/$leadId': typeof AppAuthDashboardLayoutLeadsLeadIdRoute
   '/_app/_auth/dashboard/_layout/settings/activity-types': typeof AppAuthDashboardLayoutSettingsActivityTypesRoute
@@ -1214,6 +1234,7 @@ export interface FileRouteTypes {
     | '/admin/email-config'
     | '/admin/entitlements'
     | '/admin/errors'
+    | '/admin/organizations'
     | '/admin/users'
     | '/dashboard'
     | '/onboarding'
@@ -1247,6 +1268,7 @@ export interface FileRouteTypes {
     | '/dashboard/gabinet/deliveries'
     | '/dashboard/gabinet/document-templates'
     | '/dashboard/gabinet/documents'
+    | '/dashboard/gabinet/my-leaves'
     | '/dashboard/gabinet/reports'
     | '/dashboard/leads/$leadId'
     | '/dashboard/settings/activity-types'
@@ -1331,6 +1353,7 @@ export interface FileRouteTypes {
     | '/admin/email-config'
     | '/admin/entitlements'
     | '/admin/errors'
+    | '/admin/organizations'
     | '/admin/users'
     | '/onboarding'
     | '/patient/appointments'
@@ -1360,6 +1383,7 @@ export interface FileRouteTypes {
     | '/dashboard/gabinet/cash'
     | '/dashboard/gabinet/deliveries'
     | '/dashboard/gabinet/document-templates'
+    | '/dashboard/gabinet/my-leaves'
     | '/dashboard/gabinet/reports'
     | '/dashboard/leads/$leadId'
     | '/dashboard/settings/activity-types'
@@ -1445,6 +1469,7 @@ export interface FileRouteTypes {
     | '/_app/_auth/admin/email-config'
     | '/_app/_auth/admin/entitlements'
     | '/_app/_auth/admin/errors'
+    | '/_app/_auth/admin/organizations'
     | '/_app/_auth/admin/users'
     | '/_app/_auth/dashboard/_layout'
     | '/_app/_auth/onboarding/_layout'
@@ -1478,6 +1503,7 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/gabinet/deliveries'
     | '/_app/_auth/dashboard/_layout/gabinet/document-templates'
     | '/_app/_auth/dashboard/_layout/gabinet/documents'
+    | '/_app/_auth/dashboard/_layout/gabinet/my-leaves'
     | '/_app/_auth/dashboard/_layout/gabinet/reports'
     | '/_app/_auth/dashboard/_layout/leads/$leadId'
     | '/_app/_auth/dashboard/_layout/settings/activity-types'
@@ -1750,6 +1776,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/users'
       fullPath: '/admin/users'
       preLoaderRoute: typeof AppAuthAdminUsersRouteImport
+      parentRoute: typeof AppAuthRoute
+    }
+    '/_app/_auth/admin/organizations': {
+      id: '/_app/_auth/admin/organizations'
+      path: '/admin/organizations'
+      fullPath: '/admin/organizations'
+      preLoaderRoute: typeof AppAuthAdminOrganizationsRouteImport
       parentRoute: typeof AppAuthRoute
     }
     '/_app/_auth/admin/errors': {
@@ -2100,6 +2133,13 @@ declare module '@tanstack/react-router' {
       path: '/gabinet/reports'
       fullPath: '/dashboard/gabinet/reports'
       preLoaderRoute: typeof AppAuthDashboardLayoutGabinetReportsRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
+    '/_app/_auth/dashboard/_layout/gabinet/my-leaves': {
+      id: '/_app/_auth/dashboard/_layout/gabinet/my-leaves'
+      path: '/gabinet/my-leaves'
+      fullPath: '/dashboard/gabinet/my-leaves'
+      preLoaderRoute: typeof AppAuthDashboardLayoutGabinetMyLeavesRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
     '/_app/_auth/dashboard/_layout/gabinet/documents': {
@@ -2610,6 +2650,7 @@ interface AppAuthDashboardLayoutRouteChildren {
   AppAuthDashboardLayoutGabinetDeliveriesRoute: typeof AppAuthDashboardLayoutGabinetDeliveriesRoute
   AppAuthDashboardLayoutGabinetDocumentTemplatesRoute: typeof AppAuthDashboardLayoutGabinetDocumentTemplatesRoute
   AppAuthDashboardLayoutGabinetDocumentsRoute: typeof AppAuthDashboardLayoutGabinetDocumentsRouteWithChildren
+  AppAuthDashboardLayoutGabinetMyLeavesRoute: typeof AppAuthDashboardLayoutGabinetMyLeavesRoute
   AppAuthDashboardLayoutGabinetReportsRoute: typeof AppAuthDashboardLayoutGabinetReportsRoute
   AppAuthDashboardLayoutLeadsLeadIdRoute: typeof AppAuthDashboardLayoutLeadsLeadIdRoute
   AppAuthDashboardLayoutActivitiesIndexRoute: typeof AppAuthDashboardLayoutActivitiesIndexRoute
@@ -2679,6 +2720,8 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
       AppAuthDashboardLayoutGabinetDocumentTemplatesRoute,
     AppAuthDashboardLayoutGabinetDocumentsRoute:
       AppAuthDashboardLayoutGabinetDocumentsRouteWithChildren,
+    AppAuthDashboardLayoutGabinetMyLeavesRoute:
+      AppAuthDashboardLayoutGabinetMyLeavesRoute,
     AppAuthDashboardLayoutGabinetReportsRoute:
       AppAuthDashboardLayoutGabinetReportsRoute,
     AppAuthDashboardLayoutLeadsLeadIdRoute:
@@ -2772,6 +2815,7 @@ interface AppAuthRouteChildren {
   AppAuthAdminEmailConfigRoute: typeof AppAuthAdminEmailConfigRoute
   AppAuthAdminEntitlementsRoute: typeof AppAuthAdminEntitlementsRoute
   AppAuthAdminErrorsRoute: typeof AppAuthAdminErrorsRoute
+  AppAuthAdminOrganizationsRoute: typeof AppAuthAdminOrganizationsRoute
   AppAuthAdminUsersRoute: typeof AppAuthAdminUsersRoute
   AppAuthDashboardLayoutRoute: typeof AppAuthDashboardLayoutRouteWithChildren
   AppAuthOnboardingLayoutRoute: typeof AppAuthOnboardingLayoutRouteWithChildren
@@ -2782,6 +2826,7 @@ const AppAuthRouteChildren: AppAuthRouteChildren = {
   AppAuthAdminEmailConfigRoute: AppAuthAdminEmailConfigRoute,
   AppAuthAdminEntitlementsRoute: AppAuthAdminEntitlementsRoute,
   AppAuthAdminErrorsRoute: AppAuthAdminErrorsRoute,
+  AppAuthAdminOrganizationsRoute: AppAuthAdminOrganizationsRoute,
   AppAuthAdminUsersRoute: AppAuthAdminUsersRoute,
   AppAuthDashboardLayoutRoute: AppAuthDashboardLayoutRouteWithChildren,
   AppAuthOnboardingLayoutRoute: AppAuthOnboardingLayoutRouteWithChildren,

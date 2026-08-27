@@ -20,6 +20,9 @@ export const writeOrganizationToSupabase = internalAction({
     createdAt: v.number(),
     updatedAt: v.number(),
     onboardingCompleted: v.optional(v.boolean()),
+    status: v.optional(v.string()),
+    suspendedReason: v.optional(v.string()),
+    seatLimitOverride: v.optional(v.number()),
   },
   returns: v.object({ success: v.boolean(), id: v.string() }),
   handler: async (ctx, args) => {
@@ -74,6 +77,9 @@ export const writeOrganizationToSupabase = internalAction({
       created_at: args.createdAt,
       updated_at: args.updatedAt,
       onboarding_completed: args.onboardingCompleted ?? null,
+      status: args.status ?? null,
+      suspended_reason: args.suspendedReason ?? null,
+      seat_limit_override: args.seatLimitOverride ?? null,
     };
 
     const data = await upsertWithFkRetry(client, "organizations", row)

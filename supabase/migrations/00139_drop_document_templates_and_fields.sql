@@ -1,20 +1,15 @@
 -- Drop document_template_fields and document_templates tables.
--- The Convex actions and schema for these tables were removed in #5404/#5411.
--- No rows are created in production (documentInstances.create had no frontend
--- callers), so the tables are safe to drop.
+-- The Convex actions and schema for these tables were removed in #5404/#5411;
+-- superseded by form_templates / form_documents (74+32 live rows in prod).
 --
--- Safety audit: verify all document_instances.template_id rows are NULL before
--- dropping the referenced table.  The FK constraint blocks the DROP otherwise.
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM document_instances WHERE template_id IS NOT NULL LIMIT 1
-  ) THEN
-    RAISE EXCEPTION
-      'Cannot drop document_templates: document_instances has rows with non-NULL template_id';
-  END IF;
-END;
-$$;
+-- The original version RAISEd if any document_instances.template_id was non-NULL,
+-- assuming prod had no rows. Prod actually has 18 templates + 8 instances (all
+-- legacy, org kx79...). Those were investigated and BACKED UP before this change
+-- (local export 2026-08-27). document_instances is itself dropped in 00141, and
+-- 00140 first embeds the signing-relevant fields (document_title/rendered_content)
+-- into signature_requests so the 3 live pending signing links survive. The FK is
+-- dropped just below before the table drop, so no orphaning occurs. The guard is
+-- therefore obsolete and removed so the deprecation can proceed.
 
 -- Drop the FK from document_instances before dropping the parent table.
 ALTER TABLE document_instances

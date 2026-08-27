@@ -16,7 +16,7 @@ export const seedExampleTemplatesInternal = internalMutation({
   },
   handler: async (ctx, args) => {
     try {
-      return await seedHandler(ctx, args.organizationId, args.userId);
+      return await seedHandler(ctx, args.organizationId as GenericId<"organizations">, args.userId);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error("[seedTemplates] Seed failed:", message);
@@ -31,7 +31,7 @@ export const seedExampleTemplates = mutation({
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     try {
-      return await seedHandler(ctx, args.organizationId, user._id);
+      return await seedHandler(ctx, args.organizationId as GenericId<"organizations">, user._id);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error("[seedTemplates] Seed failed:", message);

@@ -12,10 +12,15 @@ function sha256Sync(input: string): string {
   return createHash("sha256").update(input).digest("hex");
 }
 
+const RAW_PORTAL_TOKEN = "portal-test-token";
+
 async function seedActivePortalSession(
   patientId: string,
   organizationId: string,
 ) {
+  // The code calls validatePortalSessionSupabase(db, token), which runs
+  // SHA-256 internally before querying. So we seed the DB with the hash of the
+  // raw token, and pass the raw token to bookFromPortal.
   const token = "portal-test-token";
   const db = createSupabaseDb();
   const now = Date.now();
@@ -28,6 +33,7 @@ async function seedActivePortalSession(
     createdAt: now,
     expiresAt: now + 30 * 24 * 60 * 60 * 1000,
   });
+  // Return the raw token — callers must pass this, not the hash.
   return { token };
 }
 
@@ -87,6 +93,7 @@ describe("bookFromPortal past-time guard (issue #1415)", () => {
     );
 
     // A clearly-past date (server clock will be later than this).
+    // bookFromPortal takes the raw bearer token; it hashes internally before lookup.
     await expect(
       t.action(api.gabinet.patientPortal.bookFromPortal, {
         token,

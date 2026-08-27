@@ -685,6 +685,13 @@ export function createGabinetTables({
     expiresAt: v.number(),
     signedAt: v.optional(v.number()),
     createdAt: v.number(),
+    // Denormalized document fields embedded on the signing page (Supabase
+    // migration 00140). Optional here so the generated Doc/SupabaseRow type
+    // exposes them to convex/signatureRequests.ts reads.
+    documentTitle: v.optional(v.string()),
+    renderedContent: v.optional(v.string()),
+    documentCreatedBy: v.optional(v.string()),
+    slotLabel: v.optional(v.string()),
   })
     .index("by_token", ["token"])
     .index("by_instance", ["instanceId"])

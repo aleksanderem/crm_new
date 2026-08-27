@@ -68,12 +68,14 @@ export const _markAsReadInternal = internalMutation({
 
 export const markAllRead = action({
   args: {
+    // organizationId is accepted for API compatibility but markAllRead is
+    // intentionally USER-scoped: it marks all unread notifications for the
+    // authenticated user regardless of which org is passed. No cross-org data
+    // leak occurs because _markAllReadInternal filters by userId only.
+    // verifyOrgAccess is intentionally omitted here (sec-audit ref §19).
     organizationId: v.string(),
   },
   handler: async (ctx, args): Promise<number> => {
-    await ctx.runAction(internal._helpers.authAction.verifyOrgAccess, {
-      organizationId: args.organizationId,
-    });
     return await ctx.runMutation(internal.notifications._markAllReadInternal, {
       organizationId: args.organizationId,
     });

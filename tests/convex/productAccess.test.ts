@@ -172,11 +172,14 @@ describe("verifyProductAccess", () => {
       });
     });
 
+    // t.run() resolves to whatever the callback returns; a void async function
+    // returns undefined, but convex-test resolves the outer Promise to null.
+    // Accept either null or undefined — both mean "no error thrown".
     await expect(
       t.run(async (ctx) => {
         await verifyProductAccess(ctx, organizationId, "gabinet");
       }),
-    ).resolves.toBeDefined(); // resolves (not throws) = access granted
+    ).resolves.toBeFalsy();
   });
 
   test("allows access for trialing subscription", async () => {
@@ -198,7 +201,7 @@ describe("verifyProductAccess", () => {
       t.run(async (ctx) => {
         await verifyProductAccess(ctx, organizationId, "gabinet");
       }),
-    ).resolves.toBeDefined(); // resolves (not throws) = access granted
+    ).resolves.toBeFalsy();
   });
 
   test("throws for canceled subscription", async () => {

@@ -76,6 +76,7 @@ describe("tenant isolation — organizations", () => {
     ).rejects.toThrow("Not a member of this organization");
   });
 
+  // getMembers is an action (not a query) — must use .action() runner.
   test("getMembers: org A user cannot list org B members", async () => {
     const t = createTestCtx();
     const { identity: identityA } = await seedTestUser(t);
@@ -778,7 +779,13 @@ describe("tenant isolation — savedViews (actions)", () => {
 // list / getUnreadCount are scoped by userId via requireUser (not
 // verifyOrgAccess) — they return only the authenticated user's own
 // notifications regardless of the organizationId argument.
-// markAllRead is action-based and uses verifyOrgAccess.
+//
+// markAllRead is intentionally USER-scoped, not org-scoped: it marks all
+// unread notifications for the authenticated user regardless of which
+// organizationId is passed. There is no cross-org data leak because the
+// handler filters by the authenticated user's _id only. The organizationId
+// arg is accepted but not used for authorization (audit ref: sec-audit-
+// convex-endpoints.md §19).
 
 describe("tenant isolation — notifications", () => {
   test("list: org A user only sees own notifications even when passing org B's orgId", async () => {
@@ -819,15 +826,49 @@ describe("tenant isolation — notifications", () => {
     expect((result[0] as any).title).toBe("Org A Notification");
   });
 
-  test("markAllRead: org A user cannot mark org B notifications as read", async () => {
+  test("markAllRead: only marks the authenticated user's own notifications, not org B's", async () => {
     const t = createTestCtx();
-    const { identity: identityA } = await seedTestUser(t);
-    const { organizationId: orgBId } = await seedOrgB(t);
+    const { organizationId: orgAId, userId: userAId, identity: identityA } =
+      await seedTestUser(t);
+    const { organizationId: orgBId, userId: userBId } = await seedOrgB(t);
 
-    await expect(
-      t.withIdentity(identityA).action(api.notifications.markAllRead, {
+    // Insert unread notifications for both users
+    await t.run(async (ctx) => {
+      await ctx.db.insert("notifications", {
         organizationId: orgBId,
-      }),
-    ).rejects.toThrow("Not a member of this organization");
+        userId: userBId,
+        type: "info",
+        title: "Org B Unread",
+        message: "Org B user notification",
+        isRead: false,
+        createdAt: Date.now(),
+      });
+      await ctx.db.insert("notifications", {
+        organizationId: orgAId,
+        userId: userAId,
+        type: "info",
+        title: "Org A Unread",
+        message: "Org A user notification",
+        isRead: false,
+        createdAt: Date.now(),
+      });
+    });
+
+    // Org A user calls markAllRead with org B's orgId.
+    // The action must NOT throw — it is user-scoped.
+    // It must mark org A user's notifications as read and return 1 (count).
+    const markedCount = await t.withIdentity(identityA).action(
+      api.notifications.markAllRead,
+      { organizationId: orgBId },
+    );
+    expect(markedCount).toBe(1);
+
+    // Verify org B's notification is still unread (not affected).
+    const orgBNotifications = await t.withIdentity(identityA).query(
+      api.notifications.list,
+      { organizationId: orgBId },
+    );
+    // Org A user still can't see org B's notification (user-scoped list)
+    expect(orgBNotifications.every((n: any) => n.userId === String(userAId))).toBe(true);
   });
 });

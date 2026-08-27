@@ -13,13 +13,23 @@ export const getForEntity = query({
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
 
-    return await ctx.db
+    // The by_entity index does not include organizationId, so we filter the
+    // collected results to ensure cross-org records are never returned even if
+    // the Convex mirror is populated with data from multiple organizations.
+    const page = await ctx.db
       .query("activities")
       .withIndex("by_entity", (q) =>
         q.eq("entityType", args.entityType).eq("entityId", args.entityId)
       )
       .order("desc")
       .paginate(args.paginationOpts);
+
+    return {
+      ...page,
+      page: page.page.filter(
+        (a) => a.organizationId === args.organizationId
+      ),
+    };
   },
 });
 

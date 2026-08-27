@@ -26,7 +26,6 @@ import {
   seedSecondUser,
   seedGabinetPrereqs,
 } from "../../convex/_test_helpers";
-import type { Id } from "../../convex/_generated/dataModel";
 
 // Drain orphan scheduler callbacks to avoid unhandledRejection noise from
 // side-effect mutations that fire after the test has already returned.
@@ -71,8 +70,9 @@ async function setupClinicalUser(gabinetRole: string) {
   // Seed patients, treatments, employees, working hours into Convex + Supabase stub
   await seedGabinetPrereqs(t, organizationId, ownerUserId);
 
-  // clinical user — org role "member" so org-level scope is "none" for all
-  // gabinet_* features; only the gabinet role grants access
+  // clinical user — org role "member"; DEFAULT_PERMISSIONS.member now sets all
+  // eight operational gabinet features to "none", so only the gabinet-role
+  // MAX-merge grants access. No orgPermissions seed needed.
   const { userId: clinicalUserId, identity: clinicalIdentity } =
     await seedSecondUser(t, organizationId, { role: "member" });
 
@@ -88,13 +88,14 @@ async function setupClinicalUser(gabinetRole: string) {
 describe("member without gabinet role — permission gate is enforced", () => {
   test("cannot list patients (Permission denied)", async () => {
     const t = createTestCtx();
-    const { organizationId, userId, identity: ownerIdentity } = await seedTestUser(t);
+    const { organizationId, userId } = await seedTestUser(t);
     await seedGabinetPrereqs(t, organizationId, userId);
 
     const { identity: memberIdentity } = await seedSecondUser(t, organizationId, {
       role: "member",
     });
-    // No gabinetMemberships entry — effective scope for gabinet_patients:view is "none"
+    // No gabinetMemberships entry — DEFAULT_PERMISSIONS.member sets gabinet_patients to
+    // "none" for all actions, so effective scope for gabinet_patients:view is "none".
 
     await expect(
       t.withIdentity(memberIdentity).action(api.gabinet.patients.list, {

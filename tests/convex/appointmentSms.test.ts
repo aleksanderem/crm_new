@@ -169,8 +169,11 @@ async function seedSmsConfig(
 ) {
   const fromNumber = "+48111222333";
 
-  // queueConfirmationRequest reads orgSmsConfig via createSupabaseDb()
-  await createSupabaseDb().insert("orgSmsConfig", {
+  // queueConfirmationRequest reads orgSmsConfig via createSupabaseDb(), not
+  // ctx.db — seed into the in-memory Supabase store so the function sees it.
+  const db = createSupabaseDb();
+  const now = Date.now();
+  await db.insert("orgSmsConfig", {
     _id: `sms-config-${String(organizationId)}`,
     organizationId: String(organizationId),
     provider: "twilio",
@@ -178,8 +181,8 @@ async function seedSmsConfig(
     apiSecret: "test-auth-token",
     fromNumber,
     isActive: true,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+    createdAt: now,
+    updatedAt: now,
   });
 
   return { fromNumber };

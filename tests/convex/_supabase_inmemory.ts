@@ -205,12 +205,14 @@ function createInMemoryRawClient() {
         const now = Number(params.p_now ?? Date.now());
         // Store with camelCase keys — InMemoryRawQuery.eq() converts snake_case
         // field names to camelCase before filtering against the in-memory rows.
+        // Insert the receipt row so subsequent reads via raw().from("gabinet_receipts")
+        // find it (used by the split-payment refund guard in payments.ts).
         getTable("gabinetReceipts").set(receiptId, {
           id: receiptId,
           organizationId: orgId,
           paymentId: String(params.p_payment_id ?? ""),
-          appointmentId: params.p_appointment_id ?? null,
-          patientId: params.p_patient_id ?? null,
+          appointmentId: params.p_appointment_id ? String(params.p_appointment_id) : null,
+          patientId: params.p_patient_id ? String(params.p_patient_id) : null,
           issuedAt: Number(params.p_issued_at ?? now),
           organizationName: String(params.p_organization_name ?? ""),
           organizationNip: params.p_organization_nip ?? null,
@@ -218,7 +220,7 @@ function createInMemoryRawClient() {
           totalNet: Number(params.p_total_net ?? 0),
           totalVat: Number(params.p_total_vat ?? 0),
           totalGross: Number(params.p_total_gross ?? 0),
-          paymentMethod: String(params.p_payment_method ?? ""),
+          paymentMethod: String(params.p_payment_method ?? "cash"),
           itemsJson: String(params.p_items_json ?? "[]"),
           fiscalReceiptId: params.p_fiscal_receipt_id ?? null,
           receiptType: String(params.p_receipt_type ?? "original"),

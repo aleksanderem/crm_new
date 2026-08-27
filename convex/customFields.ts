@@ -248,12 +248,16 @@ export const getValues = query({
   },
   handler: async (ctx, args) => {
     await verifyOrgAccess(ctx, args.organizationId);
-    return await ctx.db
+    // The by_entity index does not include organizationId; filter results to
+    // ensure cross-org values are never returned even if the Convex mirror
+    // holds data from multiple organizations.
+    const values = await ctx.db
       .query("customFieldValues")
       .withIndex("by_entity", (q) =>
         q.eq("entityType", args.entityType).eq("entityId", args.entityId)
       )
       .collect();
+    return values.filter((v) => v.organizationId === args.organizationId);
   },
 });
 

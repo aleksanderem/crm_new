@@ -159,12 +159,13 @@ function AdminOrganizations() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <a
-                        href={`/admin/organizations/${org.organizationId}`}
+                      <Link
+                        to="/admin/organizations/$orgId"
+                        params={{ orgId: org.organizationId }}
                         className="text-sm underline"
                       >
                         Szczegóły
-                      </a>
+                      </Link>
                     </TableCell>
                   </TableRow>
                 ))

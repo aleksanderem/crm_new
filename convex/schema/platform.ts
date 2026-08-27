@@ -36,6 +36,10 @@ export function createPlatformTables({
       v.union(v.literal("light"), v.literal("dark"), v.literal("system")),
     ),
     timezone: v.optional(v.string()),
+    // Platform-admin flag. Authoritative store is Supabase (is_platform_admin),
+    // but existing Convex user docs carry this field, so it must be declared
+    // here or schema validation rejects the extra field on deploy.
+    isPlatformAdmin: v.optional(v.boolean()),
   })
     .index("email", ["email"])
     .index("customerId", ["customerId"]),

@@ -1988,12 +1988,12 @@ function GabinetReports() {
   // Employee map: userId → name (for fallback attribution via createdBy)
   const employeeMap = useMemo(() => {
     if (!employees) return new Map<string, string>();
-    return new Map(
-      employees.map((e) => [
-        e.userId,
-        [e.firstName, e.lastName].filter(Boolean).join(" ") || e.userId,
-      ])
-    );
+    const entries: [string, string][] = [];
+    for (const e of employees) {
+      if (!e.userId) continue;
+      entries.push([e.userId, [e.firstName, e.lastName].filter(Boolean).join(" ") || e.userId]);
+    }
+    return new Map<string, string>(entries);
   }, [employees]);
 
   // Employee map: employeeId → name (for soldByEmployeeId attribution)
@@ -2108,7 +2108,10 @@ function GabinetReports() {
 
   // Maps raw payment_method values to display categories (cash/card/transfer/package/other)
   const paymentMethodBreakdown = useMemo(
-    () => computePaymentMethodBreakdown(actualPayments ?? []),
+    () => computePaymentMethodBreakdown(
+      (actualPayments ?? [])
+        .filter((p): p is typeof p & { paymentMethod: string } => !!p.paymentMethod)
+    ),
     [actualPayments]
   );
 

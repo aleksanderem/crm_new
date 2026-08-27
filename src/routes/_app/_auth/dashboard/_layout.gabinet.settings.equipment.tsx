@@ -214,9 +214,9 @@ function TransferHistoryPanel({
           <span className="text-muted-foreground">
             {new Date(tr.transferredAt).toLocaleDateString()}
           </span>
-          <span>{getLocationName(tr.fromLocationId)}</span>
+          <span>{getLocationName(tr.fromLocationId as Id<"gabinetLocations"> | undefined)}</span>
           <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" variant="stroke" />
-          <span className="font-medium">{getLocationName(tr.toLocationId)}</span>
+          <span className="font-medium">{getLocationName(tr.toLocationId as Id<"gabinetLocations">)}</span>
           {tr.notes && (
             <span className="ml-auto text-muted-foreground truncate max-w-[160px]">
               {tr.notes}

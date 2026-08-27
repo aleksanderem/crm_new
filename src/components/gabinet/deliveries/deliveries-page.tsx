@@ -40,7 +40,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, TruckIcon, Loader2, CheckCircle, FileText, Sparkles, RefreshCw, AlertCircle, X } from "@/lib/ez-icons";
+import { Plus, Trash2, TruckIcon, Loader2, CheckCircle, FileText, Sparkles, RefreshCw } from "@/lib/ez-icons";
 import { formatActionError } from "@/lib/format-action-error";
 import {
   Tooltip,

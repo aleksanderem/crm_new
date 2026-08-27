@@ -43,7 +43,7 @@ export interface ImpersonationState {
 
 interface ImpersonationContextValue {
   impersonation: ImpersonationState | null;
-  startImpersonation: (state: ImpersonationState) => void;
+  startImpersonation: (state: Omit<ImpersonationState, "adminUserId">) => void;
   stopImpersonation: () => void;
 }
 
@@ -107,7 +107,7 @@ function saveToSession(state: ImpersonationState | null): void {
 
 const ImpersonationContext = createContext<ImpersonationContextValue>({
   impersonation: null,
-  startImpersonation: () => {},
+  startImpersonation: (_state: Omit<ImpersonationState, "adminUserId">) => {},
   stopImpersonation: () => {},
 });
 
@@ -132,7 +132,7 @@ export function ImpersonationProvider({
   }, [impersonation]);
 
   const startImpersonation = useCallback(
-    (state: ImpersonationState) => {
+    (state: Omit<ImpersonationState, "adminUserId">) => {
       // Always stamp adminUserId from the current authenticated user so that
       // the persisted token cannot be rehydrated by a different user.
       setImpersonation({ ...state, adminUserId: currentUserId });

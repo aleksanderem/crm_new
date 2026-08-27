@@ -9,10 +9,11 @@ import {
 import { SettlementForm } from "@/components/gabinet/appointment-shared/settlement-form";
 import type { TFunction } from "i18next";
 import { formatCurrencyPLN } from "@/lib/format-currency";
+import type { Id } from "@cvx/_generated/dataModel";
 
 type JunctionTreatment = {
   id: string;
-  treatmentId: string;
+  treatmentId: string | null;
   priceAtBooking?: number | null;
 };
 
@@ -138,7 +139,7 @@ export function PaymentAppointmentDialog({
         )}
         {open && (
           <SettlementForm
-            organizationId={organizationId}
+            organizationId={organizationId as Id<"organizations">}
             appointmentId={appointmentId}
             patientId={patientId}
             junctionTreatments={junctionTreatments}

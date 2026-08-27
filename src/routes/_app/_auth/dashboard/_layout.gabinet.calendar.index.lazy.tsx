@@ -1359,7 +1359,7 @@ function GabinetCalendarPage() {
     if (emp.firstName || emp.lastName) {
       return `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim();
     }
-    return userMap.get(emp.userId) || emp.specialization || emp.role;
+    return (emp.userId ? userMap.get(emp.userId) : undefined) || emp.specialization || emp.role;
   }
 
   function getEmployeeInitials(name: string): string {

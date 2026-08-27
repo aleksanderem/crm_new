@@ -146,12 +146,14 @@ export function EventDialog({
   );
 
   const employeeOptions = useMemo(() => {
-    return (employees ?? []).map((e) => ({
-      userId: e.userId,
-      name:
-        [e.firstName, e.lastName].filter(Boolean).join(" ").trim() ||
-        t("gabinet.calendar.unnamedEmployee", "Bez nazwy"),
-    }));
+    return (employees ?? [])
+      .filter((e): e is typeof e & { userId: string } => !!e.userId)
+      .map((e) => ({
+        userId: e.userId,
+        name:
+          [e.firstName, e.lastName].filter(Boolean).join(" ").trim() ||
+          t("gabinet.calendar.unnamedEmployee", "Bez nazwy"),
+      }));
   }, [employees, t]);
 
   const toggleEmployee = useCallback((userId: string) => {

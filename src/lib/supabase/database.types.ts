@@ -149,6 +149,12 @@
  *   • 00142_form_documents_expires_at.sql
  *   • 00143_form_documents_is_required.sql
  *   • 00144_form_documents_audit_fields.sql
+ *   • 00145_gabinet_safe_movements.sql
+ *   • 00146_gabinet_day_closes_cash_split.sql
+ *   • 00147_payments_refund_amount.sql
+ *   • 00148_product_stock_movements_appointment_id.sql
+ *   • 00149_product_stock_movements_employee_id.sql
+ *   • 00150_organizations_admin_fields.sql
  *
  * Re-generate: npx tsx scripts/gen-db-types.mjs
  *   (or: node scripts/gen-db-types.mjs)
@@ -509,6 +515,9 @@ export interface Database {
           created_at: number;
           updated_at: number;
           onboarding_completed: boolean | null;
+          status: string | null;
+          suspended_reason: string | null;
+          seat_limit_override: number | null;
         };
         Insert: {
           id?: string;
@@ -520,6 +529,9 @@ export interface Database {
           created_at: number;
           updated_at: number;
           onboarding_completed?: boolean | null;
+          status?: string | null;
+          suspended_reason?: string | null;
+          seat_limit_override?: number | null;
         };
         Update: {
           id?: string;
@@ -531,6 +543,9 @@ export interface Database {
           created_at?: number;
           updated_at?: number;
           onboarding_completed?: boolean | null;
+          status?: string | null;
+          suspended_reason?: string | null;
+          seat_limit_override?: number | null;
         };
         Relationships: [
           {
@@ -3538,6 +3553,8 @@ export interface Database {
           fiscal_status: string | null;
           fiscal_attempts: number | null;
           fiscal_error: string | null;
+          refund_amount: number | null;
+          refunded_at: number | null;
         };
         Insert: {
           id?: string;
@@ -3563,6 +3580,8 @@ export interface Database {
           fiscal_status?: string | null;
           fiscal_attempts?: number | null;
           fiscal_error?: string | null;
+          refund_amount?: number | null;
+          refunded_at?: number | null;
         };
         Update: {
           id?: string;
@@ -3588,6 +3607,8 @@ export interface Database {
           fiscal_status?: string | null;
           fiscal_attempts?: number | null;
           fiscal_error?: string | null;
+          refund_amount?: number | null;
+          refunded_at?: number | null;
         };
         Relationships: [
           {
@@ -6423,6 +6444,8 @@ export interface Database {
           expiry_date: string | null;
           payment_method: string | null;
           treatment_id: string | null;
+          appointment_id: string | null;
+          employee_id: string | null;
         };
         Insert: {
           id?: string;
@@ -6443,6 +6466,8 @@ export interface Database {
           expiry_date?: string | null;
           payment_method?: string | null;
           treatment_id?: string | null;
+          appointment_id?: string | null;
+          employee_id?: string | null;
         };
         Update: {
           id?: string;
@@ -6463,6 +6488,8 @@ export interface Database {
           expiry_date?: string | null;
           payment_method?: string | null;
           treatment_id?: string | null;
+          appointment_id?: string | null;
+          employee_id?: string | null;
         };
         Relationships: [
           {
@@ -6498,6 +6525,20 @@ export interface Database {
             columns: ["treatment_id"];
             isOneToOne: false;
             referencedRelation: "gabinet_treatments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "product_stock_movements_appointment_id_fkey";
+            columns: ["appointment_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_appointments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "product_stock_movements_employee_id_fkey";
+            columns: ["employee_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_employees";
             referencedColumns: ["id"];
           },
         ];
@@ -7316,6 +7357,8 @@ export interface Database {
           closed_at: number;
           created_at: number;
           updated_at: number;
+          cash_next_opening: number | null;
+          cash_to_safe: number | null;
         };
         Insert: {
           id?: string;
@@ -7336,6 +7379,8 @@ export interface Database {
           closed_at: number;
           created_at: number;
           updated_at: number;
+          cash_next_opening?: number | null;
+          cash_to_safe?: number | null;
         };
         Update: {
           id?: string;
@@ -7356,6 +7401,8 @@ export interface Database {
           closed_at?: number;
           created_at?: number;
           updated_at?: number;
+          cash_next_opening?: number | null;
+          cash_to_safe?: number | null;
         };
         Relationships: [
           {
@@ -7513,6 +7560,71 @@ export interface Database {
             columns: ["stage_id"];
             isOneToOne: false;
             referencedRelation: "pipeline_stages";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      gabinet_safe_movements: {
+        Row: {
+          id: string;
+          organization_id: string;
+          location_id: string;
+          type: string;
+          amount: number;
+          description: string | null;
+          reference_day_close_id: string | null;
+          created_by: string;
+          created_at: number;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          location_id: string;
+          type: string;
+          amount: number;
+          description?: string | null;
+          reference_day_close_id?: string | null;
+          created_by: string;
+          created_at: number;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          location_id?: string;
+          type?: string;
+          amount?: number;
+          description?: string | null;
+          reference_day_close_id?: string | null;
+          created_by?: string;
+          created_at?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gabinet_safe_movements_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_safe_movements_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_locations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_safe_movements_reference_day_close_id_fkey";
+            columns: ["reference_day_close_id"];
+            isOneToOne: false;
+            referencedRelation: "gabinet_day_closes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gabinet_safe_movements_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
             referencedColumns: ["id"];
           },
         ];

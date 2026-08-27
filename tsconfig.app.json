@@ -20,7 +20,11 @@
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    // noUnusedParameters intentionally OFF: this project (composite) must include
+    // convex/ source (src imports @cvx/*), and convex handlers idiomatically carry
+    // unused ctx/args params that convex/tsconfig.json (their authority) allows.
+    // noUnusedLocals stays on to catch unused imports/vars in frontend code.
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
 
     /* Alias */

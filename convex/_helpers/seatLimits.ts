@@ -186,6 +186,12 @@ export const checkSeatLimitAction = internalAction({
       { ownerId: org.ownerId },
     );
 
-    return { currentSeats, seatLimit, canAddMore: currentSeats < seatLimit };
+    // db.get returns camelCase (snake→camel on read), so read seatLimitOverride.
+    const override = (org as { seatLimitOverride?: number | null }).seatLimitOverride;
+    const effectiveLimit = typeof override === "number"
+      ? Math.max(seatLimit, override)
+      : seatLimit;
+
+    return { currentSeats, seatLimit: effectiveLimit, canAddMore: currentSeats < effectiveLimit };
   },
 });

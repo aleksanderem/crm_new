@@ -1,17 +1,22 @@
 /**
  * SP2 Task 3 — Platform-admin read actions: listOrganizations + getOrganizationDetail.
+ * SP2 Task 4 — Platform-admin write actions: setOrganizationStatus,
+ *              updateOrganizationProfile, setSeatLimitOverride.
  *
- * These are read-only actions that expose cross-tenant org data to platform admins.
  * Every action first calls verifyPlatformAdmin to enforce the access guard.
  *
  * Read path: createSupabaseDb().query(...).collect() returns rows with camelCase
  * keys and `_id` as the primary key (mirrors convex/admin/entitlements.ts exactly).
+ *
+ * Write path: createSupabaseDb().patch() accepts camelCase keys and converts
+ * camel→snake internally via mapRowToSnake. Pass camelCase everywhere.
  */
 
 import { v } from "convex/values";
 import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createSupabaseDb } from "../_helpers/supabaseDb";
+import { logAudit } from "../auditLog";
 
 // ---------------------------------------------------------------------------
 // Validators
@@ -64,6 +69,106 @@ const orgDetailValidator = v.object({
     currentSeats: v.number(),
     effectiveSeatLimit: v.number(),
   }),
+});
+
+// ---------------------------------------------------------------------------
+// Write actions (Task 4)
+// ---------------------------------------------------------------------------
+
+export const setOrganizationStatus = action({
+  args: {
+    organizationId: v.string(),
+    status: v.union(v.literal("active"), v.literal("suspended")),
+    reason: v.optional(v.string()),
+  },
+  returns: v.object({ status: v.union(v.literal("active"), v.literal("suspended")) }),
+  handler: async (ctx, args) => {
+    const { userId } = await ctx.runAction(internal._helpers.authAction.verifyPlatformAdmin, {});
+    // Supabase-only: these admin fields are read exclusively via createSupabaseDb
+    // (verifyOrgAccess / checkSeatLimitAction). No Convex ctx.db mirror is consulted.
+    const db = createSupabaseDb();
+    await db.patch("organizations", args.organizationId, {
+      status: args.status,
+      suspendedReason: args.status === "suspended" ? (args.reason ?? null) : null,
+      updatedAt: Date.now(),
+    });
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: String(userId),
+      action: args.status === "suspended" ? "organization_suspended" : "organization_reactivated",
+      entityType: "organization",
+      entityId: args.organizationId,
+    });
+    return { status: args.status };
+  },
+});
+
+export const updateOrganizationProfile = action({
+  args: {
+    organizationId: v.string(),
+    name: v.optional(v.string()),
+    website: v.optional(v.string()),
+    ownerId: v.optional(v.string()),
+  },
+  returns: v.object({ ok: v.boolean() }),
+  handler: async (ctx, args) => {
+    const { userId } = await ctx.runAction(internal._helpers.authAction.verifyPlatformAdmin, {});
+    // Supabase-only: these admin fields are read exclusively via createSupabaseDb.
+    // No Convex ctx.db mirror is consulted.
+    const db = createSupabaseDb();
+
+    if (args.ownerId !== undefined) {
+      const memberships = await db
+        .query("teamMemberships")
+        .eq("organizationId", args.organizationId)
+        .collect();
+      const isMember = memberships.some((m) => String(m.userId) === String(args.ownerId));
+      if (!isMember) {
+        throw new Error("New owner must be a member of the organization");
+      }
+    }
+
+    const updates: Record<string, unknown> = { updatedAt: Date.now() };
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.website !== undefined) updates.website = args.website;
+    if (args.ownerId !== undefined) updates.ownerId = args.ownerId;
+
+    await db.patch("organizations", args.organizationId, updates);
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: String(userId),
+      action: "organization_profile_updated",
+      entityType: "organization",
+      entityId: args.organizationId,
+    });
+    return { ok: true };
+  },
+});
+
+export const setSeatLimitOverride = action({
+  args: {
+    organizationId: v.string(),
+    seatLimit: v.union(v.number(), v.null()),
+  },
+  returns: v.object({ ok: v.boolean() }),
+  handler: async (ctx, args) => {
+    const { userId } = await ctx.runAction(internal._helpers.authAction.verifyPlatformAdmin, {});
+    // Supabase-only: these admin fields are read exclusively via createSupabaseDb.
+    // No Convex ctx.db mirror is consulted.
+    const db = createSupabaseDb();
+    await db.patch("organizations", args.organizationId, {
+      seatLimitOverride: args.seatLimit,
+      updatedAt: Date.now(),
+    });
+    await logAudit(ctx, {
+      organizationId: args.organizationId,
+      userId: String(userId),
+      action: "organization_seat_override_set",
+      entityType: "organization",
+      entityId: args.organizationId,
+    });
+    return { ok: true };
+  },
 });
 
 // ---------------------------------------------------------------------------

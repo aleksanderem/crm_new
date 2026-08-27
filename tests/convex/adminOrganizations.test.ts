@@ -226,3 +226,215 @@ describe("admin/organizations.getOrganizationDetail", () => {
     expect(detail.seatUsage.currentSeats).toBeGreaterThanOrEqual(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Task 4 tests — setOrganizationStatus / updateOrganizationProfile / setSeatLimitOverride
+// ---------------------------------------------------------------------------
+
+describe("admin/organizations.setOrganizationStatus", () => {
+  test("rejects non-admin caller", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await createSupabaseDb().insert("users", {
+      _id: String(userId),
+      name: "Nobody",
+      email: "nobody@example.com",
+      isPlatformAdmin: false,
+    });
+    await expect(
+      t.withIdentity(identity).action(api.admin.organizations.setOrganizationStatus, {
+        organizationId: String(organizationId),
+        status: "suspended",
+      }),
+    ).rejects.toThrow(/platform admin/i);
+  });
+
+  test("suspends then reactivates org — status round-trips in Supabase", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await createSupabaseDb().insert("users", {
+      _id: String(userId),
+      name: "Admin",
+      email: `admin-${String(userId)}@example.com`,
+      isPlatformAdmin: true,
+    });
+
+    // Suspend
+    const suspendResult = await t
+      .withIdentity(identity)
+      .action(api.admin.organizations.setOrganizationStatus, {
+        organizationId: String(organizationId),
+        status: "suspended",
+        reason: "TOS violation",
+      });
+    expect(suspendResult.status).toBe("suspended");
+
+    const suspendedRow = await createSupabaseDb().get("organizations", String(organizationId));
+    expect(suspendedRow?.status).toBe("suspended");
+    expect(suspendedRow?.suspendedReason).toBe("TOS violation");
+
+    // Reactivate
+    const reactivateResult = await t
+      .withIdentity(identity)
+      .action(api.admin.organizations.setOrganizationStatus, {
+        organizationId: String(organizationId),
+        status: "active",
+      });
+    expect(reactivateResult.status).toBe("active");
+
+    const activeRow = await createSupabaseDb().get("organizations", String(organizationId));
+    expect(activeRow?.status).toBe("active");
+    expect(activeRow?.suspendedReason).toBeNull();
+  });
+});
+
+describe("admin/organizations.setSeatLimitOverride", () => {
+  test("rejects non-admin caller", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await createSupabaseDb().insert("users", {
+      _id: String(userId),
+      name: "Nobody",
+      email: "nobody@example.com",
+      isPlatformAdmin: false,
+    });
+    await expect(
+      t.withIdentity(identity).action(api.admin.organizations.setSeatLimitOverride, {
+        organizationId: String(organizationId),
+        seatLimit: 50,
+      }),
+    ).rejects.toThrow(/platform admin/i);
+  });
+
+  test("sets seat override and getOrganizationDetail reflects effectiveSeatLimit >= 50", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await createSupabaseDb().insert("users", {
+      _id: String(userId),
+      name: "Admin",
+      email: `admin-${String(userId)}@example.com`,
+      isPlatformAdmin: true,
+    });
+
+    await t
+      .withIdentity(identity)
+      .action(api.admin.organizations.setSeatLimitOverride, {
+        organizationId: String(organizationId),
+        seatLimit: 50,
+      });
+
+    const row = await createSupabaseDb().get("organizations", String(organizationId));
+    expect(row?.seatLimitOverride).toBe(50);
+
+    // getOrganizationDetail uses checkSeatLimitAction internally
+    const detail = await t
+      .withIdentity(identity)
+      .action(api.admin.organizations.getOrganizationDetail, {
+        organizationId: String(organizationId),
+      });
+    expect(detail.seatUsage.effectiveSeatLimit).toBeGreaterThanOrEqual(50);
+  });
+
+  test("can clear override by passing null", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await createSupabaseDb().insert("users", {
+      _id: String(userId),
+      name: "Admin",
+      email: `admin-${String(userId)}@example.com`,
+      isPlatformAdmin: true,
+    });
+
+    await t
+      .withIdentity(identity)
+      .action(api.admin.organizations.setSeatLimitOverride, {
+        organizationId: String(organizationId),
+        seatLimit: null,
+      });
+
+    const row = await createSupabaseDb().get("organizations", String(organizationId));
+    expect(row?.seatLimitOverride).toBeNull();
+  });
+});
+
+describe("admin/organizations.updateOrganizationProfile", () => {
+  test("rejects non-admin caller", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await createSupabaseDb().insert("users", {
+      _id: String(userId),
+      name: "Nobody",
+      email: "nobody@example.com",
+      isPlatformAdmin: false,
+    });
+    await expect(
+      t.withIdentity(identity).action(api.admin.organizations.updateOrganizationProfile, {
+        organizationId: String(organizationId),
+        name: "New Name",
+      }),
+    ).rejects.toThrow(/platform admin/i);
+  });
+
+  test("rejects ownerId that is not a member of the org", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await createSupabaseDb().insert("users", {
+      _id: String(userId),
+      name: "Admin",
+      email: `admin-${String(userId)}@example.com`,
+      isPlatformAdmin: true,
+    });
+
+    await expect(
+      t.withIdentity(identity).action(api.admin.organizations.updateOrganizationProfile, {
+        organizationId: String(organizationId),
+        ownerId: "non-existent-user-id",
+      }),
+    ).rejects.toThrow(/member/i);
+  });
+
+  test("updates name when valid admin calls it", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await createSupabaseDb().insert("users", {
+      _id: String(userId),
+      name: "Admin",
+      email: `admin-${String(userId)}@example.com`,
+      isPlatformAdmin: true,
+    });
+
+    const result = await t
+      .withIdentity(identity)
+      .action(api.admin.organizations.updateOrganizationProfile, {
+        organizationId: String(organizationId),
+        name: "Renamed Org",
+      });
+    expect(result.ok).toBe(true);
+
+    const row = await createSupabaseDb().get("organizations", String(organizationId));
+    expect(row?.name).toBe("Renamed Org");
+  });
+
+  test("updates ownerId when new owner is a member", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await createSupabaseDb().insert("users", {
+      _id: String(userId),
+      name: "Admin",
+      email: `admin-${String(userId)}@example.com`,
+      isPlatformAdmin: true,
+    });
+
+    // The seeded user is already a member (owner role), so passing their own ID is valid.
+    const result = await t
+      .withIdentity(identity)
+      .action(api.admin.organizations.updateOrganizationProfile, {
+        organizationId: String(organizationId),
+        ownerId: String(userId),
+      });
+    expect(result.ok).toBe(true);
+
+    const row = await createSupabaseDb().get("organizations", String(organizationId));
+    expect(String(row?.ownerId)).toBe(String(userId));
+  });
+});

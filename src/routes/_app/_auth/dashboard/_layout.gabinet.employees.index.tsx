@@ -231,19 +231,19 @@ function EmployeesIndex() {
     return pendingGabinetInvitations.filter((inv) => !employeeEmails.has(inv.email));
   }, [pendingGabinetInvitations, employees]);
 
-  function getDisplayName(emp: { firstName?: string; lastName?: string; userId: string }) {
+  function getDisplayName(emp: { firstName?: string; lastName?: string; userId?: string }) {
     if (emp.firstName || emp.lastName) {
       return `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim();
     }
-    const user = userMap.get(emp.userId);
+    const user = emp.userId ? userMap.get(emp.userId) : undefined;
     return user?.name || user?.email || t("common.unknown");
   }
 
-  function getInitials(emp: { firstName?: string; lastName?: string; userId: string }) {
+  function getInitials(emp: { firstName?: string; lastName?: string; userId?: string }) {
     if (emp.firstName || emp.lastName) {
       return `${(emp.firstName ?? "")[0] ?? ""}${(emp.lastName ?? "")[0] ?? ""}`.toUpperCase();
     }
-    const user = userMap.get(emp.userId);
+    const user = emp.userId ? userMap.get(emp.userId) : undefined;
     const name = user?.name || user?.email || "?";
     return name.substring(0, 2).toUpperCase();
   }
@@ -258,7 +258,7 @@ function EmployeesIndex() {
       render: (item) => {
         const displayName = getDisplayName(item);
         const initials = getInitials(item);
-        const user = userMap.get(item.userId);
+        const user = item.userId ? userMap.get(item.userId) : undefined;
         return (
           <div className="flex items-center gap-3">
             <Avatar size="sm" initials={initials} />
@@ -557,7 +557,7 @@ function EmployeesIndex() {
         // EventDialog identifies employees by userId (it creates one
         // scheduledActivity per resourceId=userId so the block lands in each
         // selected employee's calendar column).
-        setEventDefaultUserIds(selectedRows.map((row) => row.userId));
+        setEventDefaultUserIds(selectedRows.map((row) => row.userId).filter((id): id is string => !!id));
         setEventDialogOpen(true);
       } else if (action === "edit") {
         const first = selectedRows[0];

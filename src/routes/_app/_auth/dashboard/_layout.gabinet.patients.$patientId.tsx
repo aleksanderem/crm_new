@@ -1292,7 +1292,7 @@ function PatientDetail() {
             organizationId={organizationId}
             tagDefinitions={orgTags}
             categoryDefinitions={patientCategories}
-            locations={orgLocations.map((l) => ({ id: l.id, name: l.name }))}
+            locations={orgLocations.map((l) => ({ id: l._id, name: l.name }))}
           />
         </SidePanel>
       )}

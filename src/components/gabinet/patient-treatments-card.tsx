@@ -53,7 +53,7 @@ export function PatientTreatmentsCard({ patientId, organizationId }: PatientTrea
     enabled: !!organizationId,
   });
 
-  const treatmentMap = new Map((treatments ?? []).map((tr) => [tr._id, tr.name]));
+  const treatmentMap = new Map<string, string>((treatments ?? []).map((tr) => [tr._id as string, tr.name]));
   const packageMap = new Map((allPackages ?? []).map((p) => [p._id, p]));
 
   // Single-session purchases of one treatment ("zabieg"). Multi-session sales

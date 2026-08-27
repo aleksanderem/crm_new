@@ -49,7 +49,7 @@ type TreatmentListItem = {
 
 type JunctionTreatment = {
   id: string;
-  treatmentId: string;
+  treatmentId: string | null;
   variantId?: string | null;
   variantName?: string | null;
   priceAtBooking?: number | null;

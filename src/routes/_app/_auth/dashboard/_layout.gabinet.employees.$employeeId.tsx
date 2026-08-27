@@ -728,7 +728,7 @@ function EmployeeDetail() {
       content: employee.userId ? (
         <FlexibleScheduleEditor
           organizationId={organizationId}
-          userId={employee.userId}
+          userId={employee.userId as Id<"users">}
           periods={schedulePeriods}
           clinicHours={clinicHours ?? []}
           onSavePeriod={async (a) => { await saveSchedulePeriod(a); invalidateScheduleCache(); }}
@@ -813,7 +813,7 @@ function EmployeeDetail() {
             content: employee.userId ? (
               <EmployeePermissionsTab
                 organizationId={organizationId}
-                userId={employee.userId}
+                userId={employee.userId as Id<"users">}
                 gabinetRole={employee.role}
                 t={t}
               />

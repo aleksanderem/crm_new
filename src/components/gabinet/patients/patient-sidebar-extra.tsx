@@ -6,6 +6,7 @@ import { PatientTreatmentsCard } from "@/components/gabinet/patient-treatments-c
 import { plateJsonToText } from "@/components/gabinet/rich-text-editor";
 import { formatCurrencyPLN } from "@/lib/format-currency";
 import { groupIntakeSummary } from "./intake-utils";
+import type { Id } from "@cvx/_generated/dataModel";
 
 type LatestIntake = { intakeSummary: string[] } | null | undefined;
 type LoyaltyBalance = { balance: number } | null | undefined;
@@ -124,7 +125,7 @@ export function PatientSidebarExtra({
         </div>
         {(() => {
           const medicalNotesText = plateJsonToText(
-            patient.medicalNotes ?? undefined,
+            patient.medicalNotes as string | null | undefined,
           ).trim();
           if (!medicalNotesText) return null;
           return (
@@ -141,8 +142,8 @@ export function PatientSidebarExtra({
           );
         })()}
       </div>
-      <PatientPackagesCard patientId={patientId} organizationId={organizationId} />
-      <PatientTreatmentsCard patientId={patientId} organizationId={organizationId} />
+      <PatientPackagesCard patientId={patientId} organizationId={organizationId as Id<"organizations">} />
+      <PatientTreatmentsCard patientId={patientId} organizationId={organizationId as Id<"organizations">} />
     </div>
   );
 }

@@ -2,7 +2,9 @@
  * Google Calendar Sync Configs Mapper — Supabase ↔ Frontend
  */
 
-import type { GoogleCalendarSyncConfigRow } from "../database.types";
+import type { Database } from "../database.types";
+
+type GoogleCalendarSyncConfigRow = Database["public"]["Tables"]["google_calendar_sync_configs"]["Row"];
 import { createEntityMapper } from "./generic";
 
 export interface MappedGoogleCalendarSyncConfig {

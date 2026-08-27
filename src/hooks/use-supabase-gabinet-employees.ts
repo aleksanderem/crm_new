@@ -67,7 +67,7 @@ export function useSupabaseGabinetEmployeesList(
         .limit(limit);
 
       if (error) throw error;
-      return (data ?? []).map((row) => mapGabinetEmployeeFromSupabase(row as GabinetEmployeeRow));
+      return (data ?? []).map((row) => mapGabinetEmployeeFromSupabase(row as unknown as GabinetEmployeeRow));
     },
     enabled: enabled && isReady && !!organizationId,
   } satisfies UseQueryOptions<MappedGabinetEmployee[], Error>);

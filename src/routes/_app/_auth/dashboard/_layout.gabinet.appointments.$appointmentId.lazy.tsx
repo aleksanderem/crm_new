@@ -49,7 +49,6 @@ import { PermissionGate, usePermission } from "@/hooks/use-permission";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useTagDefinitions } from "@/hooks/use-tag-definitions";
-import { appointmentStatusBadgeClass } from "@/lib/gabinet-appointment-status";
 import { ChangeEmployeeModal } from "@/components/gabinet/change-employee-modal";
 import { DocumentationTab } from "@/components/gabinet/documentation-tab";
 
@@ -1168,7 +1167,6 @@ function AppointmentDetail() {
         <AppointmentPaymentsTab
           appointment={appointment}
           payments={payments as Record<string, unknown>[]}
-          junctionTreatments={junctionTreatments}
           treatmentPrice={treatmentPrice}
           totalPaid={totalPaid}
           outstanding={outstanding}

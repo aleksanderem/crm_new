@@ -11,7 +11,7 @@ type LoyaltyBalance = {
 
 type LoyaltyTransaction = {
   _id: string;
-  type: "earn" | "spend" | "adjust";
+  type: string;
   points: number;
   reason?: string;
   createdAt: number;

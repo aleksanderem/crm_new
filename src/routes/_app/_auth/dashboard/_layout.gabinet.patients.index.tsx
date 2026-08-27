@@ -785,7 +785,7 @@ function PatientsIndex() {
           organizationId={organizationId}
           tagDefinitions={tags}
           categoryDefinitions={categories}
-          locations={locations.map((l) => ({ id: l.id, name: l.name }))}
+          locations={locations.map((l) => ({ id: l._id, name: l.name }))}
         />
       </SidePanel>
 

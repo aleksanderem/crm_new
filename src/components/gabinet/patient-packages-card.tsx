@@ -106,8 +106,8 @@ export function PatientPackagesCard({ patientId, organizationId }: PatientPackag
     patientId,
   );
 
-  const treatmentMap = new Map(
-    (treatments ?? []).map((tr) => [tr._id, tr.name])
+  const treatmentMap = new Map<string, string>(
+    (treatments ?? []).map((tr) => [tr._id as string, tr.name])
   );
 
   const packageMap = new Map(
@@ -712,7 +712,7 @@ interface PackageDetailDialogProps {
     status: string;
     paidAmount: number;
     paymentMethod?: string | null;
-    treatmentsUsed: Array<{ treatmentId: Id<"gabinetTreatments">; usedCount: number; totalCount: number }>;
+    treatmentsUsed: Array<{ treatmentId: string; usedCount: number; totalCount: number }>;
   } | null;
   pkg: {
     name: string;
@@ -720,7 +720,7 @@ interface PackageDetailDialogProps {
     totalPrice: number;
     currency?: string;
   } | null;
-  treatmentMap: Map<Id<"gabinetTreatments">, string>;
+  treatmentMap: Map<string, string>;
   scheduledByTreatment: Map<string, number> | null;
 }
 

@@ -208,7 +208,7 @@ export const seedAll = mutation({
   handler: async (ctx, args) => {
     const { user } = await verifyOrgAccess(ctx, args.organizationId);
     await seedOrganizationDefaultsHandler(ctx, {
-      organizationId: args.organizationId,
+      organizationId: args.organizationId as Id<"organizations">,
       userId: user._id,
     });
   },
@@ -223,6 +223,9 @@ export const seedOrganizationDefaults = internalMutation({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    await seedOrganizationDefaultsHandler(ctx, args);
+    await seedOrganizationDefaultsHandler(ctx, {
+      organizationId: args.organizationId as Id<"organizations">,
+      userId: args.userId,
+    });
   },
 });

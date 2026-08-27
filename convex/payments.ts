@@ -1232,7 +1232,7 @@ export const _sendRefundAuthEmails = internalAction({
           text,
           log: {
             ctx,
-            organizationId: args.organizationId,
+            organizationId: args.organizationId as Id<"organizations">,
             source: "system",
             recipientName: admin.name ?? undefined,
             relatedEntityType: "gabinetPatient",
@@ -1720,7 +1720,7 @@ export const approveRefundAuth = action({
       approverName:
         authResult.userName ?? authResult.userEmail ?? "Administrator",
       requestId: meta.requestId,
-      requesterId: meta.requesterId,
+      requesterId: meta.requesterId as Id<"users">,
       patientId: meta.patientId,
       patientLabel: meta.patientLabel,
       amount: meta.amount,
@@ -1797,7 +1797,7 @@ export const rejectRefundAuth = action({
       approverName:
         authResult.userName ?? authResult.userEmail ?? "Administrator",
       requestId: meta.requestId,
-      requesterId: meta.requesterId,
+      requesterId: meta.requesterId as Id<"users">,
       patientId: meta.patientId,
       patientLabel: meta.patientLabel,
       amount: meta.amount,

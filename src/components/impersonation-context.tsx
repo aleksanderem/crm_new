@@ -35,6 +35,10 @@ export interface ImpersonationState {
   token: string;
   orgId: string;
   orgName: string;
+  /** The Convex user id of the admin who started impersonation.
+   *  Used to discard stale impersonation state if a different user signs in
+   *  on the same browser tab (SPA, no hard reload). */
+  adminUserId: string;
 }
 
 interface ImpersonationContextValue {
@@ -44,12 +48,14 @@ interface ImpersonationContextValue {
 }
 
 // ---------------------------------------------------------------------------
-// Storage key
+// Storage key (exported so sign-out helpers can clear without duplicating the literal)
 // ---------------------------------------------------------------------------
 
-const SESSION_KEY = "quera-impersonation";
+export const IMPERSONATION_SESSION_KEY = "quera-impersonation";
+/** @deprecated Use IMPERSONATION_SESSION_KEY */
+const SESSION_KEY = IMPERSONATION_SESSION_KEY;
 
-function loadFromSession(): ImpersonationState | null {
+function loadFromSession(currentUserId: string): ImpersonationState | null {
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
     if (!raw) return null;
@@ -60,11 +66,21 @@ function loadFromSession(): ImpersonationState | null {
       "token" in parsed &&
       "orgId" in parsed &&
       "orgName" in parsed &&
+      "adminUserId" in parsed &&
       typeof (parsed as Record<string, unknown>).token === "string" &&
       typeof (parsed as Record<string, unknown>).orgId === "string" &&
-      typeof (parsed as Record<string, unknown>).orgName === "string"
+      typeof (parsed as Record<string, unknown>).orgName === "string" &&
+      typeof (parsed as Record<string, unknown>).adminUserId === "string"
     ) {
-      return parsed as ImpersonationState;
+      const state = parsed as ImpersonationState;
+      // Guard: discard if the stored admin id doesn't match the current user.
+      // This prevents a stale impersonation JWT from leaking to a different
+      // user who signs in on the same SPA tab after the admin signs out.
+      if (state.adminUserId !== currentUserId) {
+        sessionStorage.removeItem(SESSION_KEY);
+        return null;
+      }
+      return state;
     }
   } catch {
     // ignore parse errors
@@ -99,9 +115,15 @@ const ImpersonationContext = createContext<ImpersonationContextValue>({
 // Provider
 // ---------------------------------------------------------------------------
 
-export function ImpersonationProvider({ children }: { children: ReactNode }) {
+export function ImpersonationProvider({
+  children,
+  currentUserId,
+}: {
+  children: ReactNode;
+  currentUserId: string;
+}) {
   const [impersonation, setImpersonation] = useState<ImpersonationState | null>(
-    () => loadFromSession(),
+    () => loadFromSession(currentUserId),
   );
 
   // Keep sessionStorage in sync whenever state changes.
@@ -109,9 +131,14 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
     saveToSession(impersonation);
   }, [impersonation]);
 
-  const startImpersonation = useCallback((state: ImpersonationState) => {
-    setImpersonation(state);
-  }, []);
+  const startImpersonation = useCallback(
+    (state: ImpersonationState) => {
+      // Always stamp adminUserId from the current authenticated user so that
+      // the persisted token cannot be rehydrated by a different user.
+      setImpersonation({ ...state, adminUserId: currentUserId });
+    },
+    [currentUserId],
+  );
 
   const stopImpersonation = useCallback(() => {
     setImpersonation(null);

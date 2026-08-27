@@ -199,7 +199,8 @@ export const listOrganizations = action({
 
     const entByOrg = new Map<string, Set<string>>();
     for (const e of entRows) {
-      if (String(e.status) !== "active") continue;
+      const s = String(e.status);
+      if (s !== "active" && s !== "trialing") continue;
       const k = String(e.organizationId);
       if (!entByOrg.has(k)) entByOrg.set(k, new Set());
       entByOrg.get(k)!.add(String(e.productId));
@@ -269,9 +270,13 @@ export const getOrganizationDetail = action({
     });
 
     // Build entitlements map for this org.
+    // "trialing" is treated as active (mirrors convex/admin/entitlements.ts:listOrgEntitlements).
     const activeProductIds = new Set(
       entRows
-        .filter((e) => String(e.status) === "active")
+        .filter((e) => {
+          const s = String(e.status);
+          return s === "active" || s === "trialing";
+        })
         .map((e) => String(e.productId)),
     );
 

@@ -1122,7 +1122,7 @@ function DashboardLayout() {
   return (
     <DateRangeProvider>
       <OrgProvider initialOrgId={firstOrg._id as Id<"organizations">} userId={user._id}>
-        <ImpersonationProvider>
+        <ImpersonationProvider currentUserId={user._id}>
           <SupabaseProvider>
             <ImpersonationBanner />
             <NudgesProvider>

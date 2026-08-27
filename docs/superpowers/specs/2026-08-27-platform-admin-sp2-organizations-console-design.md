@@ -39,6 +39,8 @@ The single tenant boundary for reads/writes is the Convex auth layer + JWT minti
 
 The admin console itself is unaffected (it uses `verifyPlatformAdmin`, never `verifyOrgAccess`). Reactivation clears `status` back to `"active"` and access resumes.
 
+**Known window (accepted scope):** suspension is enforced at `verifyOrgAccess` (action variant) and `mintSupabaseToken`, so a suspended org cannot mint a **new** Supabase token — but a Supabase JWT that was already issued before suspension remains valid until its ≤1 h expiry. Additionally, `verifyOrgAccess` in the Convex **query**-handler path (`convex/_helpers/auth.ts`) is not gated on suspend status (it cannot call `internalAction` to reach Supabase). This window is intentional for SP2; a follow-up can shorten it by forcing a JWT revocation list or a shorter token TTL.
+
 ## Impersonation ("Wejdź jako" — read-only support view)
 
 New action `mintImpersonationToken` action(`organizationId`): guarded by `verifyPlatformAdmin` (NOT membership), mints a Supabase JWT with `sub = adminUserId`, `org_id = targetOrg`, and an `imp: true` claim; `logAudit` (`organization_impersonation_started`). The frontend stores the impersonation token + target org, renders a persistent banner ("Podgląd jako operator — tryb tylko-do-odczytu. Wyjdź."), and routes Supabase reads through this token. Because the app's read path is overwhelmingly Supabase-direct (RLS filters by the `org_id` claim), the operator sees a faithful read-only view.

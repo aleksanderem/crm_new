@@ -130,6 +130,31 @@ describe("admin/organizations.listOrganizations", () => {
     expect(org?.status).toBe("active");
   });
 
+  test("trialing subscription is treated as active (crm shows 'active' for trialing status)", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await makePlatformAdmin(String(userId));
+
+    // Seed a CRM entitlement with status "trialing" — should be treated as active.
+    await createSupabaseDb().insert("productSubscriptions", {
+      _id: "ps-crm-trialing",
+      organizationId: String(organizationId),
+      productId: "crm",
+      status: "trialing",
+      cancelAtPeriodEnd: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    const rows = await t
+      .withIdentity(identity)
+      .action(api.admin.organizations.listOrganizations, {});
+
+    const org = rows.find((r) => r.organizationId === String(organizationId));
+    expect(org?.crm).toBe("active");
+    expect(org?.gabinet).toBe("none");
+  });
+
   test("crm and gabinet reflect multiple active entitlements", async () => {
     const t = createTestCtx();
     const { organizationId, userId, identity } = await seedTestUser(t);
@@ -182,6 +207,40 @@ describe("admin/organizations.getOrganizationDetail", () => {
           organizationId: String(organizationId),
         }),
     ).rejects.toThrow(/platform admin/i);
+  });
+
+  test("trialing subscription shows as 'active' in entitlements detail", async () => {
+    const t = createTestCtx();
+    const { organizationId, userId, identity } = await seedTestUser(t);
+    await makePlatformAdmin(String(userId));
+
+    const db = createSupabaseDb();
+    await db.insert("users", {
+      _id: String(userId),
+      name: "Admin",
+      email: `admin-${String(userId)}@example.com`,
+      isPlatformAdmin: true,
+    });
+
+    // Gabinet with "trialing" status.
+    await db.insert("productSubscriptions", {
+      _id: "ps-gab-trialing-detail",
+      organizationId: String(organizationId),
+      productId: "gabinet",
+      status: "trialing",
+      cancelAtPeriodEnd: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    const detail = await t
+      .withIdentity(identity)
+      .action(api.admin.organizations.getOrganizationDetail, {
+        organizationId: String(organizationId),
+      });
+
+    expect(detail.entitlements.gabinet).toBe("active");
+    expect(detail.entitlements.crm).toBe("none");
   });
 
   test("returns org detail with members and entitlements", async () => {

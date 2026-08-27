@@ -44,6 +44,9 @@ export function createCrmTables({
     createdAt: v.number(),
     updatedAt: v.number(),
     onboardingCompleted: v.optional(v.boolean()),
+    status: v.optional(v.union(v.literal("active"), v.literal("suspended"))),
+    suspendedReason: v.optional(v.string()),
+    seatLimitOverride: v.optional(v.number()),
   })
     .index("by_slug", ["slug"])
     .index("by_ownerId", ["ownerId"]),

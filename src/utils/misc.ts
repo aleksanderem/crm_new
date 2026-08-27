@@ -4,6 +4,7 @@ import { useNavigate, useRouter } from "@tanstack/react-router";
 import type { ClassValue } from "clsx";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { IMPERSONATION_SESSION_KEY } from "@/components/impersonation-context";
 
 /**
  * Tailwind CSS classnames with support for conditional classes.
@@ -38,6 +39,9 @@ export const useSignOut = () => {
   const { signOut } = useAuthActions();
 
   return async () => {
+    // Clear impersonation token before signing out so it cannot be
+    // rehydrated by a different user on the same SPA tab.
+    sessionStorage.removeItem(IMPERSONATION_SESSION_KEY);
     await signOut();
     router.invalidate();
     navigate({ to: "/login" });

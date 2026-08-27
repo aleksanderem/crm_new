@@ -95,6 +95,18 @@ function AdminIndex() {
             </CardHeader>
           </Card>
         </Link>
+
+        <Link to="/admin/organizations" className="block">
+          <Card className="h-full transition hover:border-foreground/20">
+            <CardHeader>
+              <CardTitle>Organizacje</CardTitle>
+              <CardDescription>
+                Przeglądaj wszystkie organizacje na platformie, zarządzaj
+                statusem, limitem miejsc i profilem.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
       </div>
     </div>
   );

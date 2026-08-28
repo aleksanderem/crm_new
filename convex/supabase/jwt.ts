@@ -72,6 +72,12 @@ export const mintUserToken = action({
     const user = await ctx.runQuery(internal._helpers.authAction._getAuthUser, { userId });
     if (!user) throw new Error("User not found");
 
+    const db = createSupabaseDb();
+    const u = await db.get("users", String(userId));
+    if (u && (u as { isSuspended?: boolean }).isSuspended) {
+      throw new Error("User suspended");
+    }
+
     if (!SUPABASE_JWT_SECRET) {
       throw new Error("SUPABASE_JWT_SECRET not configured");
     }

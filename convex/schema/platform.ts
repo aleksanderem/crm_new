@@ -40,6 +40,10 @@ export function createPlatformTables({
     // but existing Convex user docs carry this field, so it must be declared
     // here or schema validation rejects the extra field on deploy.
     isPlatformAdmin: v.optional(v.boolean()),
+    // Global suspension flag. Authoritative store is Supabase (is_suspended).
+    // Absent/false = active; true blocks token minting and all auth guards.
+    // Written only via the setUserSuspended admin action (SP3 T2).
+    isSuspended: v.optional(v.boolean()),
   })
     .index("email", ["email"])
     .index("customerId", ["customerId"]),

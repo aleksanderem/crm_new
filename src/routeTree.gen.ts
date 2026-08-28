@@ -52,6 +52,7 @@ import { Route as AppAuthDashboardLayoutDocumentEditorRouteImport } from './rout
 import { Route as AppAuthDashboardLayoutCheckoutRouteImport } from './routes/_app/_auth/dashboard/_layout.checkout'
 import { Route as AppAuthDashboardLayoutCalendarPreviewRouteImport } from './routes/_app/_auth/dashboard/_layout.calendar-preview'
 import { Route as AppAuthDashboardLayoutCalendarRouteImport } from './routes/_app/_auth/dashboard/_layout.calendar'
+import { Route as AppAuthAdminUsersUserIdRouteImport } from './routes/_app/_auth/admin.users.$userId'
 import { Route as AppAuthAdminOrganizationsOrgIdRouteImport } from './routes/_app/_auth/admin.organizations.$orgId'
 import { Route as AppAuthDashboardLayoutSettingsIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.index'
 import { Route as AppAuthDashboardLayoutProductsIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.products.index'
@@ -366,6 +367,11 @@ const AppAuthDashboardLayoutCalendarRoute =
     path: '/calendar',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
+const AppAuthAdminUsersUserIdRoute = AppAuthAdminUsersUserIdRouteImport.update({
+  id: '/$userId',
+  path: '/$userId',
+  getParentRoute: () => AppAuthAdminUsersRoute,
+} as any)
 const AppAuthAdminOrganizationsOrgIdRoute =
   AppAuthAdminOrganizationsOrgIdRouteImport.update({
     id: '/$orgId',
@@ -890,7 +896,7 @@ export interface FileRoutesByFullPath {
   '/admin/errors': typeof AppAuthAdminErrorsRoute
   '/admin/organizations': typeof AppAuthAdminOrganizationsRouteWithChildren
   '/admin/plans': typeof AppAuthAdminPlansRoute
-  '/admin/users': typeof AppAuthAdminUsersRoute
+  '/admin/users': typeof AppAuthAdminUsersRouteWithChildren
   '/dashboard': typeof AppAuthDashboardLayoutRouteWithChildren
   '/onboarding': typeof AppAuthOnboardingLayoutRouteWithChildren
   '/patient/appointments': typeof AppPatientLayoutAppointmentsRoute
@@ -903,6 +909,7 @@ export interface FileRoutesByFullPath {
   '/login/': typeof AppLoginLayoutIndexRoute
   '/patient/': typeof AppPatientLayoutIndexRoute
   '/admin/organizations/$orgId': typeof AppAuthAdminOrganizationsOrgIdRoute
+  '/admin/users/$userId': typeof AppAuthAdminUsersUserIdRoute
   '/dashboard/calendar': typeof AppAuthDashboardLayoutCalendarRoute
   '/dashboard/calendar-preview': typeof AppAuthDashboardLayoutCalendarPreviewRoute
   '/dashboard/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
@@ -1011,7 +1018,7 @@ export interface FileRoutesByTo {
   '/admin/errors': typeof AppAuthAdminErrorsRoute
   '/admin/organizations': typeof AppAuthAdminOrganizationsRouteWithChildren
   '/admin/plans': typeof AppAuthAdminPlansRoute
-  '/admin/users': typeof AppAuthAdminUsersRoute
+  '/admin/users': typeof AppAuthAdminUsersRouteWithChildren
   '/onboarding': typeof AppAuthOnboardingLayoutRouteWithChildren
   '/patient/appointments': typeof AppPatientLayoutAppointmentsRoute
   '/patient/book': typeof AppPatientLayoutBookRoute
@@ -1023,6 +1030,7 @@ export interface FileRoutesByTo {
   '/login': typeof AppLoginLayoutIndexRoute
   '/patient': typeof AppPatientLayoutIndexRoute
   '/admin/organizations/$orgId': typeof AppAuthAdminOrganizationsOrgIdRoute
+  '/admin/users/$userId': typeof AppAuthAdminUsersUserIdRoute
   '/dashboard/calendar': typeof AppAuthDashboardLayoutCalendarRoute
   '/dashboard/calendar-preview': typeof AppAuthDashboardLayoutCalendarPreviewRoute
   '/dashboard/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
@@ -1130,7 +1138,7 @@ export interface FileRoutesById {
   '/_app/_auth/admin/errors': typeof AppAuthAdminErrorsRoute
   '/_app/_auth/admin/organizations': typeof AppAuthAdminOrganizationsRouteWithChildren
   '/_app/_auth/admin/plans': typeof AppAuthAdminPlansRoute
-  '/_app/_auth/admin/users': typeof AppAuthAdminUsersRoute
+  '/_app/_auth/admin/users': typeof AppAuthAdminUsersRouteWithChildren
   '/_app/_auth/dashboard/_layout': typeof AppAuthDashboardLayoutRouteWithChildren
   '/_app/_auth/onboarding/_layout': typeof AppAuthOnboardingLayoutRouteWithChildren
   '/_app/patient/_layout/appointments': typeof AppPatientLayoutAppointmentsRoute
@@ -1143,6 +1151,7 @@ export interface FileRoutesById {
   '/_app/login/_layout/': typeof AppLoginLayoutIndexRoute
   '/_app/patient/_layout/': typeof AppPatientLayoutIndexRoute
   '/_app/_auth/admin/organizations/$orgId': typeof AppAuthAdminOrganizationsOrgIdRoute
+  '/_app/_auth/admin/users/$userId': typeof AppAuthAdminUsersUserIdRoute
   '/_app/_auth/dashboard/_layout/calendar': typeof AppAuthDashboardLayoutCalendarRoute
   '/_app/_auth/dashboard/_layout/calendar-preview': typeof AppAuthDashboardLayoutCalendarPreviewRoute
   '/_app/_auth/dashboard/_layout/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
@@ -1268,6 +1277,7 @@ export interface FileRouteTypes {
     | '/login/'
     | '/patient/'
     | '/admin/organizations/$orgId'
+    | '/admin/users/$userId'
     | '/dashboard/calendar'
     | '/dashboard/calendar-preview'
     | '/dashboard/checkout'
@@ -1388,6 +1398,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/patient'
     | '/admin/organizations/$orgId'
+    | '/admin/users/$userId'
     | '/dashboard/calendar'
     | '/dashboard/calendar-preview'
     | '/dashboard/checkout'
@@ -1507,6 +1518,7 @@ export interface FileRouteTypes {
     | '/_app/login/_layout/'
     | '/_app/patient/_layout/'
     | '/_app/_auth/admin/organizations/$orgId'
+    | '/_app/_auth/admin/users/$userId'
     | '/_app/_auth/dashboard/_layout/calendar'
     | '/_app/_auth/dashboard/_layout/calendar-preview'
     | '/_app/_auth/dashboard/_layout/checkout'
@@ -1914,6 +1926,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/calendar'
       preLoaderRoute: typeof AppAuthDashboardLayoutCalendarRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
+    '/_app/_auth/admin/users/$userId': {
+      id: '/_app/_auth/admin/users/$userId'
+      path: '/$userId'
+      fullPath: '/admin/users/$userId'
+      preLoaderRoute: typeof AppAuthAdminUsersUserIdRouteImport
+      parentRoute: typeof AppAuthAdminUsersRoute
     }
     '/_app/_auth/admin/organizations/$orgId': {
       id: '/_app/_auth/admin/organizations/$orgId'
@@ -2492,6 +2511,17 @@ const AppAuthAdminOrganizationsRouteWithChildren =
     AppAuthAdminOrganizationsRouteChildren,
   )
 
+interface AppAuthAdminUsersRouteChildren {
+  AppAuthAdminUsersUserIdRoute: typeof AppAuthAdminUsersUserIdRoute
+}
+
+const AppAuthAdminUsersRouteChildren: AppAuthAdminUsersRouteChildren = {
+  AppAuthAdminUsersUserIdRoute: AppAuthAdminUsersUserIdRoute,
+}
+
+const AppAuthAdminUsersRouteWithChildren =
+  AppAuthAdminUsersRoute._addFileChildren(AppAuthAdminUsersRouteChildren)
+
 interface AppAuthDashboardLayoutDocumentEditorRouteChildren {
   AppAuthDashboardLayoutDocumentEditorIdRoute: typeof AppAuthDashboardLayoutDocumentEditorIdRoute
   AppAuthDashboardLayoutDocumentEditorNewRoute: typeof AppAuthDashboardLayoutDocumentEditorNewRoute
@@ -2870,7 +2900,7 @@ interface AppAuthRouteChildren {
   AppAuthAdminErrorsRoute: typeof AppAuthAdminErrorsRoute
   AppAuthAdminOrganizationsRoute: typeof AppAuthAdminOrganizationsRouteWithChildren
   AppAuthAdminPlansRoute: typeof AppAuthAdminPlansRoute
-  AppAuthAdminUsersRoute: typeof AppAuthAdminUsersRoute
+  AppAuthAdminUsersRoute: typeof AppAuthAdminUsersRouteWithChildren
   AppAuthDashboardLayoutRoute: typeof AppAuthDashboardLayoutRouteWithChildren
   AppAuthOnboardingLayoutRoute: typeof AppAuthOnboardingLayoutRouteWithChildren
   AppAuthAdminIndexRoute: typeof AppAuthAdminIndexRoute
@@ -2882,7 +2912,7 @@ const AppAuthRouteChildren: AppAuthRouteChildren = {
   AppAuthAdminErrorsRoute: AppAuthAdminErrorsRoute,
   AppAuthAdminOrganizationsRoute: AppAuthAdminOrganizationsRouteWithChildren,
   AppAuthAdminPlansRoute: AppAuthAdminPlansRoute,
-  AppAuthAdminUsersRoute: AppAuthAdminUsersRoute,
+  AppAuthAdminUsersRoute: AppAuthAdminUsersRouteWithChildren,
   AppAuthDashboardLayoutRoute: AppAuthDashboardLayoutRouteWithChildren,
   AppAuthOnboardingLayoutRoute: AppAuthOnboardingLayoutRouteWithChildren,
   AppAuthAdminIndexRoute: AppAuthAdminIndexRoute,

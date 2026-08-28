@@ -126,6 +126,11 @@ export const verifyOrgAccess = internalAction({
       throw new Error("Organization suspended");
     }
 
+    const suspUser = await db.get("users", String(userId));
+    if (suspUser && (suspUser as UserRow).isSuspended) {
+      throw new Error("User suspended");
+    }
+
     return {
       userId: userId as Id<"users">,
       userName: user.name as string | undefined,
@@ -265,6 +270,7 @@ export const verifyPlatformAdmin = internalAction({
     const db = createSupabaseDb();
     const user = (await db.get("users", String(userId))) as UserRow | null;
     if (!user) throw new Error("User not found");
+    if (user.isSuspended) throw new Error("User suspended");
     if (!user.isPlatformAdmin) throw new Error("Platform admin access required");
     return { userId: userId as Id<"users"> };
   },

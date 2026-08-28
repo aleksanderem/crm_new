@@ -38,6 +38,7 @@ import type * as admin_cleanup from "../admin/cleanup.js";
 import type * as admin_entitlements from "../admin/entitlements.js";
 import type * as admin_organizations from "../admin/organizations.js";
 import type * as admin_plans from "../admin/plans.js";
+import type * as admin_users from "../admin/users.js";
 import type * as app from "../app.js";
 import type * as auditLog from "../auditLog.js";
 import type * as auth from "../auth.js";
@@ -240,6 +241,7 @@ declare const fullApi: ApiFromModules<{
   "admin/entitlements": typeof admin_entitlements;
   "admin/organizations": typeof admin_organizations;
   "admin/plans": typeof admin_plans;
+  "admin/users": typeof admin_users;
   app: typeof app;
   auditLog: typeof auditLog;
   auth: typeof auth;

@@ -158,3 +158,113 @@ describe("admin/plans.updatePlan", () => {
     expect(plan?.prices).toEqual(validPrices);
   });
 });
+
+// ---------------------------------------------------------------------------
+// SP4 Task 2 — Products
+// ---------------------------------------------------------------------------
+
+const productPrices = {
+  month: { usd: 29, eur: 29, pln: 119 },
+  year: { usd: 290, eur: 290, pln: 1190 },
+};
+
+async function seedProduct(
+  t: ReturnType<typeof createTestCtx>,
+): Promise<import("../../convex/_generated/dataModel").Id<"platformProducts">> {
+  return await t.run(async (ctx) =>
+    ctx.db.insert("platformProducts", {
+      productId: "crm",
+      name: "CRM",
+      description: "desc",
+      isActive: true,
+      prices: productPrices,
+      createdAt: 1,
+      updatedAt: 1,
+    }),
+  );
+}
+
+describe("admin/plans.listProducts", () => {
+  test("(a) rejects non-platform-admin callers", async () => {
+    const t = createTestCtx();
+    const { userId, identity } = await seedTestUser(t);
+    await createSupabaseDb().insert("users", {
+      _id: String(userId),
+      name: "Nobody",
+      email: "nobody2@example.com",
+      isPlatformAdmin: false,
+    });
+    await expect(
+      t.withIdentity(identity).action(api.admin.plans.listProducts, {}),
+    ).rejects.toThrow(/platform admin/i);
+  });
+
+  test("(b) admin listProducts returns seeded product with isActive:true", async () => {
+    const t = createTestCtx();
+    const { userId, identity } = await seedTestUser(t);
+    await makePlatformAdmin(String(userId));
+    await seedProduct(t);
+
+    const products = await t
+      .withIdentity(identity)
+      .action(api.admin.plans.listProducts, {});
+
+    expect(products.length).toBeGreaterThanOrEqual(1);
+    const product = products.find((p) => p.productId === "crm");
+    expect(product).toBeTruthy();
+    expect(product?.isActive).toBe(true);
+    expect(product?.name).toBe("CRM");
+  });
+});
+
+describe("admin/plans.updateProduct", () => {
+  test("(c) updateProduct patches isActive and name, prices UNCHANGED", async () => {
+    const t = createTestCtx();
+    const { userId, identity } = await seedTestUser(t);
+    await makePlatformAdmin(String(userId));
+    const productDocId = await seedProduct(t);
+
+    await t
+      .withIdentity(identity)
+      .action(api.admin.plans.updateProduct, {
+        productDocId,
+        isActive: false,
+        name: "CRM+",
+      });
+
+    const products = await t
+      .withIdentity(identity)
+      .action(api.admin.plans.listProducts, {});
+
+    const product = products.find((p) => p._id === String(productDocId));
+    expect(product?.isActive).toBe(false);
+    expect(product?.name).toBe("CRM+");
+    // prices must remain unchanged
+    expect(product?.prices).toEqual(productPrices);
+  });
+
+  test("(d) isActive/name update leaves prices intact (read back and compare)", async () => {
+    const t = createTestCtx();
+    const { userId, identity } = await seedTestUser(t);
+    await makePlatformAdmin(String(userId));
+    const productDocId = await seedProduct(t);
+
+    await t
+      .withIdentity(identity)
+      .action(api.admin.plans.updateProduct, {
+        productDocId,
+        isActive: false,
+      });
+
+    const products = await t
+      .withIdentity(identity)
+      .action(api.admin.plans.listProducts, {});
+
+    const product = products.find((p) => p._id === String(productDocId));
+    expect(product?.isActive).toBe(false);
+    expect(product?.prices).toEqual(productPrices);
+    // prices shape fully intact
+    expect(product?.prices.month.usd).toBe(29);
+    expect(product?.prices.year.pln).toBe(1190);
+  });
+});

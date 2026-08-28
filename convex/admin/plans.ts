@@ -1,13 +1,17 @@
 /**
  * SP4 Task 1 — Platform-admin plans list + update actions.
+ * SP4 Task 2 — Platform-admin products list + update actions.
  *
- * `plans` is Convex-only (NOT in Supabase TABLE_MAP). All reads and writes
- * go through ctx.db inside internalQuery / internalMutation. The public
- * actions guard with verifyPlatformAdmin first (which reads Supabase), then
- * delegate to the internal helpers via ctx.runQuery / ctx.runMutation.
+ * `plans` and `platformProducts` are Convex-only (NOT in Supabase TABLE_MAP).
+ * All reads and writes go through ctx.db inside internalQuery / internalMutation.
+ * The public actions guard with verifyPlatformAdmin first (which reads Supabase),
+ * then delegate to the internal helpers via ctx.runQuery / ctx.runMutation.
  *
  * updatePlan may ONLY patch name / description / seatLimit.
  * key, productKey, stripeId, and prices are NEVER mutated here.
+ *
+ * updateProduct may ONLY patch name / description / isActive.
+ * productId, prices, and stripeProductId are NEVER mutated here.
  */
 
 import { v } from "convex/values";
@@ -22,6 +26,15 @@ type PlanRow = {
   description: string;
   seatLimit: number;
   stripeId: string;
+  prices: unknown;
+};
+
+type ProductRow = {
+  _id: string;
+  productId: string;
+  name: string;
+  description: string;
+  isActive: boolean;
   prices: unknown;
 };
 
@@ -137,6 +150,111 @@ export const updatePlan = action({
 
     console.info(
       `[admin/plans] plan_updated planId=${args.planId} by=${userId}`,
+    );
+
+    return { ok: true };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Internal query — reads platformProducts from Convex ctx.db
+// ---------------------------------------------------------------------------
+
+export const _listProducts = internalQuery({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.string(),
+      productId: v.string(),
+      name: v.string(),
+      description: v.string(),
+      isActive: v.boolean(),
+      prices: v.any(),
+    }),
+  ),
+  handler: async (ctx) => {
+    const products = await ctx.db.query("platformProducts").collect();
+    return products.map((p) => ({
+      _id: String(p._id),
+      productId: p.productId,
+      name: p.name,
+      description: p.description,
+      isActive: p.isActive,
+      prices: p.prices,
+    }));
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Internal mutation — patches platformProducts in Convex ctx.db
+// ---------------------------------------------------------------------------
+
+export const _updateProduct = internalMutation({
+  args: {
+    productDocId: v.id("platformProducts"),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    isActive: v.optional(v.boolean()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const patch: Record<string, unknown> = { updatedAt: Date.now() };
+    if (args.name !== undefined) patch.name = args.name;
+    if (args.description !== undefined) patch.description = args.description;
+    if (args.isActive !== undefined) patch.isActive = args.isActive;
+    await ctx.db.patch(args.productDocId, patch);
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Public action: listProducts
+// ---------------------------------------------------------------------------
+
+export const listProducts = action({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.string(),
+      productId: v.string(),
+      name: v.string(),
+      description: v.string(),
+      isActive: v.boolean(),
+      prices: v.any(),
+    }),
+  ),
+  handler: async (ctx): Promise<ProductRow[]> => {
+    await ctx.runAction(internal._helpers.authAction.verifyPlatformAdmin, {});
+    return await ctx.runQuery(internal.admin.plans._listProducts, {});
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Public action: updateProduct
+// ---------------------------------------------------------------------------
+
+export const updateProduct = action({
+  args: {
+    productDocId: v.id("platformProducts"),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    isActive: v.optional(v.boolean()),
+  },
+  returns: v.object({ ok: v.boolean() }),
+  handler: async (ctx, args) => {
+    const { userId } = await ctx.runAction(
+      internal._helpers.authAction.verifyPlatformAdmin,
+      {},
+    );
+
+    await ctx.runMutation(internal.admin.plans._updateProduct, {
+      productDocId: args.productDocId,
+      name: args.name,
+      description: args.description,
+      isActive: args.isActive,
+    });
+
+    console.info(
+      `[admin/plans] product_updated productDocId=${args.productDocId} by=${userId}`,
     );
 
     return { ok: true };

@@ -83,3 +83,30 @@ export const getUserDetail = action({
     };
   },
 });
+
+// ---------------------------------------------------------------------------
+// setUserSuspended
+// ---------------------------------------------------------------------------
+
+export const setUserSuspended = action({
+  args: {
+    userId: v.id("users"),
+    suspended: v.boolean(),
+  },
+  returns: v.object({ userId: v.string(), suspended: v.boolean() }),
+  handler: async (ctx, args) => {
+    const { userId: actorId } = await ctx.runAction(
+      internal._helpers.authAction.verifyPlatformAdmin,
+      {},
+    );
+    if (String(actorId) === String(args.userId)) {
+      throw new Error("You cannot suspend your own account");
+    }
+    const db = createSupabaseDb();
+    await db.patch("users", String(args.userId), { isSuspended: args.suspended });
+    console.info(
+      `[admin/users] user_${args.suspended ? "suspended" : "unsuspended"} userId=${args.userId} by=${actorId}`,
+    );
+    return { userId: String(args.userId), suspended: args.suspended };
+  },
+});

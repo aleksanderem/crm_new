@@ -146,3 +146,83 @@ describe("admin/users.getUserDetail", () => {
     ).rejects.toThrow(/User not found/i);
   });
 });
+
+// ---------------------------------------------------------------------------
+// setUserSuspended tests (SP3 T2)
+// ---------------------------------------------------------------------------
+
+describe("admin/users.setUserSuspended", () => {
+  test("(d) admin can suspend a target user — round-trips to Supabase is_suspended=true", async () => {
+    const t = createTestCtx();
+
+    // Caller = platform admin.
+    const { userId: callerUserId, identity } = await seedTestUser(t);
+    await makePlatformAdmin(String(callerUserId));
+
+    // Target user — distinct from the caller.
+    const targetUserId = await t.run(async (ctx) => {
+      return ctx.db.insert("users", {
+        name: "Target",
+        email: "target-suspend@example.com",
+      });
+    });
+    await createSupabaseDb().insert("users", {
+      _id: String(targetUserId),
+      name: "Target",
+      email: "target-suspend@example.com",
+      isPlatformAdmin: false,
+    });
+
+    const result = await t
+      .withIdentity(identity)
+      .action(api.admin.users.setUserSuspended, {
+        userId: targetUserId,
+        suspended: true,
+      });
+
+    expect(result.userId).toBe(String(targetUserId));
+    expect(result.suspended).toBe(true);
+
+    // Verify the flag was written into the in-memory Supabase store.
+    const row = await createSupabaseDb().get("users", String(targetUserId));
+    expect((row as { isSuspended?: boolean } | null)?.isSuspended).toBe(true);
+  });
+
+  test("(e) non-platform-admin caller: setUserSuspended rejects with platform admin message", async () => {
+    const t = createTestCtx();
+
+    // Caller is a plain member, NOT a platform admin.
+    const { userId: callerUserId, identity } = await seedTestUser(t);
+    await createSupabaseDb().insert("users", {
+      _id: String(callerUserId),
+      name: "Plain",
+      email: "plain@example.com",
+      isPlatformAdmin: false,
+    });
+
+    const targetUserId = await t.run(async (ctx) => {
+      return ctx.db.insert("users", { name: "Target2", email: "t2@example.com" });
+    });
+
+    await expect(
+      t.withIdentity(identity).action(api.admin.users.setUserSuspended, {
+        userId: targetUserId,
+        suspended: true,
+      }),
+    ).rejects.toThrow(/platform admin/i);
+  });
+
+  test("(f) self-suspend: setUserSuspended on own userId rejects", async () => {
+    const t = createTestCtx();
+
+    const { userId: callerUserId, identity } = await seedTestUser(t);
+    await makePlatformAdmin(String(callerUserId));
+
+    await expect(
+      t.withIdentity(identity).action(api.admin.users.setUserSuspended, {
+        userId: callerUserId,
+        suspended: true,
+      }),
+    ).rejects.toThrow(/suspend your own/i);
+  });
+});

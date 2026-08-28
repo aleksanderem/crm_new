@@ -5,10 +5,12 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@cvx/_generated/api";
 import { Id } from "@cvx/_generated/dataModel";
 import { toast } from "sonner";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { formatActionError } from "@/lib/format-action-error";
 
 export const Route = createFileRoute("/_app/_auth/admin/users")({
@@ -18,6 +20,7 @@ export const Route = createFileRoute("/_app/_auth/admin/users")({
 function AdminUsers() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
 
   const { data: viewer, isLoading: viewerLoading } = useQuery(
     convexQuery(api.app.getCurrentUser, {}),
@@ -77,7 +80,15 @@ function AdminUsers() {
     );
   }
 
-  const users = usersQuery.data ?? [];
+  const allUsers = usersQuery.data ?? [];
+  const needle = search.trim().toLowerCase();
+  const users = needle
+    ? allUsers.filter(
+        (u) =>
+          (u.name ?? "").toLowerCase().includes(needle) ||
+          (u.email ?? "").toLowerCase().includes(needle),
+      )
+    : allUsers;
 
   const handleToggle = (userId: Id<"users">, current: boolean) => {
     setRoleMutation.mutate({ userId, isPlatformAdmin: !current });
@@ -99,12 +110,20 @@ function AdminUsers() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All users ({users.length})</CardTitle>
+          <CardTitle>All users ({allUsers.length})</CardTitle>
           <CardDescription>
             Platform admins (highlighted) can access /admin pages and configure
             global settings.
           </CardDescription>
         </CardHeader>
+        <CardContent className="space-y-4">
+          <Input
+            placeholder="Szukaj po nazwie lub e-mailu…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-sm"
+          />
+        </CardContent>
         <CardContent className="p-0">
           <div className="divide-y">
             {usersQuery.isLoading && (
@@ -136,14 +155,23 @@ function AdminUsers() {
                       </div>
                     )}
                   </div>
-                  <Button
-                    size="sm"
-                    variant={u.isPlatformAdmin ? "outline" : "default"}
-                    disabled={setRoleMutation.isPending}
-                    onClick={() => handleToggle(u._id as Id<"users">, u.isPlatformAdmin)}
-                  >
-                    {u.isPlatformAdmin ? "Revoke admin" : "Grant admin"}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to="/admin/users/$userId"
+                      params={{ userId: u._id }}
+                      className="text-sm underline text-muted-foreground hover:text-foreground"
+                    >
+                      Szczegóły
+                    </Link>
+                    <Button
+                      size="sm"
+                      variant={u.isPlatformAdmin ? "outline" : "default"}
+                      disabled={setRoleMutation.isPending}
+                      onClick={() => handleToggle(u._id as Id<"users">, u.isPlatformAdmin)}
+                    >
+                      {u.isPlatformAdmin ? "Revoke admin" : "Grant admin"}
+                    </Button>
+                  </div>
                 </div>
               );
             })}

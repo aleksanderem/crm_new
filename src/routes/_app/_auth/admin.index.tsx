@@ -107,6 +107,18 @@ function AdminIndex() {
             </CardHeader>
           </Card>
         </Link>
+
+        <Link to="/admin/plans" className="block">
+          <Card className="h-full transition hover:border-foreground/20">
+            <CardHeader>
+              <CardTitle>Plany i produkty</CardTitle>
+              <CardDescription>
+                Zarządzaj planami subskrypcji (nazwa, opis, limit miejsc)
+                i produktami platformy (aktywność, opis).
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
       </div>
     </div>
   );

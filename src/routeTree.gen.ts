@@ -36,6 +36,7 @@ import { Route as AppPatientLayoutAppointmentsRouteImport } from './routes/_app/
 import { Route as AppAuthOnboardingLayoutRouteImport } from './routes/_app/_auth/onboarding/_layout'
 import { Route as AppAuthDashboardLayoutRouteImport } from './routes/_app/_auth/dashboard/_layout'
 import { Route as AppAuthAdminUsersRouteImport } from './routes/_app/_auth/admin.users'
+import { Route as AppAuthAdminPlansRouteImport } from './routes/_app/_auth/admin.plans'
 import { Route as AppAuthAdminOrganizationsRouteImport } from './routes/_app/_auth/admin.organizations'
 import { Route as AppAuthAdminErrorsRouteImport } from './routes/_app/_auth/admin.errors'
 import { Route as AppAuthAdminEntitlementsRouteImport } from './routes/_app/_auth/admin.entitlements'
@@ -266,6 +267,11 @@ const AppAuthDashboardLayoutRoute = AppAuthDashboardLayoutRouteImport.update({
 const AppAuthAdminUsersRoute = AppAuthAdminUsersRouteImport.update({
   id: '/admin/users',
   path: '/admin/users',
+  getParentRoute: () => AppAuthRoute,
+} as any)
+const AppAuthAdminPlansRoute = AppAuthAdminPlansRouteImport.update({
+  id: '/admin/plans',
+  path: '/admin/plans',
   getParentRoute: () => AppAuthRoute,
 } as any)
 const AppAuthAdminOrganizationsRoute =
@@ -883,6 +889,7 @@ export interface FileRoutesByFullPath {
   '/admin/entitlements': typeof AppAuthAdminEntitlementsRoute
   '/admin/errors': typeof AppAuthAdminErrorsRoute
   '/admin/organizations': typeof AppAuthAdminOrganizationsRouteWithChildren
+  '/admin/plans': typeof AppAuthAdminPlansRoute
   '/admin/users': typeof AppAuthAdminUsersRoute
   '/dashboard': typeof AppAuthDashboardLayoutRouteWithChildren
   '/onboarding': typeof AppAuthOnboardingLayoutRouteWithChildren
@@ -1003,6 +1010,7 @@ export interface FileRoutesByTo {
   '/admin/entitlements': typeof AppAuthAdminEntitlementsRoute
   '/admin/errors': typeof AppAuthAdminErrorsRoute
   '/admin/organizations': typeof AppAuthAdminOrganizationsRouteWithChildren
+  '/admin/plans': typeof AppAuthAdminPlansRoute
   '/admin/users': typeof AppAuthAdminUsersRoute
   '/onboarding': typeof AppAuthOnboardingLayoutRouteWithChildren
   '/patient/appointments': typeof AppPatientLayoutAppointmentsRoute
@@ -1121,6 +1129,7 @@ export interface FileRoutesById {
   '/_app/_auth/admin/entitlements': typeof AppAuthAdminEntitlementsRoute
   '/_app/_auth/admin/errors': typeof AppAuthAdminErrorsRoute
   '/_app/_auth/admin/organizations': typeof AppAuthAdminOrganizationsRouteWithChildren
+  '/_app/_auth/admin/plans': typeof AppAuthAdminPlansRoute
   '/_app/_auth/admin/users': typeof AppAuthAdminUsersRoute
   '/_app/_auth/dashboard/_layout': typeof AppAuthDashboardLayoutRouteWithChildren
   '/_app/_auth/onboarding/_layout': typeof AppAuthOnboardingLayoutRouteWithChildren
@@ -1245,6 +1254,7 @@ export interface FileRouteTypes {
     | '/admin/entitlements'
     | '/admin/errors'
     | '/admin/organizations'
+    | '/admin/plans'
     | '/admin/users'
     | '/dashboard'
     | '/onboarding'
@@ -1365,6 +1375,7 @@ export interface FileRouteTypes {
     | '/admin/entitlements'
     | '/admin/errors'
     | '/admin/organizations'
+    | '/admin/plans'
     | '/admin/users'
     | '/onboarding'
     | '/patient/appointments'
@@ -1482,6 +1493,7 @@ export interface FileRouteTypes {
     | '/_app/_auth/admin/entitlements'
     | '/_app/_auth/admin/errors'
     | '/_app/_auth/admin/organizations'
+    | '/_app/_auth/admin/plans'
     | '/_app/_auth/admin/users'
     | '/_app/_auth/dashboard/_layout'
     | '/_app/_auth/onboarding/_layout'
@@ -1789,6 +1801,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/users'
       fullPath: '/admin/users'
       preLoaderRoute: typeof AppAuthAdminUsersRouteImport
+      parentRoute: typeof AppAuthRoute
+    }
+    '/_app/_auth/admin/plans': {
+      id: '/_app/_auth/admin/plans'
+      path: '/admin/plans'
+      fullPath: '/admin/plans'
+      preLoaderRoute: typeof AppAuthAdminPlansRouteImport
       parentRoute: typeof AppAuthRoute
     }
     '/_app/_auth/admin/organizations': {
@@ -2850,6 +2869,7 @@ interface AppAuthRouteChildren {
   AppAuthAdminEntitlementsRoute: typeof AppAuthAdminEntitlementsRoute
   AppAuthAdminErrorsRoute: typeof AppAuthAdminErrorsRoute
   AppAuthAdminOrganizationsRoute: typeof AppAuthAdminOrganizationsRouteWithChildren
+  AppAuthAdminPlansRoute: typeof AppAuthAdminPlansRoute
   AppAuthAdminUsersRoute: typeof AppAuthAdminUsersRoute
   AppAuthDashboardLayoutRoute: typeof AppAuthDashboardLayoutRouteWithChildren
   AppAuthOnboardingLayoutRoute: typeof AppAuthOnboardingLayoutRouteWithChildren
@@ -2861,6 +2881,7 @@ const AppAuthRouteChildren: AppAuthRouteChildren = {
   AppAuthAdminEntitlementsRoute: AppAuthAdminEntitlementsRoute,
   AppAuthAdminErrorsRoute: AppAuthAdminErrorsRoute,
   AppAuthAdminOrganizationsRoute: AppAuthAdminOrganizationsRouteWithChildren,
+  AppAuthAdminPlansRoute: AppAuthAdminPlansRoute,
   AppAuthAdminUsersRoute: AppAuthAdminUsersRoute,
   AppAuthDashboardLayoutRoute: AppAuthDashboardLayoutRouteWithChildren,
   AppAuthOnboardingLayoutRoute: AppAuthOnboardingLayoutRouteWithChildren,

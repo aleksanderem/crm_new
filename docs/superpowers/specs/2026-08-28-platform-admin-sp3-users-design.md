@@ -29,7 +29,7 @@ A suspended user must be unable to use the app. Add an `isSuspended` check in th
 - `mintUserToken` (`convex/supabase/jwt.ts`) — the user-scoped bootstrap token: fetch the user and throw if suspended, so a suspended user cannot obtain ANY Supabase token (no data, no org bootstrap).
 - `verifyPlatformAdmin` (`convex/_helpers/authAction.ts`) — throw if the (would-be admin) user is suspended, so a suspended platform admin can't use the admin panel either.
 
-This blocks a suspended user at the Supabase-token boundary (the app's whole read path) and at every write, mirroring how org-suspend works in SP2. (The raw Convex-auth session JWT is minted by `@convex-dev/auth` and is not gated here — but without a Supabase token the app is non-functional for them; a deeper auth-provider block is out of scope.)
+This blocks a suspended user at the Supabase-token boundary (the app's whole read path) and at every write, mirroring how org-suspend works in SP2. Note: suspension blocks minting NEW Supabase tokens (mintUserToken directly; mintSupabaseToken via verifyOrgAccess), but an already-issued org-scoped Supabase JWT remains valid until its ≤1h expiry, so a mid-session suspended user may keep reading Supabase-direct data until the token refreshes (~5 min before expiry the re-mint throws); writes are blocked immediately because every mutation re-runs verifyOrgAccess. This is the same accepted window as the SP2 org-suspend. (The raw Convex-auth session JWT is minted by `@convex-dev/auth` and is not gated here — but without a Supabase token the app is non-functional for them; a deeper auth-provider block is out of scope.)
 
 ## Frontend
 

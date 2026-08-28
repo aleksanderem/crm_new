@@ -103,6 +103,23 @@ export const setUserSuspended = action({
       throw new Error("You cannot suspend your own account");
     }
     const db = createSupabaseDb();
+    // Last-admin guard: refuse to suspend a platform-admin target if doing so
+    // would leave zero non-suspended platform admins in the system.
+    if (args.suspended) {
+      const target = await db.get("users", String(args.userId));
+      if (target && Boolean(target.isPlatformAdmin)) {
+        const allUsers = await db.query("users").collect();
+        const nonSuspendedAdminsAfter = allUsers.filter(
+          (u) =>
+            Boolean(u.isPlatformAdmin) &&
+            !Boolean(u.isSuspended) &&
+            String(u._id) !== String(args.userId),
+        );
+        if (nonSuspendedAdminsAfter.length === 0) {
+          throw new Error("Cannot suspend the last platform admin");
+        }
+      }
+    }
     await db.patch("users", String(args.userId), { isSuspended: args.suspended });
     console.info(
       `[admin/users] user_${args.suspended ? "suspended" : "unsuspended"} userId=${args.userId} by=${actorId}`,

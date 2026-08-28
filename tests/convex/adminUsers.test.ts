@@ -225,4 +225,120 @@ describe("admin/users.setUserSuspended", () => {
       }),
     ).rejects.toThrow(/suspend your own/i);
   });
+
+  // ---------------------------------------------------------------------------
+  // Last-admin guard tests
+  //
+  // The guard throws "Cannot suspend the last platform admin" when suspending a
+  // platform-admin target would leave zero non-suspended platform admins.
+  //
+  // NOTE: The pure-lockout rejection case (0 remaining admins) is
+  // unconstructible in a single-caller test. The caller must pass
+  // verifyPlatformAdmin, which requires them to be a non-suspended platform
+  // admin. Since the caller != target (self-suspend is already blocked), the
+  // caller is always counted as a remaining non-suspended admin — so the count
+  // is always ≥1. The guard exists as defense-in-depth against concurrent
+  // races (two admins mutually suspending). The tests below verify the guard
+  // does NOT break normal flows and that the guard logic is exercised for
+  // admin targets.
+  // ---------------------------------------------------------------------------
+
+  test("(g) last-admin guard: suspending a platform-admin target succeeds when another non-suspended admin (the actor) remains", async () => {
+    const t = createTestCtx();
+
+    // Actor = platform admin (non-suspended, counted as remaining after target suspended).
+    const { userId: callerUserId, identity } = await seedTestUser(t);
+    await makePlatformAdmin(String(callerUserId));
+
+    // Target = a second platform admin.
+    const targetUserId = await t.run(async (ctx) => {
+      return ctx.db.insert("users", {
+        name: "Second Admin",
+        email: "second-admin@example.com",
+      });
+    });
+    await createSupabaseDb().insert("users", {
+      _id: String(targetUserId),
+      name: "Second Admin",
+      email: "second-admin@example.com",
+      isPlatformAdmin: true,
+      isSuspended: false,
+    });
+
+    // Guard should pass: actor (non-suspended admin) remains after target suspended.
+    const result = await t
+      .withIdentity(identity)
+      .action(api.admin.users.setUserSuspended, {
+        userId: targetUserId,
+        suspended: true,
+      });
+
+    expect(result.suspended).toBe(true);
+
+    // Verify Supabase row updated.
+    const row = await createSupabaseDb().get("users", String(targetUserId));
+    expect((row as { isSuspended?: boolean } | null)?.isSuspended).toBe(true);
+  });
+
+  test("(h) last-admin guard: suspending a NON-admin target always succeeds regardless of admin count", async () => {
+    const t = createTestCtx();
+
+    const { userId: callerUserId, identity } = await seedTestUser(t);
+    await makePlatformAdmin(String(callerUserId));
+
+    // Target is NOT a platform admin — guard should not fire.
+    const targetUserId = await t.run(async (ctx) => {
+      return ctx.db.insert("users", {
+        name: "Regular User",
+        email: "regular@example.com",
+      });
+    });
+    await createSupabaseDb().insert("users", {
+      _id: String(targetUserId),
+      name: "Regular User",
+      email: "regular@example.com",
+      isPlatformAdmin: false,
+    });
+
+    const result = await t
+      .withIdentity(identity)
+      .action(api.admin.users.setUserSuspended, {
+        userId: targetUserId,
+        suspended: true,
+      });
+
+    expect(result.suspended).toBe(true);
+  });
+
+  test("(i) last-admin guard: unsuspending a platform-admin target always succeeds", async () => {
+    const t = createTestCtx();
+
+    const { userId: callerUserId, identity } = await seedTestUser(t);
+    await makePlatformAdmin(String(callerUserId));
+
+    // Target = already-suspended platform admin.
+    const targetUserId = await t.run(async (ctx) => {
+      return ctx.db.insert("users", {
+        name: "Suspended Admin",
+        email: "suspended-admin@example.com",
+      });
+    });
+    await createSupabaseDb().insert("users", {
+      _id: String(targetUserId),
+      name: "Suspended Admin",
+      email: "suspended-admin@example.com",
+      isPlatformAdmin: true,
+      isSuspended: true,
+    });
+
+    // Unsuspend — guard only runs on suspended:true, should be a no-op here.
+    const result = await t
+      .withIdentity(identity)
+      .action(api.admin.users.setUserSuspended, {
+        userId: targetUserId,
+        suspended: false,
+      });
+
+    expect(result.suspended).toBe(false);
+  });
 });

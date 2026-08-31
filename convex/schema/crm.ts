@@ -648,6 +648,9 @@ export function createCrmTables({
     // Mandatory for paymentMethod="gratis" (issue #5659).
     // Captures the business reason (e.g. "complaint", "promo", "gift").
     gratisReason: v.optional(v.string()),
+    // Mandatory for paymentMethod="barter" (issue #5665, migration 00153).
+    // Describes what was exchanged in lieu of cash.
+    barterDescription: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

@@ -2991,6 +2991,70 @@ export const _updateStatusSideEffects = internalMutation({
         deferEmails: true,
       });
     }
+
+    // When reverting from cancelled or no_show, restore any voided formDocuments.
+    // Cancellation voids pending_signature docs so patients can't sign via the old
+    // link. Reverting to an active status means those docs must be re-activated with
+    // fresh signing tokens — otherwise the before_start gate is permanently blocked
+    // because voided docs are counted as missing but can never become signed (#5329).
+    if (
+      (args.previousStatus === "cancelled" || args.previousStatus === "no_show") &&
+      args.nextStatus !== "cancelled" &&
+      args.nextStatus !== "no_show" &&
+      args.nextStatus !== "completed"
+    ) {
+      try {
+        const restoreDb = createSupabaseDb();
+        const voidedDocs = await restoreDb
+          .query("formDocuments")
+          .eq("entityType", "appointment")
+          .eq("entityId", args.appointmentId)
+          .eq("status", "voided")
+          .collect();
+
+        if (voidedDocs.length > 0) {
+          const nowMs = Date.now();
+
+          const patient = await restoreDb.get("gabinetPatients", args.patientId);
+          const patientEmail = (patient?.email as string | undefined) ?? args.patientEmail;
+          const patientName = patient
+            ? `${patient.firstName as string}${patient.lastName ? " " + (patient.lastName as string) : ""}`
+            : undefined;
+
+          for (const doc of voidedDocs) {
+            const docRow = doc as Record<string, unknown>;
+            const tokenBytes = new Uint8Array(32);
+            crypto.getRandomValues(tokenBytes);
+            const signingToken = Array.from(tokenBytes)
+              .map((b) => b.toString(16).padStart(2, "0"))
+              .join("");
+
+            await restoreDb.patch("formDocuments", docRow._id as string, {
+              status: "pending_signature",
+              signingToken,
+              // Clear any stale expiry — sendSigningEmailInternal bumps it on send;
+              // for no-email patients the token stays unexpired until email is added.
+              signingTokenExpiresAt: null,
+              updatedAt: nowMs,
+            });
+
+            if (patientEmail) {
+              await ctx.scheduler.runAfter(
+                0,
+                internal.documents.signing.sendSigningEmailInternal,
+                {
+                  documentId: docRow._id as Id<"formDocuments">,
+                  recipientEmail: patientEmail,
+                  recipientName: patientName,
+                },
+              );
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[_updateStatusSideEffects] voided docs restore failed (non-fatal):", e);
+      }
+    }
   },
 });
 

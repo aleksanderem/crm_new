@@ -143,6 +143,9 @@ export const create = action({
     // discountPercent: percentage discount (0–100).
     discountAmount: v.optional(v.number()),
     discountPercent: v.optional(v.number()),
+    // Required when paymentMethod="gratis" (issue #5659). Captures the
+    // business reason (complaint, promo, gift, etc.). Ignored for other methods.
+    gratisReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runAction(
@@ -190,16 +193,35 @@ export const create = action({
       }
     }
 
+    // Gratis business rules (issue #5659):
+    //  - amount is forced to 0 by the backend regardless of what was passed
+    //  - gratisReason is mandatory (captures complaint / promo / gift rationale)
+    //  - patient credit cannot be applied or earned (no monetary leg)
+    if (args.paymentMethod === "gratis") {
+      const reason = args.gratisReason?.trim();
+      if (!reason) {
+        throw new Error("gratisReason is required for gratis payments");
+      }
+      if (creditApplied !== null) {
+        throw new Error("gratis payments cannot apply patient credit");
+      }
+      if (creditEarned !== null) {
+        throw new Error("gratis payments cannot earn patient credit");
+      }
+    }
+
     // Build INSERT defensively — migration 00008 columns (kind, creditEarned,
     // creditApplied) may not exist on pre-00008 environments; only include them
     // when non-null. kind=NULL is treated as "payment" by the DB check
     // constraint, so omitting it is always safe.
+    const effectiveAmount =
+      args.paymentMethod === "gratis" ? 0 : args.amount;
     const insertRow: Record<string, unknown> = {
       organizationId: String(args.organizationId),
       patientId: args.patientId ?? null,
       appointmentId: args.appointmentId ?? null,
       packageUsageId: args.packageUsageId ?? null,
-      amount: args.amount,
+      amount: effectiveAmount,
       currency: args.currency,
       paymentMethod: args.paymentMethod,
       status,
@@ -215,6 +237,8 @@ export const create = action({
       insertRow.discountAmount = args.discountAmount;
     if (args.discountPercent !== undefined && args.discountPercent > 0)
       insertRow.discountPercent = args.discountPercent;
+    if (args.paymentMethod === "gratis" && args.gratisReason?.trim())
+      insertRow.gratisReason = args.gratisReason.trim();
 
     const paymentId = await db.insert("payments", insertRow);
 
@@ -566,6 +590,9 @@ export const splitMarkPaid = action({
       { organizationId: args.organizationId },
     );
 
+    if (args.firstMethod === "gratis" || args.secondMethod === "gratis") {
+      throw new Error("gratis payments cannot be split");
+    }
     if (args.firstMethod === args.secondMethod) {
       throw new Error("Split methods must differ");
     }

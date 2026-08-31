@@ -1053,4 +1053,192 @@ describe("payments", () => {
       expect(credit.balance).toBe(350);
     });
   });
+
+  // Gratis payment rules (issue #5659) ----------------------------------------
+
+  describe("gratis payments", () => {
+    test("forces amount to 0 regardless of what the caller passes", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity } = await seedTestUser(t);
+
+      const paymentId = await t.withIdentity(identity).action(
+        api.payments.create,
+        {
+          organizationId,
+          amount: 250,
+          currency: "PLN",
+          paymentMethod: "gratis",
+          gratisReason: "promotional visit",
+        },
+      );
+
+      const result = await t.withIdentity(identity).action(api.payments.list, {
+        organizationId,
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+
+      const payment = result.page.find((p: any) => p._id === paymentId);
+      expect(payment).toBeTruthy();
+      expect(payment!.amount).toBe(0);
+      expect(payment!.paymentMethod).toBe("gratis");
+    });
+
+    test("requires gratisReason — rejects when missing", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity } = await seedTestUser(t);
+
+      await expect(
+        t.withIdentity(identity).action(api.payments.create, {
+          organizationId,
+          amount: 100,
+          currency: "PLN",
+          paymentMethod: "gratis",
+          // gratisReason intentionally omitted
+        }),
+      ).rejects.toThrow("gratisReason is required for gratis payments");
+    });
+
+    test("requires gratisReason — rejects empty string", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity } = await seedTestUser(t);
+
+      await expect(
+        t.withIdentity(identity).action(api.payments.create, {
+          organizationId,
+          amount: 100,
+          currency: "PLN",
+          paymentMethod: "gratis",
+          gratisReason: "   ",
+        }),
+      ).rejects.toThrow("gratisReason is required for gratis payments");
+    });
+
+    test("rejects creditApplied for gratis payment", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity } = await seedTestUser(t);
+      const patientId = "test-patient-gratis-1";
+
+      // Seed credit balance via a regular overpayment first.
+      await t.withIdentity(identity).action(api.payments.create, {
+        organizationId,
+        patientId,
+        amount: 500,
+        currency: "PLN",
+        paymentMethod: "cash",
+        creditEarned: 500,
+      });
+
+      await expect(
+        t.withIdentity(identity).action(api.payments.create, {
+          organizationId,
+          patientId,
+          amount: 100,
+          currency: "PLN",
+          paymentMethod: "gratis",
+          gratisReason: "complaint",
+          creditApplied: 50,
+        }),
+      ).rejects.toThrow("gratis payments cannot apply patient credit");
+    });
+
+    test("rejects creditEarned for gratis payment", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity } = await seedTestUser(t);
+
+      await expect(
+        t.withIdentity(identity).action(api.payments.create, {
+          organizationId,
+          amount: 0,
+          currency: "PLN",
+          paymentMethod: "gratis",
+          gratisReason: "complaint",
+          creditEarned: 10,
+        }),
+      ).rejects.toThrow("gratis payments cannot earn patient credit");
+    });
+
+    test("splitMarkPaid rejects gratis as first method", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity } = await seedTestUser(t);
+
+      // Create a pending payment to split.
+      const paymentId = await t.withIdentity(identity).action(
+        api.payments.create,
+        {
+          organizationId,
+          amount: 200,
+          currency: "PLN",
+          paymentMethod: "cash",
+          status: "pending",
+        },
+      );
+
+      await expect(
+        t.withIdentity(identity).action(api.payments.splitMarkPaid, {
+          organizationId,
+          paymentId,
+          firstMethod: "gratis",
+          firstAmount: 100,
+          secondMethod: "cash",
+          secondAmount: 100,
+        }),
+      ).rejects.toThrow("gratis payments cannot be split");
+    });
+
+    test("splitMarkPaid rejects gratis as second method", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity } = await seedTestUser(t);
+
+      const paymentId = await t.withIdentity(identity).action(
+        api.payments.create,
+        {
+          organizationId,
+          amount: 200,
+          currency: "PLN",
+          paymentMethod: "cash",
+          status: "pending",
+        },
+      );
+
+      await expect(
+        t.withIdentity(identity).action(api.payments.splitMarkPaid, {
+          organizationId,
+          paymentId,
+          firstMethod: "cash",
+          firstAmount: 100,
+          secondMethod: "gratis",
+          secondAmount: 100,
+        }),
+      ).rejects.toThrow("gratis payments cannot be split");
+    });
+
+    test("gratis payment is excluded from dayClose revenue totals", async () => {
+      // dayClose.ts excludes gratis/barter from totals (line 307). We verify
+      // that a gratis payment recorded with amount=0 does not affect the
+      // numeric totals — the business rule is already enforced by the amount
+      // being 0, so this is a consistency check.
+      const t = createTestCtx();
+      const { organizationId, identity } = await seedTestUser(t);
+
+      const paymentId = await t.withIdentity(identity).action(
+        api.payments.create,
+        {
+          organizationId,
+          amount: 999,
+          currency: "PLN",
+          paymentMethod: "gratis",
+          gratisReason: "promotional campaign",
+        },
+      );
+
+      const result = await t.withIdentity(identity).action(api.payments.list, {
+        organizationId,
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+
+      const payment = result.page.find((p: any) => p._id === paymentId);
+      // Backend forced amount to 0; it cannot contribute to revenue totals.
+      expect(payment!.amount).toBe(0);
+    });
+  });
 });

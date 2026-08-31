@@ -645,6 +645,9 @@ export function createCrmTables({
     ),
     fiscalAttempts: v.optional(v.number()),
     fiscalError: v.optional(v.string()),
+    // Mandatory for paymentMethod="gratis" (issue #5659).
+    // Captures the business reason (e.g. "complaint", "promo", "gift").
+    gratisReason: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

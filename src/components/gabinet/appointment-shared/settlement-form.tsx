@@ -257,9 +257,12 @@ export function SettlementForm({
         }, 0)
       : (legacyTreatmentPrice ?? 0);
 
-  // gratis / barter settle at the full treatment price; amount field is locked.
+  // barter settles at the full treatment price; gratis is recorded as 0 by the
+  // backend (issue #5664) — both lock the amount field but show different values.
   const isFixedAmountMethod =
     paymentMethod === "gratis" || paymentMethod === "barter";
+  const fixedDisplayAmount =
+    paymentMethod === "gratis" ? "0.00" : treatmentPrice.toFixed(2);
 
   const totalPaid = payments
     .filter((p) => p.status === "completed")
@@ -285,11 +288,15 @@ export function SettlementForm({
         pkg.treatmentsUsed.some((e) => visitTreatmentIds.has(e.treatmentId))),
   );
 
-  // gratis / barter lock the amount in split rows too (mirrors non-split behavior).
+  // barter/gratis lock split amounts too; gratis shows 0.00, barter shows treatmentPrice.
   const isFirstSplitFixed =
     firstSplitMethod === "gratis" || firstSplitMethod === "barter";
+  const firstSplitFixedAmount =
+    firstSplitMethod === "gratis" ? "0.00" : treatmentPrice.toFixed(2);
   const isSecondSplitFixed =
     secondSplitMethod === "gratis" || secondSplitMethod === "barter";
+  const secondSplitFixedAmount =
+    secondSplitMethod === "gratis" ? "0.00" : treatmentPrice.toFixed(2);
 
   // Package mode: no money changes hands — settlement is purely quantitative.
   const isPackageMode = !splitPayment && paymentMethod === "package";
@@ -750,7 +757,9 @@ export function SettlementForm({
                 value={paymentMethod === "package" ? "" : paymentMethod}
                 onValueChange={(v) => {
                   setPaymentMethod(v);
-                  if (v === "gratis" || v === "barter") {
+                  if (v === "gratis") {
+                    setPaymentAmount("0");
+                  } else if (v === "barter") {
                     setPaymentAmount(treatmentPrice.toFixed(2));
                   }
                   setPaymentPackageId(null);
@@ -799,9 +808,7 @@ export function SettlementForm({
                     type="text"
                     inputMode="decimal"
                     value={
-                      isFixedAmountMethod
-                        ? treatmentPrice.toFixed(2)
-                        : paymentAmount
+                      isFixedAmountMethod ? fixedDisplayAmount : paymentAmount
                     }
                     disabled={isFixedAmountMethod}
                     onChange={(e) => {
@@ -1106,7 +1113,9 @@ export function SettlementForm({
                   value={firstSplitMethod}
                   onValueChange={(v) => {
                     setFirstSplitMethod(v as (typeof PAYMENT_METHODS)[number]);
-                    if (v === "gratis" || v === "barter") {
+                    if (v === "gratis") {
+                      setFirstSplitAmount("0");
+                    } else if (v === "barter") {
                       setFirstSplitAmount(treatmentPrice.toFixed(2));
                     }
                     if (v !== "package") {
@@ -1149,7 +1158,7 @@ export function SettlementForm({
                   }
                   value={
                     isFirstSplitFixed
-                      ? treatmentPrice.toFixed(2)
+                      ? firstSplitFixedAmount
                       : firstSplitMethod === "package"
                         ? splitPackage1Amount.toFixed(2)
                         : firstSplitAmount
@@ -1194,7 +1203,9 @@ export function SettlementForm({
                   value={secondSplitMethod}
                   onValueChange={(v) => {
                     setSecondSplitMethod(v as (typeof PAYMENT_METHODS)[number]);
-                    if (v === "gratis" || v === "barter") {
+                    if (v === "gratis") {
+                      setSecondSplitAmount("0");
+                    } else if (v === "barter") {
                       setSecondSplitAmount(treatmentPrice.toFixed(2));
                     }
                     if (v !== "package") {
@@ -1237,7 +1248,7 @@ export function SettlementForm({
                   }
                   value={
                     isSecondSplitFixed
-                      ? treatmentPrice.toFixed(2)
+                      ? secondSplitFixedAmount
                       : secondSplitMethod === "package"
                         ? splitPackage2Amount.toFixed(2)
                         : secondSplitAmount

@@ -4,6 +4,7 @@ import {
   computeDailyStats,
   computeDirectSalesPaymentBreakdown,
   computeEmployeeStats,
+  computeGratisBarterStats,
   computePaymentMethodBreakdown,
   computeStatusStats,
   computeTreatmentStats,
@@ -514,5 +515,59 @@ describe("computeDirectSalesPaymentBreakdown", () => {
       computeDirectSalesPaymentBreakdown(sales, returns);
     const breakdownSum = breakdown.reduce((s, b) => s + b.total, 0);
     expect(breakdownSum).toBe(netRevenue + unattributedReturnAmount);
+  });
+});
+
+// ─── computeGratisBarterStats ─────────────────────────────────────────────────
+
+describe("computeGratisBarterStats", () => {
+  it("returns zeros for empty input", () => {
+    const result = computeGratisBarterStats([]);
+    expect(result).toEqual({ gratisCount: 0, gratisValue: 0, barterCount: 0, barterValue: 0 });
+  });
+
+  it("counts gratis and barter entries separately", () => {
+    const details = [
+      { appointmentId: "a1", paymentMethod: "gratis" as const, amount: 100 },
+      { appointmentId: "a2", paymentMethod: "gratis" as const, amount: 150 },
+      { appointmentId: "a3", paymentMethod: "barter" as const, amount: 200 },
+    ];
+    const result = computeGratisBarterStats(details);
+    expect(result.gratisCount).toBe(2);
+    expect(result.barterCount).toBe(1);
+  });
+
+  it("sums amounts per category", () => {
+    const details = [
+      { appointmentId: "a1", paymentMethod: "gratis" as const, amount: 100 },
+      { appointmentId: "a2", paymentMethod: "gratis" as const, amount: 50 },
+      { appointmentId: "a3", paymentMethod: "barter" as const, amount: 300 },
+      { appointmentId: "a4", paymentMethod: "barter" as const, amount: 120 },
+    ];
+    const result = computeGratisBarterStats(details);
+    expect(result.gratisValue).toBe(150);
+    expect(result.barterValue).toBe(420);
+  });
+
+  it("handles gratis-only input", () => {
+    const details = [
+      { appointmentId: "a1", paymentMethod: "gratis" as const, amount: 200 },
+    ];
+    const result = computeGratisBarterStats(details);
+    expect(result.gratisCount).toBe(1);
+    expect(result.gratisValue).toBe(200);
+    expect(result.barterCount).toBe(0);
+    expect(result.barterValue).toBe(0);
+  });
+
+  it("handles barter-only input", () => {
+    const details = [
+      { appointmentId: "a1", paymentMethod: "barter" as const, amount: 500 },
+    ];
+    const result = computeGratisBarterStats(details);
+    expect(result.gratisCount).toBe(0);
+    expect(result.gratisValue).toBe(0);
+    expect(result.barterCount).toBe(1);
+    expect(result.barterValue).toBe(500);
   });
 });

@@ -4,8 +4,9 @@ import Papa from "papaparse";
 import { toast } from "sonner";
 import { useSupabaseGabinetAppointmentsByDateRange } from "@/hooks/use-supabase-gabinet-appointments";
 import {
-  useSupabaseGratisBarterAppointmentIds,
+  useSupabaseGratisBarterDetails,
   useSupabasePaymentsRevenueByDateRange,
+  type GratisBarterDetail,
 } from "@/hooks/use-supabase-payments";
 import {
   useSupabaseGabinetDayClosesInRange,
@@ -45,6 +46,7 @@ import {
   computeDailyStats,
   computeEmployeeStats,
   computeDirectSalesPaymentBreakdown,
+  computeGratisBarterStats,
   computePaymentMethodBreakdown,
   computeStatusStats,
   computeTreatmentStats,
@@ -1854,6 +1856,86 @@ function SafeReportSection({
   );
 }
 
+/* ─── Gratis & Barter Section ─── */
+
+function GratisBarterSection({
+  details,
+  currency,
+  rangeLabel,
+}: {
+  details: GratisBarterDetail[];
+  currency: string;
+  rangeLabel: string;
+}) {
+  const { t } = useTranslation();
+  const stats = useMemo(() => computeGratisBarterStats(details), [details]);
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-semibold">{t("gabinet.reports.gratisBarterTitle")}</h2>
+        <p className="text-muted-foreground text-sm">{rangeLabel}</p>
+      </div>
+      {details.length === 0 ? (
+        <Card>
+          <CardContent className="flex items-center justify-center py-8">
+            <span className="text-muted-foreground text-sm">
+              {t("gabinet.reports.noGratisBarter")}
+            </span>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Card>
+            <CardHeader className="border-b">
+              <span className="font-semibold">{t("gabinet.reports.gratis")}</span>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <p className="text-muted-foreground text-xs">
+                {t("gabinet.reports.gratisNote")}
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-muted-foreground text-sm">{t("gabinet.reports.appointments")}</p>
+                  <p className="mt-1 text-2xl font-bold">{stats.gratisCount}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-sm">{t("gabinet.reports.referenceValue")}</p>
+                  <p className="mt-1 text-2xl font-bold">
+                    {formatCurrencyPLN(stats.gratisValue, currency, { fractionDigits: 0 })}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="border-b">
+              <span className="font-semibold">{t("gabinet.reports.barter")}</span>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <p className="text-muted-foreground text-xs">
+                {t("gabinet.reports.barterNote")}
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-muted-foreground text-sm">{t("gabinet.reports.appointments")}</p>
+                  <p className="mt-1 text-2xl font-bold">{stats.barterCount}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-sm">{t("gabinet.reports.barterAccountingValue")}</p>
+                  <p className="mt-1 text-2xl font-bold">
+                    {formatCurrencyPLN(stats.barterValue, currency, { fractionDigits: 0 })}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Main Page ─── */
 
 function GabinetReports() {
@@ -1862,6 +1944,7 @@ function GabinetReports() {
   const { activeLocationId, setActiveLocationId } = useActiveLocation();
   const [dateRange, setDateRange] = useState<DateRangeKey>("30d");
   const [dateFilterPanelOpen, setDateFilterPanelOpen] = useState(false);
+  const [settlementType, setSettlementType] = useState<"all" | "standard" | "gratis" | "barter">("all");
   const todayIso = new Date().toISOString().split("T")[0];
   const defaultCustomStart = useMemo(() => {
     const d = new Date();
@@ -1936,8 +2019,24 @@ function GabinetReports() {
       .map((a) => a._id);
   }, [appointments]);
 
-  const { data: gratisBarterIds, isLoading: loadingGratisBarter } =
-    useSupabaseGratisBarterAppointmentIds(organizationId, completedAppointmentIds);
+  const { data: gratisBarterData, isLoading: loadingGratisBarter } =
+    useSupabaseGratisBarterDetails(organizationId, completedAppointmentIds);
+
+  const gratisBarterIds = useMemo(
+    () => gratisBarterData?.allIds ?? new Set<string>(),
+    [gratisBarterData],
+  );
+
+  const filteredAppointments = useMemo(() => {
+    const appts = appointments ?? [];
+    if (settlementType === "standard")
+      return appts.filter((a) => !gratisBarterIds.has(a._id));
+    if (settlementType === "gratis")
+      return appts.filter((a) => gratisBarterData?.gratisIds.has(a._id));
+    if (settlementType === "barter")
+      return appts.filter((a) => gratisBarterData?.barterIds.has(a._id));
+    return appts;
+  }, [appointments, settlementType, gratisBarterIds, gratisBarterData]);
 
   const { data: actualPayments, isLoading: loadingActualPayments } =
     useSupabasePaymentsRevenueByDateRange(organizationId, startDate, endDate, {
@@ -2027,8 +2126,8 @@ function GabinetReports() {
 
   // Treatment stats: count + estimated revenue (completed only, gratis/barter excluded from revenue)
   const treatmentStats = useMemo(
-    () => computeTreatmentStats(appointments ?? [], treatmentMap, gratisBarterIds ?? new Set()),
-    [appointments, treatmentMap, gratisBarterIds]
+    () => computeTreatmentStats(filteredAppointments, treatmentMap, gratisBarterIds),
+    [filteredAppointments, treatmentMap, gratisBarterIds]
   );
 
   const topByRevenue = useMemo(
@@ -2041,20 +2140,20 @@ function GabinetReports() {
 
   // Status distribution
   const statusStats = useMemo(
-    () => computeStatusStats(appointments ?? []),
-    [appointments]
+    () => computeStatusStats(filteredAppointments),
+    [filteredAppointments]
   );
 
   // Daily appointment counts
   const dailyStats = useMemo(
-    () => computeDailyStats(appointments ?? []),
-    [appointments]
+    () => computeDailyStats(filteredAppointments),
+    [filteredAppointments]
   );
 
   // Employee utilization
   const employeeStats = useMemo(
-    () => computeEmployeeStats(appointments ?? [], employeeMap, treatmentMap, gratisBarterIds ?? new Set()),
-    [appointments, employeeMap, treatmentMap, gratisBarterIds]
+    () => computeEmployeeStats(filteredAppointments, employeeMap, treatmentMap, gratisBarterIds),
+    [filteredAppointments, employeeMap, treatmentMap, gratisBarterIds]
   );
 
   // Revenue: relative to the selected date range (endDate = last day of range)
@@ -2115,11 +2214,9 @@ function GabinetReports() {
     [actualPayments]
   );
 
-  const totalAppointments = appointments?.length ?? 0;
-  const completedCount =
-    appointments?.filter((a) => a.status === "completed").length ?? 0;
-  const cancelledCount =
-    appointments?.filter((a) => a.status === "cancelled").length ?? 0;
+  const totalAppointments = filteredAppointments.length;
+  const completedCount = filteredAppointments.filter((a) => a.status === "completed").length;
+  const cancelledCount = filteredAppointments.filter((a) => a.status === "cancelled").length;
   const completionRate =
     totalAppointments > 0
       ? Math.round((completedCount / totalAppointments) * 100)
@@ -2181,6 +2278,11 @@ function GabinetReports() {
     rows.push({ section: "revenue_actual", metric: "lastDay", value: actualLastDay, revenue: "" });
     rows.push({ section: "revenue_actual", metric: "last7days", value: actualLast7, revenue: "" });
     rows.push({ section: "revenue_actual", metric: "total", value: actualTotal, revenue: "" });
+    const gbStats = computeGratisBarterStats(gratisBarterData?.details ?? []);
+    rows.push({ section: "gratis_barter", metric: "gratis_count", value: gbStats.gratisCount, revenue: "" });
+    rows.push({ section: "gratis_barter", metric: "gratis_reference_value", value: "", revenue: gbStats.gratisValue });
+    rows.push({ section: "gratis_barter", metric: "barter_count", value: gbStats.barterCount, revenue: "" });
+    rows.push({ section: "gratis_barter", metric: "barter_accounting_value", value: "", revenue: gbStats.barterValue });
     for (const tr of treatmentStats) {
       rows.push({ section: "treatment", metric: tr.name, value: tr.count, revenue: tr.revenue });
     }
@@ -2289,6 +2391,7 @@ function GabinetReports() {
     employeeMap,
     employeeMapById,
     directSales,
+    gratisBarterData,
     startDate,
     endDate,
     t,
@@ -2357,6 +2460,17 @@ function GabinetReports() {
               </SelectContent>
             </Select>
           )}
+          <Select value={settlementType} onValueChange={(v) => setSettlementType(v as typeof settlementType)}>
+            <SelectTrigger className="w-44" aria-label={t("gabinet.reports.settlementType")}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("gabinet.reports.settlementAll")}</SelectItem>
+              <SelectItem value="standard">{t("gabinet.reports.settlementStandard")}</SelectItem>
+              <SelectItem value="gratis">{t("gabinet.reports.settlementGratis")}</SelectItem>
+              <SelectItem value="barter">{t("gabinet.reports.settlementBarter")}</SelectItem>
+            </SelectContent>
+          </Select>
           <Select
             value={dateRange}
             onValueChange={(v) => {
@@ -2432,6 +2546,13 @@ function GabinetReports() {
           actualTotal={actualTotal}
         />
       </div>
+
+      {/* Gratis & Barter */}
+      <GratisBarterSection
+        details={gratisBarterData?.details ?? []}
+        currency={defaultCurrency}
+        rangeLabel={rangeLabel}
+      />
 
       {/* Payment Methods Breakdown */}
       <PaymentMethodsCard

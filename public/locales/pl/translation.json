@@ -4031,7 +4031,20 @@
       "noProductSales": "Brak sprzedaży produktów w tym okresie",
       "perProductBreakdown": "Wg. produktu",
       "perEmployeeProductSales": "Wg. pracownika",
-      "unattributedReturnsNote": "{{count}} zwrot(ów) na łączną kwotę {{amount}} nie ma przypisanej metody płatności i nie zostało odjęte od żadnej kategorii"
+      "unattributedReturnsNote": "{{count}} zwrot(ów) na łączną kwotę {{amount}} nie ma przypisanej metody płatności i nie zostało odjęte od żadnej kategorii",
+      "gratisBarterTitle": "Gratis i barter",
+      "gratis": "Gratis",
+      "barter": "Barter",
+      "gratisNote": "Usługi wykonane nieodpłatnie – nie wliczane do obrotu",
+      "barterNote": "Wartość ewidencyjna – nie jest przychodem pieniężnym",
+      "referenceValue": "Wartość referencyjna",
+      "barterAccountingValue": "Wartość ewidencyjna",
+      "settlementType": "Typ rozliczenia",
+      "settlementAll": "Wszystkie",
+      "settlementStandard": "Tylko standardowe",
+      "settlementGratis": "Tylko gratis",
+      "settlementBarter": "Tylko barter",
+      "noGratisBarter": "Brak rozliczeń gratis lub barter w wybranym okresie"
     },
     "bodyChart": {
       "description": "Zaznacz obszary ciała powiązane z wizytą",

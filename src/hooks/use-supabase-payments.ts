@@ -61,6 +61,91 @@ export function useSupabaseGratisBarterAppointmentIds(
 }
 
 // ---------------------------------------------------------------------------
+// Gratis/Barter Details (split by method, with amounts)
+// ---------------------------------------------------------------------------
+
+export interface GratisBarterDetail {
+  appointmentId: string;
+  paymentMethod: "gratis" | "barter";
+  amount: number;
+  gratisReason?: string;
+  barterDescription?: string;
+}
+
+export interface GratisBarterDetailsResult {
+  allIds: Set<string>;
+  gratisIds: Set<string>;
+  barterIds: Set<string>;
+  details: GratisBarterDetail[];
+}
+
+/**
+ * Like useSupabaseGratisBarterAppointmentIds but returns richer data: the IDs
+ * split by method (gratis vs. barter) plus payment amounts for each, used by
+ * the reports page to show a separate Gratis/Barter section (issue #5662).
+ */
+export function useSupabaseGratisBarterDetails(
+  organizationId: string,
+  appointmentIds: string[],
+  options: { enabled?: boolean } = {},
+) {
+  const { client, isReady } = useSupabase();
+  const { enabled = true } = options;
+  const stableIds = [...appointmentIds].sort();
+
+  return useQuery<GratisBarterDetailsResult, Error>({
+    queryKey: [
+      ...supabaseKeys.payments.list(organizationId),
+      "gratisBarterDetails",
+      stableIds.join(","),
+    ],
+    queryFn: async (): Promise<GratisBarterDetailsResult> => {
+      const allIds = new Set<string>();
+      const gratisIds = new Set<string>();
+      const barterIds = new Set<string>();
+      const details: GratisBarterDetail[] = [];
+
+      if (!client) throw new Error("Supabase client not ready");
+      if (stableIds.length === 0) return { allIds, gratisIds, barterIds, details };
+
+      const { data, error } = await client
+        .from("payments")
+        .select("appointment_id, payment_method, amount, gratis_reason, barter_description")
+        .eq("organization_id", organizationId)
+        .eq("status", "completed")
+        .in("payment_method", ["gratis", "barter"])
+        .in("appointment_id", stableIds);
+
+      if (error) throw error;
+
+      for (const row of (data ?? []) as {
+        appointment_id: string | null;
+        payment_method: string;
+        amount: number;
+        gratis_reason: string | null;
+        barter_description: string | null;
+      }[]) {
+        if (!row.appointment_id) continue;
+        const method = row.payment_method as "gratis" | "barter";
+        allIds.add(row.appointment_id);
+        if (method === "gratis") gratisIds.add(row.appointment_id);
+        else barterIds.add(row.appointment_id);
+        details.push({
+          appointmentId: row.appointment_id,
+          paymentMethod: method,
+          amount: Number(row.amount) || 0,
+          gratisReason: row.gratis_reason ?? undefined,
+          barterDescription: row.barter_description ?? undefined,
+        });
+      }
+
+      return { allIds, gratisIds, barterIds, details };
+    },
+    enabled: enabled && isReady && !!organizationId && stableIds.length > 0,
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Patient Credit Balances (bulk)
 // ---------------------------------------------------------------------------
 

@@ -146,6 +146,10 @@ export const create = action({
     // Required when paymentMethod="gratis" (issue #5659). Captures the
     // business reason (complaint, promo, gift, etc.). Ignored for other methods.
     gratisReason: v.optional(v.string()),
+    // Required when paymentMethod="barter" (issue #5665). Captures what was
+    // exchanged (e.g. "Instagram collaboration", "service exchange"). Ignored
+    // for other methods. Symmetric with gratisReason.
+    barterDescription: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runAction(
@@ -165,6 +169,38 @@ export const create = action({
       args.creditApplied !== undefined && args.creditApplied !== 0
         ? args.creditApplied
         : null;
+
+    // Method-specific rules fire before generic credit validation so callers
+    // get the most actionable error message when multiple constraints apply.
+
+    // Gratis business rules (issue #5659):
+    //  - amount is forced to 0 by the backend regardless of what was passed
+    //  - gratisReason is mandatory (captures complaint / promo / gift rationale)
+    //  - patient credit cannot be applied or earned (no monetary leg)
+    if (args.paymentMethod === "gratis") {
+      const reason = args.gratisReason?.trim();
+      if (!reason) {
+        throw new Error("gratisReason is required for gratis payments");
+      }
+      if (creditApplied !== null) {
+        throw new Error("gratis payments cannot apply patient credit");
+      }
+      if (creditEarned !== null) {
+        throw new Error("gratis payments cannot earn patient credit");
+      }
+    }
+
+    // Barter business rules (issue #5665):
+    //  - barterDescription is mandatory (captures what was exchanged)
+    //  - cannot be split (non-cash exchange has no partial legs)
+    //  - amount is preserved (barter has real value, excluded from turnover by
+    //    the reporting layer — see dayClose.ts which skips barter like gratis)
+    if (args.paymentMethod === "barter") {
+      const desc = args.barterDescription?.trim();
+      if (!desc) {
+        throw new Error("barterDescription is required for barter payments");
+      }
+    }
 
     if (creditEarned !== null) {
       if (!Number.isFinite(creditEarned) || creditEarned < 0) {
@@ -190,23 +226,6 @@ export const create = action({
         throw new Error(
           `creditApplied ${creditApplied} exceeds available balance ${balance}`,
         );
-      }
-    }
-
-    // Gratis business rules (issue #5659):
-    //  - amount is forced to 0 by the backend regardless of what was passed
-    //  - gratisReason is mandatory (captures complaint / promo / gift rationale)
-    //  - patient credit cannot be applied or earned (no monetary leg)
-    if (args.paymentMethod === "gratis") {
-      const reason = args.gratisReason?.trim();
-      if (!reason) {
-        throw new Error("gratisReason is required for gratis payments");
-      }
-      if (creditApplied !== null) {
-        throw new Error("gratis payments cannot apply patient credit");
-      }
-      if (creditEarned !== null) {
-        throw new Error("gratis payments cannot earn patient credit");
       }
     }
 
@@ -239,6 +258,8 @@ export const create = action({
       insertRow.discountPercent = args.discountPercent;
     if (args.paymentMethod === "gratis" && args.gratisReason?.trim())
       insertRow.gratisReason = args.gratisReason.trim();
+    if (args.paymentMethod === "barter" && args.barterDescription?.trim())
+      insertRow.barterDescription = args.barterDescription.trim();
 
     const paymentId = await db.insert("payments", insertRow);
 
@@ -592,6 +613,9 @@ export const splitMarkPaid = action({
 
     if (args.firstMethod === "gratis" || args.secondMethod === "gratis") {
       throw new Error("gratis payments cannot be split");
+    }
+    if (args.firstMethod === "barter" || args.secondMethod === "barter") {
+      throw new Error("barter payments cannot be split");
     }
     if (args.firstMethod === args.secondMethod) {
       throw new Error("Split methods must differ");

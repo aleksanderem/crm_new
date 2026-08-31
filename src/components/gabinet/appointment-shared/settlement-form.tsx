@@ -95,8 +95,10 @@ const PAYMENT_METHODS = [
 // section, not a payment method.
 const PAY_METHODS = PAYMENT_METHODS.filter((m) => m !== "package");
 
-// Split-payment legs cannot use "gratis" (backend enforces this in splitMarkPaid).
-const SPLIT_PAY_METHODS = PAY_METHODS.filter((m) => m !== "gratis");
+// Split-payment legs cannot use "gratis" or "barter" (backend enforces this in splitMarkPaid).
+const SPLIT_PAY_METHODS = PAY_METHODS.filter(
+  (m) => m !== "gratis" && m !== "barter",
+);
 
 export function SettlementForm({
   organizationId,
@@ -291,15 +293,11 @@ export function SettlementForm({
         pkg.treatmentsUsed.some((e) => visitTreatmentIds.has(e.treatmentId))),
   );
 
-  // barter/gratis lock split amounts too; gratis shows 0.00, barter shows treatmentPrice.
-  const isFirstSplitFixed =
-    firstSplitMethod === "gratis" || firstSplitMethod === "barter";
-  const firstSplitFixedAmount =
-    firstSplitMethod === "gratis" ? "0.00" : treatmentPrice.toFixed(2);
-  const isSecondSplitFixed =
-    secondSplitMethod === "gratis" || secondSplitMethod === "barter";
-  const secondSplitFixedAmount =
-    secondSplitMethod === "gratis" ? "0.00" : treatmentPrice.toFixed(2);
+  // gratis locks split amounts to 0.00; barter is excluded from split methods entirely.
+  const isFirstSplitFixed = firstSplitMethod === "gratis";
+  const firstSplitFixedAmount = "0.00";
+  const isSecondSplitFixed = secondSplitMethod === "gratis";
+  const secondSplitFixedAmount = "0.00";
 
   // Package mode: no money changes hands — settlement is purely quantitative.
   const isPackageMode = !splitPayment && paymentMethod === "package";
@@ -1118,8 +1116,6 @@ export function SettlementForm({
                     setFirstSplitMethod(v as (typeof PAYMENT_METHODS)[number]);
                     if (v === "gratis") {
                       setFirstSplitAmount("0");
-                    } else if (v === "barter") {
-                      setFirstSplitAmount(treatmentPrice.toFixed(2));
                     }
                     if (v !== "package") {
                       setFirstSplitPackageId(null);
@@ -1208,8 +1204,6 @@ export function SettlementForm({
                     setSecondSplitMethod(v as (typeof PAYMENT_METHODS)[number]);
                     if (v === "gratis") {
                       setSecondSplitAmount("0");
-                    } else if (v === "barter") {
-                      setSecondSplitAmount(treatmentPrice.toFixed(2));
                     }
                     if (v !== "package") {
                       setSecondSplitPackageId(null);

@@ -776,8 +776,23 @@ export function SettlementForm({
                   setBarterDescription("");
                   if (v === "gratis") {
                     setPaymentAmount("0");
+                    setPaymentUseBalance(false);
+                    setSplitPayment(false);
+                    setFirstSplitAmount("");
+                    setSecondSplitAmount("");
+                    setFirstSplitPackageId(null);
+                    setFirstSplitPackageItems([]);
+                    setSecondSplitPackageId(null);
+                    setSecondSplitPackageItems([]);
                   } else if (v === "barter") {
                     setPaymentAmount(treatmentPrice.toFixed(2));
+                    setSplitPayment(false);
+                    setFirstSplitAmount("");
+                    setSecondSplitAmount("");
+                    setFirstSplitPackageId(null);
+                    setFirstSplitPackageItems([]);
+                    setSecondSplitPackageId(null);
+                    setSecondSplitPackageItems([]);
                   }
                   setPaymentPackageId(null);
                   setPaymentPackageItems([]);
@@ -955,7 +970,7 @@ export function SettlementForm({
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {t("gabinet.payments.sectionRedeem", "Rozliczenie z wykupionych")}
           </p>
-          {patientCreditBalance !== null && patientCreditBalance > 0 && (
+          {patientCreditBalance !== null && patientCreditBalance > 0 && paymentMethod !== "gratis" && (
             <div className="rounded-md border bg-emerald-50/50 p-2.5 dark:bg-emerald-950/20">
               <label className="flex items-start gap-2 cursor-pointer">
                 <input
@@ -1113,7 +1128,10 @@ export function SettlementForm({
           </div>
         )}
 
-        {/* Split payment toggle */}
+        {/* Split payment toggle — hidden when gratis or barter is selected
+            because both settlement types lock the amount and are mutually
+            exclusive with split (backend enforces this; #5661). */}
+        {paymentMethod !== "gratis" && paymentMethod !== "barter" && (
         <div className="flex items-center gap-2 sm:col-span-2">
           <input
             type="checkbox"
@@ -1138,6 +1156,7 @@ export function SettlementForm({
             {t("gabinet.packages.splitPayment", "Podziel płatność")}
           </Label>
         </div>
+        )}
 
         {splitPayment && (
           <div className="rounded-lg border p-3 space-y-3 sm:col-span-2">

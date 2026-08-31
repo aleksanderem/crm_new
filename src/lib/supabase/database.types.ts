@@ -331,6 +331,7 @@ export interface Database {
           created_at: number | null;
           updated_at: number | null;
           is_platform_admin: boolean | null;
+          is_suspended: boolean | null;
         };
         Insert: {
           id?: string;
@@ -350,6 +351,7 @@ export interface Database {
           created_at?: number | null;
           updated_at?: number | null;
           is_platform_admin?: boolean | null;
+          is_suspended?: boolean | null;
         };
         Update: {
           id?: string;
@@ -369,6 +371,7 @@ export interface Database {
           created_at?: number | null;
           updated_at?: number | null;
           is_platform_admin?: boolean | null;
+          is_suspended?: boolean | null;
         };
         Relationships: [];
       };
@@ -3555,6 +3558,8 @@ export interface Database {
           fiscal_error: string | null;
           refund_amount: number | null;
           refunded_at: number | null;
+          gratis_reason: string | null;
+          barter_description: string | null;
         };
         Insert: {
           id?: string;
@@ -3582,6 +3587,8 @@ export interface Database {
           fiscal_error?: string | null;
           refund_amount?: number | null;
           refunded_at?: number | null;
+          gratis_reason?: string | null;
+          barter_description?: string | null;
         };
         Update: {
           id?: string;
@@ -3609,6 +3616,8 @@ export interface Database {
           fiscal_error?: string | null;
           refund_amount?: number | null;
           refunded_at?: number | null;
+          gratis_reason?: string | null;
+          barter_description?: string | null;
         };
         Relationships: [
           {
